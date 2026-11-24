@@ -8,7 +8,7 @@ import { add, axisAngle, basis, cross, dot, fitLinkedGrip, gripRotation, len, le
 import { createRig } from './rig.mjs';
 import { createAnimator, heavyFootwork, impactWeight, interpolateDirection, returnSpearPhase, swingPhase, TIGER_SWORD } from './motion.mjs';
 import { createFooting } from './footing.mjs';
-import { bowReleasePose } from './bow-release.mjs';
+import { bowLoosePose, bowReleasePose } from './bow-release.mjs';
 import { ordinaryCuts } from './ordinary-poses.mjs';
 import { ARTS, SKILLS } from '../sim/regiments.mjs';
 import { telegraphPoseTime } from '../sim/combat-tells.mjs';
@@ -19,10 +19,17 @@ const easeIn = (t) => (t <= 0 ? 0 : t >= 1 ? 1 : t * t * t);
 const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
 const wrap = (a) => Math.atan2(Math.sin(a), Math.cos(a));
 
+const THROW_FLOOR = [
+  ['head', 0.13], ['spine_03', 0.13], ['pelvis', 0.11],
+  ['lowerarm_l', 0.055], ['lowerarm_r', 0.055], ['hand_l', 0.04], ['hand_r', 0.04],
+  ['calf_l', 0.065], ['calf_r', 0.065], ['ball_l', 0.028], ['ball_r', 0.028]
+];
+
 // Hand places, relative to the middle of the shoulders, in metres (+X his left, +Y up, +Z forward) and the way the
 // blade points. `t` twists the chest about the spine (+ to his left), `n` leans him forward, `d` drops the hips,
 // `f` moves them forward.
 const P = (r, b, extra = {}) => ({ r, b, t: 0, n: 0, d: 0, f: 0, ...extra });
+const THROWN_JI = P([-0.19, -0.16, 0.32], [0, 0.12, 1], { t: -0.1 });
 // Keep the held ji clear of the saddle on the right, then bring the head
 // across and down. Hand and shaft targets are first authored in rider space.
 function saddleCutKey(hand, direction, body, bodySpaceHand = true) {
@@ -134,7 +141,7 @@ function mixPose(a, b, t) {
 }
 
 /** A string between two points, as a thin cylinder placed each frame. */
-function createStrand(material, radius = 0.0016) {
+function createStrand(material, radius = 0.0028) {
   const mesh = new Mesh3D(createCylinderGeometry3D({ radiusTop: radius, radiusBottom: radius, height: 1, radialSegments: 4 }), material);
   mesh.castShadow = false;
   return {
@@ -197,6 +204,11 @@ export function createFigure({ regiment, body, motion, world, height = 1.8 }) {
     const along = hand.along,
       fingers = hand.fingers;
     const q = mapping === 'shield' ? basis(along, fingers, cross(along, fingers)) : basis(cross(along, fingers), along, fingers);
+    if (kind === 'jian') {
+      // This model's palm faces the opposite side of the generic rest-hand estimate.
+      // Seat the handle between the curled middle joints and the thumb, just below the guard.
+      hand.grip = add(hand.grip, qrot(q, mul([-0.025, 0, 0.030], 1 / s)));
+    }
     node.setQuaternion(q[0], q[1], q[2], q[3]);
     const g = weapon.grip ? sub(hand.grip, qrot(q, mul(weapon.grip, 1 / s))) : hand.grip;
     node.setPosition(g[0], g[1], g[2]);
@@ -212,9 +224,12 @@ export function createFigure({ regiment, body, motion, world, height = 1.8 }) {
   let strings = null,
     nocked = null;
   if (bow) {
-    stringMaterial ??= createStandardMaterial3D({ color: 0xeee2c4, roughness: 0.6 });
-    strings = [createStrand(stringMaterial), createStrand(stringMaterial)];
-    for (const st of strings) holder.addChild(st.mesh);
+    stringMaterial ??= createStandardMaterial3D({ color: 0xf3dca7, roughness: 0.74 });
+    strings = [createStrand(stringMaterial, 0.0023), createStrand(stringMaterial, 0.0023)];
+    for (const [index, st] of strings.entries()) {
+      st.mesh.name = index === 0 ? 'bowstring-upper' : 'bowstring-lower';
+      holder.addChild(st.mesh);
+    }
     nocked = createWeapon('arrow');
     holder.addChild(nocked.node);
   }
@@ -379,9 +394,13 @@ export function createFigure({ regiment, body, motion, world, height = 1.8 }) {
     footing: [0, 0, 0],
     drawBlend: 0,
     bowPull: 0,
+    wasDrawing: false,
+    bowRelease: null,
+    bowLaunch: null,
     // On horseback: how far into the saddle (0 standing, 1 seated), and how far his chest turns from the horse.
     ride: 0,
     turnOnHorse: 0,
+    thrown: null,
     dismount: 0,
     dismountLand: 0
   };
@@ -395,6 +414,9 @@ export function createFigure({ regiment, body, motion, world, height = 1.8 }) {
     const act = man.act;
     let pose = style.ready;
     let blend = 10; // how fast the arms follow (1/s); swings set the place exactly
+    if (state.thrown && arms.main === 'ji') {
+      return { pose: mixPose(style.ready, THROWN_JI, state.thrown.roll), blend: 26 };
+    }
     if (man.guard && style.guard) {
       pose = style.guard[man.guardLine] ?? style.ready;
       blend = longAxe ? 36 : 26;
@@ -626,7 +648,8 @@ export function createFigure({ regiment, body, motion, world, height = 1.8 }) {
     const catchTravel = caught && man.guard ? impact : 0;
     const fallen = man.stun > 0 && (man.stunKind === 'down' || man.stunKind === 'thrown');
     const stunned = fallen || man.stun > 0 && (man.stunKind === 'flinch' || man.stunKind === 'break');
-    state.down += ((fallen ? 1 : 0) - state.down) * (1 - Math.exp(-dt * (fallen ? 18 : 7)));
+    const staggerWeight = state.thrown?.roll ?? Number(fallen);
+    state.down += (staggerWeight - state.down) * (1 - Math.exp(-dt * (staggerWeight > state.down ? 18 : 7)));
     const movement = clamp((speed - 0.15) / 0.5, 0, 1);
     const moving = movement * (1 - state.ride) * (man.alive && !stunned ? 1 : 0.16);
     const fwdW = Math.max(0, vFwd) / (speed || 1),
@@ -670,6 +693,12 @@ export function createFigure({ regiment, body, motion, world, height = 1.8 }) {
         rig.bend('thigh_' + side, 0, 0, 0.5 * sign * k);
         rig.bend('calf_' + side, 0, 1.05 * k);
         rig.bend('foot_' + side, 0, -0.25 * k);
+      }
+      const thrown = state.thrown;
+      if (thrown) {
+        const tuck = ease(thrown.age / 0.075) * (1 - ease((thrown.age - 0.14) / 0.13));
+        rig.bend('thigh_' + thrown.inside, 0, -1.12 * tuck);
+        rig.bend('calf_' + thrown.inside, 0, 0.65 * tuck);
       }
       rig.forget();
     }
@@ -718,7 +747,8 @@ export function createFigure({ regiment, body, motion, world, height = 1.8 }) {
     const saddleCut = state.ride > 0 && arms.main === 'ji' && act?.kind === 'swing' && act.line === 'R';
     // The horse leads the chamber. Blend back to the normal aim by the contact pose.
     const aimWeight = saddleCut ? 1 - ease(phase) * (1 - ease(phase - 1)) : 1;
-    const twist = p.t + state.turnOnHorse * aimWeight - sideways * 0.28;
+    const bowTurn = bow && !man.knife ? -0.46 * state.drawBlend : 0;
+    const twist = p.t + bowTurn + state.turnOnHorse * aimWeight - sideways * 0.28;
     const leanAll = p.n + lean + back * 0.42 - shout * 0.15 + 0.17 * buckle;
     const hipTwist = p.t * feet * 0.36;
     const shoulderTwist = twist - hipTwist;
@@ -775,11 +805,16 @@ export function createFigure({ regiment, body, motion, world, height = 1.8 }) {
     }
     const poleL = along([0.7, -0.7, -0.1]);
     const clearR = armClearance(space, 'r'), clearL = armClearance(space, 'l');
+    if (ordinary && arms.main === 'jian' && act.line === 'L' && act.struck && phase > 2.8) {
+      // After the edge leaves the cut, let the hand turn back with the rising sword instead of dragging the old roll.
+      clearR.wristReturnRate = 9 + 18 * ease((phase - 2.8) / 0.58);
+    }
     const linked = arms.two && twoHandedPose(mainTarget, blade, edgeHint, poleR, poleL, space, dt);
-    if (bow) armsForBow(man, dt, twistQ, place, along, edgeHint, reachRange, poleR, mainTarget, space, clearR);
+    if (bow) armsForBow(man, dt, place, along, edgeHint, reachRange, poleR, mainTarget, space, clearR);
     else if (!linked) rig.reachArm('r', frontWrist(mainTarget, space.right, 'r', space), poleR,
       blade, 1, 0, edgeHint, state.primaryGrip, dt, reachRange, clearR);
-    rig.closeHand('r', 1);
+    if (arms.main === 'jian') rig.closeHand('r', -1.2, 1, 0.1);
+    else if (!bow || man.knife) rig.closeHand('r', 1);
 
     // Left arm: on the same weapon (two-handed), the shield, or free.
     if (arms.two) {
@@ -799,10 +834,18 @@ export function createFigure({ regiment, body, motion, world, height = 1.8 }) {
       rig.reachArm('l', frontWrist(place(state.lpose), space.left, 'l', space), along([0.8, -0.6, -0.1]),
         along([0, 1, 0]), 1, 0, along(face), null, 0, null, clearL);
       rig.closeHand('l', 1);
+    } else if (arms.main === 'jian' && !throwLeft && !shout) {
+      // Keep the free hand low and outside the cut. It opens for balance as the sword sweeps across.
+      const balance = ordinary ? ease((phase - 0.55) / 1.4) * (1 - ease((phase - 2.85) / 1.1))
+        : act?.id === 'spin' ? Math.abs(Math.sin(spin * 0.5)) : 0;
+      const free = [0.29 + 0.105 * balance, -0.34 + 0.065 * Number(man.guard), 0.09 - 0.087 * balance];
+      state.lpose = state.lpose ? lerp3(state.lpose, free, 1 - Math.exp(-dt * 21)) : free;
+      rig.reachArm('l', place(state.lpose), along([0.78, -0.53, -0.18]), null, 0.9);
+      rig.closeHand('l', -0.24 + 0.16 * balance, 1, 0.08);
     } else if (!bow) {
-      const free = throwLeft > 0 ? lerp3([0.12, -0.05, 0.2], [0.15, 0.05, 0.62], easeOut(throwLeft)) : shout > 0 ? [0.45, 0.08, 0.18] : regiment === 'tiger' ? [0.16, -0.12, 0.22] : [0.24, -0.42, 0.1];
-      rig.reachArm('l', place(free), rig.dirToRig([0.8, -0.6, -0.2]), regiment === 'tiger' && !throwLeft ? along([0.2, 0.8, 0.4]) : null, 0.85);
-      rig.closeHand('l', regiment === 'tiger' && !throwLeft ? 0.55 : 0.4);
+      const free = throwLeft > 0 ? lerp3([0.12, -0.05, 0.2], [0.15, 0.05, 0.62], easeOut(throwLeft)) : shout > 0 ? [0.45, 0.08, 0.18] : [0.24, -0.42, 0.1];
+      rig.reachArm('l', place(free), rig.dirToRig([0.8, -0.6, -0.2]), null, 0.85);
+      rig.closeHand('l', 0.4);
     }
 
     // ---- the kick ---------------------------------------------------------------------------------------------
@@ -830,15 +873,13 @@ export function createFigure({ regiment, body, motion, world, height = 1.8 }) {
     return { spin, floorLift };
   }
 
-  function armsForBow(man, dt, twistQ, place, along, edgeHint, reachRange, poleR, mainTarget, space, clearance) {
-    const drawing = man.draw ? clamp(man.draw.t / man.r.bow.draw, 0, 1) : 0;
-    const shooting = man.act?.kind === 'skill' && ['gale', 'fan', 'backStep', 'blast', 'web', 'volley'].includes(man.act.id);
-    const aiming = Boolean(man.draw || shooting);
-    const cast = bowReleasePose(man.act);
-    state.drawBlend += ((cast?.lift ?? Number(aiming)) - state.drawBlend) * (1 - Math.exp(-dt * 14));
-    state.bowPull += ((cast?.pull ?? (shooting ? 0.9 : drawing)) - state.bowPull) * (1 - Math.exp(-dt * 26));
-    const up = state.drawBlend;
+  function armsForBow(man, dt, place, along, edgeHint, reachRange, poleR, mainTarget, space, clearance) {
     if (man.knife) {
+      state.wasDrawing = false;
+      state.bowRelease = null;
+      state.bowLaunch = null;
+      state.drawBlend = state.bowPull = 0;
+      bow.flex(0);
       main.node.visible = true;
       bow.node.visible = false;
       rig.reachArm('r', frontWrist(mainTarget, space.right, 'r', space), poleR, along(state.pose.b),
@@ -850,37 +891,106 @@ export function createFigure({ regiment, body, motion, world, height = 1.8 }) {
     }
     main.node.visible = false;
     bow.node.visible = true;
-    // The bow arm reaches toward the aim; the string hand comes back to the jaw as he draws.
-    const aimYaw = wrap((man.aim?.yaw ?? man.face) - man.face);
-    const aim = [Math.sin(aimYaw), 0.05, Math.cos(aimYaw)];
-    const bowHand = lerp3([0.12, -0.24, 0.34], add([0.18, 0.02, 0], mul(aim, 0.6)), up);
-    rig.reachArm('l', place(bowHand), rig.dirToRig([0.7, -0.7, -0.2]), along(lerp3([0.25, 0.9, 0.25], [0.12, 1, -0.05], up)));
-    rig.closeHand('l', 1);
-    const gripL = weaponPoint(bow, [0, 0, -0.02]);
-    const anchor = place([-0.06, 0.2, 0.06]);
-    const stringHand = up > 0.05 ? lerp3(add(gripL, rig.dirToRig([0, 0, -0.06 / s])), anchor, state.bowPull) : place([-0.16, -0.28, 0.26]);
-    rig.reachArm('r', stringHand, rig.dirToRig([-0.7, -0.4, -0.6]), along([0.1, 1, 0]));
-    rig.closeHand('r', 0.75);
-    // The string: tip, hand (when drawn), tip.
-    const top = weaponPoint(bow, bow.nocks[0]),
-      bottom = weaponPoint(bow, bow.nocks[1]);
-    const toHolder = (p) => rig.toBody(p);
-    const centre = lerp3(top, bottom, 0.5);
-    const nock = aiming && up > 0.05 ? lerp3(centre, rig.world('hand_r').t, cast?.string ?? 1) : centre;
-    strings[0].span(toHolder(top), toHolder(nock));
-    strings[1].span(toHolder(nock), toHolder(bottom));
-    for (const st of strings) st.mesh.visible = true;
-    // The arrow on the string, pointing at the bow.
-    nocked.node.visible = aiming && up > 0.3 && (cast?.loaded ?? true);
-    if (nocked.node.visible) {
-      const from = toHolder(nock),
-        to = toHolder(gripL);
-      const dir = unit(sub(to, from));
-      const q = basis(unit(cross([0, 1, 0], dir)), dir, unit(cross(unit(cross([0, 1, 0], dir)), dir)));
-      nocked.node.setQuaternion(q[0], q[1], q[2], q[3]);
-      const at = add(from, mul(dir, 0.72));
-      nocked.node.setPosition(at[0], at[1], at[2]);
+
+    const drawing = Boolean(man.draw);
+    if (drawing || man.stun > 0 || !man.alive) state.bowRelease = null;
+    else if (!state.bowRelease && state.wasDrawing && man.act?.kind === 'recover') {
+      state.bowRelease = { age: 0, power: state.bowPull };
     }
+    state.wasDrawing = drawing;
+    const recovery = state.bowRelease && bowLoosePose(state.bowRelease.age, state.bowRelease.power);
+    if (state.bowRelease && (state.bowRelease.age += dt) > 0.24) state.bowRelease = null;
+    const cast = bowReleasePose(man.act);
+    const pose = cast ?? recovery;
+    const lift = pose?.lift ?? Number(drawing);
+    const loaded = pose?.loaded ?? drawing;
+    state.drawBlend += (lift - state.drawBlend) * (1 - Math.exp(-dt * 15));
+    const up = state.drawBlend;
+    const pull = pose?.pull ?? (drawing ? ease(clamp(man.draw.t / man.r.bow.draw, 0, 1)) : 0);
+    state.bowPull = pull;
+    const follow = recovery?.follow ?? (cast && !cast.loaded ? (1 - cast.string) * cast.pull * 0.75 : 0);
+    const opening = recovery?.open ?? (cast && !cast.loaded ? (1 - cast.string) * cast.pull : 0);
+    const tension = pull * (loaded ? pose?.string ?? 1 : pose?.string ?? 0);
+    bow.flex(clamp(tension, 0, 1));
+
+    const aimYaw = wrap((man.aim?.yaw ?? man.face) - man.face);
+    const pitch = clamp(man.aim?.pitch ?? 0.04, -0.65, 0.65);
+    const aim = rig.dirToRig([Math.sin(aimYaw) * Math.cos(pitch), Math.sin(pitch), Math.cos(aimYaw) * Math.cos(pitch)]);
+    const sky = rig.dirToRig([0, 1, 0]);
+    const aimUp = qrot(axisAngle(aim, -0.105), unit(sub(sky, mul(aim, dot(sky, aim)))));
+    const bowUp = unit(lerp3(along([0.28, 0.9, 0.25]), aimUp, up));
+    const bowForward = unit(sub(aim, mul(bowUp, dot(bowUp, aim))));
+    const bowFrame = basis(cross(bowUp, bowForward), bowUp, bowForward);
+    const cheek = add(rig.world('head').t, rig.toRig([-0.138, -0.068, 0.038]));
+    const alignedRest = add(cheek, mul(aim, (0.55 + 0.02 * follow) / s));
+    const raisedGrip = sub(alignedRest, qrot(bowFrame, mul(bow.rest, 1 / s)));
+    const grip = lerp3(place([0.16, -0.24, 0.34]), raisedGrip, up);
+    const left = rig.hands.l;
+    const leftWrist = sub(grip, qrot(gripRotation(left, bowUp, bowForward), left.grip));
+    rig.reachArm('l', leftWrist, rig.dirToRig([0.7, -0.4, -0.15]), bowUp, 1, 0, bowForward);
+    rig.closeHand('l', 1);
+
+    const top = weaponPoint(bow, bow.nocks[0]);
+    const bottom = weaponPoint(bow, bow.nocks[1]);
+    const centre = lerp3(bottom, top, 0.5 + bow.rest[1] / (bow.nocks[0][1] - bow.nocks[1][1]));
+    // Solve the wrist from the curled finger hook. The same two real fingertips set the rendered nock.
+    const pinch = () => lerp3(rig.world('index_03_r').t, rig.world('middle_03_r').t, 0.5);
+    rig.closeHand('r', (0.36 + up * 0.36) * (1 - opening * 0.93));
+    const right = rig.world('hand_r');
+    const fingerOffset = qrot(qinv(right.r), sub(pinch(), right.t));
+    const hookTurn = gripRotation(rig.hands.r, bowUp, bowForward);
+    const drawTarget = add(lerp3(centre, cheek, pull), mul(aim, -0.066 * follow / s));
+    const wrist = lerp3(place([-0.19, -0.28, 0.27]), sub(drawTarget, qrot(hookTurn, fingerOffset)), up);
+    rig.reachArm('r', wrist, rig.dirToRig([-0.8, 0.24, -0.75]), bowUp, 1, 0, bowForward, null, dt, null, clearance);
+    const hook = pinch();
+    const nock = (loaded || pose?.string > 0) && up > 0.10
+      ? lerp3(centre, hook, loaded ? 1 : pose.string) : centre;
+    strings[0].span(rig.toBody(top), rig.toBody(nock));
+    strings[1].span(rig.toBody(nock), rig.toBody(bottom));
+    for (const st of strings) st.mesh.visible = true;
+
+    nocked.node.visible = loaded && up > 0.22;
+    if (nocked.node.visible) {
+      const from = rig.toBody(nock);
+      const rest = rig.toBody(weaponPoint(bow, bow.rest));
+      const dir = unit(sub(rest, from));
+      const side = unit(cross([0, 1, 0], dir));
+      const q = basis(side, dir, cross(side, dir));
+      nocked.node.setQuaternion(...q);
+      nocked.node.setPosition(...add(from, mul(dir, 0.72)));
+    }
+  }
+
+  function updateThrow(man, dt) {
+    if (!man.alive || man.mounted || man.stun <= 0) state.thrown = null;
+    else if (!state.thrown && state.ride > 0 && man.stunKind === 'thrown') {
+      const away = [man.x - man.horse.x, 0, man.z - man.horse.z];
+      const yaw = man.horse.face;
+      const left = [Math.cos(yaw), 0, -Math.sin(yaw)];
+      state.thrown = { age: 0, from: Array.from(holder.position), yaw,
+        away: len(away) > 0.01 ? unit(away) : left, inside: dot(left, away) >= 0 ? 'r' : 'l' };
+    }
+    const thrown = state.thrown;
+    if (thrown) {
+      thrown.age += dt;
+      thrown.roll = ease((thrown.age - 0.07) / 0.26) * ease((man.stun - 0.035) / 0.45);
+    }
+    return thrown;
+  }
+
+  function throwPose(thrown, ground, yaw) {
+    const travel = ease((thrown.age - 0.015) / 0.265);
+    const turn = yaw + wrap(thrown.yaw - yaw) * (1 - travel);
+    const upright = axisAngle([0, 1, 0], turn);
+    const away = qrot(qinv(upright), thrown.away);
+    const rotation = qmul(upright, axisAngle([away[2], 0, -away[0]], 1.45 * thrown.roll));
+    const at = lerp3(thrown.from, ground, travel);
+    // The rider clears the saddle before the legs release, then rolls over the low shoulder.
+    const lift = Math.sin(Math.PI * travel) * 0.075;
+    const floor = THROW_FLOOR.reduce((height, [name, radius]) =>
+      Math.max(height, radius - qrot(rotation, rig.toBody(rig.world(name).t))[1]), 0);
+    at[1] = Math.max(at[1] + lift, floor);
+    return { at, rotation };
   }
 
   const figure = {
@@ -895,7 +1005,8 @@ export function createFigure({ regiment, body, motion, world, height = 1.8 }) {
         state.fall = Math.min(1, state.fall + dt * 1.6);
       }
       state.impactAge += dt;
-      // How far into the saddle: getting on and off take their time; thrown, he is out of it at once.
+      // Simulated occupancy changes immediately. The visible rider still has to leave the saddle.
+      const thrown = updateThrow(man, dt);
       const R = man.r?.horse;
       const dismounting = man.act?.kind === 'dismount' && R && seat;
       let ride = man.mounted ? 1 : 0;
@@ -904,6 +1015,7 @@ export function createFigure({ regiment, body, motion, world, height = 1.8 }) {
       state.dismount = dismounting ? clamp(man.act.t / R.dismount, 0, 1) : 0;
       state.dismountLand *= Math.exp(-dt * 11);
       if (dismounting) ride = 1 - state.dismount;
+      if (thrown) ride = 1 - ease((thrown.age - 0.05) / 0.23);
       if (!seat || !man.alive) ride = 0;
       state.ride = ride;
       const horseYaw = man.horse?.face ?? man.face;
@@ -929,6 +1041,12 @@ export function createFigure({ regiment, body, motion, world, height = 1.8 }) {
       const footZ = dismounting ? man.horse.z - Math.sin(horseYaw) : man.z;
       let at = [footX, air + landing + floorLift, footZ];
       let yaw = man.face + spin;
+      if (thrown) {
+        const pose = throwPose(thrown, at, yaw);
+        holder.setPosition(...pose.at);
+        holder.setQuaternion(...pose.rotation);
+        return;
+      }
       if (ride > 0) {
         // Hips on the seat, facing the way the horse goes; his chest turns on its own (above). He sways with the horse.
         at = lerp3(at, saddleAt, saddleWeight);
@@ -954,6 +1072,21 @@ export function createFigure({ regiment, body, motion, world, height = 1.8 }) {
     },
     braceFromSpin() {
       state.spinBrace = 0.28;
+    },
+    releaseBow(power = state.bowPull) {
+      if (!bow) return;
+      state.bowRelease = { age: 0, power: clamp(power, 0.15, 1) };
+      state.bowLaunch = null;
+      if (nocked.node.visible) {
+        const at = Array.from(nocked.node.localToWorld([0, 0, 0], [0, 0, 0]));
+        const tip = Array.from(nocked.node.localToWorld([0, 0, 0], [0, 0.085, 0]));
+        state.bowLaunch = { at, direction: unit(sub(tip, at)) };
+      }
+    },
+    takeBowLaunch() {
+      const launch = state.bowLaunch;
+      state.bowLaunch = null;
+      return launch;
     },
     /** Where the blade's base and tip are, in world space (for trails and sparks). */
     blade() {

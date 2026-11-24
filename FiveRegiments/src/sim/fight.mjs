@@ -42,7 +42,7 @@ const THROWN = 1.6;
 // Alone against two (the finale), a man fights above himself: this demo's setting.
 export const LONE = { dealt: 1.5, taken: 0.5 };
 const HOLD = 0.85;
-const PC_PREP_FRACTION = 0.72;
+const RELEASE_PREP_FRACTION = 0.72;
 const SPIN_GUARD_AT = 0.43;
 const SKILL_GUARD_DELAY = 0.12;
 const GRAVITY = 9.8;
@@ -211,7 +211,8 @@ function speedOf(man) {
   const act = man.act;
   if (man.guard) speed *= man.r.offhand === 'shield' ? 0.8 : 0.5;
   if (act?.kind === 'swing') speed *= act.t < act.wind ? 0.62 : 0.4;
-  if (man.draw) speed *= 0.55;
+  // Keep some room for the archer to reposition at full draw while keeping a clear pursuit advantage.
+  if (man.draw) speed *= 0.6;
   if (act?.kind === 'skill') speed *= act.walk ?? 0.35;
   if (act?.kind === 'kick') speed *= 0.3;
   if (act?.kind === 'mend') speed *= 0.4;
@@ -398,7 +399,7 @@ function resolve(game, man, target, spec) {
     target.act.answered = true;
     target.act.t = SKILLS.counter.hold;
     target.act.answeredAt = target.act.t;
-    emit(game, 'deflect', { who: target.id, by: man.id, line, counter: true, ...contact });
+    emit(game, 'deflect', { who: target.id, by: man.id, line, skill: spec.skill, counter: true, ...contact });
     target.stats.deflects++;
     rouse(target, RAGE.deflected);
     const back = target.r.blows.R.damage * SKILLS.counter.damage * critical(game, target, man);
@@ -417,7 +418,7 @@ function resolve(game, man, target, spec) {
       // Caught in the first instant of the guard: the blow is turned aside and the striker reels.
       target.stats.deflects++;
       rouse(target, RAGE.deflected);
-      emit(game, 'deflect', { who: target.id, by: man.id, line, ...contact });
+      emit(game, 'deflect', { who: target.id, by: man.id, line, skill: spec.skill, ...contact });
       stagger(man, spec.heavy ? 0.85 : 0.65, 'reel');
       return;
     }
@@ -429,7 +430,7 @@ function resolve(game, man, target, spec) {
     spend(target, cost);
     target.stats.guards++;
     rouse(target, RAGE.guarded);
-    emit(game, 'block', { who: target.id, by: man.id, line, heavy: spec.heavy ?? 0, ...contact });
+    emit(game, 'block', { who: target.id, by: man.id, line, skill: spec.skill, heavy: spec.heavy ?? 0, ...contact });
     // Heightened Deterrence: a guarded blow costs the striker stamina (the official 8, in this game's stamina).
     if (target.talents.has('deterrence')) spend(man, TALENTS.deterrence.drain * 0.25);
     if (target.st <= 0) {
@@ -514,7 +515,7 @@ function loose(game, man, { yaw, pitch = 0.04, power = 1, damage, kind = 'arrow'
     fall,
     life: 2.4
   });
-  if (announce) emit(game, 'loose', { who: man.id, kind, skill, yaw });
+  if (announce) emit(game, 'loose', { who: man.id, kind, skill, yaw, power });
 }
 
 /** The heading and lift that put an arrow on `target` (leading him a little). */
@@ -676,7 +677,7 @@ function startSwing(game, man, line, { releaseOnly, released, readableAttack }) 
   if (releaseOnly) {
     act.releaseOnly = true;
     act.awaitingRelease = !released;
-    act.prepCap = act.wind * PC_PREP_FRACTION;
+    act.prepCap = act.wind * RELEASE_PREP_FRACTION;
     act.prepareTime = 0;
     if (released) act.releaseAt = 0;
   }
@@ -1319,16 +1320,25 @@ function chargeSwing(game, man, act, dt) {
 
 const swingCharge = (act) => act.held > 0.15 ? Math.min(1, act.held / HOLD) : 0;
 
-function runSwing(game, man, act, input, dt) {
+function runSwing(game, man, act, input, dt, wantsGuard, guardLine) {
   const holding = input.attack && !act.releaseOnly;
-  // An armed PC gesture can be withdrawn any time before release. A committed blow keeps the normal feint window.
+  // A held gesture can be withdrawn any time before release. A committed blow keeps the normal feint window.
   if (input.guard && !man.prev.guard && (act.awaitingRelease || act.t < act.wind * 0.75)) {
     man.act = { kind: 'recover', t: 0, time: 0.12 };
     spend(man, 5);
     emit(game, 'feint', { who: man.id });
+    if (act.awaitingRelease && wantsGuard && man.st > 0) raiseGuard(game, man, guardLine);
     return;
   }
   if (act.awaitingRelease) {
+    const aimed = input.meleeAim;
+    const blow = aimed && aimed !== act.line && blowsOf(man)[aimed];
+    if (blow) {
+      const wind = act.readableAttack ? Math.max(OPPONENT_WIND, blow.wind) : blow.wind;
+      const prepCap = wind * RELEASE_PREP_FRACTION;
+      const t = Math.min(1, act.t / act.prepCap) * prepCap;
+      Object.assign(act, { line: aimed, blow, wind, prepCap, t, reach: blow.reach, recover: blow.recover });
+    }
     if (!input.meleeRelease || !input.meleeUp) {
       // Reserve the last part of the original wind for the blade's travel after release.
       act.t = Math.min(act.t, act.prepCap);
@@ -1381,7 +1391,10 @@ function runSwing(game, man, act, input, dt) {
   if (requested && !man.queuedSwing) {
     man.queuedSwing = { line: meleeLine(man, input), releaseOnly: input.meleeRelease, released: input.meleeUp };
   }
-  if (man.queuedSwing?.releaseOnly && input.meleeRelease && input.meleeUp) man.queuedSwing.released = true;
+  if (man.queuedSwing?.releaseOnly && input.meleeRelease) {
+    if (input.meleeAim) man.queuedSwing.line = input.meleeAim;
+    if (input.meleeUp) man.queuedSwing.released = true;
+  }
   if (recovered) man.act = null;
   return recovered;
 }
@@ -1572,7 +1585,7 @@ function stepMan(game, man, input, dt) {
       act.t += dt;
       act.moving = false;
       if (act.kind === 'swing') {
-        const recovered = runSwing(game, man, act, input, dt);
+        const recovered = runSwing(game, man, act, input, dt, wantsGuard, guardLine);
         if (recovered && input.recoveryHandoff && wantsGuard && !man.guard) raiseGuard(game, man, guardLine);
       } else if (act.kind === 'kick') {
         if (act.t - dt < KICK.wind && act.t >= KICK.wind) {

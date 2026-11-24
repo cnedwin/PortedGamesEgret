@@ -22,6 +22,83 @@ const run = (game, inputs, seconds) => {
   return events;
 };
 
+test('each foot opponent chooses a reachable thrust from the thrust-only distance', () => {
+  for (const regiment of ORDER) {
+    const hero = regiment === 'tiger' ? 'yulin' : 'tiger';
+    const { game, h, f } = pair(hero, regiment, { foe: { mounted: false } });
+    if (regiment === 'archer') f.knife = true;
+    f.cool.fill(5);
+    f.rage = 0;
+    const short = Math.max(f.r.blows.L.reach, f.r.blows.R.reach, f.r.blows.O.reach);
+    const reach = f.r.blows.T.reach;
+    const brain = createBrains(game, { level: 0.5, rng: () => 0.01 }).foe0;
+
+    f.z = h.z - h.body - (short + reach) * 0.5;
+    const atEdge = brain.think(game, TICK);
+    assert.ok(atEdge.attack, regiment + ' still has a valid thrust');
+    assert.equal(atEdge.line, 'T', regiment + ' should not start a shorter cut');
+
+    f.z = h.z - h.body - reach - 0.1;
+    const tooFar = brain.think(game, TICK);
+    assert.ok(!tooFar.attack && !tooFar.kick, regiment + ' closes distance when no line can reach');
+  }
+});
+
+test('a normal foot opponent makes an uncharged reply during the reel it earns with a deflect', () => {
+  const { game, h, f } = pair('tiger', 'yulin');
+  f.cool.fill(5);
+  f.rage = 0;
+  const brain = createBrains(game, { level: 0.5, rng: () => 0.2 }).foe0;
+
+  step(game, { hero: { attack: true, line: 'O' } });
+  while (h.act.t < 0.315) step(game, {});
+  const answer = brain.think(game, TICK);
+  assert.equal(answer.guard, true);
+  assert.equal(answer.line, 'O');
+  step(game, { foe0: answer });
+  let contact;
+  for (let i = 0; i < 3 && !contact; i++) {
+    contact = step(game, { foe0: brain.think(game, TICK) }).find(e => e.type === 'deflect' && e.who === f.id);
+  }
+  assert.ok(contact, 'the real overhead deflection opens the reply');
+  assert.equal(h.stunKind, 'reel');
+
+  let swing;
+  while (!swing && game.time - contact.time < 0.16) {
+    swing = step(game, { foe0: brain.think(game, TICK) }).find(e => e.type === 'swing' && e.who === f.id);
+  }
+  assert.ok(swing, 'replies during the opening instead of holding guard for 0.35 seconds');
+  assert.ok(swing.time - contact.time >= 4 * TICK, 'keeps a brief guard settle after contact');
+  assert.equal(brain.swingHold, 0, 'does not add a heavy charge to the reply');
+  assert.equal(f.act.wind, f.act.blow.wind, 'uses ordinary weapon startup');
+});
+
+test('a solo Imperial Guard reads a repeated fast cut without reading a new line or an expired pattern', () => {
+  function exchanges(lines, { pause = 0, level = 0.5 } = {}) {
+    const { game, h, f } = pair('tiger', 'yulin');
+    const brain = createBrains(game, { level, rng: () => 0.5 }).foe0;
+    const guard = () => {
+      const { guard, line, face } = brain.think(game, TICK);
+      return { guard, line, face };
+    };
+    return lines.map((line, index) => {
+      // Hold the fixture in range and feed only the brain's defensive decisions into combat.
+      Object.assign(h, { x: 0, z: 1.2, face: Math.PI });
+      Object.assign(f, { x: 0, z: -0.6, face: 0 });
+      if (index === 2 && pause) run(game, () => ({ foe0: guard() }), pause);
+      return run(game, i => ({
+        hero: { line, meleeLine: line, meleeRelease: true, meleeDown: i === 0, meleeUp: i === 1 },
+        foe0: guard()
+      }), 0.75).find(e => e.who === 'foe0' && e.by === 'hero' &&
+        (e.type === 'hit' || e.type === 'block' || e.type === 'deflect'))?.type;
+    });
+  }
+  assert.deepEqual(exchanges(['R', 'R', 'R']), ['hit', 'hit', 'deflect']);
+  assert.deepEqual(exchanges(['R', 'R', 'L']), ['hit', 'hit', 'hit']);
+  assert.deepEqual(exchanges(['R', 'R', 'R'], { pause: 2.1 }), ['hit', 'hit', 'hit']);
+  assert.deepEqual(exchanges(['R', 'R', 'R'], { level: 0.3 }), ['hit', 'hit', 'hit']);
+});
+
 test('a light blow lands and hurts; a held blow lands harder', () => {
   const a = pair('vanguard', 'tiger');
   run(a.game, (i) => ({ hero: { attack: i < 2, line: 'R' } }), 1);
@@ -295,11 +372,31 @@ test('a PC melee press keeps its own line when guard assist supplies the incomin
 test('guard cancels armed PC melee at full charge and stale release cannot attack', () => {
   const { game, h } = pair('tiger', 'yulin');
   run(game, (i) => ({ hero: pcMelee({ attack: true, meleeDown: i === 0 }) }), 2);
-  const cancelled = step(game, { hero: pcMelee({ attack: true, guard: true }) });
+  const cancelled = step(game, { hero: pcMelee({ attack: true, guard: true, guardLine: 'O' }) });
   assert.ok(cancelled.some((e) => e.type === 'feint'));
-  const released = step(game, { hero: pcMelee({ meleeUp: true, guard: true }) });
   assert.ok(h.guard);
+  assert.equal(h.guardLine, 'O', 'the same guard press supplies its defensive line');
+  const released = step(game, { hero: pcMelee({ meleeUp: true }) });
+  assert.equal(h.guard, false, 'a short press does not keep guarding after release');
   assert.ok(!released.some((e) => e.type === 'swing' || e.type === 'hit'));
+});
+
+test('an armed touch drag chooses its new line without committing or keeping the old reach', () => {
+  const { game, h } = pair('tiger', 'yulin');
+  run(game, (i) => ({ hero: pcMelee({ attack: true, meleeDown: i === 0 }) }), 0.7);
+  assert.equal(h.act.line, 'R');
+  const events = run(game, { hero: pcMelee({ attack: true, meleeAim: 'T' }) }, 1.6);
+  assert.equal(h.act.line, 'T');
+  assert.equal(h.act.blow, h.r.blows.T);
+  assert.equal(h.act.reach, h.r.blows.T.reach);
+  assert.equal(h.act.wind, h.r.blows.T.wind);
+  assert.equal(h.act.recover, h.r.blows.T.recover);
+  assert.ok(h.act.held >= 0.84 && h.act.awaitingRelease);
+  assert.equal(events.length, 0, 'changing the line does not play attack sounds or strike');
+  const released = step(game, { hero: pcMelee({ meleeUp: true }) });
+  assert.equal(released.find(e => e.type === 'swing')?.line, 'T');
+  const after = run(game, {}, 1);
+  assert.deepEqual(after.filter(e => e.type === 'swingRelease').map(e => e.line), ['T']);
 });
 
 test('explicit PC cancellation discards preparation and a new down can arm again', () => {
@@ -729,6 +826,30 @@ test('a single mount press after Bull Charge waits through the fall and remounts
   assert.equal(finished.filter((e) => e.type === 'mounted' && e.who === 'hero').length, 1);
   assert.ok(!finished.some((e) => e.type === 'dismount'));
   assert.equal(h.mounted, true);
+});
+
+test('the archer can move a little more at full draw without sprinting or outrunning a chaser', () => {
+  const footing = (move, attack, sprint = false) => {
+    const game = createFight({
+      hero: { regiment: 'archer', at: [0, 3] },
+      foes: [{ regiment: 'tiger', at: [0, -6] }],
+      place: { radius: 40, posts: [] }
+    });
+    run(game, { hero: { attack, move, sprint }, foe0: { move: [0, 1] } }, 1.2);
+    return { game, hero: game.hero };
+  };
+  const walking = footing([0, 1], false);
+  const aiming = footing([0, 1], true, true);
+  const sidestepping = footing([1, 0], true);
+  assert.ok(aiming.hero.draw.t >= aiming.hero.r.bow.draw);
+  assert.ok(!aiming.hero.sprinting);
+  assert.ok(Math.abs(aiming.hero.moving / walking.hero.moving - 0.6) < 0.001);
+  assert.ok(Math.abs(sidestepping.hero.moving - sidestepping.hero.r.speed * 0.92 * 0.6) < 0.001);
+  assert.ok(aiming.hero.moving < aiming.game.men[1].moving * 0.42);
+  assert.equal(aiming.game.shots.length, 0, 'a full draw waits for release');
+  const [shot, duplicate] = step(aiming.game, {}).filter(e => e.type === 'loose');
+  assert.equal(shot?.power, 1);
+  assert.equal(duplicate, undefined);
 });
 
 test('arrows fly, hit and can be stopped by a shield', () => {

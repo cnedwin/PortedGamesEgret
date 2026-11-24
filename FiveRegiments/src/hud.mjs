@@ -439,7 +439,7 @@ export function createTouchControls(root, input, { onPause = () => {} } = {}) {
     strikeLine = null;
     clearTimeout(holdTimer);
     holding = st.touch.attack = false;
-    input.endMountedTouchAttack(commit);
+    input.endHeldTouchAttack(commit);
     release(attack, id);
   }
   attack.addEventListener('pointerdown', (e) => {
@@ -451,16 +451,18 @@ export function createTouchControls(root, input, { onPause = () => {} } = {}) {
     holdTimer = setTimeout(() => {
       holding = true;
       st.touch.attack = true;
-      input.beginMountedTouchAttack(strikeLine);
+      input.beginHeldTouchAttack(strikeLine);
     }, 200);
   });
   attack.addEventListener('pointermove', (e) => {
-    if (e.pointerId !== attackId || holding) return;
+    // A deliberate swipe can choose a line after the default preparation starts.
+    if (e.pointerId !== attackId || (holding && strikeLine !== null)) return;
     const dx = e.clientX - attackAt[0],
       dy = e.clientY - attackAt[1];
     if (Math.hypot(dx, dy) > 22) {
-      if (!st.touch.mounted) clearTimeout(holdTimer);
+      if (st.touch.bow && !holding) clearTimeout(holdTimer);
       strikeLine = Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? 'R' : 'L') : dy < 0 ? 'O' : 'T';
+      if (holding) input.aimHeldTouchAttack(strikeLine);
     }
   });
   const endAttack = (e) => {

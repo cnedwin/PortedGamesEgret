@@ -52,3 +52,15 @@ export function bowReleasePose(act) {
     string: 1 - span(t, release, settled)
   };
 }
+
+/** A normal arrow is already gone. The fingers open first while the string snaps and the arms settle. */
+export function bowLoosePose(age, power) {
+  return {
+    loaded: false,
+    lift: 1 - span(age, 0.068, 0.22),
+    pull: power * (1 - span(age, 0.07, 0.18)),
+    string: 1 - span(age, 0, 0.043),
+    follow: power * span(age, 0, 0.052) * (1 - span(age, 0.095, 0.205)),
+    open: span(age, 0, 0.035) * (1 - span(age, 0.105, 0.22))
+  };
+}
