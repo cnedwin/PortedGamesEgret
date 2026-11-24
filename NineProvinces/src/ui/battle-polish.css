@@ -202,7 +202,7 @@
 #battleHud .bTrialOrders .btn { min-height:44px; padding:4px 8px; font-size:11px; }
 #battleHud .bTrialPreview { margin-top:6px; padding:6px 7px; border-left:2px solid #efc676; background:#433923; }
 #battleHud .bTrialPreview p { margin:0 0 5px; font-size:12px; color:#ffe5a6; }
-#battleHud .bTrialResult {
+#battleHud .bOutcomeHold.bTrialResult {
  top:50%; transform:translate(-50%,-50%); width:min(480px,calc(100vw - 34px));
  max-height:calc(100dvh - 24px); overflow:auto;
  background:linear-gradient(135deg,#253637f7,#1a201ff7);
@@ -213,11 +213,7 @@
 #battleHud .bTrialResult dd { margin:4px 0 0; color:#ffe7ad; font-weight:700; }
 #battleHud .bTrialActions { justify-content:center; }
 #battleHud [data-k='leave-trial'] { min-height:44px; }
-@media (max-width:700px) {
- #battleHud .bTrialResult { top:50%; }
-}
 @media (orientation:landscape) and (max-height:500px) {
- #battleHud .bTrialResult { top:50%; }
  #battleHud.is-nanpi-trial .bTrialGuide { margin:4px 0; font-size:10px; }
  #battleHud.is-nanpi-trial .bTitle { min-width:0; }
  #battleHud.is-nanpi-trial [data-k='leave-trial'] { font-size:10px; }

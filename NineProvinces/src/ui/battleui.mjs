@@ -405,7 +405,7 @@ export function startBattle(app, setup, { state: s = app.state, onTrialResult, o
           active&&!chosen.routed?orderButton(chosen,'auto',t('auto'),chosen.order==='auto'):null,
           active&&!chosen.routed?orderButton(chosen,'autoTactic',chosen.autoTactic?words('战法：自动','Tactics: auto'):words('战法：手动','Tactics: manual'),chosen.autoTactic,!chosen.autoTactic):null,
           keyButton('execute',paused?words('继续执行','Continue'):words('暂停','Pause'),()=>setPaused(!paused),{kind:paused?'main':''}),
-          paused?keyButton('observe',words('推进3秒','Observe 3s'),observeThree,{title:words('按当前速度执行3秒战场时间，然后暂停；可随时再停。','Run 3 battle seconds at the current speed, then pause. You may pause sooner.')}):null):null,
+          paused&&!pendingOrder?keyButton('observe',words('推进3秒','Observe 3s'),observeThree,{title:words('按当前速度执行3秒战场时间，然后暂停；可随时再停。','Run 3 battle seconds at the current speed, then pause. You may pause sooner.')}):null):null,
         !armed?h('div.bTempoOptions',h('label',h('input',{type:'checkbox',checked:milestonePauses,dataset:{k:'milestones'},onchange:e=>{milestonePauses=e.target.checked;draw(true);}}),words('关键时刻暂停','Pause at milestones')),
           phase==='deploy'&&active?orderButton(chosen,'autoTactic',chosen.autoTactic?words('战法：自动','Tactics: auto'):words('战法：手动','Tactics: manual'),chosen.autoTactic,!chosen.autoTactic):phase==='fight'?h('small',readyCount?words(readyCount+' 部战法可施展',readyCount+' units can use tactics'):words('部队基础作战持续执行','Ordinary combat remains automatic')):null):null),
       h('div.bFeed', { 'aria-live': 'polite' }, feed.map((f) => h(`p.${f.kind}`, f.text))),
