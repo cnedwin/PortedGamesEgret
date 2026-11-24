@@ -12,6 +12,7 @@ import {
 } from '@egret/engine/world3d';
 import { createWeapon } from './weapons.mjs';
 import { SKILL_EFFECTS } from './effect-profiles.mjs';
+import { mountedContactBody, mountedContactPoint } from './mounted-contact.mjs';
 
 /** A soft round dot (and a petal) for particles, drawn once on a small canvas. */
 function spriteTexture(kind = 'dot') {
@@ -139,12 +140,18 @@ function createCuePool(scene, capacity) {
 
 /** Place the effect at the near side of the defender, with a small correction from a nearby blade. */
 function contact(e, body, from, blade, depth) {
+  if (e.mountedImpact) {
+    body = mountedContactBody(e.mountedImpact);
+    from = [e.mountedImpact.from[0], body[1], e.mountedImpact.from[1]];
+    blade = null;
+  }
   const dx = body[0] - from[0],
     dz = body[2] - from[2],
     d = Math.hypot(dx, dz) || 1,
     x = dx / d,
     z = dz / d;
-  const point = [body[0] - x * depth, body[1] + (e.kick ? -0.32 : e.line === 'O' ? 0.18 : 0), body[2] - z * depth];
+  const point = e.mountedImpact ? mountedContactPoint(e.mountedImpact, depth)
+    : [body[0] - x * depth, body[1] + (e.kick ? -0.32 : e.line === 'O' ? 0.18 : 0), body[2] - z * depth];
   if (blade) {
     const [base, tip] = blade;
     const ray = tip.map((v, i) => v - base[i]);
@@ -371,7 +378,8 @@ export function createEffects(scene, { particles = 1, blood = true } = {}) {
         if (fx.blood && !e.kick && !e.glance && special?.impact !== 'arcane')
           burst(red, point, strong ? 16 : e.arrow ? 4 : 8, away);
         if (e.kick || special?.impact === 'blunt') burst(dust, floor(at, 0.2), 6);
-        if (special?.impact === 'steel') cues.show('glint', point, heading, 0.28, special.tint, { time: 0.13, opacity: 0.92 });
+        if (special?.impact === 'steel' || e.mountedImpact)
+          cues.show('glint', point, heading, 0.28, special?.tint ?? [0.85, 0.93, 1], { time: 0.13, opacity: 0.92 });
         break;
       }
       case 'break':
