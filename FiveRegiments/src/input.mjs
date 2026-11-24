@@ -266,16 +266,17 @@ export function createInput(canvas, { settings, onPause = () => {}, onLock = () 
   }
 
   /**
-   * One tick's input for the fight. `camYaw` is the camera's heading; movement is taken relative to it. `threat`
-   * is the line of the nearest blow coming, for the classic guard.
+   * One tick's input for the fight. Foot movement follows the camera. Mounted reins keep the same
+   * forward, brake and turn directions even when the view or target lock turns away from the horse.
    */
-  function sample(dt, { threat = null, aim = null, bow = false } = {}) {
+  function sample(dt, { threat = null, aim = null, bow = false, mounted = false } = {}) {
     const pad = readPad(dt);
     let mx = (down.has('right') ? 1 : 0) - (down.has('left') ? 1 : 0),
       my = (down.has('down') ? 1 : 0) - (down.has('up') ? 1 : 0);
     if (state.autorun && !my) my = -1;
     if (pad && (pad.move[0] || pad.move[1])) [mx, my] = pad.move;
-    if (state.touch.move[0] || state.touch.move[1]) [mx, my] = state.touch.move;
+    const touchMoving = Boolean(state.touch.move[0] || state.touch.move[1]);
+    if (touchMoving) [mx, my] = state.touch.move;
     const l = Math.hypot(mx, my);
     if (l > 1) [mx, my] = [mx / l, my / l];
     // Camera space to world: forward is the way the camera looks.
@@ -317,7 +318,8 @@ export function createInput(canvas, { settings, onPause = () => {}, onLock = () 
     const input = {
       move,
       face: state.yaw,
-      sprint: down.has('sprint') || !!pad?.sprint,
+      reins: mounted ? { throttle: -my || 0, turn: -mx || 0 } : undefined,
+      sprint: down.has('sprint') || !!pad?.sprint || mounted && touchMoving && my <= -0.92,
       attack,
       meleeRelease,
       meleeLine: meleeRelease ? mouseAttack.line : undefined,

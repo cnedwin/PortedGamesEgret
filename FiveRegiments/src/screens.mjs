@@ -14,7 +14,7 @@ function node(html) {
   return box.firstElementChild;
 }
 
-export function createScreens(root, { onLanguage }) {
+export function createScreens(root, { onLanguage, coarse = false }) {
   const layer = document.createElement('div');
   layer.className = 'screens';
   root.appendChild(layer);
@@ -69,7 +69,7 @@ export function createScreens(root, { onLanguage }) {
         </nav>
         ${best ? `<p class="best">${best}</p>` : ''}
         ${note ? `<p class="note" role="status">${note}</p>` : ''}
-        <p class="howto">${t('controlsText')}</p>
+        <p class="howto">${t(coarse ? 'touchText' : 'controlsText')}</p>
         ${langButton()}
       </section>`);
       wire(page, { road: onRoad, free: onFree, settings: onSettings });
@@ -212,7 +212,7 @@ export function createScreens(root, { onLanguage }) {
         <nav class="menu"><button type="button" data-act="resume" autofocus>${t('resume')}</button>
         <button type="button" data-act="settings">${t('settings')}</button>
         <button type="button" data-act="leave">${t('giveUp')}</button></nav>
-        <p class="howto">${t('controlsText')}</p>
+        <p class="howto">${t(coarse ? 'touchText' : 'controlsText')}</p>
       </section>`);
       wire(page, { resume: onResume, settings: onSettings, leave: onLeave });
       show(page, (e) => {

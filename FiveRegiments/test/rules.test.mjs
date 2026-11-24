@@ -816,6 +816,103 @@ function atLancePoint(h, f) {
 
 const gallop = { move: [0, 1], sprint: true };
 
+const reins = (throttle, turn = 0) => ({ reins: { throttle, turn }, sprint: throttle > 0 });
+
+test('mounted reins brake to zero before reversing, independently of camera-space movement', () => {
+  const { game, h } = lanceDuel();
+  const horse = h.horse;
+  horse.speed = 6.2;
+  const back = { ...reins(-1), move: [1, 0], face: Math.PI / 2 };
+  let before = horse.speed;
+  let sawStop = false;
+  for (let i = 0; i < 100; i++) {
+    step(game, { hero: back });
+    assert.ok(horse.speed <= before, 'braking and reversing should never advance the throttle');
+    assert.equal(horse.face, 0, 'looking away must not steer the horse');
+    if (horse.speed < 0) assert.ok(sawStop, 'the horse stopped before moving backward');
+    if (horse.speed === 0) sawStop = true;
+    before = horse.speed;
+  }
+  assert.equal(horse.speed, -1.3);
+  assert.equal(h.x, 0);
+  const beforeTurn = horse.face;
+  step(game, { hero: reins(-1, 1) });
+  assert.ok(horse.face > beforeTurn, 'a rein turn steers around the horse heading');
+  const speed = horse.speed;
+  step(game, { hero: reins(0) });
+  assert.ok(horse.speed > speed, 'releasing the throttle slows a reversing horse');
+});
+
+test('a running horse bowls over infantry once until both bodies separate, without damaging them', () => {
+  const { game, h, f } = lanceDuel();
+  Object.assign(f, { x: 0, z: 1.45 });
+  const hp = f.hp;
+  const [ram] = step(game, { hero: reins(1) }).filter((e) => e.type === 'horseRam');
+  assert.ok(ram);
+  assert.equal(ram.who, f.id);
+  assert.equal(ram.by, h.id);
+  assert.ok(ram.at.every(Number.isFinite) && ram.speed >= 7.2);
+  assert.equal(f.stunKind, 'down');
+  assert.equal(f.hp, hp);
+  assert.ok(run(game, { hero: reins(1) }, 0.85).every((e) => e.type !== 'horseRam'));
+  Object.assign(f, { x: 0, z: 25, stun: 0, stunKind: null, vx: 0, vz: 0 });
+  step(game, { hero: reins(1) });
+  Object.assign(f, { x: 0, z: h.z + 1.45 });
+  assert.ok(step(game, { hero: reins(1) }).some((e) => e.type === 'horseRam'), 'a separated rider can make a new pass');
+});
+
+test('a canter, reversing, a side brush and a committed lance do not knock an opponent down', () => {
+  for (const [speed, x, z, command] of [
+    [6.2, 0, 1.4, { reins: { throttle: 1, turn: 0 } }],
+    [-1.3, 0, -1.385, reins(-1)],
+    [8, 1.32, 0.5, reins(1)],
+    [8, 0, 1.4, { ...reins(1), art: true }],
+    [8, 0, 1.4, { ...reins(1), attack: true, line: 'R' }]
+  ]) {
+    const { game, h, f } = lanceDuel();
+    h.horse.speed = speed;
+    Object.assign(f, { x, z });
+    const events = step(game, { hero: command });
+    assert.ok(events.every((e) => e.type !== 'horseRam'), JSON.stringify({ speed, x, z, command }));
+    assert.equal(f.stunKind, null);
+  }
+});
+
+test('a mount can hit infantry crossing its path within a tick, even with clear endpoints', () => {
+  const { game, f } = lanceDuel();
+  Object.assign(f, { x: -1.5, z: 1.4, vx: 86 });
+  assert.ok(step(game, { hero: reins(1), [f.id]: { move: [1, 0], sprint: true } }, 0.12)
+    .some((e) => e.type === 'horseRam'));
+  assert.equal(f.stunKind, 'down');
+});
+
+test('couching checks forward speed, rather than the magnitude of a reversing horse', () => {
+  const { game, h } = lanceDuel();
+  h.horse.speed = -8;
+  const events = step(game, { hero: { ...reins(-1), art: true } });
+  assert.ok(events.some((e) => e.type === 'needRun'));
+  assert.ok(events.every((e) => e.type !== 'lance'));
+});
+
+test('an already-couched lance cannot acquire a hit while backing and resumes with forward motion', () => {
+  const { game, h, f } = lanceDuel();
+  const cast = step(game, { hero: { ...reins(1), art: true } });
+  assert.ok(cast.some((e) => e.type === 'lance'));
+  run(game, { hero: reins(-1) }, 1.5);
+  assert.ok(h.horse.speed < 0);
+  atLancePoint(h, f);
+  const hp = f.hp;
+  const backward = step(game, { hero: reins(-1) });
+  assert.ok(backward.every((e) => e.skill !== 'couch'));
+  assert.equal(f.hp, hp);
+  assert.equal(h.act?.kind, 'lance');
+  assert.equal(h.act.charging, false);
+
+  while (h.horse.speed <= 0) step(game, { hero: reins(1) });
+  atLancePoint(h, f);
+  assert.ok(step(game, { hero: reins(1) }).some((e) => e.type === 'hit' && e.skill === 'couch'));
+});
+
 test('the couched ji has a brief wind-up while the horse keeps moving', () => {
   const { game, h, f } = lanceDuel();
   atLancePoint(h, f);

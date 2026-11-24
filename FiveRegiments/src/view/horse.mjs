@@ -88,7 +88,7 @@ export function createHorse({ body, world }) {
     node.setQuaternion(q[0], q[1], q[2], q[3]);
   };
 
-  const state = { phase: 0, mix: { walk: 1, trot: 0, gallop: 0 }, rear: 0, fall: 0, fallSide: 1, lean: 0 };
+  const state = { phase: 0, mix: { walk: 1, trot: 0, gallop: 0 }, rein: 0, rear: 0, fall: 0, fallSide: 1, lean: 0 };
 
   /** The swing and bend of one leg at a point in its cycle: forward and back, the lower joints folding as it lifts. */
   function legAt(leg, gait, amount) {
@@ -113,14 +113,17 @@ export function createHorse({ body, world }) {
     holder,
     /** Follow the fight's horse for one frame. `stun` is its rider's stagger (a rear), if any. */
     update(h, dt, { rearing = false } = {}) {
-      const speed = Math.abs(h.speed ?? 0);
+      const pace = h.speed ?? 0;
+      const speed = Math.abs(pace);
       // Which gait, by pace: walk below 3 m/s, trot to 6.5, gallop above.
       const want = { walk: speed < 3 ? 1 : 0, trot: speed >= 3 && speed < 6.6 ? 1 : 0, gallop: speed >= 6.6 ? 1 : 0 };
       for (const k of Object.keys(state.mix)) state.mix[k] += (want[k] - state.mix[k]) * (1 - Math.exp(-dt * 6));
       const stride = GAITS.walk.stride * state.mix.walk + GAITS.trot.stride * state.mix.trot + GAITS.gallop.stride * state.mix.gallop;
       const moving = clamp(speed / 0.6, 0, 1);
-      state.phase = (state.phase + (dt * Math.max(speed, 0.0)) / stride) % 1;
-      if (h.speed < 0) state.phase = (state.phase + 1 - (2 * dt * speed) / stride) % 1;
+      // Keep walking in reverse while the horse faces forward. Shorter steps and a tucked head show rein pressure.
+      state.rein += (clamp(-pace / 0.48, 0, 1) - state.rein) * (1 - Math.exp(-dt * 8));
+      const phase = state.phase + dt * pace / stride;
+      state.phase = phase - Math.floor(phase);
       // Legs: the gaits blended by weight.
       for (const leg of LEGS) {
         let swing = 0,
@@ -134,7 +137,7 @@ export function createHorse({ body, world }) {
         }
         const [hip, knee, foot] = leg.bones;
         // Fore legs fold at the knee backward; hind legs at the hock forward.
-        turnBone(hip, swing);
+        turnBone(hip, swing * (1 - 0.16 * state.rein));
         if (knee) turnBone(knee, leg.fore ? -lift * 0.9 : lift * 0.7);
         if (foot) turnBone(foot, leg.fore ? lift * 0.7 : -lift * 0.5);
       }
@@ -152,7 +155,7 @@ export function createHorse({ body, world }) {
         root.setPosition(p[0], p[1], p[2]);
       }
       turnBone('tripo::Spine_0', -rock * 0.5);
-      turnBone('tripo::Head_0', rock * 1.6 + Math.sin(state.phase * Math.PI * 4) * 0.03 * moving + state.rear * 0.35);
+      turnBone('tripo::Head_0', rock * 1.6 + Math.sin(state.phase * Math.PI * 4) * 0.03 * moving + state.rear * 0.35 - state.rein * 0.09);
       // The whole horse: heading, the rear (up about the hind feet), the fall (over onto its side).
       const yaw = h.face ?? 0;
       const rearAngle = ease(state.rear) * 0.55 + rock * 0.4;

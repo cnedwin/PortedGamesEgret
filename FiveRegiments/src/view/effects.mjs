@@ -246,6 +246,16 @@ export function createEffects(scene, { particles = 1, blood = true } = {}) {
       case 'step':
         burst(dust, [at[0], 0.1, at[2]], 5);
         break;
+      case 'horseRam': {
+        const [x, z] = e.at ?? [at[0], at[2]];
+        const from = where(e.by);
+        const direction = [x - from[0], 0, z - from[2]];
+        const stride = Math.hypot(direction[0], direction[2]) || 1;
+        const away = [direction[0] / stride, 0.35, direction[2] / stride];
+        burst(impact, [x, 0.84, z], 7, away);
+        burst(dust, [x, 0.13, z], 10, away);
+        break;
+      }
       case 'skillBeat':
         if (e.id === 'spin' || e.id === 'charge' || e.id === 'moon' || e.id === 'boar') {
           burst(dust, [at[0], 0.1, at[2]], e.id === 'boar' && e.part === 1 ? 10 : 6);

@@ -155,6 +155,8 @@ html, body { margin: 0; height: 100%; background: var(--ink); color: var(--paper
 .hud-horse { display: grid; grid-template-columns: auto 1fr; gap: 3px 8px; align-items: center; margin-top: 7px; font: 12px var(--sans); color: var(--dim); }
 .hud-horse .bar.hhp { height: 9px; }
 .hud-horse .bar.hst { grid-column: 2; height: 3px; }
+.hud-horse .horse-pace { grid-column: 2; color: #fbd99c; font-size: 10px; }
+.hud-horse .horse-pace[data-pace="horseReverse"] { color: #c9dded; }
 .hud-horse.off { opacity: 0.6; }
 .hud-horse.dead { opacity: 0.3; }
 .hud-horse[hidden] { display: none; }

@@ -76,8 +76,8 @@ export const WORDS = {
   attack: { zh: '出手', en: 'Strike' },
   swap: { zh: '换刀', en: 'Knife' },
   controlsText: {
-    zh: 'W A S D 移动 · 左 Shift 冲刺 · 空格 跳 · 鼠标左右划选起刀侧，上划下劈，下划突刺 · 左键按住架势、松开出招，按久蓄力 · 右键格挡，架势中按右键可收成假动作 · 小键盘 8 2 4 6 直接出招 · F 踢（破防）· X 战技、Z 盾牌战技（怒气满时）· R T 职业技能 · B 单击/连击 · 1 2 换兵器 · 3 绷带 · E 上马/下马 · U 召唤战马 · V 切换视角 · 滚轮 远近 · 中键 锁定 · Tab 隐藏界面 · Ctrl+H 按键提示 · Esc 菜单',
-    en: 'W A S D move · Left Shift sprint · Space jump · flick the mouse left or right to choose the starting side, up for overhead or down for thrust · hold the left button to ready and charge, release to strike · right button guards or feints from a readied strike · keypad 8 2 4 6 strikes directly · F kicks (breaks guard) · X weapon art and Z shield art (at full rage) · R and T profession skills · B single or continuous attack · 1 2 weapons · 3 bandage · E mount or dismount · U calls the horse · V changes the view · wheel zoom · middle button locks on · Tab hides the panels · Ctrl+H key hints · Esc menu'
+    zh: 'W A S D 移动 · 左 Shift 冲刺 · 空格 跳 · 鼠标左右划选起刀侧，上划下劈，下划突刺 · 左键按住架势、松开出招，按久蓄力 · 右键格挡，架势中按右键可收成假动作 · 小键盘 8 2 4 6 直接出招 · F 踢（破防）· X 战技、Z 盾牌战技（怒气满时）· R T 职业技能 · B 单击/连击 · 1 2 换兵器 · 3 绷带 · E 上马/下马 · U 召唤战马 · 骑马时 W 前进，S 收缰后倒行，A D 转向，左 Shift 疾驰 · V 切换视角 · 滚轮 远近 · 中键 锁定 · Tab 隐藏界面 · Ctrl+H 按键提示 · Esc 菜单',
+    en: 'W A S D move · Left Shift sprint · Space jump · flick the mouse left or right to choose the starting side, up for overhead or down for thrust · hold the left button to ready and charge, release to strike · right button guards or feints from a readied strike · keypad 8 2 4 6 strikes directly · F kicks (breaks guard) · X weapon art and Z shield art (at full rage) · R and T profession skills · B single or continuous attack · 1 2 weapons · 3 bandage · E mount or dismount · U calls the horse · Mounted, W moves forward, S reins in then backs up, A D steer and Left Shift gallops · V changes the view · wheel zoom · middle button locks on · Tab hides the panels · Ctrl+H key hints · Esc menu'
   },
   compass: { zh: '北,东,南,西', en: 'N,E,S,W' },
   dressing: { zh: '绷带', en: 'Bandage' },
@@ -97,6 +97,12 @@ export const WORDS = {
   horseFar: { zh: '战马离得太远，按 U 召唤', en: 'The horse is too far: U calls it' },
   horseDead: { zh: '战马已经倒下', en: 'The horse is down' },
   horse: { zh: '战马', en: 'Horse' },
+  horseRein: { zh: '前进 / 收缰倒行', en: 'Forward / rein in and back up' },
+  horseSteer: { zh: '控马转向', en: 'Steer' },
+  horseReverse: { zh: '倒行', en: 'Backing' },
+  horseGallop: { zh: '疾驰', en: 'Gallop' },
+  horseRamHit: { zh: '骑马撞倒对手', en: 'Opponent knocked down' },
+  horseRamTaken: { zh: '被战马撞倒', en: 'Knocked down by a horse' },
   thrown: { zh: '坠马', en: 'Thrown' },
   combo: { zh: '连击', en: 'Continuous' },
   single: { zh: '单击', en: 'Single' },
@@ -116,7 +122,7 @@ export const WORDS = {
   refund: { zh: '击杀：战技冷却刷新', en: 'A kill: the art is ready again' },
   artCost: { zh: '冷却 {s} 秒，消耗 {r} 怒气。', en: '{s} s to recover, {r} rage.' },
   needRun: { zh: '马要跑起来', en: 'Needs the horse at a run' },
-  touchText: { zh: '左边拖动走路，右边拖动转视角；在「出手」上划动选刀路。', en: 'Drag on the left to walk and on the right to look; swipe on Strike to choose the line.' },
+  touchText: { zh: '左边拖动走路，右边拖动转视角。在「出手」上划动选刀路。上马后，摇杆前推到底可疾驰，后拉收缰并倒行。', en: 'Drag on the left to walk and on the right to look. Swipe on Strike to choose the line. When mounted, push the stick fully forward to gallop or pull back to rein in and back up.' },
   placeCounty: { zh: '县城校场', en: 'The county drill ground' },
   placePeach: { zh: '桃林溪畔', en: 'The peach grove by the stream' },
   placeBamboo: { zh: '竹林古道', en: 'The old bamboo path' },
