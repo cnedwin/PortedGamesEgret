@@ -17,6 +17,7 @@ import { ORDER, REGIMENTS, loadout, playerLoadout } from './sim/regiments.mjs';
 import { PLACES, grade, planRoad, stageScore } from './sim/road.mjs';
 import { planExpedition } from './sim/expedition.mjs';
 import { floorAt } from './sim/terrain.mjs';
+import { planDuelSeries, recordDuelRound, seriesStanding } from './sim/duel-series.mjs';
 import { createInput } from './input.mjs';
 import { createHud, createTouchControls } from './hud.mjs';
 import { createScreens, placeName } from './screens.mjs';
@@ -251,7 +252,7 @@ async function main() {
       .join(' · ');
     redraw = title;
     const note = saveProblems.has('write-failed') ? t('saveRefused') : saveProblems.size ? t('saveReset') : '';
-    screens.title({ onRoad: () => choose(), onExpedition: () => choose(true), onFree: free,
+    screens.title({ onRoad: () => choose(), onExpedition: () => choose(true), onFree: () => free(), onSeries: () => free(true),
       onSettings: () => openSettings(title), best: marks ? `${t('best')}：${marks}` : '', note });
   }
 
@@ -289,15 +290,20 @@ async function main() {
   }
 
   const freeState = { me: 'yulin', foes: ['tiger'], place: 'county' };
-  function free() {
+  const seriesState = { me: 'yulin', foes: ['tiger'], place: 'county' };
+  function free(series = false) {
     mode = 'free';
-    redraw = free;
+    redraw = () => free(series);
     screens.free({
-      state: freeState,
+      state: series ? seriesState : freeState,
+      series,
       onLook: (r) => lineup && (lineup.focus = ORDER.indexOf(r)),
       onBack: title,
       onGo: (s) => {
-        run = { regiment: s.me, loadout: playerLoadout(s.me), stages: [{ index: 0, place: s.place, foes: [...s.foes], level: 0.5, double: s.foes.length > 1, health: s.foes.length > 1 ? 0.8 : 1 }], at: 0, scores: [], stats: runStats(), free: true };
+        const stages = series ? planDuelSeries(s.place, s.foes[0]) :
+          [{ index: 0, place: s.place, foes: [...s.foes], level: 0.5, double: s.foes.length > 1, health: s.foes.length > 1 ? 0.8 : 1 }];
+        run = { regiment: s.me, loadout: playerLoadout(s.me), stages, at: 0, scores: [], stats: runStats(), free: true,
+          series: series ? seriesStanding() : null };
         card();
       }
     });
@@ -308,7 +314,8 @@ async function main() {
     sound?.music('air');
     const st = run.stages[run.at];
     redraw = card;
-    screens.stageCard({ stage: st, total: run.stages.length, onGo: () => begin(st) });
+    screens.stageCard({ stage: st, total: run.stages.length, series: run.series,
+      onBack: run.series ? title : null, onGo: () => begin(st) });
   }
 
   async function begin(st) {
@@ -362,7 +369,8 @@ async function main() {
     status.mode = 'fight';
     sound?.music('drums');
     play('drum');
-    hud.banner(st.double ? t('oneTwo') : t('fight'), st.expedition ? t('expeditionClimbTip') : placeName(st.place), 2.2, 'start');
+    hud.banner(run.series ? t('seriesRound', { n: run.at + 1 }) : st.double ? t('oneTwo') : t('fight'),
+      st.expedition ? t('expeditionClimbTip') : placeName(st.place), 2.2, 'start');
     if (!coarse && !params.has('auto')) input.capture(true);
   }
 
@@ -429,9 +437,10 @@ async function main() {
     const hero = game.hero;
     const stats = { time: game.time, deflects: tally.deflects, broken: tally.broken, taken: hero.stats.taken, healthLeft: hero.hp / hero.maxHp };
     stats.score = won ? stageScore(stats) : 0;
-    const last = run.at === run.stages.length - 1;
+    if (run.series) run.series = recordDuelRound(run.series, won);
+    const last = run.series ? run.series.finished : run.at === run.stages.length - 1;
     let runMark = null;
-    if (won) {
+    if (won && !run.series) {
       run.scores.push(stats.score);
       if (last && !run.free && !run.expedition) {
         runMark = grade(run.scores);
@@ -452,6 +461,7 @@ async function main() {
       double: st.double && won,
       stats,
       last,
+      series: run.series,
       runMark,
       onNext: () => {
         run.at++;
@@ -459,6 +469,10 @@ async function main() {
         card();
       },
       onRetry: () => {
+        if (run.series) {
+          run.at = 0;
+          run.series = seriesStanding();
+        }
         clearFight();
         card();
       },

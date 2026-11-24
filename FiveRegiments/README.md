@@ -59,6 +59,10 @@ both is the "double kill".
 
 Choose a regiment and make your way through Stonegate Pass, Red Banner Depot and Nightwatch Citadel. Defeat the sentries, then follow the illuminated gate. Both commanders switch stances during the fight. Start with March or choose Veteran for the harder encounters. Foot fighters can use the ramps or vault low ledges by moving into them and jumping.
 
+**三局两胜 · Best of three**
+
+选定对手和首轮场地，先赢两轮者获胜。每轮换到另一张场地。 · Choose one opponent and the opening arena. The next round changes fields. The first fighter to win two rounds wins the series.
+
 **手感 · Handling**
 
 - 刀路：鼠标向右划选右侧起刀，向左划选左侧起刀，上划选下劈，下划选突刺。单击模式下，按住左键锁定起刀方向，准星上的金色箭头指示兵器挥入的方向。松开才挥出，蓄满也会继续等候。按住时可用右键收招。经典模式的格挡方向随来招。 · Flick the mouse to choose the side the weapon starts on. Flick up for an overhead cut or down for a thrust. In single-attack mode, hold the left button to lock the line. The gold chevron points into the cut. Release to strike, even at full charge. Right click to feint while readying. Classic guard follows the incoming blow.
