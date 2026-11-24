@@ -12,7 +12,7 @@
 // sidesteps a charge and keeps close to a rider, inside the sweep.
 
 import { ARTS, REGIMENTS, SKILLS } from './regiments.mjs';
-import { BODY, aimAt, enemiesOf, facing } from './fight.mjs';
+import { BODY, TICK, aimAt, enemiesOf, facing } from './fight.mjs';
 
 const HABITS = {
   yulin: { range: 1.75, press: 0.7, guard: 1.1, kick: 0.5, heavy: 0.2, step: 0.15 },
@@ -45,13 +45,19 @@ export function createBrain(man, { level = 0.5, rng = Math.random } = {}) {
     lastEvents: 0,
     think
   };
+  let shieldPattern;
 
   function threatFrom(game, target) {
     const act = target.act;
     if (!act) return null;
-    if (act.kind === 'swing' && !act.struck && act.t >= brain.react) {
+    if (act.kind === 'swing' && !act.struck) {
       const reach = act.reach + BODY + 0.4;
-      if (dist(man, target) <= reach) return { line: act.line, act, soon: act.wind - act.t };
+      // After two contacts on the same line, a lone shield fighter can start his usual
+      // defence a little earlier. He still waits for the player to commit to that line.
+      const repeated = !act.awaitingRelease && act.line !== 'O' && shieldPattern?.line === act.line &&
+        shieldPattern.count >= 2 && game.time - shieldPattern.time < 2;
+      const reaction = repeated ? Math.min(brain.react, Math.max(0.2, act.wind - 3 * TICK)) : brain.react;
+      if (act.t >= reaction && dist(man, target) <= reach) return { line: act.line, act, soon: act.wind - act.t };
     }
     if (act.kind === 'kick' && act.t >= brain.react * 0.8 && dist(man, target) < 1.8) return { kick: true, act };
     if (act.kind === 'lance' && act.t >= brain.react * 0.6 && dist(man, target) < 9) {
@@ -193,6 +199,14 @@ export function createBrain(man, { level = 0.5, rng = Math.random } = {}) {
     const toward = bearing(man, target);
     input.face = toward;
     const bow = man.regiment === 'archer';
+    if (man.regiment === 'yulin' && man.side === 'foe' && level >= 0.5 && game.men.length === 2 && target === game.hero) {
+      const contact = game.events.find(e => e.by === target.id && e.who === man.id && e.line &&
+        !e.skill && !e.kick && !e.arrow && (e.type === 'hit' || e.type === 'block' || e.type === 'deflect'));
+      if (contact && contact.time !== shieldPattern?.time) {
+        const continues = shieldPattern?.line === contact.line && contact.time - shieldPattern.time < 2;
+        shieldPattern = { line: contact.line, time: contact.time, count: continues ? shieldPattern.count + 1 : 1 };
+      }
+    }
     const threat = threatFrom(game, target);
 
     // Shared turns: on a side with two, only the one holding the turn presses in; the other circles.
