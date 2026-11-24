@@ -320,14 +320,14 @@ async function main() {
       })
     ]);
     const seed = Number(params.get('seed') ?? Math.floor(Math.random() * 1e9));
-    const spawn = st.spawn && (stage.place.spawn ?? st.spawn);
+    const spawn = st.expedition && stage.place.spawn;
     game = createFight({
       hero: { ...run.loadout, turn: 14, at: spawn && [spawn.x, spawn.z] },
       foes: st.foes.map((regiment) => ({ regiment, ...loadout(regiment) })),
       place: stage.place,
       seed,
       health: st.health ?? 1,
-      exit: st.exit && (stage.place.exit ?? st.exit)
+      exit: st.expedition ? stage.place.exit : null
     });
     brains = createBrains(game, { level: st.level });
     autoBrain = params.has('auto') ? createBrain(game.hero, { level: 0.7, rng: game.rng }) : null;

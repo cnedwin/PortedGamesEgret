@@ -1,5 +1,4 @@
-// The five places: the county drill ground at noon, the peach grove by the stream, the bamboo path in mist, the
-// snowy pass and the palace front at dusk. Each is a sky (a CC0 panorama that also lights the scene), a sun, a
+// Training grounds and the three expedition battlefields. Each is a sky (a CC0 panorama that also lights the scene), a sun, a
 // ground of scanned CC0 material, the generated buildings and props set round the field, the posts that stand in
 // it (and stop men and arrows), the weather, and its own grade of light.
 import {
@@ -18,6 +17,17 @@ import {
 } from '@egret/engine/world3d';
 
 const ASSETS = new URL('../../assets/', import.meta.url);
+
+const expeditionRoute = {
+  spawn: Object.freeze({ x: 0, z: 11 }),
+  exit: Object.freeze({ x: 0, z: -18, r: 2.5 }),
+  platforms: Object.freeze([])
+};
+export const EXPEDITION_ARENAS = Object.freeze({
+  pass: Object.freeze({ ...expeditionRoute, path: 'stone_pathway_02', pathWidth: 6.4, threshold: 0xbcc495 }),
+  depot: Object.freeze({ ...expeditionRoute, path: 'clay_plaster', pathWidth: 6.6, threshold: 0xe4bf73 }),
+  citadel: Object.freeze({ ...expeditionRoute, path: 'monastery_stone_floor', pathWidth: 7.6, threshold: 0xead298 })
+});
 
 export const PLACE_LOOK = {
   county: {
@@ -79,6 +89,42 @@ export const PLACE_LOOK = {
     grade: { saturation: 1.08, contrast: 1.1, brightness: 0.96, vignette: 0.42 },
     weather: 'embers',
     radius: 18
+  },
+  pass: {
+    sky: 'kloofendal_misty_morning_puresky',
+    sun: { dir: [-0.43, 0.64, -0.64], color: 0xeedbc0, intensity: 2.45 },
+    hemi: { sky: 0xbacdd1, ground: 0x66745e, intensity: 0.72 },
+    env: 0.84,
+    fog: { color: [0.64, 0.71, 0.70], density: 0.024 },
+    ground: { material: 'forest_floor', repeat: 0.25 },
+    exposure: 1.02,
+    grade: { saturation: 0.91, contrast: 1.07, brightness: 1.02, vignette: 0.35 },
+    weather: 'motes',
+    radius: 23
+  },
+  depot: {
+    sky: 'kloppenheim_06_puresky',
+    sun: { dir: [0.66, 0.46, -0.53], color: 0xffdbad, intensity: 2.78 },
+    hemi: { sky: 0xc3d0d1, ground: 0x98664c, intensity: 0.63 },
+    env: 0.84,
+    fog: { color: [0.75, 0.63, 0.53], density: 0.012 },
+    ground: { material: 'raked_dirt', repeat: 0.25 },
+    exposure: 1.02,
+    grade: { saturation: 1.12, contrast: 1.08, brightness: 1.01, vignette: 0.32 },
+    weather: 'dust',
+    radius: 23
+  },
+  citadel: {
+    sky: 'qwantani_dusk_2_puresky',
+    sun: { dir: [0.18, 0.48, -0.81], color: 0xffba91, intensity: 2.35 },
+    hemi: { sky: 0x9aaed7, ground: 0x735855, intensity: 0.76 },
+    env: 0.82,
+    fog: { color: [0.50, 0.47, 0.55], density: 0.014 },
+    ground: { material: 'monastery_stone_floor', repeat: 0.29 },
+    exposure: 1.07,
+    grade: { saturation: 1.07, contrast: 1.07, brightness: 1.02, vignette: 0.4 },
+    weather: 'embers',
+    radius: 23
   }
 };
 
@@ -205,6 +251,60 @@ const LAYOUT = {
     { prop: 'brazier', x: 10, z: -8.5, turn: 0, height: 1.5, post: 0.6, fire: 1.9 },
     { prop: 'brazier', x: -10, z: -8.5, turn: 0, height: 1.5, post: 0.6, fire: 1.9 },
     ...ring('banner', 10, 21.5, 8.5, { start: 0.31, seed: 43 })
+  ],
+  // Stonegate Pass. Weathered hill forts and rocks frame the march up the old stone road.
+  pass: () => [
+    { prop: 'gatehouse', x: 0, z: -21, turn: Math.PI / 2, height: 8.7, width: 12.4 },
+    { prop: 'beacon', x: -12.3, z: -24, height: 10.3, turn: 0.44 },
+    { prop: 'watchtower', x: 15.3, z: -21, height: 8.3, turn: -0.29 },
+    ...[-26, -16, -7.9, 7.9, 16, 26].map((x) => ({ prop: 'wall', x, z: -23, height: 4.65, width: 10 })),
+    { prop: 'boulder', x: -9.1, z: 2.8, turn: 0.5, height: 2.4, post: 1.35 },
+    { prop: 'boulder', x: -13, z: -8.8, turn: -1.16, height: 2.9, post: 1.7 },
+    { prop: 'boulder', x: 15.2, z: -8.6, turn: 1.02, height: 3.2, post: 1.6 },
+    { prop: 'boulder', x: 13.9, z: 13, turn: -0.9, height: 2.5, post: 1.4 },
+    { prop: 'boulder', x: -18, z: 10, turn: 0.3, height: 4.25, post: 2.0 },
+    { prop: 'boulder', x: -26, z: -7.4, turn: 0.9, height: 12.5 },
+    { prop: 'boulder', x: 27, z: -10.9, turn: -1, height: 16.6 },
+    { prop: 'boulder', x: -33, z: 14.3, turn: -0.6, height: 14.8 },
+    { prop: 'brazier', x: -4.9, z: -18.1, height: 1.3, post: 0.64, fire: 1.4 },
+    { prop: 'brazier', x: 4.9, z: -18.1, height: 1.3, post: 0.64, fire: 1.4 },
+    ...ring('pine', 17, 34, 10.5, { jitter: 7, turnIn: false, seed: 33 }),
+    ...ring('boulder', 7, 31, 4.65, { start: 0.25, jitter: 4, turnIn: false, seed: 53 })
+  ],
+  // Red Banner Depot. A loaded supply yard and its palisade, lit in warm afternoon light.
+  depot: () => [
+    { prop: 'gatehouse', x: 0, z: -21, turn: Math.PI / 2, height: 9, width: 13 },
+    { prop: 'tent', x: -13, z: -14.5, turn: 0.46, height: 4.6, width: 7.8, post: 2.7 },
+    { prop: 'tent', x: 14.8, z: -14, turn: -0.19, height: 5.0, width: 9, post: 3.1 },
+    { prop: 'stable', x: 18.1, z: 3.0, turn: Math.PI / 2, height: 5.2, width: 8.5, post: 3.4 },
+    { prop: 'haycart', x: -7.3, z: 11.8, turn: 0.8, height: 2.8, post: 1.4 },
+    { prop: 'haycart', x: 9.6, z: -7.3, turn: 0.6, height: 2.75, post: 1.48 },
+    { prop: 'supplies', x: 8.9, z: 7.6, turn: -0.28, height: 2.3, post: 1.22 },
+    { prop: 'supplies', x: -17, z: -0.7, turn: 0.24, height: 3.15, post: 1.55 },
+    { prop: 'rack', x: 16, z: 11.5, turn: -0.8, height: 2.55, post: 0.7 },
+    { prop: 'drum', x: -12.8, z: 13, turn: 1.1, height: 2.75, post: 1.09 },
+    { prop: 'watchtower', x: -22, z: 2.5, turn: 0.8, height: 9.0 },
+    { prop: 'watchtower', x: 22, z: -21.3, turn: -0.26, height: 9.6 },
+    { prop: 'banner', x: -5.2, z: -18.3, height: 6.4, turn: 0.35, post: 0.44 },
+    { prop: 'banner', x: 5.2, z: -18.3, height: 6.4, turn: -0.05, post: 0.44 },
+    ...across('palisade', 18, 26.5, 4.3, { along: Math.PI / 2, skip: (a) => near(a, Math.PI, .24) || near(a, 0, .30) }),
+    ...ring('banner', 8, 23.8, 6.6, { start: 0.31, seed: 60 })
+  ],
+  // Nightwatch Citadel. Dusk blue stone opens up into a broad ceremonial court under firelight.
+  citadel: () => [
+    { prop: 'gate', x: 0, z: -22.3, turn: 0, height: 11.4, width: 16 },
+    { prop: 'palace', x: 0, z: -46, turn: 0, height: 17, width: 30 },
+    { prop: 'lion', x: -5.4, z: -17.3, height: 2.5, turn: -0.13, post: 1.0 },
+    { prop: 'lion', x: 5.4, z: -17.3, height: 2.5, turn: 0.13, post: 1.0 },
+    { prop: 'pavilion', x: -20.4, z: -11, height: 8.6, turn: 0.73, post: 3.0 },
+    { prop: 'pavilion', x: 20.4, z: -11, height: 8.6, turn: -0.73, post: 3.0 },
+    { prop: 'ding', x: -8.1, z: 4.5, height: 2.0, post: 1.05 },
+    { prop: 'ding', x: 12.9, z: 10, height: 2.1, post: 1.05 },
+    { prop: 'brazier', x: -9.0, z: -8.9, height: 1.8, post: 0.7, fire: 1.89 },
+    { prop: 'brazier', x: 14.8, z: -11.2, height: 1.8, post: 0.7, fire: 1.89 },
+    { prop: 'brazier', x: 6.6, z: 5.6, height: 1.7, post: 0.7, fire: 1.73 },
+    { prop: 'brazier', x: -15.2, z: 8.6, height: 1.7, post: 0.7, fire: 1.73 },
+    ...ring('banner', 10, 23.5, 7.4, { start: 0.25, seed: 64 })
   ]
 };
 
@@ -301,13 +401,70 @@ async function prop(name, set) {
   return propCache.get(key);
 }
 
-/**
- * Build a place into `scene`. Returns { place (radius, posts) for the fight, lights to flicker, update(dt), dispose }.
- * `quality` is 'low' | 'medium' | 'high'.
- */
-export async function buildPlace(scene, name, { renderer, quality = 'high' } = {}) {
+/** The renderer and combat simulation share one layout, including the marked expedition exit. */
+export function describePlace(name) {
   const look = PLACE_LOOK[name];
+  if (!look) throw new RangeError('Unknown battlefield ' + name);
   const layout = LAYOUT[name]();
+  const route = EXPEDITION_ARENAS[name];
+  const place = {
+    radius: look.radius,
+    posts: layout.filter((item) => item.post).map(({ x, z, post: r }) => ({ x, z, r }))
+  };
+  if (route) {
+    place.spawn = route.spawn;
+    place.exit = route.exit;
+    place.platforms = route.platforms;
+  }
+  return { look, layout, place, route };
+}
+
+function groundStrip(root, material, { width, length, x = 0, y = .016, z = 0, angle = 0 }) {
+  const geometry = createPlaneGeometry3D({ width, height: length });
+  scaleUv(geometry, width, length);
+  const mesh = new Mesh3D(geometry, material);
+  mesh.setRotation(-Math.PI / 2, 0, angle);
+  mesh.setPosition(x, y, z);
+  mesh.receiveShadow = true;
+  root.addChild(mesh);
+}
+
+function block(root, material, { x = 0, y, z, w, h, d, turn = 0, shadow = true }) {
+  const geometry = createBoxGeometry3D({ width: w, height: h, depth: d });
+  const mesh = new Mesh3D(geometry, material);
+  mesh.setPosition(x, y, z);
+  mesh.setRotation(0, turn, 0);
+  mesh.castShadow = shadow;
+  mesh.receiveShadow = true;
+  root.addChild(mesh);
+  return mesh;
+}
+
+function markExit(root, route) {
+  const { exit, threshold } = route;
+  const brass = createStandardMaterial3D({ color: 0x6f6350, roughness: .72 });
+  const lit = createStandardMaterial3D({ color: threshold, emissive: threshold, emissiveIntensity: .64, roughness: .68 });
+  const markers = [];
+  const add = (w, d, x, z, turn = 0) => {
+    const mesh = block(root, brass, { x, y: .057, z, w, h: .025, d, turn, shadow: false });
+    markers.push(mesh);
+  };
+  for (const side of [-1, 1]) {
+    add(.18, 3.6, exit.x + exit.r * side, exit.z -.1);
+    add(1.3, .16, exit.x + 1.86 * side, exit.z - 1.9);
+    add(1.3, .16, exit.x + 1.86 * side, exit.z + 1.7);
+    add(.22, 1.46, exit.x + .54 * side, exit.z, side * .77);
+  }
+  return (open) => {
+    const material = open ? lit : brass;
+    if (markers[0].material === material) return;
+    for (const mesh of markers) mesh.material = material;
+  };
+}
+
+/** Build the battlefield in a World3D scene. `quality` is 'low' | 'medium' | 'high'. */
+export async function buildPlace(scene, name, { renderer, quality = 'high' } = {}) {
+  const { look, layout, place, route } = describePlace(name);
   const set = quality === 'low' ? 'low' : quality === 'medium' ? 'mid' : 'high';
   const propNames = [...new Set(layout.map((item) => item.prop))];
   // Terrain, props, sky and extra surfaces can load independently.
@@ -315,8 +472,8 @@ export async function buildPlace(scene, name, { renderer, quality = 'high' } = {
     skyCube(look.sky, quality === 'low' ? 128 : 384),
     scanned(look.ground.material, look.ground.repeat),
     Promise.all(propNames.map(async (id) => [id, await prop(id, set)])),
-    name === 'palace' ? Promise.all([scanned('red_plaster_weathered', 0.25), scanned('grey_roof_tiles', 0.5)]) : null,
-    name === 'bamboo' ? scanned('stone_pathway_02', 0.4) : null
+    ['palace', 'citadel'].includes(name) ? Promise.all([scanned('red_plaster_weathered', 0.25), scanned('grey_roof_tiles', 0.5)]) : null,
+    route ? scanned(route.path, 0.37) : name === 'bamboo' ? scanned('stone_pathway_02', 0.4) : null
   ]);
   const props = new Map(propEntries);
   const root = new Object3D();
@@ -337,11 +494,9 @@ export async function buildPlace(scene, name, { renderer, quality = 'high' } = {
 
   root.addChild(groundPlane(1600, ground));
 
-  const posts = [];
   const fires = [];
   for (const item of layout) {
     const loaded = props.get(item.prop);
-    if (item.post) posts.push({ x: item.x, z: item.z, r: item.post });
     if (!loaded) continue;
     const { root: model, min, max } = loaded;
     const holder = new Object3D();
@@ -363,8 +518,17 @@ export async function buildPlace(scene, name, { renderer, quality = 'high' } = {
     }
   }
 
-  // Red walls round the palace square (the camp's walls are models).
-  if (palace) {
+  // Turn the citadel into a lined court and leave the open axis facing its exit.
+  if (name === 'citadel') {
+    const [wall, cap] = palace;
+    for (const x of [-26, 26]) {
+      const wallHeight = 6.4;
+      const side = block(root, wall, { x, y: wallHeight / 2, z: -6, w: 33, h: wallHeight, d: 1.35, turn: Math.PI / 2 });
+      scaleUv(side.geometry, 33, wallHeight);
+      const trim = block(root, cap, { x, y: wallHeight + .23, z: -6, w: 33.35, h: .46, d: 2.05, turn: Math.PI / 2 });
+      scaleUv(trim.geometry, 33, 1);
+    }
+  } else if (palace) {
     const [wall, cap] = palace;
     const segments = 16;
     const radius = 27;
@@ -388,23 +552,20 @@ export async function buildPlace(scene, name, { renderer, quality = 'high' } = {
       root.addChild(top);
     }
   }
-  // A stone path through the bamboo.
+  // In the expedition a raised pigment strip of stone or clay identifies the shared northbound route.
   if (stone) {
-    const geometry = createPlaneGeometry3D({ width: 4.2, height: 70 });
-    scaleUv(geometry, 4.2, 70);
-    const path = new Mesh3D(geometry, stone);
-    path.setRotation(-Math.PI / 2, 0, 0.35);
-    path.setPosition(0, 0.012, 0);
-    path.receiveShadow = true;
-    root.addChild(path);
+    if (route) groundStrip(root, stone, { width: route.pathWidth, length: 43.8, z: -3.5 });
+    else groundStrip(root, stone, { width: 4.2, length: 70, y: .012, angle: .35 });
   }
+  const setExitOpen = route && markExit(root, route);
 
   let time = 0;
   return {
     root,
     look,
     sun,
-    place: { radius: look.radius, posts },
+    place,
+    setExitOpen,
     fires,
     update(dt) {
       time += dt;

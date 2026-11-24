@@ -1,8 +1,8 @@
 // Expedition uses the normal combat rules. A field ends at its gate after the last enemy falls.
 const stages = [
-  { place: 'county', foes: ['tiger'], level: 0.36 },
-  { place: 'bamboo', foes: ['archer', 'yulin'], level: 0.48, health: 0.62 },
-  { place: 'palace', foes: ['vanguard'], level: 0.62 }
+  { place: 'pass', foes: ['tiger'], level: 0.36 },
+  { place: 'depot', foes: ['archer', 'yulin'], level: 0.48, health: 0.62 },
+  { place: 'citadel', foes: ['vanguard'], level: 0.62 }
 ];
 
 export function planExpedition() {
@@ -10,8 +10,7 @@ export function planExpedition() {
     ...stage,
     index,
     foes: [...stage.foes],
-    spawn: { x: 0, z: 9 },
-    exit: { x: 0, z: -12, r: 2 }
+    expedition: true
   }));
 }
 

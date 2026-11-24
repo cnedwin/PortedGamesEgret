@@ -5,7 +5,10 @@ import { ARTS, ORDER, REGIMENTS, SKILLS, TALENTS, playerLoadout } from './sim/re
 import { PLACES } from './sim/road.mjs';
 import { t, say, getLanguage } from './i18n.mjs';
 
-const PLACE_WORD = { county: 'placeCounty', peach: 'placePeach', bamboo: 'placeBamboo', snow: 'placeSnow', palace: 'placePalace' };
+const PLACE_WORD = {
+  county: 'placeCounty', peach: 'placePeach', bamboo: 'placeBamboo', snow: 'placeSnow', palace: 'placePalace',
+  pass: 'placePass', depot: 'placeDepot', citadel: 'placeCitadel'
+};
 export const placeName = (p) => t(PLACE_WORD[p]);
 
 function node(html) {
@@ -167,7 +170,7 @@ export function createScreens(root, { onLanguage, coarse = false }) {
     stageCard({ stage, total, onGo }) {
       const foes = stage.foes.map((f) => say(REGIMENTS[f].name)).join(` ${t('and')} `);
       const page = node(`<section class="page card-stage">
-        <p class="small">${stage.exit ? t('expeditionStage', { n: stage.index + 1 }) : stage.double ? t('finale') : t('stage', { n: stage.index + 1 })} / ${total}</p>
+        <p class="small">${stage.expedition ? t('expeditionStage', { n: stage.index + 1 }) : stage.double ? t('finale') : t('stage', { n: stage.index + 1 })} / ${total}</p>
         <h2>${placeName(stage.place)}</h2>
         <p class="vs">${t('versus')} <b>${foes}</b></p>
         <button type="button" class="go" data-act="go" autofocus>${t('fight')}</button>
