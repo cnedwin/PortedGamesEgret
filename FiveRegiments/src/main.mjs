@@ -26,6 +26,7 @@ import { createHorse } from './view/horse.mjs';
 import { createEffects } from './view/effects.mjs';
 import { ARMS } from './view/weapons.mjs';
 import { createCameraRig } from './view/camera.mjs';
+import { createMountedPresentation } from './view/mounted-presentation.mjs';
 import { applyLook, buildPlace } from './view/stage.mjs';
 
 const params = new URLSearchParams(location.search);
@@ -79,6 +80,7 @@ async function main() {
   const camera = createPerspectiveCamera3D({ fov: 52, near: 0.08, far: 600 });
   scene.addChild(camera);
   const cam = createCameraRig(camera);
+  const mountedPresentation = createMountedPresentation(TICK);
   const fx = createEffects(scene, { particles: quality === 'low' ? 0.5 : 1, blood: settings.blood });
 
   const ui = document.querySelector('#ui');
@@ -666,6 +668,7 @@ async function main() {
         inputs.hero.skillGuardCancel = true;
         inputs.hero.recoveryHandoff = true;
       }
+      for (const man of game.men) mountedPresentation.capture(man);
       for (const e of step(game, inputs)) {
         onEvent(e);
         events.push(e);
@@ -680,17 +683,21 @@ async function main() {
       if (overTime > 2.4) return finish();
     }
     // Figures, effects, camera.
+    const fraction = carry / TICK;
+    let cameraHero = game.hero;
     for (const m of game.men) {
       const f = figures.get(m.id);
-      f.update(m, game, dt * k);
+      const shown = mountedPresentation.pose(m, fraction);
+      if (m === game.hero) cameraHero = shown;
+      f.update(shown, game, dt * k);
       // A sweep behind the outer half of a blade, only while a blow or a skill moves its point fast.
       const act = m.act,
         b = f.blade(),
         was = tips.get(m.id);
       tips.set(m.id, b ? { point: b[1], act } : null);
       const step = dt * k;
-      const cutting = swingTrailActive(act, ARMS[m.regiment].main, m.prev?.attack);
-      const segment = skillTrailSegment(act);
+      const cutting = swingTrailActive(shown.act, ARMS[m.regiment].main, m.prev?.attack);
+      const segment = skillTrailSegment(shown.act);
       const meleeRibbon = m.id + ':melee';
       if (act?.kind === 'swing' && act.line !== 'T' && act !== was?.act) fx.sweep(meleeRibbon).clear();
       if (b && was && step > 0 && ((cutting && act === was.act) || segment !== null)) {
@@ -713,7 +720,9 @@ async function main() {
       });
     }
     fx.update(dt * k, game);
-    const yaw = cam.update(dt, { hero: game.hero, yaw: input.state.yaw, pitch: input.state.pitch, target, place: stage.place, guard: game.hero.guard, dead: !game.hero.alive, finish: over ? Math.min(1, overTime) : 0, mounted: game.hero.mounted, view: input.state.view, zoom: input.state.zoom, eye: figures.get(game.hero.id)?.eye?.() });
+    // The picture eases between ticks, while aim assistance still uses combat positions.
+    const targetYaw = target ? Math.atan2(target.x - game.hero.x, target.z - game.hero.z) : undefined;
+    const yaw = cam.update(dt, { hero: cameraHero, yaw: input.state.yaw, pitch: input.state.pitch, target, targetYaw, place: stage.place, guard: game.hero.guard, dead: !game.hero.alive, finish: over ? Math.min(1, overTime) : 0, mounted: game.hero.mounted, view: input.state.view, zoom: input.state.zoom, eye: figures.get(game.hero.id)?.eye?.() });
     if (target) input.setYaw(yaw);
     const w = canvas.clientWidth,
       h = canvas.clientHeight;

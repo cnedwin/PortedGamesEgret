@@ -888,7 +888,11 @@ export function createFigure({ regiment, body, motion, world, height = 1.8 }) {
       if (!seat || !man.alive) ride = 0;
       state.ride = ride;
       const horseYaw = man.horse?.face ?? man.face;
-      state.turnOnHorse = ride > 0 ? clamp(wrap(man.face - horseYaw), -1.25, 1.25) * ease(ride) : 0;
+      const aimFromHorse = wrap(man.face - horseYaw);
+      // Let the torso face forward again when the view looks behind the horse.
+      // The twist reaches the same neutral pose on both sides of the rear seam.
+      const lookBack = ease((Math.abs(aimFromHorse) - Math.PI / 2) / (Math.PI / 2));
+      state.turnOnHorse = clamp(aimFromHorse, -1.25, 1.25) * (1 - lookBack) * ease(ride);
       let spin = 0, floorLift = 0;
       if (state.fall < 1) ({ spin, floorLift } = arrange(man, game, dt));
       const air = man.act?.air ?? 0;
