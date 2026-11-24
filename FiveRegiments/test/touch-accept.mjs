@@ -15,15 +15,16 @@ try {
     <script type="module">
       import { createInput } from './src/input.mjs';
       import { createTouchControls } from './src/hud.mjs';
+      import { createFight, step, TICK } from './src/sim/fight.mjs';
       const input = createInput(document.querySelector('canvas'), { settings: { control: 'directional' } });
       const touch = createTouchControls(document.querySelector('#ui'), input);
       touch.show(true);
-      window.testTouch = { input, touch };
+      window.testTouch = { input, touch, createFight, step, TICK };
     </script>` }));
   await page.goto(url);
   await page.waitForFunction(() => window.testTouch);
   const actual = await page.evaluate(async () => {
-    const { input, touch } = window.testTouch;
+    const { input, touch, createFight, step, TICK } = window.testTouch;
     const fire = (button, type, pointerId = 1, clientX = 60, clientY = 80) =>
       document.querySelector(button).dispatchEvent(new PointerEvent(type, { bubbles: true, pointerType: 'touch', pointerId, clientX, clientY }));
     const sample = (threat = 'O') => input.sample(1 / 60, { threat });
@@ -102,6 +103,32 @@ try {
     window.dispatchEvent(new KeyboardEvent('keydown', { code: 'KeyS', bubbles: true }));
     const keyBack = reins();
     window.dispatchEvent(new KeyboardEvent('keyup', { code: 'KeyS', bubbles: true }));
+    const mountedFight = () => createFight({ hero: { regiment: 'plume' }, foes: [{ regiment: 'tiger' }] });
+    const rideFrame = (game) => step(game, { hero: input.sample(TICK, { mounted: true }) });
+    let battle = mountedFight();
+    rideFrame(battle);
+    fire(attack, 'pointerdown');
+    fire(attack, 'pointermove', 1, 96, 80);
+    await new Promise((resolve) => setTimeout(resolve, 230));
+    const held = Array.from({ length: 135 }, () => rideFrame(battle)).flat();
+    const mountLoad = [battle.hero.act?.line, battle.hero.act?.awaitingRelease, battle.hero.act?.held];
+    fire(attack, 'pointerup', 1, 96, 80);
+    const lifted = Array.from({ length: 45 }, () => rideFrame(battle)).flat();
+    battle = mountedFight();
+    fire(attack, 'pointerdown');
+    await new Promise((resolve) => setTimeout(resolve, 230));
+    rideFrame(battle);
+    fire(attack, 'pointercancel');
+    const aborted = Array.from({ length: 45 }, () => rideFrame(battle)).flat();
+    const mountedCanceled = !battle.hero.act && !aborted.some((e) => e.type === 'swingRelease');
+    battle = mountedFight();
+    fire(attack, 'pointerdown');
+    await new Promise((resolve) => setTimeout(resolve, 230));
+    rideFrame(battle);
+    window.dispatchEvent(new Event('blur'));
+    const afterBlur = Array.from({ length: 45 }, () => rideFrame(battle)).flat();
+    fire(attack, 'pointerup');
+    afterBlur.push(...Array.from({ length: 45 }, () => rideFrame(battle)).flat());
     const visibleButtons = [...document.querySelectorAll('.touch button:not([hidden])')].every((button) => {
       const bounds = button.getBoundingClientRect();
       return bounds.width >= 44 && bounds.height >= 44 && bounds.top >= 0 && bounds.bottom <= innerHeight
@@ -113,6 +140,13 @@ try {
       attackOnly: [attackOnly.attack, attackOnly.guard, attackOnly.line, attackOnly.guardLine],
       fallback: [fallback.attack, fallback.guard, fallback.line, fallback.guardLine],
       mounted: { canter, gallop, onFoot, back, turn, neutral, keyBack },
+      mountedAttack: {
+        line: mountLoad[0], waitingForRelease: mountLoad[1],
+        fullyCharged: mountLoad[2] >= 0.84,
+        releasesWhileHeld: held.filter((e) => e.type === 'swingRelease').length,
+        releasesAfterLift: lifted.filter((e) => e.type === 'swingRelease' && e.line === 'R').length,
+        canceled: mountedCanceled, blurred: !battle.hero.act && !afterBlur.some((e) => e.type === 'swingRelease')
+      },
       resumed: [resumed.attack, resumed.guard, Math.hypot(...resumed.move)] };
   });
   assert.deepEqual(actual, {
@@ -121,9 +155,10 @@ try {
     attackOnly: [true, false, 'O', undefined], fallback: [true, true, 'O', 'T'],
     mounted: { canter: [0.56, 0, false], gallop: [1, 0, true], onFoot: false,
       back: [-1, 0, false], turn: [0, -1, false], neutral: [0, 0, false], keyBack: [-1, 0, false] },
+    mountedAttack: { line: 'R', waitingForRelease: true, fullyCharged: true, releasesWhileHeld: 0, releasesAfterLift: 1, canceled: true, blurred: true },
     resumed: [false, false, 0]
   });
-  console.log('Touch cancellation, pointer ownership, quick guard, pause/resume, and mounted reins verified.');
+  console.log('Touch cancellation, pointer ownership, quick guard, pause/resume, mounted reins and mounted charged release verified.');
 } finally {
   await browser.close();
   await server.close();
