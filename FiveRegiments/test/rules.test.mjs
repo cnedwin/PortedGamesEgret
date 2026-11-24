@@ -22,6 +22,57 @@ const run = (game, inputs, seconds) => {
   return events;
 };
 
+test('each foot opponent chooses a reachable thrust from the thrust-only distance', () => {
+  for (const regiment of ORDER) {
+    const hero = regiment === 'tiger' ? 'yulin' : 'tiger';
+    const { game, h, f } = pair(hero, regiment, { foe: { mounted: false } });
+    if (regiment === 'archer') f.knife = true;
+    f.cool.fill(5);
+    f.rage = 0;
+    const short = Math.max(f.r.blows.L.reach, f.r.blows.R.reach, f.r.blows.O.reach);
+    const reach = f.r.blows.T.reach;
+    const brain = createBrains(game, { level: 0.5, rng: () => 0.01 }).foe0;
+
+    f.z = h.z - h.body - (short + reach) * 0.5;
+    const atEdge = brain.think(game, TICK);
+    assert.ok(atEdge.attack, regiment + ' still has a valid thrust');
+    assert.equal(atEdge.line, 'T', regiment + ' should not start a shorter cut');
+
+    f.z = h.z - h.body - reach - 0.1;
+    const tooFar = brain.think(game, TICK);
+    assert.ok(!tooFar.attack && !tooFar.kick, regiment + ' closes distance when no line can reach');
+  }
+});
+
+test('a normal foot opponent makes an uncharged reply during the reel it earns with a deflect', () => {
+  const { game, h, f } = pair('tiger', 'yulin');
+  f.cool.fill(5);
+  f.rage = 0;
+  const brain = createBrains(game, { level: 0.5, rng: () => 0.2 }).foe0;
+
+  step(game, { hero: { attack: true, line: 'O' } });
+  while (h.act.t < 0.315) step(game, {});
+  const answer = brain.think(game, TICK);
+  assert.equal(answer.guard, true);
+  assert.equal(answer.line, 'O');
+  step(game, { foe0: answer });
+  let contact;
+  for (let i = 0; i < 3 && !contact; i++) {
+    contact = step(game, { foe0: brain.think(game, TICK) }).find(e => e.type === 'deflect' && e.who === f.id);
+  }
+  assert.ok(contact, 'the real overhead deflection opens the reply');
+  assert.equal(h.stunKind, 'reel');
+
+  let swing;
+  while (!swing && game.time - contact.time < 0.16) {
+    swing = step(game, { foe0: brain.think(game, TICK) }).find(e => e.type === 'swing' && e.who === f.id);
+  }
+  assert.ok(swing, 'replies during the opening instead of holding guard for 0.35 seconds');
+  assert.ok(swing.time - contact.time >= 4 * TICK, 'keeps a brief guard settle after contact');
+  assert.equal(brain.swingHold, 0, 'does not add a heavy charge to the reply');
+  assert.equal(f.act.wind, f.act.blow.wind, 'uses ordinary weapon startup');
+});
+
 test('a solo Imperial Guard reads a repeated fast cut without reading a new line or an expired pattern', () => {
   function exchanges(lines, { pause = 0, level = 0.5 } = {}) {
     const { game, h, f } = pair('tiger', 'yulin');
