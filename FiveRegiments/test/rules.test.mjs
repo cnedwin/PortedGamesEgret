@@ -751,6 +751,28 @@ test('a single mount press after Bull Charge waits through the fall and remounts
   assert.equal(h.mounted, true);
 });
 
+test('the archer can move a little more at full draw without sprinting or outrunning a chaser', () => {
+  const footing = (move, attack, sprint = false) => {
+    const game = createFight({
+      hero: { regiment: 'archer', at: [0, 3] },
+      foes: [{ regiment: 'tiger', at: [0, -6] }],
+      place: { radius: 40, posts: [] }
+    });
+    run(game, { hero: { attack, move, sprint }, foe0: { move: [0, 1] } }, 1.2);
+    return { game, hero: game.hero };
+  };
+  const walking = footing([0, 1], false);
+  const aiming = footing([0, 1], true, true);
+  const sidestepping = footing([1, 0], true);
+  assert.ok(aiming.hero.draw.t >= aiming.hero.r.bow.draw);
+  assert.ok(!aiming.hero.sprinting);
+  assert.ok(Math.abs(aiming.hero.moving / walking.hero.moving - 0.6) < 0.001);
+  assert.ok(Math.abs(sidestepping.hero.moving - sidestepping.hero.r.speed * 0.92 * 0.6) < 0.001);
+  assert.ok(aiming.hero.moving < aiming.game.men[1].moving * 0.42);
+  assert.equal(aiming.game.shots.length, 0, 'a full draw waits for release');
+  assert.equal(step(aiming.game, {}).filter(e => e.type === 'loose').length, 1);
+});
+
 test('arrows fly, hit and can be stopped by a shield', () => {
   const g = createFight({ hero: { regiment: 'archer' }, foes: [{ regiment: 'tiger' }], seed: 2 });
   const [a, t] = g.men;
