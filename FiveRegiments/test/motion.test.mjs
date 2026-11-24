@@ -107,6 +107,13 @@ test('a visual impact builds quickly, then settles instead of oscillating', () =
   assert.equal(impactWeight(0.4, 0), 0);
 });
 
+test('weapon catches settle before a body hit, with a quick distinct deflect pulse', () => {
+  assert.ok(impactWeight(0.025, 0, 'deflect') > impactWeight(0.025, 0, 'block'));
+  assert.ok(impactWeight(0.11, 0, 'block') > impactWeight(0.11, 0, 'deflect'));
+  assert.equal(impactWeight(0.19, 0, 'block'), 0);
+  assert.ok(impactWeight(0.25, 0, 'hit') > 0);
+});
+
 test('long-axe footwork transfers weight across the stance and settles after contact', () => {
   assert.deepEqual(heavyFootwork(0, 'R'), [0, 0, 0]);
   assert.deepEqual(heavyFootwork(4, 'R'), [0, 0, 0]);

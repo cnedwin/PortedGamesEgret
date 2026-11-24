@@ -71,15 +71,22 @@ function meleeRecovery() {
   return duel;
 }
 
-test('a one-tick combo tap keeps its line and starts at the next legal tick', () => {
+test('a late combo tap keeps its line through the entire original recovery', () => {
   const { game, h } = meleeRecovery();
   while (h.act.t - h.act.strikeAt < h.act.recover * 0.65) step(game, {});
+  const previous = h.act;
   assert.ok(!step(game, { hero: { attack: true, line: 'L' } }).some((e) => e.type === 'swing'));
-  const acceptedAt = game.time;
+  assert.equal(h.act, previous);
+  step(game, {});
+  step(game, { hero: { attack: true, line: 'O' } });
+  assert.equal(h.act, previous);
+  while (h.act) assert.ok(!step(game, {}).some((e) => e.type === 'swing'));
+  assert.ok(previous.t - previous.strikeAt >= previous.recover);
+  const finishedAt = game.time;
   const next = step(game, { hero: { line: 'T' } }).find((e) => e.type === 'swing');
   assert.equal(next?.line, 'L');
-  assert.ok(Math.abs(next.time - acceptedAt - TICK) < 1e-9);
-  assert.equal(h.act.wind, h.act.blow.wind * 0.85);
+  assert.ok(Math.abs(next.time - finishedAt - TICK) < 1e-9);
+  assert.equal(h.act.wind, h.act.blow.wind);
 });
 
 test('an early recovery tap does not chain', () => {
@@ -95,6 +102,7 @@ test('a guard, a higher-priority action or a stagger consumes the queued combo',
     const { game, h } = meleeRecovery();
     while (h.act.t - h.act.strikeAt < h.act.recover * 0.65) step(game, {});
     step(game, { hero: { attack: true, line: 'L' } });
+    if (interrupt !== 'stun') while (h.act) step(game, {});
     const command = interrupt === 'stun' ? {} : { [interrupt]: true };
     if (interrupt === 'stun') h.stun = 0.2;
     const events = step(game, { hero: command });
@@ -289,15 +297,45 @@ test('a PC combo remembers tap release and its accepted line across the recovery
     const { game, h } = meleeRecovery();
     while (h.act.t - h.act.strikeAt < h.act.recover * 0.65) step(game, {});
     step(game, { hero: pcMelee({ attack: true, meleeDown: true, meleeUp: releaseTick === 0, line: 'O', meleeLine: 'L' }) });
-    const prepared = step(game, { hero: pcMelee({ attack: releaseTick === 2, meleeUp: releaseTick === 1, line: 'O' }) });
+    const pending = pcMelee({ attack: releaseTick === 2, line: 'O' });
+    assert.ok(!step(game, { hero: { ...pending, meleeUp: releaseTick === 1 } }).some((e) => e.type === 'swing'));
+    while (h.act) assert.ok(!step(game, { hero: pending }).some((e) => e.type === 'swing'));
+    const prepared = step(game, { hero: pending });
     assert.equal(h.act?.line, 'L');
     assert.equal(h.act.awaitingRelease, releaseTick === 2);
     const release = step(game, { hero: pcMelee({ meleeUp: releaseTick === 2, line: 'T' }) });
     const [swing, extra] = [...prepared, ...release].filter((e) => e.type === 'swing');
     assert.equal(swing?.line, 'L');
     assert.equal(extra, undefined);
-    assert.equal(h.act.wind, h.act.blow.wind * 0.85);
+    assert.equal(h.act.wind, h.act.blow.wind);
   }
+});
+
+test('repeated basic presses leave each strike at least a full wind and recovery apart', () => {
+  const { game, h, f } = pair('tiger', 'yulin');
+  f.z = h.z - 6;
+  const { wind, recover } = h.r.blows.R;
+  const events = run(game, (i) => ({ hero: { attack: i % 2 === 0, line: 'R', recoveryHandoff: true } }), 3.4);
+  const contacts = events.filter(e => e.type === 'whiff' && e.who === 'hero');
+  assert.ok(contacts.length >= 5);
+  for (let i = 1; i < contacts.length; i++) assert.ok(contacts[i].time - contacts[i - 1].time >= wind + recover - 1e-9);
+});
+
+test('ordinary light hit stun ends before the next buffered basic attack lands', () => {
+  const { game, f } = pair('tiger', 'yulin');
+  let first = null, canGuardAt = null, second = null;
+  for (let i = 0; i < 90 && !second; i++) {
+    const events = step(game, { hero: { attack: i % 2 === 0, line: 'R', recoveryHandoff: true }, foe0: { guard: !!first, line: 'L' } });
+    if (first === null) {
+      first = events.find(e => e.type === 'hit' && e.by === 'hero') ?? null;
+      if (first) assert.ok(f.stun > 0);
+    } else {
+      if (f.guard) canGuardAt ??= game.time;
+      second = events.find(e => e.by === 'hero' && (e.type === 'block' || e.type === 'deflect' || e.type === 'hit')) ?? null;
+    }
+  }
+  assert.ok(first && second && canGuardAt > first.time && canGuardAt < second.time);
+  assert.match(second.type, /^(deflect|block)$/);
 });
 
 test('PC releasing a press rejected in early recovery cannot start a later swing', () => {
@@ -536,6 +574,26 @@ test('a kick breaks a guard; an empty stamina bar breaks it too', () => {
   assert.ok(ev2.some((e) => e.type === 'break'), 'stamina ran out');
 });
 
+test('Bull Charge telegraphs before point-blank contact and keeps the full running window', () => {
+  const close = pair('yulin', 'tiger', { hero: { skills: ['bull'] } });
+  close.f.z = close.h.z - 1.12;
+  const before = close.f.hp;
+  const cast = step(close.game, { hero: { skill: 0 } });
+  assert.equal(cast.find(e => e.type === 'skill')?.id, 'bull');
+  assert.equal(close.f.hp, before);
+  assert.equal(close.h.vz, 0);
+  const contact = run(close.game, {}, 0.35).find(e => e.type === 'hit' && e.skill === 'bull');
+  assert.ok(contact && contact.time - cast[0].time >= SKILLS.bull.wind - TICK);
+
+  const late = pair('yulin', 'tiger', { hero: { skills: ['bull'] } });
+  late.f.z = late.h.z - 8.9;
+  const events = run(late.game, i => ({ hero: { skill: i === 0 ? 0 : -1 } }), 0.85);
+  const hits = events.filter(e => e.type === 'hit' && e.skill === 'bull');
+  assert.equal(hits.length, 1);
+  assert.ok(hits[0].time > SKILLS.bull.wind + 0.5 && hits[0].time < SKILLS.bull.wind + 0.62);
+  assert.equal(late.h.act?.metAt, hits[0].time);
+});
+
 test('a Bull Charge leaves a man unable to attack or defend for 4 s (2 s if he guarded), and unhorses a rider', () => {
   const g = pair('yulin', 'tiger', { hero: { skills: ['bull', 'charge'] } });
   Object.assign(g.f, { z: -3 });
@@ -741,6 +799,61 @@ test('on horseback X couches the ji; R and T wait for his feet; E gets down and 
   const up = run(g.game, (i) => ({ hero: { mount: i < 2 } }), 1.4);
   assert.ok(up.some((e) => e.type === 'mounted'));
   assert.equal(g.h.mounted, true);
+});
+
+function lanceDuel() {
+  const game = createFight({ hero: { regiment: 'plume', at: [0, 0] }, foes: [{ regiment: 'tiger', at: [35, 0] }], seed: 3, place: { radius: 75, posts: [] } });
+  const [h, f] = game.men;
+  Object.assign(h, { x: 0, z: 0, face: 0 });
+  Object.assign(h.horse, { x: 0, z: 0, face: 0, speed: 8 });
+  return { game, h, f };
+}
+
+function atLancePoint(h, f) {
+  const yaw = h.horse.face + ARTS.couch.aim;
+  Object.assign(f, { x: h.x + 1.65 * Math.sin(yaw), z: h.z + 1.65 * Math.cos(yaw) });
+}
+
+const gallop = { move: [0, 1], sprint: true };
+
+test('the couched ji has a brief wind-up while the horse keeps moving', () => {
+  const { game, h, f } = lanceDuel();
+  atLancePoint(h, f);
+  const hp = f.hp;
+  const cast = step(game, { hero: { ...gallop, art: true } });
+  assert.ok(cast.some(e => e.type === 'lance'));
+  assert.equal(f.hp, hp);
+  assert.ok(h.z > 0);
+  const hit = run(game, { hero: gallop }, 0.22).find(e => e.type === 'hit' && e.skill === 'couch');
+  assert.ok(hit && hit.time - cast[0].time >= ARTS.couch.wind - TICK);
+  assert.ok(h.act?.metAt >= ARTS.couch.wind);
+});
+
+test('the couched ji settles after a late valid hit and cannot strike during the whiff tail', () => {
+  const art = ARTS.couch;
+  const activeEnd = art.wind + art.last;
+  for (const hitLate of [true, false]) {
+    const { game, h, f } = lanceDuel();
+    step(game, { hero: { ...gallop, art: true } });
+    const at = activeEnd + (hitLate ? -0.04 : 0.03);
+    while (h.act?.t < at) step(game, { hero: gallop });
+    assert.equal(h.act?.kind, 'lance');
+    atLancePoint(h, f);
+    const hp = f.hp;
+    const contact = step(game, { hero: gallop });
+    const hit = contact.find(e => e.type === 'hit' && e.skill === 'couch');
+    if (hitLate) {
+      assert.ok(hit && h.act?.metAt > activeEnd - art.hitRecover);
+      assert.equal(h.act.t, h.act.metAt);
+      while (h.act) step(game, { hero: gallop });
+      assert.ok(Math.abs(game.time - hit.time - art.hitRecover) <= TICK + 1e-9);
+    } else {
+      assert.equal(hit, undefined);
+      while (h.act) step(game, { hero: gallop });
+      assert.equal(f.hp, hp);
+      assert.ok(Math.abs(game.time - activeEnd - art.recover) <= TICK + 1e-9);
+    }
+  }
 });
 
 test('the couched ji takes a man off the horse’s right front, not one dead ahead; a blow on a rider is shared with the horse; a dead horse throws him', () => {

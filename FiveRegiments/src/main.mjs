@@ -518,7 +518,7 @@ async function main() {
       case 'hit': {
         if (e.quiet) break;
         const heavy = (e.heavy ?? 0) > 0.5 || e.broke;
-        figures.get(e.who)?.struck(e.heavy ?? 0, bearing);
+        figures.get(e.who)?.struck(e.broke ? Math.max(e.heavy ?? 0, 0.65) : e.heavy ?? 0, bearing);
         const cue = e.kick ? 'kick' : e.arrow ? 'arrowHit' : e.crit ? 'crit' : heavy ? 'heavyHit'
           : defender?.r.armour === 'heavy' ? 'armourHit' : 'hit';
         play(cue, { volume: 0.9 });

@@ -119,10 +119,10 @@ export function interpolateDirection(from, to, t) {
 }
 
 /** Quick compression followed by a slower, non-oscillating release. */
-export function impactWeight(age, heavy) {
+export function impactWeight(age, heavy, kind = 'hit') {
   const power = clamp01(heavy);
-  const peak = 0.042 + power * 0.014;
-  const settle = 0.21 + power * 0.15;
+  const peak = kind === 'deflect' ? 0.024 : kind === 'block' ? 0.035 : 0.05 + power * 0.014;
+  const settle = kind === 'deflect' ? 0.12 : kind === 'block' ? 0.18 + power * 0.03 : 0.28 + power * 0.09;
   const amount = age < peak ? smooth(clamp01(age / peak)) : 1 - smooth(clamp01((age - peak) / (settle - peak)));
   return amount * (0.45 + power * 0.55);
 }
