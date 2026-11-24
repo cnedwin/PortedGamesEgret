@@ -13,11 +13,12 @@ import {
   createIcosahedronGeometry3D,
   createStandardMaterial3D,
   mat4Compose,
-  quatFromEuler
+  quatFromEuler,
+  quatMultiply
 } from '@egret/engine/world3d';
 import { UNITS } from '../data/battle.mjs';
 import { siegeRam, siegeRamBeam } from './siege-ram.mjs';
-import { siegeTower, catapult } from './siege-tall-equipment.mjs';
+import { siegeTower, catapult, catapultBase, catapultArm, catapultStone, towerBoardingDeck } from './siege-tall-equipment.mjs';
 
 const SKIN = 0xc49a74,
   IRON = 0x4f5c5b,
@@ -158,7 +159,11 @@ export function createTroops(scene, { quality = 'medium', capacity = 2400 } = {}
     'ram-frame': siegeRam(detail, false),
     'ram-beam': siegeRamBeam(detail),
     tower: siegeTower(detail),
+    'tower-board': towerBoardingDeck(detail),
     catapult: catapult(detail),
+    'catapult-base': catapultBase(detail),
+    'catapult-arm': catapultArm(detail),
+    'catapult-load': catapultStone(detail),
     boat: boat(),
     standard: standard()
   };
@@ -166,11 +171,13 @@ export function createTroops(scene, { quality = 'medium', capacity = 2400 } = {}
   const coatMaterial = createStandardMaterial3D({ vertexColors: true, roughness: 0.85, metallic: 0 });
   const kinds = {};
   for (const [kind, shape] of Object.entries(shapes)) {
-    const cap = kind.startsWith('ram') || isSiegeFigure(kind) || kind === 'boat' || kind === 'standard'
+    const cap = ['ram', 'tower', 'catapult'].includes(kind.split('-')[0]) || kind === 'boat' || kind === 'standard'
       ? Math.ceil(capacity / 6) : capacity;
     const plain = new InstancedMesh3D(shape.plain, plainMaterial, cap);
-    const coat = new InstancedMesh3D(shape.coat, coatMaterial, cap);
-    for (const mesh of [plain, coat]) {
+    const coat = shape.coat ? new InstancedMesh3D(shape.coat, coatMaterial, cap) : null;
+    plain.name = 'troops-' + kind + '-plain';
+    if (coat) coat.name = 'troops-' + kind + '-coat';
+    for (const mesh of [plain, coat].filter(Boolean)) {
       mesh.count = 0;
       mesh.castShadow = quality !== 'low';
       mesh.receiveShadow = true;
@@ -182,29 +189,38 @@ export function createTroops(scene, { quality = 'medium', capacity = 2400 } = {}
   }
   const m = new Float32Array(16),
     q = [0, 0, 0, 1],
+    pitch = [0, 0, 0, 1],
     one = [1, 1, 1];
   return {
     begin() {
       for (const k of Object.values(kinds)) k.n = 0;
     },
     /** One soldier: its figure kind, place, heading (radians, 0 faces +z), colour (linear RGB) and lean. */
-    add(kind, x, y, z, yaw, colour, lean = 0, scale = 1) {
+    add(kind, x, y, z, yaw, colour, lean = 0, scale = 1, localPitch = false) {
       const k = kinds[kind] ?? kinds.spear;
       if (k.n >= k.cap) return;
-      quatFromEuler(q, lean, yaw, 0);
+      if (localPitch && lean) {
+        quatFromEuler(q, 0, yaw, 0);
+        quatFromEuler(pitch, lean, 0, 0);
+        quatMultiply(q, q, pitch);
+      } else quatFromEuler(q, lean, yaw, 0);
       one[0] = one[1] = one[2] = scale;
       mat4Compose(m, [x, y, z], q, one);
       k.plain.setMatrixAt(k.n, m);
-      k.coat.setMatrixAt(k.n, m);
-      k.coat.setColorAt(k.n, colour[0], colour[1], colour[2]);
+      if (k.coat) {
+        k.coat.setMatrixAt(k.n, m);
+        k.coat.setColorAt(k.n, colour[0], colour[1], colour[2]);
+      }
       k.n++;
     },
     end() {
       for (const k of Object.values(kinds)) {
         k.plain.count = k.n;
-        k.coat.count = k.n;
         k.plain.visible = k.n > 0;
-        k.coat.visible = k.n > 0;
+        if (k.coat) {
+          k.coat.count = k.n;
+          k.coat.visible = k.n > 0;
+        }
       }
     }
   };

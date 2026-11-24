@@ -4,6 +4,14 @@ import { siegeBuilder, SIEGE_COLORS as C } from './siege-kit.mjs';
 
 const plank = index => Array.isArray(C.planks) ? C.planks[index % C.planks.length] : C.planks ?? C.timber;
 
+export const CATAPULT_ARM_PIVOT = Object.freeze([0, .91, -.07]);
+// The load's centre relative to the arm pivot at pitch=0. Rotate this point
+// by the same local X pitch as the arm before placing a released visual stone.
+export const CATAPULT_LOAD_POINT = Object.freeze([0, .295, .68]);
+export const TOWER_DECK_PIVOT = Object.freeze([0, 1.2, .445]);
+export const TOWER_DECK_PITCH = Object.freeze({ idle: Math.PI / 2, deployed: 0 });
+const CATAPULT_REAR = [0, .46, -.49];
+
 /** A protected wheeled assault platform with a visible rear climbing ladder. */
 export function siegeTower(detail = true) {
   const b = siegeBuilder(detail);
@@ -69,9 +77,7 @@ export function siegeTower(detail = true) {
   return b.finish();
 }
 
-/** A wide, braced throwing engine with its sling and stone poised above the front. */
-export function catapult(detail = true) {
-  const b = siegeBuilder(detail);
+function catapultBody(b, detail) {
   b.wheels(.4, [-.43, .4], .14);
 
   // Long paired runners, heavy cross members and a partially planked bed.
@@ -90,24 +96,12 @@ export function catapult(detail = true) {
   b.round(C.darkWood, [0, .91, -.07], .065, .065, .76, 8, [0, 0, Math.PI / 2]);
   for (const x of [-.39, .39]) b.round(C.bronze, [x, .91, -.07], .074, .074, .025, 8, [0, 0, Math.PI / 2]);
 
-  // A long, clearly raised arm; its lower rear end is distinct from the sling.
-  const rear = [0, .46, -.49], tip = [0, 1.28, .47];
-  b.beam(C.edgeWood, rear, tip, .075, .095);
-  b.block(C.darkWood, [0, .48, -.47], [.20, .16, .17], [-.72, 0, 0]);
-  b.block(C.iron, [0, .91, -.07], [.11, .09, .13], [-.72, 0, 0]);
-
-  // Twin suspension cords and a shallow leather cradle holding an angular stone.
-  for (const x of [-.085, .085]) b.beam(C.rope, tip, [x, 1.125, .61], .012);
-  b.block(C.hide, [0, 1.12, .61], [.21, .035, .19], [.08, 0, 0]);
-  for (const x of [-.105, .105]) b.block(C.darkWood, [x, 1.15, .61], [.022, .055, .21]);
-  b.round(0x77746a, [0, 1.205, .61], .07, .09, .13, 7, [0, .28, 0]);
-
   // Rear winding drum and a bent hand crank suggest how the crew tensions it.
   for (const x of [-.24, .24]) b.block(C.timber, [x, .4, -.49], [.055, .25, .06]);
   b.round(C.rope, [0, .44, -.49], .065, .065, .48, 8, [0, 0, Math.PI / 2]);
   b.beam(C.iron, [.29, .44, -.49], [.29, .57, -.49], .023);
   b.beam(C.edgeWood, [.29, .57, -.49], [.43, .57, -.49], .025);
-  b.beam(C.rope, [0, .44, -.49], rear, .014);
+  b.beam(C.rope, [0, .44, -.49], CATAPULT_REAR, .014);
 
   for (const x of [-.33, .33]) {
     b.cloth(C.flag, [x, .39, .25], [.017, .13, .19]);
@@ -122,6 +116,70 @@ export function catapult(detail = true) {
     }
     b.beam(C.rope, [-.26, .86, -.07], [.26, .86, -.07], .018);
     b.beam(C.rope, [-.26, .94, -.07], [.26, .94, -.07], .018);
+  }
+}
+
+function movingCatapultArm(b) {
+  const tip = [0, 1.28, .47];
+  b.beam(C.edgeWood, CATAPULT_REAR, tip, .075, .095);
+  b.block(C.darkWood, [0, .48, -.47], [.20, .16, .17], [-.72, 0, 0]);
+  b.block(C.iron, [0, .91, -.07], [.11, .09, .13], [-.72, 0, 0]);
+  for (const x of [-.085, .085]) b.beam(C.rope, tip, [x, 1.125, .61], .012);
+  b.block(C.hide, [0, 1.12, .61], [.21, .035, .19], [.08, 0, 0]);
+  for (const x of [-.105, .105]) b.block(C.darkWood, [x, 1.15, .61], [.022, .055, .21]);
+}
+
+function loadStone(b, position) {
+  b.round(0x77746a, position, .07, .09, .13, 7, [0, .28, 0]);
+}
+
+/** Preserve the complete realm model; no moving part is duplicated in it. */
+export function catapult(detail = true) {
+  const b = siegeBuilder(detail);
+  catapultBody(b, detail);
+  movingCatapultArm(b);
+  loadStone(b, [0, 1.205, .61]);
+  return b.finish();
+}
+
+export function catapultBase(detail = true) {
+  const b = siegeBuilder(detail);
+  catapultBody(b, detail);
+  return b.finish();
+}
+
+/** Arm and empty sling in pivot-local coordinates; positive X pitch lowers it. */
+export function catapultArm(detail = true) {
+  const b = siegeBuilder(detail);
+  const local = point => point.map((value, i) => value - CATAPULT_ARM_PIVOT[i]);
+  movingCatapultArm({
+    block: (color, position, scale, rotation) => b.block(color, local(position), scale, rotation),
+    beam: (color, from, to, width, depth) => b.beam(color, local(from), local(to), width, depth)
+  });
+  return b.finish();
+}
+
+/** A shared visual projectile, centred at its own origin, with no dyed surface. */
+export function catapultStone(detail = true) {
+  const b = siegeBuilder(detail);
+  loadStone(b, [0, 0, 0]);
+  return b.finish();
+}
+
+/** Short boarding accent, +z unfolded forward; rotate local X using the pitches above. */
+export function towerBoardingDeck(detail = true) {
+  const b = siegeBuilder(detail);
+  const boards = detail ? 7 : 5;
+  for (let i = 0; i < boards; i++) {
+    const width = .54 / boards;
+    b.block(plank(i), [(i + .5) * width - .27, 0, .3], [width - .006, .035, .6]);
+  }
+  for (const x of [-.225, .225]) b.block(C.darkWood, [x, -.038, .3], [.045, .045, .62]);
+  for (const z of [.05, .3, .55]) b.block(C.iron, [0, .025, z], [.54, .018, .027]);
+  if (detail) {
+    for (const x of [-.225, .225]) {
+      for (const z of [.05, .55]) b.block(C.bronze, [x, .038, z], [.018, .012, .018]);
+    }
   }
   return b.finish();
 }

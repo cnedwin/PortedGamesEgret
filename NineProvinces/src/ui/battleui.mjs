@@ -110,7 +110,11 @@ export function startBattle(app, setup, { state: s = app.state, onTrialResult, o
       attack(ev) {
         if (!nanpi) return;
         const unit = b.units[ev.unit];
+        if (unit.kind === 'catapult') return;
         app.sound.play(UNITS[unit.kind].group === 'bow' ? 'arrows' : 'clash', {volume: 0.5});
+      },
+      siegeImpact() {
+        app.sound.play('stoneImpact', { volume: .7 });
       }
     }
   });

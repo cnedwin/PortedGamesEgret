@@ -28,8 +28,12 @@ const wheelTurn = [0, Math.PI / 2, 0];
 export function siegeBuilder(detail) {
   const plain = createGeometryBuilder3D();
   const coat = createGeometryBuilder3D();
+  let clothCount = 0;
   const block = (color, position, scale, rotation) => plain.add(cube, { color, position, scale, rotation });
-  const cloth = (color, position, scale, rotation) => coat.add(cube, { color, position, scale, rotation });
+  const cloth = (color, position, scale, rotation) => {
+    clothCount++;
+    return coat.add(cube, { color, position, scale, rotation });
+  };
 
   function round(color, position, radiusTop, radiusBottom, height, radialSegments = 8, rotation) {
     const geometry = createCylinderGeometry3D({ radiusTop, radiusBottom, height, radialSegments });
@@ -71,5 +75,7 @@ export function siegeBuilder(detail) {
     }
   }
 
-  return { block, round, beam, cloth, wheels, finish: () => ({ plain: plain.build(), coat: coat.build() }) };
+  // Moving timber/stone parts need no faction-cloth draw. Complete equipment
+  // still returns its original two non-empty surfaces.
+  return { block, round, beam, cloth, wheels, finish: () => ({ plain: plain.build(), coat: clothCount ? coat.build() : null }) };
 }

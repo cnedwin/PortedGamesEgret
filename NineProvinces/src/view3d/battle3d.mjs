@@ -32,6 +32,10 @@ import { portrait } from '../view/portrait.mjs';
 import { wallTop } from './cities.mjs';
 import { figureOf, isSiegeFigure } from './troops.mjs';
 import {formationSlots, freshAttack, createSiegeLighting, battleCameraFrame} from './battle-staging.mjs';
+import { createBattlePlateLayout } from './battle-plate-layout.mjs';
+import { catapultStone, CATAPULT_ARM_PIVOT, CATAPULT_LOAD_POINT, TOWER_DECK_PIVOT, TOWER_DECK_PITCH } from './siege-tall-equipment.mjs';
+import { catapultPitch, siegeMount, CATAPULT_RELEASE_PITCH, CATAPULT_RELEASE_TIME, CATAPULT_RESET_TIME } from './siege-motion.mjs';
+import { createSiegeShots } from './siege-shots.mjs';
 
 const hex = (n) => '#' + n.toString(16).padStart(6, '0');
 
@@ -294,11 +298,19 @@ export function createBattle3D(realm, b, { colours, side, fx, plates, rulers, on
   own.push(arrows);
   const flights = [];
   const volleyAt = new Map();
+  const shots = b.units.some(unit => unit.kind === 'catapult')
+    ? createSiegeShots(scene, catapultStone(false).plain, target => {
+        burst(target.at, [.68, .56, .4], 18);
+        pulse(target.at, 0xcab48e, 'wave', 1.5);
+        on.siegeImpact?.();
+      })
+    : null;
 
   // ——— Units as drawn ———
   const shown = b.units.map((u) => {
     const p = pos[u.pos] ?? centre;
-    return { x: p.x, z: p.z, y: p.y ?? 0, heading: 0, troops: u.troops, loss: 0, lossAt: 0, lunge: 0, attackStamp:null, attackPose:0, siegePose:0, hit:0, hitWait:0, colour:new Float32Array(3), slots:[], slotsKey:'' };
+    return { x: p.x, z: p.z, y: p.y ?? 0, heading: 0, troops: u.troops, loss: 0, lossAt: 0, lunge: 0, attackStamp:null, attackPose:0, siegePose:0, hit:0, hitWait:0, colour:new Float32Array(3), slots:[], slotsKey:'',
+      cell: u.pos, climbPose: 0, deck: 0, throwAge: CATAPULT_RESET_TIME, stoneTarget: null };
   });
   const unitPlates = b.units.map((u, i) => {
     const el = document.createElement('div');
@@ -322,6 +334,7 @@ export function createBattle3D(realm, b, { colours, side, fx, plates, rulers, on
     return { el, marker, anchor, key: '' };
   });
   plates.classList.add('battle');
+  const plateLayout = createBattlePlateLayout(plates, unitPlates);
 
   // ——— Floating numbers and calligraphy ———
   const floaters = [];
@@ -436,6 +449,7 @@ export function createBattle3D(realm, b, { colours, side, fx, plates, rulers, on
     for (const i of Object.keys(b.fire)) if (b.fire[i] && !fires.has(+i) && fires.size < (isCalm()?10:20)) fireAt(+i);
     for (const item of bursts) if(item.life>0){item.life-=dt;item.e.update(dt);if(item.life<=0)item.e.visible=false;}
     for(const item of pulses) if(item.life>0){item.life-=dt;const a=1-Math.max(0,item.life)/item.duration,scale=item.strength*(.45+a*.9);item.mesh.setScale(scale);item.mesh.setPosition(item.p.x,item.p.y+.2+(item.kind==='ward'?a*.6:0),item.p.z);item.mesh.setRotation(item.kind==='arc'?-Math.PI*.3:-Math.PI/2,item.kind==='arc'?item.heading:0,item.kind==='arc'?-a*.5:0);item.material.opacity=(1-a)*.75;item.mesh.visible=item.life>0;}
+    shots?.update(dt);
     // Units.
     b.units.forEach((u, i) => {
       const s = shown[i],
@@ -445,6 +459,21 @@ export function createBattle3D(realm, b, { colours, side, fx, plates, rulers, on
         return;
       }
       const p = pos[u.pos];
+      s.throwAge = Math.min(CATAPULT_RESET_TIME, s.throwAge + dt);
+      s.climbPose = Math.max(0, s.climbPose - dt);
+      if (s.cell !== u.pos) {
+        if (viewPhase === 'fight' && u.side === 0 && u.onWall && u.climbing === u.pos && UNITS[u.kind].group === 'inf') {
+          s.climbPose = .55;
+          pulse(u.pos, 0xcbb17d, 'wave', 1.05);
+          floatText(p.x, p.y + 1.25, p.z, nm({ zh: '登墙', en: 'Wall scaled' }), 'hit');
+        }
+        s.cell = u.pos;
+      }
+      const wall = u.kind === 'tower' && !u.routed && Number.isInteger(u.climbing) &&
+        b.tiles[u.climbing] === 'wall' && distance(u.pos, u.climbing) <= 1 ? pos[u.climbing] : null;
+      if (u.kind === 'tower') {
+        s.deck = isCalm() ? Number(Boolean(wall)) : Math.max(0, Math.min(1, s.deck + (wall ? dt : -dt) / .28));
+      }
       const k = 1 - Math.exp(-dt * 5);
       const dx = p.x - s.x,
         dz = p.z - s.z;
@@ -454,10 +483,20 @@ export function createBattle3D(realm, b, { colours, side, fx, plates, rulers, on
       // The simulation holds a unit object, while some callers may still use an id.
       let foe = typeof u.target === 'number' ? b.units[u.target] : u.target;
       const attack=freshAttack(u,s.attackStamp),attackTick=Boolean(attack);
-      if(attack){s.attackStamp=attack.stamp;s.attackPose=.38;foe=b.units[attack.target];on.attack?.({unit:attack.unit,target:attack.target,kind:attack.kind,t:attack.t});}
+      if (attack) {
+        s.attackStamp = attack.stamp;
+        s.attackPose = .38;
+        foe = b.units[attack.target];
+        if (u.kind === 'catapult' && foe?.pos >= 0) {
+          s.throwAge = 0;
+          s.stoneTarget = foe.pos;
+        }
+        on.attack?.({ unit: attack.unit, target: attack.target, kind: attack.kind, t: attack.t });
+      }
       s.attackPose=Math.max(0,s.attackPose-dt);s.siegePose=Math.max(0,s.siegePose-dt);
       let face = s.heading;
-      if (Math.hypot(dx, dz) > 0.2) face = Math.atan2(dx, dz);
+      if (wall) face = Math.atan2(wall.x - s.x, wall.z - s.z);
+      else if (Math.hypot(dx, dz) > 0.2) face = Math.atan2(dx, dz);
       else if (foe && foe.pos >= 0) face = Math.atan2(pos[foe.pos].x - s.x, pos[foe.pos].z - s.z);
       if (u.routed) face += Math.PI;
       let dh = face - s.heading;
@@ -482,7 +521,7 @@ export function createBattle3D(realm, b, { colours, side, fx, plates, rulers, on
       if(attackTick&&melee)s.lunge=.45;else s.lunge*=Math.exp(-dt*10);
       drawUnit(u, s, i);
       // Volleys from bows at their target.
-      if (attackTick && foe && UNITS[u.kind].range > 1 && foe.pos >= 0 && distance(u.pos, foe.pos) <= UNITS[u.kind].range && !u.routed) {
+      if (attackTick && foe && u.kind !== 'catapult' && UNITS[u.kind].range > 1 && foe.pos >= 0 && distance(u.pos, foe.pos) <= UNITS[u.kind].range && !u.routed) {
         const last = volleyAt.get(i) ?? -9;
         if (time - last > .15 && flights.length < arrowCap - 7) {
           volleyAt.set(i, time);
@@ -562,6 +601,7 @@ export function createBattle3D(realm, b, { colours, side, fx, plates, rulers, on
       ring.setPosition(s.x, s.y + 0.08, s.z);
       ringMaterial.emissiveIntensity = isCalm()?1.1:1.15+Math.sin(time*3)*.18;
     }
+    plateLayout.update(b.units);
   });
   let seenEvents = b.events.length;
 
@@ -581,7 +621,7 @@ export function createBattle3D(realm, b, { colours, side, fx, plates, rulers, on
       cos = Math.cos(s.heading);
     const lungeX = sin * s.lunge,
       lungeZ = cos * s.lunge;
-    if(siegeSample&&s.slotsKey!==u.formation+':'+count){s.slots=formationSlots(u.formation,count);s.slotsKey=u.formation+':'+count;}
+    if(siegeSample&&!engine&&s.slotsKey!==u.formation+':'+count){s.slots=formationSlots(u.formation,count);s.slotsKey=u.formation+':'+count;}
     for (let k = 0; k < count; k++) {
       const c = (k % per) - (per - 1) / 2,
         row = Math.floor(k / per);
@@ -604,10 +644,32 @@ export function createBattle3D(realm, b, { colours, side, fx, plates, rulers, on
           const crewX = x + cx * cos + cz * sin, crewZ = z - cx * sin + cz * cos;
           troops.add('sword', crewX, Math.max(0, land.heightAt(crewX, crewZ)), crewZ, s.heading, colour, -stroke * .15, 1.35);
         }
-      }else{
+      } else if (kind === 'catapult') {
+        const quiet = isCalm();
+        const pitch = quiet ? 0 : catapultPitch(s.throwAge);
+        const pivot = siegeMount(x, ground, z, s.heading, S, CATAPULT_ARM_PIVOT);
+        troops.add('catapult-base', x, ground, z, s.heading, colour, 0, S);
+        troops.add('catapult-arm', ...pivot, s.heading, colour, pitch, S, true);
+        if (s.throwAge < CATAPULT_RELEASE_TIME || s.throwAge >= CATAPULT_RESET_TIME || quiet) {
+          const loaded = siegeMount(x, ground, z, s.heading, S, CATAPULT_ARM_PIVOT, CATAPULT_LOAD_POINT, pitch);
+          troops.add('catapult-load', ...loaded, s.heading, colour, pitch, S, true);
+        }
+        if (s.stoneTarget !== null) {
+          const release = siegeMount(x, ground, z, s.heading, S, CATAPULT_ARM_PIVOT, CATAPULT_LOAD_POINT, CATAPULT_RELEASE_PITCH);
+          shots?.launch(release, { ...pos[s.stoneTarget], at: s.stoneTarget }, CATAPULT_RELEASE_TIME, quiet);
+          s.stoneTarget = null;
+        }
+      } else if (kind === 'tower') {
+        troops.add(kind, x, ground, z, s.heading, colour, 0, S);
+        const pivot = siegeMount(x, ground, z, s.heading, S, TOWER_DECK_PIVOT);
+        const angle = TOWER_DECK_PITCH.idle + (TOWER_DECK_PITCH.deployed - TOWER_DECK_PITCH.idle) * s.deck;
+        troops.add('tower-board', ...pivot, s.heading, colour, angle, S, true);
+      } else {
         const braced=siegeSample&&kind==='spear'&&!u.routed&&(u.order==='hold'||s.attackPose>0);
         const posed=braced?'spear-braced':siegeSample&&kind==='bow'&&s.attackPose>0?'bow-loose':kind;
-        troops.add(posed, x, (kind === 'boat' ? Math.max(ground, s.y) : ground) + (isCalm()?0:bob), z, s.heading + (u.routed ? Math.sin(k) * 0.6 : 0), colour, -s.lunge*.3+(isCalm()?0:s.hit*.6), S);
+        const climb = isCalm() ? 0 : Math.sin(Math.PI * s.climbPose / .55);
+        troops.add(posed, x, (kind === 'boat' ? Math.max(ground, s.y) : ground) + (isCalm()?0:bob) + climb * .16,
+          z, s.heading + (u.routed ? Math.sin(k) * 0.6 : 0), colour, -s.lunge * .3 + (isCalm() ? 0 : s.hit * .6) - climb * .22, S);
       }
     }
     if (u.general) troops.add('standard', s.x - cos * 0.2 - sin * 0.9, s.y, s.z + sin * 0.2 - cos * 0.9, s.heading, colour, 0, S * 0.9);
@@ -644,6 +706,8 @@ export function createBattle3D(realm, b, { colours, side, fx, plates, rulers, on
     },
     destroy() {
       stop();
+      plateLayout.destroy();
+      shots?.destroy();
       realm.setMode(null);
       land.setField(null);
       plates.classList.remove('battle');
