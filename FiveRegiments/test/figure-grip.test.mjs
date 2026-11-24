@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { test } from 'node:test';
 import '../vendor/node-register.mjs';
-import { createFight } from '../src/sim/fight.mjs';
+import { createFight, step } from '../src/sim/fight.mjs';
 import { ORDER, SKILLS } from '../src/sim/regiments.mjs';
 import { createMotion } from '../src/view/motion.mjs';
 import { cross, dot, len, lerp3, sub, unit } from '../src/view/rig.mjs';
@@ -161,6 +161,44 @@ test('Tiger Step wraps the four fingers and thumb around the jian handle', async
       figure.update(man, game, dt);
       checkPose('spin');
     }
+  } finally {
+    figure.dispose();
+  }
+});
+
+test('Tiger Step relaxes the wrist without a tip jump after a held left cut', async () => {
+  const figure = await lowFigure('tiger');
+  const game = createFight({ hero: { regiment: 'tiger', at: [0, 0] }, foes: [{ regiment: 'yulin', at: [0, -9] }] });
+  const { rig } = figure;
+  const at = name => rig.bone(name).getWorldPosition();
+  let peakBend = 0, previousTip, followFrames = 0, releases = 0, contact = false;
+  try {
+    for (let i = 0; i < 24; i++) figure.update(game.hero, game, dt);
+    for (let i = 0; i < 58; i++) {
+      const events = step(game, { hero: { line: 'L', meleeLine: 'L', meleeRelease: true,
+        meleeDown: i === 0, meleeUp: i === 15, face: Math.PI } });
+      releases += events.filter(e => e.type === 'swing' && e.who === 'hero').length;
+      const act = game.hero.act;
+      figure.update(game.hero, game, dt);
+      if (!act?.struck) continue;
+      const [base, tip] = figure.blade();
+      if (!contact) {
+        assert.ok(dot(unit(sub(tip, base)), [0, 0, -1]) > 0.85, 'contact keeps its forward line');
+        contact = true;
+      }
+      if (act.t - act.strikeAt < 0.16) continue;
+      const wrist = at('hand_r');
+      const forearm = unit(sub(wrist, at('lowerarm_r')));
+      const palm = unit(sub(at('middle_01_r'), wrist));
+      const wristBend = Math.acos(Math.max(-1, Math.min(1, dot(forearm, palm)))) * 180 / Math.PI;
+      peakBend = Math.max(peakBend, wristBend);
+      if (previousTip) assert.ok(len(sub(tip, previousTip)) < 0.32, 'sword tip follows a continuous recovery arc');
+      previousTip = tip;
+      followFrames++;
+    }
+    assert.equal(releases, 1);
+    assert.ok(contact && followFrames > 4);
+    assert.ok(peakBend < 96, `wrist reaches ${peakBend.toFixed(1)} degrees during follow-through`);
   } finally {
     figure.dispose();
   }
