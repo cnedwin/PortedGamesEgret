@@ -7,7 +7,6 @@ import {
   Texture3D,
   createBoxGeometry3D,
   createCubeTextureFromEquirect3D,
-  createCylinderGeometry3D,
   createDirectionalLight3D,
   createHemisphereLight3D,
   createPlaneGeometry3D,
@@ -20,13 +19,32 @@ const ASSETS = new URL('../../assets/', import.meta.url);
 
 const expeditionRoute = {
   spawn: Object.freeze({ x: 0, z: 11 }),
-  exit: Object.freeze({ x: 0, z: -18, r: 2.5 }),
-  platforms: Object.freeze([])
+  exit: Object.freeze({ x: 0, z: -18, r: 2.5 })
 };
+// World-space collision matches the top of the drawn deck and the slope of its approach.
+// Ramp minZ meets the deck, maxZ meets the ground. Positions are metres.
+function lookout(id, minX, maxX, minZ, maxZ, height, rampMinX, rampMaxX, rampEndZ) {
+  return Object.freeze({
+    id, minX, maxX, minZ, maxZ, height,
+    ramp: Object.freeze({ minX: rampMinX, maxX: rampMaxX, minZ: maxZ, maxZ: rampEndZ, axis: 'z', risesTo: 'min' })
+  });
+}
 export const EXPEDITION_ARENAS = Object.freeze({
-  pass: Object.freeze({ ...expeditionRoute, path: 'stone_pathway_02', pathWidth: 6.4, threshold: 0xbcc495 }),
-  depot: Object.freeze({ ...expeditionRoute, path: 'clay_plaster', pathWidth: 6.6, threshold: 0xe4bf73 }),
-  citadel: Object.freeze({ ...expeditionRoute, path: 'monastery_stone_floor', pathWidth: 7.6, threshold: 0xead298 })
+  pass: Object.freeze({
+    ...expeditionRoute, path: 'stone_pathway_02', pathWidth: 6.4, threshold: 0xbcc495,
+    deck: 'stone_pathway_02', support: 'rock_wall_02', trim: 0x817f69, accents: 0xb4ad82,
+    platforms: Object.freeze([lookout('stone-lookout', 7.6, 12.7, -3.2, 3.3, 1.32, 8.7, 11.5, 8.25)])
+  }),
+  depot: Object.freeze({
+    ...expeditionRoute, path: 'clay_plaster', pathWidth: 6.6, threshold: 0xe4bf73,
+    deck: 'weathered_planks', support: 'clay_plaster', trim: 0x70513c, accents: 0xd2ab72,
+    platforms: Object.freeze([lookout('supplies-roof', -13.4, -7.4, -4.8, 1.7, 1.55, -11.87, -8.99, 6.85)])
+  }),
+  citadel: Object.freeze({
+    ...expeditionRoute, path: 'monastery_stone_floor', pathWidth: 7.6, threshold: 0xead298,
+    deck: 'monastery_stone_floor', support: 'red_plaster_weathered', trim: 0x815a51, accents: 0xcab28a,
+    platforms: Object.freeze([lookout('court-terrace', 8.25, 13.55, -7.55, -1.25, 1.82, 9.51, 12.39, 4.88)])
+  })
 });
 
 export const PLACE_LOOK = {
@@ -95,9 +113,9 @@ export const PLACE_LOOK = {
     sun: { dir: [-0.43, 0.64, -0.64], color: 0xeedbc0, intensity: 2.45 },
     hemi: { sky: 0xbacdd1, ground: 0x66745e, intensity: 0.72 },
     env: 0.84,
-    fog: { color: [0.64, 0.71, 0.70], density: 0.024 },
+    fog: { color: [0.58, 0.65, 0.64], density: 0.0155 },
     ground: { material: 'forest_floor', repeat: 0.25 },
-    exposure: 1.02,
+    exposure: 0.96,
     grade: { saturation: 0.91, contrast: 1.07, brightness: 1.02, vignette: 0.35 },
     weather: 'motes',
     radius: 23
@@ -292,7 +310,7 @@ const LAYOUT = {
   ],
   // Nightwatch Citadel. Dusk blue stone opens up into a broad ceremonial court under firelight.
   citadel: () => [
-    { prop: 'gate', x: 0, z: -22.3, turn: 0, height: 11.4, width: 16 },
+    { prop: 'gate', x: 0, z: -25.5, turn: 0, height: 11.4, width: 16 },
     { prop: 'palace', x: 0, z: -46, turn: 0, height: 17, width: 30 },
     { prop: 'lion', x: -5.4, z: -17.3, height: 2.5, turn: -0.13, post: 1.0 },
     { prop: 'lion', x: 5.4, z: -17.3, height: 2.5, turn: 0.13, post: 1.0 },
@@ -462,18 +480,76 @@ function markExit(root, route) {
   };
 }
 
+function buildLookout(root, platform, route, material) {
+  const { minX, maxX, minZ, maxZ, height, ramp } = platform;
+  const centerX = (minX + maxX) / 2, centerZ = (minZ + maxZ) / 2;
+  const width = maxX - minX, depth = maxZ - minZ;
+  const coping = .16;
+  const [deck, support] = material;
+  const edge = createStandardMaterial3D({ color: route.trim, roughness: .9 });
+  const accent = createStandardMaterial3D({ color: route.accents, roughness: .78 });
+  const base = block(root, support, { x: centerX, y: (height - coping) / 2, z: centerZ, w: width - .13, h: height - coping, d: depth - .13 });
+  scaleUv(base.geometry, width, height);
+  const top = block(root, deck, { x: centerX, y: height - coping / 2, z: centerZ, w: width, h: coping, d: depth });
+  scaleUv(top.geometry, width, depth);
+
+  // Wall sections and coping make the climbable surface read as part of the building.
+  // Nothing protrudes above the collision deck.
+  for (const sign of [-1, 1]) {
+    const x = sign < 0 ? minX + .09 : maxX - .09;
+    block(root, edge, { x, y: height - .12, z: centerZ, w: .18, h: .22, d: depth });
+    for (let i = 0; i < 3; i++) {
+      block(root, edge, { x, y: (height - coping) / 2, z: minZ + .6 + i * (depth - 1.2) * .5, w: .17, h: height - coping, d: .36, shadow: false });
+    }
+  }
+  block(root, edge, { x: centerX, y: height - .12, z: minZ + .085, w: width, h: .22, d: .17 });
+  block(root, accent, { x: centerX, y: height + .008, z: maxZ - .24, w: ramp.maxX - ramp.minX, h: .022, d: .11, shadow: false });
+
+  const approach = ramp.maxZ - ramp.minZ;
+  const slope = Math.atan2(height, approach);
+  const rampLength = Math.hypot(height, approach);
+  const rampWidth = ramp.maxX - ramp.minX;
+  const rampX = (ramp.minX + ramp.maxX) / 2;
+  const rampZ = (ramp.minZ + ramp.maxZ) / 2;
+  const slab = block(root, deck, {
+    x: rampX,
+    y: (height - coping * Math.cos(slope)) / 2,
+    z: rampZ - coping * Math.sin(slope) / 2,
+    w: rampWidth, h: coping, d: rampLength
+  });
+  slab.setRotation(slope, 0, 0);
+  scaleUv(slab.geometry, rampWidth, rampLength);
+  for (const side of [-1, 1]) {
+    const trim = block(root, edge, {
+      x: rampX + side * (rampWidth / 2 - .12),
+      y: height / 2, z: rampZ,
+      w: .13, h: .08, d: rampLength, shadow: false
+    });
+    trim.setRotation(slope, 0, 0);
+  }
+  // Short inlaid treads identify the ramp from either approach without a floating indicator.
+  for (const progress of [.23, .5, .77]) {
+    const tread = block(root, accent, {
+      x: rampX, y: height * progress + .022, z: ramp.maxZ - approach * progress,
+      w: rampWidth - .44, h: .037, d: .10, shadow: false
+    });
+    tread.setRotation(slope, 0, 0);
+  }
+}
+
 /** Build the battlefield in a World3D scene. `quality` is 'low' | 'medium' | 'high'. */
-export async function buildPlace(scene, name, { renderer, quality = 'high' } = {}) {
+export async function buildPlace(scene, name, { quality = 'high' } = {}) {
   const { look, layout, place, route } = describePlace(name);
   const set = quality === 'low' ? 'low' : quality === 'medium' ? 'mid' : 'high';
   const propNames = [...new Set(layout.map((item) => item.prop))];
   // Terrain, props, sky and extra surfaces can load independently.
-  const [cube, ground, propEntries, palace, stone] = await Promise.all([
+  const [cube, ground, propEntries, palace, stone, platforms] = await Promise.all([
     skyCube(look.sky, quality === 'low' ? 128 : 384),
     scanned(look.ground.material, look.ground.repeat),
     Promise.all(propNames.map(async (id) => [id, await prop(id, set)])),
     ['palace', 'citadel'].includes(name) ? Promise.all([scanned('red_plaster_weathered', 0.25), scanned('grey_roof_tiles', 0.5)]) : null,
-    route ? scanned(route.path, 0.37) : name === 'bamboo' ? scanned('stone_pathway_02', 0.4) : null
+    route ? scanned(route.path, 0.37) : name === 'bamboo' ? scanned('stone_pathway_02', 0.4) : null,
+    route ? Promise.all([scanned(route.deck, 0.45), scanned(route.support, 0.36)]) : null
   ]);
   const props = new Map(propEntries);
   const root = new Object3D();
@@ -556,6 +632,9 @@ export async function buildPlace(scene, name, { renderer, quality = 'high' } = {
   if (stone) {
     if (route) groundStrip(root, stone, { width: route.pathWidth, length: 43.8, z: -3.5 });
     else groundStrip(root, stone, { width: 4.2, length: 70, y: .012, angle: .35 });
+  }
+  if (platforms) {
+    for (const platform of place.platforms) buildLookout(root, platform, route, platforms);
   }
   const setExitOpen = route && markExit(root, route);
 
