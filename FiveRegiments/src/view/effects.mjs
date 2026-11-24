@@ -40,6 +40,10 @@ const TRAIL = 10;
 const UP = [0, 1, 0];
 const EDGE_STEPS = 8;
 
+function cueGeometry({ positions, indices, colors = new Float32Array(positions.length).fill(1) }) {
+  return createGeometry3D({ positions, indices, colors });
+}
+
 function arcs(sectors, inside, outside) {
   const positions = [], indices = [];
   for (const [from, to, steps] of sectors) {
@@ -51,12 +55,13 @@ function arcs(sectors, inside, outside) {
       if (i) indices.push(index - 2, index - 1, index, index - 1, index + 1, index);
     }
   }
-  return createGeometry3D({ positions, indices });
+  return cueGeometry({ positions, indices });
 }
 
 /** Tapered strokes in the ground plane. A complete motif stays in one pooled draw. */
 function strokes(...paths) {
-  const positions = [], indices = [];
+  const positions = [], indices = [], colors = [];
+  const bands = [-1, -0.43, 0.43, 1];
   for (const [width, ...points] of paths) {
     const first = positions.length / 3;
     for (let i = 0; i < points.length; i++) {
@@ -64,14 +69,18 @@ function strokes(...paths) {
       const [x, z] = points[i];
       const dx = next[0] - before[0], dz = next[1] - before[1];
       const w = width * (i === 0 || i === points.length - 1 ? 0.20 : 1) / (Math.hypot(dx, dz) || 1);
-      positions.push(x - dz * w, 0, z + dx * w, x + dz * w, 0, z - dx * w);
-      if (i) {
-        const j = first + 2 * i;
-        indices.push(j - 2, j - 1, j, j - 1, j + 1, j);
+      for (const band of bands) {
+        positions.push(x + dz * w * band, 0, z - dx * w * band);
+        const light = Math.abs(band) === 1 ? 0.19 : 1;
+        colors.push(light, light, light);
+      }
+      if (i) for (let k = 0; k < 3; k++) {
+        const j = first + 4 * (i - 1) + k;
+        indices.push(j + 1, j, j + 4, j + 5, j + 1, j + 4);
       }
     }
   }
-  return createGeometry3D({ positions, indices });
+  return cueGeometry({ positions, indices, colors });
 }
 
 const sweepPoints = (from, to, radius) => Array.from({ length: 12 }, (_, i) => {
@@ -145,11 +154,11 @@ function createCuePool(scene, capacity) {
       return [0.053, [0.09 * Math.sin(a), 0.09 * Math.cos(a)], [0.44 * Math.sin(a), 0.44 * Math.cos(a)],
         [length * Math.sin(a + 0.27), length * Math.cos(a + 0.27)]];
     })),
-    thrust: createGeometry3D({
+    thrust: cueGeometry({
       positions: [-0.16, 0, -0.48, -0.026, 0, 0.20, 0, 0, 1, 0.026, 0, 0.20, 0.16, 0, -0.48],
       indices: [0, 1, 2, 2, 3, 4]
     }),
-    glint: createGeometry3D({
+    glint: cueGeometry({
       positions: [-1, 0, 0, 0, -0.065, 0, 1, 0, 0, 0, 0.065, 0, 0, -0.55, 0, 0, 0.55, 0, -0.055, 0, 0, 0.055, 0, 0],
       indices: [0, 1, 2, 0, 2, 3, 4, 6, 5, 4, 5, 7]
     })
@@ -157,14 +166,14 @@ function createCuePool(scene, capacity) {
   const stripIndices = [];
   for (let i = 0; i < EDGE_STEPS * 2; i += 2) stripIndices.push(i, i + 1, i + 2, i + 1, i + 3, i + 2);
   const slots = Array.from({ length: capacity }, () => {
-    const material = createUnlitMaterial3D({ blending: 'normal', depthWrite: false, side: 'double', fog: false, opacity: 0 });
+    const material = createUnlitMaterial3D({ vertexColors: true, blending: 'normal', depthWrite: false, side: 'double', fog: false, opacity: 0 });
     const mesh = new Mesh3D(shapes.ring, material);
     mesh.name = 'skill-cue';
     mesh.castShadow = false;
     mesh.visible = false;
     mesh.renderOrder = 4;
     scene.addChild(mesh);
-    const strip = createGeometry3D({ positions: new Float32Array((EDGE_STEPS + 1) * 6), indices: stripIndices });
+    const strip = cueGeometry({ positions: new Float32Array((EDGE_STEPS + 1) * 6), indices: stripIndices });
     strip.getAttribute('position').dynamic = true;
     return { mesh, material, strip, remaining: 0 };
   });
@@ -333,7 +342,7 @@ function createSweep(scene) {
   };
 }
 
-export function createEffects(scene, { particles = 1, blood = true } = {}) {
+export function createEffects(scene, { particles = 1, blood = true, groundAt = () => 0 } = {}) {
   const fx = { blood };
   const cues = createCuePool(scene, particles < 1 ? 8 : 14);
   const mountedEdges = new Map();
@@ -429,7 +438,7 @@ export function createEffects(scene, { particles = 1, blood = true } = {}) {
     return s;
   };
 
-  const floor = (at, y = 0.07) => [at[0], y, at[2]];
+  const floor = (at, y = 0.07) => [at[0], groundAt(at[0], at[2]) + y, at[2]];
   const ahead = (at, yaw, metres, height = at[1]) => [at[0] + Math.sin(yaw) * metres, height, at[2] + Math.cos(yaw) * metres];
   function skillCue(id, at, yaw, blade, part, active) {
     const profile = SKILL_EFFECTS[id];
@@ -442,7 +451,7 @@ export function createEffects(scene, { particles = 1, blood = true } = {}) {
     const release = active && SKILL_RELEASE[id];
     if (release?.anchor) {
       const edge = release.anchor === 'edge';
-      const origin = edge ? blade?.[1] ?? ahead(at, yaw, 0.55) : [at[0], 0.82, at[2]];
+      const origin = edge ? blade?.[1] ?? ahead(at, yaw, 0.55) : floor(at, 0.82);
       const angle = id === 'swing' ? yaw + (part % 2 ? 0.65 : -0.70) : yaw;
       cues.show(release.shape, origin, angle, release.radius, profile.tint,
         { time: release.time, opacity: 0.85, initial: 0.77, growth: 0.32, pitch: edge ? 0.20 : 0.04 });
@@ -520,7 +529,7 @@ export function createEffects(scene, { particles = 1, blood = true } = {}) {
         burst(glow, at, 12);
         break;
       case 'step':
-        burst(dust, [at[0], 0.1, at[2]], 5);
+        burst(dust, floor(at, 0.1), 5);
         break;
       case 'horseRam': {
         const [x, z] = e.at ?? [at[0], at[2]];
@@ -528,8 +537,9 @@ export function createEffects(scene, { particles = 1, blood = true } = {}) {
         const direction = [x - from[0], 0, z - from[2]];
         const stride = Math.hypot(direction[0], direction[2]) || 1;
         const away = [direction[0] / stride, 0.35, direction[2] / stride];
-        burst(impact, [x, 0.84, z], 7, away);
-        burst(dust, [x, 0.13, z], 10, away);
+        const feet = [x, 0, z];
+        burst(impact, floor(feet, 0.84), 7, away);
+        burst(dust, floor(feet, 0.13), 10, away);
         break;
       }
       case 'skillBeat':
@@ -547,21 +557,21 @@ export function createEffects(scene, { particles = 1, blood = true } = {}) {
         const wave = e.skill === 'wave';
         const release = SKILL_RELEASE[e.skill];
         if (release) {
-          const origin = ahead(at, e.yaw, wave ? 0.74 : 0.58, release.height);
+          const origin = floor(ahead(at, e.yaw, wave ? 0.74 : 0.58), release.height);
           cues.show(release.shape, origin, e.yaw, release.radius, profile.tint,
             { time: release.time, opacity: 0.88, initial: 0.83, growth: 0.23, pitch: wave ? 0.33 : 0.08 });
           break;
         }
-        const origin = ahead(at, e.yaw, wave ? 0.9 : 0.67, wave ? 0.92 : 1.45);
+        const origin = floor(ahead(at, e.yaw, wave ? 0.9 : 0.67), wave ? 0.92 : 1.45);
         cues.show(profile.release, origin, e.yaw, wave ? 0.96 : e.skill === 'fan' ? 0.67 : 0.48, profile.tint,
           { time: wave ? 0.21 : 0.18, opacity: 0.88, initial: 0.95 });
         if (e.skill === 'backStep') burst(dust, floor(at, 0.13), 7);
         break;
       }
       case 'slam': {
-        const at = [e.at[0], 0.075, e.at[1]];
+        const at = [e.at[0], 0, e.at[1]];
         const tint = SKILL_EFFECTS[e.skill]?.tint ?? SKILL_EFFECTS.down.tint;
-        cues.show(e.skill === 'down' ? 'axeImpact' : 'ring', at, heading, e.radius, tint,
+        cues.show(e.skill === 'down' ? 'axeImpact' : 'ring', floor(at, 0.075), heading, e.radius, tint,
           { time: 0.44, opacity: 0.95, initial: 0.39, growth: 0.61 });
         if (e.skill === 'drop') cues.show('split', floor(at, 0.09), heading + Math.PI, e.radius * 0.73, tint,
           { time: 0.45, opacity: 0.64, initial: 0.55, growth: 0.43 });
@@ -570,24 +580,26 @@ export function createEffects(scene, { particles = 1, blood = true } = {}) {
         break;
       }
       case 'blast': {
-        const at = [e.at[0], 0.075, e.at[1]];
+        const at = [e.at[0], 0, e.at[1]];
         burst(fire, floor(at, 0.7), 32);
         burst(sparks, floor(at, 0.8), 24);
         burst(dust, floor(at, 0.2), 20);
         flash.setPosition(...floor(at, 1.2));
         flash.intensity = 13;
         flashLife = 0.16;
-        cues.show('ring', at, 0, e.radius, SKILL_EFFECTS.blast.tint, { time: 0.4, opacity: 0.94, initial: 0.24, growth: 0.76 });
+        cues.show('ring', floor(at, 0.075), 0, e.radius, SKILL_EFFECTS.blast.tint,
+          { time: 0.4, opacity: 0.94, initial: 0.24, growth: 0.76 });
         break;
       }
       case 'mist': {
-        const at = [e.at[0], 0.075, e.at[1]];
+        const at = [e.at[0], 0, e.at[1]];
         burst(venom, floor(at, 0.55), 43);
-        cues.show('split', at, 0, e.radius, SKILL_EFFECTS.mist.tint, { time: 0.54, opacity: 0.62, initial: 0.44, growth: 0.56 });
+        cues.show('split', floor(at, 0.075), 0, e.radius, SKILL_EFFECTS.mist.tint,
+          { time: 0.54, opacity: 0.62, initial: 0.44, growth: 0.56 });
         break;
       }
       case 'web':
-        cues.show('ring', [e.at[0], 0.07, e.at[1]], 0, e.radius, SKILL_EFFECTS.web.tint,
+        cues.show('ring', floor([e.at[0], 0, e.at[1]]), 0, e.radius, SKILL_EFFECTS.web.tint,
           { time: 0.35, opacity: 0.71, initial: 0.58, growth: 0.42 });
         break;
       case 'shout':
@@ -620,6 +632,7 @@ export function createEffects(scene, { particles = 1, blood = true } = {}) {
     const live = new Set();
     for (const shot of game?.shots ?? []) {
       live.add(shot);
+      const height = groundAt(shot.x, shot.z);
       let entry = arrows.get(shot);
       if (!entry) {
         let view, wake, handoff;
@@ -632,7 +645,7 @@ export function createEffects(scene, { particles = 1, blood = true } = {}) {
           if (shot.kind === 'arrow' && !shot.skill) {
             const launch = bowLaunchOf?.(shot.by);
             if (launch && !shot.done) {
-              const offset = [launch.at[0] - shot.x, launch.at[1] - shot.y, launch.at[2] - shot.z];
+              const offset = [launch.at[0] - shot.x, launch.at[1] - (height + shot.y), launch.at[2] - shot.z];
               const speed = Math.hypot(shot.vx, shot.vy, shot.vz);
               const [dx, dy, dz] = launch.direction;
               // Ignore stale views after a hitch or when the pose faces away from the shot.
@@ -656,7 +669,7 @@ export function createEffects(scene, { particles = 1, blood = true } = {}) {
       if (wake) wake.visible = !shot.done;
       if (shot.kind === 'wave') {
         const yaw = Math.atan2(shot.vx, shot.vz);
-        view.setPosition(shot.x, shot.y, shot.z);
+        view.setPosition(shot.x, height + shot.y, shot.z);
         view.setRotation(0, yaw, 0);
         view.visible = !shot.done;
         continue;
@@ -664,7 +677,7 @@ export function createEffects(scene, { particles = 1, blood = true } = {}) {
       if (!shot.done || !shot.stuck) {
         const sp = Math.hypot(shot.vx, shot.vy, shot.vz) || 1;
         const d = [shot.vx / sp, shot.vy / sp, shot.vz / sp];
-        const position = [shot.x, shot.y, shot.z];
+        const position = [shot.x, height + shot.y, shot.z];
         if (entry.handoff && !shot.done) {
           const { offset, direction, age } = entry.handoff;
           const t = Math.min(1, age / 0.045);
@@ -684,7 +697,7 @@ export function createEffects(scene, { particles = 1, blood = true } = {}) {
         const angle = Math.acos(Math.max(-1, Math.min(1, d[1])));
         const s = Math.sin(angle / 2) / (al || 1);
         view.setQuaternion(ax[0] * s, 0, ax[2] * s, Math.cos(angle / 2));
-        view.setPosition(position[0], Math.max(0.02, position[1]), position[2]);
+        view.setPosition(position[0], Math.max(height + 0.02, position[1]), position[2]);
       }
       view.visible = !(shot.done && shot.stuck);
     }
@@ -699,7 +712,7 @@ export function createEffects(scene, { particles = 1, blood = true } = {}) {
       if (c.kind === 'web' && !webs.has(c)) {
         const m = new Mesh3D(webGeo, webMat);
         m.castShadow = false;
-        m.setPosition(c.x, 0, c.z);
+        m.setPosition(c.x, groundAt(c.x, c.z), c.z);
         m.setScale(c.radius, 1, c.radius);
         scene.addChild(m);
         webs.set(c, m);
@@ -707,7 +720,7 @@ export function createEffects(scene, { particles = 1, blood = true } = {}) {
       if (c.kind === 'mist' && Math.random() < dt * 12) {
         const angle = Math.random() * 2 * Math.PI;
         const radius = Math.sqrt(Math.random()) * c.radius * 0.58;
-        burst(venom, [c.x + Math.cos(angle) * radius, 0.57, c.z + Math.sin(angle) * radius], 2);
+        burst(venom, floor([c.x + Math.cos(angle) * radius, 0, c.z + Math.sin(angle) * radius], 0.57), 2);
       }
     }
     for (const [c, m] of webs) {

@@ -42,6 +42,35 @@ const skillTrailWindows = {
   leap: [0.49, 0.65], drop: [0.45, 0.60]
 };
 
+const signatureBodies = {
+  charge: { beats: [0.48], load: 0.028, absorb: 0.018, lean: 0.10 },
+  bull: { beats: [SKILLS.bull.wind], load: 0.033, absorb: 0.026, lean: 0.16 },
+  spin: { beats: spinContacts, load: 0.017, absorb: 0.020, lean: 0.070 },
+  swing: { beats: chainContacts, load: 0.013, absorb: 0.009, lean: 0.054 },
+  down: { beats: [0.72], load: 0.038, absorb: 0.037, lean: 0.14 },
+  wave: { beats: [0.38], load: 0.021, absorb: 0.014, lean: 0.068 },
+  returnSpear: { beats: [SKILLS.returnSpear.release], load: 0.024, absorb: 0.017, lean: 0.076 },
+  boar: { beats: [0.60], load: 0.024, absorb: 0.023, lean: 0.093 },
+  fan: { beats: [0.42], load: 0.010, absorb: 0.007, lean: -0.043 },
+  gale: { beats: [0.42], load: 0.015, absorb: 0.009, lean: -0.066 }
+};
+const neutralBody = [0, 0];
+
+/** Compress the stance before the real beat and absorb it through hips and shoulders. */
+export function signatureBodyWeight(action, time = action?.t) {
+  const style = action?.kind === 'skill' && signatureBodies[action.id];
+  if (!style) return neutralBody;
+  let load = 0, release = 0;
+  for (const beat of style.beats) {
+    const t = time - beat;
+    const gather = smooth(clamp01((t + 0.18) / 0.13)) * (1 - smooth(clamp01((t + 0.036) / 0.056)));
+    const settle = smooth(clamp01((t + 0.015) / 0.066)) * (1 - smooth(clamp01((t - 0.068) / 0.13)));
+    load = Math.max(load, gather);
+    release = Math.max(release, settle);
+  }
+  return load || release ? [style.load * load + style.absorb * release, style.lean * release] : neutralBody;
+}
+
 /** Ready, low carry, planted load, thrust contact, withdrawal, and ready again. */
 export function returnSpearPhase(t) {
   for (let i = 1; i < RETURN_SPEAR_BEATS.length; i++) {
