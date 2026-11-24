@@ -205,7 +205,7 @@ export const REGIMENTS = {
     art: 'volley',
     skills: ['fan', 'gale', 'backStep', 'blast', 'web'],
     talents: [],
-    picks: { skills: ['fan', 'gale'], talents: [] }
+    picks: { skills: ['fan', 'backStep'], talents: [] }
   }
 };
 

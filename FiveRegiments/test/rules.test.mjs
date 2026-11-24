@@ -911,6 +911,31 @@ test('the archer can move a little more at full draw without sprinting or outrun
   assert.equal(duplicate, undefined);
 });
 
+test('Archers default to Scatter Shot and Back Step, with Storm Arrow still selectable', () => {
+  assert.deepEqual(loadout('archer').skills, ['fan', 'backStep']);
+  assert.deepEqual(playerLoadout('archer'), loadout('archer'));
+  assert.deepEqual(playerLoadout('archer', { skills: ['fan', 'gale'] }).skills, ['fan', 'gale']);
+});
+
+test('Normal Archers use Back Step against an approaching opponent and save it against retreat', () => {
+  for (const approaching of [true, false]) {
+    const { game, h, f } = pair('tiger', 'archer', { foe: loadout('archer') });
+    h.z = f.z + 2.8;
+    h.vz = approaching ? -2.2 : 2.2;
+    const brain = createBrains(game, { level: 0.5, rng: () => 0.01 }).foe0;
+    const order = brain.think(game, TICK);
+    assert.equal(f.skills[order.skill], approaching ? 'backStep' : 'fan');
+    if (approaching) {
+      const start = f.z;
+      assert.equal(order.attack, false);
+      step(game, { foe0: order });
+      const shot = run(game, {}, 0.46).find(e => e.type === 'loose' && e.who === f.id);
+      assert.equal(shot?.skill, 'backStep');
+      assert.ok(f.z < start - 2);
+    }
+  }
+});
+
 test('arrows fly, hit and can be stopped by a shield', () => {
   const g = createFight({ hero: { regiment: 'archer' }, foes: [{ regiment: 'tiger' }], seed: 2 });
   const [a, t] = g.men;

@@ -75,12 +75,13 @@ export function createBrain(man, { level = 0.5, rng = Math.random } = {}) {
   }
 
   /** Which skill slot is worth using now, or -1. */
-  function chooseSkill(game, target, d, threat, defending) {
+  function chooseSkill(game, target, d, threat, defending, pressureStep) {
     for (let slot = 0; slot < man.skills.length; slot++) {
       if (man.cool[slot] > 0) continue;
       const id = man.skills[slot],
         s = SKILLS[id];
       if (defending && id !== 'counter') continue;
+      if (pressureStep && brain.level >= 0.5 && id !== 'backStep') continue;
       if (man.st < s.cost * 0.6) continue;
       const others = enemiesOf(game, man).filter((t) => dist(man, t) < 2.6).length;
       const open = target.stun > 0 || target.daze > 0 || target.act?.kind === 'recover' || (target.act?.kind === 'swing' && target.act.struck);
@@ -112,7 +113,7 @@ export function createBrain(man, { level = 0.5, rng = Math.random } = {}) {
         case 'gale': want = d > 6; break;
         // The spread hits hardest close in.
         case 'fan': want = d < 9; break;
-        case 'backStep': want = d < 3.2; break;
+        case 'backStep': want = pressureStep; break;
         case 'blast': want = d > 4.5 && d < 16; break;
         case 'web': want = d < 7.5 && target.moving > 1.2 && !target.slow.length; break;
       }
@@ -260,15 +261,20 @@ export function createBrain(man, { level = 0.5, rng = Math.random } = {}) {
     }
 
     // ---- the archer: keep away and shoot; draw the knife only when cornered --------------------------
-    let makeSpace = false;
+    let makeSpace = false, pressureStep = false;
     if (bow) {
       const canEscape = man.skills.some((id, i) => (id === 'backStep' || id === 'web') && man.cool[i] <= 0 && man.st >= SKILLS[id].cost);
       const cornered = d < 2.4;
       if (!man.knife && !canEscape && (brain.level >= 0.5 ? d < 1.65 : d < 2 && rng() < 0.03 + 0.04 * brain.level)) input.swap = true;
       if (man.knife && d > 4.5) input.swap = true;
       if (!man.knife) {
-        const approaching = Math.sin(toward) * target.vx + Math.cos(toward) * target.vz < -2.4;
-        makeSpace = brain.level >= 0.5 && !man.draw && !cornered && d < 3.6 && man.st > 32 && approaching && !recoveryGuardWindow(target);
+        const closing = -Math.sin(toward) * target.vx - Math.cos(toward) * target.vz;
+        const retreat = man.skills.indexOf('backStep');
+        const room = Math.hypot(man.x - Math.sin(toward) * 2, man.z - Math.cos(toward) * 2) < game.place.radius - 0.4;
+        const open = recoveryGuardWindow(target);
+        pressureStep = retreat >= 0 && man.cool[retreat] <= 0 && man.st >= SKILLS.backStep.cost && !man.draw &&
+          room && !open && target.stun <= 0 && target.daze <= 0 && d < 3.2 && (d < 1.65 || closing > 1);
+        makeSpace = brain.level >= 0.5 && !man.draw && !cornered && d < 3.6 && man.st > 32 && closing > 2.4 && !open;
         const speed = man.r.bow.speed;
         const aim = aimAt(man, target, speed);
         const err = (1 - brain.level) * 0.06 + 0.03;
@@ -283,7 +289,7 @@ export function createBrain(man, { level = 0.5, rng = Math.random } = {}) {
           // when the friend is at the man already.
           const friends = game.men.filter((m) => m.alive && m.side === man.side && m !== man);
           const friendClose = friends.some((m) => Math.hypot(m.x - target.x, m.z - target.z) < 2.6);
-          if (game.time >= (brain.nextShot ?? 0) && d > 2.2 && !cornered && !makeSpace && man.st > 15) {
+          if (game.time >= (brain.nextShot ?? 0) && d > 2.2 && !cornered && !makeSpace && !pressureStep && man.st > 15) {
             input.attack = true;
             brain.nextShot = game.time + (friendClose ? 2.6 + rng() * 2 : friends.length ? 1.6 + rng() * 1.4 : 0.5 + rng() * 0.9) * (1.2 - brain.level * 0.4);
           }
@@ -365,7 +371,7 @@ export function createBrain(man, { level = 0.5, rng = Math.random } = {}) {
     const free = !man.act || man.act.kind === 'recover';
     if (free && man.stun <= 0 && !man.draw && !man.mounted) {
       const defending = brain.level >= 0.5 && input.guard && Boolean(threat);
-      const slot = chooseSkill(game, target, d, threat, defending);
+      const slot = chooseSkill(game, target, d, threat, defending, pressureStep);
       if (slot >= 0 && (holding || bow)) {
         input.skill = slot;
         input.guard = false;
