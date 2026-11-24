@@ -627,11 +627,46 @@ function spearDuel(distance, mounted = false) {
   return duel;
 }
 
-test('Silver Wing gets Returning Spear and Boar Rush by default only as a player', () => {
+test('Silver Wing gets Returning Spear and Boar Rush in both default loadouts', () => {
   assert.deepEqual(playerLoadout('plume').skills, ['returnSpear', 'boar']);
-  assert.deepEqual(loadout('plume').skills, ['stepCut', 'boar']);
+  assert.deepEqual(loadout('plume').skills, ['returnSpear', 'boar']);
   assert.deepEqual(playerLoadout('plume', { skills: ['stepCut', 'boar'] }).skills, ['stepCut', 'boar']);
   for (const regiment of ORDER.filter((id) => id !== 'plume')) assert.deepEqual(playerLoadout(regiment), loadout(regiment));
+});
+
+test('Normal Silver Wing uses Returning Spear to make room against a close pursuer', () => {
+  const { game, h, f } = pair('tiger', 'plume', { foe: { ...loadout('plume'), mounted: false } });
+  h.vz = -1.4;
+  const brain = createBrains(game, { level: 0.5, rng: () => 0.01 }).foe0;
+  const start = [f.x, f.z];
+  const orders = brain.think(game, TICK);
+  assert.equal(orders.skill, 0);
+  assert.equal(orders.mount, false);
+  assert.ok(step(game, { foe0: orders }).some(e => e.type === 'skill' && e.id === 'returnSpear'));
+  run(game, {}, SKILLS.returnSpear.stepTime);
+  assert.ok(Math.abs(f.x - start[0]) > 0.4 && f.z < start[1], 'the ordinary sidestep makes space');
+});
+
+test('Normal Silver Wing calls and remounts a healthy horse only when there is room', () => {
+  const { game, h, f } = pair('tiger', 'plume', { foe: { mounted: false } });
+  const brain = createBrains(game, { level: 0.5, rng: () => 0.1 }).foe0;
+  const orders = () => brain.think(game, TICK);
+  assert.deepEqual([orders().mount, orders().call], [false, undefined], 'enemy is too close');
+  h.z = f.z + 9;
+  f.horse.hp = Math.round(f.horse.maxHp * 0.25);
+  assert.ok(!orders().mount && !orders().call, 'a weakened horse stays out of the fight');
+  f.horse.hp = f.horse.maxHp;
+  f.daze = TICK * 3;
+  assert.ok(!orders().mount && !orders().call, 'does not start while dazed');
+  f.daze = 0;
+  f.horse.x = f.x + 4;
+
+  const events = [];
+  for (let i = 0; i < 300 && !f.mounted; i++) events.push(...step(game, { foe0: orders() }));
+  const remount = events.filter(e => ['call', 'mount', 'mounted'].includes(e.type) && e.who === f.id);
+  assert.deepEqual(remount.map(e => e.type), ['call', 'mount', 'mounted']);
+  assert.ok(Math.abs(remount[2].time - remount[1].time - (f.r.horse.mount - TICK)) < 2 * TICK);
+  assert.ok(f.mounted);
 });
 
 test('Returning Spear sidesteps before the pivot and lands a single directional thrust', () => {

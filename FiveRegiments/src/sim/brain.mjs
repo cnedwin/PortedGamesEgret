@@ -100,6 +100,11 @@ export function createBrain(man, { level = 0.5, rng = Math.random } = {}) {
         case 'down': want = d < 2.6 && (open || target.st < 35); break;
         case 'leap': want = d > 3.6 && d < 7; break;
         case 'shout': want = man.hp < man.maxHp * 0.7; break;
+        case 'returnSpear': {
+          const closing = ((man.x - target.x) * target.vx + (man.z - target.z) * target.vz) / Math.max(0.1, d);
+          want = brain.level >= 0.5 && d > 1.1 && d < s.reach && (open || closing > 0.65);
+          break;
+        }
         case 'stepCut': want = d > 2.0 && d < 4.4 && (open || !target.guard); break;
         case 'flowers': want = d > 1.8 && d < 3.3 && !target.guard; break;
         case 'boar': want = d > 3.8 && d < 8; break;
@@ -240,6 +245,19 @@ export function createBrain(man, { level = 0.5, rng = Math.random } = {}) {
     // Against a rider, keep inside the sweep of his ji, close to the horse.
     if (target.mounted && !bow) range = 1.6;
     if (bow && man.knife) range = 1.4;
+
+    // Only try to get back into the saddle when there is time for the ordinary mount animation.
+    const horse = man.horse;
+    if (brain.level >= 0.5 && horse?.alive && horse.hp > horse.maxHp * 0.42 && !man.mounted &&
+        !man.act && man.stun <= 0 && man.daze <= 0 && !threat && dist(man, nearest) > 6.5 && !foes.some(foe => foe.draw)) {
+      if (dist(man, horse) <= man.r.horse.near) {
+        input.mount = !man.prev.mount;
+      } else {
+        input.call = !horse.called && !man.prev.call;
+        input.move = steer(horse);
+      }
+      return input;
+    }
 
     // ---- the archer: keep away and shoot; draw the knife only when cornered --------------------------
     let makeSpace = false;

@@ -186,8 +186,7 @@ export const REGIMENTS = {
     mountedArt: 'couch',
     skills: ['returnSpear', 'stepCut', 'boar', 'flowers', 'drop'],
     talents: ['cavalry', 'centaur', 'equipped', 'vigour', 'armourBane'],
-    playerSkills: ['returnSpear', 'boar'],
-    picks: { skills: ['stepCut', 'boar'], talents: ['cavalry', 'centaur', 'equipped', 'vigour'] }
+    picks: { skills: ['returnSpear', 'boar'], talents: ['cavalry', 'centaur', 'equipped', 'vigour'] }
   },
   archer: {
     name: { zh: '武射史', en: 'Martial Archery Expert' },
