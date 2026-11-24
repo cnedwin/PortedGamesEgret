@@ -150,14 +150,22 @@ try {
   assert.deepEqual(errors, [], 'A refused pointer lock keeps click-to-fight fallback without an uncaught error');
   const captureFallback = await page.evaluate(() => {
     const pending = window.testInput.waitingForPointer();
-    Object.defineProperty(navigator, 'getGamepads', { configurable: true, value: () => [{ connected: true, mapping: 'standard' }] });
+    const standard = { connected: true, mapping: 'standard' };
+    const nonstandard = { connected: true, mapping: '' };
+    let gamepads = [standard];
+    Object.defineProperty(navigator, 'getGamepads', { configurable: true, value: () => gamepads });
     const withPad = window.testInput.waitingForPointer();
+    gamepads = [nonstandard, standard];
+    const withUnsupportedFirstPad = window.testInput.waitingForPointer();
+    gamepads = [null, { ...nonstandard, connected: false }, standard];
+    const withDisconnectedFirstPad = window.testInput.waitingForPointer();
     delete navigator.getGamepads;
     document.querySelector('canvas').requestPointerLock = undefined;
     window.testInput.capture(true);
-    return [pending, withPad, window.testInput.waitingForPointer()];
+    return [pending, withPad, withUnsupportedFirstPad, withDisconnectedFirstPad, window.testInput.waitingForPointer()];
   });
-  assert.deepEqual(captureFallback, [true, false, false], 'A standard gamepad or unavailable Pointer Lock API bypasses the mouse gate');
+  assert.deepEqual(captureFallback, [true, false, true, false, false],
+    'Only a standard first connected gamepad or unavailable Pointer Lock API bypasses the mouse gate');
   await page.context().close();
 
   // Exercise the combat loop and pause screen through the normal game entry point.

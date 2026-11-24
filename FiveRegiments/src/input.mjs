@@ -238,8 +238,10 @@ export function createInput(canvas, { settings, onPause = () => {}, onLock = () 
   const unit = (v, least) => Math.max(least, Math.min(1, Number.isFinite(v) ? v : 0));
   let padPrev = {},
     padClock = 0;
+  const connectedPad = () => Array.from(navigator.getGamepads?.() ?? []).find(pad => pad?.connected);
   function readPad(dt) {
-    const found = [...(navigator.getGamepads?.() ?? [])].filter((p) => p && p.connected).slice(0, 1);
+    const connected = connectedPad();
+    const found = connected ? [connected] : [];
     padClock += dt * 1000;
     pads.sample(
       found.map((p) => ({ index: p.index, id: p.id, mapping: p.mapping, buttons: [...p.buttons].slice(0, 64).map((b) => ({ pressed: !!b.pressed, value: unit(b.value, 0) })), axes: [...p.axes].slice(0, 16).map((v) => unit(v, -1)) })),
@@ -395,7 +397,7 @@ export function createInput(canvas, { settings, onPause = () => {}, onLock = () 
     waitingForPointer() {
       if (!state.wantLock || state.pointerLocked) return false;
       // A standard pad can drive the fight even without a captured mouse.
-      return !Array.from(navigator.getGamepads?.() ?? []).some(pad => pad?.connected && pad.mapping === 'standard');
+      return connectedPad()?.mapping !== 'standard';
     },
     setYaw(y) {
       state.yaw = y;
