@@ -16,6 +16,7 @@ import { generalEffect, stat, techEffect } from './core.mjs';
 import { HEX_W, hexCenter } from './hexgrid.mjs';
 import { FOOTPRINTS, footprintCell, hexKind } from './land.mjs';
 import { aptitudeFactor, mobility } from './aptitude.mjs';
+import { createFerryObjective, advanceFerryObjective, FERRY_HOLD_SECONDS } from './battle-ferry.mjs';
 
 export const FIELD = { cols: 22, rows: 14 };
 /** Seconds of battle time before the sun sets (the defenders then win). */
@@ -278,6 +279,7 @@ export function createBattle(setup, state = null) {
     tiles: field.tiles,
     gate: field.gate !== null ? { at: field.gate, hp: 1500 + setup.wall * 60, open: false } : null,
     keep: field.keep,
+    ferry: createFerryObjective(setup, field.keep),
     depot: field.depot !== null ? { at: field.depot, hp: 1000, burnt: false } : null,
     fire: {},
     wind: setup.special === 'chibi' ? 0 : Math.floor(random() * 6),
@@ -1107,6 +1109,7 @@ export function stepBattle(b, dt, playerSide = -1) {
     if (holder && holder.side === 0 && !defenderNear) b.keepHeld += dt;
     else b.keepHeld = Math.max(0, b.keepHeld - dt);
   }
+  advanceFerryObjective(b, dt, distance);
   decide(b);
   return b;
 }
@@ -1277,8 +1280,9 @@ function decide(b) {
     why = null;
   if (!standing(1)) (winner = 0), (why = 'broken');
   else if (!standing(0)) (winner = 1), (why = 'broken');
-  else if (b.keepHeld >= 10) (winner = 0), (why = 'keep');
+  else if (b.keepHeld >= 10) (winner = 0), (why = b.ferry ? 'crossingTaken' : 'keep');
   else if (b.depot?.burnt) (winner = 0), (why = 'depot');
+  else if ((b.ferry?.secured ?? 0) >= FERRY_HOLD_SECONDS - 1e-6) (winner = 1), (why = 'crossingHeld');
   else if (b.time >= b.limit) (winner = 1), (why = 'sunset');
   if (winner === null) return;
   b.over = { winner, why };
@@ -1305,7 +1309,7 @@ export function outcome(b) {
     }
     return { troops: Math.round(u.troops), morale: Math.round(Math.max(0, u.morale)), fates };
   });
-  return { winner: w, why: b.over.why, units, gateTaken: Boolean(b.gate?.open) || b.over.why === 'keep', depot: b.depot?.burnt ?? false, seconds: Math.round(b.time), report:battleReport(b) };
+  return { winner: w, why: b.over.why, units, gateTaken: Boolean(b.gate?.open) || b.over.why === 'keep' || b.over.why === 'crossingTaken', depot: b.depot?.burnt ?? false, seconds: Math.round(b.time), report:battleReport(b) };
 }
 
 /** Pure detailed statistics. Losses are net troops lost; damage includes subsequently healed casualties. */

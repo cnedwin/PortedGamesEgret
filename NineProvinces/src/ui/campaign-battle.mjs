@@ -3,6 +3,7 @@
 import { NODES } from '../data/map.mjs';
 import { along, routeLine } from '../sim/ways.mjs';
 import { hostile } from '../sim/military.mjs';
+import { FERRY_HOLD_SECONDS, isFerryBattle } from '../sim/battle-ferry.mjs';
 
 export function campaignBattlePresentation(state, setup) {
   if (setup.kind !== 'siege' || setup.place.node !== 'nanpi' || setup.factions[0] !== state.player) return setup;
@@ -20,6 +21,9 @@ export function campaignBattleBriefing(setup, player) {
   if (setup.special === 'wuchao') objective = attack
     ? ['击溃守军，或焚毁粮仓。日落前未达成目标，守方获胜。', 'Break the defenders or burn their depot. The defenders win if neither is achieved before sunset.']
     : ['保护粮仓，守至日落，或击溃攻方。粮仓一旦烧毁即告失利。', 'Protect the depot until sunset, or break the attackers. A burned depot means defeat.'];
+  else if (isFerryBattle(setup)) objective = attack
+    ? ['击溃守军，或独占渡口10秒。接近后须及时争夺渡口，守军独守' + FERRY_HOLD_SECONDS + '秒即可取胜。', 'Break the defenders or occupy the crossing for 10 seconds. Contest the crossing once it is in reach. A secure defence of ' + FERRY_HOLD_SECONDS + ' seconds wins.']
+    : ['敌军进入渡口4格后，驻军守在渡口，保持两格内无敌军' + FERRY_HOLD_SECONDS + '秒即可获胜。击溃敌军或守至日落也可获胜。', 'Once the attackers reach 4 hexes, occupy the crossing and keep enemies beyond 2 hexes for ' + FERRY_HOLD_SECONDS + ' seconds. Breaking the attack or surviving until sunset also wins.'];
   else if (setup.kind === 'siege') objective = attack
     ? ['击溃守军，或独占敌方本营10秒。破门本身不等于获胜；日落前未取胜，守方获胜。', 'Break the defenders or hold their keep uncontested for 10 seconds. Opening the gate alone does not win; sunset favours the defenders.']
     : ['守住本营，拖至日落，或击溃攻方。不可让敌军独占本营10秒。', 'Hold your keep until sunset, or break the attackers. Do not let them hold it uncontested for 10 seconds.'];

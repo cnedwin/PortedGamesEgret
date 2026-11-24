@@ -10,6 +10,7 @@ import { FORMATIONS, TERRAIN, UNITS, formationAllowed } from '../data/battle.mjs
 import { TACTICS } from '../data/tactics.mjs';
 import { command as simCommand, createBattle, outcome, stepBattle, useTactic, tacticPreview, combatPreview, canDeployBattle, deployBattleUnit, distance, previewBattleOrder, battleIntentOptions } from '../sim/battle.mjs';
 import { createBattleRecorder } from '../sim/battle-history.mjs';
+import { FERRY_HOLD_SECONDS } from '../sim/battle-ferry.mjs';
 import { MAX_BATTLE_PLAN_ORDERS, previewBattleCommandPlan, commitBattleCommandPlan } from '../sim/battle-command-plan.mjs';
 import { finishBattle } from '../sim/military.mjs';
 import { getLanguage, nm, num, t } from '../i18n.mjs';
@@ -107,6 +108,8 @@ export function startBattle(app, setup, { state: s = app.state, onTrialResult, o
         else if (ev.kind === 'flankContact') {
           const target = unitName(b.units[ev.target]);
           say(target + (ev.side === side ? words(' 遭我军两翼夹击', ' caught in our pincer') : words(' 遭敌军两翼夹击', ' caught in the enemy pincer')), ev.side === side ? 'good' : 'bad');
+        } else if (ev.kind === 'ferryEngaged') {
+          say(words('攻方已抵近渡口，争夺开始', 'The attackers have reached the crossing'), 'dim');
         }
         else if (ev.kind === 'gateOpen') {
           app.sound.play('drum');
@@ -416,6 +419,17 @@ export function startBattle(app, setup, { state: s = app.state, onTrialResult, o
   }
   function formationText(f){return words('攻','ATK ')+signed(f.atk)+' · '+words('守','DEF ')+signed(f.def)+' · '+words('速','SPD ')+signed(f.spd)+(f.front?' · '+words('正面','Front ')+signed(f.front):'')+(f.flank?' · '+words('夹击','Flank ')+signed(f.flank):'');}
 
+  function crossingStatus() {
+    const securing = b.keepHeld === 0;
+    const needed = securing ? FERRY_HOLD_SECONDS : 10;
+    const held = securing ? b.ferry.secured : b.keepHeld;
+    const label = securing ? words('守方稳守','Defence') : words('攻方占领','Capture');
+    return h('div.bObj.bCrossing', h('span', words('渡口','Crossing')),
+      bar(held / needed, securing ? 'blue' : 'gold'),
+      h('small', b.ferry.engaged ? label + ' ' + Math.min(needed, Math.floor(held)) + '/' + needed + words('秒','s')
+        : words('待攻方接近','Awaiting contact')));
+  }
+
   // ——— The HUD ———
   function card(u) {
     const share = u.troops / u.start;
@@ -486,7 +500,7 @@ export function startBattle(app, setup, { state: s = app.state, onTrialResult, o
   function draw(force = false) {
     if(heldControl){pendingHud=true;return;}
     if(ending){renderEnding();return;}
-    const key = JSON.stringify([phase, paused, speed, selected, armed,commandNotice,planReceipt,tempoNotice,milestonePauses,Math.ceil(executionLeft??-1), Math.floor(b.time), b.units.map((u) => [Math.round(u.troops / 50), Math.round(u.morale / 4), Math.floor(u.rage / 10), u.order, u.autoTactic, u.formation, u.intent, u.intentAnchor, Object.keys(u.status).join(), u.gone, u.routed]), Math.round(b.gate?.hp ?? 0), Math.round(b.depot?.hp ?? 0), Math.round(b.keepHeld), feed.length && feed[0].at]);
+    const key = JSON.stringify([phase, paused, speed, selected, armed,commandNotice,planReceipt,tempoNotice,milestonePauses,Math.ceil(executionLeft??-1), Math.floor(b.time), b.units.map((u) => [Math.round(u.troops / 50), Math.round(u.morale / 4), Math.floor(u.rage / 10), u.order, u.autoTactic, u.formation, u.intent, u.intentAnchor, Object.keys(u.status).join(), u.gone, u.routed]), Math.round(b.gate?.hp ?? 0), Math.round(b.depot?.hp ?? 0), Math.round(b.keepHeld), b.ferry?.engaged, Math.floor(b.ferry?.secured ?? 0), feed.length && feed[0].at]);
     if (!force && key === shownKey) return;
     shownKey = key;
     const place = setup.place.node ? placeName(setup.place.node) : placeName(setup.place.link[0]);
@@ -506,7 +520,7 @@ export function startBattle(app, setup, { state: s = app.state, onTrialResult, o
         h('div.bTime', h('span', t('sunset') + ' ' + Math.floor(left / 60) + ':' + String(Math.floor(left % 60)).padStart(2, '0')), bar(left / b.limit, 'gold'), h('span.wind', { title: t('windLabel') }, t('windLabel') + ' ' + WIND[b.wind % 6])),
         b.gate ? h('div.bObj', h('span', t('gate')), bar(Math.max(0, b.gate.hp) / (1500 + setup.wall * 60), 'stone'), h('small', b.gate.open ? t('gateOpen') : num(b.gate.hp))) : null,
         b.depot ? h('div.bObj', h('span', t('depot')), bar(Math.max(0, b.depot.hp) / 1000, 'fire'), h('small', b.depot.burnt ? t('depotBurnt') : num(b.depot.hp))) : null,
-        b.keep !== null ? h('div.bObj', h('span', t('keepHold')), bar(b.keepHeld / 10, 'gold'),
+        b.ferry ? crossingStatus() : b.keep !== null ? h('div.bObj', h('span', t('keepHold')), bar(b.keepHeld / 10, 'gold'),
           nanpi && b.gate?.open ? h('small',Math.min(10,Math.floor(b.keepHeld))+' / 10 '+words('秒','s')) : null) : null,
         phase === 'fight'
           ? h(
@@ -528,6 +542,8 @@ export function startBattle(app, setup, { state: s = app.state, onTrialResult, o
               () => { changePlanMode(!draft); draw(true); }, {kind: draft ? 'on' : 'main', small:true})) : null,
           planReceipt ? h('small.bCommandStickyNotice', {role:'status'}, planReceipt) : null),
         tempoNotice?h('p.bTempoCue',{role:'status'},tempoNotice):null,
+        b.ferry && !draft && !armed ? h('div.bOrderRow',
+          keyButton('ferry-locate', words('定位渡口','Locate crossing'), () => view.lookAtHex(b.ferry.at), {small:true})) : null,
         h('p.bCommandHint',commandText),
         commandNotice?h('p.bOrderFeedback'+(commandBad?'.bad':''),{role:'status'},commandNotice):null,
         active&&!armed?h('p.bFormationInfo',nm(FORMATIONS[chosen.formation])+' · '+formationText(FORMATIONS[chosen.formation])):null,

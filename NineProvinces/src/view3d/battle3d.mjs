@@ -25,6 +25,7 @@ import { UNITS } from '../data/battle.mjs';
 import { TACTICS } from '../data/tactics.mjs';
 import { nm } from '../i18n.mjs';
 import { distance, neighbours, ring as hexRing, tacticPreview } from '../sim/battle.mjs';
+import { FERRY_HOLD_SECONDS } from '../sim/battle-ferry.mjs';
 import { HEX_W, hexCenter } from '../sim/hexgrid.mjs';
 import { FOOTPRINTS } from '../sim/land.mjs';
 import { generalName } from '../view/names.mjs';
@@ -265,8 +266,8 @@ export function createBattle3D(realm, b, { colours, side, fx, plates, rulers, on
     scene.addChild(gateMesh);
     own.push(gateMesh);
   }
-  const keepRing=siegeSample&&b.keep!==null?new Mesh3D(createRingGeometry3D({innerRadius:1.25,outerRadius:1.4,thetaSegments:48}),createStandardMaterial3D({color:0xd4b16f,emissive:0xd4b16f,emissiveIntensity:.8,roughness:1,opacity:.65,depthWrite:false,side:'double'})):null;
-  if(keepRing){const p=pos[b.keep];keepRing.name='battle-keep-objective';keepRing.setPosition(p.x,p.y+.12,p.z);keepRing.setRotation(-Math.PI/2,0,0);keepRing.pickable=false;scene.addChild(keepRing);own.push(keepRing);}
+  const keepRing=(siegeSample||b.ferry)&&b.keep!==null?new Mesh3D(createRingGeometry3D({innerRadius:1.25,outerRadius:1.4,thetaSegments:48}),createStandardMaterial3D({color:0xd4b16f,emissive:0xd4b16f,emissiveIntensity:.8,roughness:1,opacity:.65,depthWrite:false,side:'double'})):null;
+  if(keepRing){const p=pos[b.keep];keepRing.name=b.ferry?'battle-crossing-objective':'battle-keep-objective';keepRing.setPosition(p.x,p.y+.12,p.z);keepRing.setRotation(-Math.PI/2,0,0);keepRing.pickable=false;scene.addChild(keepRing);own.push(keepRing);}
 
   // ——— Fire and dust ———
   const dot = softDot();
@@ -473,7 +474,14 @@ export function createBattle3D(realm, b, { colours, side, fx, plates, rulers, on
       if(b.gate.open)gateFall=Math.min(1,gateFall+dt/(isCalm() ? .2 : .7));
       for(const [index,leaf]of gateLeaves.entries())leaf.setRotation(-gateFall*Math.PI*.46,index?gateImpact*.12:-gateImpact*.12,0);
     }
-    if(keepRing){keepRing.material.opacity=.5+Math.min(1,b.keepHeld/10)*.4;keepRing.material.setColor(b.keepHeld>0?0x9bd5cf:0xd4b16f);const p=pos[b.keep];troops.add('standard',p.x,p.y,p.z,0,cols[b.keepHeld>0?0:1],0,1.2);}
+    if (keepRing) {
+      const attacking = b.keepHeld > 0;
+      const progress = attacking ? b.keepHeld / 10 : b.ferry ? b.ferry.secured / FERRY_HOLD_SECONDS : 0;
+      keepRing.material.opacity = .5 + Math.min(1, progress) * .4;
+      keepRing.material.setColor(attacking ? 0x9bd5cf : progress > 0 ? 0x8bb8d4 : 0xd4b16f);
+      const p = pos[b.keep];
+      troops.add('standard', p.x, p.y, p.z, 0, cols[attacking ? 0 : 1], 0, 1.2);
+    }
     // Fires.
     for (const [i, f] of fires) {
       if (!b.fire[i]) {

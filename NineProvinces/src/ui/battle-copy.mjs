@@ -34,6 +34,8 @@ export function battleOutcomeReason(result,playerSide=null,language='zh'){
  if(result?.why==='retreat'&&loser!==null)return relative(loser)+w('撤退',' withdrew');
  if(result?.why==='keep')return result.winner===playerSide?w('我军攻占敌营','Our army took the enemy keep'):playerSide!==null?w('本营失守','Our keep was taken'):w('守军本营被攻占','The defending army’s keep was taken');
  if(result?.why==='depot')return result.winner===playerSide?w('我军焚毁敌军粮仓','Our army burned the enemy depot'):playerSide!==null?w('我军粮仓被焚','Our depot was burned'):w('粮仓被焚','The depot was burned');
+ if(result?.why==='crossingHeld')return result.winner===playerSide?w('我军稳守渡口，击退攻方','Our army secured the crossing'):w('守军守住渡口','The defenders secured the crossing');
+ if(result?.why==='crossingTaken')return result.winner===playerSide?w('我军夺下渡口','Our army took the crossing'):w('渡口被攻方夺下','The attackers took the crossing');
  if(result?.why==='sunset')return w('日落收兵','Sunset ended the fighting');
  return w('战斗结束','Battle ended');
 }
