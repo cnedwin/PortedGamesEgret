@@ -334,6 +334,10 @@ async function main() {
     paused = true;
     input.capture(false);
     input.clear();
+    if (game) {
+      game.hero.queuedSwing = null;
+      if (game.hero.act?.awaitingRelease) game.hero.act = null;
+    }
     hud.show(false);
     touch.show(false);
     screens.pause({
@@ -497,8 +501,11 @@ async function main() {
         play(cue, { volume: 0.9 });
         if (e.who === heroId) cam.kick(heavy ? 0.52 : 0.28, bearing);
         else if (e.by === heroId) {
-          slow = 0.12;
-          slowFor = e.heavy ? 0.07 : 0.04;
+          // Keep ordinary follow-up inputs on the normal clock. Heavy blows still have a brief accent.
+          if (heavy) {
+            slow = Math.min(slow, 0.72);
+            slowFor = Math.max(slowFor, 0.018);
+          }
           cam.kick(heavy ? 0.30 : 0.16, bearing);
         }
         const p = projectToViewport3D(camera, chestOf(e.who), canvas.clientWidth, canvas.clientHeight);
@@ -646,7 +653,7 @@ async function main() {
         was = tips.get(m.id);
       tips.set(m.id, b?.[1] ?? null);
       const step = dt * k;
-      const cutting = act?.kind === 'swing' && (act.struck
+      const cutting = act?.kind === 'swing' && !act.awaitingRelease && (act.struck
         ? act.t - act.strikeAt < 0.12
         : !act.held && act.t >= act.wind - 0.07);
       const segment = skillTrailSegment(act);
@@ -677,7 +684,9 @@ async function main() {
       const p = projectToViewport3D(camera, point, w, h);
       return p.inFront && p.x > -80 && p.x < w + 80 && p.y > -80 && p.y < h + 80 ? [p.x, p.y] : null;
     };
-    hud.update(dt, game, { line: input.state.line, threat, guard: game.hero.guard, locked: !!target, project, yaw: input.state.yaw, input: input.state });
+    const heroAct = game.hero.act;
+    hud.update(dt, game, { line: input.state.line, preparedLine: heroAct?.awaitingRelease ? heroAct.line : undefined,
+      threat, guard: game.hero.guard, locked: !!target, project, yaw: input.state.yaw, input: input.state });
     touch.cool(game.hero);
     hud.hint(!coarse && !autoBrain && input.state.wantLock && !input.state.pointerLocked && !over ? t('clickToFight') : null);
   }

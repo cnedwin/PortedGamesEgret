@@ -59,7 +59,7 @@ export const WORDS = {
   qualityHigh: { zh: '高', en: 'High' },
   control: { zh: '刀路', en: 'Lines of cut' },
   directional: { zh: '鼠标方向', en: 'Mouse direction' },
-  classic: { zh: '经典（自动轮换）', en: 'Classic (in turn)' },
+  classic: { zh: '经典（格挡随来招）', en: 'Classic (guard follows threat)' },
   assist: { zh: '辅助格挡', en: 'Guard assist' },
   blood: { zh: '血雾', en: 'Blood' },
   sound: { zh: '声音', en: 'Sound' },
@@ -75,8 +75,8 @@ export const WORDS = {
   attack: { zh: '出手', en: 'Strike' },
   swap: { zh: '换刀', en: 'Knife' },
   controlsText: {
-    zh: 'W A S D 移动 · 左 Shift 冲刺 · 空格 跳 · 移动鼠标转视角，出手前鼠标最后往哪边动就从哪边砍（右、左、上劈、下刺），小键盘 8 2 4 6 直接出对应方向 · 左键攻击，按住蓄力重击 · 右键按住格挡，刚举起时接住是弹刀 · F 踢（破防）· X 战技、Z 盾牌战技（怒气满时）· R T 职业技能 · B 单击/连击 · 1 2 换兵器 · 3 绷带 · E 上马/下马 · U 召唤战马 · V 切换视角 · 滚轮 远近 · 中键 锁定 · Tab 隐藏界面 · Ctrl+H 按键提示 · Esc 菜单',
-    en: 'W A S D to move · Left Shift to sprint · Space to jump · move the mouse to look; the way it last moved sets the line of the blow (right, left, up for overhead, down for a thrust), or keypad 8 2 4 6 for each line · left button attacks, hold for a heavy blow · hold the right button to guard; caught at its first instant a blow is deflected · F kicks (breaks a guard) · X weapon art and Z shield art (at full rage) · R and T profession skills · B single or continuous attack · 1 2 weapons · 3 bandage · E mount or dismount · U calls the horse · V changes the view · wheel for nearer or further · middle button locks on · Tab hides the panels · Ctrl+H key hints · Esc menu'
+    zh: 'W A S D 移动 · 左 Shift 冲刺 · 空格 跳 · 挥鼠选刀路（右劈、左劈、上劈、下刺）· 左键按住架势、松开出招，按久蓄力 · 右键格挡，架势中按右键可收成假动作 · 小键盘 8 2 4 6 直接出招 · F 踢（破防）· X 战技、Z 盾牌战技（怒气满时）· R T 职业技能 · B 单击/连击 · 1 2 换兵器 · 3 绷带 · E 上马/下马 · U 召唤战马 · V 切换视角 · 滚轮 远近 · 中键 锁定 · Tab 隐藏界面 · Ctrl+H 按键提示 · Esc 菜单',
+    en: 'W A S D move · Left Shift sprint · Space jump · move the mouse to select a cut or thrust · hold the left button to ready and charge, release to strike · right button guards or feints from a readied strike · keypad 8 2 4 6 strikes directly · F kicks (breaks guard) · X weapon art and Z shield art (at full rage) · R and T profession skills · B single or continuous attack · 1 2 weapons · 3 bandage · E mount or dismount · U calls the horse · V changes the view · wheel zoom · middle button locks on · Tab hides the panels · Ctrl+H key hints · Esc menu'
   },
   compass: { zh: '北,东,南,西', en: 'N,E,S,W' },
   dressing: { zh: '绷带', en: 'Bandage' },

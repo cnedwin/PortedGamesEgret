@@ -54,7 +54,7 @@ both is the "double kill".
 
 **手感 · Handling**
 
-- 刀路：出手前鼠标最后一下往哪边划，就从哪边砍；准星的四个刃口亮出当前刀路。设置里可换成「经典」：刀路按右、左、上、刺轮流，格挡自动对准来刀。 · The line is the last way the mouse moved; the crosshair's four edges show it. The classic scheme turns the lines in order and guards the blow coming by itself.
+- 刀路：鼠标最后一下往哪边划，就选哪一向。单击模式下，按住左键锁定刀路和架势，准星外侧显示该方向。松开才挥出，蓄满也会继续等候。按住时可用右键收招。经典模式的格挡方向随来招。 · Flick the mouse to pick a line. In single-attack mode, hold the left button to lock in the line and ready the weapon. The crosshair highlights the held direction. Release to strike, even at full charge. Right click to feint while readying. Classic guard follows the incoming blow.
 - 格挡：按住右键。方向对上才挡得住；挡偏了只卸一半（盾牌挡偏了漏两成半，且更耗体力）。刚举起的 0.2 秒内接住是弹刀：不耗体力，对方踉跄。双手兵器蓄满的重劈弹不开。 · Guard: hold the right button. Only the right line holds; a wrong one takes half (a shield on a wrong line lets a quarter through and tires him more). Caught in the first 0.2 s it is a deflection. A fully wound two-handed cut cannot be deflected.
 - 「格挡辅助」（默认开）：按住右键时自动对准最近的来刀；关掉后全靠自己读刀。 · Guard assist (on by default) turns a held guard to the blow coming; turned off, the reading is all his.
 - 踢：F，踢中正在格挡的人破防。 · Kick: F breaks a held guard.
@@ -71,7 +71,7 @@ both is the "double kill".
 |---|---|---|---|
 | 移动 · Move | WASD / 方向键 · arrows | 左摇杆 · left stick | 左下摇杆 · stick, lower left |
 | 转镜头、定刀路 · Turn, set the line | 移动鼠标（开打时鼠标锁在画面里） · move the mouse (held in the page while fighting) | 右摇杆 · right stick | 右上半屏拖动转镜头；在「出手」上划一下定刀路，不划则刀路轮流 · drag on the upper right to turn; swipe on Strike to set the line, or the lines come in turn |
-| 攻击 / 拉弓 · Strike / draw | 左键（按住蓄力） · left button (hold to wind up) | RT | 「出手」，按住不动是蓄力或拉弓 · Strike; held still, a heavy blow or the draw |
+| 攻击 / 拉弓 · Strike / draw | 左键按住预备，松开出手 · hold left button to ready, release to strike | RT | 「出手」，按住不动是蓄力或拉弓 · Strike; held still, a heavy blow or the draw |
 | 格挡 · Guard | 右键 · right button | LT | 「格挡」 · Guard |
 | 踢 · Kick | F | X | 「踢」 · Kick |
 | 跳 · Jump | 空格 · Space | B | 「跳」 · Jump |

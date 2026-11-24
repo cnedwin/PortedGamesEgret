@@ -7,6 +7,7 @@ import { ARMS, createWeapon } from './weapons.mjs';
 import { add, axisAngle, basis, cross, dot, len, lerp3, mul, qinv, qmul, qrot, slerp, sub, unit } from './rig.mjs';
 import { createRig } from './rig.mjs';
 import { createAnimator, heavyFootwork, impactWeight, interpolateDirection, swingPhase, TIGER_SWORD } from './motion.mjs';
+import { createFooting } from './footing.mjs';
 
 const ease = (t) => (t <= 0 ? 0 : t >= 1 ? 1 : t * t * (3 - 2 * t));
 const easeOut = (t) => (t <= 0 ? 0 : t >= 1 ? 1 : 1 - (1 - t) ** 3);
@@ -128,6 +129,7 @@ export function createFigure({ regiment, body, motion, world, height = 1.8 }) {
   inner.setRotation(0, animator.turn, 0);
   inner.updateWorldMatrices?.(true);
   const rig = createRig(animator.nodes, { scale: s, turn: animator.turn, root: body.scene });
+  const plant = createFooting(rig);
 
   // Body landmarks at rest, in body space.
   const hipY = rig.toBody(rig.world('pelvis').t)[1];
@@ -187,6 +189,7 @@ export function createFigure({ regiment, body, motion, world, height = 1.8 }) {
     layer = motion.pose();
   const state = {
     phase: 0,
+    primaryGrip: { axis: null, edge: null },
     pose: { ...ONE.ready },
     lpose: null,
     impactAge: Infinity,
@@ -438,7 +441,7 @@ export function createFigure({ regiment, body, motion, world, height = 1.8 }) {
     // Right arm: the weapon hand.
     const poleR = rig.dirToRig(qrot(twistQ, [-0.6, -0.8, -0.2]));
     if (bow) armsForBow(man, dt, twistQ, place, along);
-    else rig.reachArm('r', place(p.r), poleR, along(p.b));
+    else rig.reachArm('r', place(p.r), poleR, along(p.b), 1, 0, null, state.primaryGrip, dt);
     rig.closeHand('r', 1);
 
     // Left arm: on the same weapon (two-handed), the shield, or free.
@@ -485,11 +488,17 @@ export function createFigure({ regiment, body, motion, world, height = 1.8 }) {
     }
     let floorLift = 0;
     const combat = man.guard || ['swing', 'skill', 'kick'].includes(man.act?.kind) || p.d > 0.004 || recoil > 0.001;
-    if (combat && man.alive && !man.mounted && !state.ride && !(man.act?.air > 0) && state.down < 0.02) {
+    const grounded = man.alive && !man.mounted && !state.ride && !(man.act?.air > 0) && state.down < 0.02;
+    if (combat && grounded) {
       // Ball bones track the shoe's contact surface more closely than the ankle pivots.
       const support = Math.min(rig.toBody(rig.world('ball_l').t)[1], rig.toBody(rig.world('ball_r').t)[1]);
       floorLift = clamp(-support, 0, 0.075);
     }
+    plant({
+      x: man.x, z: man.z, yaw: man.face + spin, lift: floorLift, dt, speed,
+      active: man.guard || act?.kind === 'swing' || act?.kind === 'skill',
+      grounded: grounded && man.stun <= 0 && act?.kind !== 'kick' && act?.kind !== 'step'
+    });
     return { spin, floorLift };
   }
 

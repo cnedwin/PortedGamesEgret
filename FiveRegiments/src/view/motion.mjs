@@ -43,11 +43,13 @@ export function skillTrailSegment(action) {
  * Logical contact stays on strikeAt, including when a held swing releases.
  */
 export function swingPhase(action, weapon, attackHeld) {
-  const [load, follow] = SWING_TEMPO[weapon] ?? SWING_TEMPO.sabre;
+  const [naturalLoad, follow] = SWING_TEMPO[weapon] ?? SWING_TEMPO.sabre;
   if (!action.struck) {
     const wind = clamp01(action.t / action.wind);
+    // The PC gesture reserves part of its wind-up for the committed stroke, even at full charge.
+    const load = action.releaseOnly && action.prepCap > 0 ? action.prepCap / action.wind : naturalLoad;
     if (wind < load) return smooth(wind / load);
-    if (action.held > 0 || attackHeld && !action.quick) return 1;
+    if (action.awaitingRelease || !action.releaseOnly && (action.held > 0 || attackHeld && !action.quick)) return 1;
     const sweep = clamp01((wind - load) / (1 - load));
     return 1 + 0.96 * sweep * sweep;
   }
