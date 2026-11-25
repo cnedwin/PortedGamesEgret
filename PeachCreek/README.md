@@ -4,7 +4,7 @@
 
 桃溪县令是基于[新白鹭引擎 Egret Rebuild](https://github.com/cnedwin/Egret_rebuild)独立开发的游戏 Demo：一款宋代背景、画风治愈的放置经营游戏。你从桃溪下县的县令做起，规划坊区、修屋开田、通市开窑、勘探山林矿石、访贤派驻、整修城防，一步步把小县升格到「州」。离开时县城照常运转，回来时清点收成。一任至少要玩三天，升迁后还有更难的下一任。
 
-Magistrate of Peach Creek is a game demo made on its own on [Egret Rebuild](https://github.com/cnedwin/Egret_rebuild), the
+Magistrate of Peach Creek is an independently developed game demo built on [Egret Rebuild](https://github.com/cnedwin/Egret_rebuild), the
 new Egret engine: a gentle idle city-builder set in the Song dynasty. You start as magistrate of a lesser county,
 plan the wards, raise houses and fields, open markets and kilns, survey the hills for timber, stone, clay and iron,
 call on worthies and post them, keep the walls, and lift the county rank by rank to a prefecture. The county goes on
@@ -42,24 +42,7 @@ harder one.
 设置里可以关音效、关配乐、减弱动画（系统设置了「减少动态效果」时自动减弱）和切换语言。The settings turn off the
 sound or the music, reduce motion (reduced already when the system asks) and switch the language.
 
-## 竞品调研 · What similar games taught us
-
-| 参考 · Reference | 学到的 · What we took | 没学的 · What we left |
-|---|---|---|
-| 《江南百景图》 · Jiangnan Hundred Scenes | 古城分区布局、人物有属性派驻到建筑、平和的画风 · zoned old-town layout, characters with stats posted to buildings, a calm look | 桃溪的选址以地块、运输与邻里为主 · Peach Creek uses parcels, hauling and neighboring uses |
-| 《这城有良田》等县令题材放置游戏 · county-magistrate idle games | 县令一级级升官的主线、访贤有稀有度和保底、民情二选一 · the climb through ranks, calls with rarity and pity, two-way petitions | 大量付费加速和体力，本作没有任何付费 · paid speed-ups and stamina; there is nothing to buy here |
-| AdVenture Capitalist、Idle Miner 一类放置游戏 · idle tycoons | 等级里程碑产出翻倍（10/25/50/75）、离线收益有上限且能靠建筑提高（仓廪） · output doubling at level milestones, capped offline earnings raised by buildings (granaries) | 无限重置和指数爆炸的数字，改成一任有终点、升迁后要求提高 · endless resets and runaway numbers; a term has an end, and promotion asks for more |
-| Clash of Clans 一类城建游戏 · base builders | 工匠是并行的工位、升级有真实工期、主建筑（县衙）卡住最高等级 · builders as parallel slots, real-time upgrades, the main building capping levels | 攻打别人的城，本作只守不攻 · attacking others; here the town only defends |
-| 古风治愈放置游戏 · gentle old-style idle games | 四季、昼夜、街上走动的小人和溪上的小船让城看起来是活的 · seasons, night, people and boats that make the town feel alive | 社交和排行 · social features and ladders |
-
-由此定下的节奏原则：开局十分钟内要有「第一次升格」；每次回来都有可收的税、可领的目标或完工的建筑；县衙每次升格是一个台阶，要攒人口、民生和一两种新货，同时解锁新东西；离开再久，也只按仓廪允许的几个小时算收成，所以常来看看的人走得快，但偶尔来的人也不会被甩得太远。
-
-The pacing rules that came from this: the first rise within ten minutes; something to collect, claim or see finished
-on every return; each rise of the yamen a step that asks for people, livelihood and one or two new goods, and opens
-something new; and an absence counted only for the hours the granaries allow, so frequent visitors go faster without
-leaving the occasional one far behind.
-
-## 数值与节奏 · Numbers and pace
+### 数值与节奏 · Numbers and pace
 
 数值都在 `src/sim/data.mjs`，用 `node tools/pacing.mjs` 调：一个模拟玩家（`src/sim/bot.mjs`）每天 8 点到 24 点醒着，第一个小时一直在玩，之后每隔一段时间来看一次、每次玩 3 分钟，夜里睡觉。它会收税、领目标、回民情、访贤派驻、规划坊区、为下一次升格攒货，再把工匠排满。下表是三种玩家升到每一级所用的小时数（第一任）和整任的天数：
 
@@ -86,6 +69,10 @@ Raids follow population, rank and raid count. Defence and losses are decided by 
 | 引擎入口 / API · Entry / API | 在本游戏中的用途 · Use in this game | 文件 · File |
 |---|---|---|
 | `play`（`@egret/engine/play`） | 透明的引擎画布叠在县城画布上，四分之三分辨率建、根节点缩放 0.75；`update` 每帧推动行人、小船和天气 · a clear engine canvas over the county, made at three quarters with the root scaled 0.75; `update` moves people, boats and weather every frame | `src/main.mjs`, `src/view.mjs` |
+| `game.show` | 标题、存档、设置、顶栏、标签、地图点击区和滚动单子；通过状态与操作绑定更新 · title, saves, settings, HUD, tabs, map targets and inspector sheets, updated through bindings | `src/ui.mjs`, `src/screens.mjs`, `src/inspector.mjs` |
+| `createUiScreenStack` | 管理设置、存档槽和离线收获的模态顺序及关闭焦点 · modal order and return focus for settings, slots and the offline report | `src/screens.mjs` |
+| `createScrollControl` / `Sprite.clipRect` | 资源栏横向滚动、单子裁剪与纵向滚动 · horizontal resource scrolling, clipped vertical inspector sheets | `src/main.mjs`, `src/inspector.mjs` |
+| `createUiSemantics` / `createBrowserSemantics` / `createUiTester` | 出现在读屏语义树中的界面，按名称回归测试并检验画布键盘焦点 · browser semantic projection and named tests of the canvas UI | `src/ui.mjs`, `test/accept.mjs` |
 | `game.sprite` / `game.rect` / `game.text` / `game.remove` | 街上的行人（戴斗笠、挑担子）、溪上的小船、花瓣落叶雪花和萤火、选中框、飘起的税银数字 · people in hats and with carrying poles, boats, petals, leaves, snow and fireflies, the focus frame, numbers floating up | `src/view.mjs` |
 | `game.tween` / `game.after` / `game.wait` | 来敌攻城的小戏（敌人逼近、箭楼放箭、胜负收场）、升格时的连串铜钱 · the small play of a raid (foes closing, towers shooting, the end), coins in a row on a rise | `src/view.mjs`, `src/main.mjs` |
 | `game.burst` / `game.flash` | 收税的铜钱、建成的光圈、升格的闪光、守城失败的红闪 · coins when taxes come in, a ring on a finished building, a flash on a rise, red on a lost raid | `src/view.mjs`, `src/main.mjs` |
@@ -96,17 +83,18 @@ Raids follow population, rank and raid count. Defence and losses are decided by 
 
 ## 已验证 · Verified
 
-- `node --test test/*.test.mjs`（Node 26）：规则 13 项——三种玩家的第一、二任都不少于三天、同种子同结果、离线只按上限补算、税银上限和收取、工匠与排队、集市不卖升格货、坊区规划、来敌胜负和击鼓、升格条件与工期、访贤保底、勘探顺序、升迁、存档往返后结果一致；存档 6 项；文字 4 项（中英齐全、界面拼出的键都在表里、数字和时间格式、界面代码不写死中文）；引擎副本 2 项。 · 13 rules tests (three player habits over two terms all at least three days, determinism, offline cap, taxes, builders and queue, markets keeping goods, ward plans, raids and drums, rising, pity, surveys, promotion, the JSON round trip), 6 save tests, 4 word tests and 2 for the engine copy, in Node 26.
-- `node test/accept.mjs`：无头 Chromium（SwiftShader 软件渲染）里，标题和设置与截图基线一致；空格关声音并存档；切英文后按钮全是英文；回车赴任；只用键盘 Tab 到空地、回车修民居、Esc 关单子焦点回到地块；离开十小时回来看到收获清单、民居已建成；收税入库；四个标签页都能打开；刷新后县城还在；坏档重新开始并提示；控制台无错误。 · In headless Chromium with software rendering: baselines, Space on the sound switch, English, Enter to start, a house built by keyboard alone, ten hours away and back, taxes, all tabs, a reload, a broken save, and a clean console.
-- `node tools/quality.mjs PeachCreek`：自动项全部通过，见 [QUALITY.md](QUALITY.md)。 · Every automatic item passes; see QUALITY.md.
-- `node tools/pacing.mjs`：上面「数值与节奏」的表就是它的输出。 · The table under "Numbers and pace" is its output.
-- 截图核对过：开局、玩到第五天的城、四个季节中的秋冬、夜里点灯、中英文两种顶栏。 · Screenshots checked: the start, the town on day five, autumn and winter, the lanterns at night, the top bar in both languages.
+- `node --test test/*.test.mjs` 覆盖经营数值、离线、升格、升迁、存档和中英文。 · The Node suite covers county rules, offline progress, advancement, promotion, saves and both languages.
+- `node test/accept.mjs` 在无头 Chromium 和 SwiftShader 运行实际键盘、鼠标及模拟触屏操作，并比对固定种子关键画面。具体环境及结果见 [QUALITY.md](QUALITY.md)。 · Browser acceptance uses real browser pointer and keyboard events and emulated touch, with fixed-seed screenshots. See [QUALITY.md](QUALITY.md) for the results and environment.
 
 ## 已知问题 · Known issues
+
+- 沿用横向画布等比留边。390×844 竖屏的标题按钮仍小于 44×44 CSS px，横握时更易操作。 · Portrait keeps the original letterbox. At 390×844 the title targets remain below 44×44 CSS px, and landscape offers larger controls.
+- 文字由 960×540 白鹭画布缩放显示，桌面小字号的边缘略软。 · The 960×540 canvas is scaled for display, which softens the edges of small text on desktop.
 
 - 横屏触摸流程已用桌面浏览器的触控模拟验收。手机实机帧时间与扬声器听感仍待验收。 · A desktop browser's landscape touch emulation covered the touch flow. Phone frame pacing and speaker listening still need physical-device checks.
 - 手机在全城视图里可先用加号放大，再点选地块。 · On a phone, use zoom before selecting a plot if the overview is too small.
 - 数值只用模拟玩家调过，没有真人玩满三天的记录。 · The numbers were tuned with a simulated player only; no person has played a full three days.
+- 品质验收未达标 · Quality items failing（[QUALITY.md](QUALITY.md)，2026-11-25，无头 Chromium + SwiftShader · headless, software rendering）：T2 触控区 ≥ 44×44 CSS px（3 of 3 under 44×44: Take office 91×19; Settings 44×13; Switch to Chines 44×13）。
 
 ## 已解决 · Solved
 
@@ -115,7 +103,7 @@ Raids follow population, rank and raid count. Defence and losses are decided by 
 - 开局缺钱：开局给一座两级民居、一块稻田和一处林场，县衙另发俸禄。 · Coin ran dry at the start: the county begins with a house, a paddy and a woodland, and the yamen pays a salary.
 - 第二任太快（勤快玩家 2.5 天，因为人才留下了）：每任要求的增幅从 45 % 提到 80 %。 · The second term was too quick (2.5 days for the keen player, the talents having stayed): each term now asks 80 % more instead of 45 %.
 - 升级中的建筑被整块蒙住，满城像没建好：只有新建才蒙住，升级改为在一侧搭竹架、插红旗。 · Buildings being raised were veiled and the town looked unbuilt: only new buildings are veiled now; a raise shows a bamboo frame and a red pennant at the side.
-- 引擎方面见 [ENGINE-NOTES.md](ENGINE-NOTES.md)：Tab 和 Space 被 `play` 拿走（第 1 条）、透明画布下的黑盒子（第 2 条）、画布分辨率（第 3 条）、存档回调的返回值（第 4 条）、`game.rect` 改不了颜色（第 5 条）、`game.burst` 用世界坐标（第 6 条），都已绕过。 · On the engine side see ENGINE-NOTES.md, items 1 to 6, all worked round.
+- 游戏界面的焦点、地图变换与读屏投影已接通。原生 UI 的缺口和当前适配见 [ENGINE-NOTES.md](ENGINE-NOTES.md)。 · Canvas focus, map transforms and browser accessibility are integrated. [ENGINE-NOTES.md](ENGINE-NOTES.md) describes the remaining API gaps and current adaptations.
 
 ## 未完成 · Unfinished
 
@@ -127,8 +115,9 @@ Raids follow population, rank and raid count. Defence and losses are decided by 
 
 | 路径 · Path | 内容 · Contents |
 |---|---|
-| `index.html`, `style.css` | 页面、import map、三层（县城画布、引擎画布、界面），全部按钮和单子 · the page, the import map, the three layers (county canvas, engine canvas, interface), every button and sheet |
-| `src/main.mjs` | 入口：时间推进和离线补算、地图上的透明按钮、顶栏、标签页和单子、存档、设置、按键 · the entry: time and catching up, the clear buttons on the map, the top bar, tabs and sheets, the save, the settings, the keys |
+| `index.html`, `style.css` | 启动宿主、引擎入口映射、画布留边、启动提示 · browser shell, engine imports, canvas letterbox and loading status |
+| `src/main.mjs` | 县城时钟、存档、地图和界面状态 · county clock, persistence, map and screen state |
+| `src/ui.mjs`, `src/screens.mjs`, `src/inspector.mjs` | 白鹭视图、焦点语义、标题及模态框、单子布局 · Egret views, focus and semantics, title, dialogs and inspector layouts |
 | `src/sim/data.mjs` | 全部数值 · every number |
 | `src/sim/world.mjs` | 规则，不碰页面和引擎 · the rules, free of the page and the engine |
 | `src/sim/bot.mjs`, `tools/pacing.mjs` | 模拟玩家和调节奏的工具 · the simulated player and the pacing tool |
@@ -142,12 +131,10 @@ Raids follow population, rank and raid count. Defence and losses are decided by 
 
 ## 引擎副本 · Engine copy
 
-引擎副本取自 [Egret_rebuild](https://github.com/cnedwin/Egret_rebuild) 提交 `91f350b1fc1062a46a4b8e789ed4e01a4cdebbed`，由引擎仓库的 `tools/vendor-game.mjs` 复制，见 [vendor/SOURCE.md](vendor/SOURCE.md)。用到的入口：`@egret/engine/play`、`@egret/engine/kit`、`@egret/engine/web/kit`。
+引擎副本使用白鹭主干 `51b6175de36aa1e85878d3c6ca9b8e841e405504`。生成记录见 [vendor/SOURCE.md](vendor/SOURCE.md)。
 
-The engine copy is from [Egret_rebuild](https://github.com/cnedwin/Egret_rebuild) commit
-`91f350b1fc1062a46a4b8e789ed4e01a4cdebbed`, copied by the engine's `tools/vendor-game.mjs`; see
-[vendor/SOURCE.md](vendor/SOURCE.md). Entries used: `@egret/engine/play`, `@egret/engine/kit`, `@egret/engine/web/kit`.
+The engine copy was generated from Egret main at `51b6175de36aa1e85878d3c6ca9b8e841e405504`. See [vendor/SOURCE.md](vendor/SOURCE.md) for the source and resolved entries.
 
 ```sh
-node tools/vendor-game.mjs <this folder> @egret/engine @egret/engine/play @egret/engine/kit @egret/engine/web/kit
+node tools/vendor-game.mjs <PeachCreek> @egret/engine @egret/engine/play @egret/engine/kit @egret/engine/web/kit @egret/engine/ui @egret/engine/ui/semantics @egret/engine/ui/testing @egret/engine/web/semantics
 ```
