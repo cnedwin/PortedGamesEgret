@@ -1,0 +1,262 @@
+{
+ "bg-c1": {
+  "h": 1440,
+  "kind": "bg",
+  "w": 3840
+ },
+ "bg-c2": {
+  "h": 1440,
+  "kind": "bg",
+  "w": 3840
+ },
+ "bg-c3": {
+  "h": 1440,
+  "kind": "bg",
+  "w": 3840
+ },
+ "bg-c4": {
+  "h": 1440,
+  "kind": "bg",
+  "w": 3840
+ },
+ "bg-c5": {
+  "h": 1440,
+  "kind": "bg",
+  "w": 3840
+ },
+ "bg-c6": {
+  "h": 1440,
+  "kind": "bg",
+  "w": 3840
+ },
+ "bg-title": {
+  "h": 1440,
+  "kind": "bg",
+  "w": 3840
+ },
+ "f-afu": {
+  "h": 1000,
+  "kind": "fig",
+  "w": 337
+ },
+ "f-du": {
+  "h": 1000,
+  "kind": "fig",
+  "w": 356
+ },
+ "f-fenglu": {
+  "h": 1000,
+  "kind": "fig",
+  "w": 378
+ },
+ "f-guisao": {
+  "h": 1000,
+  "kind": "fig",
+  "w": 496
+ },
+ "f-hesao": {
+  "h": 1000,
+  "kind": "fig",
+  "w": 333
+ },
+ "f-laoguo": {
+  "h": 1000,
+  "kind": "fig",
+  "w": 326
+ },
+ "f-liu": {
+  "h": 1000,
+  "kind": "fig",
+  "w": 333
+ },
+ "f-liuzhong": {
+  "h": 1000,
+  "kind": "fig",
+  "w": 385
+ },
+ "f-lu": {
+  "h": 1000,
+  "kind": "fig",
+  "w": 458
+ },
+ "f-ma": {
+  "h": 1000,
+  "kind": "fig",
+  "w": 419
+ },
+ "f-niuda": {
+  "h": 1000,
+  "kind": "fig",
+  "w": 481
+ },
+ "f-qianwu": {
+  "h": 1000,
+  "kind": "fig",
+  "w": 370
+ },
+ "f-qin": {
+  "h": 1000,
+  "kind": "fig",
+  "w": 590
+ },
+ "f-sunda": {
+  "h": 1000,
+  "kind": "fig",
+  "w": 367
+ },
+ "f-tuer": {
+  "h": 1000,
+  "kind": "fig",
+  "w": 324
+ },
+ "f-weifuren": {
+  "h": 1000,
+  "kind": "fig",
+  "w": 357
+ },
+ "f-weiheng": {
+  "h": 1000,
+  "kind": "fig",
+  "w": 404
+ },
+ "f-xiaoman": {
+  "h": 1000,
+  "kind": "fig",
+  "w": 392
+ },
+ "f-xiaoqi": {
+  "h": 1000,
+  "kind": "fig",
+  "w": 530
+ },
+ "f-zhangpo": {
+  "h": 1000,
+  "kind": "fig",
+  "w": 584
+ },
+ "f-zhaosao": {
+  "h": 1000,
+  "kind": "fig",
+  "w": 485
+ },
+ "f-zhengqi": {
+  "h": 1000,
+  "kind": "fig",
+  "w": 380
+ },
+ "p-bales": {
+  "h": 900,
+  "kind": "prop",
+  "w": 796
+ },
+ "p-basket": {
+  "h": 745,
+  "kind": "prop",
+  "w": 900
+ },
+ "p-bodymat": {
+  "h": 212,
+  "kind": "prop",
+  "w": 900
+ },
+ "p-brazier": {
+  "h": 826,
+  "kind": "prop",
+  "w": 841
+ },
+ "p-chart-back": {
+  "h": 1100,
+  "kind": "chart",
+  "w": 522
+ },
+ "p-chart-front": {
+  "h": 1100,
+  "kind": "chart",
+  "w": 545
+ },
+ "p-confession": {
+  "h": 872,
+  "kind": "prop",
+  "w": 699
+ },
+ "p-flysickle": {
+  "h": 833,
+  "kind": "prop",
+  "w": 900
+ },
+ "p-forms": {
+  "h": 773,
+  "kind": "prop",
+  "w": 900
+ },
+ "p-gourd": {
+  "h": 900,
+  "kind": "prop",
+  "w": 293
+ },
+ "p-inkstone": {
+  "h": 824,
+  "kind": "prop",
+  "w": 900
+ },
+ "p-knives": {
+  "h": 590,
+  "kind": "prop",
+  "w": 900
+ },
+ "p-lamp": {
+  "h": 900,
+  "kind": "prop",
+  "w": 305
+ },
+ "p-noose": {
+  "h": 900,
+  "kind": "prop",
+  "w": 146
+ },
+ "p-oiljar": {
+  "h": 568,
+  "kind": "prop",
+  "w": 900
+ },
+ "p-proof": {
+  "h": 676,
+  "kind": "prop",
+  "w": 900
+ },
+ "p-purse": {
+  "h": 791,
+  "kind": "prop",
+  "w": 900
+ },
+ "p-rack": {
+  "h": 900,
+  "kind": "prop",
+  "w": 390
+ },
+ "p-sickles": {
+  "h": 327,
+  "kind": "prop",
+  "w": 900
+ },
+ "p-sqstool": {
+  "h": 900,
+  "kind": "prop",
+  "w": 709
+ },
+ "p-stool": {
+  "h": 737,
+  "kind": "prop",
+  "w": 900
+ },
+ "p-stove": {
+  "h": 821,
+  "kind": "prop",
+  "w": 749
+ },
+ "p-teatable": {
+  "h": 706,
+  "kind": "prop",
+  "w": 900
+ }
+}

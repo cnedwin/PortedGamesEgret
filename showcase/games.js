@@ -663,4 +663,37 @@ export const GAMES = [
       },
     ],
   },
+  {
+    id: 'inquest', folder: 'InquestScrolls', kind: '2d',
+    scenes: [
+      { zh: "纸坊悬梁 · 定格在案发瞬间的现场长卷：工头、仵作、坊主和梁上的绳套，红圈是可查的证物", en: "The Beam at the Paper Mill · The scene frozen at the moment of the crime: the foreman, the coroner's aide, the owner and the noose; red rings mark the evidence" },
+      { zh: "尸身 · 白描正背人形图上标着伤痕，带下划线的词点一下收进词囊", en: "The body · Wounds marked on the front and back body chart; tap an underlined word to put it in the pouch" },
+      { zh: "卷宗 · 把词拖进同色的空位，一页全对，盖上朱印", en: "The dossier · Words dragged into blanks of their colour; a page all right is sealed in red" },
+    ],
+    zh: "洗冤笔录", en: "The Inquest Scrolls",
+    genre: { zh: "宋代刑侦推理", en: "Song-dynasty detective deduction" },
+    summary: { zh: "南宋提点刑狱官覆检白蘋县的五份“太干净”的检验格目：在定格的现场长卷里点人、点物、读文书，把人名、器物、痕迹、死因、处所和情由收进词囊，逐页填完卷宗；全对盖印，错两处以内只说“尚有两处以内不实”。六案连成一桩伪造会子的大案，最后亲手写判词。验尸手法依《洗冤集录》，人物与案情原创；网页之外还能导出为微信小游戏。", en: "A Southern Song judicial intendant reopens five inquest forms from Baipin County that are too clean: tap people, things and documents in a frozen handscroll of each scene, gather names, objects, marks, causes, places and motives, and fill the dossier page by page; all right and it is sealed, two or fewer wrong and it says only that. Six cases join into one of forged paper money, and the last verdict is written by hand. The inquest methods follow the Collected Cases of Injustice Rectified; the people and cases are original; it also exports as a WeChat mini game." },
+    features: [
+      {
+        title: { zh: "CanvasKit 段落与文字几何", en: "CanvasKit paragraphs and text geometry" },
+        description: { zh: "卷宗、证物、序言都由 createParagraph 排版，带颜色的词段；用文字几何的 getSelectionRects、clusters 和 hitTest 量出每个空位、找到手指下的词、画下划线；字体由资源清单载入。没有 CanvasKit 的小游戏里，同一套几何由画布文字标签拼出。", en: "The dossier, the evidence and the prologue are laid out by createParagraph with coloured runs; the text geometry (getSelectionRects, clusters, hitTest) measures every blank, finds the word under a finger and draws the underlines; fonts come from a resource manifest. In a mini game without CanvasKit the same geometry comes from canvas labels." },
+        source: 'src/view/type.mjs',
+      },
+      {
+        title: { zh: "拖词落位、拖动与双指缩放", en: "Dragging words, panning and pinching" },
+        description: { zh: "game.dragAndDrop 把词签拖进卷宗空位，空位只收同类的词；game.gestures 拖动平移现场长卷、双指缩放，词囊列表拖动滚动；鼠标悬停由 createBrowserHoverInput 点亮证物。", en: "game.dragAndDrop drags word slips into the dossier's blanks, each taking only its kind; game.gestures pans and pinches the handscroll and scrolls the pouch; createBrowserHoverInput lights the evidence under the mouse." },
+        source: 'src/view/dossier.mjs',
+      },
+      {
+        title: { zh: "判词与笔录的文字输入", en: "Text input for the verdict and the notes" },
+        description: { zh: "判词用 createBrowserTextInput 在框上放平台文本框，输入法照常可用；笔录是 createUiTextEditor 加 createBrowserTextEditor 的多行编辑器，平时由段落画出，随存档保留。小游戏里两者都改用字盘。", en: "The verdict uses createBrowserTextInput, a platform field over the box with input methods working; the notes are a createUiTextEditor with createBrowserTextEditor, drawn as a paragraph at rest and kept with the save. In a mini game both use a board." },
+        source: 'src/view/notes.mjs',
+      },
+      {
+        title: { zh: "按案成组载入与谜题审计", en: "Pictures loaded by case, and the puzzle audit" },
+        description: { zh: "每案的背景、人物和器物用 engine.createAssetGroup 一组载入、一并释放；案卷用数据写出“线索 → 结论”，Node 测试验证每案可解、每空唯一、没有能填两个空的词，中英两套案卷各验一遍。", en: "Each case's pictures load and go together as one engine asset group; the cases are written as clue → conclusion data, and Node tests hold that each case is solvable, every blank has one answer and no word fits two blanks, in both languages." },
+        source: 'src/sim/audit.mjs',
+      },
+    ],
+  },
 ];
