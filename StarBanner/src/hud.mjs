@@ -66,6 +66,7 @@ export function createHud(root, { onButton, touch = false }) {
 
   // ---- hint, banner, toasts, floats, badges ----
   const hint = el('div', 'hint hidden');
+  hint.setAttribute('role', 'status');
   const banner = el('div', 'banner hidden');
   const toasts = el('div', 'toasts');
   const floats = el('div', 'floats');
@@ -169,9 +170,8 @@ export function createHud(root, { onButton, touch = false }) {
       hint.textContent = text ?? '';
     },
     setCancel(show) {
-      const visible = touch && show;
-      buttons.cancel.classList.toggle('hidden', !visible);
-      buttons.next.classList.toggle('hidden', visible);
+      buttons.cancel.classList.toggle('hidden', !show);
+      buttons.next.classList.toggle('hidden', touch && show);
     },
     /** The action menu near (x, y) on screen; `items` are { key, label, note, disabled }. */
     menu(items, at, { title } = {}) {
@@ -201,7 +201,9 @@ export function createHud(root, { onButton, touch = false }) {
       const r = hud.getBoundingClientRect();
       const w = box.offsetWidth,
         h = box.offsetHeight;
-      const x = Math.max(8, Math.min(r.width - w - 8, (at?.x ?? r.width / 2) + 36));
+      const anchor = at?.x ?? r.width / 2;
+      const side = anchor + 20 + w <= r.width - 8 ? anchor + 20 : anchor - w - 20;
+      const x = Math.max(8, Math.min(r.width - w - 8, at ? side : (r.width - w) / 2));
       const y = Math.max(64, Math.min(r.height - h - 70, (at?.y ?? r.height / 2) - h / 2));
       box.style.left = `${x}px`;
       box.style.top = `${y}px`;

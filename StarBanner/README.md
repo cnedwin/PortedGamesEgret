@@ -42,7 +42,7 @@ stronghold.
 
 | 输入 · Input | 操作 · Controls |
 |---|---|
-| 鼠标 · Mouse | 移到格子上看信息，左键选择，右键取消，滚轮缩放，按住拖动平移 · hover for information, click to choose, right-click to cancel, wheel to zoom, drag to pan |
+| 鼠标 · Mouse | 左键点模型选兵或打开兵营，空地只查看。悬停预览路径和伤害，左键确认落点、目标或出兵格。左键或中键拖动平移，滚轮围绕指针缩放，游戏区域内右键取消或返回。 · Click pieces or barracks to select them, and empty ground to inspect. Hover for paths and forecasts, then click a tile or target to confirm. Drag with the left or middle button to pan, scroll to zoom at the pointer, or right-click inside the game to go back. |
 | 键盘 · Keys | 方向键 / WASD 移动光标，Enter / 空格 / Z 确定，Esc / X 取消，Q / E 转视角，Tab 下一个待命单位，R 敌方威胁范围，F 结束回合，M 菜单，+ / − 缩放 · arrows or WASD move the cursor, Enter / Space / Z confirm, Esc / X cancel, Q / E turn the view, Tab next ready unit, R enemy threat, F end turn, M menu, + / − zoom |
 | 手柄 · Gamepad | 摇杆 / 十字键移动光标，A 确定，B 取消，LB / RB 转视角，Y 下一个单位，X 威胁范围，Start 菜单，Select 结束回合，右摇杆平移 · stick or d-pad move, A confirm, B cancel, LB / RB turn, Y next unit, X threat, Start menu, Select end turn, right stick pans |
 | 触屏 · Touch | 点选单位和格子（移动时点一次看路线、再点一次确认），双指缩放，拖动平移，屏幕下方有结束回合、下一个、威胁范围、转视角、缩放按钮 · tap units and tiles (in a move, one tap shows the path, a second goes), pinch to zoom, drag to pan; buttons along the bottom |

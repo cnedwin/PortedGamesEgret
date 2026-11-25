@@ -192,15 +192,17 @@ async function backdrop() {
 
 // ---- input ----
 const input = createInput(canvas, {
+  frame: document.querySelector('#frame'),
   on(command, detail) {
     if (app.screens.open) return void app.screens.command(command, detail);
     if (app.battle && !app.battle.attract) app.battle.command(command, detail);
     else if (command === 'confirm' || command === 'cancel' || command === 'menu') app.screens.title();
   },
   point: (x, y) => app.battle && !app.battle.attract && !app.screens.open && app.battle.point(x, y),
-  tap: (x, y, b) => app.battle && !app.battle.attract && !app.screens.open && app.battle.tap(x, y, b),
+  tap: (x, y, detail) => app.battle && !app.battle.attract && !app.screens.open && app.battle.tap(x, y, detail),
+  canNavigate: () => Boolean(app.battle && !app.battle.attract && !app.screens.open && app.battle.canNavigate),
   pan: (dx, dy) => stage.rig.panBy(-dx * 0.045 * (stage.rig.view.d / 60), dy * 0.045 * (stage.rig.view.d / 60)),
-  zoom: (f) => stage.rig.zoomBy(f)
+  zoom: (f, at) => at ? stage.rig.zoomAt(f, at[0], at[1], canvas.clientWidth, canvas.clientHeight) : stage.rig.zoomBy(f)
 });
 
 // ---- the frame ----

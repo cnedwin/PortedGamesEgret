@@ -44,6 +44,21 @@ body {
   outline: none;
   background: linear-gradient(#78b2ec, #d6e8f0 60%, #a0bc96);
   touch-action: none;
+  cursor: grab;
+}
+#stage[data-board-mode='move'],
+#stage[data-board-mode='target'],
+#stage[data-board-mode='dir'],
+#stage[data-board-mode='tile'],
+#stage[data-board-mode='drop'],
+#stage[data-board-mode='recruit'] {
+  cursor: crosshair;
+}
+#stage[data-hover-action] {
+  cursor: pointer;
+}
+#stage.panning {
+  cursor: grabbing;
 }
 #ui {
   position: absolute;

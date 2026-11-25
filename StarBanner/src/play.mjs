@@ -155,6 +155,13 @@ export async function startBattle(app, { setup, saved = null, attract = false })
   function setMode(mode) {
     s.mode = mode;
     hud.setCancel(cancellable.has(mode));
+    if (attract) return;
+    stage.canvas.dataset.boardMode = mode;
+    delete stage.canvas.dataset.hoverAction;
+    if (!app.touch) {
+      const label = { idle: 'mouseIdle', move: 'mouseMove', target: 'mouseTarget' }[mode];
+      hud.hint(label ? t(label) : null);
+    }
   }
 
   const worldOf = (x, y, h = 0) => [(x + 0.5 - game.w / 2) * TILE, h, (y + 0.5 - game.h / 2) * TILE];
@@ -162,7 +169,7 @@ export async function startBattle(app, { setup, saved = null, attract = false })
     const w = stage.canvas.clientWidth,
       h = stage.canvas.clientHeight;
     const v = projectToViewport3D(stage.camera, p, w, h);
-    return { x: v.x, y: v.y, ok: v.inFront };
+    return { x: v.x, y: v.y, depth: v.depth, ok: v.inFront };
   };
   const heightAt = (x, y) => {
     const u = visible(x, y) ? unitAt(game, x, y) : null;
@@ -289,7 +296,7 @@ export async function startBattle(app, { setup, saved = null, attract = false })
     s.dest = null;
     s.recruit = null;
     hud.forecast(null);
-    hud.hint(null);
+    if (app.touch) hud.hint(null);
     hud.setBusy(false);
     overlay.showCursor(true);
     setCursor(cursor.x, cursor.y);
@@ -386,7 +393,7 @@ export async function startBattle(app, { setup, saved = null, attract = false })
     s.targets = targetsFrom(knowledge(), u, s.dest.x, s.dest.y, s.dest.x !== u.x || s.dest.y !== u.y);
     s.ti = 0;
     setMode('target');
-    hud.hint(t('pickTarget'));
+    hud.hint(t(app.touch ? 'pickTarget' : 'mouseTarget'));
     overlay.tiles(s.targets.map((v) => ({ x: v.x, y: v.y, kind: 'attack' })));
     setCursor(s.targets[0].x, s.targets[0].y);
     showForecast();
@@ -992,11 +999,7 @@ export async function startBattle(app, { setup, saved = null, attract = false })
       if (u) return sound.play('error');
       return mapMenu();
     }
-    if (s.mode === 'move') {
-      const u = unitById(game, s.sel);
-      if (x === u.x && y === u.y) return chooseDest(x, y);
-      return chooseDest(x, y);
-    }
+    if (s.mode === 'move') return chooseDest(x, y);
     if (s.mode === 'target') {
       const i = s.targets.findIndex((v) => v.x === x && v.y === y);
       if (i < 0) return sound.play('error');
@@ -1058,9 +1061,49 @@ export async function startBattle(app, { setup, saved = null, attract = false })
   }
 
   // ---- pointer ----
+  function recruitableAt(x, y) {
+    const building = buildingAt(game, x, y);
+    return building?.owner === human && BUILDINGS[building.kind].takes && !building.recruited;
+  }
+  function pickTile(px, py, mouse) {
+    const canvas = stage.canvas;
+    const ground = stage.rig.tileAt(px, py, canvas.clientWidth, canvas.clientHeight);
+    if (!mouse || (s.mode !== 'idle' && s.mode !== 'target')) return ground;
+
+    // Pick the visible body in selection/targeting. Deployment and movement keep their exact ground grid.
+    let nearest = null, bestScore = Infinity;
+    const bodyAt = (entity) => {
+      if (!visible(entity.x, entity.y)) return;
+      const figure = entity.kind ? pieces.get(entity.id) : figures.get(entity.id);
+      if (!figure?.holder.visible) return;
+      const head = screenOf(figure.head()), base = screenOf(figure.holder.position);
+      if (!base.ok || !head.ok) return;
+      const dx = head.x - base.x, dy = head.y - base.y;
+      const length = Math.hypot(dx, dy);
+      if (length < 4) return;
+      const along = Math.min(0.94, Math.max(0.05, ((px - base.x) * dx + (py - base.y) * dy) / (length * length)));
+      const radius = Math.max(6, length * (entity.kind ? 0.44 : 0.29));
+      const centreDistance = Math.hypot(px - base.x - dx * along, py - base.y - dy * along) / radius;
+      const score = centreDistance + base.depth * 0.3;
+      if (centreDistance <= 1 && score < bestScore) {
+        nearest = { x: entity.x, y: entity.y };
+        bestScore = score;
+      }
+    };
+    if (s.mode === 'target') {
+      for (const target of s.targets) bodyAt(target);
+    } else {
+      for (const u of game.units) bodyAt(u);
+      for (const b of game.buildings) if (recruitableAt(b.x, b.y)) bodyAt(b);
+    }
+    return nearest ?? ground;
+  }
   function point(px, py) {
     if (!isHumanTurn() || s.mode === 'busy' || s.mode === 'menu' || hud.menuOpen) return;
-    const tile = stage.rig.tileAt(px, py, stage.canvas.clientWidth, stage.canvas.clientHeight);
+    const tile = pickTile(px, py, true);
+    const unit = tile && visible(tile.x, tile.y) ? unitAt(game, tile.x, tile.y) : null;
+    const action = Boolean(tile && s.mode === 'idle' && ((unit?.owner === human && !unit.done) || recruitableAt(tile.x, tile.y)));
+    if (action !== stage.canvas.hasAttribute('data-hover-action')) stage.canvas.toggleAttribute('data-hover-action', action);
     if (!tile || (tile.x === cursor.x && tile.y === cursor.y)) return;
     cursor.x = tile.x;
     cursor.y = tile.y;
@@ -1068,12 +1111,19 @@ export async function startBattle(app, { setup, saved = null, attract = false })
     refreshCards();
     hoverChanged();
   }
-  function tap(px, py, button) {
-    if (button === 2) return command('cancel');
+  function tap(px, py, { device }) {
     if (!isHumanTurn() || s.mode === 'busy' || hud.menuOpen) return;
-    const tile = stage.rig.tileAt(px, py, stage.canvas.clientWidth, stage.canvas.clientHeight);
+    const touch = device === 'touch';
+    const tile = pickTile(px, py, !touch);
     if (!tile) return;
-    if (app.touch && s.mode === 'recruit') {
+    if (!touch && s.mode === 'idle') {
+      setCursor(tile.x, tile.y, { follow: false });
+      const unit = visible(tile.x, tile.y) ? unitAt(game, tile.x, tile.y) : null;
+      if (unit?.owner === human && !unit.done) return selectUnit(unit);
+      if (recruitableAt(tile.x, tile.y)) return recruitAt(buildingAt(game, tile.x, tile.y));
+      return;
+    }
+    if (touch && s.mode === 'recruit') {
       if (!s.recruit.spots.some((spot) => spot.x === tile.x && spot.y === tile.y)) return sound.play('error');
       const preview = s.recruit.preview;
       if (!preview || preview.x !== tile.x || preview.y !== tile.y) {
@@ -1085,12 +1135,12 @@ export async function startBattle(app, { setup, saved = null, attract = false })
     }
     if (s.mode === 'target') {
       const i = s.targets.findIndex((v) => v.x === tile.x && v.y === tile.y);
-      if (i < 0) return cancel();
+      if (i < 0) return touch ? cancel() : sound.play('error');
       if (i !== s.ti || cursor.x !== tile.x || cursor.y !== tile.y) {
         s.ti = i;
         setCursor(tile.x, tile.y);
         showForecast();
-        if (app.touch) return;
+        if (touch) return;
       }
     }
     if (s.mode === 'dir') {
@@ -1101,7 +1151,7 @@ export async function startBattle(app, { setup, saved = null, attract = false })
       artMarks(unitById(game, s.sel));
     }
     // On touch, the first tap on a tile in move mode shows the path; a second tap goes.
-    if (app.touch && s.mode === 'move' && (tile.x !== cursor.x || tile.y !== cursor.y)) {
+    if (touch && s.mode === 'move' && (tile.x !== cursor.x || tile.y !== cursor.y)) {
       setCursor(tile.x, tile.y);
       return;
     }
@@ -1168,6 +1218,9 @@ export async function startBattle(app, { setup, saved = null, attract = false })
     get mode() {
       return s.mode;
     },
+    get canNavigate() {
+      return !hud.menuOpen && !s.over;
+    },
     /** Draw the interface again in the current language. */
     relabel() {
       hud.closeMenu();
@@ -1203,6 +1256,10 @@ export async function startBattle(app, { setup, saved = null, attract = false })
     },
     dispose() {
       s.disposed = true;
+      if (!attract) {
+        delete stage.canvas.dataset.boardMode;
+        delete stage.canvas.dataset.hoverAction;
+      }
       hud.closeMenu();
       hud.dispose();
       board.dispose();
