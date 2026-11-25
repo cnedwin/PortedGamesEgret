@@ -5,6 +5,21 @@
 Checked against QUALITY-CHECKLIST.md. The automatic items were measured by `node tools/quality.mjs StarBanner`, which writes
 this file; items by hand or on a device are marked not run until someone runs them.
 
+## 2026-11-25 真机回归 · Hardware regression
+
+本节记录以 PR #238 的合并版本为基线、在本地候选版上的复测。以下历史自动表仍保留最初的 Linux 软件渲染结果。
+
+This section records the local fixes tested against the PR #238 build. The original Linux software-rendering results remain below.
+
+| 设备 · Device | 实测 · Measured |
+|---|---|
+| Windows Edge 158 / RTX 5090 Laptop / WebGL2 高画质 | 键鼠选格、旋转缩放、占领、手选出兵、攻击、回合、投降结算、重战与旧档续读。一次相同本地冷启动对照中，最大主线程任务 1069 → 106 ms，标题就绪 2068.5 → 865.5 ms。仍有一次 199 ms 浏览器帧间隔。 · Keyboard/mouse selections, deployment, combat and saves. One controlled cold run reduced the largest main-thread task from 1069 to 106 ms. A 199 ms frame interval remained. |
+| Galaxy Z Fold7 / Android Chrome / Adreno 830 / WebGL2 自动低画质 / 411 × 813 CSS px | 触屏点格、取消、双指缩放、拖动、手选出兵、电脑回合、续档、认输重打和首章战役独立续档。麦浪渡口和带迷雾的双子海湾短样本 p95 16.7 ms。 · Touch selection, cancel, pinch, pan, deployment, AI turns, resume, rematch and independent campaign resume. Short samples on Wheatwater Ford and fog-enabled Twin Coves measured 16.7 ms p95. |
+
+实机输入由浏览器自动化注入。真手柄、手机扬声器听感和三章从新档到通关的完整人工游玩仍待覆盖。Windows 软件渲染下三张旧参考图对比失败，原始合并版本在同环境也复现，功能断言通过。
+
+Inputs were injected by browser automation on physical devices. Gamepad input, phone speaker listening and a full human playthrough of all chapters were outside this check. The three legacy pixel comparisons also failed on the original build under Windows software rendering. Functional assertions passed independently.
+
 ## 测量环境 · Where it was measured
 
 - 日期 · Date: 2026-11-25

@@ -23,6 +23,17 @@ export function createOverlay(scene, bounds) {
   root.name = 'overlay';
   scene.addChild(root);
   const capacity = bounds.w * bounds.h;
+  let fog;
+  if (bounds.fog) {
+    const fogMaterial = createUnlitMaterial3D({ color: [0.07, 0.10, 0.19], opacity: 0.65, alphaMode: 'blend', depthWrite: false, toneMapped: false, fog: false });
+    fog = new InstancedMesh3D(createPlaneGeometry3D({ width: TILE + 0.012, height: TILE + 0.012 }), fogMaterial, capacity);
+    fog.name = 'war-fog';
+    fog.count = 0;
+    fog.castShadow = false;
+    fog.receiveShadow = false;
+    fog.renderOrder = 4;
+    root.addChild(fog);
+  }
   const tileMaterial = createUnlitMaterial3D({ color: [1, 1, 1], opacity: 1, alphaMode: 'blend', depthWrite: false, toneMapped: false, fog: false });
   const tiles = new InstancedMesh3D(createPlaneGeometry3D({ width: TILE * 0.92, height: TILE * 0.92 }), tileMaterial, capacity, 4);
   tiles.count = 0;
@@ -74,6 +85,17 @@ export function createOverlay(scene, bounds) {
     cursorPos = null,
     arrowHeight = 2.4;
   const overlay = {
+    fog(visible) {
+      if (!fog) return;
+      let count = 0;
+      for (let y = 0; y < bounds.h; y++) for (let x = 0; x < bounds.w; x++) {
+        if (visible.has(y * bounds.w + x)) continue;
+        const [cx, cz] = centre(x, y);
+        mat4Compose(m4, [cx, heightOf(x, y) + 0.01, cz], UP, [1, 1, 1]);
+        fog.setMatrixAt(count++, m4);
+      }
+      fog.count = count;
+    },
     /** Show `list` of {x, y, kind} tile marks; kinds from MARK. Replaces what was shown. */
     tiles(list) {
       tiles.count = Math.min(capacity, list.length);

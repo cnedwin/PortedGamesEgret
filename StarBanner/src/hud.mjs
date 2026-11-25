@@ -87,13 +87,13 @@ export function createHud(root, { onButton, touch = false }) {
     const info = el('div', 'info');
     const name = el('div', 'name', `${say(c)}${human ? ` · ${t('you')}` : ''}`);
     const row = el('div', 'row');
-    row.append(el('span', 'gold', t('gold', { n: p.gold })), el('span', 'hp', `♥ ${p.hp ?? '—'}`));
+    row.append(el('span', 'gold', t('gold', { n: p.unknown ? '—' : p.gold })), el('span', 'hp', `♥ ${p.unknown ? '—' : p.hp ?? '—'}`));
     const meter = el('div', 'meter');
     const fill = el('i');
-    fill.style.width = `${Math.round((100 * p.meter) / c.meter)}%`;
+    fill.style.width = p.unknown ? '0%' : `${Math.round((100 * p.meter) / c.meter)}%`;
     meter.append(fill);
-    meter.classList.toggle('full', p.meter >= c.meter);
-    meter.title = `${t('meter')} ${p.meter}/${c.meter} · ${say(c.art)}`;
+    meter.classList.toggle('full', !p.unknown && p.meter >= c.meter);
+    meter.title = p.unknown ? t('fogUnknown') : `${t('meter')} ${p.meter}/${c.meter} · ${say(c.art)}`;
     info.append(name, row, meter);
     card.append(face, info);
     if (!p.alive) card.classList.add('out');
@@ -118,8 +118,16 @@ export function createHud(root, { onButton, touch = false }) {
       const s = el('div', 'stars' + (def < 0 ? ' skull' : ''), stars(def));
       s.title = `${t('defence')} ${def}`;
       tileCard.append(s);
+      if (info.unknown) {
+        tileCard.append(el('div', 'line small', t('fogUnknown')));
+        return;
+      }
       if (info.building) {
         const b = info.building;
+        if (b.owner === -2) {
+          tileCard.append(el('div', 'line small', t('destroyed')));
+          return;
+        }
         const who = b.owner < 0 ? t('neutral') : b.owner === info.human ? t('you') : t('foe');
         const line = el('div', 'line', `${t('owner')}：${who}${b.owner >= 0 ? ` · ${t('hp')} ${b.hp}` : ''}`);
         if (b.owner >= 0) line.style.color = TEAMS[b.owner].css;

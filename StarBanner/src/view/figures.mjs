@@ -18,7 +18,7 @@ export const BODY = {
   mage: { h: 2.18, rig: true },
   giant: { h: 3.05, rig: true },
   merfolk: { h: 2.03, rig: true },
-  hound: { h: 1.48 },
+  hound: { h: 1.48, rig: true, heading: -0.43, gaitSpeed: 2.15 },
   knight: { h: 2.72 },
   wagon: { h: 2.27 },
   ballista: { h: 2.11 },
@@ -39,7 +39,7 @@ export const BODY = {
 /** The building models and how tall they stand. */
 export const BUILDING_BODY = { hq: { model: 'stronghold', h: 4.06 }, barracks: { model: 'barracks', h: 2.96 }, tower: { model: 'tower', h: 4.52 }, port: { model: 'port', h: 2.5 }, village: { model: 'village', h: 2.81 } };
 
-const STRIKE_CLIP = { archer: 'shoot', mage: 'shoot', edmund: 'shoot', vireta: 'shoot' };
+const STRIKE_CLIP = { archer: 'shoot', mage: 'shoot', edmund: 'shoot', vireta: 'shoot', hound: 'pounce' };
 
 /** The model that draws a unit: its own kind, or its commander. */
 export const modelOf = (unit) => (unit.type === 'commander' ? unit.commander : unit.type);
@@ -168,6 +168,7 @@ export function makeFigure(library, unit, bounds, team) {
     team,
     rigged: !!mixer && !!clips.idle
   };
+  let motionVersion = 0;
   const play = (name, { loop = true, fade = 0.18, speed = 1 } = {}) => {
     const next = clips[name];
     if (!next) return null;
@@ -176,10 +177,24 @@ export function makeFigure(library, unit, bounds, team) {
     next.clampWhenFinished = !loop;
     next.timeScale = speed;
     next.play();
-    if (state.action && state.action !== next) state.action.crossFadeTo(next, fade);
-    else next.fadeIn(fade);
+    const previous = state.action;
+    if (previous && previous !== next && !previous.paused) {
+      // A one-shot clip must not pause while it is fading out.
+      previous.clampWhenFinished = false;
+      previous.crossFadeTo(next, fade);
+    } else {
+      if (previous && previous !== next) previous.stop();
+      next.fadeIn(fade);
+    }
     state.action = next;
+    motionVersion++;
     return next;
+  };
+  const resumeIdle = (version, delay, fade) => {
+    // A counterattack or fatal hit can already be playing a newer clip.
+    setTimeout(() => {
+      if (motionVersion === version) play('idle', { fade });
+    }, delay);
   };
   if (state.rigged) play('idle', { fade: 0 });
 
@@ -192,7 +207,8 @@ export function makeFigure(library, unit, bounds, team) {
     const bob = state.hover ? Math.sin(state.clock * 2.2) * 0.12 : state.sea ? Math.sin(state.clock * 1.6) * 0.05 : 0;
     const base = state.sea ? -0.3 : 0;
     holder.setPosition(p.x, base + state.hover + bob, p.z);
-    holder.setRotation(0, state.facing + (state.rigged ? Math.PI : 0), 0);
+    // The hound's shared rig faces +Z at a slight angle. The humanoid rigs face -Z.
+    holder.setRotation(0, state.facing + (state.rigged ? (body.heading ?? Math.PI) : 0), 0);
     // Rigid pieces sway, tilt into a lunge and roll a little at sea.
     const roll = state.sea ? Math.sin(state.clock * 1.3) * 0.05 : state.hover ? Math.sin(state.clock * 1.7) * 0.06 : 0;
     pivot.setPosition(0, 0, state.lunge * 0.55);
@@ -245,7 +261,7 @@ export function makeFigure(library, unit, bounds, team) {
     /** Walk `path` ([{x, y}] after the start), a fixed time per tile. */
     async walk(path, perTile = 0.16) {
       if (!path.length) return;
-      if (state.rigged) play('walk', { speed: 1.4 });
+      if (state.rigged) play('walk', { speed: body.gaitSpeed ?? 1.4 });
       for (const step of path) {
         const from = ground(state.tile.x, state.tile.y),
           to = ground(step.x, step.y);
@@ -273,9 +289,10 @@ export function makeFigure(library, unit, bounds, team) {
       const clip = STRIKE_CLIP[name] ?? 'slash';
       if (state.rigged && clips[clip]) {
         const a = play(clip, { loop: false, fade: 0.08, speed: 1.5 });
+        const version = motionVersion;
         const length = a?.clip?.duration ?? 1;
         await wait(Math.min(0.55, (length / 1.5) * 0.45));
-        setTimeout(() => state.rigged && play('idle', { fade: 0.25 }), Math.min(700, (length / 1.5) * 500));
+        resumeIdle(version, Math.min(700, (length / 1.5) * 500), 0.25);
         return;
       }
       // A lunge for the rest.
@@ -290,7 +307,7 @@ export function makeFigure(library, unit, bounds, team) {
       paint();
       if (state.rigged && clips.hurt) {
         play('hurt', { loop: false, fade: 0.05, speed: 1.6 });
-        setTimeout(() => state.rigged && state.fade === 1 && play('idle', { fade: 0.3 }), 650 / (state.speed ?? 1));
+        resumeIdle(motionVersion, 650 / (state.speed ?? 1), 0.3);
       }
       for (let i = 0; i < 8; i++) {
         state.flash = Math.max(0, 0.85 - i * 0.12);
@@ -324,6 +341,7 @@ export function makeFigure(library, unit, bounds, team) {
       if (state.sink) holder.position[1] -= state.sink;
     },
     dispose() {
+      motionVersion++;
       holder.removeFromParent();
     }
   };

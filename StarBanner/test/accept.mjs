@@ -85,6 +85,9 @@ try {
   const names = await page.evaluate(() => [...document.querySelectorAll('.menu-item .l')].map((e) => e.textContent));
   check(names[0] === '剑士' && names.includes('巨人'), `the barracks list the ground troops, cheapest first (${names.slice(0, 4).join('、')}…)`);
   await page.keyboard.press('Enter');
+  await until(page, () => window.egretGame.battle.mode === 'recruit', 60);
+  check((await battle(page, () => window.egretGame.battle.game.players[0].gold)) === 200, 'choosing a recruit previews deployment without charging');
+  await page.keyboard.press('Enter');
   await until(page, () => window.egretGame.battle.mode === 'idle', 60);
   const after = await battle(page, () => ({ gold: window.egretGame.battle.game.players[0].gold, n: window.egretGame.battle.game.units.filter((u) => u.owner === 0).length }));
   check(after.gold === 100 && after.n === start.units + 1, `a swordsman is recruited for 100 gold (${JSON.stringify(after)})`);

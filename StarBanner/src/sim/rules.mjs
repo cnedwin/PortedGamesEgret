@@ -115,10 +115,10 @@ export function canBoard(unit, carrier) {
 /**
  * Every tile `unit` can reach this turn: Map of key → { x, y, cost, from }. Friends may be passed through, foes and
  * buildings that are not its own may not; its own buildings may be crossed but not stopped on.
+ * The AI can extend the budget to plan beyond one turn. Executing a move always uses the normal budget.
  */
-export function reach(game, unit) {
-  const move = UNITS[unit.type].move,
-    budget = UNITS[unit.type].steps;
+export function reach(game, unit, budget = UNITS[unit.type].steps) {
+  const move = UNITS[unit.type].move;
   const seen = new Map([[key(unit.x, unit.y), { x: unit.x, y: unit.y, cost: 0, from: null }]]);
   const open = [seen.get(key(unit.x, unit.y))];
   while (open.length) {

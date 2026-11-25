@@ -9,9 +9,11 @@ import { startBattle } from './play.mjs';
 import { createScreens } from './screens.mjs';
 import { createInput } from './input.mjs';
 import { createSound } from './audio/sound.mjs';
-import { openSave, settingsOf, recordBattle, battleIsWhole } from './saves.mjs';
+import { openSave, settingsOf, recordBattle, battleIsWhole, campaignProgressOf, campaignChapterUnlocked, campaignBattleOf, keepCampaignBattle, recordCampaignResult } from './saves.mjs';
 import { setLanguage, getLanguage, t } from './i18n.mjs';
 import { MAPS } from './sim/maps.mjs';
+import { campaignChapter, campaignSetup } from './sim/campaign.mjs';
+import { cloneGame } from './sim/rules.mjs';
 import { loadProblems } from './view/assets.mjs';
 
 const params = new URLSearchParams(location.search);
@@ -61,14 +63,24 @@ const app = {
   },
   record: () => save.data.record ?? { won: 0, lost: 0 },
   hasBattle: () => battleIsWhole(save.data.battle),
-  lastSetup: () => ({ map: 'wheat', you: 'seline', foe: 'garron', level: 'normal', first: true, ...(save.data.lastSetup ?? {}) }),
+  lastSetup: () => ({ map: 'wheat', you: 'seline', foe: 'garron', level: 'normal', first: true, fog: false, ...(save.data.lastSetup ?? {}) }),
+  campaignProgress: () => campaignProgressOf(save.data),
+  campaignBattle: () => campaignBattleOf(save.data),
+  campaignUnlocked: (id) => campaignChapterUnlocked(save.data, id),
   keepBattle(kept) {
-    save.update((d) => void (d.battle = kept));
+    save.update((d) => {
+      if (kept.setup.campaign) keepCampaignBattle(d, kept);
+      else d.battle = kept;
+    });
   },
   async finishBattle({ won, why, game, setup }) {
-    save.update((d) => recordBattle(d, setup.map, won));
+    const chapter = campaignChapter(setup.campaign);
+    save.update((d) => {
+      if (chapter) recordCampaignResult(d, chapter.id, won);
+      else recordBattle(d, setup.map, won);
+    });
     await new Promise((r) => setTimeout(r, 900));
-    app.screens.result({ won, why, game, human: setup.human });
+    app.screens.result({ won, why, game, human: setup.human, chapter });
   },
   overlay(name) {
     return name === 'help' ? app.screens.help() : app.screens.settings();
@@ -79,12 +91,25 @@ const app = {
     const sides = [];
     sides[human] = { commander: choice.you, ai: false };
     sides[1 - human] = { commander: choice.foe, ai: true, level: choice.level };
-    const setup = { map: choice.map, sides, human, seed: Number(params.get('seed') ?? Date.now() % 100000) };
+    const setup = { map: choice.map, sides, human, seed: Number(params.get('seed') ?? Date.now() % 100000), fog: Boolean(choice.fog) };
     await play({ setup });
   },
   async resume() {
     const kept = save.data.battle;
     await play({ setup: kept.setup, saved: kept.game });
+  },
+  async startCampaign(id) {
+    const setup = campaignSetup(id);
+    if (!setup || !app.campaignUnlocked(id) || app.campaignBattle()) return;
+    await play({ setup });
+  },
+  async resumeCampaign() {
+    const kept = app.campaignBattle();
+    if (kept) await play({ setup: kept.setup, saved: kept.game });
+  },
+  async toCampaign() {
+    await app.toTitle();
+    app.screens.campaign();
   },
   async toTitle() {
     app.screens.closeAll();
@@ -153,6 +178,7 @@ async function play({ setup, saved = null, attract = false }) {
   battle.attract = attract;
   battle.human = setup.human;
   app.battle = battle;
+  if (setup.campaign && !battle.game.over) app.keepBattle({ setup, game: cloneGame(battle.game) });
   tellLoadProblems();
   return battle;
 }

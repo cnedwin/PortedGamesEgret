@@ -8,6 +8,7 @@
 import { projectToViewport3D } from '@egret/engine/world3d';
 import { createGame, act, reach, stops, pathTo, targetsFrom, forecast, actionsAt, unitAt, buildingAt, unitById, buildingById, terrainAt, recruitSpots, reinforcePlan, unloadSpots, distance, commanderOf, cloneGame, artReady } from './sim/rules.mjs';
 import { createBrain, nextOrder } from './sim/ai.mjs';
+import { battleSight, knownBattle, sightTile } from './sim/fog.mjs';
 import { UNITS, BUILDINGS, recruitsOf, isAir } from './sim/units.mjs';
 import { COMMANDERS } from './sim/commanders.mjs';
 import { mapById } from './sim/maps.mjs';
@@ -71,7 +72,8 @@ export async function startBattle(app, { setup, saved = null, attract = false })
 
   // ---- the board ----
   const set = SET_OF[stage.quality] ?? 'mid';
-  const bounds = { w: game.w, h: game.h, water: (x, y) => WATER.has(game.terrain[y * game.w + x]) };
+  const fog = Boolean(setup.fog && !attract);
+  const bounds = { w: game.w, h: game.h, fog, water: (x, y) => WATER.has(game.terrain[y * game.w + x]) };
   const library = app.library ?? (app.library = createLibrary(set));
   const wanted = new Set([...Object.values(BUILDING_BODY).map((b) => b.model), ...game.players.map((p) => p.commander)]);
   for (const u of game.units) {
@@ -127,9 +129,29 @@ export async function startBattle(app, { setup, saved = null, attract = false })
   // ---- interface ----
   const makeHud = () => (attract ? quietHud() : createHud(ui, { onButton: (key) => command(key, { device: 'button' }), touch: app.touch }));
   let hud = makeHud();
-  const s = { mode: 'busy', sel: null, reached: null, dest: null, targets: [], ti: 0, threat: false, over: false, disposed: false, dropQueue: null, drops: [], aiRunning: false };
+  const s = { mode: 'busy', sel: null, reached: null, dest: null, targets: [], ti: 0, threat: false, over: false, disposed: false, recruit: null, dropQueue: null, drops: [], aiRunning: false };
   const isHumanTurn = () => game.current === human && !game.over;
-  const cancellable = new Set(['move', 'act', 'target', 'tile', 'dir', 'drop']);
+  const contacts = new Set();
+  let sight = fog ? battleSight(game, human) : null;
+  const visible = (x, y) => !sight || sight.has(sightTile(game, x, y));
+  const knowledge = () => knownBattle(game, human, sight);
+  function updateSight() {
+    if (!fog) return;
+    const next = battleSight(game, human);
+    for (const tile of contacts) next.add(tile);
+    if (next.size !== sight.size || [...next].some((tile) => !sight.has(tile))) overlay.fog(next);
+    sight = next;
+    for (const [id, figure] of figures) {
+      const unit = unitById(game, id);
+      figure.holder.visible = Boolean(unit && (unit.owner === human || visible(unit.x, unit.y)));
+    }
+    for (const building of game.buildings) {
+      const piece = pieces.get(building.id);
+      const owner = visible(building.x, building.y) ? building.owner : -1;
+      if (piece.owner !== owner) piece.setOwner(owner);
+    }
+  }
+  const cancellable = new Set(['move', 'act', 'target', 'tile', 'dir', 'drop', 'recruit']);
   function setMode(mode) {
     s.mode = mode;
     hud.setCancel(cancellable.has(mode));
@@ -143,7 +165,7 @@ export async function startBattle(app, { setup, saved = null, attract = false })
     return { x: v.x, y: v.y, ok: v.inFront };
   };
   const heightAt = (x, y) => {
-    const u = unitAt(game, x, y);
+    const u = visible(x, y) ? unitAt(game, x, y) : null;
     if (u) return (BODY[modelOf(u)]?.h ?? 1.6) + (BODY[modelOf(u)]?.hover ?? 0);
     const b = buildingAt(game, x, y);
     if (b) return BUILDING_BODY[b.kind].h;
@@ -156,21 +178,25 @@ export async function startBattle(app, { setup, saved = null, attract = false })
       turn: game.turn,
       current: game.current,
       human,
-      players: game.players.map((p, i) => ({ ...p, hp: commanderOf(game, i)?.hp ?? 0 }))
+      players: game.players.map((p, i) => {
+        const unit = commanderOf(game, i);
+        return { ...p, hp: unit?.hp ?? 0, unknown: Boolean(fog && i !== human && (!unit || !visible(unit.x, unit.y))) };
+      })
     });
   }
   function refreshCards() {
-    const u = unitAt(game, cursor.x, cursor.y) ?? (s.sel && s.dest && s.dest.x === cursor.x && s.dest.y === cursor.y ? unitById(game, s.sel) : null);
+    const known = visible(cursor.x, cursor.y);
+    const u = (known ? unitAt(game, cursor.x, cursor.y) : null) ?? (s.sel && s.dest && s.dest.x === cursor.x && s.dest.y === cursor.y ? unitById(game, s.sel) : null);
     const b = buildingAt(game, cursor.x, cursor.y);
-    hud.tile({ terrain: terrainAt(game, cursor.x, cursor.y), building: b, human });
+    hud.tile({ terrain: terrainAt(game, cursor.x, cursor.y), building: b, human, unknown: !known });
     hud.unit(u ? { unit: u } : null);
   }
-  function setCursor(x, y, { focus = false } = {}) {
+  function setCursor(x, y, { focus = false, follow = true } = {}) {
     cursor.x = Math.max(0, Math.min(game.w - 1, x));
     cursor.y = Math.max(0, Math.min(game.h - 1, y));
     overlay.cursor(cursor.x, cursor.y, heightAt(cursor.x, cursor.y));
     if (focus) stage.rig.focus(cursor.x, cursor.y);
-    else keepInView();
+    else if (follow) keepInView();
     refreshCards();
     hoverChanged();
   }
@@ -188,11 +214,12 @@ export async function startBattle(app, { setup, saved = null, attract = false })
   function idleMarks() {
     const marks = [];
     if (s.threat) for (const k of threatTiles()) marks.push({ x: k % 1000, y: Math.floor(k / 1000), kind: 'threat' });
-    const u = unitAt(game, cursor.x, cursor.y);
+    const field = knowledge();
+    const u = unitAt(field, cursor.x, cursor.y);
     if (u && s.mode === 'idle') {
       // Hovering a unit shows where it could go and strike.
-      const r = reach(game, u);
-      const can = stops(game, u, r);
+      const r = reach(field, u);
+      const can = stops(field, u, r);
       for (const n of can) marks.push({ x: n.x, y: n.y, kind: 'move' });
       for (const k of strikeRing(u, can)) marks.push({ x: k % 1000, y: Math.floor(k / 1000), kind: 'attack' });
     }
@@ -218,9 +245,10 @@ export async function startBattle(app, { setup, saved = null, attract = false })
   }
   function threatTiles() {
     const all = new Set();
-    for (const foe of game.units) {
+    const field = knowledge();
+    for (const foe of field.units) {
       if (foe.owner === human) continue;
-      const can = stops(game, { ...foe, done: false });
+      const can = stops(field, { ...foe, done: false });
       for (const k of strikeRing(foe, can)) all.add(k);
       for (const n of can) if (UNITS[foe.type].weapon?.mobile && UNITS[foe.type].weapon.min === 1) all.add(n.y * 1000 + n.x);
     }
@@ -228,7 +256,7 @@ export async function startBattle(app, { setup, saved = null, attract = false })
   }
   function moveMarks() {
     const u = unitById(game, s.sel);
-    const can = stops(game, u, s.reached);
+    const can = stops(knowledge(), u, s.reached);
     const marks = can.map((n) => ({ x: n.x, y: n.y, kind: 'move' }));
     for (const k of strikeRing(u, can)) marks.push({ x: k % 1000, y: Math.floor(k / 1000), kind: 'attack' });
     overlay.tiles(marks);
@@ -259,6 +287,7 @@ export async function startBattle(app, { setup, saved = null, attract = false })
     s.sel = null;
     s.reached = null;
     s.dest = null;
+    s.recruit = null;
     hud.forecast(null);
     hud.hint(null);
     hud.setBusy(false);
@@ -267,7 +296,7 @@ export async function startBattle(app, { setup, saved = null, attract = false })
   }
   function selectUnit(u) {
     s.sel = u.id;
-    s.reached = reach(game, u);
+    s.reached = reach(knowledge(), u);
     setMode('move');
     sound.play('select');
     moveMarks();
@@ -275,14 +304,29 @@ export async function startBattle(app, { setup, saved = null, attract = false })
   async function chooseDest(x, y) {
     const u = unitById(game, s.sel);
     const node = s.reached.get(y * 1000 + x);
-    const ok = stops(game, u, s.reached).some((n) => n.x === x && n.y === y);
+    const ok = stops(knowledge(), u, s.reached).some((n) => n.x === x && n.y === y);
     if (!node || !ok) return sound.play('error');
+    const realReach = fog ? reach(game, u) : s.reached;
+    if (!stops(game, u, realReach).some((spot) => spot.x === x && spot.y === y)) {
+      const contact = pathTo(s.reached, x, y)
+        .map((step) => unitAt(game, step.x, step.y))
+        .find((other) => other && other.owner !== human && !visible(other.x, other.y));
+      if (contact) {
+        contacts.add(sightTile(game, contact.x, contact.y));
+        updateSight();
+        s.reached = reach(knowledge(), u);
+        moveMarks();
+        refreshCards();
+        hud.toast(t('fogContact'), 'gold');
+      }
+      return sound.play('error');
+    }
     sound.play('confirm');
     s.dest = { x, y };
     setMode('busy');
     overlay.tiles([]);
     overlay.path([]);
-    const path = pathTo(s.reached, x, y);
+    const path = pathTo(realReach, x, y);
     const fig = figures.get(u.id);
     playSteps(path.length);
     await fig.walk(path, reduce() ? 0.05 : 0.15);
@@ -294,7 +338,8 @@ export async function startBattle(app, { setup, saved = null, attract = false })
   async function openActions() {
     const u = unitById(game, s.sel);
     setMode('act');
-    const actions = actionsAt(game, u, s.dest.x, s.dest.y);
+    const actions = actionsAt(knowledge(), u, s.dest.x, s.dest.y)
+      .filter((action) => action.kind !== 'capture' || visible(s.dest.x, s.dest.y));
     const items = actions.map((a) => {
       const item = { key: a, label: t(a.kind === 'art' ? 'artAction' : a.kind) };
       if (a.kind === 'reinforce') {
@@ -338,7 +383,7 @@ export async function startBattle(app, { setup, saved = null, attract = false })
   // Attack targets.
   function beginTargeting() {
     const u = unitById(game, s.sel);
-    s.targets = targetsFrom(game, u, s.dest.x, s.dest.y, s.dest.x !== u.x || s.dest.y !== u.y);
+    s.targets = targetsFrom(knowledge(), u, s.dest.x, s.dest.y, s.dest.x !== u.x || s.dest.y !== u.y);
     s.ti = 0;
     setMode('target');
     hud.hint(t('pickTarget'));
@@ -476,12 +521,24 @@ export async function startBattle(app, { setup, saved = null, attract = false })
       return beginIdle();
     }
     const spots = recruitSpots(game, b, type);
-    const foes = game.units.filter((u) => u.owner !== human);
-    const at = spots.sort((p, q) => Math.min(...foes.map((f) => distance(p.x, p.y, f.x, f.y)), 99) - Math.min(...foes.map((f) => distance(q.x, q.y, f.x, f.y)), 99))[0];
+    if (!spots.length) return beginIdle();
+    s.recruit = { building: b, type, spots, preview: null };
+    setMode('recruit');
+    hud.hint(t(app.touch ? 'recruitSpotTouch' : 'recruitSpot'));
+    overlay.tiles(spots.map(({ x, y }) => ({ x, y, kind: 'drop' })));
+    setCursor(spots[0].x, spots[0].y, { follow: false });
+  }
+
+  async function placeRecruit(x, y) {
+    const { building, type } = s.recruit;
+    const at = recruitSpots(game, building, type).find((spot) => spot.x === x && spot.y === y);
+    if (!at) return sound.play('error');
     setMode('busy');
+    hud.hint(null);
+    overlay.tiles([]);
     await library.want([type]);
     if (s.disposed) return;
-    const events = act(game, { kind: 'recruit', building: b.id, type, at });
+    const events = act(game, { kind: 'recruit', building: building.id, type, at });
     await playEvents(events);
     afterAction();
   }
@@ -495,6 +552,7 @@ export async function startBattle(app, { setup, saved = null, attract = false })
         { key: 'threat', label: `${t('threat')}：${s.threat ? t('on') : t('off')}` },
         { key: 'help', label: t('howTo') },
         { key: 'settings', label: t('settings') },
+        { key: 'title', label: t('saveAndTitle') },
         { key: 'concede', label: t('surrender') },
         { key: null, label: t('back') }
       ],
@@ -508,6 +566,10 @@ export async function startBattle(app, { setup, saved = null, attract = false })
     if (choice === 'settings') {
       await app.overlay('settings');
       for (const f of figures.values()) f.setSpeed(speedOf());
+    }
+    if (choice === 'title') {
+      keep();
+      return app.toTitle();
     }
     if (choice === 'concede') {
       const sure = await hud.menu(
@@ -547,17 +609,21 @@ export async function startBattle(app, { setup, saved = null, attract = false })
         hud.setBusy(true);
         overlay.showCursor(false);
         hud.hint(t('thinking'));
-        const order = nextOrder(game, brains[game.current]);
+        const order = nextOrder(game, brains[game.current], fog ? { visible: battleSight(game, game.current) } : undefined);
         if (order.kind === 'move') {
           const u = unitById(game, order.unit);
-          stage.rig.focus(u.x, u.y);
-          await wait(reduce() ? 0.05 : 0.25);
+          if (u && visible(u.x, u.y)) {
+            stage.rig.focus(u.x, u.y);
+            await wait(reduce() ? 0.05 : 0.25);
+          }
         }
         if (order.kind === 'recruit') {
           await library.want([order.type]);
           const b = buildingById(game, order.building);
-          stage.rig.focus(b.x, b.y);
-          await wait(0.2);
+          if (visible(b.x, b.y)) {
+            stage.rig.focus(b.x, b.y);
+            await wait(0.2);
+          }
         }
         hud.hint(null);
         const events = act(game, order);
@@ -582,6 +648,13 @@ export async function startBattle(app, { setup, saved = null, attract = false })
         case 'move': {
           if (walked) break;
           const f = figures.get(e.unit);
+          const unit = unitById(game, e.unit);
+          const last = e.path.at(-1);
+          if (fog && unit?.owner !== human && last && (!f.holder.visible || !visible(last.x, last.y))) {
+            f.snap(last.x, last.y);
+            f.holder.visible = visible(last.x, last.y);
+            break;
+          }
           playSteps(e.path.length);
           await f.walk(e.path, reduce() ? 0.05 : 0.13);
           break;
@@ -591,9 +664,11 @@ export async function startBattle(app, { setup, saved = null, attract = false })
           break;
         case 'fall': {
           const f = figures.get(e.unit);
-          sound.play('fall');
-          fx.burst(worldOf(e.x, e.y, 0.6), [0.9, 0.85, 0.8], 18, 2.5, 0.7);
-          await f?.fall();
+          if (visible(e.x, e.y)) {
+            sound.play('fall');
+            fx.burst(worldOf(e.x, e.y, 0.6), [0.9, 0.85, 0.8], 18, 2.5, 0.7);
+            await f?.fall();
+          }
           f?.dispose();
           figures.delete(e.unit);
           for (const c of e.cargo) {
@@ -605,6 +680,7 @@ export async function startBattle(app, { setup, saved = null, attract = false })
         }
         case 'capture': {
           const b = buildingById(game, e.building);
+          if (b.owner !== human && !visible(b.x, b.y)) break;
           sound.play('capture');
           pieces.get(b.id).setOwner(b.owner);
           fx.ring(worldOf(b.x, b.y), TEAMS[b.owner].ring, 1.6);
@@ -616,6 +692,7 @@ export async function startBattle(app, { setup, saved = null, attract = false })
         case 'neutral':
         case 'razed': {
           const b = buildingById(game, e.building);
+          if (!visible(b.x, b.y) && e.owner !== human) break;
           pieces.get(b.id).setOwner(b.owner);
           fx.burst(worldOf(b.x, b.y, 1), [0.8, 0.75, 0.7], 24, 3.5, 0.9);
           hud.toast(t('neutralised', { name: say(BUILDINGS[b.kind]) }), e.owner === human ? 'bad' : 'good');
@@ -627,6 +704,11 @@ export async function startBattle(app, { setup, saved = null, attract = false })
           await library.want([modelOf(u)]);
           if (s.disposed) return;
           const f = addFigure(u);
+          if (u.owner !== human && !visible(u.x, u.y)) {
+            f.holder.visible = false;
+            refreshTop();
+            break;
+          }
           f.face(u.x + (u.owner === 0 ? 1 : 0), u.y + (u.owner === 0 ? 0 : 1));
           sound.play('coin');
           fx.ring(worldOf(u.x, u.y), TEAMS[u.owner].ring, 1.2);
@@ -637,6 +719,7 @@ export async function startBattle(app, { setup, saved = null, attract = false })
         }
         case 'reinforce': {
           const u = unitById(game, e.unit);
+          if (!visible(u.x, u.y)) break;
           sound.play('heal');
           fx.rise(worldOf(u.x, u.y, 0.2), [0.5, 1, 0.6], 18);
           floatAt(u.x, u.y, `+${e.heal}`, 'heal');
@@ -645,12 +728,13 @@ export async function startBattle(app, { setup, saved = null, attract = false })
         }
         case 'heal': {
           const u = unitById(game, e.unit);
+          if (!visible(e.at.x, e.at.y)) break;
           await figures.get(u.id)?.strike();
           sound.play('heal');
           fx.ring(worldOf(e.at.x, e.at.y), [0.4, 1, 0.6], 2.6);
           for (const h of e.healed) {
             const v = unitById(game, h.unit);
-            if (!v) continue;
+            if (!v || !visible(v.x, v.y)) continue;
             fx.rise(worldOf(v.x, v.y, 0.2), [0.5, 1, 0.6], 14);
             floatAt(v.x, v.y, `+${h.add}`, 'heal');
           }
@@ -659,12 +743,15 @@ export async function startBattle(app, { setup, saved = null, attract = false })
         }
         case 'hex': {
           const u = unitById(game, e.unit);
-          await figures.get(u.id)?.strike();
+          const seen = visible(u.x, u.y);
+          const hits = e.hit.map((h) => ({ h, unit: unitById(game, h.unit) })).filter(({ unit }) => unit && visible(unit.x, unit.y));
+          if (!seen && !hits.length) break;
+          if (seen) {
+            await figures.get(u.id)?.strike();
+            fx.ring(worldOf(u.x, u.y), [0.7, 0.3, 1], 8);
+          }
           sound.play('hex');
-          fx.ring(worldOf(u.x, u.y), [0.7, 0.3, 1], 8);
-          for (const h of e.hit) {
-            const v = unitById(game, h.unit);
-            if (!v) continue;
+          for (const { h, unit: v } of hits) {
             fx.burst(worldOf(v.x, v.y, 1), [0.7, 0.3, 1], 10, 2, 0.6);
             floatAt(v.x, v.y, `-${h.lose}`, 'dmg');
             void figures.get(v.id)?.hurt();
@@ -673,18 +760,22 @@ export async function startBattle(app, { setup, saved = null, attract = false })
           break;
         }
         case 'load': {
-          sound.play('step');
           const f = figures.get(e.unit);
+          const shown = f?.holder.visible;
           if (f) f.holder.visible = false;
-          await wait(0.2);
+          if (shown) {
+            sound.play('step');
+            await wait(0.2);
+          }
           break;
         }
         case 'unload': {
           const u = unitById(game, e.unit);
           const f = figures.get(e.unit) ?? addFigure(u);
           f.snap(u.x, u.y);
-          f.holder.visible = true;
+          f.holder.visible = visible(u.x, u.y);
           f.setDone(true);
+          if (!f.holder.visible) break;
           sound.play('step');
           fx.ring(worldOf(u.x, u.y), [0.6, 1, 0.7], 1);
           await wait(0.3);
@@ -696,6 +787,8 @@ export async function startBattle(app, { setup, saved = null, attract = false })
         case 'endTurn':
           break;
         case 'startTurn': {
+          contacts.clear();
+          updateSight();
           refreshTop();
           for (const [id, f] of figures) {
             const u = unitById(game, id);
@@ -705,7 +798,7 @@ export async function startBattle(app, { setup, saved = null, attract = false })
           sound.music(mine ? 'dawn' : 'raven');
           sound.play('banner');
           if (!reduce()) await hud.banner(t('turn', { n: e.turn }), mine ? t('yourTurn') : t('foeTurn'), TEAMS[e.owner].css, 1.2 / Math.sqrt(speedOf()));
-          if (e.income) hud.toast(`${say(COMMANDERS[game.players[e.owner].commander])} · ${t('income', { n: e.income })}`, mine ? 'good' : '');
+          if (e.income && (mine || !fog)) hud.toast(`${say(COMMANDERS[game.players[e.owner].commander])} · ${t('income', { n: e.income })}`, mine ? 'good' : '');
           if (mine && artReady(game, human)) hud.toast(t('artReady'), 'gold');
           if (mine) {
             const c = commanderOf(game, human);
@@ -722,9 +815,11 @@ export async function startBattle(app, { setup, saved = null, attract = false })
           break;
       }
     }
+    updateSight();
   }
 
   function floatAt(x, y, text, kind) {
+    if (!visible(x, y)) return;
     const h = heightAt(x, y);
     const p = screenOf(worldOf(x, y, h + 0.2));
     if (p.ok) hud.float(text, p.x, p.y, kind);
@@ -736,7 +831,10 @@ export async function startBattle(app, { setup, saved = null, attract = false })
     const fromFig = !e.fromBuilding ? figures.get(e.from) : null;
     const toFig = e.building ? pieces.get(e.to) : figures.get(e.to);
     if (!from || !to) return;
-    if (!e.counter) stage.rig.focus((from.x + to.x) / 2, (from.y + to.y) / 2);
+    const seeFrom = visible(from.x, from.y), seeTo = visible(to.x, to.y);
+    if (!seeFrom && !seeTo) return;
+    if (!e.counter) stage.rig.focus(seeFrom && seeTo ? (from.x + to.x) / 2 : seeTo ? to.x : from.x,
+      seeFrom && seeTo ? (from.y + to.y) / 2 : seeTo ? to.y : from.y);
     fromFig?.face(to.x, to.y);
     if (!e.building && !e.fromBuilding) toFig?.face?.(from.x, from.y);
     const type = e.fromBuilding ? 'archer' : from.type;
@@ -746,13 +844,14 @@ export async function startBattle(app, { setup, saved = null, attract = false })
     if (e.fromBuilding) kind = 'arrow';
     sound.play(STRIKE_SOUND[type] ?? 'slash');
     if (fromFig) await fromFig.strike();
-    if (kind) {
+    if (kind && seeFrom && seeTo) {
       const a = worldOf(from.x, from.y, (BODY[modelOf(from)]?.hover ?? 0) + 1.1);
       const b = worldOf(to.x, to.y, (to.kind ? 1.2 : (BODY[modelOf(to)]?.hover ?? 0) + 0.8));
       if (e.fromBuilding) a[1] = 2;
       await fx.missile(kind, a, b, (kind === 'stone' || kind === 'shell' ? 0.7 : kind === 'fire' ? 0.35 : 0.42) / Math.sqrt(speedOf()));
       if (HIT_SOUND[kind]) sound.play(HIT_SOUND[kind]);
     } else if (type === 'swordsman' || type === 'commander' || type === 'knight' || type === 'pikeman') sound.play('clang', { volume: 0.6 });
+    if (!seeTo) return;
     const hitAt = worldOf(to.x, to.y, to.kind ? 1.2 : (BODY[modelOf(to)]?.hover ?? 0) + 0.9);
     if (e.critical) {
       sound.play('critical');
@@ -769,16 +868,20 @@ export async function startBattle(app, { setup, saved = null, attract = false })
   async function playArt(e) {
     const u = unitById(game, e.unit);
     const fig = figures.get(e.unit);
-    stage.rig.focus(u.x, u.y);
-    sound.play('art');
     const c = COMMANDERS[e.commander];
-    if (!reduce()) await hud.banner(say(c.art), say(c), TEAMS[u.owner].css, 1.1);
-    fx.ring(worldOf(u.x, u.y), [1, 0.85, 0.3], 3);
-    fx.rise(worldOf(u.x, u.y, 0.3), [1, 0.85, 0.3], 26, 1);
-    if (e.dir) fig.face(u.x + e.dir[0], u.y + e.dir[1]);
-    if (e.at) fig.face(e.at.x, e.at.y);
-    await fig?.strike();
-    if (e.at) {
+    let shown = visible(u.x, u.y);
+    if (shown) {
+      stage.rig.focus(u.x, u.y);
+      sound.play('art');
+      if (!reduce()) await hud.banner(say(c.art), say(c), TEAMS[u.owner].css, 1.1);
+      fx.ring(worldOf(u.x, u.y), [1, 0.85, 0.3], 3);
+      fx.rise(worldOf(u.x, u.y, 0.3), [1, 0.85, 0.3], 26, 1);
+      if (e.dir) fig?.face(u.x + e.dir[0], u.y + e.dir[1]);
+      if (e.at) fig?.face(e.at.x, e.at.y);
+      await fig?.strike();
+    }
+    if (e.at && visible(e.at.x, e.at.y)) {
+      shown = true;
       for (let i = 0; i < 5; i++) {
         const tx = e.at.x + (Math.random() - 0.5) * 2,
           ty = e.at.y + (Math.random() - 0.5) * 2;
@@ -791,6 +894,8 @@ export async function startBattle(app, { setup, saved = null, attract = false })
       const target = h.building ? buildingById(game, h.id) : unitById(game, h.id);
       const tx = target?.x ?? u.x,
         ty = target?.y ?? u.y;
+      if (!visible(tx, ty)) continue;
+      shown = true;
       if (h.heal !== undefined) {
         fx.rise(worldOf(tx, ty, 0.2), h.guard ? [0.6, 0.7, 1] : [0.5, 1, 0.6], 14);
         if (h.heal) floatAt(tx, ty, `+${h.heal}`, 'heal');
@@ -801,8 +906,10 @@ export async function startBattle(app, { setup, saved = null, attract = false })
         else void figures.get(h.id)?.hurt();
       }
     }
-    if (!reduce()) shake(0.3);
-    await wait(0.8);
+    if (shown) {
+      if (!reduce()) shake(0.3);
+      await wait(0.8);
+    }
     refreshTop();
   }
 
@@ -897,6 +1004,7 @@ export async function startBattle(app, { setup, saved = null, attract = false })
       return commit({ kind: 'attack', target: target.kind ? { building: target.id } : { unit: target.id } });
     }
     if (s.mode === 'dir') return commit({ kind: 'art', dir: s.dir });
+    if (s.mode === 'recruit') return placeRecruit(x, y);
     if (s.mode === 'tile') {
       if (distance(x, y, s.dest.x, s.dest.y) > s.tileReach) return sound.play('error');
       return commit({ kind: s.tileKind, at: { x, y } });
@@ -911,6 +1019,14 @@ export async function startBattle(app, { setup, saved = null, attract = false })
   }
 
   function cancel() {
+    if (s.mode === 'recruit') {
+      const { building } = s.recruit;
+      s.recruit = null;
+      hud.hint(null);
+      overlay.tiles([]);
+      setCursor(building.x, building.y, { follow: false });
+      return recruitAt(building);
+    }
     if (s.mode === 'move') {
       sound.play('cancel');
       const u = unitById(game, s.sel);
@@ -957,6 +1073,16 @@ export async function startBattle(app, { setup, saved = null, attract = false })
     if (!isHumanTurn() || s.mode === 'busy' || hud.menuOpen) return;
     const tile = stage.rig.tileAt(px, py, stage.canvas.clientWidth, stage.canvas.clientHeight);
     if (!tile) return;
+    if (app.touch && s.mode === 'recruit') {
+      if (!s.recruit.spots.some((spot) => spot.x === tile.x && spot.y === tile.y)) return sound.play('error');
+      const preview = s.recruit.preview;
+      if (!preview || preview.x !== tile.x || preview.y !== tile.y) {
+        s.recruit.preview = tile;
+        setCursor(tile.x, tile.y, { follow: false });
+        hud.hint(t('recruitSpotConfirm'));
+        return;
+      }
+    }
     if (s.mode === 'target') {
       const i = s.targets.findIndex((v) => v.x === tile.x && v.y === tile.y);
       if (i < 0) return cancel();
@@ -1013,6 +1139,8 @@ export async function startBattle(app, { setup, saved = null, attract = false })
   }
 
   // ---- begin ----
+  if (fog) overlay.fog(sight);
+  updateSight();
   refreshTop();
   sound.music(game.current === human ? 'dawn' : 'raven');
   overlay.showCursor(true);
