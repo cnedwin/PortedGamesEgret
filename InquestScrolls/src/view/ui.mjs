@@ -220,14 +220,22 @@ export function createFocus(game, layer) {
     index = -1;
   const ring = new Sprite();
   layer.addChild(ring);
+  // The ring is drawn again only when it moves or shows: an unchanged frame is then left as it is (play draws on
+  // demand), instead of being drawn again for a ring in the same place.
+  let drawn = '';
   const draw = () => {
-    ring.graphics.clear();
     const it = items[index];
-    if (!it || it.sprite.isDisposed || !game.focusVisible) return;
-    const p = it.sprite.localToGlobal ? it.sprite.localToGlobal(0, 0) : { x: it.sprite.x, y: it.sprite.y };
-    const ox = it.ox ?? -it.w / 2,
-      oy = it.oy ?? -it.h / 2;
-    ring.graphics.lineStyle(3, VERMILION, 1).drawRect(p.x + ox - 5, p.y + oy - 5, it.w + 10, it.h + 10);
+    const p = it && !it.sprite.isDisposed && game.focusVisible ? (it.sprite.localToGlobal ? it.sprite.localToGlobal(0, 0) : { x: it.sprite.x, y: it.sprite.y }) : null;
+    const ox = it?.ox ?? -(it?.w ?? 0) / 2,
+      oy = it?.oy ?? -(it?.h ?? 0) / 2;
+    // The ring lies on the UI layer, whose origin may sit inside the stage (a mini game): place it in that layer.
+    const q = p ? layer.globalToLocal(p.x, p.y) : null;
+    const key = q ? `${Math.round(q.x + ox)},${Math.round(q.y + oy)},${Math.round(it.w)},${Math.round(it.h)}` : '';
+    if (key === drawn) return;
+    drawn = key;
+    ring.graphics.clear();
+    if (!q) return;
+    ring.graphics.lineStyle(3, VERMILION, 1).drawRect(q.x + ox - 5, q.y + oy - 5, it.w + 10, it.h + 10);
     ring.graphics.lineStyle(0, 0, 0);
   };
   return {

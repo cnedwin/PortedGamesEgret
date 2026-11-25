@@ -62,13 +62,14 @@ findings are "too clean", and with Old Qin, his coroner's aide, reopens them one
 ## 平台 · Platforms
 
 - 网页：电脑横屏 1280×720、手机竖屏 720×1280 两套布局，转屏时整屏重建。 · The page: 1280 × 720 wide and 720 × 1280 tall, rebuilt when the phone turns.
-- 微信小游戏：竖屏。`node InquestScrolls/tools/wechat.mjs --engine <Egret_rebuild> --esbuild <esbuild> --playwright <playwright/index.mjs> --out <新目录>` 先整理一份小游戏用的目录（不带 CanvasKit、字体构建和高清背景，图片按手机屏缩小），交给引擎的 `tools/wechat/export-wechat.mjs` 打包（WebP 转 JPEG/PNG），再把 `assets/art/` 设成分包，开局后下载。实测主包 2.18 MB、图片分包 9.38 MB、合计 11.56 MB（上限 4 MB / 30 MB）。小游戏里段落用引擎的画布文字标签拼出来（`src/view/plainText.mjs`），判词和笔录用字盘。 · The WeChat mini game, upright: the script above puts together a copy fit for a mini game (no CanvasKit, no font build, no full-size backgrounds, pictures sized for a phone), packs it with the engine's exporter (WebP as JPEG or PNG) and makes `assets/art/` a subpackage downloaded after the start. Measured: main package 2.18 MB, picture subpackage 9.38 MB, 11.56 MB in all (limits 4 MB and 30 MB). In the mini game paragraphs are put together from the engine's canvas labels and the verdict and the notes use the board.
+- 微信小游戏：竖屏。`node InquestScrolls/tools/wechat.mjs --engine <Egret_rebuild> --esbuild <esbuild> --playwright <playwright/index.mjs> --out <新目录>` 先整理一份小游戏用的目录（不带 CanvasKit、字体构建和高清背景，图片按手机屏缩小），交给引擎的 `tools/wechat/export-wechat.mjs` 打包（WebP 转 JPEG/PNG），再把 `assets/art/` 设成分包，开局后下载。实测主包 2.20 MB、图片分包 9.38 MB、合计 11.57 MB（上限 4 MB / 30 MB）。小游戏里段落用引擎的画布文字标签拼出来（`src/view/plainText.mjs`），判词和笔录用字盘。 · The WeChat mini game, upright: the script above puts together a copy fit for a mini game (no CanvasKit, no font build, no full-size backgrounds, pictures sized for a phone), packs it with the engine's exporter (WebP as JPEG or PNG) and makes `assets/art/` a subpackage downloaded after the start. Measured: main package 2.20 MB, picture subpackage 9.38 MB, 11.57 MB in all (limits 4 MB and 30 MB). In the mini game paragraphs are put together from the engine's canvas labels and the verdict and the notes use the board.
 
 ## 引擎能力对照表 · Engine capabilities
 
 | 引擎入口 / API · Entry / API | 在本游戏中的用途 · Use in this game | 文件 · File |
 |---|---|---|
 | `@egret/engine/play` · `play` | 画布、舞台、帧循环；横屏 1280×720、竖屏 720×1280 两套布局，`arrange` 转屏重建；键盘、指针、手柄、`onTap`、`tween`、`after` · canvas, stage and loop; the wide and tall layouts, rebuilt on turning; keys, pointer, pad, taps, tweens, timers | [src/main.mjs](src/main.mjs) |
+| `play({ renderMode: 'on-demand' })` + `game.invalidate` | 标题、卷宗、证物这些静止画面保留上一帧，不再每帧重画；笔录编辑器提交后请求重画 · still screens keep their last frame; the notes editor asks for a redraw after it commits | [src/main.mjs](src/main.mjs), [src/view/notes.mjs](src/view/notes.mjs) |
 | `game.gestures`（drag、pinch） | 拖动平移现场、双指缩放；词囊列表拖动滚动 · drag to pan the scene, pinch to zoom; drag to scroll the pouch | [src/view/casebook.mjs](src/view/casebook.mjs), [src/view/dossier.mjs](src/view/dossier.mjs) |
 | `game.dragAndDrop`（source、target） | 把词签拖进卷宗空位：只接收同类的词，悬停变色，落下即填 · word slips dragged into blanks: a blank takes only its kind, shows the hover and fills on the drop | [src/view/dossier.mjs](src/view/dossier.mjs) |
 | `@egret/engine/paragraph` · `createParagraphCache`、`createParagraph`（`textGeometry`、`runs`） | 卷宗、证物、序言、提示等长文由 CanvasKit 排版；带颜色的词段；用文字几何（`getSelectionRects`、`clusters`、`hitTest`）定位空位、找点中的词、画下划线 · every long text laid out by CanvasKit, with coloured runs; the text geometry places the blanks, finds the word under a finger and draws the underlines | [src/view/type.mjs](src/view/type.mjs), [src/view/dossier.mjs](src/view/dossier.mjs), [src/view/card.mjs](src/view/card.mjs) |
@@ -87,7 +88,7 @@ findings are "too clean", and with Old Qin, his coroner's aide, reopens them one
 
 - `node --test InquestScrolls/test/*.test.mjs`：28 项通过（Node 22）。案卷审计——六案在中英两套案卷里各自可解、每个空的答案唯一、词囊里没有能同时填进两个空的词，且审计能抓出改坏的案卷；规则（收词、填空、核验的三种结果、三级提示、判词按关键词判定）；存档（新档、坏档、版本）；文字表中英齐全；字体子集盖住全部用字；引擎副本与 import map 一致、规则不碰引擎和页面。 · 28 tests pass in Node 22: the case audit (each case solvable in both languages, every blank with one answer, no word fitting two blanks, a broken case caught), the rules, the save, the word table, the font subset and the engine copy.
 - `node InquestScrolls/test/accept.mjs`：无头 Chromium（SwiftShader 软件渲染）里走完标题 → 序 → 案情 → 第一案：鼠标点掉老秦、点尸身、点词收进词囊，J 打开卷宗，用鼠标把词签拖进空位，先错一处得到“尚有两处以内不实”，改对盖印，人物页对上名字后结案；第二案连要三级提示；在原生文本框里写笔录并存档；设置里关音乐、切英文；最后一案用画布文字输入写判词、呈上、看到终卷；不用 CanvasKit、用字盘的小游戏模式下证物、笔录和判词都能完成；坏档重开；竖屏 720×1280 打开案件。标题与盖印的卷宗两张截图基线一致，没有控制台错误。 · The whole walk in headless Chromium with software rendering, as listed, with two matching baselines and a clean console.
-- 微信小游戏：`tools/wechat.mjs` 导出（主包 2.18 MB，合计 11.56 MB），`node InquestScrolls/test/minigame.mjs` 在引擎的微信替身里（GameGlobal 只有 wx、控制台和计时器，390×844 竖屏，鼠标当手指）从标题一路点进第一案、点尸身收词、在卷宗里填空并点核验盖印、用字盘写笔录、在最后一案用字盘写判词并呈上结案；页面上没有多出元素，没有错误。 · Exported and played in the engine's WeChat stand-in, as listed, with no element leaked and no error.
+- 微信小游戏：`tools/wechat.mjs` 导出（主包 2.20 MB，合计 11.57 MB），`node InquestScrolls/test/minigame.mjs` 在引擎的微信替身里（GameGlobal 只有 wx、控制台和计时器，390×844 竖屏，鼠标当手指）从标题一路点进第一案、点尸身收词、在卷宗里填空并点核验盖印、用字盘写笔录、在最后一案用字盘写判词并呈上结案；页面上没有多出元素，没有错误。 · Exported and played in the engine's WeChat stand-in, as listed, with no element leaked and no error.
 - `node tools/check-standard.mjs InquestScrolls --strict`、`npm run check:showcase`、`node tools/capability-matrix.mjs --check` 通过。 · The standard, showcase and capability checks pass.
 
 ## 已知问题 · Known issues
@@ -96,11 +97,12 @@ findings are "too clean", and with Old Qin, his coroner's aide, reopens them one
 - 小游戏没有网页字体，标签用系统自带的中文字体，标题不是书法字；舞台按 720×1280 居中，长屏上下留边。 · The mini game has no page fonts: its labels use the system's Chinese face, so titles are not in the brush face; the 720 × 1280 stage is centred with bars on a tall screen.
 - 小游戏的图片分包靠 `wx.loadSubpackage` 开局下载；替身没有这个接口，所以分包下载这一步只在代码里，没有被运行过。 · The picture subpackage is downloaded with `wx.loadSubpackage`; the stand-in has no such call, so that step has not been run.
 - CanvasKit 运行库 8.5 MB，网页首次打开要先下载它和 1.7 MB 字体，并在标题出现前初始化 CanvasKit，所以限速限 CPU 的首屏测量远超 3 秒（L1）。 · The page downloads the 8.5 MB CanvasKit runtime and 1.7 MB of fonts and starts CanvasKit before the title shows, so the throttled start-up measurement is far over 3 s (L1).
-- 软件渲染下每帧要画整幅绢画背景，帧时间 p95 约 67 ms（F1）；标题背景已在够用时改用半尺寸图。真显卡上的帧时间没有量过。 · Under software rendering each frame paints a full-screen painting, about 67 ms at p95 (F1); the title already uses the half-size picture when it suffices. Frame times on a real GPU were not measured.
 - 竖屏时卷宗里的词签和空位约 37–46 个舞台单位高，在 390 CSS px 宽的手机上只有 20–25 CSS px，低于 44 px 的建议；标题、过场和工具栏的按钮已加高到 80 以上。 · Upright, the dossier's slips and blanks are 37–46 stage units tall, 20–25 CSS px on a 390 px phone, under the 44 px guideline; buttons on the title, the story pages and the tool bar were made 80+ tall.
-- 品质验收未达标 · Quality items failing（[QUALITY.md](QUALITY.md)，2026-11-25，无头 Chromium + SwiftShader · headless, software rendering）：F1 桌面帧时间 p95 ≤ 16.7 ms（p95 66.7 ms over 82 frames）；L1 首屏 ≤ 3 s（10/5 Mbps、40 ms、CPU ×4）（13.6 s to the first playable screen, 2.6 MB）。
+- 品质验收未达标 · Quality items failing（[QUALITY.md](QUALITY.md)，2026-11-25，无头 Chromium + SwiftShader · headless, software rendering）：L1 首屏 ≤ 3 s（10/5 Mbps、40 ms、CPU ×4）（13.9 s to the first playable screen, 2.7 MB）。
 
 ## 已解决 · Solved
+
+- 软件渲染下标题的帧时间 p95 原来约 67 ms（F1 不达标）：随引擎 `95897d7` 改用 `renderMode: 'on-demand'`，静止的画面保留上一帧；标题和过场的背景不再慢慢平移，焦点框只在移动时重画。现在 p95 16.8 ms。现场里的灯焰、水纹等环境动态照常每帧画。 · The title's frame time was about 67 ms at p95 under software rendering: with the engine's on-demand drawing (`95897d7`) a still screen keeps its frame, the backdrops no longer drift and the focus ring is drawn only when it moves; now 16.8 ms. The scenes' flames and water still draw every frame.
 
 - 按钮点不中：引擎只拿节点自己的绘制做命中区，按钮的底画在子节点上，所以点不到；按钮自己补一块透明命中区（ENGINE-NOTES 第 5 条）。 · Buttons could not be clicked: the engine hits only a node's own drawing; each button now draws a clear hit box of its own (ENGINE-NOTES 5).
 - 标签在重排后消失或残留：移除精灵不会释放标签的光栅缓存，统一用 `type.discard` 先释放再移除（第 6 条）。 · Labels vanished or lingered after re-layout: removing a sprite does not free a label's raster, so `type.discard` lets it go first (item 6).
@@ -137,10 +139,10 @@ findings are "too clean", and with Old Qin, his coroner's aide, reopens them one
 
 ## 引擎副本 · Engine copy
 
-引擎副本取自 [Egret_rebuild](https://github.com/cnedwin/Egret_rebuild) 提交 `f0f2e01e627e072f9d7bc459b31b20dc1a902e70`，由引擎仓库的 `tools/vendor-game.mjs` 复制，见 [vendor/SOURCE.md](vendor/SOURCE.md)。
+引擎副本取自 [Egret_rebuild](https://github.com/cnedwin/Egret_rebuild) 提交 `95897d78095ae8fda9e34dbc13bbbd15db8eaa12`，由引擎仓库的 `tools/vendor-game.mjs` 复制，见 [vendor/SOURCE.md](vendor/SOURCE.md)。
 
 The engine copy is from [Egret_rebuild](https://github.com/cnedwin/Egret_rebuild) commit
-`f0f2e01e627e072f9d7bc459b31b20dc1a902e70`, copied by the engine's `tools/vendor-game.mjs`; see
+`95897d78095ae8fda9e34dbc13bbbd15db8eaa12`, copied by the engine's `tools/vendor-game.mjs`; see
 [vendor/SOURCE.md](vendor/SOURCE.md).
 
 ```sh
