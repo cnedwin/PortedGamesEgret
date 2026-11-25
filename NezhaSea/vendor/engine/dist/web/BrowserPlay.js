@@ -15,7 +15,10 @@ import { SFX_PRESETS, isSfxRecipe, synthesizeSfx } from './playSfx.js';
 import { createPlayWidgets } from './playWidgets.js';
 import { prefersReducedMotion, watchReducedMotion } from './BrowserPreferences.js';
 import { createPlayTouch } from './playTouch.js';
-import { MUSIC_PARTS, composeMusic, musicMix } from './playMusic.js';
+import { MUSIC_MOODS, MUSIC_PARTS, composeMusic, musicMix } from './playMusic.js';
+import { createDragAndDrop, createGestures } from './gestures.js';
+import { createPlayViews } from './playView.js';
+import { createBadges, createRequest, formatCompact } from './viewParts.js';
 /** A line of text: a sprite to place, fade, tween and remove like any other, with words that can be changed. */
 export class PlayText extends Sprite {
     #text;
@@ -141,11 +144,14 @@ class PlayingLoop {
         this.#volume = Math.max(0, Math.min(1, volume));
         this.#pitch = Math.max(0.25, Math.min(4, pitch));
         this.#pan = Math.max(-1, Math.min(1, pan));
-        const made = sound();
-        if (made === undefined)
+        if (mixer === undefined) {
+            this.#stopped = true;
+            return;
+        }
+        if (sound === undefined)
             return;
         try {
-            this.#voice = mixer.play(made, {
+            this.#voice = mixer.play(sound, {
                 loop: true,
                 volume: 0,
                 rate: this.#pitch,
@@ -250,6 +256,32 @@ export async function play(options) {
         throw invalid('update is a function');
     if (onError !== undefined && typeof onError !== 'function')
         throw invalid('onError is a function');
+    const fitAsked = options.fit ?? 'contain';
+    if (fitAsked !== 'contain' && fitAsked !== 'expand')
+        throw invalid("fit is 'contain' or 'expand'");
+    if (options.portrait !== undefined &&
+        (options.portrait === null ||
+            typeof options.portrait !== 'object' ||
+            !Number.isSafeInteger(options.portrait.width) ||
+            !Number.isSafeInteger(options.portrait.height) ||
+            options.portrait.width <= 0 ||
+            options.portrait.height <= 0))
+        throw invalid('portrait is { width, height } of whole numbers above 0');
+    if (options.insets !== undefined &&
+        (options.insets === null ||
+            typeof options.insets !== 'object' ||
+            [options.insets.top, options.insets.right, options.insets.bottom, options.insets.left].some(edge => !finite(edge) || edge < 0)))
+        throw invalid('insets is { top, right, bottom, left } of numbers 0 or more');
+    if (options.arrange !== undefined && typeof options.arrange !== 'function')
+        throw invalid('arrange is a function');
+    if (options.semantics !== undefined &&
+        (options.semantics === null ||
+            typeof options.semantics !== 'object' ||
+            typeof options.semantics.add !== 'function' ||
+            typeof options.semantics.publish !== 'function'))
+        throw invalid('semantics is a tree made by createUiSemantics');
+    if (options.audio !== undefined && typeof options.audio !== 'boolean')
+        throw invalid('audio is true or false');
     if (options.reducedMotion !== undefined && typeof options.reducedMotion !== 'boolean')
         throw invalid('reducedMotion is true or false');
     // Given, it is the game's; not given, it follows the system's setting.
@@ -266,18 +298,22 @@ export async function play(options) {
         throw invalid('play needs a page');
     const win = page.defaultView ?? globalThis;
     // The canvas: the caller's as it stands, or one of our own in a holder it is fitted into.
+    const embedded = options.parent !== undefined || options.canvas !== undefined;
     let holder, canvas = options.canvas;
     if (canvas === undefined) {
         holder = page.createElement('div');
         const parent = options.parent;
         holder.style.cssText =
             parent === undefined
-                ? 'position:fixed;left:0;top:0;width:100%;height:100%;overflow:hidden;background:#000'
-                : 'position:relative;width:100%;overflow:hidden;background:#000;' +
+                ? 'position:fixed;left:0;top:0;width:100%;height:100%;overflow:hidden'
+                : 'position:relative;width:100%;overflow:hidden;' +
                     // A parent with no height of its own is given the stage's shape.
                     (parent.clientHeight > 0 ? 'height:100%' : `aspect-ratio:${width}/${height}`);
+        holder.style.background = options.transparent === true ? 'transparent' : '#000';
         canvas = page.createElement('canvas');
-        canvas.style.cssText = 'display:block;touch-action:none;outline:none';
+        canvas.style.cssText = 'display:block;touch-action:none';
+        if (!embedded)
+            canvas.style.outline = 'none';
         holder.appendChild(canvas);
         (parent ?? page.body).appendChild(holder);
     }
@@ -294,7 +330,9 @@ export async function play(options) {
         effects: true,
         autoStart: false,
         keyboard: false,
-        ...(holder === undefined ? {} : { fit: 'contain', fitTo: holder }),
+        ...(holder === undefined ? {} : { fit: fitAsked, fitTo: holder }),
+        ...(options.portrait === undefined ? {} : { portrait: options.portrait }),
+        ...(options.insets === undefined ? {} : { insets: options.insets }),
         ...(options.backend === undefined ? {} : { backend: options.backend }),
         ...(onError === undefined ? {} : { onError })
     }).catch((cause) => {
@@ -340,7 +378,7 @@ export async function play(options) {
             renderSharedFrame: frame => engine.renderSharedFrame(frame)
         },
         host: baseBrowser.host,
-        frame: baseBrowser.frame,
+        frame: () => baseBrowser.frame,
         update: () => {
             if (!disposed && playLoop.state === 'running')
                 step(realStep, playStep);
@@ -349,6 +387,13 @@ export async function play(options) {
     });
     const browser = Object.freeze({
         ...baseBrowser,
+        // The frame and the screen change with the window; these read the game's own.
+        get frame() {
+            return baseBrowser.frame;
+        },
+        get screen() {
+            return baseBrowser.screen;
+        },
         loop: playLoop,
         dispose() {
             playLoop.dispose();
@@ -358,10 +403,28 @@ export async function play(options) {
     });
     const layer = () => stage.addChild(scope.use(new Sprite()));
     const world = layer(), effects = layer(), ui = layer(), glass = layer(), cover = layer();
+    // Where the design is on the stage: the layers are moved there, so (0, 0) is the design's corner however much of
+    // the stage the window shows around it. The cover is the stage's own, over all of it.
+    let shown = baseBrowser.screen;
+    const placeLayers = () => {
+        ui.x = glass.x = shown.designRect.x;
+        ui.y = glass.y = shown.designRect.y;
+    };
+    placeLayers();
     const view = { x: 0, y: 0 };
     const random = createRandom(options.seed ?? Date.now() + ':' + Math.random());
+    // What the player used last, for hints in the player's own words.
+    let device = (() => {
+        try {
+            return win.matchMedia?.('(pointer: coarse)').matches === true ? 'touch' : 'keyboard';
+        }
+        catch {
+            return 'keyboard';
+        }
+    })();
+    const badges = createBadges();
     // Keys: a set of what is held, and what changed since the last update.
-    const held = new Set(), wentDown = new Set(), cameUp = new Set();
+    const physicalKeys = new Set(), held = new Set(), wentDown = new Set(), cameUp = new Set();
     const typing = (target) => {
         const element = target;
         return (element?.isContentEditable === true ||
@@ -370,23 +433,41 @@ export async function play(options) {
             element?.tagName === 'SELECT');
     };
     const keyDown = (event) => {
-        if (typing(event.target))
+        // Embedded games leave Tab to the page, including the step that leaves the canvas.
+        if (typing(event.target) || (embedded && (event.target !== surface || event.code === 'Tab')))
             return;
         if (KEPT_FROM_PAGE.has(event.code))
             event.preventDefault();
-        if (event.repeat || held.has(event.code))
+        if (event.repeat)
+            return;
+        device = 'keyboard';
+        physicalKeys.add(event.code);
+        if (held.has(event.code))
             return;
         held.add(event.code);
         wentDown.add(event.code);
     };
-    const keyUp = (event) => {
-        if (held.delete(event.code))
-            cameUp.add(event.code);
+    const releasePhysicalKey = (code) => {
+        if (physicalKeys.delete(code) && !touchHeld.has(code) && held.delete(code))
+            cameUp.add(code);
+    };
+    const keyUp = (event) => releasePhysicalKey(event.code);
+    const leaveCanvas = () => {
+        // A keyup can go to a page control after focus moves. Retire only this keyboard's presses.
+        for (const code of physicalKeys) {
+            releasePhysicalKey(code);
+            if (!held.has(code))
+                wentDown.delete(code);
+        }
     };
     const letGo = () => {
+        touch.cancel();
+        touchHeld.clear();
+        touchStick.x = touchStick.y = 0;
         for (const code of held)
             cameUp.add(code);
         held.clear();
+        physicalKeys.clear();
         pointerOwner = undefined;
     };
     const any = (set, keys) => keys.some(key => set.has(codeOf(String(key))));
@@ -423,6 +504,7 @@ export async function play(options) {
             }
             const code = 'Pad:' + name;
             if (down && !held.has(code)) {
+                device = 'gamepad';
                 held.add(code);
                 wentDown.add(code);
             }
@@ -494,14 +576,17 @@ export async function play(options) {
     const place = (event) => {
         const at = browser.toStage(event.clientX, event.clientY);
         if (finite(at.x) && finite(at.y)) {
-            point.x = at.x;
-            point.y = at.y;
+            point.x = at.x - shown.designRect.x;
+            point.y = at.y - shown.designRect.y;
         }
     };
     // The sprites a tap is given to. A press on one of them is the sprite's, and is not also told as `pressed`: a game
     // that places something wherever the stage is pressed would place it under its own buttons.
     let tappable = [];
     const pointerDown = (event) => {
+        device = event.pointerType === 'touch' ? 'touch' : 'mouse';
+        if (embedded)
+            surface.focus({ preventScroll: true });
         // A finger on a stick or a button on the glass is that control's, and not the game's pointer.
         if (touch.claim(event)) {
             event.preventDefault();
@@ -516,7 +601,8 @@ export async function play(options) {
         point.fromX = point.x;
         point.fromY = point.y;
         // Keys reach the page only once it has been clicked, where the game sits in a frame.
-        win.focus?.();
+        if (!embedded)
+            win.focus?.();
     };
     const pointerUp = (event) => {
         if (touch.end(event))
@@ -594,9 +680,13 @@ export async function play(options) {
             return (box !== undefined && point.x >= box.left && point.x <= box.right && point.y >= box.top && point.y <= box.bottom);
         }
     };
+    const keyboardTarget = embedded ? surface : win;
+    const addedTabIndex = embedded && !surface.hasAttribute('tabindex');
+    if (addedTabIndex)
+        surface.tabIndex = 0;
     const listening = [
-        [win, 'keydown', keyDown],
-        [win, 'keyup', keyUp],
+        [keyboardTarget, 'keydown', keyDown],
+        [keyboardTarget, 'keyup', keyUp],
         [win, 'blur', letGo],
         [surface, 'pointerdown', pointerDown],
         [win, 'pointermove', moved],
@@ -604,15 +694,19 @@ export async function play(options) {
         [win, 'pointerup', pointerUp],
         [win, 'pointercancel', pointerCancel]
     ];
+    if (embedded)
+        listening.push([surface, 'blur', leaveCanvas]);
     for (const [target, type, listener] of listening)
         target.addEventListener(type, listener, { passive: false });
-    // Sound: every effect is made and decoded before the game is set up, so the first one plays at once.
-    const audio = scope.use(createBrowserAudio({ limiter: true }));
+    // Only the built-in mixer belongs to this game. Opting out also skips its browser gesture listeners.
+    const mixer = options.audio === false ? undefined : scope.use(createBrowserAudio({ limiter: true })).mixer;
     const sounds = new Map();
     const RATE = 22050;
     const make = async (name, recipe) => {
+        if (mixer === undefined)
+            return;
         try {
-            sounds.set(name, await audio.mixer.decode(encodeWav([synthesizeSfx(recipe, RATE)], RATE)));
+            sounds.set(name, await mixer.decode(encodeWav([synthesizeSfx(recipe, RATE)], RATE)));
         }
         catch {
             // A page without sound still plays the game.
@@ -633,11 +727,11 @@ export async function play(options) {
                     cause: new Error(`"${String(name)}" is not one of: ${[...names].join(', ')}`)
                 });
             const sound = sounds.get(name);
-            if (sound === undefined || muted)
+            if (mixer === undefined || sound === undefined || muted)
                 return;
             const loud = Math.max(0, Math.min(1, (finite(given.volume) ? given.volume : 1) * volume)), rate = Math.max(0.25, Math.min(4, finite(given.pitch) ? given.pitch : 1)), pan = Math.max(-1, Math.min(1, finite(given.pan) ? given.pan : 0));
             try {
-                audio.mixer.play(sound, { volume: loud, rate, pan, maxInstances: 6 });
+                mixer.play(sound, { volume: loud, rate, pan, maxInstances: 6 });
             }
             catch {
                 // Sound never stops a game.
@@ -648,7 +742,9 @@ export async function play(options) {
                 throw new EgretError('PLAY_SFX_UNKNOWN', {
                     cause: new Error(`"${String(name)}" is not one of: ${[...names].join(', ')}`)
                 });
-            const made = new PlayingLoop(() => sounds.get(name), audio.mixer, finite(given.volume) ? given.volume : 1, finite(given.pitch) ? given.pitch : 1, finite(given.pan) ? given.pan : 0, finite(given.fadeIn) ? given.fadeIn : 0);
+            const made = new PlayingLoop(sounds.get(name), mixer, finite(given.volume) ? given.volume : 1, finite(given.pitch) ? given.pitch : 1, finite(given.pan) ? given.pan : 0, finite(given.fadeIn) ? given.fadeIn : 0);
+            if (mixer === undefined)
+                return made;
             loops.add(made);
             made.heard(muted ? 0 : volume);
             return made;
@@ -706,6 +802,11 @@ export async function play(options) {
             const chosen = typeof given === 'string' ? { mood: given } : (given ?? {});
             if (chosen === null || typeof chosen !== 'object')
                 throw invalid('music.play takes a mood or { mood, seed, tempo, bars }');
+            if (mixer === undefined) {
+                if (!MUSIC_MOODS.includes(chosen.mood ?? 'calm'))
+                    throw invalid('the mood of music is one of: ' + MUSIC_MOODS.join(', '));
+                return;
+            }
             let piece;
             try {
                 piece = composeMusic(chosen, RATE);
@@ -714,7 +815,7 @@ export async function play(options) {
                 throw invalid(cause instanceof Error ? cause.message : 'music.play takes a mood');
             }
             const ticket = ++musicTicket;
-            const made = await Promise.all(MUSIC_PARTS.map(part => audio.mixer.decode(encodeWav([piece.parts[part]], piece.rate)).catch(() => undefined)));
+            const made = await Promise.all(MUSIC_PARTS.map(part => mixer.decode(encodeWav([piece.parts[part]], piece.rate)).catch(() => undefined)));
             // A newer piece, a stop or the end of the game came while this one was being made.
             if (ticket !== musicTicket || disposed)
                 return;
@@ -722,7 +823,7 @@ export async function play(options) {
                 loop.stop(1.2);
             const mix = musicMix(musicIntensity);
             musicParts = MUSIC_PARTS.map((part, index) => {
-                const level = musicVolume * mix[part], loop = new PlayingLoop(() => made[index], audio.mixer, level, 1, 0, 1.2);
+                const level = musicVolume * mix[part], loop = new PlayingLoop(made[index], mixer, level, 1, 0, 1.2);
                 loops.add(loop);
                 loop.heard(muted ? 0 : volume);
                 if (paused)
@@ -892,7 +993,21 @@ export async function play(options) {
             if (!node.isDisposed)
                 node.dispose();
     };
+    // The seconds of the wall this frame, for what follows the state at its end: the views and their semantics.
+    let frameSeconds = 0;
     const endFrame = () => {
+        const seconds = frameSeconds;
+        frameSeconds = 0;
+        if (!disposed) {
+            views.tick(seconds);
+            if (options.semantics !== undefined)
+                try {
+                    options.semantics.publish();
+                }
+                catch (cause) {
+                    failure ??= { cause };
+                }
+        }
         endRemoved();
         wentDown.clear();
         cameUp.clear();
@@ -916,6 +1031,7 @@ export async function play(options) {
         return { promise, resolve, reject };
     }
     function step(real, seconds) {
+        frameSeconds = real;
         if (failure !== undefined) {
             const { cause } = failure;
             failure = undefined;
@@ -1024,8 +1140,8 @@ export async function play(options) {
             dx = (Math.random() * 2 - 1) * strength;
             dy = (Math.random() * 2 - 1) * strength;
         }
-        world.x = effects.x = dx - view.x;
-        world.y = effects.y = dy - view.y;
+        world.x = effects.x = shown.designRect.x + dx - view.x;
+        world.y = effects.y = shown.designRect.y + dy - view.y;
         if (flashLeft > 0) {
             flashLeft -= real;
             cover.alpha = Math.max(0, flashLeft / flashSpan) * (reduced ? 0.3 : 0.85);
@@ -1047,6 +1163,8 @@ export async function play(options) {
     function resetRound() {
         endMusic(0.3);
         widgets.reset();
+        views.reset();
+        badges.clear();
         touch.reset();
         touchHeld.clear();
         touchStick.x = touchStick.y = 0;
@@ -1086,6 +1204,9 @@ export async function play(options) {
                 await setup?.(game);
                 if (disposed)
                     return;
+                options.arrange?.(game);
+                if (disposed)
+                    return;
                 // A tap that returned an unsuccessful restart may have failed the loop.
                 // An explicit retry resumes it, while a deliberately stopped loop stays idle.
                 if (restarting && playLoop.state === 'failed')
@@ -1115,8 +1236,32 @@ export async function play(options) {
         return request.promise;
     }
     const game = {
-        width,
-        height,
+        get width() {
+            return shown.design.width;
+        },
+        get height() {
+            return shown.design.height;
+        },
+        get orientation() {
+            return shown.orientation;
+        },
+        get screen() {
+            return Object.freeze({
+                // Never -0, which a test of equality tells from 0.
+                x: -shown.designRect.x || 0,
+                y: -shown.designRect.y || 0,
+                width: shown.width,
+                height: shown.height
+            });
+        },
+        get safe() {
+            return Object.freeze({
+                x: shown.safe.x - shown.designRect.x || 0,
+                y: shown.safe.y - shown.designRect.y || 0,
+                width: shown.safe.width,
+                height: shown.safe.height
+            });
+        },
         get time() {
             return time;
         },
@@ -1222,6 +1367,86 @@ export async function play(options) {
             });
             if (!tappable.includes(node))
                 tappable.push(node);
+        },
+        gestures(node, handlers) {
+            if (handlers === null || typeof handlers !== 'object')
+                throw invalid('gestures takes a sprite and { hold, doubleTap, drag, swipe, pinch }');
+            for (const name of ['doubleTap', 'hold', 'drag', 'swipe', 'pinch'])
+                if (handlers[name] !== undefined && typeof handlers[name] !== 'function')
+                    throw invalid('gestures: ' + name + ' is a function');
+            const input = browser.pointer;
+            if (input === undefined)
+                return () => { };
+            node.touchEnabled = true;
+            if (!tappable.includes(node))
+                tappable.push(node);
+            const round = generation;
+            // Places in the game's units; what a handler throws stops the game, as a tap's does.
+            const told = (handler, place) => handler === undefined
+                ? undefined
+                : (value) => {
+                    if (disposed || generation !== round)
+                        return;
+                    try {
+                        handler(place(value));
+                    }
+                    catch (cause) {
+                        failure ??= { cause };
+                    }
+                };
+            const inGame = (value) => Object.freeze({ ...value, x: value.x - shown.designRect.x, y: value.y - shown.designRect.y });
+            const made = createGestures({
+                engine,
+                scope,
+                input,
+                target: node,
+                ...(handlers.doubleTap === undefined ? {} : { onDoubleTap: told(handlers.doubleTap, inGame) }),
+                ...(handlers.hold === undefined ? {} : { onHold: told(handlers.hold, inGame) }),
+                ...(handlers.drag === undefined ? {} : { onDrag: told(handlers.drag, inGame) }),
+                ...(handlers.swipe === undefined ? {} : { onSwipe: told(handlers.swipe, swipe => swipe) }),
+                ...(handlers.pinch === undefined ? {} : { onPinch: told(handlers.pinch, inGame) })
+            });
+            return () => made.dispose();
+        },
+        show(description, viewOptions) {
+            return views.view(description, viewOptions);
+        },
+        dragAndDrop() {
+            const input = browser.pointer;
+            if (input === undefined)
+                throw invalid('drag and drop needs pointer input');
+            const made = createDragAndDrop({ engine, scope, input, layer: glass });
+            const guarded = (fn) => (...args) => {
+                try {
+                    fn(...args);
+                }
+                catch (cause) {
+                    failure ??= { cause };
+                }
+            };
+            return {
+                source(node, o) {
+                    if (o === null || typeof o !== 'object' || typeof o.data !== 'function')
+                        throw invalid('source takes a sprite and { data, ghost }');
+                    node.touchEnabled = true;
+                    if (!tappable.includes(node))
+                        tappable.push(node);
+                    return made.source({ node, data: o.data, ...(o.ghost === undefined ? {} : { ghost: o.ghost }) });
+                },
+                target(node, o) {
+                    if (o === null || typeof o !== 'object' || typeof o.drop !== 'function')
+                        throw invalid('target takes a sprite and { drop, accepts, hover }');
+                    return made.target({
+                        node,
+                        drop: guarded((data) => o.drop(data)),
+                        ...(o.accepts === undefined ? {} : { accepts: o.accepts }),
+                        ...(o.hover === undefined ? {} : { hover: guarded(o.hover) })
+                    });
+                },
+                get dragging() {
+                    return made.dragging;
+                }
+            };
         },
         overlaps(a, b, shrink = 0) {
             if (!seen(a) || !seen(b))
@@ -1415,13 +1640,13 @@ export async function play(options) {
         shake(amount = 6, seconds = 0.25) {
             if (reduced || !finite(amount) || !finite(seconds) || amount <= 0 || seconds <= 0)
                 return;
-            shakeAmount = Math.max(shakeLeft > 0 ? shakeAmount : 0, Math.min(amount, Math.max(width, height)));
+            shakeAmount = Math.max(shakeLeft > 0 ? shakeAmount : 0, Math.min(amount, Math.max(game.width, game.height)));
             shakeLeft = shakeSpan = Math.min(seconds, 5);
         },
         flash(color = 0xffffff, seconds = 0.15) {
             if (!colour(color) || !finite(seconds) || seconds <= 0)
                 return;
-            cover.graphics.clear().beginFill(color).drawRect(0, 0, width, height).endFill();
+            cover.graphics.clear().beginFill(color).drawRect(0, 0, shown.width, shown.height).endFill();
             cover.visible = true;
             cover.alpha = reduced ? 0.3 : 0.85;
             flashLeft = flashSpan = Math.min(seconds, 5);
@@ -1547,8 +1772,17 @@ export async function play(options) {
         say: (words, options) => widgets.say(words, options),
         menu: (items, options) => widgets.menu(items, options),
         get asking() {
-            return widgets.asking;
+            return widgets.asking || views.asking;
         },
+        get device() {
+            return device;
+        },
+        confirm: (question, confirmOptions) => views.confirm(question, confirmOptions),
+        hints: list => views.hints(list),
+        loading: (tasks, loadingOptions) => views.loading(tasks, loadingOptions),
+        badges,
+        compact: (value, compactOptions) => formatCompact(value, { locale: /^zh\b/i.test(win.navigator?.language ?? '') ? 'zh' : 'en', ...compactOptions }),
+        request: send => createRequest(send),
         touchStick: options => touch.stick(options),
         touchButton: (words, options) => touch.button(words, options),
         music,
@@ -1573,6 +1807,8 @@ export async function play(options) {
                     stopLoops();
                     for (const [target, type, listener] of listening)
                         target.removeEventListener(type, listener);
+                    if (addedTabIndex && surface.getAttribute('tabindex') === '0')
+                        surface.removeAttribute('tabindex');
                     await browser.dispose();
                 }
                 finally {
@@ -1589,6 +1825,12 @@ export async function play(options) {
         if (!disposed && browser.loop.state === 'idle')
             browser.loop.start();
     });
+    const views = createPlayViews(game, {
+        failed: cause => {
+            failure ??= { cause };
+        },
+        semantics: () => options.semantics
+    });
     const touch = createPlayTouch(game, {
         hold(key) {
             const code = codeOf(key);
@@ -1601,18 +1843,40 @@ export async function play(options) {
         letGo(key) {
             const code = codeOf(key);
             touchHeld.delete(code);
-            if (held.delete(code))
+            if (!physicalKeys.has(code) && held.delete(code))
                 cameUp.add(code);
         },
         stick(x, y) {
             touchStick.x = x;
             touchStick.y = y;
         },
-        toStage: (x, y) => browser.toStage(x, y),
+        toStage: (x, y) => {
+            const at = browser.toStage(x, y);
+            return { x: at.x - shown.designRect.x, y: at.y - shown.designRect.y };
+        },
         layer: glass
     });
+    // The window changed size or turned: the layers move to the design's new place and the game arranges itself.
+    baseBrowser.onScreenChange(next => {
+        shown = next;
+        placeLayers();
+        point.x = Math.min(point.x, game.width);
+        point.y = Math.min(point.y, game.height);
+        if (!disposed)
+            views.arrange();
+        if (api === undefined || disposed || options.arrange === undefined)
+            return;
+        try {
+            options.arrange(game);
+        }
+        catch (cause) {
+            // As what `update` throws: the game stops at its next step and is told.
+            failure ??= { cause };
+        }
+    });
     try {
-        await Promise.all(Object.entries(SFX_PRESETS).map(([name, recipe]) => make(name, recipe)));
+        if (mixer !== undefined)
+            await Promise.all(Object.entries(SFX_PRESETS).map(([name, recipe]) => make(name, recipe)));
         await runSetup(false);
         if (disposed)
             throw new EgretError('SCOPE_CLOSED');

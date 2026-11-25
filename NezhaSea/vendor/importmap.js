@@ -16,7 +16,12 @@ const imports = {
   "#egret-textured-frame-state": "./engine/dist/internal/texturedFrameState.js",
   "@egret/engine/input/hover": "./engine/dist/hover.js",
   "@egret/engine/play": "./engine/dist/web/play.js",
-  "@egret/engine/web/kit": "./engine/dist/web/kit.js"
+  "@egret/engine/web/kit": "./engine/dist/web/kit.js",
+  "@egret/runtime/ui": "./runtime/dist/ui/index.js",
+  "@egret/engine/ui": "./engine/dist/ui/index.js",
+  "@egret/engine/ui/semantics": "./engine/dist/semantics.js",
+  "@egret/engine/ui/testing": "./engine/dist/ui/testing.js",
+  "@egret/engine/web/semantics": "./engine/dist/web/semantics.js"
 };
 const base = document.currentScript.src;
 for (const name of Object.keys(imports)) imports[name] = new URL(imports[name], base).href;

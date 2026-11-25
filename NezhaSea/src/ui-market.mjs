@@ -1,0 +1,615 @@
+import { Bitmap } from '@egret/engine';
+import { BASE_STATS, DIVINE, HEROES, ITEMS, SHOP } from './sim/data.mjs';
+import { getLanguage, t } from './i18n.mjs';
+import { layoutFor, textWidth, wrap as wrapText } from './ui-layout.mjs';
+
+const GOLD = 0xffdfa0;
+const INK = 0x102a28;
+const QUIET = 0xbfdbc8;
+const CTA = 0x9e4432;
+const CTA_TEXT = 0xffefd2;
+const DISABLED = 0x283c39;
+const SKIN = { panel: INK, panelAlpha: 0.96, button: 0x275548, buttonText: 0xf6ede0, disabled: DISABLED, text: QUIET, dim: 0.42, radius: 6 };
+const RELIC_MARKS = {
+  ring: '◉', ribbon: '≋', spear: '↑', brick: '▰', wheels: '✺', dome: '♨',
+  bindDragon: '◎', fireSpear: '✵', dragonBrick: '✦',
+  lotusRoot: '❋', peach: '●', dragonScale: '◆', elixir: '✧', windCharm: '≈',
+  conch: '◈', coral: '✿', shell: '▱', primordialPearl: '◐', seaPearl: '◉', goldLotus: '❀',
+  demonMirror: '◇', drumOfWar: '▣', dragonPearl: '✶', heavenlyArmor: '⬒', skyRing: '◎'
+};
+const WARM_RELICS = new Set(['ribbon', 'spear', 'dome', 'dragonBrick']);
+const SLOT_COUNT = Math.max(...Object.values(HEROES).map((hero) => hero.slots));
+const markOf = (kind) => RELIC_MARKS[kind] ?? '✧';
+const tierOf = (weapon) => weapon.divine ? t('divineTier') : t('tier', { n: weapon.tier + 1 });
+const weaponLabel = (weapon) => `${t(weapon.kind)} · ${tierOf(weapon)}`;
+const signed = (value) => `${value > 0 ? '+' : ''}${Math.round(value * 10) / 10}`;
+const statistics = (stats) => Object.entries(stats).map(([key, value]) => t('statLine', { name: t(key), value: signed(value) }));
+
+// Place measured lines in separate Egret text parts so cells can lay them out.
+const wrap = (value, width, size, bold) => wrapText(value, width, size, bold).split('\n');
+
+function metrics(game) {
+  const { u: factor, width: w, height: h } = layoutFor(game);
+  return { factor, w, h, key: `${Math.round(w)}:${Math.round(h)}:${factor.toFixed(4)}:${getLanguage()}` };
+}
+
+// Buttons expose their binding as their accessible names. Add the shorter drawn
+// caption as an Egret label to keep the target and accessible name together.
+function partsFor(game, scale, packed) {
+  const bind = {};
+  const labels = new Map();
+  const box = (x, y, width, height) => ({ x: x * scale, y: y * scale, width: width * scale, height: height * scale });
+  const read = (value) => typeof value === 'function' ? value : () => value;
+  function panel(name, x, y, w, h, children, options = {}, binding) {
+    if (binding) bind[name] = binding;
+    return { type: 'panel', name, layout: 'free', ...box(x, y, w, h), ...options, children };
+  }
+  function text(name, value, x, y, w, h, size, options = {}) {
+    const { paintColor, ...display } = options;
+    const pack = packed && name !== 'wallet';
+    if (typeof value === 'function') bind[name] = { ...(pack ? {} : { text: value, ...(paintColor ? { color: paintColor } : {}) }), visible: (state) => Boolean(value(state).trim()) };
+    if (pack) packed.label(name, read(value), read(value), { width: w, height: h, size, color: paintColor ?? display.color ?? SKIN.text, align: display.align ?? 'left', bold: display.bold ?? false });
+    return { type: 'text', name, text: pack || typeof value === 'function' ? '' : value, ...box(x, y, w, h), size: size * scale, ...display };
+  }
+  function button(name, value, x, y, w, h, size, tap, options = {}) {
+    const { disabled, visible, color, textColor, label, caption } = options;
+    bind[name] = { tap, ...(disabled ? { disabled } : {}), ...(visible ? { visible } : {}), ...(typeof color === 'function' ? { color } : {}) };
+    const style = { width: w, height: h, size, color: textColor ?? SKIN.buttonText, align: 'center', bold: true };
+    if (packed) packed.label(name, label ?? read(value), caption ?? read(value), style);
+    else {
+      if (typeof value === 'function' || label) bind[name].text = label ?? value;
+      if (label || caption) labels.set(name, { draw: caption ?? read(value), ...style });
+    }
+    return { type: 'button', name, text: packed || typeof value === 'function' ? '' : value, ...box(x, y, w, h), size: size * scale, ...(typeof color === 'number' ? { color } : {}), ...(textColor ? { textColor } : {}) };
+  }
+  let drawn = [];
+  function built(view) {
+    drawn = [...labels].map(([name, label]) => {
+      const parent = view.get(name);
+      parent.getChildAt(0).visible = false;
+      return { ...label, nodes: [], parent };
+    });
+  }
+  function paint(state) {
+    for (const item of drawn) {
+      const caption = item.draw(state);
+      const rows = Array.isArray(caption) ? caption : [caption];
+      for (let index = 0; index < rows.length; index++) {
+        const row = typeof rows[index] === 'string' ? { text: rows[index] } : rows[index];
+        const options = { x: (row.x ?? item.width / 2) * scale, y: (row.y ?? item.height / 2) * scale,
+          size: (row.size ?? item.size) * scale, color: row.color ?? item.color, align: row.align ?? 'center',
+          bold: row.bold ?? true, baseline: 'middle', layer: item.parent };
+        if (!item.nodes[index]) item.nodes[index] = game.text(row.text, options);
+        const node = item.nodes[index];
+        node.visible = true;
+        node.x = options.x;
+        node.y = options.y;
+        node.text = row.text;
+        node.color = options.color;
+        node.size = options.size;
+      }
+      for (let index = rows.length; index < item.nodes.length; index++) item.nodes[index].visible = false;
+    }
+  }
+  return { panel, text, button, bind, built, paint };
+}
+
+// One Egret bitmap for dense text. BrowserGame's shared cache can hold only 32
+// distinct live label keys, and invisible PlayView parts still occupy slots.
+function packedLabels(game, { factor, w, h }, aliasPart, currentState) {
+  const entries = [];
+  let layer;
+  let bitmap;
+  let lease;
+  let update = 0;
+  let signature = '';
+  let view;
+  const off = [];
+  const density = Math.min(2, Math.max(1, globalThis.devicePixelRatio ?? 1));
+  const canvas = document.createElement('canvas');
+  canvas.width = Math.ceil(w * density);
+  canvas.height = Math.ceil(h * density);
+  const ctx = canvas.getContext('2d', { willReadFrequently: true });
+  const label = (name, accessible, draw, style) => {
+    entries.push({ name, draw, ...style });
+    off.push(aliasPart(name, () => accessible(currentState())));
+  };
+  function attach(made) {
+    view = made;
+    layer = view.get('marketSurface');
+  }
+  function paint(state) {
+    if (!layer || layer.isDisposed) return;
+    const frame = view.rect('marketSurface');
+    const rows = entries.flatMap((item) => {
+      if (!view.shows(item.name)) return [];
+      const rect = view.rect(item.name);
+      const x = (rect.x - frame.x) / factor;
+      const y = (rect.y - frame.y) / factor;
+      const caption = item.draw(state);
+      return (Array.isArray(caption) ? caption : [caption]).map((line) => {
+        const row = typeof line === 'string' ? { text: line } : line;
+        const align = row.align ?? item.align;
+        return { text: row.text, x: x + (row.x ?? (align === 'center' ? item.width / 2 : align === 'right' ? item.width : 0)),
+          y: y + (row.y ?? item.height / 2), size: row.size ?? item.size,
+          color: row.color ?? (typeof item.color === 'function' ? item.color(state) : item.color), bold: row.bold ?? item.bold, align };
+      });
+    });
+    const key = JSON.stringify(rows);
+    if (key === signature) return;
+    signature = key;
+    const revision = ++update;
+    ctx.setTransform(density, 0, 0, density, 0, 0);
+    ctx.clearRect(0, 0, w, h);
+    ctx.textBaseline = 'middle';
+    for (const row of rows) {
+      ctx.font = `${row.bold ? 700 : 400} ${row.size}px system-ui, "Microsoft YaHei", sans-serif`;
+      ctx.textAlign = row.align;
+      ctx.fillStyle = `#${row.color.toString(16).padStart(6, '0')}`;
+      ctx.fillText(row.text, row.x, row.y);
+    }
+    void game.browser.textureFromCanvas(canvas).then((next) => {
+      if (revision !== update || layer.isDisposed || !view.visible) { next.release(); return; }
+      if (!bitmap) {
+        bitmap = new Bitmap(next);
+        bitmap.scaleX = bitmap.scaleY = factor / density;
+        bitmap.touchEnabled = false;
+        layer.addChild(bitmap);
+      } else bitmap.textureLease = next;
+      lease?.release();
+      lease = next;
+    }).catch(console.error);
+  }
+  function dispose() {
+    ++update;
+    if (bitmap && !bitmap.isDisposed) bitmap.dispose();
+    lease?.release();
+    bitmap = undefined;
+    lease = undefined;
+    for (const remove of off.splice(0)) remove();
+  }
+  return { label, attach, paint, dispose };
+}
+
+function shopLayout(w, h, touch, slots) {
+  const compact = w <= 560 || h <= 570 || (touch && w <= 900);
+  const stacked = !compact && h >= 745;
+  const width = Math.min(w - 16, 780);
+  const height = compact ? h - 16 : Math.min(h - 24, stacked ? 775 : 605);
+  const pad = compact ? 12 : (stacked ? 34 : 20);
+  const content = width - 2 * pad;
+  const columns = width < 560 || stacked ? 2 : 4;
+  const slotColumns = width < 440 ? 3 : 4;
+  const headH = compact ? (width < 440 ? 53 : 44) : (stacked ? 98 : 55);
+  const barY = compact ? height - 55 : headH + 1;
+  const contentEnd = compact ? barY : height - 4;
+  const offerHeight = width < 560 || stacked ? 117 : 111;
+  const offersY = compact ? headH + 56 : barY + 81;
+  const offersEnd = offersY + Math.ceil(SHOP.offers / columns) * (offerHeight + 8) - 8;
+  const gearY = compact ? headH + 55 : offersEnd + 54;
+  const slotHeight = h <= 510 ? 54 : stacked || slotColumns === 3 ? 71 : 65;
+  const slotsY = gearY + (compact && content < 450 ? 44 : 28);
+  const gearActionsY = slotsY + Math.ceil(slots / slotColumns) * (slotHeight + 6) - 2;
+  const detailsY = compact ? Math.min(contentEnd - 47, gearActionsY + 48) : contentEnd - 47;
+  const detailRows = Math.max(1, Math.floor((detailsY - gearY - 8) / 17));
+  return { compact, stacked, width, height, pad, content, columns, slotColumns, headH, barY, offerHeight, offersY, offersEnd, gearY, slotHeight, slotsY, gearActionsY, detailsY, detailRows };
+}
+
+function cardSlot(index, cols, width, gap, height) {
+  const span = (width - gap * (cols - 1)) / cols;
+  return { x: (index % cols) * (span + gap), y: Math.floor(index / cols) * (height + gap), w: span, h: height };
+}
+
+export function createMarketUi({ game, app, rules, sound, say, present, chooseLevel, nextWave, focusPart, aliasPart }) {
+  const touch = game.device === 'touch';
+  let pane = 'offers';
+  let note;
+  let detailsOpen = false;
+  let detailPage = 0;
+  let shop;
+  let upgrades;
+  let sale;
+  let drag;
+  let ghost;
+  let ghostMark;
+  let dragOff = [];
+
+  function report(key, values, warning = false) {
+    note = { key, values, warning };
+    say(t(key, values));
+  }
+
+  function buy(index) {
+    const run = app.run;
+    const offer = run.shop.offers[index];
+    const result = rules.buy(run, index);
+    if (!result.ok) report(result.why === 'pearls' ? 'notEnough' : result.why === 'full' ? 'full' : 'sold', undefined, true);
+    else if (result.merged) {
+      sound('merge');
+      report('merged', { name: t(run.weapons[result.slot].kind) });
+    } else {
+      sound('acquire');
+      report('boughtGood', { name: t(offer.kind) });
+    }
+    const nextBuy = run.shop.offers.findIndex((entry) => !entry.sold && entry.price <= run.pearls);
+    showShop({ focus: !offer.sold ? `offerBuy${index}` : nextBuy < 0 ? 'reroll' : `offerBuy${nextBuy}` });
+  }
+
+  function lock(index) {
+    const run = app.run;
+    if (run.shop.offers[index]?.sold) return;
+    rules.toggleLock(run, index);
+    sound('select');
+    report(run.shop.offers[index].locked ? 'preserveOffer' : 'releaseOffer');
+    showShop({ focus: `offerLock${index}` });
+  }
+
+  function reroll() {
+    if (rules.reroll(app.run).ok) {
+      sound('select');
+      report('restocked');
+    } else report('notEnough', undefined, true);
+    showShop({ focus: 'reroll' });
+  }
+
+  function merge(first, second) {
+    const result = rules.merge(app.run, first, second);
+    if (!result.ok) return false;
+    app.picked = null;
+    sound(result.divine ? 'divine' : 'merge');
+    report(result.divine ? 'divineMade' : 'merged', { name: t(result.kind) });
+    if (result.divine && !game.reducedMotion) game.flash(0xe8b84a, 0.25);
+    showShop({ focus: `relic${Math.min(result.slot, app.run.weapons.length - 1)}` });
+    return true;
+  }
+
+  function select(index) {
+    const picked = app.picked;
+    if (picked !== null && picked !== index && merge(picked, index)) return;
+    app.picked = picked === index ? null : index;
+    showShop({ focus: `relic${index}` });
+  }
+
+  async function sell() {
+    const { run, picked } = app;
+    const weapon = run.weapons[picked];
+    if (sale || !weapon || run.weapons.length <= 1) return;
+    const price = rules.sellPrice(run, picked);
+    const question = t('sellName', { name: t(weapon.kind), price });
+    const yes = t('sell', { price });
+    const no = t('cancelPick');
+    const accepted = await askSale(question, yes, no);
+    if (app.screen !== 'shop' || app.run !== run) return;
+    if (!accepted || run.weapons[picked] !== weapon || !rules.sell(run, picked).ok) {
+      showShop({ focus: 'sell' });
+      return;
+    }
+    app.picked = null;
+    sound('sell');
+    report('soldGood', { name: t(weapon.kind) });
+    showShop({ focus: `relic${Math.min(picked, run.weapons.length - 1)}` });
+  }
+
+  async function askSale(question, yes, no) {
+    const { factor, w } = metrics(game);
+    const innerConfirmWidth = Math.min(440, Math.max(240, game.safe.width - 32)) - 40;
+    if (48 / factor >= 44 && textWidth(question, 24) <= innerConfirmWidth) {
+      sale = { native: true };
+      try {
+        const asked = game.confirm(question, { yes, no });
+        queueMicrotask(() => focusPart?.('no'));
+        return await asked;
+      }
+      finally { sale = undefined; }
+    }
+    // The built-in dialog uses a fixed 48-unit row, which is less than 44 CSS
+    // pixels on scaled phone canvases. This dialog keeps native modal semantics.
+    return new Promise((resolve) => {
+      const { panel, text, button, bind } = partsFor(game, factor);
+      const width = Math.min(400, w - 24);
+      const rows = wrap(question, width - 36, 17);
+      const height = 94 + rows.length * 22;
+      const answer = (accepted) => {
+        sale.view.close();
+        sale = undefined;
+        resolve(accepted);
+      };
+      const view = game.show({ label: question, modal: true, skin: SKIN,
+        root: { ...panel(undefined, 0, 0, width, height, [
+          ...rows.map((row, i) => text(`sellQuestion${i}`, row, 16, 13 + i * 22, width - 32, 22, 17, { align: 'center', color: GOLD, bold: true })),
+          button('sellCancel', no, 14, height - 58, (width - 36) / 2, 44, 14, () => answer(false)),
+          button('sellConfirm', yes, width / 2 + 4, height - 58, (width - 36) / 2, 44, 14, () => answer(true), { color: CTA, textColor: CTA_TEXT })
+        ], { color: INK }), anchor: 'center' }
+      }, { bind });
+      sale = { view, answer };
+      focusPart?.('sellCancel');
+    });
+  }
+
+  function dismissSale() {
+    if (!sale?.answer) return false;
+    sale.answer(false);
+    return true;
+  }
+
+  function deselect() {
+    if (sale || app.picked === null) return false;
+    const index = app.picked;
+    app.picked = null;
+    showShop({ focus: `relic${index}` });
+    return true;
+  }
+
+  function detailsRows(run, width) {
+    const recipes = Object.entries(DIVINE).map(([name, recipe]) => `${t(recipe.from[0])} + ${t(recipe.from[1])} → ${t(name)}`);
+    const items = Object.entries(run.items).map(([kind, count]) => `${t(kind)}${count > 1 ? ` ×${count}` : ''}`);
+    const stats = Object.entries(rules.statsOf(run)).map(([key, value]) => `${t(key)} ${Math.round(value * 10) / 10}`);
+    return [t('recipes'), ...recipes.flatMap((entry) => wrap(entry, width, 13)), t('items'),
+      ...wrap(items.length ? items.join('  ·  ') : t('noItems'), width, 13), t('stats'), ...wrap(stats.join('  ·  '), width, 13)];
+  }
+
+  function state(layout) {
+    const run = app.run;
+    const picked = run.weapons[app.picked];
+    const offerWidth = (layout.content - 8 * (layout.columns - 1)) / layout.columns;
+    const offers = run.shop.offers.map((offer) => {
+      const name = t(offer.kind);
+      const tier = offer.type === 'weapon' ? tierOf(offer) : '';
+      const note = offer.type === 'weapon' ? t(`${offer.kind}Note`) : statistics(ITEMS[offer.kind].stats).join(' · ');
+      return { ...offer, name, tier, titleLines: wrap(name, offerWidth - 43, 13, true), noteLines: wrap([tier, note].filter(Boolean).join(' · '), offerWidth - 12, 11) };
+    });
+    const weapons = run.weapons.map((weapon, i) => ({ weapon, name: t(weapon.kind), tier: tierOf(weapon),
+      partner: picked && i !== app.picked ? rules.mergeResult(run, app.picked, i) : null }));
+    const partner = weapons.find((slot) => slot.partner)?.partner;
+    const gearShowing = !layout.compact || pane === 'gear';
+    const feedback = gearShowing && partner ? t('mergePreview', { name: weaponLabel(partner) }) : note ? t(note.key, note.values) : t(gearShowing ? 'tapToMerge' : 'reserveHint');
+    const detailLines = detailsOpen ? detailsRows(run, layout.content - 12) : [];
+    const detailPages = Math.max(1, Math.ceil(detailLines.length / layout.detailRows));
+    detailPage = Math.min(detailPage, detailPages - 1);
+    return { run, picked, offers, weapons, feedbackLines: wrap(feedback, layout.content - 118, 12), feedbackColor: gearShowing && partner ? GOLD : note?.warning ? 0xffb7a3 : QUIET,
+      cost: rules.rerollPrice(run), count: { n: weapons.length, max: run.slots }, gearShowing, detailPages,
+      detailLines: detailLines.slice(detailPage * layout.detailRows, (detailPage + 1) * layout.detailRows) };
+  }
+
+  function disposeDrag() {
+    for (const remove of dragOff) remove();
+    dragOff = [];
+  }
+
+  function registerDrag(view, factor) {
+    disposeDrag();
+    drag ??= game.dragAndDrop();
+    for (let index = 0; index < SLOT_COUNT; index++) {
+      const node = view.get(`relic${index}`);
+      const source = drag.source(node, {
+        data: () => !sale && app.screen === 'shop' && app.run.weapons[index] ? { index, weapon: app.run.weapons[index] } : undefined,
+        ghost: ({ weapon }) => {
+          if (!ghost) {
+            ghost = game.sprite();
+            ghostMark = game.text('', { align: 'center', baseline: 'middle', bold: true, color: GOLD, layer: ghost });
+          }
+          ghost.graphics.clear().beginFill(0x616144, 0.95).drawRoundRect(-22 * factor, -22 * factor, 44 * factor, 44 * factor, 9 * factor).endFill();
+          ghostMark.text = markOf(weapon.kind);
+          ghostMark.size = 23 * factor;
+          return ghost;
+        }
+      });
+      const target = drag.target(node, {
+        accepts: (source) => !sale && app.screen === 'shop' && source.index !== index && app.run.weapons[source.index] === source.weapon && Boolean(rules.mergeResult(app.run, source.index, index)),
+        hover: (_, over) => { node.alpha = over ? 0.65 : 1; },
+        drop: (source) => { merge(source.index, index); }
+      });
+      dragOff.push(source, target);
+    }
+  }
+
+  function makeShop(frame) {
+    const layout = shopLayout(frame.w, frame.h, touch, app.run.slots);
+    const { compact, stacked, width, height, pad, content, columns, slotColumns, headH, barY, offerHeight, offersY, offersEnd, gearY, slotHeight, slotsY, gearActionsY, detailsY, detailRows } = layout;
+    let snapshot = state(layout);
+    const packed = aliasPart && packedLabels(game, { factor: frame.factor, w: width, h: height }, aliasPart, () => snapshot);
+    const { panel, text, button, bind, built, paint } = partsFor(game, frame.factor, packed);
+    const title = t(compact ? 'shopTitleCompact' : 'shopTitle', { n: app.run.wave });
+    const titleSize = width < 440 ? 17 : stacked ? 35 : 24;
+    const titleRows = wrap(title, content - 108, titleSize, true);
+    const body = [
+      panel(undefined, 1, 1, width - 2, height - 2, [], { color: INK, alpha: 1 }),
+      ...titleRows.map((row, i) => text(i === 0 ? 'marketTitle' : `marketTitle${i}`, row, pad,
+        titleRows.length > 1 ? 8 + i * (titleSize + 1) : (headH - titleSize) / 2, content - 108, titleSize + 2, titleSize, { color: GOLD, bold: true })),
+      panel(undefined, width - pad - 103, (headH - 30) / 2, 103, 30, [text('wallet', '', 0, 0, 103, 30, 13, { color: GOLD, align: 'center', bold: true })], { color: 0x263e34 }),
+      panel(undefined, pad, headH, content, 1, [], { color: 0x688568 }),
+    ];
+    bind.wallet = { pick: (s) => s.run.pearls, format: (n) => t('pearls', { n }), roll: 0.14 };
+    const nextWidth = 110;
+    const feedbackWidth = content - nextWidth - 8;
+    const actionBar = panel(undefined, 1, barY, width - 2, 54, [
+      ...[0, 1, 2].map((line) => text(`marketFeedback${line}`, (s) => s.feedbackLines[line] ?? '', pad, 5 + line * 14, feedbackWidth, 15, 12, { paintColor: (s) => s.feedbackColor })),
+      button('next', t('nextWave'), width - pad - nextWidth - 1, 5, nextWidth, 44, 15, () => {
+        disposeDrag();
+        packed?.dispose();
+        nextWave();
+      }, { label: (s) => t('nextWaveName', { n: s.run.wave + 1 }), color: CTA, textColor: CTA_TEXT })
+    ], { color: 0x1a3930 });
+
+    if (compact) {
+      const tab = (to, id) => () => {
+        if (to === pane) return;
+        pane = to;
+        sound('select');
+        showShop({ focus: id });
+      };
+      body.push(
+        button('offersTab', t('offers'), pad, headH + 5, content / 2 - 4, 44, 14, tab('offers', 'offersTab'), { color: () => pane === 'offers' ? 0x5b6041 : 0x21443a }),
+        button('gearTab', (s) => t('marketGear', s.count), pad + content / 2 + 4, headH + 5, content / 2 - 4, 44, 14, tab('gear', 'gearTab'), { color: () => pane === 'gear' ? 0x5b6041 : 0x21443a })
+      );
+    } else body.push(actionBar, text('offersTitle', t('offers'), pad, offersY - 25, content, 24, 17, { color: GOLD, bold: true }));
+
+    const cards = [];
+    for (let i = 0; i < SHOP.offers; i++) {
+      const get = (s) => s.offers[i];
+      const { x, y, w, h } = cardSlot(i, columns, content, 8, offerHeight);
+      const children = [
+        panel(`offerMarkPlate${i}`, 6, 7, 27, 27, [text(`offerMark${i}`, (s) => markOf(get(s)?.kind), 0, 0, 27, 27, 19, { color: GOLD, align: 'center', bold: true })], {}, { color: (s) => WARM_RELICS.has(get(s)?.kind) ? 0x5b382e : 0x405541 }),
+        ...[0, 1].map((line) => text(`offerName${i}_${line}`, (s) => get(s)?.titleLines[line] ?? '', 39, 3 + line * 14, w - 44, 17, 13, { color: GOLD, bold: true })),
+        ...[0, 1, 2].map((line) => text(`offerNote${i}_${line}`, (s) => get(s)?.noteLines[line] ?? '', 6, 34 + line * 12, w - 12, 13, 11)),
+        button(`offerBuy${i}`, (s) => get(s)?.sold ? t('sold') : t('buy', { price: get(s)?.price }), 5, h - 48, (w - 15) / 2, 44, 13,
+          () => buy(i), { disabled: (s) => !get(s) || get(s).sold || s.run.pearls < get(s).price,
+            label: (s) => get(s)?.sold ? t('sold') : t('buyName', { name: [get(s)?.name, get(s)?.tier].filter(Boolean).join(' · '), price: get(s)?.price }) }),
+        button(`offerLock${i}`, (s) => get(s)?.locked ? t('unlock') : t('lock'), w / 2 + 2.5, h - 48, (w - 15) / 2, 44, 13,
+          () => lock(i), { disabled: (s) => !get(s) || get(s).sold,
+            color: (s) => get(s)?.sold ? DISABLED : get(s)?.locked ? 0x716047 : 0x20483c,
+            label: (s) => get(s)?.locked ? t('unlock') : t('lockName', { name: [get(s)?.name, get(s)?.tier].filter(Boolean).join(' · ') }) })
+      ];
+      cards.push(panel(`offer${i}`, x, y, w, h, children, {}, {
+        visible: (s) => Boolean(get(s)),
+        color: (s) => get(s)?.sold ? 0x243c37 : get(s)?.locked ? 0x4e5039 : get(s)?.type === 'weapon' ? 0x29483c : 0x183c34
+      }));
+    }
+    cards.push(button('reroll', (s) => t('reroll', { price: s.cost }), 0, offersEnd - offersY + 7, 153, 44, 13, reroll,
+      { disabled: (s) => s.run.pearls < s.cost, label: (s) => t('rerollName', { price: s.cost }) }));
+    body.push(panel('offerShelf', pad, offersY, content, offersEnd - offersY + 54, cards, {}, { visible: () => !compact || pane === 'offers' }));
+
+    const heading = (s) => wrap(compact ? s.picked ? t('selected', { name: weaponLabel(s.picked) }) : t('mergeAdvice') : t('yourTreasures', s.count), content, 13, true);
+    const gear = [0, 1].map((line) => text(line === 0 ? 'gearHeading' : 'gearHeadingExtra', (s) => heading(s)[line] ?? '', 0, 1 + line * 15, content, 17, 13, { color: GOLD, bold: true }));
+    for (let i = 0; i < SLOT_COUNT; i++) {
+      const get = (s) => s.weapons[i];
+      const { x, y, w, h } = cardSlot(i, slotColumns, content, 6, slotHeight);
+      gear.push(button(`relic${i}`, '', x, slotsY - gearY + y, w, h, 12, () => select(i), {
+        disabled: (s) => !get(s), visible: (s) => i < s.run.slots,
+        color: (s) => !get(s) ? DISABLED : app.picked === i ? 0x806542 : get(s).partner ? 0x4e6040 : get(s).weapon.divine ? 0x654334 : 0x234c41,
+        label: (s) => !get(s) ? t('emptySlot') : get(s).partner ? t('mergeInto', { name: weaponLabel(get(s).partner) }) : weaponLabel(get(s).weapon),
+        caption: (s) => {
+          const slot = get(s);
+          if (!slot) return [{ text: t('emptySlot'), color: 0x97aa9d }];
+          const vertical = slotColumns === 3 || stacked;
+          const title = wrap(slot.name, w - (vertical ? 10 : 47), 12, true);
+          if (vertical) return [{ text: markOf(slot.weapon.kind), y: 17, size: 18, color: GOLD },
+            ...title.map((line, row) => ({ text: line, y: 36 + row * 12 })),
+            { text: slot.tier, y: h - 11, color: GOLD, size: 11 }];
+          return [{ text: markOf(slot.weapon.kind), x: 20, size: 22, color: GOLD },
+            ...title.map((line, row) => ({ text: line, x: 39, y: 14 + row * 12, align: 'left' })),
+            { text: slot.partner && w >= 130 ? `${slot.tier} · ${t('mergeWith')}` : slot.tier, x: 39, y: h - 13, color: GOLD, size: 11, align: 'left' }];
+        }
+      }));
+    }
+    const sellLabel = (s) => s.picked ? t('sellName', { name: t(s.picked.kind), price: rules.sellPrice(s.run, app.picked) }) : '';
+    const actionsY = gearActionsY - gearY;
+    gear.push(
+      button('sell', (s) => t('sell', { price: rules.sellPrice(s.run, app.picked) }), 0, actionsY, 88, 44, 13, () => { void sell(); },
+        { label: sellLabel, visible: (s) => Boolean(s.picked), disabled: (s) => s.weapons.length <= 1 }),
+      button('cancel', t('cancelPick'), 94, actionsY, 75, 44, 13, deselect, { visible: (s) => Boolean(s.picked) })
+    );
+    body.push(panel('gearShelf', pad, gearY, content, actionsY + 44, gear, {}, { visible: (s) => s.gearShowing && !detailsOpen }));
+
+    const toggleDetails = () => {
+      detailsOpen = !detailsOpen;
+      detailPage = 0;
+      showShop({ focus: 'details' });
+    };
+    const detailsWidth = width < 440 ? 174 : 190;
+    body.push(button('details', t('details'), content + pad - detailsWidth, detailsY, detailsWidth, 44, 13, toggleDetails, { visible: (s) => s.gearShowing }));
+    const details = [];
+    for (let row = 0; row < Math.min(Object.keys(BASE_STATS).length + 8, detailRows); row++) {
+      details.push(text(`detailLine${row}`, (s) => s.detailLines[row] ?? '', 6, 3 + row * 17, content - 12, 17, 13));
+    }
+    const changeDetailsPage = (step, focus) => () => {
+      detailPage += step;
+      showShop({ focus });
+    };
+    const shifts = [ ['detailPrevious', 'marketPrevious', -1], ['detailNext', 'marketMore', 1] ];
+    for (const [i, [name, label, step]] of shifts.entries()) {
+      body.push(button(name, t(label), pad + i * 80, detailsY, 76, 44, 13, changeDetailsPage(step, name), {
+        visible: (s) => s.gearShowing && detailsOpen && s.detailPages > 1,
+        disabled: (s) => step < 0 ? detailPage === 0 : detailPage + 1 >= s.detailPages
+      }));
+    }
+    body.push(panel('gearDetails', pad, gearY, content, Math.max(1, detailsY - gearY - 5), details, { color: 0x17352e }, { visible: (s) => s.gearShowing && detailsOpen }));
+
+    if (compact) body.push(actionBar);
+    const view = game.show({ label: title, modal: true, skin: SKIN,
+      root: { ...panel('marketSurface', 0, 0, width, height, body, { color: 0x9f895c, label: title }), anchor: compact ? 'center' : 'top', y: compact ? 0 : 12 * frame.factor }
+    }, { bind, state: () => snapshot,
+      built: (view) => {
+        built(view);
+        packed?.attach(view);
+        paint(snapshot);
+        packed?.paint(snapshot);
+        registerDrag(view, frame.factor);
+      }
+    });
+    return { view, key: frame.key, wave: app.run.wave,
+      refresh() { snapshot = state(layout); view.refresh(); paint(snapshot); packed?.paint(snapshot); },
+      dispose() { packed?.dispose(); }
+    };
+  }
+
+  function showShop({ focus, fresh = false } = {}) {
+    if (fresh || shop?.wave !== app.run.wave) {
+      pane = 'offers';
+      note = undefined;
+      detailsOpen = false;
+      detailPage = 0;
+    }
+    const frame = metrics(game);
+    if (shop?.view.visible && shop.key === frame.key && shop.wave === app.run.wave) shop.refresh();
+    else {
+      shop?.dispose();
+      shop = makeShop(frame);
+    }
+    present('shop', shop.view, focus ?? (shopLayout(frame.w, frame.h, touch, app.run.slots).compact ? `${pane}Tab` : 'next'));
+    return shop.view;
+  }
+
+  function showLevelUp({ focus = 'upgrade0' } = {}) {
+    const { w, h, key, factor } = metrics(game);
+    const width = Math.min(w - 24, 650);
+    const { panel, text, button, bind, built, paint } = partsFor(game, factor);
+    const run = app.run;
+    const short = h < 365;
+    const cardHeight = short ? 68 : 94;
+    const title = t('levelUpTitle', { n: run.pending });
+    const cards = run.choices.map((choice, index) => {
+      const { x, y, w, h } = cardSlot(index, 2, width - 28, 8, cardHeight);
+      const stats = Object.entries(choice.stats);
+      const label = `${index + 1}. ${statistics(choice.stats).join(' · ')}`;
+      return button(`upgrade${index}`, '', x + 14, y + 74, w, h, 15, () => chooseLevel(index), {
+        color: 0x235045, label: () => label,
+        caption: () => [{ text: `${index + 1}`, x: 15, y: 15, color: QUIET, size: 12 },
+          ...stats.flatMap(([name, value]) => [{ text: signed(value), y: short ? 29 : 39, size: short ? 20 : 25, color: GOLD },
+            { text: t(name), y: h - 15, size: 15 }])]
+      });
+    });
+    const height = 88 + Math.ceil(cards.length / 2) * (cardHeight + 8);
+    const view = game.show({ label: title, modal: true, skin: SKIN,
+      root: { ...panel(undefined, 0, 0, width, height, [
+        text('upgradeTitle', title, 14, 8, width - 28, 36, width < 420 ? 23 : 29, { color: GOLD, bold: true }),
+        text('upgradeHelp', t('levelUpHow'), 14, 46, width - 28, 22, 15), ...cards
+      ], { color: INK }), anchor: 'center' }
+    }, { bind, built(view) { built(view); paint(); } });
+    upgrades = { key, view };
+    present('levelUp', view, focus);
+    return view;
+  }
+
+  function layout() {
+    const key = metrics(game).key;
+    if (app.screen === 'shop' && shop?.key !== key) {
+      if (sale?.view) dismissSale();
+      showShop();
+    } else if (app.screen === 'levelUp' && upgrades?.key !== key) showLevelUp();
+  }
+
+  function reset() {
+    disposeDrag();
+    dismissSale();
+    shop?.dispose();
+    pane = 'offers';
+    note = undefined;
+    detailsOpen = false;
+    detailPage = 0;
+    shop = undefined;
+    upgrades = undefined;
+  }
+
+  return { showShop, showLevelUp, layout, reset, deselect, dismissSale, disposeDrag, get dragging() { return drag?.dragging; } };
+}

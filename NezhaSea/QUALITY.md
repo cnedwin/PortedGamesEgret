@@ -1,53 +1,59 @@
 # 品质验收 · Quality — 哪吒闹海 · Nezha Stirs the Sea
 
-按 [QUALITY-CHECKLIST.md](../docs/QUALITY-CHECKLIST.md) 验收。自动项由 `node tools/quality.mjs NezhaSea` 测量并写入本文件；人工和真机项没有跑过的写「未运行」。
-
-Checked against QUALITY-CHECKLIST.md. The automatic items were measured by `node tools/quality.mjs NezhaSea`, which writes
-this file; items by hand or on a device are marked not run until someone runs them.
-
 ## 测量环境 · Where it was measured
 
-- 日期 · Date: 2026-11-21
-- 浏览器 · Browser: 无头 Chromium 153.0.8010.12，SwiftShader 软件渲染（没有显卡） · headless, software rendering, no GPU
-- 机器 · Machine: Linux 容器 · a Linux container, linux x64, Node v22.23.4
-- 首屏一项的限速 · Start-up throttling: 下行 10 Mbps、上行 5 Mbps、往返 40 ms，CPU 降速 ×4 · down 10 Mbps, up 5 Mbps, 40 ms round trip, CPU slowed ×4
-- 帧时间是软件渲染下的数字，只说明无头环境里的情况，不代表真机 · Frame times are from software rendering and say nothing of real devices.
+- 2026-11-25，Windows，Node v26.7.0。Edge Chromium 无头浏览器，WebGL2 SwiftShader 软件渲染。 · Windows, Node v26.7.0, headless Edge Chromium, WebGL2 SwiftShader.
+- 首屏限速为下行 10 Mbps、上行 5 Mbps、40 ms 往返和 CPU 降速 ×4。 · First playable screen measured with 10/5 Mbps, 40 ms RTT and ×4 CPU slowdown.
+- 命令为 `node tools/quality.mjs NezhaSea --no-write --json`。真机限制另列。 · Automated output from that quality command. Device limits are listed separately.
 
 ## 结果 · Results
 
 | 编号 · Item | 标准 · Standard | 方式 · How | 结果 · Result | 测量 · Measured |
 |---|---|---|---|---|
 | T1 | 触屏走完主流程 · The whole game by touch | 真机 · device | 未运行 · not run |  |
-| T2 | 触控区 ≥ 44×44 CSS px · Touch targets ≥ 44 × 44 CSS px | 自动 · automatic | 达标 · pass | 7 controls, all at least 44×44 |
+| T2 | 触控区 ≥ 44×44 CSS px · Touch targets ≥ 44 × 44 CSS px | 自动 · automatic | 达标 · pass | 9 controls, all at least 44×44 |
 | T3 | 不误触下拉刷新和双击缩放 · No pull-to-refresh or double-tap zoom | 自动 · automatic | 达标 · pass | overscroll held, touch-action none, double-tap zoom off |
-| F1 | 桌面帧时间 p95 ≤ 16.7 ms · Desktop frame time p95 ≤ 16.7 ms | 自动 · automatic | 达标 · pass | p95 16.8 ms over 241 frames |
+| F1 | 桌面帧时间 p95 ≤ 16.7 ms · Desktop frame time p95 ≤ 16.7 ms | 自动 · automatic | 达标 · pass | p95 4.3 ms over 962 frames |
 | F2 | 中端手机帧时间 p95 ≤ 33 ms · Mid-range phone frame time p95 ≤ 33 ms | 真机 · device | 未运行 · not run |  |
-| L1 | 首屏 ≤ 3 s（10/5 Mbps、40 ms、CPU ×4） · Start-up ≤ 3 s (10/5 Mbps, 40 ms, CPU ×4) | 自动 · automatic | 达标 · pass | 1.5 s to the first playable screen, 1.8 MB |
+| L1 | 首屏 ≤ 3 s（10/5 Mbps、40 ms、CPU ×4） · Start-up ≤ 3 s (10/5 Mbps, 40 ms, CPU ×4) | 自动 · automatic | 未达标 · fail | 3.6 s to the first playable screen, 2.8 MB |
 | O1 | 横竖屏与窗口尺寸 · Orientation and window sizes | 自动 · automatic | 达标 · pass | 1280×800, 390×844, 844×390, 768×1024 and live resizing: fits, no errors |
 | I1 | 中英文全可切换，英文下无中文 · Both languages; no Chinese left in English | 自动 · automatic | 达标 · pass | html lang "en", no Chinese in page text or names |
 | I2 | 画布上的字也随语言切换 · Words drawn on the canvas follow the language | 人工 · by hand | 未运行 · not run |  |
 | I3 | 长英文不溢出 · Long English does not overflow | 自动 · automatic | 达标 · pass | no page text cut off at 390 px in English |
-| A1 | 键盘可到达控件，焦点可见 · The keyboard reaches controls; focus shows | 自动 · automatic | 达标 · pass | Tab → "Young NezhaStarts with the Uni" (outline) |
+| A1 | 键盘可到达控件，焦点可见 · The keyboard reaches controls; focus shows | 自动 · automatic | 达标 · pass | Tab → "东海" (focus drawn by the game) |
 | A1m | 只用键盘走完主流程 · The whole game by keyboard alone | 人工 · by hand | 未运行 · not run |  |
-| A2 | 读屏读出主要按钮 · A screen reader names the main buttons | 自动 · automatic | 达标 · pass | 8 named controls, e.g. button "Set out", button "Young Nezha Starts with the Universe Ring; even in everything. Not played yet", button "Lotus Body · Locked Starts with the Sky Ribbon; more health and mending, a little slower. Hold wave 10 to unlock" |
+| A2 | 读屏读出主要按钮 · A screen reader names the main buttons | 自动 · automatic | 达标 · pass | 9 named controls, e.g. button "出海", button "怎么玩", button "设置" |
 | A3 | 尊重 prefers-reduced-motion · prefers-reduced-motion is honoured | 自动 · automatic | 达标 · pass | the code reads prefers-reduced-motion or offers a setting |
 | S1 | 存档损坏不崩溃 · A broken save does not crash | 自动 · automatic | 达标 · pass | unreadable text; started without an uncaught error (keys: nezha-sea) |
 | S2 | 存档版本不匹配不崩溃 · A save of another version does not crash | 自动 · automatic | 达标 · pass | a save from a newer version; started without an uncaught error (keys: nezha-sea) |
 | S3 | 存储不可用不崩溃 · Refused storage does not crash | 自动 · automatic | 达标 · pass | storage refused: started without an uncaught error |
 | S4 | 存档出问题时提示并可重开 · A save problem is told and a fresh start offered | 人工 · by hand | 未运行 · not run |  |
 | E1 | 无控制台错误 · No console errors | 自动 · automatic | 达标 · pass | 0 errors |
-| E2 | 资源失败有错误界面和重试 · A failed file shows an error and a retry | 自动 · automatic | 不适用 · n/a | the game loads no image, sound, font or data file |
+| E2 | 资源失败有错误界面和重试 · A failed file shows an error and a retry | 自动 · automatic | 未达标 · fail | 5 files refused; no uncaught error; no error screen with a retry |
 | E3 | 切到后台再回来不出错 · Hidden and shown again without errors | 自动 · automatic | 达标 · pass | no errors; the game or the engine loop watches visibility |
 | E4 | 切回后声音和计时正常 · Sound and timers right after coming back | 真机 · device | 未运行 · not run |  |
 
-自动项不达标 · Automatic items failing: 无 · none。真机项（T1、F2、E4）和人工项（I2、A1m、S4）未运行，除非上表另有记录 · Device and by-hand items were not run unless the table says otherwise.
+F1 测量的是已静置的标题页。标题画面无变化时暂停绘制，菜单输入、窗口变化和立绘就绪会唤醒引擎。L1 的 3 秒门槛在同机旧 UI 基线也超出。E2 默认拒绝的五个文件没有触发致命错误。单独验收强制角色图集创建失败，白鹭错误界面和重载均通过。 · F1 is sampled at the settled title. The idle view stops drawing until input, layout or artwork changes. The same host also missed the 3-second L1 target on the legacy interface. E2's five generic file refusals did not cause a fatal load. A separate injected atlas failure verified the Egret error screen and a working reload.
+
+## 同机性能对照 · Matched performance
+
+| 场景 · Scenario | 旧界面 `b5628eb` | 旧界面 `51b6175d` | 引擎 UI `51b6175d` |
+|---|---:|---:|---:|
+| F1 静置标题 p95 · Idle title p95 | 16.7 ms | 16.7 ms | 4.3 ms |
+| L1 限速首屏 · Throttled first playable | 3.5–3.6 s / 2.4 MB | 3.6 s / 2.5 MB | 3.6 s / 2.8 MB |
+| 1280×800，不密集战斗 p95 · Sparse combat | 20.8 ms | — | 19.7 ms |
+| 1280×800，第 16 波 139–140 敌人 p95 · Dense combat | 25.1 ms | — | 25.0 ms |
+| 同一密集段 p99 · Same dense segment | 33.4 ms | — | 29.2 ms |
+
+密集段采样 5.6 秒。旧版 286 帧，新版 322 帧。新版全宽画布实验为 30.2 ms p95，战斗画布恢复到战场大小后降至 29.1 ms，最终版包含 HUD 文案按变化刷新，整段复跑为 25.0 ms。最终样本无超过 50 ms 的帧。该对照属于同机软件渲染，包含浏览器排程、玩法与绘制。集市文字回退画布在 390×844 的 10 次交互读回中位数 0.95 ms，范围 0.5–3.0 ms，未包含 GPU 上传和合成。
+
+Each dense sample covers 5.6 seconds, with 286 and 322 frames respectively. The initial expanded battle canvas was 30.2 ms p95. Limiting the canvas to the field improved it to 29.1 ms. The final build also updates formatted HUD labels only when visible values change. Its full run was 25.0 ms p95 with no interval above 50 ms. Results include game work, rendering and browser scheduling on one software-rendered host. The text fallback at 390 × 844 made ten canvas readbacks at a 0.95 ms median (0.5–3.0 ms), excluding GPU uploads or compositing.
 
 ## 人工与真机结果 · By hand and on devices
 
-- A1m、S4：由本目录的 `test/accept.mjs` 在无头 Chromium 里覆盖——只用键盘走完标题、选难度、设置、出海、走动、暂停、升级、集市里买、合成、合成神器、下一波、失守、再出海、守住和回标题；存档改坏后标题显示提示并重新开始。没有由人另做，也没有用真读屏。 · Covered by this folder's acceptance script in headless Chromium: the whole game by keyboard, and the notice after a broken save. Not done again by a person, nor with a real screen reader.
-- I2：画布上的字是伤害数字。首领登场提示取自文字表，显示在血条下方。可从标题或暂停菜单切换语言。 · The canvas shows damage numbers. Boss notices from the word table appear below the boss health bar. Change languages on the title or pause menu.
-- 另量 · Also measured：第 9、16 波中途 p95 16.8 ms；场上兵数顶到上限 140 时 p95 33.3 ms（无头 SwiftShader，540×960 和 1280×800）。 · Mid-game waves at 16.8 ms p95; 140 soldiers at 33.3 ms, headless.
-- T1、F2、E4：未运行 · not run.
+- 浏览器键盘、触屏多点、模拟标准手柄，以及四尺寸中英文截图已经复测。胜负、旧档和首领节点用固定测试局面覆盖。 · Tested browser keyboard, multitouch input, a simulated standard gamepad and both languages at four sizes. Fixed states exercised defeat, victory, old saves and the Boss.
+- 三星 Fold7 连接到调试环境，进入输入步骤前休眠，唤醒后仍锁屏。本轮未完成手机真机游玩。物理手柄、屏幕阅读软件、Safari、完整二十波真人游玩及外放实听未验收。 · The connected Fold7 slept before input and woke to its lock screen. Physical mobile gameplay, a hardware gamepad, a screen reader, Safari, a full human twenty-wave run and speaker listening were not verified.
+- 画布缩放用四个标准尺寸复跑。390×320 等更矮窗口的集市内容仍可能重叠。 · The four standard sizes and live resizing were checked. Very short windows such as 390 × 320 can still crowd the market.
 
 ## 「出海」输入与呈现追踪 · Set out input and presentation trace
 

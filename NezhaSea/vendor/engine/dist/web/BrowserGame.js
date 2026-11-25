@@ -9,8 +9,10 @@ import { createBrowserFrameLoop } from './loop.js';
 import { createBrowserPointerInput } from './pointer.js';
 import { createBrowserKeyboardInput } from './keyboard.js';
 import { createBrowserStatsPanel } from './BrowserStatsPanel.js';
+import { planScreen } from './screen.js';
 const invalid = () => new EgretError('BROWSER_GAME_OPTIONS_INVALID');
 const whole = (value) => typeof value === 'number' && Number.isSafeInteger(value) && value > 0;
+const finite = (value) => typeof value === 'number' && Number.isFinite(value);
 /** WebGPU where the browser has it and gives an adapter. Asking for an adapter does not touch the canvas, which can hold one kind of context only. */
 async function chooseBackend(asked) {
     if (asked !== 'auto')
@@ -76,9 +78,24 @@ export async function createBrowserGame(options) {
         (update !== undefined && typeof update !== 'function') ||
         (onError !== undefined && typeof onError !== 'function') ||
         [options.pointer, options.keyboard, options.hover, options.autoStart, options.stats].some(flag => flag !== undefined && typeof flag !== 'boolean') ||
-        !['none', 'contain', 'cover', 'stretch'].includes(options.fit ?? 'none') ||
+        !['none', 'contain', 'cover', 'stretch', 'expand'].includes(options.fit ?? 'none') ||
         (options.fitTo !== undefined && (options.fitTo === null || typeof options.fitTo !== 'object')))
         throw invalid();
+    // The plan of the stage: refused here, before anything is made, when the portrait size or the insets are not valid.
+    const planFor = (box, insets) => planScreen({
+        box,
+        design: { width, height },
+        ...(options.portrait === undefined ? {} : { portrait: options.portrait }),
+        fit: options.fit === 'expand' ? 'expand' : 'contain',
+        ...(insets === undefined ? {} : { insets })
+    });
+    try {
+        planFor({ width, height }, options.insets);
+    }
+    catch {
+        throw invalid();
+    }
+    let screen = planFor({ width, height });
     const backend = await chooseBackend(asked);
     // Only the chosen backend's module is loaded.
     const host = backend === 'webgpu'
@@ -99,8 +116,13 @@ export async function createBrowserGame(options) {
     }
     let loop, stats, disposal;
     try {
-        const scope = engine.createScope(), frame = Object.freeze({ width, height, clearColor, clearAlpha });
-        const pointer = options.pointer === false ? undefined : createBrowserPointerInput({ engine, scope, width, height });
+        const scope = engine.createScope(), initialFrame = Object.freeze({ width, height, clearColor, clearAlpha });
+        let frame = initialFrame;
+        const frameNow = () => frame;
+        const stageSize = () => frame;
+        const pointer = options.pointer === false
+            ? undefined
+            : createBrowserPointerInput({ engine, scope, width, height, size: stageSize });
         const keyboard = options.keyboard === false ? undefined : createBrowserKeyboardInput({ engine, scope });
         const hover = options.hover === true
             ? scope.use((await import('./hover.js')).createBrowserHoverInput({
@@ -109,6 +131,7 @@ export async function createBrowserGame(options) {
                 canvas,
                 width,
                 height,
+                size: stageSize,
                 ...(onError === undefined ? {} : { onError })
             }))
             : undefined;
@@ -120,7 +143,7 @@ export async function createBrowserGame(options) {
                 ? createBrowserFrameLoop({
                     engine,
                     host,
-                    frame,
+                    frame: frameNow,
                     ...(update === undefined ? {} : { update }),
                     ...(onError === undefined ? {} : { onError })
                 })
@@ -131,7 +154,7 @@ export async function createBrowserGame(options) {
                         renderSharedFrame: (given) => (drawn = engine.renderSharedFrame(given))
                     },
                     host,
-                    frame,
+                    frame: frameNow,
                     ...(onError === undefined ? {} : { onError }),
                     update(seconds) {
                         const now = made.snapshot();
@@ -207,19 +230,74 @@ export async function createBrowserGame(options) {
                     texture.dispose();
             }
         };
-        // The canvas in its element: sized now and whenever the element changes size. The stage keeps its own units.
+        // The canvas in its element: sized now and whenever the element changes size. With "contain" and "expand" the
+        // stage follows the plan of the screen: its size, and, with a portrait size, its shape.
         const fit = options.fit ?? 'none', holder = options.fitTo ?? canvas.parentElement;
-        let watcher;
+        const screenListeners = new Set();
+        let watcher, probe;
+        // The page's safe-area insets, read from an element that is padded by them and shows nothing.
+        const pageInsets = () => {
+            if (options.insets !== undefined)
+                return options.insets;
+            const page = canvas.ownerDocument, view = page?.defaultView;
+            if (page === undefined ||
+                page === null ||
+                view === null ||
+                view === undefined ||
+                typeof view.getComputedStyle !== 'function' ||
+                typeof page.createElement !== 'function' ||
+                page.body === null ||
+                page.body === undefined)
+                return undefined;
+            if (probe === undefined) {
+                probe = page.createElement('div');
+                probe.setAttribute('aria-hidden', 'true');
+                probe.style.cssText =
+                    'position:fixed;left:0;top:0;width:0;height:0;visibility:hidden;pointer-events:none;' +
+                        'padding:env(safe-area-inset-top,0px) env(safe-area-inset-right,0px) env(safe-area-inset-bottom,0px) env(safe-area-inset-left,0px)';
+                page.body.appendChild(probe);
+            }
+            const style = view.getComputedStyle(probe), read = (value) => (Number.isFinite(parseFloat(value)) ? Math.max(0, parseFloat(value)) : 0);
+            // Insets are of the window; the element may be anywhere in it.
+            const box = (holder ?? canvas).getBoundingClientRect(), across = view.innerWidth, down = view.innerHeight;
+            return {
+                top: Math.max(0, read(style.paddingTop) - box.top),
+                left: Math.max(0, read(style.paddingLeft) - box.left),
+                right: Math.max(0, read(style.paddingRight) - (finite(across) ? across - box.right : 0)),
+                bottom: Math.max(0, read(style.paddingBottom) - (finite(down) ? down - box.bottom : 0))
+            };
+        };
         if (fit !== 'none' && holder !== null) {
             const place = () => {
-                const box = holder.getBoundingClientRect(), wide = box.width / width, tall = box.height / height;
-                const scaleX = fit === 'stretch' ? wide : fit === 'contain' ? Math.min(wide, tall) : Math.max(wide, tall), scaleY = fit === 'stretch' ? tall : scaleX;
+                const box = holder.getBoundingClientRect();
                 const style = canvas.style;
-                style.width = width * scaleX + 'px';
-                style.height = height * scaleY + 'px';
-                // Centred in its element; with "cover" what does not fit is outside it, for the element to cut off.
-                style.marginLeft = (box.width - width * scaleX) / 2 + 'px';
-                style.marginTop = (box.height - height * scaleY) / 2 + 'px';
+                if (fit === 'cover' || fit === 'stretch') {
+                    const wide = box.width / width, tall = box.height / height;
+                    const scaleX = fit === 'stretch' ? wide : Math.max(wide, tall), scaleY = fit === 'stretch' ? tall : scaleX;
+                    style.width = width * scaleX + 'px';
+                    style.height = height * scaleY + 'px';
+                    // Centred in its element; with "cover" what does not fit is outside it, for the element to cut off.
+                    style.marginLeft = (box.width - width * scaleX) / 2 + 'px';
+                    style.marginTop = (box.height - height * scaleY) / 2 + 'px';
+                    return;
+                }
+                if (!(box.width > 0 && box.height > 0))
+                    return;
+                const next = planFor({ width: box.width, height: box.height }, pageInsets()), before = screen;
+                screen = next;
+                if (next.width !== frame.width || next.height !== frame.height)
+                    frame = Object.freeze({ width: next.width, height: next.height, clearColor, clearAlpha });
+                style.width = next.width * next.scale + 'px';
+                style.height = next.height * next.scale + 'px';
+                style.marginLeft = next.left + 'px';
+                style.marginTop = next.top + 'px';
+                const moved = next.width !== before.width ||
+                    next.height !== before.height ||
+                    next.orientation !== before.orientation ||
+                    ['x', 'y', 'width', 'height'].some(key => next.safe[key] !== before.safe[key]);
+                if (moved)
+                    for (const listener of [...screenListeners])
+                        listener(next);
             };
             place();
             watcher = new ResizeObserver(place);
@@ -356,7 +434,20 @@ export async function createBrowserGame(options) {
             host,
             stage: engine.stage,
             scope,
-            frame,
+            get frame() {
+                return frame;
+            },
+            get screen() {
+                return screen;
+            },
+            onScreenChange(listener) {
+                if (typeof listener !== 'function')
+                    throw invalid();
+                screenListeners.add(listener);
+                return () => {
+                    screenListeners.delete(listener);
+                };
+            },
             loop: made,
             pointer,
             keyboard,
@@ -394,10 +485,30 @@ export async function createBrowserGame(options) {
                     typeof node.getBounds !== 'function' ||
                     !(typeof cssPixels === 'number' && cssPixels >= 0 && Number.isFinite(cssPixels)))
                     throw invalid();
-                const drawn = node.getBounds(), box = canvas.getBoundingClientRect(), perCss = box.width > 0 && box.height > 0 ? Math.max(width / box.width, height / box.height) : 1;
-                // The node's own units: undo its scale on the stage.
-                const scaleX = Math.abs(node.scaleX) || 1, scaleY = Math.abs(node.scaleY) || 1;
-                const wide = Math.max(drawn.width, (cssPixels * perCss) / scaleX), tall = Math.max(drawn.height, (cssPixels * perCss) / scaleY);
+                const drawn = node.getBounds(), box = canvas.getBoundingClientRect();
+                const laidOut = box.width > 0 && box.height > 0;
+                const halfX = (cssPixels / 2) * (laidOut ? frame.width / box.width : 1);
+                const halfY = (cssPixels / 2) * (laidOut ? frame.height / box.height : 1);
+                let wide = drawn.width, tall = drawn.height;
+                if (cssPixels > 0) {
+                    const cx = drawn.x + drawn.width / 2, cy = drawn.y + drawn.height / 2;
+                    const center = node.localToGlobal(cx, cy);
+                    try {
+                        // Opposite corners are symmetric. Two adjacent corners give the local extents of the entire CSS square.
+                        const top = node.globalToLocal(center.x + halfX, center.y - halfY);
+                        const bottom = node.globalToLocal(center.x + halfX, center.y + halfY);
+                        wide = Math.max(wide, 2 * Math.abs(top.x - cx), 2 * Math.abs(bottom.x - cx));
+                        tall = Math.max(tall, 2 * Math.abs(top.y - cy), 2 * Math.abs(bottom.y - cy));
+                    }
+                    catch (cause) {
+                        if (!(cause instanceof EgretError) || cause.code !== 'COORDINATE_TRANSFORM_SINGULAR')
+                            throw cause;
+                        // A collapsed node cannot receive a two-dimensional hit. Keep a finite area until it is laid out again.
+                        const perCss = laidOut ? Math.max(frame.width / box.width, frame.height / box.height) : 1;
+                        wide = Math.max(wide, (cssPixels * perCss) / (Math.abs(node.scaleX) || 1));
+                        tall = Math.max(tall, (cssPixels * perCss) / (Math.abs(node.scaleY) || 1));
+                    }
+                }
                 const area = Object.freeze({
                     x: drawn.x - (wide - drawn.width) / 2,
                     y: drawn.y - (tall - drawn.height) / 2,
@@ -410,11 +521,14 @@ export async function createBrowserGame(options) {
             get unitsPerCssPixel() {
                 const box = canvas.getBoundingClientRect();
                 // Before the page lays the canvas out, one unit is one pixel.
-                return box.width > 0 && box.height > 0 ? Math.max(width / box.width, height / box.height) : 1;
+                return box.width > 0 && box.height > 0 ? Math.max(frame.width / box.width, frame.height / box.height) : 1;
             },
             toStage(clientX, clientY) {
                 const box = canvas.getBoundingClientRect();
-                return { x: ((clientX - box.left) * width) / box.width, y: ((clientY - box.top) * height) / box.height };
+                return {
+                    x: ((clientX - box.left) * frame.width) / box.width,
+                    y: ((clientY - box.top) * frame.height) / box.height
+                };
             },
             dispose() {
                 // The scope ends the input it was given; the Engine ends its scopes and its Host.
@@ -422,6 +536,8 @@ export async function createBrowserGame(options) {
                     made.dispose();
                     panel?.dispose();
                     watcher?.disconnect();
+                    probe?.remove();
+                    screenListeners.clear();
                     // The scope ends the labels; then the cache they were drawn from can end, before the Engine does.
                     scope.dispose();
                     if (textCache !== undefined) {

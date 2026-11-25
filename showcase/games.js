@@ -491,6 +491,11 @@ export const GAMES = [
         source: 'src/main.mjs',
       },
       {
+        title: { zh: "白鹭原生界面与输入", en: "Egret views and controls" },
+        description: { zh: "声明式视图管理标题、战斗顶栏和集市。集市支持手机分页、拖放合成及按名称验收。", en: "Declarative views cover the title, combat HUD and market, including compact tabs, drag-to-merge and named-control testing." },
+        source: 'src/ui-market.mjs',
+      },
+      {
         title: { zh: "共享角色图集与战斗特效", en: "Shared actor atlas and combat effects" },
         description: { zh: "白鹭 Bitmap 共用运行时图集绘制哪吒、水族兵、首领和法宝，Graphics 绘制武器轨迹与首领预警。", en: "Egret Bitmap draws Nezha, sea soldiers, bosses and treasures from a shared runtime atlas, with Graphics for weapon trails and boss telegraphs." },
         source: 'src/view.mjs',
