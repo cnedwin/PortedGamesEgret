@@ -26,7 +26,8 @@ import { MARKS, openSave, recordRun, settingsOf } from './saves.mjs';
 import { setLanguage, getLanguage, t, say } from './i18n.mjs';
 import { loadMotion, skillTrailSegment, swingTrailActive } from './view/motion.mjs';
 import { createFigure } from './view/figure.mjs';
-import { createFootSoldier } from './view/foot-soldier.mjs';
+import { cloneFigureScene } from './view/figure-body.mjs';
+import { prepareTroopMaterials } from './view/troop-materials.mjs';
 import { createHorse } from './view/horse.mjs';
 import { createEffects } from './view/effects.mjs';
 import { skillSweepStyle } from './view/effect-profiles.mjs';
@@ -143,6 +144,7 @@ async function main() {
   // ---- characters ------------------------------------------------------------------------------------------
   const motions = {};
   const bytes = {};
+  const troopTemplates = new Map();
   const decode = async ({ bytes: b, mimeType }) => createImageBitmap(new Blob([b], { type: mimeType }), { colorSpaceConversion: 'none', premultiplyAlpha: 'none' });
   async function body(regiment, which = set) {
     const key = regiment + which;
@@ -157,10 +159,43 @@ async function main() {
     motions[regiment] ??= loadMotion(new URL(`../assets/motion/${regiment}`, import.meta.url));
     return Promise.all([body(regiment, which), motions[regiment], REGIMENTS[regiment].horse ? body('horse', which) : null]);
   }
+  async function prepareTroopPrograms(template) {
+    if (!renderer.preparePrograms || !renderer.context?.getExtension?.('KHR_parallel_shader_compile')) return;
+    const requests = [];
+    template.scene.traverse((mesh) => {
+      if (!mesh.skeleton) return;
+      mesh.receiveShadow = true;
+      for (const material of Array.isArray(mesh.material) ? mesh.material : [mesh.material]) {
+        requests.push({ mesh, material, fog: true, environment: true, receiveShadows: renderer.shadowsEnabled });
+        if (renderer.shadowsEnabled) requests.push({ mesh, material, pass: 'shadow' });
+      }
+    });
+    // The detached template has the real uniform shader variant without drawing troops early.
+    await renderer.preparePrograms(requests).catch(error => console.warn('Troop program preparation failed.', error));
+  }
+  async function loadTroopFigure(regiment) {
+    motions[regiment] ??= loadMotion(new URL(`../assets/motion/${regiment}`, import.meta.url));
+    if (!troopTemplates.has(regiment)) {
+      // Keep one low-detail body and uniform per regiment for this page. Each soldier gets its own bones.
+      troopTemplates.set(regiment, body(regiment, 'low').then(async (template) => {
+        const disposeUniform = prepareTroopMaterials(template.scene, regiment);
+        app.scope.use({
+          dispose() {
+            disposeUniform();
+            template.dispose();
+          }
+        });
+        await prepareTroopPrograms(template);
+        return template;
+      }));
+    }
+    const [template, motion] = await Promise.all([troopTemplates.get(regiment), motions[regiment]]);
+    return [{ scene: cloneFigureScene(template.scene) }, motion, null];
+  }
   function figureFor(man, figureAssets) {
-    if (man.rank === 'troop') return createFootSoldier(man.regiment, scene);
     const [b, motion, horseBody] = figureAssets;
     const fig = createFigure({ regiment: man.regiment, body: b, motion, world: scene, height: HEIGHT[man.regiment] * (man.rank === 'boss' ? 1.08 : 1) });
+    if (man.rank === 'troop') fig.holder.name = 'troop-figure-' + man.regiment;
     if (!horseBody) return fig;
     // A rider and his horse: the horse moves first, then he sits where its saddle is.
     const horse = createHorse({ body: horseBody, world: scene });
@@ -330,7 +365,7 @@ async function main() {
     const arrived = (message) => screens.progress(++progress / 2, message);
     const [, bodies] = await Promise.all([
       enter(st.place).then(() => arrived(`${t('loadingMen')} · ${placeName(st.place)}`)),
-      Promise.all(roster.map(unit => unit.rank === 'troop' ? null : loadFigure(unit.regiment))).then((loaded) => {
+      Promise.all(roster.map(unit => unit.rank === 'troop' ? loadTroopFigure(unit.regiment) : loadFigure(unit.regiment))).then((loaded) => {
         arrived();
         return loaded;
       })

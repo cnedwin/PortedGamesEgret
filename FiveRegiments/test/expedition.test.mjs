@@ -1,7 +1,9 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { createFight, step } from '../src/sim/fight.mjs';
+import { createBrain } from '../src/sim/brain.mjs';
+import { createFight, step, TICK } from '../src/sim/fight.mjs';
 import { expeditionReady, planExpedition } from '../src/sim/expedition.mjs';
+import { loadout } from '../src/sim/regiments.mjs';
 
 test('the route has three successive fields and a fresh roster per run', () => {
   const stages = planExpedition();
@@ -35,19 +37,58 @@ test('an expedition exit needs a cleared field and the fighter inside the gate',
   assert.equal(game.over, 'won');
 });
 
-test('regiment sentries wake along the road and keep the light infantry loadout', () => {
+test('regiment sentries wake along the road and keep the light infantry role', () => {
   const stage = planExpedition()[1];
   const troop = stage.units.find(unit => unit.regiment === 'plume');
   const game = createFight({ hero: { regiment: 'tiger', at: [0, 10] }, foes: [troop] });
   const guard = game.men[1];
   assert.equal(guard.rank, 'troop');
   assert.equal(guard.horse, null);
-  assert.deepEqual(guard.skills, []);
+  assert.equal(guard.mounted, false);
   assert.ok(guard.hp < guard.r.health * 0.35 && guard.power < 1);
   assert.equal(expeditionReady(guard, game.hero), false);
   game.hero.z = guard.wakeZ;
   assert.equal(expeditionReady(guard, game.hero), true);
   assert.equal(createFight({ hero: { regiment: 'plume' }, foes: [] }).hero.mounted, true);
+});
+
+test('all five infantry professions use their regular skills with a readable opening', () => {
+  const troops = planExpedition().flatMap(stage => stage.units.filter(unit => unit.rank === 'troop'));
+  const examples = [
+    ['yulin', 4, 'charge'],
+    ['tiger', 1.8, 'spin'],
+    ['vanguard', 6, 'wave'],
+    ['plume', 2.4, 'returnSpear'],
+    ['archer', 7, 'fan']
+  ];
+  for (const [regiment, distance, expectedSkill] of examples) {
+    const troop = troops.find(unit => unit.regiment === regiment);
+    const game = createFight({
+      hero: { regiment: 'tiger', at: [0, 11] },
+      foes: [troop],
+      exit: { x: 0, z: -18, r: 2 },
+      place: { radius: 23, posts: [] }
+    });
+    const guard = game.men[1];
+    const brain = createBrain(guard, { level: 0.38, rng: () => 0 });
+    assert.deepEqual(guard.skills, loadout(regiment).skills, regiment);
+    assert.equal(brain.think(game, TICK).skill, -1, 'the outpost is still asleep');
+
+    game.hero.z = guard.wakeZ;
+    step(game, {});
+    assert.equal(guard.waiting, false);
+    game.hero.x = guard.x;
+    game.hero.z = guard.z + distance;
+    game.hero.act = { kind: 'recover', time: 10, t: 0 };
+    assert.equal(brain.think(game, TICK).skill, -1, 'a newly alerted guard can be approached');
+    for (let i = 0; i < 3 / TICK; i++) step(game, {});
+
+    const input = brain.think(game, TICK);
+    assert.equal(guard.skills[input.skill], expectedSkill, regiment);
+    const events = step(game, { [guard.id]: input });
+    assert.ok(events.some(event => event.type === 'skill' && event.who === guard.id && event.id === expectedSkill), regiment);
+    assert.ok(guard.cool[1 - input.skill] >= 6, 'another skill cannot follow immediately');
+  }
 });
 
 test('the boss wakes at its post and changes stance once after finishing its attack', () => {

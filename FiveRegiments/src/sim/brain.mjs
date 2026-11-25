@@ -115,7 +115,7 @@ export function createBrain(man, { level = 0.5, rng = Math.random } = {}) {
         case 'shout': want = man.hp < man.maxHp * 0.7; break;
         case 'returnSpear': {
           const closing = ((man.x - target.x) * target.vx + (man.z - target.z) * target.vz) / Math.max(0.1, d);
-          want = brain.level >= 0.5 && d > 1.1 && d < s.reach && (open || closing > 0.65);
+          want = (brain.level >= 0.5 || man.rank === 'troop') && d > 1.1 && d < s.reach && (open || closing > 0.65);
           break;
         }
         case 'stepCut': want = d > 2.0 && d < 4.4 && (open || !target.guard); break;

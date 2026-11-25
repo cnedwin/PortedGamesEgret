@@ -48,6 +48,8 @@ const RELEASE_PREP_FRACTION = 0.72;
 const SPIN_GUARD_AT = 0.43;
 const SKILL_GUARD_DELAY = 0.12;
 const GRAVITY = 9.8;
+const TROOP_SKILL_OPENING = 1.5;
+const TROOP_SKILL_INTERVAL = 6;
 
 export { facing };
 
@@ -109,7 +111,7 @@ function enlist(game, spec, side, index) {
     phase: spec.phaseSkills ? 1 : 0,
     phaseSkills: spec.phaseSkills,
     r,
-    skills: troop ? [] : load.skills,
+    skills: load.skills,
     talents,
     x: at[0],
     z: at[1],
@@ -752,6 +754,8 @@ function startSkill(game, man, slot, input) {
   // How fresh he is when it begins (the Full Moon Slash reads it).
   const fresh = man.st / man.maxSt;
   man.cool[slot] = s.cool;
+  // Give the player breathing room between a sentry's techniques.
+  if (man.rank === 'troop') man.cool = man.cool.map(cool => Math.max(cool, TROOP_SKILL_INTERVAL));
   spend(man, s.cost);
   man.guard = false;
   man.draw = null;
@@ -1860,7 +1864,10 @@ export function step(game, inputs, dt = TICK) {
   settle(game);
   if (game.exit) {
     for (const man of game.men) {
-      if (man.waiting && expeditionReady(man, game.hero)) man.waiting = false;
+      if (man.waiting && expeditionReady(man, game.hero)) {
+        man.waiting = false;
+        if (man.rank === 'troop') man.cool.fill(TROOP_SKILL_OPENING);
+      }
       if (changeExpeditionPhase(man)) emit(game, 'bossPhase', { who: man.id, phase: man.phase });
     }
   }
