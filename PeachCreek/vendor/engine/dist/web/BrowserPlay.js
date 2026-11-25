@@ -16,6 +16,9 @@ import { createPlayWidgets } from './playWidgets.js';
 import { prefersReducedMotion, watchReducedMotion } from './BrowserPreferences.js';
 import { createPlayTouch } from './playTouch.js';
 import { MUSIC_MOODS, MUSIC_PARTS, composeMusic, musicMix } from './playMusic.js';
+import { createDragAndDrop, createGestures } from './gestures.js';
+import { createPlayViews } from './playView.js';
+import { createBadges, createRequest, formatCompact } from './viewParts.js';
 /** A line of text: a sprite to place, fade, tween and remove like any other, with words that can be changed. */
 export class PlayText extends Sprite {
     #text;
@@ -253,6 +256,30 @@ export async function play(options) {
         throw invalid('update is a function');
     if (onError !== undefined && typeof onError !== 'function')
         throw invalid('onError is a function');
+    const fitAsked = options.fit ?? 'contain';
+    if (fitAsked !== 'contain' && fitAsked !== 'expand')
+        throw invalid("fit is 'contain' or 'expand'");
+    if (options.portrait !== undefined &&
+        (options.portrait === null ||
+            typeof options.portrait !== 'object' ||
+            !Number.isSafeInteger(options.portrait.width) ||
+            !Number.isSafeInteger(options.portrait.height) ||
+            options.portrait.width <= 0 ||
+            options.portrait.height <= 0))
+        throw invalid('portrait is { width, height } of whole numbers above 0');
+    if (options.insets !== undefined &&
+        (options.insets === null ||
+            typeof options.insets !== 'object' ||
+            [options.insets.top, options.insets.right, options.insets.bottom, options.insets.left].some(edge => !finite(edge) || edge < 0)))
+        throw invalid('insets is { top, right, bottom, left } of numbers 0 or more');
+    if (options.arrange !== undefined && typeof options.arrange !== 'function')
+        throw invalid('arrange is a function');
+    if (options.semantics !== undefined &&
+        (options.semantics === null ||
+            typeof options.semantics !== 'object' ||
+            typeof options.semantics.add !== 'function' ||
+            typeof options.semantics.publish !== 'function'))
+        throw invalid('semantics is a tree made by createUiSemantics');
     if (options.audio !== undefined && typeof options.audio !== 'boolean')
         throw invalid('audio is true or false');
     if (options.reducedMotion !== undefined && typeof options.reducedMotion !== 'boolean')
@@ -303,7 +330,9 @@ export async function play(options) {
         effects: true,
         autoStart: false,
         keyboard: false,
-        ...(holder === undefined ? {} : { fit: 'contain', fitTo: holder }),
+        ...(holder === undefined ? {} : { fit: fitAsked, fitTo: holder }),
+        ...(options.portrait === undefined ? {} : { portrait: options.portrait }),
+        ...(options.insets === undefined ? {} : { insets: options.insets }),
         ...(options.backend === undefined ? {} : { backend: options.backend }),
         ...(onError === undefined ? {} : { onError })
     }).catch((cause) => {
@@ -349,7 +378,7 @@ export async function play(options) {
             renderSharedFrame: frame => engine.renderSharedFrame(frame)
         },
         host: baseBrowser.host,
-        frame: baseBrowser.frame,
+        frame: () => baseBrowser.frame,
         update: () => {
             if (!disposed && playLoop.state === 'running')
                 step(realStep, playStep);
@@ -358,6 +387,13 @@ export async function play(options) {
     });
     const browser = Object.freeze({
         ...baseBrowser,
+        // The frame and the screen change with the window; these read the game's own.
+        get frame() {
+            return baseBrowser.frame;
+        },
+        get screen() {
+            return baseBrowser.screen;
+        },
         loop: playLoop,
         dispose() {
             playLoop.dispose();
@@ -367,8 +403,26 @@ export async function play(options) {
     });
     const layer = () => stage.addChild(scope.use(new Sprite()));
     const world = layer(), effects = layer(), ui = layer(), glass = layer(), cover = layer();
+    // Where the design is on the stage: the layers are moved there, so (0, 0) is the design's corner however much of
+    // the stage the window shows around it. The cover is the stage's own, over all of it.
+    let shown = baseBrowser.screen;
+    const placeLayers = () => {
+        ui.x = glass.x = shown.designRect.x;
+        ui.y = glass.y = shown.designRect.y;
+    };
+    placeLayers();
     const view = { x: 0, y: 0 };
     const random = createRandom(options.seed ?? Date.now() + ':' + Math.random());
+    // What the player used last, for hints in the player's own words.
+    let device = (() => {
+        try {
+            return win.matchMedia?.('(pointer: coarse)').matches === true ? 'touch' : 'keyboard';
+        }
+        catch {
+            return 'keyboard';
+        }
+    })();
+    const badges = createBadges();
     // Keys: a set of what is held, and what changed since the last update.
     const physicalKeys = new Set(), held = new Set(), wentDown = new Set(), cameUp = new Set();
     const typing = (target) => {
@@ -386,6 +440,7 @@ export async function play(options) {
             event.preventDefault();
         if (event.repeat)
             return;
+        device = 'keyboard';
         physicalKeys.add(event.code);
         if (held.has(event.code))
             return;
@@ -449,6 +504,7 @@ export async function play(options) {
             }
             const code = 'Pad:' + name;
             if (down && !held.has(code)) {
+                device = 'gamepad';
                 held.add(code);
                 wentDown.add(code);
             }
@@ -520,14 +576,15 @@ export async function play(options) {
     const place = (event) => {
         const at = browser.toStage(event.clientX, event.clientY);
         if (finite(at.x) && finite(at.y)) {
-            point.x = at.x;
-            point.y = at.y;
+            point.x = at.x - shown.designRect.x;
+            point.y = at.y - shown.designRect.y;
         }
     };
     // The sprites a tap is given to. A press on one of them is the sprite's, and is not also told as `pressed`: a game
     // that places something wherever the stage is pressed would place it under its own buttons.
     let tappable = [];
     const pointerDown = (event) => {
+        device = event.pointerType === 'touch' ? 'touch' : 'mouse';
         if (embedded)
             surface.focus({ preventScroll: true });
         // A finger on a stick or a button on the glass is that control's, and not the game's pointer.
@@ -936,7 +993,21 @@ export async function play(options) {
             if (!node.isDisposed)
                 node.dispose();
     };
+    // The seconds of the wall this frame, for what follows the state at its end: the views and their semantics.
+    let frameSeconds = 0;
     const endFrame = () => {
+        const seconds = frameSeconds;
+        frameSeconds = 0;
+        if (!disposed) {
+            views.tick(seconds);
+            if (options.semantics !== undefined)
+                try {
+                    options.semantics.publish();
+                }
+                catch (cause) {
+                    failure ??= { cause };
+                }
+        }
         endRemoved();
         wentDown.clear();
         cameUp.clear();
@@ -960,6 +1031,7 @@ export async function play(options) {
         return { promise, resolve, reject };
     }
     function step(real, seconds) {
+        frameSeconds = real;
         if (failure !== undefined) {
             const { cause } = failure;
             failure = undefined;
@@ -1068,8 +1140,8 @@ export async function play(options) {
             dx = (Math.random() * 2 - 1) * strength;
             dy = (Math.random() * 2 - 1) * strength;
         }
-        world.x = effects.x = dx - view.x;
-        world.y = effects.y = dy - view.y;
+        world.x = effects.x = shown.designRect.x + dx - view.x;
+        world.y = effects.y = shown.designRect.y + dy - view.y;
         if (flashLeft > 0) {
             flashLeft -= real;
             cover.alpha = Math.max(0, flashLeft / flashSpan) * (reduced ? 0.3 : 0.85);
@@ -1091,6 +1163,8 @@ export async function play(options) {
     function resetRound() {
         endMusic(0.3);
         widgets.reset();
+        views.reset();
+        badges.clear();
         touch.reset();
         touchHeld.clear();
         touchStick.x = touchStick.y = 0;
@@ -1130,6 +1204,9 @@ export async function play(options) {
                 await setup?.(game);
                 if (disposed)
                     return;
+                options.arrange?.(game);
+                if (disposed)
+                    return;
                 // A tap that returned an unsuccessful restart may have failed the loop.
                 // An explicit retry resumes it, while a deliberately stopped loop stays idle.
                 if (restarting && playLoop.state === 'failed')
@@ -1159,8 +1236,32 @@ export async function play(options) {
         return request.promise;
     }
     const game = {
-        width,
-        height,
+        get width() {
+            return shown.design.width;
+        },
+        get height() {
+            return shown.design.height;
+        },
+        get orientation() {
+            return shown.orientation;
+        },
+        get screen() {
+            return Object.freeze({
+                // Never -0, which a test of equality tells from 0.
+                x: -shown.designRect.x || 0,
+                y: -shown.designRect.y || 0,
+                width: shown.width,
+                height: shown.height
+            });
+        },
+        get safe() {
+            return Object.freeze({
+                x: shown.safe.x - shown.designRect.x || 0,
+                y: shown.safe.y - shown.designRect.y || 0,
+                width: shown.safe.width,
+                height: shown.safe.height
+            });
+        },
         get time() {
             return time;
         },
@@ -1266,6 +1367,86 @@ export async function play(options) {
             });
             if (!tappable.includes(node))
                 tappable.push(node);
+        },
+        gestures(node, handlers) {
+            if (handlers === null || typeof handlers !== 'object')
+                throw invalid('gestures takes a sprite and { hold, doubleTap, drag, swipe, pinch }');
+            for (const name of ['doubleTap', 'hold', 'drag', 'swipe', 'pinch'])
+                if (handlers[name] !== undefined && typeof handlers[name] !== 'function')
+                    throw invalid('gestures: ' + name + ' is a function');
+            const input = browser.pointer;
+            if (input === undefined)
+                return () => { };
+            node.touchEnabled = true;
+            if (!tappable.includes(node))
+                tappable.push(node);
+            const round = generation;
+            // Places in the game's units; what a handler throws stops the game, as a tap's does.
+            const told = (handler, place) => handler === undefined
+                ? undefined
+                : (value) => {
+                    if (disposed || generation !== round)
+                        return;
+                    try {
+                        handler(place(value));
+                    }
+                    catch (cause) {
+                        failure ??= { cause };
+                    }
+                };
+            const inGame = (value) => Object.freeze({ ...value, x: value.x - shown.designRect.x, y: value.y - shown.designRect.y });
+            const made = createGestures({
+                engine,
+                scope,
+                input,
+                target: node,
+                ...(handlers.doubleTap === undefined ? {} : { onDoubleTap: told(handlers.doubleTap, inGame) }),
+                ...(handlers.hold === undefined ? {} : { onHold: told(handlers.hold, inGame) }),
+                ...(handlers.drag === undefined ? {} : { onDrag: told(handlers.drag, inGame) }),
+                ...(handlers.swipe === undefined ? {} : { onSwipe: told(handlers.swipe, swipe => swipe) }),
+                ...(handlers.pinch === undefined ? {} : { onPinch: told(handlers.pinch, inGame) })
+            });
+            return () => made.dispose();
+        },
+        show(description, viewOptions) {
+            return views.view(description, viewOptions);
+        },
+        dragAndDrop() {
+            const input = browser.pointer;
+            if (input === undefined)
+                throw invalid('drag and drop needs pointer input');
+            const made = createDragAndDrop({ engine, scope, input, layer: glass });
+            const guarded = (fn) => (...args) => {
+                try {
+                    fn(...args);
+                }
+                catch (cause) {
+                    failure ??= { cause };
+                }
+            };
+            return {
+                source(node, o) {
+                    if (o === null || typeof o !== 'object' || typeof o.data !== 'function')
+                        throw invalid('source takes a sprite and { data, ghost }');
+                    node.touchEnabled = true;
+                    if (!tappable.includes(node))
+                        tappable.push(node);
+                    return made.source({ node, data: o.data, ...(o.ghost === undefined ? {} : { ghost: o.ghost }) });
+                },
+                target(node, o) {
+                    if (o === null || typeof o !== 'object' || typeof o.drop !== 'function')
+                        throw invalid('target takes a sprite and { drop, accepts, hover }');
+                    return made.target({
+                        node,
+                        drop: guarded((data) => o.drop(data)),
+                        ...(o.accepts === undefined ? {} : { accepts: o.accepts }),
+                        ...(o.hover === undefined ? {} : { hover: guarded(o.hover) })
+                    });
+                },
+                get dragging() {
+                    return made.dragging;
+                }
+            };
         },
         overlaps(a, b, shrink = 0) {
             if (!seen(a) || !seen(b))
@@ -1459,13 +1640,13 @@ export async function play(options) {
         shake(amount = 6, seconds = 0.25) {
             if (reduced || !finite(amount) || !finite(seconds) || amount <= 0 || seconds <= 0)
                 return;
-            shakeAmount = Math.max(shakeLeft > 0 ? shakeAmount : 0, Math.min(amount, Math.max(width, height)));
+            shakeAmount = Math.max(shakeLeft > 0 ? shakeAmount : 0, Math.min(amount, Math.max(game.width, game.height)));
             shakeLeft = shakeSpan = Math.min(seconds, 5);
         },
         flash(color = 0xffffff, seconds = 0.15) {
             if (!colour(color) || !finite(seconds) || seconds <= 0)
                 return;
-            cover.graphics.clear().beginFill(color).drawRect(0, 0, width, height).endFill();
+            cover.graphics.clear().beginFill(color).drawRect(0, 0, shown.width, shown.height).endFill();
             cover.visible = true;
             cover.alpha = reduced ? 0.3 : 0.85;
             flashLeft = flashSpan = Math.min(seconds, 5);
@@ -1591,8 +1772,17 @@ export async function play(options) {
         say: (words, options) => widgets.say(words, options),
         menu: (items, options) => widgets.menu(items, options),
         get asking() {
-            return widgets.asking;
+            return widgets.asking || views.asking;
         },
+        get device() {
+            return device;
+        },
+        confirm: (question, confirmOptions) => views.confirm(question, confirmOptions),
+        hints: list => views.hints(list),
+        loading: (tasks, loadingOptions) => views.loading(tasks, loadingOptions),
+        badges,
+        compact: (value, compactOptions) => formatCompact(value, { locale: /^zh\b/i.test(win.navigator?.language ?? '') ? 'zh' : 'en', ...compactOptions }),
+        request: send => createRequest(send),
         touchStick: options => touch.stick(options),
         touchButton: (words, options) => touch.button(words, options),
         music,
@@ -1635,6 +1825,12 @@ export async function play(options) {
         if (!disposed && browser.loop.state === 'idle')
             browser.loop.start();
     });
+    const views = createPlayViews(game, {
+        failed: cause => {
+            failure ??= { cause };
+        },
+        semantics: () => options.semantics
+    });
     const touch = createPlayTouch(game, {
         hold(key) {
             const code = codeOf(key);
@@ -1654,8 +1850,29 @@ export async function play(options) {
             touchStick.x = x;
             touchStick.y = y;
         },
-        toStage: (x, y) => browser.toStage(x, y),
+        toStage: (x, y) => {
+            const at = browser.toStage(x, y);
+            return { x: at.x - shown.designRect.x, y: at.y - shown.designRect.y };
+        },
         layer: glass
+    });
+    // The window changed size or turned: the layers move to the design's new place and the game arranges itself.
+    baseBrowser.onScreenChange(next => {
+        shown = next;
+        placeLayers();
+        point.x = Math.min(point.x, game.width);
+        point.y = Math.min(point.y, game.height);
+        if (!disposed)
+            views.arrange();
+        if (api === undefined || disposed || options.arrange === undefined)
+            return;
+        try {
+            options.arrange(game);
+        }
+        catch (cause) {
+            // As what `update` throws: the game stops at its next step and is told.
+            failure ??= { cause };
+        }
     });
     try {
         if (mixer !== undefined)

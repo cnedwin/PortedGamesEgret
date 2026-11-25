@@ -1,40 +1,51 @@
-// 页面入口：存档和语言、引擎（play，四分之三分辨率）、地图和界面。规则按真实时间每秒推进一次；离开再回来时按仓廪
-// 的上限补算收成，并列出这段时间的收获。地图上的每块地、每处资源点、县衙、城墙和箭楼都是一个透明按钮，键盘和读屏
-// 都能用；点开后底部升起一张单子，在上面营建、规划、派驻和升格。
-// The page's entry: the save and the language, the engine (play, at three-quarter resolution), the map and the
-// interface. The rules move on with real time once a second; coming back after an absence counts the harvest up to the
-// granaries' cap and lists what came in. Every plot, resource point, the yamen, the wall and the towers on the map is a
-// clear button, for keyboards and screen readers alike; a sheet rises from the bottom to build, plan, post and rise.
+// The county clock, world camera, native UI and persistence meet here.
 import { play } from '@egret/engine/play';
+import { createScrollControl } from '@egret/engine/ui';
+import { createUiSemantics } from '@egret/engine/ui/semantics';
+import { createBrowserSemantics } from '@egret/engine/web/semantics';
+import { createInspector, part, wrapText } from './inspector.mjs';
+import { createScreens } from './screens.mjs';
+import { bridgeUiSemantics, createUi } from './ui.mjs';
 import { browserSaveStorage } from '@egret/engine/web/kit';
 import { amount, buildingAbout, buildingName, duration, getLanguage, onLanguage, setLanguage, startLanguage, t } from './i18n.mjs';
 import { CORE_BOUNDS, LAYOUT, MAP, loadTerrain, paintCounty, STAGE } from './paint.mjs';
 import { paintBuilding, paintFacility } from './building-art.mjs';
 import { openSaveSlots, recordTerm } from './saves.mjs';
 import { createSound } from './sound.mjs';
-import { BUILDINGS, DEFENCE, FINAL_RANK, GOODS, HOUR, MILESTONES, NODES, OFFICES, PETITIONS, RAIDS, RANKS, RECRUIT, SURVEY_COST, SURVEY_TIME, TALENTS, ZONES } from './sim/data.mjs';
+import { BUILDINGS, DEFENCE, FINAL_RANK, HOUR, MILESTONES, NODES, OFFICES, RAIDS, RANKS, RECRUIT, SURVEY_COST, SURVEY_TIME, TALENTS, ZONES } from './sim/data.mjs';
 import * as rules from './sim/world.mjs';
 import { createView } from './view.mjs';
 
 const { advance, busy, builders, canPlace, claimGoal, collectTax, defencePower, districtsOpen, drums, freeRecruit, GOALS, maxLevel, needFor, offlineCap, PLOTS_PER_DISTRICT, plotPlan, quote, raidPower, raidSide, rates, recruit, recruitPrice, seasonOf, SIDES, stationTroops, troopCapacity, trainTalents } = rules;
 
 const params = new URLSearchParams(location.search);
-const $ = (s, root = document) => root.querySelector(s);
-const $$ = (s, root = document) => [...root.querySelectorAll(s)];
-const el = (tag, props = {}, ...children) => {
-  const node = Object.assign(document.createElement(tag), props);
-  for (const child of children) if (child !== null && child !== undefined) node.append(child);
-  return node;
-};
+const $ = (selector) => document.querySelector(selector);
 
 // ——— Save, language, time ———
 const problems = new Set();
 const { slots, preferences } = openSaveSlots(browserSaveStorage(), startLanguage(navigator.languages ?? [navigator.language]), (p) => problems.add(p.kind));
 setLanguage(params.get('lang') ?? preferences.data.language);
-const app = { game: null, view: null, sound: null, state: null, slot: null, screen: 'loading', tab: 'city', sheet: null, offset: 0, lastPaint: '', ready: false };
+const app = { ui: null, inspector: null, screens: null, game: null, view: null, sound: null, state: null, slot: null, screen: 'loading', tab: 'city', sheet: null, offset: 0, lastPaint: '', ready: false };
 /** Real time in seconds (tests may move it on with `offset`). */
 const now = () => Date.now() / 1000 + app.offset;
 let stageScale = 1;
+
+// The title and its dialogs are still scenes. Keep the last submitted frame while idle,
+// and wake immediately for input, resize or an asynchronously prepared label or picture.
+let titleIdle;
+function wakeTitle() {
+  if (app.screen !== 'title' || !app.game) return;
+  const loop = app.game.browser.loop;
+  if (loop.state === 'idle') loop.start();
+  clearTimeout(titleIdle);
+  const shown = loop.snapshot().frames;
+  function sleepAfterPaint() {
+    if (app.screen !== 'title' || loop.state !== 'running') return;
+    if (loop.snapshot().frames - shown >= 2) loop.stop();
+    else titleIdle = setTimeout(sleepAfterPaint, 120);
+  }
+  titleIdle = setTimeout(sleepAfterPaint, 240);
+}
 
 // ——— Sizing ———
 function fit() {
@@ -44,30 +55,47 @@ function fit() {
   stageScale = s;
   $('#frame').classList.toggle('compact', s < 0.72);
   $('#frame').classList.toggle('portrait-view', innerHeight > innerWidth);
-  for (const layer of [$('#back'), $('#ui')]) layer.style.transform = `translate(${left}px, ${top}px) scale(${s})`;
-  $('#stage').style.transform = `translate(${left}px, ${top}px) scale(${(s * 4) / 3})`;
+  $('#back').style.transform = `translate(${left}px, ${top}px) scale(${s})`;
+  Object.assign($('#stage').style, {
+    left: left + 'px', top: top + 'px', width: STAGE.width * s + 'px', height: STAGE.height * s + 'px'
+  });
 }
-addEventListener('resize', fit);
+addEventListener('resize', () => {
+  fit();
+  app.screens?.refresh();
+  if (app.screen === 'play') { paintTop(); paintSheet(); }
+  app.semanticSurface?.sync();
+  wakeTitle();
+});
 
-// Hit regions, scenery and animated actors all share this world-space camera.
-// Leave room for the HUD so all four gates and the far-bank plots fit the overview.
+// Painted terrain, animated residents and native map targets share one camera.
 const overviewZoom = Math.min(STAGE.width / MAP.width, (STAGE.height - 114) / MAP.height);
 const coreZoom = Math.min(STAGE.width / CORE_BOUNDS.width, STAGE.height / CORE_BOUNDS.height);
 const camera = { x: 0, y: 0, zoom: overviewZoom };
-const hits = $('#hits'), targets = $('#mapTargets');
-let drag = null, ignoreClick = false;
-let sheetContact = null;
+const host = $('#stage');
+for (const event of ['pointerdown', 'pointerup', 'pointercancel', 'keydown', 'keyup', 'focusin']) {
+  host.addEventListener(event, wakeTitle, true);
+}
+document.addEventListener('visibilitychange', () => { if (!document.hidden) wakeTitle(); });
+
+let drag = null, suppressPointerUntil = 0;
+
+function positionTargets() {
+  app.ui?.transform('mapTargets', {
+    x: -camera.x * camera.zoom, y: -camera.y * camera.zoom, scale: camera.zoom
+  });
+}
 
 function setCamera(x, y, zoom = camera.zoom) {
+  const previousZoom = camera.zoom;
   camera.zoom = Math.max(overviewZoom, Math.min(1.4, zoom));
   const viewportW = STAGE.width / camera.zoom, viewportH = STAGE.height / camera.zoom;
   camera.x = viewportW >= MAP.width ? (MAP.width - viewportW) / 2 : Math.max(0, Math.min(MAP.width - viewportW, x));
   camera.y = viewportH >= MAP.height ? (MAP.height - viewportH) / 2 : Math.max(0, Math.min(MAP.height - viewportH, y));
-  const transform = `translate(${-camera.x * camera.zoom}px, ${-camera.y * camera.zoom}px) scale(${camera.zoom})`;
-  $('#map').style.transform = targets.style.transform = transform;
+  $('#map').style.transform = 'translate(' + (-camera.x * camera.zoom) + 'px, ' + (-camera.y * camera.zoom) + 'px) scale(' + camera.zoom + ')';
   app.view?.setCamera(camera.x, camera.y, camera.zoom);
-  $('#zoomOut').disabled = camera.zoom <= overviewZoom;
-  $('#zoomIn').disabled = camera.zoom >= 1.4;
+  positionTargets();
+  if (previousZoom !== camera.zoom) paintTop();
 }
 
 function zoomAround(zoom, screenX = STAGE.width / 2, screenY = STAGE.height / 2) {
@@ -78,65 +106,72 @@ function showCounty() {
   setCamera(CORE_BOUNDS.x + (CORE_BOUNDS.width - STAGE.width / coreZoom) / 2,
     CORE_BOUNDS.y + (CORE_BOUNDS.height - STAGE.height / coreZoom) / 2, coreZoom);
 }
-$('#countyFocus').addEventListener('click', showCounty);
-$('#overview').addEventListener('click', () => setCamera(0, 0, overviewZoom));
-$('#frontiers').addEventListener('click', () => openTarget({ type: 'frontier' }));
-$('#almanac').addEventListener('click', () => openTarget({ type: 'almanac' }));
-$('#zoomOut').addEventListener('click', () => zoomAround(camera.zoom / 1.2));
-$('#zoomIn').addEventListener('click', () => zoomAround(camera.zoom * 1.2));
-hits.addEventListener('wheel', (event) => {
-  if (app.screen !== 'play') return;
+function canvasPoint(event) {
+  const rect = host.getBoundingClientRect();
+  return { x: (event.clientX - rect.left) / stageScale, y: (event.clientY - rect.top) / stageScale };
+}
+function inPart(name, { x, y }) {
+  const rect = app.ui.rect(name);
+  return rect && x >= rect.x && x < rect.x + rect.w && y >= rect.y && y < rect.y + rect.h;
+}
+function wheelStep(event, value) {
+  return value * (event.deltaMode === 1 ? 32 : event.deltaMode === 2 ? STAGE.height : 1);
+}
+function allowPointer(event) {
+  return event?.via !== 'pointer' || (!drag?.moving && performance.now() >= suppressPointerUntil);
+}
+host.addEventListener('wheel', (event) => {
+  if (app.screen !== 'play' || app.screens.modal) return;
+  const point = canvasPoint(event);
+  if (inPart('sheet', point)) app.inspector.scrollBy(wheelStep(event, event.deltaY));
+  else if (inPart('resources', point) && resourceScroll.maximum > 0) {
+    resourceScroll.scrollBy(wheelStep(event, event.deltaX || event.deltaY));
+  } else if (!inPart('top', point) && !inPart('tabs', point)) {
+    zoomAround(camera.zoom * (event.deltaY > 0 ? 1 / 1.12 : 1.12), point.x, point.y);
+  }
   event.preventDefault();
-  const rect = hits.getBoundingClientRect();
-  zoomAround(camera.zoom * (event.deltaY > 0 ? 1 / 1.12 : 1.12), (event.clientX - rect.left) / stageScale, (event.clientY - rect.top) / stageScale);
 }, { passive: false });
-hits.addEventListener('pointerdown', (event) => {
-  if (app.screen !== 'play' || drag || event.button !== 0) return;
-  ignoreClick = false;
-  drag = { id: event.pointerId, x: event.clientX, y: event.clientY, moving: false };
+host.addEventListener('pointerdown', (event) => {
+  if (app.screen !== 'play' || app.screens.modal || drag || event.button !== 0 || !event.isPrimary) return;
+  suppressPointerUntil = 0;
+  const point = canvasPoint(event);
+  const isScroll = event.pointerType !== 'mouse';
+  const region = inPart('sheet', point) ? isScroll && 'sheet'
+    : inPart('resources', point) && resourceScroll.maximum > 0 ? isScroll && 'resources'
+    : !['top', 'tabs', 'mapTools', 'goalCard', 'taxBubble', 'petitionCall', 'raidBanner'].some((key) => inPart(key, point)) && 'map';
+  if (region) drag = { id: event.pointerId, region, x: event.clientX, y: event.clientY, moving: false };
 });
-hits.addEventListener('pointermove', (event) => {
+host.addEventListener('pointermove', (event) => {
   if (drag?.id !== event.pointerId) return;
   const dx = event.clientX - drag.x, dy = event.clientY - drag.y;
   if (!drag.moving) {
     if (Math.hypot(dx, dy) < 7) return;
     drag.moving = true;
-    hits.setPointerCapture(event.pointerId);
-    hits.classList.add('dragging');
+    // Capture on the original canvas so a drag ending over a control does not become a tap.
+    event.target.setPointerCapture?.(event.pointerId);
+    host.classList.toggle('dragging', drag.region === 'map');
   }
-  const zoom = camera.zoom > overviewZoom ? camera.zoom : Math.min(1.4, overviewZoom * 1.24);
-  if (zoom !== camera.zoom) {
-    const rect = hits.getBoundingClientRect();
-    zoomAround(zoom, (drag.x - rect.left) / stageScale, (drag.y - rect.top) / stageScale);
+  if (drag.region === 'sheet') app.inspector.scrollBy(-dy / stageScale);
+  else if (drag.region === 'resources') resourceScroll.scrollBy(-dx / stageScale);
+  else {
+    const zoom = camera.zoom > overviewZoom ? camera.zoom : Math.min(1.4, overviewZoom * 1.24);
+    if (zoom !== camera.zoom) {
+      const origin = canvasPoint({ clientX: drag.x, clientY: drag.y });
+      zoomAround(zoom, origin.x, origin.y);
+    }
+    setCamera(camera.x - dx / (stageScale * zoom), camera.y - dy / (stageScale * zoom));
   }
-  setCamera(camera.x - dx / (stageScale * zoom), camera.y - dy / (stageScale * zoom));
   drag.x = event.clientX;
   drag.y = event.clientY;
 });
 function endDrag(event) {
   if (!drag || (event.pointerId !== undefined && event.pointerId !== drag.id)) return;
-  ignoreClick = drag.moving;
+  if (drag.moving) suppressPointerUntil = performance.now() + 120;
   drag = null;
-  hits.classList.remove('dragging');
+  host.classList.remove('dragging');
 }
-addEventListener('pointerup', endDrag);
-addEventListener('pointercancel', endDrag);
-addEventListener('blur', endDrag);
-hits.addEventListener('lostpointercapture', endDrag);
-$('#sheet').addEventListener('pointerdown', (event) => { sheetContact ??= event.pointerId; });
-function releaseSheetContact(event) {
-  if (event.pointerId === undefined || event.pointerId === sheetContact) sheetContact = null;
-}
-addEventListener('pointerup', releaseSheetContact);
-addEventListener('pointercancel', releaseSheetContact);
-addEventListener('blur', releaseSheetContact);
-hits.addEventListener('click', (event) => {
-  if (ignoreClick && event.detail > 0) {
-    ignoreClick = false;
-    event.preventDefault();
-    event.stopImmediatePropagation();
-  }
-}, true);
+for (const event of ['pointerup', 'pointercancel', 'blur']) addEventListener(event, endDrag);
+host.addEventListener('lostpointercapture', endDrag);
 function panKey(event) {
   const step = { ArrowLeft: [-96, 0], ArrowRight: [96, 0], ArrowUp: [0, -96], ArrowDown: [0, 96] }[event.key];
   if (!step) return;
@@ -144,6 +179,8 @@ function panKey(event) {
   if (camera.zoom === overviewZoom) zoomAround(overviewZoom * 1.24);
   setCamera(camera.x + step[0] / camera.zoom, camera.y + step[1] / camera.zoom);
 }
+
+
 
 // ——— Painting the map ———
 const mapCanvas = $('#map'),
@@ -200,26 +237,17 @@ const cap = (w) => w[0].toUpperCase() + w.slice(1);
 const sideName = (i) => t('side' + cap(SIDES[i] ?? SIDES[0]));
 const targetName = (target) => target.type === 'camp' ? t('camp') : `${sideName(target.key)} · ${t(target.type === 'tower' ? 'gatehouse' : 'wall')}`;
 
-// ——— The clear buttons over the map ———
+// Each target keeps its world rectangle as the camera pans.
+const mapName = ({ type, key = 0 }) => 'map-' + type + '-' + key;
 function buildHits() {
-  const box = targets,
-    buttons = [];
-  const make = (target, r, label) => {
-    const b = el('button', { type: 'button' });
-    Object.assign(b.style, { left: `${r.x}px`, top: `${r.y}px`, width: `${r.w}px`, height: `${r.h}px` });
-    b.dataset.target = JSON.stringify(target);
-    b.setAttribute('aria-label', label);
-    b.addEventListener('focus', () => {
-      if (!b.matches(':focus-visible')) return;
-      const center = { x: r.x + r.w / 2, y: r.y + r.h / 2 };
-      const vx = (center.x - camera.x) * camera.zoom, vy = (center.y - camera.y) * camera.zoom;
-      if (vx < 25 || vx > STAGE.width - 25 || vy < 125 || vy > STAGE.height - 80) {
-        setCamera(center.x - STAGE.width / (2 * camera.zoom), center.y - STAGE.height / (2 * camera.zoom));
-      }
-    });
-    b.addEventListener('click', () => openTarget(target));
-    buttons.push(b);
-  };
+  const items = [
+    { type: 'panel', name: 'mapViewport', x: 0, y: 0, w: STAGE.width, h: STAGE.height, clip: true },
+    { type: 'panel', parent: 'mapViewport', name: 'mapTargets', x: 0, y: 0, w: MAP.width, h: MAP.height }
+  ];
+  const make = (target, { x, y, w, h }, label) => items.push({
+    type: 'button', parent: 'mapTargets', name: mapName(target), x, y, w, h, label, invisible: true,
+    action: (event) => { if (allowPointer(event)) openTarget(target); }
+  });
   const s = app.state;
   make({ type: 'yamen' }, LAYOUT.yamen, `${t('yamen')} · ${t('r' + s.rank)}`);
   LAYOUT.walls.forEach((r, i) => make({ type: 'wall', key: i }, r, `${sideName(i)} · ${t('wall')} · ${t('level', { n: s.defence.wall[i] })}`));
@@ -242,83 +270,196 @@ function buildHits() {
       make({ type: 'plot', key: index }, LAYOUT.plots[index], `${t('ward', { n: i + 1 })} ${p + 1} · ${name}`);
     }
   });
-  const focusedTarget = document.activeElement?.dataset?.target;
-  box.replaceChildren(...buttons);
-  if (focusedTarget) buttons.find((b) => b.dataset.target === focusedTarget)?.focus({ preventScroll: true });
+  app.ui.show('map', { label: t('mapControls'), items });
+  positionTargets();
 }
 
-// ——— Top bar, goal, raid, taxes ———
+// The county view retains the lacquer HUD, parchment notices and map toolbar.
 const SHOWN = ['coin', 'grain', 'wood', 'stone', 'iron', 'silk', 'porcelain', 'tea', 'wine', 'mulberry', 'clay'];
-function paintTop() {
-  const s = app.state,
-    r = rates(s);
-  $('#county').textContent = t('countyLine', { rank: t('r' + s.rank) });
-  const season = seasonOf(s), almanac = $('#almanac');
-  almanac.textContent = t('season' + season);
-  almanac.dataset.season = season;
-  almanac.setAttribute('aria-label', t('almanacLabel', { season: t('season' + season) }));
-  // The term shows from the second one on.
-  $('#term').textContent = s.term ? t('term', { n: s.term + 1 }) : '';
-  const net = (k) => (k === 'coin' ? r.tax + r.coin + r.salary : (r.make[k] ?? 0) - (r.use[k] ?? 0));
-  $('#resources').replaceChildren(
-    ...SHOWN.filter((k) => k === 'coin' || k === 'grain' || s.res[k] > 0 || (r.make[k] ?? 0) > 0).map((k) => {
-      const li = el('li', {}, el('span', { textContent: t(k) }), el('b', { textContent: amount(s.res[k]) }), el('small', { textContent: (net(k) >= 0 ? '+' : '') + amount(net(k)) + '/h' }));
-      if (net(k) < 0) li.className = 'low';
-      return li;
-    })
-  );
-  $('#vitals').replaceChildren(
-    el('span', {}, t('pop') + ' ', el('b', { textContent: amount(s.pop) }), ` / ${amount(r.house)}`),
-    el('span', {}, t('life') + ' ', el('b', { textContent: Math.round(s.life) })),
-    el('span', {}, t('fame') + ' ', el('b', { textContent: amount(s.fame) }))
-  );
-  const tax = Math.floor(s.pendingTax);
-  const bubble = $('#taxBubble');
-  bubble.hidden = tax < 1 || app.screen !== 'play';
-  bubble.replaceChildren(el('span', { className: 'pill', textContent: '⊙ ' + amount(tax) }));
-  bubble.setAttribute('aria-label', `${t('collect')} · ${t('taxWaiting', { n: amount(tax) })}`);
-  // The goal.
-  const goal = GOALS[s.goal],
-    card = $('#goalCard');
-  card.hidden = app.screen !== 'play' || !goal;
-  if (goal) {
-    $('.goalLabel', card).textContent = t('goal');
-    $('#goalText').textContent = t('g_' + goal.id);
-    const done = goal.check(s);
-    const claim = $('#claimButton');
-    claim.hidden = !done;
-    claim.textContent = `${t('claim')} · ${rewardWords(goal.reward)}`;
-  }
-  // A raid on the way.
-  const banner = $('#raidBanner');
-  const soon = s.raid.next && s.raid.next - s.time < RAIDS.warn * 2;
-  banner.hidden = app.screen !== 'play' || !soon;
-  if (soon) banner.textContent = `${sideName(raidSide(s))} · ${t('nextRaid', { kind: t('raid_' + RAIDS.kinds[s.raid.n % RAIDS.kinds.length]), time: duration(s.raid.next - s.time) })}`;
-  const call = $('#petitionCall');
-  call.hidden = app.screen !== 'play' || !s.petition;
-  if (s.petition) call.textContent = t('petitionWaiting');
-  // Tabs with something waiting.
-  $('#tabs [data-tab="affairs"]')?.classList.toggle('waiting', Boolean(s.petition));
-  const dot = (tab, on) => {
-    const b = $(`#tabs [data-tab="${tab}"]`);
-    if (!b) return;
-    let d = $('.dot', b);
-    if (on && !d) b.append(el('span', { className: 'dot', ariaHidden: 'true' }));
-    if (!on && d) d.remove();
-  };
-  dot('affairs', Boolean(s.petition) || Boolean(goal?.check(s)));
-  dot('talent', freeRecruit(s) || s.fame >= recruitPrice(s));
-  dot('defence', Boolean(soon));
+const TABS = ['city', 'build', 'talent', 'affairs', 'defence'];
+const CREAM = 0xf5e6c6, INK = 0x293b38, JADE = 0x345d4d;
+const BRASS = 0xc3a778, LACQUER = 0x293d32;
+const label = (name, words, x, y, w, h, props = {}) => ({
+  type: 'text', name, text: String(words), x, y, w, h, color: INK, ...props
+});
+const panel = (name, x, y, w, h, color, props = {}) => ({ type: 'panel', name, x, y, w, h, color, ...props });
+const control = (name, words, action, x, y, w, h, props = {}) => ({
+  type: 'button', name, text: words, x, y, w, h, action, size: 16, bold: true, color: 0xf7edda, textColor: INK,
+  card: { radius: 7, border: 0xc9b68f }, ...props
+});
+const TAB_ICONS = {
+  city: [[0,42],[50,9],[100,42],[87,42],[87,91],[60,91],[60,61],[40,61],[40,91],[13,91],[13,42]],
+  build: [[8,22],[33,7],[71,7],[92,24],[76,40],[59,27],[57,46],[50,97],[36,94],[44,29],[18,39]],
+  talent: [[38,9],[62,9],[71,35],[63,52],[81,61],[92,89],[8,89],[19,61],[37,52],[29,35]],
+  affairs: [[17,9],[87,9],[87,21],[78,21],[78,79],[89,79],[89,93],[14,93],[14,79],[26,79],[26,21],[17,21]],
+  defence: [[50,4],[89,17],[86,59],[71,81],[50,96],[29,81],[14,59],[11,17]]
+};
+function lacquer(node, { w, h }) {
+  node.graphics.clear().lineStyle(0.75, 0xc3a778)
+    .beginLinearGradientFill(0, 0, w, h, [{ offset: 0, color: 0x49614d }, { offset: .72, color: LACQUER }, { offset: 1, color: LACQUER }])
+    .drawRoundRect(0, 0, w, h, 13).endFill()
+    .lineStyle(0.75, 0x907d55, .55).drawRoundRect(3, 3, w - 6, h - 6, 9);
 }
+function makeTabSkin(tab, active, labelWidth) {
+  return (node, { w, h }) => {
+    const color = active ? 0x764735 : CREAM;
+    const g = node.graphics.clear();
+    if (active) {
+      g.lineStyle(.75, 0xc7a76f)
+        .beginLinearGradientFill(0, 0, 0, h, [{ offset: 0, color: 0xfdf0d4 }, { offset: 1, color: 0xe2cca2 }])
+        .drawRoundRect(0, 0, w, h, 6).endFill();
+    }
+    const iconX = Math.max(4, (w - (labelWidth + 24) * .75) / 2);
+    const iconY = (h - 12.75) / 2;
+    const points = TAB_ICONS[tab];
+    const vertex = ([x, y]) => [iconX + x * .1275, iconY + y * .1275];
+    g.lineStyle(0).beginFill(color, .84).moveTo(...vertex(points[0]));
+    for (const point of points.slice(1)) g.lineTo(...vertex(point));
+    g.lineTo(...vertex(points[0])).endFill();
+  };
+}
+const hudCard = { radius: 10, border: BRASS };
+const dark = { textColor: CREAM, color: LACQUER, card: hudCard };
+const measure = document.createElement('canvas').getContext('2d');
+function widthOf(words, size) {
+  measure.font = size + 'px sans-serif';
+  return measure.measureText(words).width;
+}
+const resourceScroll = createScrollControl({
+  axis: 'x', viewportLength: 1, contentLength: 0, onScroll: () => paintTop()
+});
+let paintingTop = false;
+function paintTop() {
+  if (paintingTop || app.screen !== 'play') return;
+  paintingTop = true;
+  try {
+    const s = app.state, r = rates(s);
+    const compact = stageScale < 0.72, zh = getLanguage() === 'zh';
+    const season = seasonOf(s), term = s.term ? t('term', { n: s.term + 1 }) : '';
+    const county = t('countyLine', { rank: t('r' + s.rank) });
+    const countyWidth = Math.min(420, Math.ceil(widthOf(county, zh ? 25 : 21)) + 12);
+    const termWidth = term ? widthOf(term, 15) + 16 : 0;
+    const almanacX = 65 + countyWidth + termWidth;
+    const seasonWord = t('season' + season);
+    const almanacW = Math.max(61, widthOf(seasonWord, 18) + 31);
+    const items = [
+      panel('top', 18, 12, 1244, 90, LACQUER, { card: hudCard, intercept: true, decorate: lacquer }),
+      panel('countySeal', 32, 31, 19, 23, 0xa65745, { card: { radius: 3, border: 0xce9770 } }),
+      label('county', county, 62, 22, countyWidth, 42, { size: zh ? 25 : 21, color: CREAM, bold: true, role: 'heading' }),
+      control('almanac', seasonWord, () => openTarget({ type: 'almanac' }), almanacX, 20, almanacW, 44, {
+        ...dark, color: [0x526f52, 0x325e60, 0x795838, 0x465e6d][season],
+        label: t('almanacLabel', { season: seasonWord })
+      }),
+      control('settingsButton', t('settings'), () => app.screens.openSettings('settingsButton'), 1138, 20, 108, 44, dark),
+      label('vitals', t('pop') + ' ' + amount(s.pop) + ' / ' + amount(r.house) + '    ' + t('life') + ' ' + Math.round(s.life) + '    ' + t('fame') + ' ' + amount(s.fame),
+        720, 20, 401, 44, { color: CREAM, size: 16, align: 'right' })
+    ];
+    if (term) items.push(label('term', term, 62 + countyWidth, 26, termWidth, 33, { color: CREAM, size: 15 }));
+    const resourceWidth = compact ? 540 : 1217;
+    items.push(panel('resources', 31, 69, resourceWidth, 30, LACQUER, { clip: true }));
+    const net = (k) => k === 'coin' ? r.tax + r.coin + r.salary : (r.make[k] ?? 0) - (r.use[k] ?? 0);
+    let resourceX = 0;
+    const resourceItems = [];
+    for (const k of SHOWN.filter((key) => key === 'coin' || key === 'grain' || s.res[key] > 0 || (r.make[key] ?? 0) > 0)) {
+      const delta = net(k);
+      const itemText = t(k) + '  ' + amount(s.res[k]) + '  ' + (delta >= 0 ? '+' : '') + amount(delta) + '/h';
+      const size = compact ? 16 : 14, w = Math.ceil(widthOf(itemText, size)) + 20;
+      resourceItems.push({ k, delta, itemText, size, w, x: resourceX });
+      resourceX += w + 9;
+    }
+    resourceScroll.setLengths(resourceWidth, resourceX);
+    for (const { k, delta, itemText, size, w, x } of resourceItems) {
+      const offset = x - resourceScroll.offset;
+      if (offset + w <= 0 || offset >= resourceWidth) continue;
+      const parent = 'resources';
+      items.push(panel('resource-card-' + k, offset, 0, w, 26, k === 'coin' || k === 'grain' ? 0xf4e9cf : 0xe9ebde, { parent, card: { radius: 5, border: 0xb7b594 } }),
+        label('resource-' + k, itemText, offset + 8, 0, w - 16, 26, { parent, size, color: delta < 0 ? 0x9c493b : INK }));
+    }
+    const tax = Math.floor(s.pendingTax);
+    if (tax >= 1) items.push(control('taxBubble', '⊙ ' + amount(tax), collect, 18, compact ? 120 : 112, 104, compact ? 62 : 49, {
+      color: 0xf9e8bb, textColor: 0x624a24, size: 18, label: t('collect') + ' · ' + t('taxWaiting', { n: amount(tax) })
+    }));
+    const goal = GOALS[s.goal], done = Boolean(goal?.check(s));
+    if (goal && !app.sheet) {
+      const y = compact ? 120 : 112;
+      const goalWords = t('g_' + goal.id);
+      const lines = wrapText(goalWords, 252, 16);
+      const h = 36 + lines.length * 21 + (done ? 45 : 0);
+      items.push(panel('goalCard', 983, y, 278, h, 0xfcf8ee, { intercept: true, card: { radius: 13, border: 0xf9f5e8 } }),
+        label('goalLabel', t('goal'), 996, y + 7, 251, 21, { color: JADE, size: 13, bold: true }),
+        ...lines.map((line, i) => label('goalText-' + i, line, 996, y + 28 + i * 21, 252, 21, { size: 16, bold: true })));
+      if (done) items.push(control('claimButton', t('claim') + ' · ' + rewardWords(goal.reward), claim, 996, y + h - 44, 251, 36, { color: JADE, textColor: 0xffffff, size: 15 }));
+    }
+    const soon = s.raid.next && s.raid.next - s.time < RAIDS.warn * 2;
+    if (soon) {
+      const raid = sideName(raidSide(s)) + ' · ' + t('nextRaid', { kind: t('raid_' + RAIDS.kinds[s.raid.n % RAIDS.kinds.length]), time: duration(s.raid.next - s.time) });
+      const y = compact ? 564 : 582, lines = wrapText(raid, 246, 16);
+      items.push(control('raidBanner', '', () => openTab('defence'), 983, y, 278, 50, { label: raid, color: 0xf8e5d7 }),
+        ...lines.map((line, i) => label('raid-line-' + i, line, 997, y + 4 + i * 20, 246, 20, { size: 16, color: 0x753c2e })));
+    }
+    if (s.petition) items.push(control('petitionCall', t('petitionWaiting'), openPetition, 18, compact ? 190 : 174, 170, compact ? 62 : 45, {
+      color: 0x884d3e, textColor: 0xfff0d2, size: 17
+    }));
+    const toolY = compact ? 552 : 580, toolH = compact ? 62 : 44;
+    const tools = [
+      ['countyFocus', t('mapCounty'), showCounty], ['overview', t('mapOverview'), () => setCamera(0, 0, overviewZoom)],
+      ['frontiers', t('expandLand'), () => openTarget({ type: 'frontier' })],
+      ['zoomOut', '−', () => zoomAround(camera.zoom / 1.2)], ['zoomIn', '+', () => zoomAround(camera.zoom * 1.2)]
+    ];
+    const widths = tools.map(([, words]) => Math.max(compact ? 62 : 45, widthOf(words, compact ? 19 : 16) + 28));
+    items.push(panel('mapTools', 18, toolY - 4, widths.reduce((a, b) => a + b, 0) + 24, toolH + 8, LACQUER, { card: hudCard, intercept: true }));
+    let toolX = 22;
+    tools.forEach(([name, words, action], i) => {
+      items.push(control(name, words, action, toolX, toolY, widths[i], toolH, {
+        size: compact ? 19 : 16,
+        ...(i === 2 ? { color: 0x884d3e, textColor: CREAM } : {}),
+        ...(i >= 3 ? { disabled: i === 3 ? camera.zoom <= overviewZoom : camera.zoom >= 1.4, label: t(i === 3 ? 'mapZoomOut' : 'mapZoomIn') } : {})
+      }));
+      toolX += widths[i] + 4;
+    });
+    const activeDots = { talent: freeRecruit(s) || s.fame >= recruitPrice(s), affairs: Boolean(s.petition) || done, defence: Boolean(soon) };
+    const tabWidth = compact ? 710 : 644, tabHeight = compact ? 75 : 59, tabLeft = (1280 - tabWidth) / 2, tabY = 707 - tabHeight;
+    items.push(panel('tabs', tabLeft, tabY, tabWidth, tabHeight, LACQUER, { card: hudCard, intercept: true, role: 'tablist', label: county, decorate: lacquer }));
+    const tabItemW = (tabWidth - 28) / TABS.length;
+    TABS.forEach((tab, i) => {
+      const x = 6 + i * (tabItemW + 4), h = tabHeight - 12, size = compact ? 19 : 16;
+      const words = t('tab' + cap(tab)), active = app.tab === tab;
+      const labelWidth = widthOf(words, size);
+      const labelLeft = Math.max(5, (tabItemW - labelWidth - 24) / 2) + 24;
+      items.push(control('tab-' + tab, '', () => openTab(tab), x, 6, tabItemW, h, {
+        parent: 'tabs', role: 'tab', label: words, selected: active, size,
+        badge: activeDots[tab] || undefined, decorate: makeTabSkin(tab, active, labelWidth)
+      }), label(undefined, words, x + labelLeft, 6, tabItemW - labelLeft - 2, h, {
+        parent: 'tabs', size, bold: true, color: active ? 0x764735 : CREAM
+      }));
+    });
+    app.ui.show('county', { label: county, items });
+  } finally {
+    paintingTop = false;
+  }
+}
+function openTab(tab) {
+  app.tab = tab;
+  app.sound?.play('tap');
+  if (tab === 'city') closeSheet(false);
+  else openSheet({ tab });
+  paintTop();
+}
+function openPetition() {
+  openTab('affairs');
+  app.inspector.reveal('petition-a');
+}
+
+
 const rewardWords = (reward) => Object.entries(reward).map(([k, v]) => `${t(k)} ${amount(v)}`).join(' · ');
 const signed = (n) => (n >= 0 ? '+' : '−') + amount(Math.abs(n));
 
 function petitionSheet(s) {
   const { id, season } = s.petition;
-  return el('div', { className: 'petition' },
-    Number.isInteger(season) ? el('small', { className: 'petitionSeason', textContent: t('season' + season) }) : null,
-    el('p', { textContent: t('p_' + id) }),
-    el('div', { className: 'petitionChoices' },
+  return part('group', { appearance: 'petition' },
+    Number.isInteger(season) ? part('note', { appearance: 'petitionSeason', text: t('season' + season) }) : null,
+    part('paragraph', { text: t('p_' + id) }),
+    part('group', { appearance: 'petitionChoices' },
       ...['a', 'b'].map((choice) => {
         const offer = rules.petitionOffer(s, choice);
         const detail = Object.entries(offer.delta).filter(([, n]) => n).map(([k, n]) => `${t(k)} ${signed(n)}`);
@@ -326,29 +467,8 @@ function petitionSheet(s) {
         if (offer.sellBoost > 0) detail.push(t('petitionSales', { n: amount(offer.sellBoost * 100), time: duration(offer.duration) }));
         if (offer.talent) detail.push(t('petitionTalent'));
         if (offer.why === 'cost') detail.push(t('petitionCost'));
-        return button(t('p' + choice + '_' + id), () => decide(choice), { note: detail.join(' · '), disabled: Boolean(offer.why) });
+        return button(t('p' + choice + '_' + id), () => decide(choice), { name: 'petition-' + choice, note: detail.join(' · '), disabled: Boolean(offer.why) });
       })));
-}
-
-// ——— Tabs ———
-const TABS = ['city', 'build', 'talent', 'affairs', 'defence'];
-function paintTabs() {
-  $('#tabs').replaceChildren(
-    ...TABS.map((tab) => {
-      const b = el('button', { type: 'button', role: 'tab', textContent: t('tab' + cap(tab)) });
-      b.dataset.tab = tab;
-      b.setAttribute('aria-selected', String(app.tab === tab));
-      b.addEventListener('click', () => openTab(tab));
-      return b;
-    })
-  );
-}
-function openTab(tab) {
-  app.tab = tab;
-  paintTabs();
-  app.sound?.play('tap');
-  if (tab === 'city') return closeSheet();
-  openSheet({ tab });
 }
 
 // ——— The sheet ———
@@ -369,35 +489,28 @@ function rectOf(target) {
 }
 function openSheet(what) {
   app.sheet = what;
-  const sheet = $('#sheet');
-  sheet.hidden = false;
+  app.inspector.reset();
+  paintTop();
   paintSheet();
-  sheet.scrollTop = 0;
-  ($('#sheetBody .btn:not([aria-disabled="true"]), #sheetBody .choice:not([aria-disabled="true"])') ?? $('.sheetClose'))?.focus({ preventScroll: true });
+  app.inspector.focusFirst();
 }
-function closeSheet() {
+function closeSheet(restoreFocus = true) {
   const was = app.sheet;
   app.sheet = null;
-  $('#sheet').hidden = true;
+  app.inspector.hide();
   app.view?.focus(null);
   if (was?.tab) {
     app.tab = 'city';
-    paintTabs();
-    $(`#tabs [data-tab="${was.tab}"]`)?.focus();
-  } else if (was?.type === 'almanac') $('#almanac').focus();
-  else if (was?.type === 'frontier') $('#frontiers').focus();
-  else if (was) $$('#hits button').find((b) => b.dataset.target === JSON.stringify(was))?.focus();
+    if (restoreFocus) app.ui.focus('tab-' + was.tab);
+  } else if (restoreFocus && was) {
+    app.ui.focus(was.type === 'almanac' ? 'almanac' : was.type === 'frontier' ? 'frontiers' : mapName(was));
+  }
+  paintTop();
 }
-$('.sheetClose').addEventListener('click', closeSheet);
 
-function button(words, onClick, { note = '', disabled = false, kind = '' } = {}) {
-  const b = el('button', { type: 'button', className: 'btn ' + kind }, el('span', { textContent: words }), note ? el('small', { textContent: note }) : null);
-  if (disabled) b.setAttribute('aria-disabled', 'true');
-  b.addEventListener('click', () => {
-    if (b.getAttribute('aria-disabled') === 'true') return;
-    onClick();
-  });
-  return b;
+function button(words, action, { note = '', disabled = false, kind = '', name } = {}) {
+  return part('action', { action, appearance: kind, disabled, name },
+    part('label', { text: words }), note && part('note', { text: note }) || null);
 }
 const priceWords = (price) => Object.entries(price).map(([k, v]) => `${t(k)} ${amount(v)}`).join(' · ');
 const shortWords = (price) => {
@@ -419,14 +532,10 @@ function whyWords(q, price) {
 }
 
 function paintSheet() {
-  const what = app.sheet,
-    body = $('#sheetBody');
+  const what = app.sheet;
   if (!what || !app.state) return;
-  $('.sheetClose').textContent = t('close');
   const parts = what.tab ? TAB_SHEETS[what.tab]() : TARGET_SHEETS[what.type](what);
-  const focusedText = document.activeElement?.closest('#sheetBody') ? document.activeElement.textContent : null;
-  body.replaceChildren(...parts.filter(Boolean));
-  if (focusedText) $$('#sheetBody button').find((b) => b.textContent === focusedText)?.focus({ preventScroll: true });
+  app.inspector.setContent(parts);
 }
 
 function layoutNote(plan) {
@@ -444,11 +553,11 @@ function architecture(kind, level, ceiling, { facility = false, side = 0, rank =
   const season = seasonOf(app.state);
   const proposed = !rank && level === 0;
   const levels = proposed ? [1] : level < ceiling ? [level, level + 1] : [level];
-  return el('div', { className: 'architecture' }, ...levels.map((shown, index) => {
+  return part('group', { appearance: 'architecture' }, ...levels.map((shown, index) => {
     const key = `${kind}:${shown}:${season}:${facility}:${side}`;
     let image = previewCache.get(key);
     if (!image) {
-      image = el('canvas', { width: 320, height: 190 });
+      image = typeof OffscreenCanvas === 'function' ? new OffscreenCanvas(320, 190) : Object.assign(document.createElement('canvas'), { width: 320, height: 190 });
       const context = image.getContext('2d');
       const rect = { x: 12, y: 7, w: 296, h: 175 };
       if (facility) paintFacility(context, kind, shown, rect, season, { side });
@@ -456,11 +565,8 @@ function architecture(kind, level, ceiling, { facility = false, side = 0, rank =
       if (previewCache.size >= 36) previewCache.delete(previewCache.keys().next().value);
       previewCache.set(key, image);
     }
-    const canvas = el('canvas', { width: image.width, height: image.height });
-    canvas.setAttribute('aria-hidden', 'true');
-    canvas.getContext('2d').drawImage(image, 0, 0);
     const caption = rank ? t('r' + shown) : t(proposed || index ? 'nextArchitecture' : 'currentArchitecture', { n: shown });
-    return el('figure', {}, canvas, el('figcaption', { textContent: caption }));
+    return part('figure', {}, part('image', { image }), part('note', { text: caption }));
   }));
 }
 
@@ -494,7 +600,7 @@ function upgradeBlock(target, spec, level) {
     q = quote(s, target),
     work = s.works.find((w) => w.type === target.type && w.key === (target.key ?? target.type));
   const out = [];
-  if (work) out.push(el('p', { className: 'muted', textContent: work.ends ? t('inWorks', { time: duration(work.ends - s.time) }) : t('waiting') }));
+  if (work) out.push(part('paragraph', { appearance: 'muted', text: work.ends ? t('inWorks', { time: duration(work.ends - s.time) }) : t('waiting') }));
   if (q.price) {
     const next = level + 1,
       milestoneNext = MILESTONES.includes(next);
@@ -502,10 +608,10 @@ function upgradeBlock(target, spec, level) {
       button(level === 0 ? t('build') : t('levelUp', { n: next }), () => doUpgrade(target), {
         note: `${priceWords(q.price)} · ${t('works')} ${duration(q.time)}${milestoneNext ? ' · ' + t('milestone') : ''}${q.why ? ' · ' + whyWords({ ...q, rank: spec.rank }, q.price) : ''}`,
         disabled: Boolean(q.why),
-        kind: 'primary'
+        kind: 'primary', name: 'upgrade-' + target.type + '-' + (target.key ?? 0)
       })
     );
-  } else if (q.why) out.push(el('p', { className: 'muted', textContent: whyWords({ ...q, rank: spec.rank }, {}) }));
+  } else if (q.why) out.push(part('paragraph', { appearance: 'muted', text: whyWords({ ...q, rank: spec.rank }, {}) }));
   return out;
 }
 
@@ -519,9 +625,8 @@ function doUpgrade(target) {
 function postLine(place) {
   const s = app.state,
     talent = s.talents.find((t2) => t2.post && t2.post.type === place.type && t2.post.key === place.key);
-  return el(
-    'div',
-    { className: 'row' },
+  return part('group',
+    { appearance: 'row' },
     button(talent ? t('postedAt', { where: t('t_' + talent.id) }) : t('postAt'), () => openSheet({ type: 'pick', place, back: app.sheet }), { note: talent ? talentLine(talent) : t('unposted') })
   );
 }
@@ -537,15 +642,15 @@ const TARGET_SHEETS = {
       byWard.get(ward).push(index);
     }
     return [
-      el('h2', { textContent: t(key === undefined ? 'harborSites' : 'moveDock') }),
-      el('p', { textContent: t(key === undefined ? 'harborHint' : 'moveDockHint') }),
+      part('heading', { text: t(key === undefined ? 'harborSites' : 'moveDock') }),
+      part('paragraph', { text: t(key === undefined ? 'harborHint' : 'moveDockHint') }),
       ...[...byWard].flatMap(([ward, plots]) => {
         const open = rules.wardIsOpen(s, ward);
         const free = plots.filter((index) => !s.plots[index].kind);
         return [
-          el('h3', { textContent: t('ward', { n: ward + 1 }) }),
+          part('subheading', { text: t('ward', { n: ward + 1 }) }),
           !open ? button(t('viewHarborWard'), () => showOnMap('ward', ward), { note: t('expandLand'), kind: 'jade' })
-            : free.length ? el('div', { className: 'choices' }, ...free.map((index) =>
+            : free.length ? part('group', { appearance: 'choices' }, ...free.map((index) =>
               button(t('harborLot', { n: index % PLOTS_PER_DISTRICT + 1 }), () => {
                 if (key === undefined) return showOnMap('plot', index);
                 const result = rules.moveDock(s, key, index);
@@ -554,7 +659,7 @@ const TARGET_SHEETS = {
                 afterChange(true);
                 persist(true);
                 showOnMap('plot', index);
-              }))) : el('p', { className: 'muted', textContent: t('harborFull') })
+              }))) : part('paragraph', { appearance: 'muted', text: t('harborFull') })
         ];
       })
     ];
@@ -563,16 +668,16 @@ const TARGET_SHEETS = {
     const current = rules.seasonInfo(app.state);
     const seasonEffects = Object.entries(current.effects).flatMap(([key, factor]) => {
       const change = key === 'life' ? factor : Math.round((factor - 1) * 100);
-      return change ? [el('li', {}, el('span', { className: 'grow', textContent: t('effect_' + key) }),
-        el('b', { textContent: signed(change) + (key === 'life' ? '' : '%') }))] : [];
+      return change ? [part('entry', {}, part('label', { appearance: 'grow', text: t('effect_' + key) }),
+        part('strong', { text: signed(change) + (key === 'life' ? '' : '%') }))] : [];
     });
     return [
-      el('h2', { textContent: t('almanacTitle') }),
-      el('div', { className: 'almanacSeason' },
-        el('b', { textContent: t('season' + current.season) }),
-        el('span', { textContent: t('nextSeason', { season: t('season' + current.next), time: duration(current.remaining) }) })),
-      el('ul', { className: 'list' }, ...seasonEffects),
-      el('p', { className: 'muted', textContent: t('seasonAdvice' + current.season) })
+      part('heading', { text: t('almanacTitle') }),
+      part('group', { appearance: 'almanacSeason' },
+        part('strong', { text: t('season' + current.season) }),
+        part('label', { text: t('nextSeason', { season: t('season' + current.next), time: duration(current.remaining) }) })),
+      part('list', { appearance: 'list' }, ...seasonEffects),
+      part('paragraph', { appearance: 'muted', text: t('seasonAdvice' + current.season) })
     ];
   },
   plot({ key }) {
@@ -582,42 +687,40 @@ const TARGET_SHEETS = {
     if (!plot.kind) {
       const choices = Object.keys(BUILDINGS).sort((a, b) => BUILDINGS[a].rank - BUILDINGS[b].rank);
       return [
-        el('h2', { textContent: `${t('ward', { n: ward + 1 })} · ${t('empty')} ${key % PLOTS_PER_DISTRICT + 1}` }),
-        el('p', { className: 'muted', textContent: t(rules.RIVERSIDE.has(key) ? 'riverPlotNote' : 'emptyNote') }),
-        el(
-          'div',
-          { className: 'choices' },
+        part('heading', { text: `${t('ward', { n: ward + 1 })} · ${t('empty')} ${key % PLOTS_PER_DISTRICT + 1}` }),
+        part('paragraph', { appearance: 'muted', text: t(rules.RIVERSIDE.has(key) ? 'riverPlotNote' : 'emptyNote') }),
+        part('group',
+          { appearance: 'choices' },
           ...choices.map((kind) => {
             const why = canPlace(s, key, kind),
               q = !why ? quote(s, { type: 'plot', key, kind }) : null;
             const note = why === 'rank' ? t('needRank', { rank: t('r' + BUILDINGS[kind].rank) }) : why === 'river' ? t('riverOnly') : q ? `${priceWords(q.price)} · ${duration(q.time)}${q.why ? ' · ' + whyWords(q, q.price) : ''}` : '';
             const plan = plotPlan(s, key, kind);
-            const b = el('button', { type: 'button', className: 'choice' }, el('b', { textContent: buildingName(kind) }), el('small', { textContent: buildingAbout(kind) }),
-              el('small', { className: 'planScore', textContent: layoutNote(plan) }),
-              el('small', { textContent: note }));
-            b.dataset.kind = kind;
-            if (why || q?.why) b.setAttribute('aria-disabled', 'true');
-            b.addEventListener('click', () => {
-              if (b.getAttribute('aria-disabled') === 'true') return toast(note);
-              doUpgrade({ type: 'plot', key, kind });
-              openSheet({ type: 'plot', key });
-            });
-            return b;
+            const disabled = Boolean(why || q?.why);
+            return part('action', {
+              name: 'build-' + kind, appearance: 'choice', disabled,
+              onDisabledTap: disabled ? () => toast(note) : undefined,
+              action: () => {
+                doUpgrade({ type: 'plot', key, kind });
+                openSheet({ type: 'plot', key });
+              }
+            }, part('strong', { text: buildingName(kind) }), part('note', { text: buildingAbout(kind) }),
+            part('note', { appearance: 'planScore', text: layoutNote(plan) }), part('note', { text: note }));
           })
         )
       ];
     }
     const spec = BUILDINGS[plot.kind], inlandDock = plot.kind === 'dock' && !rules.RIVERSIDE.has(key);
     return [
-      el('h2', { textContent: `${buildingName(plot.kind)} · ${t('level', { n: plot.level })}` }),
+      part('heading', { text: `${buildingName(plot.kind)} · ${t('level', { n: plot.level })}` }),
       architecture(plot.kind, plot.level, inlandDock ? plot.level : maxLevel(s)),
-      el('p', { textContent: buildingAbout(plot.kind) }),
-      el('p', { className: 'muted', textContent: outputWords(plot.kind, Math.max(1, plot.level)) }),
-      el('p', { className: 'planScore', textContent: layoutNote(plotPlan(s, key)) }),
+      part('paragraph', { text: buildingAbout(plot.kind) }),
+      part('paragraph', { appearance: 'muted', text: outputWords(plot.kind, Math.max(1, plot.level)) }),
+      part('paragraph', { appearance: 'planScore', text: layoutNote(plotPlan(s, key)) }),
       ...upgradeBlock({ type: 'plot', key }, spec, plot.level),
-      inlandDock ? button(t('moveDock'), () => openSheet({ type: 'harbor', key }), { note: t('moveDockHint'), kind: 'jade' }) : null,
+      inlandDock ? button(t('moveDock'), () => openSheet({ type: 'harbor', key }), { name: 'moveDock', note: t('moveDockHint'), kind: 'jade' }) : null,
       postLine({ type: 'plot', key }),
-      el('div', { className: 'row' }, button(t('demolish'), () => {
+      part('group', { appearance: 'row' }, button(t('demolish'), () => {
         rules.demolish(s, key);
         afterChange();
         closeSheet();
@@ -630,9 +733,9 @@ const TARGET_SHEETS = {
     if (!rules.wardIsOpen(s, key)) {
       const quote = rules.expansionQuote(s, key);
       return [
-        el('h2', { textContent: `${t('ward', { n: key + 1 })} · ${t('expandLand')}` }),
-        el('p', { className: 'muted', textContent: t('expandNote') }),
-        recommendation ? el('p', { className: 'planScore', textContent: t('recommend' + cap(recommendation)) }) : null,
+        part('heading', { text: `${t('ward', { n: key + 1 })} · ${t('expandLand')}` }),
+        part('paragraph', { appearance: 'muted', text: t('expandNote') }),
+        recommendation ? part('paragraph', { appearance: 'planScore', text: t('recommend' + cap(recommendation)) }) : null,
         quote.cost ? button(t('claimWard'), () => {
           const result = rules.expandWard(s, key);
           if (result.why) return toast(expansionReason(result));
@@ -641,26 +744,26 @@ const TARGET_SHEETS = {
           afterChange(true);
           persist(true);
         }, { note: [priceWords(quote.cost), expansionReason(quote)].filter(Boolean).join(' · '), disabled: Boolean(quote.why), kind: 'primary' })
-        : el('p', { className: 'muted', textContent: expansionReason(quote) })
+        : part('paragraph', { appearance: 'muted', text: expansionReason(quote) })
       ];
     }
     return [
-      el('h2', { textContent: `${t('ward', { n: key + 1 })} · ${t('planWard')}` }),
-      el('p', { className: 'muted', textContent: t('planNote') }),
-      recommendation ? el('p', { className: 'planScore', textContent: t('recommend' + cap(recommendation)) }) : null,
-      el(
-        'div',
-        { className: 'choices' },
+      part('heading', { text: `${t('ward', { n: key + 1 })} · ${t('planWard')}` }),
+      part('paragraph', { appearance: 'muted', text: t('planNote') }),
+      recommendation ? part('paragraph', { appearance: 'planScore', text: t('recommend' + cap(recommendation)) }) : null,
+      part('group',
+        { appearance: 'choices' },
         ...[...ZONES, null].map((zone) => {
-          const b = el('button', { type: 'button', className: 'choice' }, el('b', { textContent: t(zone ? 'zone' + cap(zone) : 'zoneNone') }), el('small', { textContent: t(zone ? 'note' + cap(zone) : 'clearPlanNote') }));
-          b.setAttribute('aria-pressed', String(s.districts[key].zone === zone));
-          b.addEventListener('click', () => {
-            rules.zone(s, key, zone);
-            app.sound.play('tap');
-            afterChange();
-            closeSheet();
-          });
-          return b;
+          return part('action', {
+            name: 'zone-' + (zone ?? 'none'), appearance: 'choice', pressed: s.districts[key].zone === zone,
+            action: () => {
+              rules.zone(s, key, zone);
+              app.sound.play('tap');
+              afterChange();
+              closeSheet();
+            }
+          }, part('strong', { text: t(zone ? 'zone' + cap(zone) : 'zoneNone') }),
+          part('note', { text: t(zone ? 'note' + cap(zone) : 'clearPlanNote') }));
         })
       )
     ];
@@ -673,13 +776,13 @@ const TARGET_SHEETS = {
     }));
     options.sort((a, b) => Number(a.quote.why === 'adjacent') - Number(b.quote.why === 'adjacent'));
     return [
-      el('h2', { textContent: t('expandLand') }),
-      el('p', { textContent: t('expandedCount', { n: districtsOpen(s), all: LAYOUT.wards.length }) }),
-      el('p', { className: 'muted', textContent: t('expandNote') }),
-      options.length ? el('ul', { className: 'list frontierList' }, ...options.map(({ index, quote }) =>
-        el('li', {}, button(wardLabel(index), () => showOnMap('ward', index), {
+      part('heading', { text: t('expandLand') }),
+      part('paragraph', { text: t('expandedCount', { n: districtsOpen(s), all: LAYOUT.wards.length }) }),
+      part('paragraph', { appearance: 'muted', text: t('expandNote') }),
+      options.length ? part('list', { appearance: 'list frontierList' }, ...options.map(({ index, quote }) =>
+        part('entry', {}, button(wardLabel(index), () => showOnMap('ward', index), {
           note: [quote.cost && priceWords(quote.cost), expansionReason(quote)].filter(Boolean).join(' · ')
-        })))) : el('p', { textContent: t('allLandClaimed') })
+        })))) : part('paragraph', { text: t('allLandClaimed') })
     ];
   },
   node({ key }) {
@@ -689,16 +792,16 @@ const TARGET_SHEETS = {
       const next = s.nodes.findIndex((n) => !n.found);
       const surveying = s.works.find((w) => w.type === 'survey');
       return [
-        el('h2', { textContent: t('hidden') }),
-        surveying ? el('p', { className: 'muted', textContent: t('surveyBusy', { time: duration((surveying.ends ?? s.time) - s.time) }) }) : null,
-        next >= 0 ? surveyButton() : el('p', { textContent: t('surveyDone') })
+        part('heading', { text: t('hidden') }),
+        surveying ? part('paragraph', { appearance: 'muted', text: t('surveyBusy', { time: duration((surveying.ends ?? s.time) - s.time) }) }) : null,
+        next >= 0 ? surveyButton() : part('paragraph', { text: t('surveyDone') })
       ];
     }
     return [
-      el('h2', { textContent: `${buildingName(node.kind)} · ${t('level', { n: node.level })}` }),
-      el('p', { textContent: buildingAbout(node.kind) }),
+      part('heading', { text: `${buildingName(node.kind)} · ${t('level', { n: node.level })}` }),
+      part('paragraph', { text: buildingAbout(node.kind) }),
       architecture(node.kind, node.level, maxLevel(s), { facility: true }),
-      el('p', { className: 'muted', textContent: outputWords(node.kind, Math.max(1, node.level), NODES[node.kind]) }),
+      part('paragraph', { appearance: 'muted', text: outputWords(node.kind, Math.max(1, node.level), NODES[node.kind]) }),
       ...upgradeBlock({ type: 'node', key }, NODES[node.kind], node.level),
       postLine({ type: 'node', key })
     ];
@@ -708,32 +811,31 @@ const TARGET_SHEETS = {
       need = needFor(s, s.rank + 1),
       works = s.works.find((w) => w.type === 'rank');
     const parts = [
-      el('h2', { textContent: t('yamenTitle', { rank: t('r' + s.rank) }) }),
+      part('heading', { text: t('yamenTitle', { rank: t('r' + s.rank) }) }),
       architecture('yamen', s.rank, FINAL_RANK, { facility: true, rank: true })
     ];
     if (s.pendingTax >= 1) parts.push(button(t('collect'), collect, { note: t('taxWaiting', { n: amount(s.pendingTax) }), kind: 'jade' }));
     if (!need) {
-      parts.push(el('p', { textContent: t('topRank') }), el('p', { className: 'muted', textContent: t('promoteNote') }), button(t('promote'), promote, { kind: 'primary' }));
+      parts.push(part('paragraph', { text: t('topRank') }), part('paragraph', { appearance: 'muted', text: t('promoteNote') }), button(t('promote'), promote, { name: 'promote', kind: 'primary' }));
       return parts;
     }
-    parts.push(el('h3', { textContent: `${t('rankNeeds')} · ${t('rankUp', { rank: t('r' + (s.rank + 1)) })}` }));
+    parts.push(part('subheading', { text: `${t('rankNeeds')} · ${t('rankUp', { rank: t('r' + (s.rank + 1)) })}` }));
     parts.push(
-      el(
-        'ul',
-        { className: 'needs' },
+      part('list',
+        { appearance: 'needs' },
         ...Object.entries(need).map(([k, v]) => {
           const have = k === 'pop' ? s.pop : k === 'life' ? s.life : s.res[k],
-            li = el('li', {}, el('span', { textContent: t(k) }), el('span', { className: 'bar' }, el('i', { style: `width:${Math.min(100, (100 * have) / v)}%` })), el('span', { textContent: `${amount(have)} / ${amount(v)}` }));
-          if (have >= v) li.className = 'met';
+            li = part('entry', {}, part('label', { text: t(k) }), part('meter', { value: Math.min(1, have / v) }), part('label', { text: `${amount(have)} / ${amount(v)}` }));
+          if (have >= v) li.appearance = 'met';
           return li;
         })
       )
     );
-    parts.push(el('p', { className: 'muted', textContent: t('keep') }));
-    if (works) parts.push(el('p', { textContent: t('rankBusy', { time: duration(works.ends - s.time) }) }));
+    parts.push(part('paragraph', { appearance: 'muted', text: t('keep') }));
+    if (works) parts.push(part('paragraph', { text: t('rankBusy', { time: duration(works.ends - s.time) }) }));
     else {
       const probe = rules.rankUp(JSON.parse(JSON.stringify(s)));
-      parts.push(button(t('rankUp', { rank: t('r' + (s.rank + 1)) }), doRankUp, { note: `${t('rankWorks', { time: duration(RANKS[s.rank + 1].time) })}${probe.why ? '' : ' · ' + t('rankReady')}`, disabled: Boolean(probe.why), kind: 'primary' }));
+      parts.push(button(t('rankUp', { rank: t('r' + (s.rank + 1)) }), doRankUp, { note: `${t('rankWorks', { time: duration(RANKS[s.rank + 1].time) })}${probe.why ? '' : ' · ' + t('rankReady')}`, disabled: Boolean(probe.why), name: 'rankUp', kind: 'primary' }));
     }
     parts.push(postLine({ type: 'office', key: 'deputy' }));
     return parts;
@@ -744,16 +846,14 @@ const TARGET_SHEETS = {
   pick({ place, back }) {
     const s = app.state;
     return [
-      el('h2', { textContent: t('choosePost') }),
-      s.talents.length ? null : el('p', { textContent: t('noTalents') }),
-      el(
-        'ul',
-        { className: 'list' },
+      part('heading', { text: t('choosePost') }),
+      s.talents.length ? null : part('paragraph', { text: t('noTalents') }),
+      part('list',
+        { appearance: 'list' },
         ...s.talents.map((talent) =>
-          el(
-            'li',
+          part('entry',
             {},
-            el('span', { className: 'grow', textContent: `${t('t_' + talent.id)} · ${talentLine(talent)}` }),
+            part('label', { appearance: 'grow', text: `${t('t_' + talent.id)} · ${talentLine(talent)}` }),
             button(t('postAt'), () => {
               rules.post(s, talent.id, place);
               app.sound.play('tap');
@@ -773,10 +873,10 @@ function defenceSheet(target) {
     side = target.key ?? 0,
     level = target.type === 'camp' ? s.defence.camp : s.defence[target.type][side];
   return [
-    el('h2', { textContent: `${targetName(target)} · ${t('level', { n: level })}` }),
+    part('heading', { text: `${targetName(target)} · ${t('level', { n: level })}` }),
     target.type === 'wall' ? null : architecture(target.type === 'tower' ? 'gate' : 'camp', level, maxLevel(s), { facility: true, side }),
-    el('p', { textContent: target.type === 'tower' ? t('gateNote') : t('about_' + target.type) }),
-    el('p', { className: 'muted', textContent: `${t('power', { n: amount(defencePower(s, side)) })} · ${t('defenceAdd', { n: amount(spec.power) })}` }),
+    part('paragraph', { text: target.type === 'tower' ? t('gateNote') : t('about_' + target.type) }),
+    part('paragraph', { appearance: 'muted', text: `${t('power', { n: amount(defencePower(s, side)) })} · ${t('defenceAdd', { n: amount(spec.power) })}` }),
     ...upgradeBlock(target, spec, level),
     target.type === 'camp' ? null : troopControls(side),
     postLine({ type: 'defence', key: target.type === 'camp' ? 'camp' : `${target.type}:${side}` })
@@ -792,13 +892,13 @@ function troopControls(side) {
     app.sound.play('deploy');
     afterChange();
   };
-  return el('div', { className: 'troopControls' },
-    el('b', { textContent: t('troopsHere', { n: stationed }) }),
-    el('span', { textContent: t('troopsReserve', { n: reserve }) }),
-    troopCapacity(s) ? null : el('p', { className: 'muted', textContent: t('needRank', { rank: t('r' + DEFENCE.wall.rank) }) }),
-    el('div', { className: 'row' },
-      button(t('deployTroop'), () => send(1), { disabled: reserve === 0, kind: 'jade' }),
-      button(t('recallTroop'), () => send(-1), { disabled: stationed === 0 })));
+  return part('group', { appearance: 'troopControls' },
+    part('strong', { text: t('troopsHere', { n: stationed }) }),
+    part('label', { text: t('troopsReserve', { n: reserve }) }),
+    troopCapacity(s) ? null : part('paragraph', { appearance: 'muted', text: t('needRank', { rank: t('r' + DEFENCE.wall.rank) }) }),
+    part('group', { appearance: 'row' },
+      button(t('deployTroop'), () => send(1), { disabled: reserve === 0, name: 'deploy-' + side, kind: 'jade' }),
+      button(t('recallTroop'), () => send(-1), { disabled: stationed === 0, name: 'recall-' + side })));
 }
 
 function surveyButton() {
@@ -823,26 +923,24 @@ const TAB_SHEETS = {
     s.plots.forEach((p, i) => p.kind && items.push({ target: { type: 'plot', key: i }, name: buildingName(p.kind), level: p.level, spec: BUILDINGS[p.kind] }));
     s.nodes.forEach((n, i) => n.found && n.level > 0 && items.push({ target: { type: 'node', key: i }, name: buildingName(n.kind), level: n.level, spec: NODES[n.kind] }));
     return [
-      el('h2', { textContent: t('worksTitle') }),
-      button(t('expandLand'), () => openSheet({ type: 'frontier' }), { kind: 'jade' }),
-      button(t('harborSites'), () => openSheet({ type: 'harbor' }), { kind: 'jade' }),
-      el('p', { className: 'muted', textContent: t('choosePlotHint') }),
-      el('p', { className: 'planScore', textContent: t('countyLayout', { n: Math.round(rates(s).planning.efficiency * 100) }) }),
-      el('p', { className: 'muted', textContent: t('builders', { busy: busy(s), all: builders(s), queued: rules.queued(s), cap: builders(s) * rules.QUEUE_PER_BUILDER }) }),
+      part('heading', { text: t('worksTitle') }),
+      button(t('expandLand'), () => openSheet({ type: 'frontier' }), { name: 'expandLand', kind: 'jade' }),
+      button(t('harborSites'), () => openSheet({ type: 'harbor' }), { name: 'harborSites', kind: 'jade' }),
+      part('paragraph', { appearance: 'muted', text: t('choosePlotHint') }),
+      part('paragraph', { appearance: 'planScore', text: t('countyLayout', { n: Math.round(rates(s).planning.efficiency * 100) }) }),
+      part('paragraph', { appearance: 'muted', text: t('builders', { busy: busy(s), all: builders(s), queued: rules.queued(s), cap: builders(s) * rules.QUEUE_PER_BUILDER }) }),
       s.works.length
-        ? el('ul', { className: 'list' }, ...s.works.map((w) => el('li', {}, el('span', { className: 'grow', textContent: workName(w) }), el('span', { className: 'muted', textContent: w.ends ? duration(w.ends - s.time) : t('waiting') }))))
-        : el('p', { textContent: t('noWorks') }),
-      el('div', { className: 'row' }, surveyButton()),
-      el('h3', { textContent: t('upgrade') }),
-      el(
-        'ul',
-        { className: 'list' },
+        ? part('list', { appearance: 'list' }, ...s.works.map((w) => part('entry', {}, part('label', { appearance: 'grow', text: workName(w) }), part('label', { appearance: 'muted', text: w.ends ? duration(w.ends - s.time) : t('waiting') }))))
+        : part('paragraph', { text: t('noWorks') }),
+      part('group', { appearance: 'row' }, surveyButton()),
+      part('subheading', { text: t('upgrade') }),
+      part('list',
+        { appearance: 'list' },
         ...items.map(({ target, name, level }) => {
           const q = quote(s, target);
-          return el(
-            'li',
+          return part('entry',
             {},
-            el('span', { className: 'grow', textContent: `${name} · ${t('level', { n: level })}` }),
+            part('label', { appearance: 'grow', text: `${name} · ${t('level', { n: level })}` }),
             button(t('levelUp', { n: level + 1 }), () => doUpgrade(target), { note: q.price ? priceWords(q.price) : whyWords(q, {}), disabled: Boolean(q.why) })
           );
         })
@@ -854,30 +952,28 @@ const TAB_SHEETS = {
       free = freeRecruit(s),
       price = recruitPrice(s);
     return [
-      el('h2', { textContent: t('tabTalent') }),
-      el('p', { className: 'muted', textContent: t('recruitNote') }),
-      el('div', { className: 'row' }, button(free ? t('recruitFree') : t('recruitCost', { n: amount(price) }), doRecruit, { disabled: !free && s.fame < price, kind: 'primary' })),
-      el('h3', { textContent: `${t('office_deputy')} · ${t('office_registrar')} · ${t('office_sheriff')}` }),
+      part('heading', { text: t('tabTalent') }),
+      part('paragraph', { appearance: 'muted', text: t('recruitNote') }),
+      part('group', { appearance: 'row' }, button(free ? t('recruitFree') : t('recruitCost', { n: amount(price) }), doRecruit, { disabled: !free && s.fame < price, name: 'recruit', kind: 'primary' })),
+      part('subheading', { text: `${t('office_deputy')} · ${t('office_registrar')} · ${t('office_sheriff')}` }),
       ...Object.keys(OFFICES).map((office) => {
         const holder = s.talents.find((x) => x.post?.type === 'office' && x.post.key === office);
-        return el('div', { className: 'row' }, button(`${t('office_' + office)}: ${holder ? t('t_' + holder.id) : t('unposted')}`, () => openSheet({ type: 'pick', place: { type: 'office', key: office }, back: { tab: 'talent' } }), { note: t('officeNote_' + office) }));
+        return part('group', { appearance: 'row' }, button(`${t('office_' + office)}: ${holder ? t('t_' + holder.id) : t('unposted')}`, () => openSheet({ type: 'pick', place: { type: 'office', key: office }, back: { tab: 'talent' } }), { note: t('officeNote_' + office) }));
       }),
-      el('h3', { textContent: t('roster', { n: s.talents.length }) }),
-      s.talents.length ? null : el('p', { textContent: t('noTalents') }),
+      part('subheading', { text: t('roster', { n: s.talents.length }) }),
+      s.talents.length ? null : part('paragraph', { text: t('noTalents') }),
       ...s.talents.map((talent) => {
         const spec = TALENTS.find((x) => x.id === talent.id);
-        return el(
-          'div',
-          { className: 'talent' },
-          el('span', { className: 'portrait r-' + spec.rarity, textContent: t('t_' + talent.id).slice(0, 1) }),
-          el(
-            'div',
+        return part('group',
+          { appearance: 'talent' },
+          part('label', { appearance: 'portrait r-' + spec.rarity, text: t('t_' + talent.id).slice(0, 1) }),
+          part('group',
             {},
-            el('b', { textContent: t('t_' + talent.id) }),
-            el('div', { className: 'stats', textContent: `${talentLine(talent)} · ${['rule', 'farm', 'craft', 'trade', 'arms'].map((k, i) => `${t('stat_' + k)}${spec.stats[i]}`).join(' ')}` }),
-            el('div', { className: 'stats', textContent: [Object.keys(spec.gift).map((g) => t('gift_' + g)).join(' · '), talent.post ? t('postedAt', { where: placeName(talent.post) }) : t('unposted')].filter(Boolean).join(' · ') })
+            part('strong', { text: t('t_' + talent.id) }),
+            part('group', { appearance: 'stats', text: `${talentLine(talent)} · ${['rule', 'farm', 'craft', 'trade', 'arms'].map((k, i) => `${t('stat_' + k)}${spec.stats[i]}`).join(' ')}` }),
+            part('group', { appearance: 'stats', text: [Object.keys(spec.gift).map((g) => t('gift_' + g)).join(' · '), talent.post ? t('postedAt', { where: placeName(talent.post) }) : t('unposted')].filter(Boolean).join(' · ') })
           ),
-          el('span')
+          part('label')
         );
       })
     ];
@@ -885,32 +981,32 @@ const TAB_SHEETS = {
   affairs() {
     const s = app.state,
       goal = GOALS[s.goal];
-    const parts = [el('h2', { textContent: t('tabAffairs') })];
-    parts.push(el('h3', { textContent: t('goal') }));
+    const parts = [part('heading', { text: t('tabAffairs') })];
+    parts.push(part('subheading', { text: t('goal') }));
     if (goal) {
-      parts.push(el('p', { textContent: `${t('g_' + goal.id)} · ${t('goalReward', { what: rewardWords(goal.reward) })}` }));
+      parts.push(part('paragraph', { text: `${t('g_' + goal.id)} · ${t('goalReward', { what: rewardWords(goal.reward) })}` }));
       if (goal.check(s)) parts.push(button(t('claim'), claim, { kind: 'jade' }));
-    } else parts.push(el('p', { textContent: t('allGoals') }));
-    parts.push(el('h3', { textContent: t('petition') }));
+    } else parts.push(part('paragraph', { text: t('allGoals') }));
+    parts.push(part('subheading', { text: t('petition') }));
     if (s.petition) parts.push(petitionSheet(s));
-    else parts.push(el('p', { className: 'muted', textContent: t('noPetition') }));
-    parts.push(el('h3', { textContent: t('log') }));
-    parts.push(el('ul', { className: 'list' }, ...s.log.slice(0, 12).map((entry) => el('li', {}, el('span', { className: 'grow', textContent: logWords(entry) })))));
+    else parts.push(part('paragraph', { appearance: 'muted', text: t('noPetition') }));
+    parts.push(part('subheading', { text: t('log') }));
+    parts.push(part('list', { appearance: 'list' }, ...s.log.slice(0, 12).map((entry) => part('entry', {}, part('label', { appearance: 'grow', text: logWords(entry) })))));
     return parts;
   },
   defence() {
     const s = app.state;
-    const parts = [el('h2', { textContent: t('defenceTitle') }), el('p', { textContent: t('defenceHint') })];
+    const parts = [part('heading', { text: t('defenceTitle') }), part('paragraph', { text: t('defenceHint') })];
     if (s.raid.next) {
-      parts.push(el('p', { textContent: `${sideName(raidSide(s))} · ${t('nextRaid', { kind: t('raid_' + RAIDS.kinds[s.raid.n % RAIDS.kinds.length]), time: duration(s.raid.next - s.time) })} · ${t('enemyPower', { n: amount(raidPower(s)) })}` }));
+      parts.push(part('paragraph', { text: `${sideName(raidSide(s))} · ${t('nextRaid', { kind: t('raid_' + RAIDS.kinds[s.raid.n % RAIDS.kinds.length]), time: duration(s.raid.next - s.time) })} · ${t('enemyPower', { n: amount(raidPower(s)) })}` }));
       const inWindow = s.raid.next - s.time <= RAIDS.warn;
       parts.push(button(s.raid.drums ? t('drumsOn') : t('drums'), beatDrums, { disabled: s.raid.drums || !inWindow, note: inWindow ? '' : t('drumsLater'), kind: 'primary' }));
-    } else parts.push(el('p', { className: 'muted', textContent: t('noRaid') }));
-    parts.push(...SIDES.map((_, key) => el('article', { className: 'defenceSide' },
-      el('h3', { textContent: `${sideName(key)} · ${t('power', { n: amount(defencePower(s, key)) })}` }),
-      el('div', { className: 'row' },
+    } else parts.push(part('paragraph', { appearance: 'muted', text: t('noRaid') }));
+    parts.push(...SIDES.map((_, key) => part('group', { appearance: 'defenceSide' },
+      part('subheading', { text: `${sideName(key)} · ${t('power', { n: amount(defencePower(s, key)) })}` }),
+      part('group', { appearance: 'row' },
         button(t('wall'), () => openTarget({ type: 'wall', key }), { note: t('level', { n: s.defence.wall[key] }) }),
-        button(t('gatehouse'), () => openTarget({ type: 'tower', key }), { note: t('level', { n: s.defence.tower[key] }) })),
+        button(t('gatehouse'), () => openTarget({ type: 'tower', key }), { name: 'gatehouse-' + key, note: t('level', { n: s.defence.tower[key] }) })),
       troopControls(key))));
     parts.push(button(t('camp'), () => openTarget({ type: 'camp' }), { note: t('level', { n: s.defence.camp }) }));
     return parts;
@@ -1004,24 +1100,36 @@ function promote() {
   closeSheet();
 }
 
-$('#taxBubble').addEventListener('click', collect);
-$('#claimButton').addEventListener('click', claim);
-$('#raidBanner').addEventListener('click', () => openTab('defence'));
-$('#petitionCall').addEventListener('click', () => {
-  openTab('affairs');
-  const petition = $('.petition');
-  petition?.scrollIntoView({ block: 'nearest' });
-  $('button:not([aria-disabled="true"])', petition ?? $('#sheetBody'))?.focus({ preventScroll: true });
-});
-
-// ——— Toasts ———
+// Short status notices remain in the game layer and its semantic tree.
+const notices = [];
+function paintNotices() {
+  if (!notices.length) return app.ui.hide('notices');
+  let y = 113;
+  const items = [];
+  for (const notice of notices) {
+    const lines = wrapText(notice.words, 398, 16);
+    const height = lines.length * 22 + 16;
+    items.push(panel('notice-paper-' + notice.id, 425, y, 430, height, 0x334940, { card: { radius: 10 } }),
+      ...lines.map((line, i) => label('notice-' + notice.id + '-' + i, line, 441, y + 8 + i * 22, 398, 22, {
+        color: 0xfff8ec, size: 16, ...(i === 0 ? { role: 'status', label: notice.words } : {})
+      })));
+    y += height + 6;
+  }
+  app.ui.show('notices', { items });
+}
+let noticeId = 0;
 function toast(words) {
-  if (!words) return;
-  const box = $('#toasts');
-  const node = el('div', { className: 'toast', textContent: words });
-  box.append(node);
-  setTimeout(() => node.remove(), 3700);
-  while (box.children.length > 3) box.firstChild.remove();
+  if (!words || !app.ui) return;
+  const notice = { id: ++noticeId, words };
+  notices.push(notice);
+  if (notices.length > 3) notices.shift();
+  paintNotices();
+  setTimeout(() => {
+    const index = notices.indexOf(notice);
+    if (index < 0) return;
+    notices.splice(index, 1);
+    if (app.screen !== 'loading') paintNotices();
+  }, 3700);
 }
 
 // ——— The clock ———
@@ -1032,7 +1140,7 @@ function afterChange(full = false, ticking = false) {
     app.hitsKey = hitsKey();
   }
   paintTop();
-  if (app.sheet && (!ticking || (sheetContact === null && Math.floor(app.state.time) % 3 === 0))) paintSheet();
+  if (app.sheet && (!ticking || (drag?.region !== 'sheet' && Math.floor(app.state.time) % 3 === 0))) paintSheet();
   persist();
 }
 const hitsKey = () => JSON.stringify([app.state.plots, app.state.nodes.map((n) => [n.found, n.level]), app.state.defence, app.state.rank, app.state.districts, getLanguage()]);
@@ -1100,153 +1208,58 @@ function welcomeBack() {
   const before = s.time,
     report = advance(s, now(), { active: false });
   trainTalents(s, (s.time - before) / HOUR);
-  const lines = [el('p', { textContent: t('awayFor', { time: duration(away) }) }), el('p', { className: 'muted', textContent: t('awayCounted', { time: duration(Math.min(away, offlineCap(s))) }) })];
-  const made = Object.entries(report.made).filter(([, v]) => v >= 1);
-  if (made.length) lines.push(el('p', { textContent: `${t('awayMade')}：${made.map(([k, v]) => `${t(k)} ${amount(v)}`).join(' · ')}` }));
-  if (report.sold >= 1) lines.push(el('p', { textContent: t('awaySold', { n: amount(report.sold) }) }));
-  if (report.tax >= 1) lines.push(el('p', { textContent: t('awayTax', { n: amount(s.pendingTax) }) }));
-  if (report.works.length) lines.push(el('p', { textContent: t('awayWorks', { n: report.works.length }) }));
-  if (report.raids.length) lines.push(el('p', { textContent: t('awayRaids', { won: report.raids.filter((r) => r.won).length, lost: report.raids.filter((r) => !r.won).length }) }));
-  $('#awayTitle').textContent = t('welcomeBack');
-  $('#awayBody').replaceChildren(...lines);
-  $('#awayOk').textContent = t('ok');
-  $('#away').hidden = false;
-  $('#awayOk').focus();
+  const lines = [t('awayFor', { time: duration(away) }),
+    { text: t('awayCounted', { time: duration(Math.min(away, offlineCap(s))) }), muted: true }];
+  const made = Object.entries(report.made).filter(([, value]) => value >= 1);
+  if (made.length) lines.push(t('awayMade') + '：' + made.map(([k, v]) => t(k) + ' ' + amount(v)).join(' · '));
+  if (report.sold >= 1) lines.push(t('awaySold', { n: amount(report.sold) }));
+  if (report.tax >= 1) lines.push(t('awayTax', { n: amount(s.pendingTax) }));
+  if (report.works.length) lines.push(t('awayWorks', { n: report.works.length }));
+  if (report.raids.length) lines.push(t('awayRaids', { won: report.raids.filter((r) => r.won).length, lost: report.raids.filter((r) => !r.won).length }));
   afterChange(true);
+  app.screens.showAway(lines);
 }
-$('#awayOk').addEventListener('click', () => {
-  $('#away').hidden = true;
-  $('#taxBubble').focus();
-});
-
-// ——— Title and settings ———
-function paintTitle() {
+function updateLanguage() {
+  document.documentElement.lang = getLanguage() === 'zh' ? 'zh-CN' : 'en';
   document.title = t('pageTitle');
-  $('#titleName').textContent = t('title');
-  $('#tagline').textContent = t('tagline');
-  $('#demoLine').textContent = t('demo');
-  $('#overview').textContent = t('mapOverview');
-  $('#countyFocus').textContent = t('mapCounty');
-  $('#frontiers').textContent = t('expandLand');
-  $('#hits').setAttribute('aria-label', t('mapControls'));
-  $('#zoomIn').setAttribute('aria-label', t('mapZoomIn'));
-  $('#zoomOut').setAttribute('aria-label', t('mapZoomOut'));
+  app.game?.canvas.setAttribute('aria-label', t('title'));
   $('#rotateHint').textContent = t('rotateHint');
-  $('#startButton').textContent = slots.some((slot) => slot.data.county) ? t('continue') : t('start');
-  $('#titleSettings').textContent = t('settings');
-  const lang = $('#languageButton');
-  lang.textContent = getLanguage() === 'zh' ? t('english') : t('chinese');
-  lang.setAttribute('aria-label', t('switchLanguage'));
-  const notice = $('#title .notice'),
-    words = [['corrupt', 'unreadable', 'invalid', 'too-new', 'too-old', 'migration-failed'].some((p) => problems.has(p)) ? t('saveBroken') : '', problems.has('write-failed') ? t('saveRefused') : ''].filter(Boolean);
-  notice.hidden = !words.length;
-  notice.textContent = words.join(' ');
-  $('#settingsButton').replaceChildren(el('span', { className: 'pill', textContent: t('settings') }));
+  app.screens?.refresh();
+  if (app.screen === 'play') afterChange(true);
 }
-function paintSettings() {
-  const s = preferences.data,
-    list = $('#settings .settingsList');
-  $('#settingsTitle').textContent = t('settings');
-  const rows = [
-    ['sound', t('sound'), t(s.sound ? 'on' : 'off')],
-    ['music', t('music'), t(s.music ? 'on' : 'off')],
-    ['reducedMotion', t('reducedMotion'), t(s.reducedMotion ? 'on' : 'off')],
-    ['language', t('switchLanguage'), getLanguage() === 'zh' ? t('english') : t('chinese')]
-  ];
-  list.replaceChildren(
-    ...rows.flatMap(([key, label, value], i) => {
-      const name = el('span', { textContent: label, id: 'set' + i });
-      const b = el('button', { type: 'button', textContent: value, id: 'set' + i + 'v' });
-      b.setAttribute('aria-labelledby', `set${i} set${i}v`);
-      b.addEventListener('click', () => {
-        if (key === 'language') switchLanguage();
-        else
-          preferences.update((settings) => {
-            settings[key] = !settings[key];
-          });
-        if (key === 'sound') app.sound.setSound(preferences.data.sound);
-        if (key === 'music') app.sound.setMusic(preferences.data.music);
-        if (key === 'reducedMotion' && app.game) app.game.reducedMotion = preferences.data.reducedMotion || matchMedia('(prefers-reduced-motion: reduce)').matches;
-        paintSettings();
-        $('#set' + i + 'v').focus();
-      });
-      return [name, b];
-    })
-  );
-  $('#settings .closeButton').textContent = t('close');
-  const title = $('#returnToTitle');
-  title.hidden = app.screen !== 'play';
-  title.textContent = t('returnToTitle');
+onLanguage(updateLanguage);
+
+function changePreference(key) {
+  if (key === 'language') {
+    const next = getLanguage() === 'zh' ? 'en' : 'zh';
+    setLanguage(next);
+    preferences.update((settings) => { settings.language = next; });
+    return;
+  }
+  preferences.update((settings) => { settings[key] = !settings[key]; });
+  if (key === 'sound') app.sound.setSound(preferences.data.sound);
+  if (key === 'music') app.sound.setMusic(preferences.data.music);
+  if (key === 'reducedMotion') app.game.reducedMotion = preferences.data.reducedMotion || matchMedia('(prefers-reduced-motion: reduce)').matches;
 }
-function openSettings(from) {
-  paintSettings();
-  $('#settings').hidden = false;
-  $('#settings').returnTo = from;
-  $('#settings button').focus();
-}
-$('#settings .closeButton').addEventListener('click', () => {
-  $('#settings').hidden = true;
-  $('#settings').returnTo?.focus();
-});
-$('#settingsButton').addEventListener('click', () => openSettings($('#settingsButton')));
-$('#titleSettings').addEventListener('click', () => openSettings($('#titleSettings')));
-$('#returnToTitle').addEventListener('click', async (event) => {
-  if (!persist(true)) return toast(t('saveRefused'));
-  event.currentTarget.disabled = true;
-  $('#ui').inert = true;
+
+async function returnToTitle() {
+  if (!persist(true)) {
+    toast(t('saveRefused'));
+    return false;
+  }
   app.slot = null;
   app.screen = 'loading';
-  // Release this county's audio, view and scene animations before navigating.
+  $('#loading').hidden = false;
   try {
+    app.semanticSurface.dispose();
+    app.ui.dispose();
+    app.inspector.dispose();
     await app.game.dispose();
   } catch (error) {
     console.warn(error);
   }
   location.reload();
-});
-function switchLanguage() {
-  const next = getLanguage() === 'zh' ? 'en' : 'zh';
-  setLanguage(next);
-  preferences.update((settings) => {
-    settings.language = next;
-  });
-}
-$('#languageButton').addEventListener('click', () => {
-  switchLanguage();
-  $('#languageButton').focus();
-});
-onLanguage(() => {
-  document.documentElement.lang = getLanguage() === 'zh' ? 'zh-CN' : 'en';
-  paintTitle();
-  paintTabs();
-  if (!$('#settings').hidden) paintSettings();
-  if (app.screen === 'play') afterChange(true);
-});
-
-function openSlotPicker() {
-  const list = $('#saveSlotList');
-  $('#saveSlotsTitle').textContent = t('saveSlotsTitle');
-  $('#closeSaveSlots').textContent = t('close');
-  list.replaceChildren(...slots.map((slot, index) => {
-    const county = slot.data.county;
-    const detail = county ? t('saveSlotCounty', {
-      rank: t('r' + county.rank), term: (county.term ?? 0) + 1, people: amount(county.pop ?? 0)
-    }) : t('saveSlotEmpty');
-    const entry = el('button', { type: 'button', className: county ? 'saveSlot' : 'saveSlot empty' },
-      el('strong', { textContent: t('saveSlot', { n: index + 1 }) }), el('small', { textContent: detail }));
-    entry.dataset.slot = index + 1;
-    entry.addEventListener('click', (event) => enterCounty(index, event.detail === 0));
-    return entry;
-  }));
-  $('#saveSlots').hidden = false;
-  $('#title').inert = true;
-  ($('.saveSlot:not(.empty)', list) ?? $('.saveSlot', list)).focus();
-}
-
-function closeSlotPicker() {
-  $('#saveSlots').hidden = true;
-  $('#title').inert = false;
-  $('#startButton').focus();
+  return true;
 }
 
 function enterCounty(index, keyboard) {
@@ -1256,75 +1269,83 @@ function enterCounty(index, keyboard) {
   app.state = saved ? JSON.parse(JSON.stringify(saved)) : rules.createCounty({
     seed: Number(params.get('seed') ?? Math.floor(Math.random() * 1e6)), now: now()
   });
-  closeSlotPicker();
+  app.screens.hideTitle();
   app.sound.start();
   app.screen = 'play';
-  $('#title').hidden = true;
-  $('#mapTools').hidden = false;
+  clearTimeout(titleIdle);
+  if (app.game.browser.loop.state === 'idle') app.game.browser.loop.start();
   app.view.setCountyActivity(app.state);
   afterChange(true);
   welcomeBack();
-  // From the keyboard the focus goes on to the map; after a click or a tap it is let go, so no frame shows.
-  if (!$('#away').hidden) return;
-  if (keyboard) ($('#taxBubble:not([hidden])') ?? $('#hits button'))?.focus();
-  else document.activeElement?.blur();
+  if (app.screens.modal === 'away') return;
+  if (keyboard && !app.ui.focus('taxBubble', { via: 'keyboard' })) app.ui.focus('map-yamen-0', { via: 'keyboard' });
+  else if (!keyboard) app.ui.blur();
 }
-$('#startButton').addEventListener('click', openSlotPicker);
-$('#closeSaveSlots').addEventListener('click', closeSlotPicker);
 
-// ——— Keys ———
+// Keep inspection scrolling and world panning separate from the canvas control traversal.
 document.addEventListener('keydown', (event) => {
-  if (!$('#saveSlots').hidden) {
-    if (event.key === 'Escape') closeSlotPicker();
-    else if (event.key === 'Tab') {
-      const buttons = $$('#saveSlots button');
-      const end = event.shiftKey ? buttons[0] : buttons.at(-1);
-      if (document.activeElement === end) {
-        event.preventDefault();
-        (event.shiftKey ? buttons.at(-1) : buttons[0]).focus();
-      }
-    }
+  if (!app.ui || event.defaultPrevented) return;
+  if (event.key === 'Escape') {
+    if (app.screens.back() || (app.sheet && (closeSheet(), true))) event.preventDefault();
     return;
   }
-  if (event.key !== 'Escape') {
-    if (hits.contains(document.activeElement)) panKey(event);
+  if (app.screen !== 'play' || app.screens.modal) return;
+  if (event.key === 'Tab' && app.inspector.advanceFocus(event)) {
+    event.preventDefault();
     return;
   }
-  if (!$('#settings').hidden) return $('#settings .closeButton').click();
-  if (!$('#away').hidden) return $('#awayOk').click();
-  if (app.sheet) return closeSheet();
-});
+  if (app.sheet && ['PageUp', 'PageDown'].includes(event.key)) {
+    app.inspector.scrollBy(event.key === 'PageDown' ? 370 : -370);
+    event.preventDefault();
+  } else if (app.ui.focused?.startsWith('map-')) panKey(event);
+}, true);
 
-// ——— Start ———
 async function boot() {
   fit();
+  const semantics = createUiSemantics({ maxNodes: 1024 });
+  const bridge = bridgeUiSemantics(semantics);
   const game = await play({
-    width: STAGE.width * 0.75, height: STAGE.height * 0.75, parent: $('#stage'), transparent: true,
+    width: STAGE.width * 0.75, height: STAGE.height * 0.75, parent: host, transparent: true, semantics: bridge,
+    arrange: () => app.ui?.arrange(),
     update: (seconds) => { if (app.screen === 'play') app.view.update(Math.min(0.1, seconds)); },
-    onError: (error) => console.error(error)
+    onError: console.error
   });
   game.reducedMotion = preferences.data.reducedMotion || matchMedia('(prefers-reduced-motion: reduce)').matches;
   app.game = game;
   app.view = createView(game);
   showCounty();
   app.sound = createSound(game, { sound: preferences.data.sound, music: preferences.data.music });
-  document.documentElement.lang = getLanguage() === 'zh' ? 'zh-CN' : 'en';
-  paintTitle();
-  paintTabs();
-  $('#loading').hidden = true;
-  $('#title').hidden = false;
+  app.semantics = semantics;
+  app.ui = createUi(game, bridge, wakeTitle);
+  app.semanticSurface = createBrowserSemantics({
+    semantics, canvas: game.canvas, width: STAGE.width * 0.75, height: STAGE.height * 0.75, label: t('title')
+  });
+  app.inspector = createInspector(game, app.ui, {
+    close: () => closeSheet(), compact: () => stageScale < 0.72, allowPointer
+  });
+  app.screens = createScreens(game, app.ui, {
+    slots, problems, preferences, isPlaying: () => app.screen === 'play', isCompact: () => stageScale < 0.72,
+    onEnter: enterCounty, onSetting: changePreference, onReturnTitle: returnToTitle, onVisualChange: wakeTitle,
+    onAwayClose: () => app.ui.focus('taxBubble')
+  });
+  updateLanguage();
+  await app.screens.ready;
   app.screen = 'title';
-  $('#startButton').focus();
+  app.screens.showTitle();
+  $('#loading').hidden = true;
   setInterval(tick, 1000);
   app.ready = true;
-  // The cover is enough for the title. Decode the world painting after controls are ready.
+  // Decode the county painting after the title controls are available.
   requestAnimationFrame(() => { void loadTerrain().then(() => paintMap(true)); });
 }
+
 
 /** For tests: the app, the rules and a clock that can be moved on. */
 window.peach = {
   app,
   rules,
+  get ui() { return app.ui; },
+  get semantics() { return app.semantics; },
   get ready() {
     return app.ready;
   },
