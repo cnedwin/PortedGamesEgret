@@ -35,11 +35,10 @@ const KEYS = {
 const DIRS = ['up', 'right', 'down', 'left'];
 
 /**
- * Listens on `canvas` and the window. `on(command, detail)` is told each command; `point(px, py)` and `tap(px, py,
- * button)` carry the pointer in CSS pixels of the canvas; `pan(dx, dy)` and `zoom(f)` the view gestures. `active()`
- * says whether the game wants the keys now (menus handle their own).
+ * The frame owns secondary clicks. Only the canvas handles board picks and camera gestures.
+ * Point, tap and wheel coordinates are CSS pixels relative to the canvas.
  */
-export function createInput(canvas, { on, point, tap, pan, zoom, active = () => true }) {
+export function createInput(canvas, { frame, on, point, tap, pan, zoom, canNavigate, active = () => true }) {
   const held = new Map();
   let lastDevice = 'mouse';
   const onKey = (e) => {
@@ -55,30 +54,62 @@ export function createInput(canvas, { on, point, tap, pan, zoom, active = () => 
     }
     if (e.repeat) return;
     if (DIRS.includes(command)) held.set(command, { since: performance.now(), next: performance.now() + 260 });
-    on(command, { device: 'keys' });
+    on(command, { device: 'keys', reverse: e.shiftKey });
   };
   addEventListener('keydown', onKey);
   addEventListener('keyup', onKey);
-  addEventListener('blur', () => held.clear());
 
   // ---- pointer: hover, click, drag to pan, wheel and pinch to zoom ----
   const pointers = new Map();
-  let drag = null,
-    pinch = null;
+  let drag = null, pinch = null, secondary = null;
   const local = (e) => {
     const r = canvas.getBoundingClientRect();
     return [e.clientX - r.left, e.clientY - r.top];
   };
+  const release = () => {
+    held.clear();
+    for (const id of pointers.keys()) {
+      if (canvas.hasPointerCapture?.(id)) canvas.releasePointerCapture(id);
+    }
+    pointers.clear();
+    drag = null;
+    pinch = null;
+    secondary = null;
+    canvas.classList.remove('panning');
+  };
+  addEventListener('blur', release);
+  // Context menus can come from the board, HUD, dialogs or the title. Right-button release dispatches one Cancel.
+  frame.addEventListener('contextmenu', (e) => e.preventDefault(), { capture: true });
+  frame.addEventListener('pointerdown', (e) => {
+    if (e.pointerType === 'mouse' && e.button === 2) secondary = { id: e.pointerId, x: e.clientX, y: e.clientY };
+  }, { capture: true });
+  addEventListener('pointerup', (e) => {
+    if (secondary?.id !== e.pointerId) return;
+    const start = secondary;
+    secondary = null;
+    if (active() && e.button === 2 && frame.contains(e.target) && Math.hypot(e.clientX - start.x, e.clientY - start.y) <= 7) {
+      lastDevice = 'mouse';
+      on('cancel', { device: 'mouse' });
+    }
+  });
+  frame.addEventListener('pointercancel', (e) => {
+    if (secondary?.id === e.pointerId) secondary = null;
+  });
   canvas.addEventListener('pointerdown', (e) => {
+    const touch = e.pointerType === 'touch';
+    if (!canNavigate() || (!touch && e.button !== 0 && e.button !== 1)) return;
+    if (e.button === 1) e.preventDefault();
     canvas.focus({ preventScroll: true });
-    lastDevice = e.pointerType === 'touch' ? 'touch' : 'mouse';
-    pointers.set(e.pointerId, local(e));
+    lastDevice = touch ? 'touch' : 'mouse';
+    const p = local(e);
+    pointers.set(e.pointerId, p);
     canvas.setPointerCapture?.(e.pointerId);
-    if (pointers.size === 1) drag = { start: local(e), last: local(e), moved: false, button: e.button };
+    if (pointers.size === 1) drag = { id: e.pointerId, start: p, last: p, moved: false, button: e.button, touch };
     if (pointers.size === 2) {
       const [a, b] = [...pointers.values()];
       pinch = { d: Math.hypot(a[0] - b[0], a[1] - b[1]) };
       drag = null;
+      canvas.classList.remove('panning');
     }
   });
   canvas.addEventListener('pointermove', (e) => {
@@ -87,42 +118,62 @@ export function createInput(canvas, { on, point, tap, pan, zoom, active = () => 
     if (pinch && pointers.size === 2) {
       const [a, b] = [...pointers.values()];
       const d = Math.hypot(a[0] - b[0], a[1] - b[1]);
-      if (pinch.d > 0) zoom(d / pinch.d);
+      if (canNavigate() && pinch.d > 0 && d > 0) zoom(d / pinch.d);
       pinch.d = d;
       return;
     }
-    if (drag) {
-      const dx = p[0] - drag.last[0],
-        dy = p[1] - drag.last[1];
-      if (!drag.moved && Math.hypot(p[0] - drag.start[0], p[1] - drag.start[1]) > (e.pointerType === 'touch' ? 14 : 8)) drag.moved = true;
-      if (drag.moved) pan(dx, dy);
+    if (drag?.id === e.pointerId) {
+      const threshold = drag.touch ? 14 : drag.button === 1 ? 2 : 6;
+      if (!drag.moved && Math.hypot(p[0] - drag.start[0], p[1] - drag.start[1]) <= threshold) return;
+      drag.moved = true;
+      if (canNavigate()) {
+        if (!drag.touch) canvas.classList.add('panning');
+        pan(p[0] - drag.last[0], p[1] - drag.last[1]);
+      }
       drag.last = p;
       return;
     }
-    if (e.pointerType !== 'touch') {
+    if (!e.buttons && e.pointerType !== 'touch' && canNavigate()) {
       lastDevice = 'mouse';
       point(p[0], p[1]);
     }
   });
   const up = (e) => {
+    if (!pointers.has(e.pointerId)) return;
     const p = local(e);
     pointers.delete(e.pointerId);
     if (pointers.size < 2) pinch = null;
-    if (drag && !drag.moved && active()) tap(p[0], p[1], drag.button);
-    if (pointers.size === 0) drag = null;
+    if (drag?.id === e.pointerId) {
+      const gesture = drag;
+      drag = null;
+      canvas.classList.remove('panning');
+      const still = Math.hypot(p[0] - gesture.start[0], p[1] - gesture.start[1]) <= (gesture.touch ? 14 : 6);
+      const inside = document.elementFromPoint(e.clientX, e.clientY) === canvas;
+      if (gesture.button === 0 && e.button === 0 && still && !gesture.moved && inside && canNavigate()) {
+        tap(p[0], p[1], { device: gesture.touch ? 'touch' : 'mouse' });
+      }
+    }
   };
   canvas.addEventListener('pointerup', up);
-  canvas.addEventListener('pointercancel', (e) => {
+  const cancelPointer = (e) => {
+    if (!pointers.has(e.pointerId)) return;
     pointers.delete(e.pointerId);
     drag = null;
     pinch = null;
+    canvas.classList.remove('panning');
+  };
+  canvas.addEventListener('pointercancel', cancelPointer);
+  canvas.addEventListener('lostpointercapture', cancelPointer);
+  canvas.addEventListener('auxclick', (e) => {
+    if (e.button === 1) e.preventDefault();
   });
-  canvas.addEventListener('contextmenu', (e) => e.preventDefault());
   canvas.addEventListener(
     'wheel',
     (e) => {
+      if (!canNavigate() || !e.deltaY || e.ctrlKey || e.metaKey) return;
       e.preventDefault();
-      zoom(e.deltaY < 0 ? 1.12 : 1 / 1.12);
+      const pixels = e.deltaY * (e.deltaMode === 1 ? 16 : e.deltaMode === 2 ? canvas.clientHeight : 1);
+      zoom(Math.exp(-Math.max(-200, Math.min(200, pixels)) * 0.0012), local(e));
     },
     { passive: false }
   );
@@ -189,8 +240,6 @@ export function createInput(canvas, { on, point, tap, pan, zoom, active = () => 
     get lastDevice() {
       return lastDevice;
     },
-    release() {
-      held.clear();
-    }
+    release
   };
 }

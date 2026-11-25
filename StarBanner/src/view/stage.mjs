@@ -4,7 +4,7 @@
 // the camera looking down on the board at 45 degrees. It keeps a point of the board in view; it pans, zooms, turns in
 // quarter steps and glides to a tile; a point on the screen becomes a tile of the board.
 import { createWorld3DApp } from '@egret/engine/webgpu/world3d';
-import { Raycaster3D, Scene3D, createDirectionalLight3D, createGradientCubeTexture3D, createHemisphereLight3D, createPerspectiveCamera3D } from '@egret/engine/world3d';
+import { Mesh3D, Raycaster3D, Scene3D, createDirectionalLight3D, createGradientCubeTexture3D, createHemisphereLight3D, createPerspectiveCamera3D } from '@egret/engine/world3d';
 
 /** World units per tile. */
 export const TILE = 2;
@@ -26,6 +26,7 @@ export async function createStage(canvas, { quality, backend = 'webgl2', onError
     ...(quality ? { quality } : {}),
     onError: (cause) => (onError ? onError(cause) : console.error(cause))
   });
+  const renderer = app.renderer;
   const scene = new Scene3D();
   const camera = createPerspectiveCamera3D({ fov: 26, near: 1, far: 600 });
   scene.addChild(camera);
@@ -41,7 +42,7 @@ export async function createStage(canvas, { quality, backend = 'webgl2', onError
   }
   scene.addChild(sun);
 
-  const post = app.renderer.postProcess;
+  const post = renderer.postProcess;
   if (post) {
     Object.assign(post, {
       enabled: app.quality !== 'low',
@@ -72,6 +73,24 @@ export async function createStage(canvas, { quality, backend = 'webgl2', onError
     sun.color.set(look.sun);
   }
 
+  /** Link scene programs before their first draw on browsers that support asynchronous shader compilation. */
+  async function preparePrograms() {
+    if (app.backend !== 'webgl2' || !renderer.context.getExtension('KHR_parallel_shader_compile')) return;
+    const receiveShadows = renderer.shadowsEnabled && sun.castShadow;
+    const environment = Boolean(scene.environment);
+    const fog = Boolean(scene.fog);
+    const requests = [];
+    scene.traverse((mesh) => {
+      if (!(mesh instanceof Mesh3D)) return;
+      const materials = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
+      for (const material of materials) {
+        requests.push({ mesh, material, environment, fog, receiveShadows });
+        if (receiveShadows && mesh.castShadow) requests.push({ mesh, material, pass: 'shadow' });
+      }
+    });
+    await renderer.preparePrograms(requests, { includeAutoInstancing: true });
+  }
+
   // ---- the camera ----
   const view = { x: 0, z: 0, d: 60, tx: 0, tz: 0, td: 60, yaw: Math.PI / 4, tyaw: Math.PI / 4, quarter: 0, pitch: 0.82 };
   let bounds = { w: 16, h: 12 };
@@ -86,6 +105,19 @@ export async function createStage(canvas, { quality, backend = 'webgl2', onError
     if (sun.shadow) sun.shadow.cascadeDistance = view.d * 1.6 + 20;
   }
   const raycaster = new Raycaster3D();
+  const limitPan = () => {
+    const x = (bounds.w * TILE) / 2 + 4, z = (bounds.h * TILE) / 2 + 4;
+    view.tx = Math.max(-x, Math.min(x, view.tx));
+    view.tz = Math.max(-z, Math.min(z, view.tz));
+  };
+  function groundAt(px, py, width, height) {
+    if (!width || !height) return null;
+    raycaster.setFromCamera((px / width) * 2 - 1, 1 - (py / height) * 2, camera);
+    const { origin, direction } = raycaster;
+    if (direction[1] >= -1e-4) return null;
+    const t = -origin[1] / direction[1];
+    return { x: origin[0] + direction[0] * t, z: origin[2] + direction[2] * t };
+  }
   const rig = {
     view,
     /** The board's size in tiles, so the view stays over it. */
@@ -123,12 +155,21 @@ export async function createStage(canvas, { quality, backend = 'webgl2', onError
         s = Math.sin(view.yaw);
       view.tx += dx * c - dz * s;
       view.tz += -dx * s - dz * c;
-      const half = { x: (bounds.w * TILE) / 2 + 4, z: (bounds.h * TILE) / 2 + 4 };
-      view.tx = Math.max(-half.x, Math.min(half.x, view.tx));
-      view.tz = Math.max(-half.z, Math.min(half.z, view.tz));
+      limitPan();
     },
     zoomBy(factor) {
       view.td = Math.max(ZOOM.near, Math.min(ZOOM.far, view.td / factor));
+    },
+    zoomAt(factor, px, py, width, height) {
+      const anchor = groundAt(px, py, width, height);
+      const previous = view.td;
+      rig.zoomBy(factor);
+      if (anchor) {
+        const shift = (previous - view.td) / view.d;
+        view.tx += (anchor.x - view.x) * shift;
+        view.tz += (anchor.z - view.z) * shift;
+        limitPan();
+      }
     },
     /** Turn the view a quarter round (1 clockwise, -1 anticlockwise). */
     turn(step) {
@@ -148,21 +189,16 @@ export async function createStage(canvas, { quality, backend = 'webgl2', onError
     },
     /** The tile under a point of the canvas (CSS pixels from its corner), or null. */
     tileAt(px, py, width, height) {
-      raycaster.setFromCamera((px / width) * 2 - 1, 1 - (py / height) * 2, camera);
-      const o = raycaster.origin,
-        d = raycaster.direction;
-      if (d[1] >= -1e-4) return null;
-      const t = (0 - o[1]) / d[1];
-      const x = o[0] + d[0] * t,
-        z = o[2] + d[2] * t;
-      const tx = Math.floor(x / TILE + bounds.w / 2),
-        ty = Math.floor(z / TILE + bounds.h / 2);
+      const hit = groundAt(px, py, width, height);
+      if (!hit) return null;
+      const tx = Math.floor(hit.x / TILE + bounds.w / 2),
+        ty = Math.floor(hit.z / TILE + bounds.h / 2);
       if (tx < 0 || ty < 0 || tx >= bounds.w || ty >= bounds.h) return null;
       return { x: tx, y: ty };
     }
   };
   place();
-  return { app, scene, camera, sun, sky, rig, setLook, renderer: app.renderer, quality: app.quality };
+  return { app, scene, camera, sun, sky, rig, setLook, preparePrograms, renderer, quality: app.quality };
 }
 
 /** The world point at the centre of tile (x, y) on a board `bounds` tiles across. */

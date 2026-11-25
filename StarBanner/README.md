@@ -35,25 +35,30 @@ stronghold.
 
 1. 回合开始，你的要塞和每座村庄各给 100 金；你的建筑回复 10 点耐久，指挥官回复 5 点生命。 · Your stronghold and each village give 100 gold; your buildings mend 10, your commander 5.
 2. 选一个还没行动的单位 → 选一个能走到的蓝色格子 → 在菜单里选攻击、占领、援军、治疗、诅咒、登乘、卸下、战意技或待命。每个单位每回合行动一次，行动后变灰。 · Pick a ready unit → a blue tile → an action. Each unit acts once a turn and greys out after.
-3. 选自己的兵营（地面兵）、飞羽塔（飞兵）或港口（舰船与鱼人）招募，每座建筑每回合一次，新兵下回合才能动。 · Recruit at your barracks (ground), aerie (air) or harbour (ships and merfolk), once a building a turn; recruits move next turn.
+3. 在自己的兵营、飞羽塔或港口选兵种，再从绿色出兵格中挑一格。触屏第一次点选预览，第二次确认。每座建筑每回合可招募一次，新兵下回合行动。 · Choose a unit at a barracks, aerie or harbour, then select a green deployment tile. On touch, tap once to preview and again to deploy. Each building recruits once per turn. Recruits act on the next turn.
 4. 结束回合，电脑行动。 · End the turn; the computer moves.
 
 **战斗 · Fighting**：攻击前的预测面板写着这一击的伤害范围、会不会暴击、对方的反击。单位卡写着每个兵种的暴击条件；指挥官的战意槽满了就能放战意技。 · The forecast shows the damage range, whether it is critical, and the counter. The unit card states each unit's critical condition; a full rally meter lets the commander use their art.
 
 | 输入 · Input | 操作 · Controls |
 |---|---|
-| 鼠标 · Mouse | 移到格子上看信息，左键选择，右键取消，滚轮缩放，按住拖动平移 · hover for information, click to choose, right-click to cancel, wheel to zoom, drag to pan |
+| 鼠标 · Mouse | 左键点模型选兵或打开兵营，空地只查看。悬停预览路径和伤害，左键确认落点、目标或出兵格。左键或中键拖动平移，滚轮围绕指针缩放，游戏区域内右键取消或返回。 · Click pieces or barracks to select them, and empty ground to inspect. Hover for paths and forecasts, then click a tile or target to confirm. Drag with the left or middle button to pan, scroll to zoom at the pointer, or right-click inside the game to go back. |
 | 键盘 · Keys | 方向键 / WASD 移动光标，Enter / 空格 / Z 确定，Esc / X 取消，Q / E 转视角，Tab 下一个待命单位，R 敌方威胁范围，F 结束回合，M 菜单，+ / − 缩放 · arrows or WASD move the cursor, Enter / Space / Z confirm, Esc / X cancel, Q / E turn the view, Tab next ready unit, R enemy threat, F end turn, M menu, + / − zoom |
 | 手柄 · Gamepad | 摇杆 / 十字键移动光标，A 确定，B 取消，LB / RB 转视角，Y 下一个单位，X 威胁范围，Start 菜单，Select 结束回合，右摇杆平移 · stick or d-pad move, A confirm, B cancel, LB / RB turn, Y next unit, X threat, Start menu, Select end turn, right stick pans |
 | 触屏 · Touch | 点选单位和格子（移动时点一次看路线、再点一次确认），双指缩放，拖动平移，屏幕下方有结束回合、下一个、威胁范围、转视角、缩放按钮 · tap units and tiles (in a move, one tap shows the path, a second goes), pinch to zoom, drag to pan; buttons along the bottom |
 
 网址参数 · URL parameters：`?quality=low|medium|high`、`?backend=webgpu`、`?lang=en`、`?seed=`、`?battle=wheat|coves|spine`（直接开打 · straight into a battle）。
 
+## 战役与迷雾 · Campaign and fog
+
+- 标题页的「星旗战役」从麦浪渡口开打。胜利后解锁双子海湾和龙脊，战果页可进入下一章或重打。战役与遭遇战分别保存，通过战场菜单的「保存并返回标题」可切换。 · Start the campaign at Wheatwater Ford. Victories unlock Twin Coves and Dragonspine. The campaign and skirmishes have separate saves. Use Save and return to title to switch between modes.
+- 遭遇战准备页可开关战争迷雾。友军和已占建筑提供视野，雾中的敌兵、归属和战斗情报需侦察后才能看见。电脑也按已观察到的敌情选择目标。 · Toggle fog of war at skirmish setup. Friendly troops and buildings provide sight. Enemy positions, ownership and battle intelligence are hidden outside sight, and the AI targets what it has observed.
+
 ## 美术、声音与数值 · Art, sound and numbers
 
 - 兵种、指挥官、建筑和树木山石先由文字描述生成原创的概念图，再用 Tripo 生成 3D 模型；人形单位和指挥官绑定骨骼，带待机、行走、出手、受击、倒下五段动作；再压成高、中、低三档。头像取自同一批概念图。来源和处理见 [docs/ASSETS.md](docs/ASSETS.md)。 · Units, commanders, buildings, trees and peaks were first drawn as original concept pictures from written descriptions, then modelled by Tripo; humanoids are rigged with idle, walk, strike, hurt and fall; all packed into high, medium and low sets. Portraits come from the same concept pictures. See docs/ASSETS.md.
 - 卡通渲染：分层明暗、边缘光、阵营换色（模型上的蓝色按阵营换成绯红）、行动后变灰、受击闪白，都在一个自定义片元着色器里；单位和建筑另有后期描边。 · Toon shading: banded light, rim light, the team colour swap, grey once acted and a white flash on a hit live in one custom fragment hook; units and buildings get a post-process ink outline.
-- 声音：标题、我方回合、敌方回合三段循环曲和胜负两段短曲都是本作原创，用代码合成铜管、拨弦、弦乐、笛声和鼓；音效（光标、确定、刀剑、弓弩、投石、魔法、龙息、占领、招募、暴击……）也全部合成。 · Sound: the title, your-turn and enemy-turn loops and the victory and defeat cues are this game's own, synthesized as brass, plucked strings, strings, flute and drums; every effect is synthesized too.
+- 声音：三段循环曲和两段胜负短曲从原创合成曲谱预先导出为 MP3，按需加载。短音效仍用代码合成。 · The three music loops and two result cues are exported from the original synthesized scores to MP3 and loaded as needed. Short effects are synthesized in the browser.
 - 电脑对手按期望伤害、被反击和下回合挨打的风险、占领和地形估值，三档难度的谨慎程度和随机性不同。 · The computer weighs expected damage, the counter and next turn's danger, capture and cover; the three levels differ in caution and noise.
 
 ## 引擎能力对照表 · Engine capabilities
@@ -80,18 +85,15 @@ stronghold.
 
 ## 已验证 · Verified
 
-- Node 22：`node --test test/*.test.mjs` 31 项通过——伤害公式与原作资料的算例一致、地形星与骷髅、空中与建筑不吃地形、要塞减半、反击、器械不能移动后攻击、全部暴击条件、占领、收入与回复、招募、援军、治疗、诅咒、运输、四位指挥官的战意技、胜负、非法指令被拒、地图双方对等、存档读回后接着打完全一致、电脑对电脑同种子同结果且对局能结束；存档与文字表。 · 31 Node tests pass: the formula against the documented example, cover, counters, every critical condition, capture, income, recruiting, reinforcing, healing, hexes, carrying, the rally arts, victory, refused orders, fair maps, saves that resume exactly, deterministic computer battles that end; the save and the word table.
-- 无头 Chromium + SwiftShader（软件渲染）：`node test/accept.mjs` 走完标题 → 遭遇战准备（键盘选地图）→ 出阵 → 移动待命 → 招募 → 结束回合、电脑走完 → 读档接着打 → 设置关音乐 → 切英文 → 坏档重来，无控制台错误、无缺失文件；标题、准备、开局三张截图与基线一致。 · Headless Chromium with SwiftShader: the acceptance walk passes with a clean console, and the title, preparation and opening match their baselines.
+- `node --test test/*.test.mjs` 覆盖战斗数值和规则、AI 装卸与迷雾、战役解锁、存档迁移和双语文字。 · Node tests cover battle rules, AI transport and fog, chapter unlocks, save migration and bilingual text.
+- `node test/accept.mjs` 覆盖键盘出阵、移动、手选出兵、敌方回合、续档和坏档恢复。随仓库的截图基线来自 Linux 软件渲染，Windows 上需单独核对实际画面。 · The browser acceptance covers keyboard setup, movement, deployment, enemy turns, save resume and damaged save recovery. The bundled reference images use Linux software rendering. Review current images separately on Windows.
 - 品质验收见 [QUALITY.md](QUALITY.md)（`node ../tools/quality.mjs .`）。 · Quality results in QUALITY.md.
-- 未运行 · Not run：真 GPU 上的帧率与手感、真鼠标、真触屏设备、真手柄、扬声器里的音乐和音效听感、WebGPU 后端的画面。 · Frame rate and feel on a real GPU, a real mouse, touch device and gamepad, the sound through speakers, the WebGPU backend's picture.
+- 本轮使用 Windows RTX 5090 Laptop 与 Galaxy Z Fold7 的实体设备，通过自动化浏览器输入验证操作。手柄和扬声器听感另计。 · This round used browser-automated input on a real Windows RTX 5090 Laptop and Galaxy Z Fold7. Gamepad input and speaker listening were not part of that round.
 
 ## 已知问题 · Known issues
 
 - 软件渲染下只有每秒几帧，验收截图之外的动画流畅度要在真 GPU 上看。 · Software rendering runs at a few frames a second; smoothness needs a real GPU.
-- 猎犬的绑骨动画包下载被截断，现在用不带骨骼的模型加代码驱动的跳动和扑咬。 · The hound's rigged download was truncated; it uses the unrigged model with code-driven motion.
 - 骑士、马车、器械、热气球、飞兵和舰船是整体模型，只有颠簸、悬浮、摇摆和前冲，没有分件动画。 · Knights, carts, engines, the balloon, fliers and ships are single meshes with bobbing, hovering, rolling and lunging only.
-- 招募的新兵自动放在离敌人最近的空格，不能手选位置。 · A recruit is placed on the free tile nearest the enemy; the player cannot pick it.
-- 电脑不使用运输单位（马车、热气球、渡船）。 · The computer does not use carriers.
 - 品质验收未达标 · Quality items failing（[QUALITY.md](QUALITY.md)，2026-11-25，无头 Chromium + SwiftShader · headless, software rendering）：F1 桌面帧时间 p95 ≤ 16.7 ms（p95 633.3 ms over 14 frames）。
 
 ## 已解决 · Solved
@@ -106,9 +108,8 @@ stronghold.
 
 ## 未完成 · Unfinished
 
-- 战争迷雾、天气、战役剧情、本地双人对战、地图编辑器。 · Fog of war, weather, a story campaign, local two-player, a map editor.
+- 天气、本地双人对战、地图编辑器。 · Weather, local two-player, a map editor.
 - 原作后续版本加入的兵种（火枪手、盗贼等）和更多指挥官。 · Units added in the original's later versions (riflemen, thieves) and more commanders.
-- 招募时手选落点；电脑使用运输单位。 · Choosing where a recruit stands; the computer using carriers.
 - 骑士和器械的分件动画（马腿、投石车的抛臂）。 · Part animation for knights and engines (horse legs, the trebuchet's arm).
 
 ## 目录结构 · Layout

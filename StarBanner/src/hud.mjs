@@ -52,6 +52,7 @@ export function createHud(root, { onButton, touch = false }) {
   const buttons = {
     endTurn: button('endTurn', t('endTurn'), '⚑'),
     next: button('next', t('next'), '➜'),
+    cancel: button('cancel', t('cancel'), '↩'),
     threat: button('threat', t('threat'), '◎'),
     turnLeft: button('turnLeft', t('turnLeft'), '↺'),
     turnRight: button('turnRight', t('turnRight'), '↻'),
@@ -59,11 +60,13 @@ export function createHud(root, { onButton, touch = false }) {
     zoomOut: button('zoomOut', t('zoomOut'), '－'),
     menu: button('menu', t('menu'), '☰')
   };
+  buttons.cancel.classList.add('hidden');
   bar.append(...Object.values(buttons));
   hud.append(bar);
 
   // ---- hint, banner, toasts, floats, badges ----
   const hint = el('div', 'hint hidden');
+  hint.setAttribute('role', 'status');
   const banner = el('div', 'banner hidden');
   const toasts = el('div', 'toasts');
   const floats = el('div', 'floats');
@@ -85,13 +88,13 @@ export function createHud(root, { onButton, touch = false }) {
     const info = el('div', 'info');
     const name = el('div', 'name', `${say(c)}${human ? ` · ${t('you')}` : ''}`);
     const row = el('div', 'row');
-    row.append(el('span', 'gold', t('gold', { n: p.gold })), el('span', 'hp', `♥ ${p.hp ?? '—'}`));
+    row.append(el('span', 'gold', t('gold', { n: p.unknown ? '—' : p.gold })), el('span', 'hp', `♥ ${p.unknown ? '—' : p.hp ?? '—'}`));
     const meter = el('div', 'meter');
     const fill = el('i');
-    fill.style.width = `${Math.round((100 * p.meter) / c.meter)}%`;
+    fill.style.width = p.unknown ? '0%' : `${Math.round((100 * p.meter) / c.meter)}%`;
     meter.append(fill);
-    meter.classList.toggle('full', p.meter >= c.meter);
-    meter.title = `${t('meter')} ${p.meter}/${c.meter} · ${say(c.art)}`;
+    meter.classList.toggle('full', !p.unknown && p.meter >= c.meter);
+    meter.title = p.unknown ? t('fogUnknown') : `${t('meter')} ${p.meter}/${c.meter} · ${say(c.art)}`;
     info.append(name, row, meter);
     card.append(face, info);
     if (!p.alive) card.classList.add('out');
@@ -116,8 +119,16 @@ export function createHud(root, { onButton, touch = false }) {
       const s = el('div', 'stars' + (def < 0 ? ' skull' : ''), stars(def));
       s.title = `${t('defence')} ${def}`;
       tileCard.append(s);
+      if (info.unknown) {
+        tileCard.append(el('div', 'line small', t('fogUnknown')));
+        return;
+      }
       if (info.building) {
         const b = info.building;
+        if (b.owner === -2) {
+          tileCard.append(el('div', 'line small', t('destroyed')));
+          return;
+        }
         const who = b.owner < 0 ? t('neutral') : b.owner === info.human ? t('you') : t('foe');
         const line = el('div', 'line', `${t('owner')}：${who}${b.owner >= 0 ? ` · ${t('hp')} ${b.hp}` : ''}`);
         if (b.owner >= 0) line.style.color = TEAMS[b.owner].css;
@@ -158,6 +169,10 @@ export function createHud(root, { onButton, touch = false }) {
       hint.classList.toggle('hidden', !text);
       hint.textContent = text ?? '';
     },
+    setCancel(show) {
+      buttons.cancel.classList.toggle('hidden', !show);
+      buttons.next.classList.toggle('hidden', touch && show);
+    },
     /** The action menu near (x, y) on screen; `items` are { key, label, note, disabled }. */
     menu(items, at, { title } = {}) {
       api.closeMenu();
@@ -186,7 +201,9 @@ export function createHud(root, { onButton, touch = false }) {
       const r = hud.getBoundingClientRect();
       const w = box.offsetWidth,
         h = box.offsetHeight;
-      const x = Math.max(8, Math.min(r.width - w - 8, (at?.x ?? r.width / 2) + 36));
+      const anchor = at?.x ?? r.width / 2;
+      const side = anchor + 20 + w <= r.width - 8 ? anchor + 20 : anchor - w - 20;
+      const x = Math.max(8, Math.min(r.width - w - 8, at ? side : (r.width - w) / 2));
       const y = Math.max(64, Math.min(r.height - h - 70, (at?.y ?? r.height / 2) - h / 2));
       box.style.left = `${x}px`;
       box.style.top = `${y}px`;
@@ -249,10 +266,12 @@ export function createHud(root, { onButton, touch = false }) {
       const side = (who, dmg, crit, team, label) => {
         const s = el('div', 'fc-side');
         s.style.setProperty('--team', team);
-        const img = el('img', 'face');
-        img.src = PORTRAIT(who.model);
-        img.alt = '';
-        s.append(img, el('div', 'fc-name', who.name), el('div', 'fc-hp', `♥ ${who.hp}`));
+        const face = who.model ? el('img', 'face') : el('span', 'face fc-structure', '♜');
+        if (who.model) {
+          face.src = PORTRAIT(who.model);
+          face.alt = '';
+        } else face.setAttribute('aria-hidden', 'true');
+        s.append(face, el('div', 'fc-name', who.name), el('div', 'fc-hp', `♥ ${who.hp}`));
         const d = el('div', 'fc-dmg' + (crit ? ' crit' : ''));
         d.append(el('small', '', label), el('b', '', dmg));
         if (crit) d.append(el('em', '', t('critical')));

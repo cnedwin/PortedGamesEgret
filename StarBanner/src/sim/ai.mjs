@@ -9,19 +9,23 @@
 import { TERRAIN } from './terrain.mjs';
 import { UNITS, BUILDINGS, recruitsOf, isAir } from './units.mjs';
 import { COMMANDERS } from './commanders.mjs';
+import { knownBattle, sightTile } from './fog.mjs';
 import {
   actionsAt,
   artReady,
   baseDamage,
+  canBoard,
   commanderOf,
   distance,
   forecast,
+  pathTo,
   reach,
   recruitSpots,
   reinforcePlan,
   stops,
   targetsFrom,
   terrainAt,
+  unitAt,
   unitById,
   unloadSpots
 } from './rules.mjs';
@@ -113,7 +117,135 @@ function objectiveScore(game, unit, x, y) {
   if (u.weapon)
     for (const foe of game.units)
       if (foe.owner !== unit.owner && baseDamage(game, unit.type, foe) > 0.25) best = Math.min(best, distance(x, y, foe.x, foe.y));
+  // Stronghold locations are printed on the board. Scout toward them if there is no known target.
+  if (best === Infinity && u.weapon)
+    for (const b of game.buildings)
+      if (b.kind === 'hq' && b.owner !== unit.owner) best = Math.min(best, distance(x, y, b.x, b.y));
   return best === Infinity ? 0 : best;
+}
+
+const tileKey = (x, y) => y * 1000 + x;
+const point = ({ x, y }) => ({ x, y });
+const fitsTransport = (unit, carrier) => unit.type !== 'commander' && !UNITS[unit.type].carry && canBoard(unit, carrier);
+
+/** A short transport forecast. Every executed move still goes through the same rules as a player's order. */
+function planTransport(game, brain, field) {
+  const goals = new Map();
+  const footRoutes = new Map();
+  const carrierRoutes = new Map();
+
+  function goal(unit, x, y) {
+    const key = `${unit.type}:${tileKey(x, y)}`;
+    if (!goals.has(key)) goals.set(key, objectiveScore(field, unit, x, y));
+    return goals.get(key);
+  }
+  function footRoute(unit) {
+    if (!footRoutes.has(unit.id)) footRoutes.set(unit.id, reach(game, unit));
+    return footRoutes.get(unit.id);
+  }
+  function carrierRoute(carrier) {
+    if (!carrierRoutes.has(carrier)) {
+      const steps = UNITS[carrier.type].steps;
+      const route = reach(game, carrier, steps * (carrier.cargo.length ? 3 : 2));
+      const landings = stops(game, carrier, route).filter(s => !s.cost || !unitAt(game, s.x, s.y));
+      carrierRoutes.set(carrier, { route, landings });
+    }
+    return carrierRoutes.get(carrier);
+  }
+
+  function bestLanding(carrier, passengers) {
+    const steps = UNITS[carrier.type].steps;
+    const { landings, route } = carrierRoute(carrier);
+    let best = null;
+    for (const at of landings) {
+      let burden = 0;
+      const occupied = new Set();
+      const drops = [];
+      for (const passenger of passengers) {
+        let landing = null;
+        for (const spot of unloadSpots(game, carrier, at.x, at.y, passenger)) {
+          const key = tileKey(spot.x, spot.y);
+          if (occupied.has(key)) continue;
+          const terrain = TERRAIN[terrainAt(game, spot.x, spot.y)];
+          const danger = exposure(game, brain, passenger, spot.x, spot.y);
+          const score = goal(passenger, spot.x, spot.y) + danger * 0.05 * brain.level.danger - terrain.defence * 0.15;
+          if (!landing || score < landing.score) landing = { spot, score, key };
+        }
+        if (landing) {
+          occupied.add(landing.key);
+          drops.push({ unit: passenger.id, ...landing.spot });
+          burden += landing.score;
+        } else {
+          burden += game.w + game.h;
+        }
+      }
+      if (!drops.length) continue;
+      // One carrier move can follow boarding in the same turn. Extra turns and exposed landings are costly.
+      const travel = Math.max(0, Math.ceil(at.cost / steps) - 1) * 3 + at.cost * 0.03;
+      const danger = exposure(game, brain, carrier, at.x, at.y);
+      const score = burden / passengers.length + travel + danger * 0.065 * brain.level.danger;
+      if (!best || score < best.score) best = { at, route, drops, score };
+    }
+    return best;
+  }
+
+  function boardingGain(unit, carrier) {
+    if (!fitsTransport(unit, carrier)) return 0;
+    const best = bestLanding(carrier, [...carrier.cargo, unit]);
+    if (!best || !best.drops.some(d => d.unit === unit.id)) return 0;
+    const walking = stops(game, unit, footRoute(unit))
+      .filter(s => !s.cost || !unitAt(game, s.x, s.y))
+      .reduce((value, s) => Math.min(value, goal(unit, s.x, s.y)), Infinity);
+    const patience = carrier.done ? 3 : 0;
+    const risk = exposure(game, brain, carrier, carrier.x, carrier.y) * 0.08 * brain.level.danger;
+    return walking - best.score - patience - risk;
+  }
+
+  function moveCarrier(carrier, available) {
+    if (carrier.cargo.length) {
+      const best = bestLanding(carrier, carrier.cargo);
+      if (!best) return null;
+      if (available.some(s => s.x === best.at.x && s.y === best.at.y)) {
+        return { to: point(best.at), then: { kind: 'unload', drops: best.drops } };
+      }
+      const legal = new Set(available.filter(s => !s.cost || !unitAt(game, s.x, s.y)).map(s => tileKey(s.x, s.y)));
+      const stop = pathTo(best.route, best.at.x, best.at.y).reverse().find(s => legal.has(tileKey(s.x, s.y)));
+      return { to: stop ?? point(carrier), then: { kind: 'wait' } };
+    }
+
+    const nearby = game.units.filter(u => fitsTransport(u, carrier));
+    if (!nearby.length) return null;
+    let best = null;
+    for (const at of available) {
+      if (at.cost && unitAt(game, at.x, at.y)) continue;
+      const key = tileKey(at.x, at.y);
+      const approach = Math.min(...nearby.map(u => {
+        const walk = footRoute(u).get(key);
+        return walk ? walk.cost : 8 + distance(u.x, u.y, at.x, at.y);
+      }));
+      const risk = exposure(game, brain, carrier, at.x, at.y) * 0.08 * brain.level.danger;
+      const score = approach + risk + at.cost * 0.05;
+      if (!best || score < best.score) best = { score, to: point(at), then: { kind: 'wait' } };
+    }
+    return best;
+  }
+
+  function recruitCarrier(type, owner, spots, mine) {
+    if (mine.some(u => u.type === type)) return null;
+    let best = null;
+    for (const at of spots) {
+      const carrier = { type, owner, ...at, hp: 100, done: false, cargo: [] };
+      for (const unit of mine) {
+        if (!fitsTransport(unit, carrier) || !footRoute(unit).has(tileKey(at.x, at.y))) continue;
+        const gain = boardingGain(unit, carrier);
+        if (gain < 2) continue;
+        const score = 80 + Math.min(gain, 10) * 30 - UNITS[type].cost * 0.16;
+        if (!best || score > best.score) best = { score, at };
+      }
+    }
+    return best;
+  }
+  return { boardingGain, moveCarrier, recruitCarrier, footRoute };
 }
 
 /** The value of `unit` ending at (x, y) and doing `action`, with the details the order needs. */
@@ -183,19 +315,6 @@ function judge(game, brain, unit, x, y, action) {
       if (plan) offer(plan.score - after(unit.hp), plan.then);
       break;
     }
-    case 'unload': {
-      const drops = [];
-      const taken = new Set();
-      for (const c of unit.cargo) {
-        const spot = unloadSpots(game, unit, x, y, c).find((s) => !taken.has(`${s.x},${s.y}`));
-        if (spot) {
-          taken.add(`${spot.x},${spot.y}`);
-          drops.push({ unit: c.id, x: spot.x, y: spot.y });
-        }
-      }
-      if (drops.length) offer(60 - objectiveScore(game, unit.cargo[0], x, y) * 8, { kind: 'unload', drops });
-      break;
-    }
     case 'wait': {
       const goal = objectiveScore(game, unit, x, y);
       const home = unit.type === 'commander' ? commanderLeash(game, unit, x, y) : 0;
@@ -255,23 +374,40 @@ function planArt(game, unit, x, y, art) {
 }
 
 /** The computer's next order for the side to move. */
-export function nextOrder(game, brain) {
+export function nextOrder(game, brain, { visible } = {}) {
   const owner = game.current;
-  if (brain.turn !== game.turn || brain.owner !== owner) {
+  const field = knownBattle(game, owner, visible);
+  const newTurn = brain.turn !== game.turn || brain.owner !== owner;
+  if (newTurn) {
     brain.turn = game.turn;
     brain.owner = owner;
-    brain.danger = dangerMap(game, owner);
     brain.rng = (game.rng % 2147483646) + 1;
     brain.recruited = false;
   }
+  if (newTurn || visible || brain.restricted) brain.danger = dangerMap(field, owner);
+  brain.restricted = Boolean(visible);
   const ready = game.units.filter((u) => u.owner === owner && !u.done).sort((a, b) => rank(a) - rank(b));
+  const transport = planTransport(game, brain, field);
   for (const unit of ready) {
+    const available = stops(game, unit, transport.footRoute(unit));
+    if (UNITS[unit.type].carry) {
+      const plan = transport.moveCarrier(unit, available);
+      if (plan) return { kind: 'move', unit: unit.id, to: plan.to, then: plan.then };
+    }
     let best = null;
-    for (const spot of stops(game, unit, reach(game, unit))) {
+    for (const spot of available) {
       for (const action of actionsAt(game, unit, spot.x, spot.y)) {
-        let choice;
-        if (action.kind === 'load') choice = { score: -1e6, then: { kind: 'load' } };
-        else choice = judge(game, brain, unit, spot.x, spot.y, action);
+        let choice = null;
+        if (action.kind === 'load') {
+          const gain = transport.boardingGain(unit, unitById(game, action.carrier));
+          if (gain >= 1.5) choice = { score: 45 + Math.min(gain, 12) * 20, then: { kind: 'load' } };
+        } else {
+          if (visible && action.kind === 'capture') {
+            const b = game.buildings.find(b => b.id === action.building);
+            if (!visible.has(sightTile(game, b.x, b.y))) continue;
+          }
+          choice = judge(field, brain, unit, spot.x, spot.y, action);
+        }
         if (!choice) continue;
         const score = choice.score * (1 + noise(brain));
         if (!best || score > best.score) best = { score, to: { x: spot.x, y: spot.y }, then: choice.then };
@@ -281,18 +417,18 @@ export function nextOrder(game, brain) {
     // Nowhere legal to stop (hemmed in on a carrier's tile): it stays.
     return { kind: 'move', unit: unit.id, to: { x: unit.x, y: unit.y }, then: { kind: 'wait' } };
   }
-  const recruit = pickRecruit(game, brain);
+  const recruit = pickRecruit(game, brain, field, transport);
   if (recruit) return recruit;
   return { kind: 'end' };
 }
 
 /** What to train and where, or null. Spends on what beats the enemy army best for the price, keeping some back. */
-function pickRecruit(game, brain) {
+function pickRecruit(game, brain, field, transport) {
   const owner = game.current;
   const p = game.players[owner];
-  const foes = game.units.filter((u) => u.owner !== owner);
+  const foes = field.units.filter((u) => u.owner !== owner);
   const mine = game.units.filter((u) => u.owner === owner);
-  const freeBuildings = game.buildings.filter((b) => b.owner === -1 && BUILDINGS[b.kind].capturable).length;
+  const freeBuildings = field.buildings.filter((b) => b.owner === -1 && BUILDINGS[b.kind].capturable).length;
   const capturers = mine.filter((u) => UNITS[u.type].capture && u.type !== 'commander').length;
   let best = null;
   for (const b of game.buildings) {
@@ -302,7 +438,11 @@ function pickRecruit(game, brain) {
       if (!spots.length) continue;
       const u = UNITS[type];
       if (p.gold - u.cost < 0) continue;
-      if (u.carry) continue;
+      if (u.carry) {
+        const plan = transport.recruitCarrier(type, owner, spots, mine);
+        if (plan && (!best || plan.score > best.score)) best = { score: plan.score, order: { kind: 'recruit', building: b.id, type, at: plan.at } };
+        continue;
+      }
       let value = 0;
       for (const foe of foes) {
         const probe = { type, owner, x: foe.x, y: foe.y, hp: 100 };
@@ -320,7 +460,7 @@ function pickRecruit(game, brain) {
       if (after < 0) continue;
       const score = value - (after < p.gold * brain.level.saving ? 120 : 0);
       if (!best || score > best.score) {
-        const front = nearestFoe(game, spots, owner);
+        const front = nearestFoe(field, spots, owner);
         best = { score, order: { kind: 'recruit', building: b.id, type, at: front } };
       }
     }

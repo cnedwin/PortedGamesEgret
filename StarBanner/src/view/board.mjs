@@ -20,8 +20,12 @@ import {
   quatFromEuler
 } from '@egret/engine/world3d';
 import { TILE } from './stage.mjs';
+import { terrainAtlas, terrainUV } from './surface.mjs';
 
 const WATER = new Set(['sea', 'ocean', 'reef', 'river', 'dock']);
+const ROAD_NEIGHBOURS = new Set(['road', 'bridge', 'floor']);
+// Atlas connection bits are north, east, south, west.
+const DIRECTIONS = [[0, -1], [1, 0], [0, 1], [-1, 0]];
 const LAND_TOP = 0,
   BED = -0.9,
   SURFACE = -0.32,
@@ -107,24 +111,22 @@ function quads() {
   const positions = [],
     normals = [],
     colors = [],
+    uvs = [],
     indices = [];
   return {
-    quad(a, b, c, d, n, col, col2 = col) {
+    quad(a, b, c, d, n, col, { far = col, uv, corners = [col, col, far, far] } = {}) {
       const base = positions.length / 3;
-      for (const [p, k] of [
-        [a, col],
-        [b, col],
-        [c, col2],
-        [d, col2]
-      ]) {
-        positions.push(p[0], p[1], p[2]);
-        normals.push(n[0], n[1], n[2]);
-        colors.push(k[0], k[1], k[2]);
+      const vertices = [a, b, c, d];
+      for (let i = 0; i < vertices.length; i++) {
+        positions.push(...vertices[i]);
+        normals.push(...n);
+        colors.push(...corners[i]);
       }
+      if (uv) uvs.push(...uv);
       indices.push(base, base + 1, base + 2, base, base + 2, base + 3);
     },
     build() {
-      return createGeometry3D({ positions: new Float32Array(positions), normals: new Float32Array(normals), colors: new Float32Array(colors), indices: new Uint32Array(indices) });
+      return createGeometry3D({ positions, normals, colors, indices, ...(uvs.length ? { uvs } : {}) });
     },
     get empty() {
       return positions.length === 0;
@@ -164,20 +166,25 @@ export function buildBoard(scene, game, { look = 'meadow', props = {}, quality =
         // The bed under the water: sand near land, deeper blue-green out at sea.
         const deep = t === 'ocean' ? 0.55 : t === 'sea' || t === 'reef' ? 0.75 : 0.85;
         const bed = shade(srgb([0.62 * deep, 0.66 * deep, 0.5 * deep]), 1);
-        ground.quad([x0, BED, z1], [x1, BED, z1], [x1, BED, z0], [x0, BED, z0], [0, 1, 0], bed);
+        ground.quad([x0, BED, z1], [x1, BED, z1], [x1, BED, z0], [x0, BED, z0], [0, 1, 0], bed, { uv: terrainUV('bed') });
         continue;
       }
       const checker = (x + y) % 2 ? 1.0 : 0.93;
       const wobble = 0.96 + rand() * 0.08;
       const top = shade(srgb(TOP[t] ?? TOP.plains), checker * wobble);
-      ground.quad([x0, LAND_TOP, z1], [x1, LAND_TOP, z1], [x1, LAND_TOP, z0], [x0, LAND_TOP, z0], [0, 1, 0], top);
+      const variant = (Math.imul(x + 5, 73856093) ^ Math.imul(y + 19, 19349663) ^ seed) >>> 16 & 3;
+      let links = 0;
+      if (t === 'road') for (const [i, [dx, dy]] of DIRECTIONS.entries()) {
+        if (ROAD_NEIGHBOURS.has(at(x + dx, y + dy))) links |= 1 << i;
+      }
+      ground.quad([x0, LAND_TOP, z1], [x1, LAND_TOP, z1], [x1, LAND_TOP, z0], [x0, LAND_TOP, z0], [0, 1, 0], top, { uv: terrainUV(t, variant, links) });
       // Banks where land meets water, so the water sits in a cut channel.
       const soil = shade(srgb([0.46, 0.32, 0.2]), 1),
         grass = shade(srgb(TOP[t] ?? TOP.plains), 0.8);
       const bank = (nx, ny, a, b) => {
         const n = at(x + nx, y + ny);
         if (!n || !WATER.has(n)) return;
-        ground.quad([a[0], BED, a[1]], [b[0], BED, b[1]], [b[0], LAND_TOP, b[1]], [a[0], LAND_TOP, a[1]], [nx, 0, ny], soil, grass);
+        ground.quad([a[0], BED, a[1]], [b[0], BED, b[1]], [b[0], LAND_TOP, b[1]], [a[0], LAND_TOP, a[1]], [nx, 0, ny], soil, { far: grass, uv: terrainUV(t === 'beach' ? 'bed' : 'earth') });
       };
       bank(1, 0, [x1, z1], [x1, z0]);
       bank(-1, 0, [x0, z0], [x0, z1]);
@@ -186,17 +193,17 @@ export function buildBoard(scene, game, { look = 'meadow', props = {}, quality =
     }
   // The cake: the board's four outer walls, in bands of turf, soil and stone.
   const band = [
-    [LAND_TOP, -0.25, srgb([0.3, 0.52, 0.18])],
-    [-0.25, -1.4, srgb([0.48, 0.33, 0.2])],
-    [-1.4, CAKE, srgb([0.4, 0.36, 0.33])]
+    [LAND_TOP, -0.25, srgb([0.3, 0.52, 0.18]), 'turf'],
+    [-0.25, -1.4, srgb([0.48, 0.33, 0.2]), 'earth'],
+    [-1.4, CAKE, srgb([0.4, 0.36, 0.33]), 'stone']
   ];
   const wall = (x, y, nx, ny, a, b) => {
     const water = WATER.has(at(x, y));
-    for (const [hi, lo, col] of band) {
+    for (const [hi, lo, col, type] of band) {
       const top = water ? Math.min(hi, BED) : hi;
       if (top <= lo) continue;
       const c = shade(col, nx + ny > 0 ? 0.82 : 0.95);
-      ground.quad([a[0], lo, a[1]], [b[0], lo, b[1]], [b[0], top, b[1]], [a[0], top, a[1]], [nx, 0, ny], c);
+      ground.quad([a[0], lo, a[1]], [b[0], lo, b[1]], [b[0], top, b[1]], [a[0], top, a[1]], [nx, 0, ny], c, { uv: terrainUV(type) });
     }
   };
   for (let x = 0; x < W; x++) {
@@ -207,13 +214,26 @@ export function buildBoard(scene, game, { look = 'meadow', props = {}, quality =
     wall(W - 1, y, 1, 0, [wx(W), wz(y + 1)], [wx(W), wz(y)]);
     wall(0, y, -1, 0, [wx(0), wz(y)], [wx(0), wz(y + 1)]);
   }
-  const groundMesh = new Mesh3D(ground.build(), toon());
+  const groundMesh = new Mesh3D(ground.build(), toon({ map: terrainAtlas() ?? undefined }));
   groundMesh.receiveShadow = true;
   groundMesh.castShadow = false;
   group.addChild(groundMesh);
 
   // ---- water: one surface over every water tile, per-tile colour ----
   const water = quads();
+  const shallow = srgb([0.37, 0.69, 0.63]);
+  const shelf = (x, y, col) => {
+    const left = Math.floor(x), top = Math.floor(y);
+    let nearest = 1;
+    for (let py = top - 1; py <= top + 1; py++) for (let px = left - 1; px <= left + 1; px++) {
+      const land = at(px, py);
+      if (!land || WATER.has(land) || land === 'bridge') continue;
+      const dx = Math.max(px - x, 0, x - px - 1), dy = Math.max(py - y, 0, y - py - 1);
+      nearest = Math.min(nearest, dx * dx + dy * dy);
+    }
+    const fade = Math.max(0, 1 - Math.sqrt(nearest) / 0.78) * 0.45;
+    return col.map((c, i) => c + (shallow[i] - c) * fade);
+  };
   for (let y = 0; y < H; y++)
     for (let x = 0; x < W; x++) {
       const t = at(x, y);
@@ -226,7 +246,14 @@ export function buildBoard(scene, game, { look = 'meadow', props = {}, quality =
             bx = ax + TILE / 2,
             az = wz(y) + (sy * TILE) / 2,
             bz = az + TILE / 2;
-          water.quad([ax, SURFACE, bz], [bx, SURFACE, bz], [bx, SURFACE, az], [ax, SURFACE, az], [0, 1, 0], col);
+          const left = x + sx / 2, top = y + sy / 2;
+          const corners = [
+            shelf(left, top + 0.5, col),
+            shelf(left + 0.5, top + 0.5, col),
+            shelf(left + 0.5, top, col),
+            shelf(left, top, col)
+          ];
+          water.quad([ax, SURFACE, bz], [bx, SURFACE, bz], [bx, SURFACE, az], [ax, SURFACE, az], [0, 1, 0], col, { corners });
         }
     }
   let waterMaterial = null;

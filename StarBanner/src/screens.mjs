@@ -5,6 +5,7 @@
 // arrows move the focus between them, confirm presses, cancel goes back.
 import { t, say, getLanguage } from './i18n.mjs';
 import { MAPS } from './sim/maps.mjs';
+import { CAMPAIGN } from './sim/campaign.mjs';
 import { COMMANDERS, COMMANDER_ORDER, FACTIONS } from './sim/commanders.mjs';
 import { TERRAIN } from './sim/terrain.mjs';
 
@@ -81,14 +82,17 @@ export function createScreens(root, app) {
     wrap.setAttribute('role', 'dialog');
     wrap.append(node);
     layer.append(wrap);
-    const entry = { wrap, onCancel, prev: current };
+    const entry = { wrap, onCancel, prev: current, priorFocus: document.activeElement };
     current = entry;
     requestAnimationFrame(() => wrap.querySelector('button:not([disabled])')?.focus({ preventScroll: true }));
     return entry;
   }
   function close(entry) {
     entry.wrap.remove();
-    if (current === entry) current = entry.prev;
+    if (current === entry) {
+      current = entry.prev;
+      if (current?.wrap.contains(entry.priorFocus)) entry.priorFocus.focus({ preventScroll: true });
+    }
   }
 
   const screens = {
@@ -96,11 +100,19 @@ export function createScreens(root, app) {
       return !!current;
     },
     /** Input from the app while a screen is up. Returns true when it was used. */
-    command(name) {
+    command(name, { reverse = false } = {}) {
       if (!current) return false;
       if (['up', 'down', 'left', 'right'].includes(name)) {
         moveFocus(current.wrap, name);
         app.sound.play('cursor', { volume: 0.6 });
+      } else if (name === 'next') {
+        const buttons = [...current.wrap.querySelectorAll('button:not([disabled])')].filter((button) => button.offsetParent !== null);
+        if (buttons.length) {
+          const index = buttons.indexOf(document.activeElement);
+          const step = reverse ? -1 : 1;
+          const next = index < 0 ? (reverse ? buttons.length - 1 : 0) : (index + step + buttons.length) % buttons.length;
+          buttons[next].focus();
+        }
       } else if (name === 'confirm') {
         const f = document.activeElement;
         if (f && current.wrap.contains(f)) f.click();
@@ -130,6 +142,10 @@ export function createScreens(root, app) {
           app.sound.play('confirm');
           screens.setup();
         }),
+        btn(t('campaign'), '', () => {
+          app.sound.play('select');
+          screens.campaign();
+        }),
         btn(t('howTo'), '', () => {
           app.sound.play('select');
           screens.help();
@@ -150,6 +166,40 @@ export function createScreens(root, app) {
         app.notice = null;
       }
       return open(box);
+    },
+
+    campaign() {
+      screens.closeAll();
+      const box = el('div', 'panel campaign');
+      const progress = app.campaignProgress();
+      const active = app.campaignBattle()?.setup.campaign;
+      box.append(el('h2', '', t('campaign')), el('p', 'lead', t(progress.complete ? 'campaignComplete' : 'campaignLead', { n: progress.completed.length })));
+      const chapters = el('div', 'campaign-chapters');
+      for (const chapter of CAMPAIGN) {
+        const card = el('article', 'campaign-chapter');
+        const complete = progress.completed.includes(chapter.id);
+        const unlocked = app.campaignUnlocked(chapter.id);
+        const resumed = active === chapter.id;
+        const action = btn(t(resumed ? 'resumeChapter' : complete ? 'replayChapter' : 'startChapter'), resumed || chapter.id === progress.next ? 'primary' : '', () => {
+          app.sound.play('confirm');
+          if (resumed) app.resumeCampaign();
+          else app.startCampaign(chapter.id);
+        });
+        action.disabled = !unlocked || Boolean(active && !resumed);
+        card.append(
+          el('h3', '', say(chapter.title)),
+          el('small', 'campaign-status', t(resumed ? 'chapterActive' : complete ? 'chapterDone' : unlocked ? 'chapterReady' : 'chapterLocked')),
+          el('p', '', say(chapter.brief)),
+          el('p', 'campaign-objective', say(chapter.objective)),
+          action
+        );
+        chapters.append(card);
+      }
+      box.append(chapters);
+      const foot = el('div', 'foot');
+      foot.append(btn(t('back'), 'quiet', () => screens.title()));
+      box.append(foot);
+      return open(box, { onCancel: () => screens.title() });
     },
 
     setup() {
@@ -221,6 +271,7 @@ export function createScreens(root, app) {
         [true, t('goFirst')],
         [false, t('goSecond')]
       ]);
+      const fog = seg('fog', [[false, t('off')], [true, t('on')]]);
       const section = (label, node) => {
         const s = el('section', 'setup-section');
         s.append(el('h3', '', label), node);
@@ -230,7 +281,7 @@ export function createScreens(root, app) {
       sidesRow.append(section(t('pickYou'), you.row), section(t('pickFoe'), foe.row));
       box.append(section(t('pickMap'), maps), sidesRow, detail);
       const opts = el('div', 'setup-opts');
-      opts.append(section(t('level'), level.row), section('', order.row));
+      opts.append(section(t('level'), level.row), section('', order.row), section(t('warFog'), fog.row));
       box.append(opts);
       const go = el('div', 'setup-go');
       go.append(
@@ -250,6 +301,7 @@ export function createScreens(root, app) {
         for (const b of foe.list) b.classList.toggle('on', b.dataset.id === choice.foe);
         for (const b of level.list) b.classList.toggle('on', b.dataset.value === choice.level);
         for (const b of order.list) b.classList.toggle('on', b.dataset.value === String(choice.first));
+        for (const b of fog.list) b.classList.toggle('on', b.dataset.value === String(choice.fog));
         detail.innerHTML = '';
         for (const [key, id] of [
           ['you', choice.you],
@@ -368,11 +420,15 @@ export function createScreens(root, app) {
       });
     },
 
-    result({ won, why, game, human }) {
+    result({ won, why, game, human, chapter }) {
       screens.closeAll();
       const box = el('div', 'panel result ' + (won ? 'won' : 'lost'));
       box.append(el('h2', 'big', won ? t('victory') : t('defeat')));
       box.append(el('p', 'why', t((won ? 'winWhy_' : 'loseWhy_') + why)));
+      if (chapter) {
+        box.append(el('h3', '', say(chapter.title)));
+        if (won) box.append(el('p', 'campaign-aftermath', say(chapter.after)));
+      }
       const table = el('div', 'stats');
       const me = game.stats[human],
         them = game.stats[1 - human];
@@ -389,10 +445,14 @@ export function createScreens(root, app) {
       }
       box.append(table);
       const foot = el('div', 'foot');
-      foot.append(
-        btn(t('toTitle'), 'quiet', () => app.toTitle()),
-        btn(t('again'), 'primary', () => app.startNew(app.lastSetup()))
-      );
+      if (chapter) {
+        const next = won && app.campaignProgress().next;
+        foot.append(btn(t('campaign'), 'quiet', () => app.toCampaign()));
+        if (next) foot.append(btn(t('nextChapter'), 'primary', () => app.startCampaign(next)));
+        else foot.append(btn(t('replayChapter'), 'primary', () => app.startCampaign(chapter.id)));
+      } else {
+        foot.append(btn(t('toTitle'), 'quiet', () => app.toTitle()), btn(t('again'), 'primary', () => app.startNew(app.lastSetup())));
+      }
       box.append(foot);
       return open(box, { onCancel: () => app.toTitle() });
     }
