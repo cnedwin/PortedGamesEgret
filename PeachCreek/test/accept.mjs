@@ -128,11 +128,11 @@ try {
       const before = loop.snapshot();
       await new Promise(resolve => setTimeout(resolve, 200));
       const after = loop.snapshot();
-      if (before.state === 'idle' && after.state === 'idle' && before.frames === after.frames && after.frames > 0) return true;
+      if (before.frames === after.frames && after.frames > 0 && after.steps > before.steps) return true;
     }
     return false;
   });
-  check(idleTitle, 'the still title stops redrawing while idle');
+  check(idleTitle, 'the still title skips frame submissions while the engine clock advances');
   const title = await matchBaseline(page, GAME, 'title');
   check(title.written || title.passed, 'title looks as its baseline (' + (title.share * 100).toFixed(2) + '% differs)');
   check(/赴任/.test(await focusName(page)), 'the start button holds keyboard focus on the title');

@@ -1,43 +1,43 @@
 # 引擎笔记 · Engine notes
 
-使用白鹭主干 `51b6175de36aa1e85878d3c6ca9b8e841e405504`。复跑游戏全流程可用 `node test/accept.mjs`。副本和入口见 [vendor/SOURCE.md](vendor/SOURCE.md)。
+本轮适配使用白鹭主干 `95897d78095ae8fda9e34dbc13bbbd15db8eaa12`。复跑游戏全流程可用 `node test/accept.mjs`。副本和入口见 [vendor/SOURCE.md](vendor/SOURCE.md)。
 
-Measured against Egret main at `51b6175de36aa1e85878d3c6ca9b8e841e405504`. Run `node test/accept.mjs` for the full route. The [vendor record](vendor/SOURCE.md) lists the source and entries.
+This integration uses Egret main at `95897d78095ae8fda9e34dbc13bbbd15db8eaa12`. Run `node test/accept.mjs` for the full route. The [vendor record](vendor/SOURCE.md) lists the source and entries.
 
-### 1. 变换和裁剪后语义区域仍停在原位 · Semantic bounds stay at the original coordinates after transforms and clipping — 未解决 / open
+### 1. 变换和裁剪后的语义区域 · Semantic bounds after transforms and clipping — 部分解决 / partly resolved
 
-- 现象：在 Chromium 中用 `game.show` 建父面板和一个按钮。按钮初始语义区域为 `(620, 430, 120, 42)`。将父面板左移 75 并裁到高度 20 后，位置没有更新。已不可见的按钮仍能被 `tester.press` 激活，`tester.focus` 返回 `UI_TESTER_REFUSED`。 · Reproduced in Chromium with a `game.show` parent panel and button. The button reported `(620, 430, 120, 42)` both before and after the parent was moved left 75 and clipped to height 20. `tester.press` still fired the clipped button. `tester.focus` returned `UI_TESTER_REFUSED`.
-- 绕过办法：游戏按显示树的缩放、平移、裁剪交集重建语义区域。地图缩放后，地块仍由原生按钮命中。滚出单子的操作退出语义树。 · The game projects bounds with the scene transforms and clipping. Native buttons continue to handle map hits at all zoom levels. Entries outside the inspector viewport leave the semantic tree.
-- 建议：以取景范围与裁剪交集发布语义区域，完全裁掉的项目拒绝激活。提供公开的视图焦点接口，使键盘、读屏和自动化共享焦点。 · Publish the intersection of visible and clipped bounds, and reject activation when fully clipped. Expose view focus so keyboard, assistive technology and test actions share one target.
-- 状态：未解决。 · Status: open.
+- 现象：在旧版 `51b6175d`，将 `game.show` 父面板左移 75 并裁到高度 20 后，初始区域为 `(620, 430, 120, 42)` 的子按钮仍可被语义测试激活。 · On `51b6175d`, moving a parent left by 75 and clipping it to 20 left its initially reported `(620, 430, 120, 42)` child button accessible and actionable.
+- 绕过办法：语义发布直接沿用引擎算出的变换与裁剪区域。Demo 保留标签名、角色和主动焦点策略，作地图、标签页和弹窗的返回焦点。 · The demo uses the engine's transformed and clipped semantic bounds, keeping its own labels, roles and deliberate focus restoration for map targets, tabs and dialogs.
+- 建议：开放声明式视图的主动聚焦与角色绑定，供业务设置标签选中、焦点返回和自动化定位。 · Expose programmatic focus and declarative semantic roles for selection, focus return and automation.
+- 状态：原生遮挡和裁剪已接入，游戏的主动焦点策略保留。 · Native visibility and clipping are integrated. The game retains its explicit focus policy.
 
-### 2. 单子滚动需要自行组合 · Long inspector sheets require composition — 部分解决 / partly resolved
+### 2. 经营单子的原生滚动 · Native scrolling for county inspectors — 部分解决 / partly resolved
 
-- 现象：营建、人才和防务单子需要受裁剪的长列表、内容高度变化后的定位、滚轮与触屏滚动和键盘继续到下一行。`game.show` 没有可滚动的布局部件。 · Works, Talents and Defence need clipped lists, preservation of position as content changes, wheel and touch interactions, and keyboard traversal to the next row. The declarative view has no scrollable part.
-- 绕过办法：使用引擎 `createScrollControl` 管理范围与偏移，使用 `Sprite.clipRect` 裁剪。游戏把滚轮和触屏位移送入滚动控制器，按滚动窗口挂载可见项。 · Engine `createScrollControl` owns the range and offset, and `Sprite.clipRect` clips the sheet. The game forwards wheel and contact deltas and mounts entries intersecting the viewport.
-- 建议：提供可嵌套的 `scroll` 容器，绑定基础手势、惯性、滚动条和语义项目，支持长列表回收并保持键盘焦点。 · Add a nestable `scroll` part with gestures, inertia, a scrollbar and semantic items, including item reuse and retained keyboard focus.
-- 状态：部分解决。底层 API 足以交付，数据描述层仍需扩展。 · Status: partly resolved. The low-level APIs support the implementation. The description layer still needs a scroll part.
+- 现象：经营单子需要可滚动的长列表、内容刷新后保留偏移和键盘继续到下一行。这些交互曾由 Demo 独立组合。 · County sheets need long scrolling lists, offset retention across refreshes, and keyboard traversal into the next row. The demo formerly composed those interactions itself.
+- 绕过办法：使用 `game.show` 的 `scroll: 'vertical'` 面板。引擎负责滚轮、触屏拖动和裁剪，游戏沿用原有滚动指示和键盘导航，并保留资源栏的水平滚动。 · The inspector now uses a `scroll: 'vertical'` panel. The engine handles wheel, touch drag and clipping. The game retains its indicator, keyboard traversal and horizontal resource scrolling.
+- 建议：为面板增加原生滚动指示或偏移变化回调，并解决第 9 项的离屏捕获。 · Add a native indicator or a scroll-change callback and address offscreen capture in item 9.
+- 状态：原生垂直滚动已通过接入测试。 · Native vertical scrolling passed integration tests.
 
 ### 3. 文字和按钮样式需要显示对象补充 · Typography and button styling need display-object extensions — 部分解决 / partly resolved
 
-- 现象：标题字需要字体和行距。建筑按钮需要名称、两行以上的说明、选址得分和资源限制。纯数据部件缺少换行、字体组、富文本按钮、渐变与逐项边框。 · The title needs typeface and leading. Building options need a name, multiple lines of description, site efficiency and resource constraints. Declarative parts lack wrapping, font stacks, rich button content, gradients and per-item outlines.
+- 现象：标题字需要字体和行距。建筑按钮需要名称、两行以上的说明、选址得分和资源限制。新版声明式部件有图片与富文字入口。本作仍需既有字距、分行、描边和程序生成的建筑预览。 · The title needs typeface and leading. Building options need a name, multiple lines of description, site efficiency and resource constraints. The current declarative API offers images and rich text. The demo still needs its existing tracking, line breaks, outlines and procedural building previews.
 - 绕过办法：应用换行以保持中英文可读，标题用 `game.browser.createLabel`，卡片用 `Graphics` 描边和渐变。建筑预览用引擎纹理和 Bitmap。按钮保留原生的点击与语义行为。 · The project wraps Chinese and English text locally, uses `game.browser.createLabel` for title typography, draws panel borders and gradients with `Graphics`, and displays building previews as engine bitmaps. Native buttons retain tap and semantic actions.
 - 建议：为文字开放字体回退、行距、宽度与截断；为按钮开放带焦点样式的内容节点；为视图增加 image/nine-slice 和逐项皮肤。 · Expose font fallback, leading, width and truncation on text, button content with focus styling, and image/nine-slice parts with per-item skins.
 - 状态：部分解决。 · Status: partly resolved.
 
-### 4. 网页语义投影拒绝 CSS 缩放的画布祖先 · Browser semantic projection rejects a CSS-transformed canvas ancestor — 已写入文档 / documented
+### 4. 等比留边的网页语义投影 · Browser semantic projection on a letterboxed canvas — 已在 95897d78 解决 / resolved in 95897d78
 
-- 现象：旧版按 1280×720 做等比留边，在 960×540 引擎画布外层用 CSS translate/scale。接入 `createBrowserSemantics` 时，浏览器启动抛 `UI_SEMANTICS_SURFACE_INVALID`。 · The 1280×720 letterboxed layout used CSS translate/scale on the 960×540 engine host. Initializing `createBrowserSemantics` threw `UI_SEMANTICS_SURFACE_INVALID`.
-- 绕过办法：画布宿主用 CSS left、top、width、height 保留原取景，语义层按画布实际边界布置。地图背景仍是独立绘画层。 · Set the canvas host's CSS left, top, width and height to retain framing. The semantic overlay now follows the canvas bounds. The painted terrain remains on a separate layer.
-- 建议：文档给出保留固定渲染分辨率及等比留边的完整示例。若可支持正轴缩放和平移，可让投影接受这种已能计算边界的宿主。 · Add a complete letterbox example with fixed render resolution. If axis-aligned scale and translation can be supported, accept those mappable hosts for projection.
-- 状态：限制已记录在白鹭文档。 · Status: documented in the Egret guide.
+- 现象：旧版在 CSS translate/scale 的画布祖先下启动 `createBrowserSemantics`，得到 `UI_SEMANTICS_SURFACE_INVALID`。 · The older adapter rejected a canvas under CSS translate/scale with `UI_SEMANTICS_SURFACE_INVALID`.
+- 绕过办法：保留已经验收的宿主位置和尺寸设置。当前白鹭支持正轴缩放和平移并提供定比留边示例。 · The game keeps its verified explicit host dimensions and position. The current engine supports positive axis-aligned scaling and translation and documents a letterboxed example.
+- 建议：在新的响应式页面中沿用白鹭的留边示例。 · Use the engine's letterbox example for new responsive hosts.
+- 状态：支持范围内的变换以及示例已由引擎提供。 · Supported transforms and the example are available upstream.
 
-### 5. 画布像素尺寸与设计尺寸的分离 · Canvas resolution and design dimensions — 未解决 / open
+### 5. 画布像素尺寸与设计尺寸的分离 · Canvas resolution and design dimensions — 已在 95897d78 解决 / resolved in 95897d78
 
-- 现象：县城以 1280×720 设计，软件渲染下需要单独降低画布像素数。 · The county uses 1280×720 design coordinates and needs a separate raster resolution for software rendering.
-- 绕过办法：以 960×540 启动 `play`，场景和界面共用 0.75 的换算，网页宿主负责留边。透明画布让下层县城底图可见。 · Start `play` at 960×540, use a shared 0.75 conversion for the scene and controls, and letterbox the browser host. The transparent surface preserves the terrain underneath.
-- 建议：为 `play` 提供独立渲染比例，并给布局、输入和语义都保留相同的逻辑尺寸。 · Give `play` a separate render scale while preserving logical dimensions for layout, input and semantics.
-- 状态：未解决。 · Status: open.
+- 现象：旧版县城需要单独控制渲染分辨率，统一逻辑画布和输入位置。 · The earlier integration needed a separate raster resolution while retaining its layout and input coordinates.
+- 绕过办法：新版 `play({ pixelRatio })` 提供独立像素倍率。本作这一轮保留原有 960×540 引擎坐标和 1280×720 设计坐标之间的换算。 · `play({ pixelRatio })` is available upstream. This pass retains the existing conversion between 960×540 engine coordinates and the 1280×720 design.
+- 建议：调整分辨率时对同一真机的字形、命中和渲染开销做一并对照。 · Compare readability, hit targets and rendering cost on the same device when changing pixel density.
+- 状态：引擎已提供独立倍率。 · The engine exposes the independent multiplier.
 
 ### 6. 存档更新与预制绘图对象 · Save updates and convenience drawing objects — 未解决 / open
 
@@ -46,16 +46,24 @@ Measured against Egret main at `51b6175de36aa1e85878d3c6ca9b8e841e405504`. Run `
 - 建议：区分可变更新和全量替换 API，补充可变形状的填充属性和局部坐标版粒子入口。 · Separate mutation from replacement, add mutable fill for convenience shapes, and accept a local coordinate layer for particles.
 - 状态：未解决。 · Status: open.
 
-### 7. 浏览器常用图像格式需要另一条加载入口 · The high-level image helper and browser image formats — 部分解决 / partly resolved
+### 7. 浏览器常用图像格式与封面重试 · Browser image formats and cover retry — 已在 95897d78 解决 / resolved in 95897d78
 
-- 现象：封面是 WebP。浏览器用该文件调用 `game.image`，得到 `ASSET_LOAD_FAILED`，底层原因为 `WEB_PNG_STRUCTURE_INVALID`。 · In the browser, passing the WebP cover to `game.image` produced `ASSET_LOAD_FAILED` caused by `WEB_PNG_STRUCTURE_INVALID`.
-- 绕过办法：用 `@egret/engine/web/kit` 的浏览器图像 provider 加载原文件，再用白鹭 Bitmap 渲染。阻断 WebP 的测试中，标题仍可操作，恢复网络后点重试可补回封面。 · The browser image provider from `@egret/engine/web/kit` loads the original file into an Egret Bitmap. With the WebP request blocked, the title stayed playable. Retry restored the cover after the network was unblocked.
-- 建议：给高层入口开放图像 provider，或按格式选择浏览器解码路径，并在 `game.image` 的使用说明中标注默认解码范围。 · Allow the high-level helper to select an image provider or browser decoder by format and document its default decoder.
-- 状态：部分解决。 · Status: partly resolved.
+- 现象：旧版对 WebP 封面报告 `ASSET_LOAD_FAILED`，底层原因为 `WEB_PNG_STRUCTURE_INVALID`。 · The former WebP cover request reported `ASSET_LOAD_FAILED` caused by `WEB_PNG_STRUCTURE_INVALID`.
+- 绕过办法：直接使用 `game.browser.loadTexture`。游戏保留原有封面、过滤方式、降级显示和重试按钮。 · The game now uses `game.browser.loadTexture`, retaining the original artwork, filter, fallback and retry button.
+- 建议：继续覆盖真实失败和恢复路径。 · Keep the actual failure and recovery path under test.
+- 状态：阻断 WebP 请求后，标题仍可交互。解除阻断，实际点击重试恢复原图。 · Blocking the WebP request kept the title interactive. Removing the block and clicking Retry restored the art.
 
-### 8. 静止视图持续提交 · Still views keep submitting frames — 部分解决 / partly resolved
+### 8. 静止界面按需提交 · On-demand rendering for a still interface — 已在 95897d78 解决 / resolved in 95897d78
 
-- 现象：1280×800 的 Chromium/SwiftShader 品质测试，旧标题页的浏览器帧 P95 为 12.6 ms，迁到白鹭画布并持续重绘的标题为 70.8 ms。独立探针测得标题和打开营建单子时的语义发布 P95 分别为 0.2 ms 和 0.3 ms。此数据无法进一步区分白鹭绘图、软件栅格和浏览器合成的贡献。 · In the 1280×800 Chromium/SwiftShader quality run, browser-frame P95 was 12.6 ms on the original title and 70.8 ms with the continuously drawn new title. A separate probe measured semantic publish P95 of 0.2 ms on the title and 0.3 ms with Works open. The measurements do not split engine drawing, software rasterisation and browser composition.
-- 绕过办法：保持最后一次提交的标题画面，按键、点按、尺寸变化和图像或文字就绪时立即恢复循环。县城进入后继续逐帧更新。 · Keep the last submitted title frame and wake the loop immediately for input, resize, or an image or label completing. The county runs every frame after entry.
-- 建议：提供可选的按需渲染策略，在显示对象、布局、素材、交互反馈或动画改变时由引擎自动请求下一帧。 · Offer a render-on-demand policy that requests a frame on display, layout, asset, feedback or animation changes.
-- 状态：部分解决。 · Status: partly resolved.
+- 现象：旧版持续重绘的标题在 1280×800 Chromium/SwiftShader 上，浏览器帧间隔 P95 曾达 70.8 ms。Demo 曾自行启停循环。 · The continuously drawn title reached a browser interval P95 of 70.8 ms in the earlier 1280×800 Chromium/SwiftShader run. The demo used to manage loop start and stop itself.
+- 绕过办法：使用 `play({ renderMode: 'on-demand' })`。浏览器确认静止期间帧提交计数保持不变，时钟继续推进，输入后图像恢复更新。 · The game now uses `play({ renderMode: 'on-demand' })`. The browser confirmed that submissions stay unchanged while idle, clock steps continue, and input resumes drawing.
+- 建议：继续覆盖密度调整、异步图文就绪和后台恢复。 · Keep density changes, asynchronous artwork/text and foreground restoration in coverage.
+- 状态：标题旧的启停循环已移除。 · The old title loop controls were removed.
+
+### 9. 滚动裁剪外的文字仍计入帧图片预算 · Clipped labels still debit the frame image budget — 未解决 / open
+
+- 现象：用白鹭原生垂直滚动面板挂载完整英文建造清单，在 Edge 上打开空地单子会报 `FRAME_IMAGE_BUDGET`。当时视区只显示约六个选项，完全裁掉的内容也进入共享帧捕获的纹理预算。 · In Edge, opening a full English construction list with native vertical scrolling hit `FRAME_IMAGE_BUDGET`. About six actions were visible. Fully clipped descendants still entered the shared-frame image budget.
+- 复现：让原生滚动面板保持固定高度，放入足够多的不同文字项以越过 64 个图片页，再在顶部绘制。 · Put enough distinct text items to exceed 64 image pages into a fixed-height native scroll viewport and render at the top.
+- 绕过办法：保留全部行的原生布局、焦点和语义，捕获前把完全离屏的条目设为透明。滚入视区后立即恢复。 · Keep rows in native layout, focus and semantics, while setting fully offscreen display rows transparent before capture. Restore them as they scroll into view.
+- 建议：在纹理计入预算前剔除与裁剪交集为空的显示项，覆盖长列表和滚入视区的首帧。 · Cull empty clipped intersections before charging texture pages, with tests for long lists and the first frame after a row scrolls into view.
+- 状态：Demo 浏览器复测未再出现该错误。引擎的捕获顺序还需修复。 · The integrated workaround no longer hit the error in the browser retest. The engine capture order remains open.

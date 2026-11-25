@@ -10,13 +10,6 @@ const read = (value) => typeof value === 'function' ? value() : value;
 const styleOf = (item) => item.card !== null && typeof item.card === 'object' ? item.card : null;
 const rectangle = (x, y, w, h) => ({ x, y, w, h, width: w, height: h });
 
-function intersect(a, b) {
-  const x = Math.max(a.x, b.x), y = Math.max(a.y, b.y);
-  return rectangle(x, y,
-    Math.max(0, Math.min(a.x + a.w, b.x + b.w) - x),
-    Math.max(0, Math.min(a.y + a.h, b.y + b.h) - y));
-}
-
 /** Adds the focus and accessible names of the county's canvas controls to Egret's semantic tree. */
 export function bridgeUiSemantics(tree) {
   let current;
@@ -43,13 +36,14 @@ function plan({ label, modal = false, items, skin }) {
   const rows = items.map((item, index) => {
     const { type, parent } = item, w = item.w ?? item.width ?? 0, h = item.h ?? item.height ?? 0;
     const x = item.x ?? 0, y = item.y ?? 0;
-    const name = item.name ?? (switches.has(type) || item.action || item.decorate || item.clip || item.role || styleOf(item) ||
+    const name = item.name ?? (switches.has(type) || item.action || item.decorate || item.clip || item.scroll || item.role || styleOf(item) ||
       item.intercept || item.invisible || item.hideText || item.visible !== undefined || item.alpha !== undefined ? '_item' + index : undefined);
     const part = { type, x: x * UNIT, y: y * UNIT, width: w * UNIT, height: h * UNIT };
     if (name !== undefined) part.name = name;
     if (type === 'panel') {
       part.children = [];
       if (item.card === true) part.card = true;
+      if (item.scroll) part.scroll = item.scroll;
     }
     if (words.has(type)) {
       part.text = name === undefined ? read(item.text) ?? '' : '';
@@ -98,16 +92,12 @@ export function createUi(game, semantics, onVisualChange = () => {}) {
   outline.visible = false;
   if (!canvas.hasAttribute('tabindex')) canvas.tabIndex = 0;
 
-  const bounds = ({ entries, transforms }, entry) => {
-    let rect = rectangle(0, 0, entry.w, entry.h);
-    for (let at = entry; at !== undefined; at = entries.get(at.parent)) {
-      if (at.item.clip) rect = intersect(rect, rectangle(0, 0, at.w, at.h));
-      const { x = at.x, y = at.y, scale = 1 } = transforms.get(at.name) ?? {};
-      rect = rectangle(x + rect.x * scale, y + rect.y * scale, rect.w * scale, rect.h * scale);
-    }
-    const { x, y, width, height } = game.screen;
-    return intersect(rect, rectangle(x / UNIT, y / UNIT, width / UNIT, height / UNIT));
-  };
+  function bounds(record, entry) {
+    const native = record.describe.get(entry.name)?.().bounds;
+    if (!native) return rectangle(0, 0, 0, 0);
+    return rectangle((native.x - game.ui.x) / UNIT, (native.y - game.ui.y) / UNIT,
+      native.width / UNIT, native.height / UNIT);
+  }
   const control = ({ item }) => item.focusable || (switches.has(item.type) && !!item.action);
 
   function eligible(record, entry) {
@@ -167,6 +157,7 @@ export function createUi(game, semantics, onVisualChange = () => {}) {
     const name = definition.id.slice(definition.id.indexOf(':') + 1);
     const entry = record.entries.get(name);
     if (!entry) return definition;
+    record.describe.set(name, definition.describe);
     const role = entry.item.role ?? definition.role;
     const config = {
       ...definition,
@@ -174,7 +165,7 @@ export function createUi(game, semantics, onVisualChange = () => {}) {
       describe() {
         const current = record.entries.get(name);
         const initial = definition.describe();
-        const item = current.item, rect = bounds(record, current);
+        const item = current.item, rect = initial.bounds;
         const label = String(read(item.label) ?? (words.has(item.type) ? read(item.text) : initial.name) ?? '');
         return {
           ...(role === definition.role ? initial : {}),
@@ -182,10 +173,10 @@ export function createUi(game, semantics, onVisualChange = () => {}) {
           ...(role === 'heading' ? { level: item.level ?? 2 } : {}),
           ...(switches.has(item.type) ? { disabled: read(item.disabled) === true } : {}),
           name: label || (role === 'button' || role === 'switch' || role === 'tab' ? name : ''),
-          hidden: initial.hidden || rect.w === 0 || rect.h === 0 ||
+          hidden: item.decorative === true || initial.hidden || !rect?.width || !rect.height ||
             ((role === 'text' || role === 'heading') && !label.trim()),
           focused: selected?.key === record.key && selected.name === name,
-          bounds: { x: rect.x * UNIT + game.ui.x, y: rect.y * UNIT + game.ui.y, width: rect.w * UNIT, height: rect.h * UNIT }
+          bounds: rect
         };
       }
     };
@@ -236,7 +227,7 @@ export function createUi(game, semantics, onVisualChange = () => {}) {
       const host = view.get(name);
       const style = styleOf(item);
       if (item.clip) host.clipRect = { x: 0, y: 0, width: w * UNIT, height: h * UNIT };
-      else if (host.clipRect !== undefined) host.clipRect = undefined;
+      else if (!item.scroll && host.clipRect !== undefined) host.clipRect = undefined;
       host.alpha = item.invisible ? 0 : read(item.alpha) ?? (style && item.type === 'button' && read(item.disabled) ? 0.58 : 1);
       if (words.has(item.type)) {
         const old = record.decorations.get(name);
@@ -315,7 +306,7 @@ export function createUi(game, semantics, onVisualChange = () => {}) {
     const record = {
       key, signature, entries, modal: description.modal, order: previous?.order ?? ++nextOrder,
       disabledColor: description.skin?.disabled ?? 0x64748b,
-      transforms: previous?.transforms ?? new Map(), decorations: new Map(),
+      transforms: previous?.transforms ?? new Map(), decorations: new Map(), describe: new Map(),
       returnFocus: previous?.returnFocus ?? selected
     };
     for (const name of record.transforms.keys()) {
@@ -380,7 +371,7 @@ export function createUi(game, semantics, onVisualChange = () => {}) {
   canvas.addEventListener('keydown', keydown, true);
   canvas.addEventListener('pointerdown', pointerdown);
   return {
-    show, hide, focus, activate, arrange,
+    show, hide, focus, activate, arrange, refreshFocus: paintFocus,
     get(name) {
       const found = find(name);
       return found?.record.view.get(name);

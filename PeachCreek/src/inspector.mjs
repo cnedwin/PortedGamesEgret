@@ -1,5 +1,4 @@
 import { Bitmap } from '@egret/engine';
-import { createScrollControl } from '@egret/engine/ui';
 import { getLanguage, t } from './i18n.mjs';
 
 const INK = 0x293b38;
@@ -185,14 +184,13 @@ function layout(parts, width, compact, imageFor, allowPointer) {
   return { height, items };
 }
 
-/** A native scroll model, a clipped Egret view and bounded preview textures share one inspector. */
+/** An Egret scroll panel owns clipping and input. The county supplies the parchment thumb. */
 export function createInspector(game, ui, { close, compact, allowPointer }) {
-  let model = null, geometry, painting = false;
+  let model = null, geometry, scroll, scrollbar, paintedOffset, paintedMaximum;
+  let rows = [];
   const previews = new Map();
   const bitmaps = new WeakMap();
-  const scroll = createScrollControl({
-    viewportLength: 1, contentLength: 0, onScroll: () => { if (!painting) render(); }
-  });
+  const offset = () => (scroll?.offset ?? 0) / SCALE;
 
   function imageFor(image, pictureH) {
     let entry = previews.get(image);
@@ -210,7 +208,7 @@ export function createInspector(game, ui, { close, compact, allowPointer }) {
       previews.delete(image);
       previews.set(image, entry);
     }
-    // Only visible art enters the GPU cache. The same preview is reused on clock refreshes.
+    // Reuse the preview texture when the inspector refreshes.
     return (node, { w }) => {
       const fit = Math.min(w / image.width, pictureH * SCALE / image.height);
       const attach = (lease) => {
@@ -244,53 +242,90 @@ export function createInspector(game, ui, { close, compact, allowPointer }) {
     const x = small ? 772 : 852, y = small ? 120 : 113, w = small ? 490 : 410, h = small ? 506 : 521;
     geometry = { x, y, w, h, inset: 18, height: h - 32, closeHeight: small ? 62 : 38 };
     model = layout(parts, w - 39, small, imageFor, allowPointer);
-    painting = true;
-    scroll.setLengths(geometry.height, model.height + 4);
-    painting = false;
     render();
   }
   function render() {
     if (!model) return;
     const { x, y, w, h, inset, height, closeHeight } = geometry;
-    const content = model.items.filter((item) => item.y + item.h > scroll.offset && item.y < height + scroll.offset)
-      .map((item) => ({ ...item, parent: 'sheet-content', y: item.y - scroll.offset }));
+    const previous = scroll?.offset ?? 0;
+    const content = model.items.map((item, index) => ({
+      ...item, parent: 'sheet-content', name: item.name ?? '_sheet-' + index,
+      decorative: item.name === undefined && item.role === undefined && item.label === undefined
+    }));
     const items = [
       background(x, y, w, h, PAPER, { name: 'sheet', intercept: true, decorate: parchment, role: 'dialog' }),
-      child('panel', x + inset, y + 14, w - 36, height, { name: 'sheet-content', clip: true }),
+      child('panel', x + inset, y + 14, w - 36, height, { name: 'sheet-content', scroll: 'vertical' }),
       ...content,
+      child('space', 0, model.height, 1, 4, { parent: 'sheet-content' }),
+      child('panel', x + w - 10, y + 14, 4, height, { name: 'sheet-scrollbar', decorative: true }),
       child('button', x + w - (closeHeight + 42), y + 13, closeHeight + 29, closeHeight, {
         name: 'sheetClose', text: t('close'), size: 16, color: PAPER, textColor: INK, card: paper,
         action: close
       })
     ];
-    if (scroll.maximum > 0) {
-      const barHeight = Math.max(22, height * height / (height + scroll.maximum));
-      items.push(background(x + w - 10, y + 14 + (height - barHeight) * scroll.offset / scroll.maximum, 4, barHeight, 0xb6bcaa,
-        { card: { radius: 2 } }));
+    const view = ui.show('inspector', { label: model.items.find((item) => item.name === 'sheet-heading')?.label, items });
+    scroll = view.scroll('sheet-content');
+    scroll.scrollTo(previous);
+    scrollbar = view.get('sheet-scrollbar');
+    rows = content.map(({ name, y, h }) => {
+      const node = view.get(name);
+      return { node, top: y * SCALE, bottom: (y + h) * SCALE, alpha: node.alpha };
+    });
+    paintedOffset = paintedMaximum = undefined;
+    syncScroll();
+  }
+  function syncScroll() {
+    if (!scroll || !scrollbar) return;
+    const { offset, maximum } = scroll, height = geometry.height * SCALE;
+    if (offset === paintedOffset && maximum === paintedMaximum) return;
+    paintedOffset = offset;
+    paintedMaximum = maximum;
+    // Shared-frame capture visits clipped text before it can discard it. Skip offscreen ink,
+    // while leaving every row in Egret's layout, input and accessibility geometry.
+    for (const row of rows) {
+      const alpha = row.bottom > offset && row.top < offset + height ? row.alpha : 0;
+      if (row.node.alpha !== alpha) row.node.alpha = alpha;
     }
-    ui.show('inspector', { label: model.items.find((item) => item.name === 'sheet-heading')?.label, items });
+    const graphics = scrollbar.graphics.clear();
+    if (maximum > 0) {
+      const barHeight = Math.max(22 * SCALE, height * height / (height + maximum));
+      const y = (height - barHeight) * offset / maximum;
+      graphics.beginFill(0xb6bcaa).drawRoundRect(0, y, 4 * SCALE, barHeight, 4 * SCALE).endFill();
+    }
+    ui.refreshFocus();
+  }
+  function scrollBy(distance) {
+    const moved = scroll?.scrollBy(distance * SCALE) ?? false;
+    syncScroll();
+    return moved;
   }
   function reveal(name) {
     const item = model?.items.find((entry) => entry.name === name);
     if (!item) return false;
-    if (item.y < scroll.offset || item.y + item.h > scroll.offset + geometry.height) {
-      scroll.scrollTo(Math.max(0, item.y - 35));
+    const top = offset();
+    if (item.y < top || item.y + item.h > top + geometry.height) {
+      scroll.scrollTo(Math.max(0, item.y - 35) * SCALE);
+      syncScroll();
     }
     return ui.focus(name);
   }
   return {
     setContent,
     reveal,
-    get offset() { return scroll.offset; },
+    scrollBy,
+    syncScroll,
+    get offset() { return offset(); },
     reset() {
       model = null;
-      scroll.toStart();
+      scroll?.scrollTo(0);
+      syncScroll();
     },
     hide() {
       model = null;
+      scroll = scrollbar = undefined;
+      rows = [];
       ui.hide('inspector');
     },
-    scrollBy(distance) { return scroll.scrollBy(distance); },
     focusFirst() {
       const first = model?.items.find((item) => item.type === 'button' && item.y < geometry.height && !item.disabled);
       ui.focus(first?.name ?? 'sheetClose');
@@ -300,12 +335,14 @@ export function createInspector(game, ui, { close, compact, allowPointer }) {
       const available = model.items.filter((item) => item.type === 'button' && !item.disabled);
       const index = available.findIndex((item) => item.name === ui.focused);
       const next = index >= 0 ? available[index + (event.shiftKey ? -1 : 1)] : null;
-      if (!next || (next.y >= scroll.offset && next.y + next.h <= scroll.offset + geometry.height)) return false;
+      const top = offset();
+      if (!next || (next.y >= top && next.y + next.h <= top + geometry.height)) return false;
       reveal(next.name);
       return true;
     },
     dispose() {
-      scroll.dispose();
+      scroll = scrollbar = undefined;
+      rows = [];
       for (const entry of previews.values()) {
         entry.active = false;
         entry.lease?.release();

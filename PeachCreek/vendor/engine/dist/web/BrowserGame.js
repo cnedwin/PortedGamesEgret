@@ -4,6 +4,7 @@
 import { EgretError } from '@egret/runtime';
 import { createAssetRef, createAssetType, createEngineForProfile, createImageData2D, createTexture, isTexture, SHARED_FRAME_PROFILE_2D } from '@egret/engine';
 import { createBrowserTextureProvider } from './image.js';
+import { decodeBrowserImage, sniffBrowserImageFormat } from './BrowserImageTextures.js';
 import { createTextField, createTextRasterCache } from '@egret/engine/text';
 import { createBrowserFrameLoop } from './loop.js';
 import { createBrowserPointerInput } from './pointer.js';
@@ -13,6 +14,45 @@ import { planScreen } from './screen.js';
 const invalid = () => new EgretError('BROWSER_GAME_OPTIONS_INVALID');
 const whole = (value) => typeof value === 'number' && Number.isSafeInteger(value) && value > 0;
 const finite = (value) => typeof value === 'number' && Number.isFinite(value);
+const MAX_GAME_IMAGE_JOBS = 4;
+const MAX_GAME_IMAGE_BYTES = 8 * 1024 * 1024;
+function gameImageLimit() {
+    return new EgretError('WEB_PNG_INPUT_LIMIT', { cause: new RangeError('Game image encoded payload limit') });
+}
+async function boundedGameImageBytes(response) {
+    if (Number(response.headers.get('content-length')) > MAX_GAME_IMAGE_BYTES)
+        throw gameImageLimit();
+    if (response.body === null)
+        return new Uint8Array();
+    const reader = response.body.getReader();
+    const chunks = [];
+    let length = 0;
+    try {
+        for (;;) {
+            const chunk = await reader.read();
+            if (chunk.done)
+                break;
+            length += chunk.value.byteLength;
+            if (length > MAX_GAME_IMAGE_BYTES)
+                throw gameImageLimit();
+            chunks.push(chunk.value);
+        }
+    }
+    catch (cause) {
+        void reader.cancel().catch(() => { });
+        throw cause;
+    }
+    finally {
+        reader.releaseLock();
+    }
+    const bytes = new Uint8Array(length);
+    let offset = 0;
+    for (const chunk of chunks) {
+        bytes.set(chunk, offset);
+        offset += chunk.byteLength;
+    }
+    return bytes;
+}
 /** WebGPU where the browser has it and gives an adapter. Asking for an adapter does not touch the canvas, which can hold one kind of context only. */
 async function chooseBackend(asked) {
     if (asked !== 'auto')
@@ -169,27 +209,77 @@ export async function createBrowserGame(options) {
                         update?.(seconds);
                     }
                 }));
-        // Images by address: one asset type whose key is the address, read with the page's own request and decoded as PNG.
+        // Keep the strict PNG decoder and its ownership contract. Route other known encodings by
+        // bytes so file names, query strings and response content types cannot select a wrong decoder.
         const imageType = createAssetType('egret.browser-game.image', isTexture);
+        const pendingPngBytes = new WeakMap();
+        const pngTextures = new WeakSet();
+        let imageJobs = 0;
         const images = createBrowserTextureProvider({
-            async readBytes(ref, context) {
-                const stop = new AbortController(), abort = () => stop.abort();
-                if (context.signal.aborted)
-                    abort();
-                else
-                    context.signal.addEventListener('abort', abort, { once: true });
-                try {
-                    const response = await globalThis.fetch(ref.id, { signal: stop.signal });
-                    if (!response.ok)
-                        throw new EgretError('BROWSER_GAME_IMAGE_FAILED', { cause: new Error(response.status + ' ' + ref.id) });
-                    return new Uint8Array(await response.arrayBuffer());
-                }
-                finally {
-                    context.signal.removeEventListener('abort', abort);
-                }
+            async readBytes(_ref, context) {
+                const bytes = pendingPngBytes.get(context);
+                if (bytes === undefined)
+                    throw new Error('Missing PNG bytes for the current image load');
+                return bytes;
             }
         });
-        engine.assets.register(imageType, images);
+        engine.assets.register(imageType, {
+            async load(ref, context) {
+                // Hold the original admission budget through fetch and decode for every format.
+                // Even a cancelled native decode retains its slot until the browser settles it.
+                if (imageJobs >= MAX_GAME_IMAGE_JOBS)
+                    throw new EgretError('WEB_PNG_JOB_LIMIT', { cause: new RangeError('Game image occupied job limit') });
+                if (context.signal.aborted)
+                    throw context.signal.reason;
+                const stop = new AbortController(), abort = () => stop.abort();
+                imageJobs++;
+                context.signal.addEventListener('abort', abort, { once: true });
+                try {
+                    let bytes;
+                    try {
+                        const response = await globalThis.fetch(ref.id, { signal: stop.signal });
+                        if (!response.ok)
+                            throw new EgretError('WEB_PNG_READ_FAILED', {
+                                cause: new EgretError('BROWSER_GAME_IMAGE_FAILED', { cause: new Error(response.status + ' ' + ref.id) })
+                            });
+                        bytes = await boundedGameImageBytes(response);
+                    }
+                    catch (cause) {
+                        stop.abort();
+                        if (context.signal.aborted)
+                            throw context.signal.reason;
+                        if (cause instanceof EgretError)
+                            throw cause;
+                        throw new EgretError('WEB_PNG_READ_FAILED', { cause });
+                    }
+                    if (context.signal.aborted)
+                        throw context.signal.reason;
+                    const format = sniffBrowserImageFormat(bytes);
+                    if (format !== undefined && format !== 'png') {
+                        const texture = await decodeBrowserImage(bytes);
+                        if (!context.signal.aborted)
+                            return texture;
+                        texture.dispose();
+                        throw context.signal.reason;
+                    }
+                    pendingPngBytes.set(context, bytes);
+                    const texture = await images.load(ref, context);
+                    pngTextures.add(texture);
+                    return texture;
+                }
+                finally {
+                    imageJobs--;
+                    context.signal.removeEventListener('abort', abort);
+                    pendingPngBytes.delete(context);
+                }
+            },
+            dispose(texture) {
+                if (pngTextures.has(texture))
+                    images.dispose(texture);
+                else
+                    texture.dispose();
+            }
+        });
         // Textures painted in code: each call puts its texture under a key of its own, and its lease ends it.
         const paintedType = createAssetType('egret.browser-game.painted', isTexture), painted = new Map();
         let paintedCount = 0;
@@ -269,7 +359,10 @@ export async function createBrowserGame(options) {
         };
         if (fit !== 'none' && holder !== null) {
             const place = () => {
-                const box = holder.getBoundingClientRect();
+                const projected = holder.getBoundingClientRect();
+                // CSS dimensions are set in the holder's layout space. A transformed bounding box is
+                // measured in page space and would multiply the ancestor scale a second time.
+                const box = { width: holder.clientWidth || projected.width, height: holder.clientHeight || projected.height };
                 const style = canvas.style;
                 if (fit === 'cover' || fit === 'stretch') {
                     const wide = box.width / width, tall = box.height / height;
@@ -305,23 +398,15 @@ export async function createBrowserGame(options) {
         }
         // Text: one cache for the Engine, made with the page's rasterizer when the first label is asked for.
         let textCache;
-        // The text cache takes four drawings at a time and refuses more. Labels wait their turn here instead, two at a
-        // time, so a game may make or change any number of them together.
-        const LABEL_LANES = 2;
-        let labelsDrawing = 0;
+        let currentTextCache;
+        // Leave headroom for cache actors settling after delivery. Queue entries are cancellable and bounded.
+        const LABEL_LANES = 2, MAX_QUEUED_LABELS = 128;
+        let labelsDrawing = 0, labelRefusals = 0, releasedRasters = 0;
         const labelsWaiting = [];
-        const enterLabelLane = () => {
-            if (labelsDrawing < LABEL_LANES) {
-                labelsDrawing++;
-                return;
-            }
-            // The lane is handed over by the label that leaves it, so no newcomer takes it first.
-            return new Promise(resolve => labelsWaiting.push(resolve));
-        };
         const leaveLabelLane = () => {
             const next = labelsWaiting.shift();
             if (next)
-                next();
+                next(true);
             else
                 labelsDrawing--;
         };
@@ -331,8 +416,9 @@ export async function createBrowserGame(options) {
             const { scope: owner = scope, ...given } = options;
             if (owner === null || typeof owner !== 'object')
                 throw invalid();
-            textCache ??= import('./text.js').then(text => createTextRasterCache(engine.assets, { provider: text.createCanvasTextRasterProvider() }));
-            const field = createTextField(engine, owner, await textCache);
+            textCache ??= import('./text.js').then(text => (currentTextCache = createTextRasterCache(engine.assets, { provider: text.createCanvasTextRasterProvider() })));
+            const cache = await textCache;
+            const field = createTextField(engine, owner, cache);
             let now = {
                 text: '',
                 fontFamily: 'sans-serif',
@@ -344,7 +430,8 @@ export async function createBrowserGame(options) {
                 locale: 'en',
                 direction: 'ltr'
             };
-            let ready = Promise.resolve(), asked = 0, drawing = false, running;
+            let ready = Promise.resolve(), asked = 0, adopted = -1, active = true, disposed = false, generation = 0, preparing, cancelQueued, running;
+            const current = (epoch) => active && !disposed && !field.isDisposed && generation === epoch;
             const request = () => field.setRequest({
                 text: now.text,
                 fontFamily: now.fontFamily,
@@ -357,59 +444,128 @@ export async function createBrowserGame(options) {
                 density: pixelRatio,
                 fillColor: now.color
             });
-            // Draws the label's newest words. Words changed while it draws are asked for when that drawing is done, never
-            // over it, so a label holds one drawing of the text cache at a time however often its words change.
-            const draw = async () => {
+            const enterLabelLane = () => {
+                if (labelsDrawing < LABEL_LANES) {
+                    labelsDrawing++;
+                    return true;
+                }
+                if (labelsWaiting.length >= MAX_QUEUED_LABELS) {
+                    labelRefusals++;
+                    throw new EgretError('TEXT_CACHE_BUDGET');
+                }
+                return new Promise(resolve => {
+                    labelsWaiting.push(resolve);
+                    cancelQueued = () => {
+                        const at = labelsWaiting.indexOf(resolve);
+                        if (at < 0)
+                            return; // The lane has already been handed to this draw.
+                        labelsWaiting.splice(at, 1);
+                        resolve(false);
+                    };
+                });
+            };
+            // A label coalesces changes made while drawing and keeps only its latest request.
+            const draw = async (epoch) => {
+                let entered = false;
                 try {
-                    await enterLabelLane();
-                    try {
-                        for (let shown = -1; shown !== asked;) {
-                            if (shown !== -1)
-                                request();
-                            shown = asked;
-                            drawing = true;
+                    if (!current(epoch))
+                        return;
+                    entered = await enterLabelLane();
+                    if (!entered)
+                        return;
+                    if (generation === epoch)
+                        cancelQueued = undefined;
+                    for (let shown = -1; current(epoch) && shown !== asked;) {
+                        if (adopted !== asked) {
+                            request();
+                            adopted = asked;
+                        }
+                        shown = asked;
+                        preparing = epoch;
+                        try {
+                            await field.prepare();
+                        }
+                        catch (cause) {
+                            if (!current(epoch))
+                                return;
+                            if (!(cause instanceof EgretError) || cause.code !== 'TEXT_CACHE_BUDGET')
+                                throw cause;
+                            // Delivery can precede actor retirement. Retry once after actual settlement, without polling.
+                            await cache.whenIdle();
+                            if (!current(epoch))
+                                return;
                             try {
-                                // The cache frees a drawing's place a few turns after the drawing is handed over. A refusal for
-                                // want of a place is waited out, without a timer; one that lasts is the label's failure.
-                                for (let attempt = 0;; attempt++) {
-                                    try {
-                                        await field.prepare();
-                                        break;
-                                    }
-                                    catch (cause) {
-                                        if (!(cause instanceof EgretError) || cause.code !== 'TEXT_CACHE_BUDGET' || attempt >= 400)
-                                            throw cause;
-                                        await Promise.resolve();
-                                    }
-                                }
+                                await field.prepare();
                             }
-                            finally {
-                                drawing = false;
+                            catch (retry) {
+                                if (!current(epoch))
+                                    return;
+                                if (retry instanceof EgretError && retry.code === 'TEXT_CACHE_BUDGET')
+                                    labelRefusals++;
+                                throw retry;
                             }
                         }
-                    }
-                    finally {
-                        leaveLabelLane();
+                        finally {
+                            if (preparing === epoch)
+                                preparing = undefined;
+                        }
                     }
                 }
                 finally {
-                    running = undefined;
+                    if (generation === epoch)
+                        running = undefined;
+                    if (entered)
+                        leaveLabelLane();
                 }
+            };
+            const schedule = () => {
+                if (!active || running !== undefined)
+                    return;
+                const epoch = generation;
+                const job = Promise.resolve().then(() => draw(epoch));
+                running = ready = job;
+                // Observe rejection while keeping it available on ready.
+                void job.catch(() => { });
             };
             const apply = (next) => {
                 if (next === null || typeof next !== 'object')
                     throw invalid();
                 now = { ...now, ...next };
                 // Refused at once when nothing is being drawn; otherwise when its turn comes, through `ready`.
-                if (!drawing)
+                if (preparing !== generation) {
                     request();
+                    adopted = asked + 1;
+                }
                 asked++;
-                running ??= draw();
-                // A failure is the label's to tell through `ready`; it is not left unheard.
-                running.catch(() => { });
-                ready = running;
+                schedule();
             };
-            apply(given);
+            const supersede = () => {
+                generation++;
+                cancelQueued?.();
+                cancelQueued = undefined;
+                running = undefined;
+            };
+            const countRelease = () => {
+                if (field.getStatus().metrics?.raster !== undefined)
+                    releasedRasters++;
+            };
+            const close = () => {
+                if (disposed)
+                    return;
+                disposed = true;
+                supersede();
+                owner.signal.removeEventListener('abort', close);
+                countRelease();
+                field.dispose();
+            };
+            try {
+                apply(given);
+                owner.signal.addEventListener('abort', close, { once: true });
+            }
+            catch (cause) {
+                close();
+                throw cause;
+            }
             return Object.freeze({
                 display: field,
                 get text() {
@@ -423,9 +579,22 @@ export async function createBrowserGame(options) {
                     return ready;
                 },
                 set: apply,
-                dispose() {
-                    field.dispose();
-                }
+                setRasterActive(next) {
+                    if (typeof next !== 'boolean')
+                        throw invalid();
+                    if (active === next || disposed || field.isDisposed)
+                        return;
+                    active = next;
+                    supersede();
+                    if (active)
+                        schedule();
+                    else {
+                        countRelease();
+                        field.releaseRaster();
+                        ready = Promise.resolve();
+                    }
+                },
+                dispose: close
             });
         }
         const game = Object.freeze({
@@ -454,6 +623,15 @@ export async function createBrowserGame(options) {
             hover,
             stats: panel,
             createLabel,
+            getLabelStatus() {
+                return Object.freeze({
+                    drawing: labelsDrawing,
+                    queued: labelsWaiting.length,
+                    refusals: labelRefusals,
+                    releasedRasters,
+                    cache: currentTextCache?.getStatus()
+                });
+            },
             async loadTexture(url) {
                 if (typeof url !== 'string' || url === '')
                     throw invalid();
