@@ -66,7 +66,7 @@ Nezha Stirs the Sea is a survival action game built with [Egret Rebuild](https:/
 | `game.keys.axis()` | 键盘及手柄输入由引擎提供，触屏摇杆有独立的触点归属 · engine keyboard and gamepad input, with independent touch ownership | `src/main.mjs` |
 | `game.show`、`createUiScreenStack` | 标题、设置、暂停、结算、升级与集市由白鹭绘制和管理；顶栏绑定血量、经验与滚动数字 · Egret views and navigation for all screens, with bound health, experience and rolling counters | `src/main.mjs`, `src/ui-screens.mjs`, `src/ui-hud.mjs`, `src/ui-market.mjs` |
 | `game.hints`、`game.dragAndDrop` | 随输入设备切换的操作提示；允许拖放合成两件匹配法宝 · device-aware hints and drag-and-drop merging | `src/ui-hud.mjs`, `src/ui-market.mjs` |
-| `createUiSemantics`、`createBrowserSemantics`、`createUiTester` | 浏览器无障碍树和按控件名称验收；键盘焦点在画布内可见 · browser accessibility tree, named-control acceptance and visible canvas focus | `src/ui-input.mjs`, `test/accept.mjs` |
+| `createUiSemantics`、`createBrowserSemantics`、`createUiTester` | 浏览器无障碍树和按名称验收；白鹭处理键盘及手柄焦点 · browser accessibility tree, named-control testing and native keyboard and gamepad focus | `src/ui-input.mjs`, `test/accept.mjs` |
 | Pointer Events | 战场接管单个触点，越界继续追踪，取消和暂停时归零 · a single owned contact continues outside the field and resets on cancel and pause | `src/sea-stick.mjs` |
 | Egret Bitmap + Graphics | 三种哪吒、六类水族兵、两位首领和法宝共用一张运行时画集，动态特效按类型复用 · pooled actors on one shared runtime atlas, with separate weapon effects | `src/view.mjs`, `src/actor-art.mjs` |
 | `game.burst`、`game.shake`、`game.flash`、`game.text` | 击退、砸落、升级的碎片；受伤一抖；合成神器一闪；伤害数字（减弱动画时不抖不闪） · bursts, a shake when hurt, a flash for a divine merge, damage numbers | `src/view.mjs`, `src/ui-market.mjs` |
@@ -121,7 +121,7 @@ Nezha Stirs the Sea is a survival action game built with [Egret Rebuild](https:/
 
 ## 引擎副本 · Engine copy
 
-引擎副本取自 [Egret_rebuild](https://github.com/cnedwin/Egret_rebuild) 的 main 提交 `51b6175de36aa1e85878d3c6ca9b8e841e405504`，生成记录见 [vendor/SOURCE.md](vendor/SOURCE.md)。
+引擎副本取自 [Egret_rebuild](https://github.com/cnedwin/Egret_rebuild) 的 main 提交 `95897d78095ae8fda9e34dbc13bbbd15db8eaa12`，生成记录见 [vendor/SOURCE.md](vendor/SOURCE.md)。
 
 The runtime is from Egret Rebuild main at the commit above. Run the following command in the engine checkout to reproduce it.
 

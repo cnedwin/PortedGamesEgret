@@ -43,13 +43,13 @@ SwiftShader. Sections 4 and 5 use Chrome with hardware acceleration.
 
 ## 原生界面验收 · Native UI findings
 
-以下在 `51b6175d` 下复核。按对玩家的影响排列于 [界面迁移验收](UI-MIGRATION.md)。 · These findings apply to `51b6175d`. See the [migration readout](UI-MIGRATION.md) for priority and evidence.
+以下问题首次在 `51b6175d` 下复现，并在 `95897d78` 复测。按对玩家的影响排列于 [界面迁移验收](UI-MIGRATION.md)。 · These findings were first reproduced at `51b6175d` and rechecked at `95897d78`. See the [migration readout](UI-MIGRATION.md) for priority and evidence.
 
-### 6. 声明式控件缺少键盘焦点与激活 · Declarative controls lack keyboard focus and activation — 未解决 / open
+### 6. 声明式控件的键盘与手柄导航 · Keyboard and gamepad navigation for declarative controls — 已解决 / fixed
 
-- 现象：`game.show` 发布按钮名和语义激活，Web 语义层将投影控件设为 `tabindex=-1`。画布内没有 Tab 顺序、焦点环或 Space 激活。 · The view publishes names and activation. Its browser projection uses `tabindex=-1`, leaving canvas focus order, highlights and Space activation to the application.
-- 绕过办法：[`src/ui-input.mjs`](src/ui-input.mjs) 在已发布的语义树中找焦点，调用语义激活，在白鹭画布内绘制焦点框。 · The game traverses visible semantic nodes, dispatches their activation and draws the focus ring in Egret.
-- 建议：`game.show` 集成焦点导航、键盘按键、手柄方向键和模态关闭后的焦点还原。`play` 在暂停时也需要给模态交付手柄输入，继续时应保持按键边沿一致。 · Provide focus navigation, keys, directional pad and focus restoration. Deliver controller input to modals while Play is paused without replaying edges on resume.
+- 现象：`51b6175d` 的声明式视图需要应用维护 Tab 导航、焦点框和暂停手柄轮询。 · At `51b6175d`, the application managed Tab navigation, the focus indicator and polling in the paused game.
+- 绕过办法：在 `95897d78` 删掉这些绕过。白鹭接管焦点、原生焦点框和模态的 Escape、B、Start。应用在重建视图时使用语义树的 focus 操作指定初始控件。 · The updated engine owns navigation, the visible mark and Escape, B and Start on modals. The game uses semantic focus to set the initial target when rebuilding a view.
+- 建议：保留这套输入仲裁与按住 Start 恢复的回归覆盖。 · Keep coverage for the input arbitration and resume while Start remains held.
 
 ### 7. 浮动摇杆要从整块战场任意点起手 · Floating stick needs the full battlefield as its start area — 未解决 / open
 
@@ -57,11 +57,11 @@ SwiftShader. Sections 4 and 5 use Chrome with hardware acceleration.
 - 绕过办法：[`src/sea-stick.mjs`](src/sea-stick.mjs) 将 Pointer Events 绑定到白鹭画布，持续捕获首触点，画面上的摇杆由引擎绘制。 · Canvas pointer capture owns the first contact while Egret draws the stick.
 - 建议：支持指定浮动区域、触点过滤、按下即捕获和显式取消。 · Allow a floating zone, contact filtering, capture on press and explicit cancellation.
 
-### 8. 集市文字达到缓存上限后空白 · Dense market labels go blank at the text cache limit — 未解决 / open
+### 8. 密集集市中的文字缓存 · Dense market text cache — 已解决 / fixed
 
-- 现象：390×844 的集市里，「下一波」等原生文字在等待 1.5 秒后仍为空白，语义节点和点击有效。当前文本缓存硬限制为 32 个占用槽。 · At 390×844, rendered labels such as Next wave stayed blank after 1.5 s while semantics and activation still worked. The text cache hard-caps occupied slots at 32.
-- 绕过办法：[`src/ui-market.mjs`](src/ui-market.mjs) 中的密集集市文案绘制为白鹭 Bitmap，控件的布局、禁用状态、名称与动作仍在 `game.show` 和语义树内。 · Dense market typography uses an Egret Bitmap with native layout, disabled state, semantic names and actions.
-- 建议：隐藏文字退还占用，缓存已满时提供可识别的错误或排队策略，并开放应用可设置的预算。 · Release hidden labels, expose a detectable error or queue rather than losing text, and offer a configurable budget.
+- 现象：`51b6175d` 中超过 32 个占用槽时，集市会留下可点击但缺字的按钮。 · At `51b6175d`, exceeding 32 occupied slots left market controls active with blank labels.
+- 绕过办法：`95897d78` 的原生文字接管集市，已删除离屏位图替代。刷新货架时先释放旧视图，合并属于同一控件的多行说明。不同法宝的动态无障碍长名称仍通过语义映射维护。 · The offscreen bitmap fallback is removed. The market uses native text, combines lines within a control and releases the prior view before replacing stock. A semantic mapping keeps the distinct dynamic names that describe each relic.
+- 建议：继续覆盖反复更新文字的高密度场景。768×1024 的测试录到 3 次缓存拒绝，最终显示恢复；保留预算观察与回收验收。 · Keep coverage for densely changing copy and budget recovery. The 768×1024 fixture reported three refusals, with all text ready at the final check.
 
 ### 9. 确认框按舞台单位固定大小 · Confirmation sizes are fixed in design units — 未解决 / open
 
@@ -71,15 +71,15 @@ SwiftShader. Sections 4 and 5 use Chrome with hardware acceleration.
 
 ### 10. 声明式视图的集市组件 · Market building blocks in declarative views — 未解决 / open
 
-- 现象：`game.show` 没有滚动区、响应式重复列表、图片或分页部件。底层 managed UI 有列表和滚动能力，尚未直接接入这套声明式布局。 · Views lack a scroll region, responsive repeat, image or tab parts. Managed UI offers list and scrolling primitives outside this layout API.
+- 现象：`95897d78` 已支持声明式滚动区、段落和静态图片。市场仍需要应用组织货架、动态法宝格和语义页签。 · At `95897d78`, declarative scroll, paragraphs and static images are available. The market still arranges its stock, dynamic loadout and semantic tabs itself.
 - 绕过办法：[`src/ui-market.mjs`](src/ui-market.mjs) 按安全区生成货架和法宝格位，短屏分页查看属性、宝物和配方，合成、出售与下一波固定可用。画布图标和逐行排版保留原本信息。 · Generate bounded offer and gear positions from the safe area and paginate stats, items and recipes on short screens. Keep the next-wave action available. Canvas icons and measured lines retain the original information.
-- 建议：提供可滚动区域、可变行数的数据源、图像装饰与具有语义的页签。 · Offer scrollable areas, data-driven rows, image decoration and semantic tabs.
+- 建议：提供可变行数的数据源、可绑定的图片与具有语义的页签。 · Add data-driven rows, bound images and semantic tabs.
 
-### 11. WebP 图片无法直接加载 · The browser texture provider accepts only PNG — 未解决 / open
+### 11. 默认纹理加载器支持 WebP · WebP in the default texture loader — 已解决 / fixed
 
-- 现象：`loadTexture` 读取原 WebP 立绘报 `WEB_PNG_STRUCTURE_INVALID`。`game.show` 也没有图片部件。 · Loading the original WebP portraits through `loadTexture` returned `WEB_PNG_STRUCTURE_INVALID`. The view also lacks an image part.
-- 绕过办法：[`src/ui-screens.mjs`](src/ui-screens.mjs) 通过浏览器解码并上传同一份原画为白鹭 Bitmap。 · Decode existing WebP artwork through the browser and upload a native Egret bitmap.
-- 建议：支持 WebP 或可注入解码器，并增加视图图片部件。 · Support WebP or an injectable decoder, plus an image view part.
+- 现象：`51b6175d` 的 `loadTexture` 对原 WebP 立绘报 `WEB_PNG_STRUCTURE_INVALID`。 · At `51b6175d`, loading the WebP portraits through the default loader returned `WEB_PNG_STRUCTURE_INVALID`.
+- 绕过办法：`95897d78` 直接用 `game.browser.loadTexture` 读取 WebP。已删除浏览器画布解码和二次像素上传。 · The game now loads the original WebP files with the Egret loader. The extra decoding canvas and its upload are removed.
+- 建议：给声明式图片增加铺满裁切和焦点坐标。现有立绘继续在 Bitmap 上指定裁切区域。 · Add cover crop and a focal point to declarative image parts. The portrait layout retains a Bitmap crop.
 
 ### 12. 提示换行、首领入场与启动失败 · Hint wrapping, Boss entry and boot recovery — 未解决 / open
 
@@ -90,5 +90,5 @@ SwiftShader. Sections 4 and 5 use Chrome with hardware acceleration.
 ### 13. 静止视图重复提交，首屏依赖在后段串行加载 · Repeated static frames and late startup dependencies — 未解决 / open
 
 - 现象：每帧提交不变化的标题时，同机软件渲染 F1 为 33.4 ms。限速样本里主模块约 2.7 s 完成载入和执行入口，随后启动图形后端、文字与角色图集，首屏仍约 3.6 s。 · Continuous redraws of the settled title measured 33.4 ms p95 on the software renderer. One throttled startup reached the app entry at about 2.7 s, then initialized graphics, text and the actor atlas. The quality startup remains around 3.6 s.
-- 绕过办法：[`src/main.mjs`](src/main.mjs) 静止标题按需唤醒画面。战场仍逐帧更新，CSS 将渲染区域收回固定战场，[HUD](src/ui-hud.mjs) 只在数值变化时重排文字。最终密集波次 p95 为 25.0 ms，旧版 25.1 ms。 · Pause the title loop while static and wake it on input, layout and art. Keep frame-by-frame battle logic within the original field and only reformat HUD text on a value change. Final dense p95 was 25.0 ms, versus 25.1 ms for the reference.
-- 建议：在 Play 中将输入轮询、逻辑更新与绘制提交解耦，提供静止视图的失效重绘以及支持并行预取的精简网页入口。 · Separate input, updates and submissions in Play. Add redraw-on-invalidation and a lean web entry that can be effectively prefetched.
+- 绕过办法：`95897d78` 由 [Play 的 `renderMode: 'on-demand'`](src/main.mjs) 跳过静止标题重复提交。保留输入轮询，无需 Demo 启停循环或自行监听手柄唤醒。限速首屏另测。 · Native on-demand Play skips redundant title submissions while retaining input polling. The demo's loop suspension and controller wake code are removed. Cold startup is measured separately.
+- 建议：保留按需绘制的输入回归。冷启动仍可继续优化模块依赖调度。 · Retain on-demand input regressions and continue profiling startup dependency scheduling.

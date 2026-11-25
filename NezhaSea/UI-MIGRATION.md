@@ -4,6 +4,14 @@
 
 The reference interface is PortedGamesEgret `e85f81ca` with engine `b5628eb`. The engine-only comparison used the old interface with Egret Rebuild main at `51b6175d`. The simulation tree, save format and existing locale catalogue entries are preserved.
 
+## 2026-11-26 引擎复测 · Engine refresh
+
+`95897d78` 接管集市文字、键盘和手柄焦点、暂停时的手柄操作、静止界面的按需绘制及 WebP 读取。已撤掉集市离屏字图、手写焦点框和 Tab 处理、自行轮询手柄，以及立绘的二次画布上传。保留动态无障碍名称映射、浮动战场摇杆、窄屏触控确认，以及立绘的焦点裁切。
+
+At `95897d78`, the engine owns market text, keyboard and gamepad focus, paused pad navigation, on-demand drawing and WebP loading. The offscreen text bitmap, custom focus indicator and Tab handler, custom pad polling and portrait canvas upload are removed. Dynamic accessible names, the floating field stick, the compact confirmation and the portrait crop remain.
+
+以下元素对照、截图和物理行数记录初次迁移。当前版本的验证见 [QUALITY.md](QUALITY.md)。 · The mapping, screenshot matrices and line counts below document the first migration. See the quality report for the current build.
+
 ## 旧元素与新实现 · Element mapping
 
 | 旧界面 · Old element | 新实现 · Replacement |

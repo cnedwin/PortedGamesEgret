@@ -6,18 +6,88 @@
 import { EgretError } from '@egret/runtime';
 import { checkView, planView } from './view.js';
 import { keyCap } from './viewParts.js';
+import { createPlayViewScrolls } from './playViewScroll.js';
 const KEYS_OF = {
     panel: ['visible', 'color', 'tap', 'badge'],
     text: ['text', 'pick', 'format', 'roll', 'visible', 'color', 'badge'],
     button: ['text', 'pick', 'format', 'roll', 'disabled', 'visible', 'color', 'tap', 'badge'],
     bar: ['value', 'visible', 'color'],
     toggle: ['text', 'checked', 'disabled', 'visible', 'tap', 'badge'],
-    space: ['visible']
+    space: ['visible'],
+    image: ['visible']
 };
 /** Views of one play game: made by `game.view`, read every frame, placed again when the screen changes. */
 export function createPlayViews(game, hooks) {
     const live = new Set();
+    const scrollInput = createPlayViewScrolls(game);
+    const makeScroll = scrollInput.create;
+    let paragraphModule;
     let counter = 0;
+    let focused, modalOwner;
+    const beforeModal = new WeakMap();
+    const topModal = () => {
+        let modal;
+        for (const view of live)
+            if (view.modal())
+                modal = view;
+        return modal;
+    };
+    const inView = (owner, modal = topModal()) => modal === undefined || modal === owner;
+    const targets = (only) => {
+        const modal = topModal();
+        return [...live]
+            .filter(owner => inView(owner, modal) && (only === undefined || owner === only))
+            .flatMap(owner => owner.targets().map(name => ({ owner, name })));
+    };
+    const eligible = (target) => target !== undefined && live.has(target.owner) && inView(target.owner) && target.owner.eligible(target.name);
+    const focus = (next) => {
+        if (next?.owner === focused?.owner && next?.name === focused?.name)
+            return;
+        focused?.owner.focusMark(focused.name, false);
+        focused = next;
+        focused?.owner.focusMark(focused.name, true);
+    };
+    const syncModalFocus = () => {
+        const modal = topModal();
+        if (modal === modalOwner)
+            return;
+        const previous = modalOwner;
+        modalOwner = modal;
+        if (modal !== undefined && !beforeModal.has(modal)) {
+            beforeModal.set(modal, focused);
+            focus(targets().find(eligible));
+            return;
+        }
+        let restore = previous === undefined ? undefined : beforeModal.get(previous);
+        if (previous !== undefined)
+            beforeModal.delete(previous);
+        // A covered dialog can be dismissed before the one covering it.
+        while (restore !== undefined && !live.has(restore.owner)) {
+            const saved = beforeModal.get(restore.owner);
+            beforeModal.delete(restore.owner);
+            restore = saved;
+        }
+        focus(eligible(restore) ? restore : targets().find(eligible));
+    };
+    const moveFocus = (step, wrap, only) => {
+        const choices = targets(only);
+        const current = choices.findIndex(next => next.owner === focused?.owner && next.name === focused.name);
+        const start = current < 0 ? (step > 0 ? 0 : choices.length - 1) : current + step;
+        for (let offset = 0; offset < choices.length; offset++) {
+            let index = start + offset * step;
+            if (index < 0 || index >= choices.length) {
+                if (!wrap)
+                    break;
+                index = (index + choices.length) % choices.length;
+            }
+            const next = choices[index];
+            if (next.owner.reveal(next.name)) {
+                focus(next);
+                return true;
+            }
+        }
+        return false;
+    };
     function view(description, options = {}) {
         const names = checkView(description);
         if (options === null || typeof options !== 'object')
@@ -49,15 +119,37 @@ export function createPlayViews(game, hooks) {
         }
         if (options.built !== undefined && typeof options.built !== 'function')
             throw new EgretError('UI_VIEW_BINDING_INVALID', { cause: 'built' });
+        const richStyle = (part) => (part.type === 'text' || part.type === 'button' ? part.paragraph : undefined);
+        const usesParagraph = (part) => richStyle(part) !== undefined || (part.type === 'panel' && (part.children?.some(usesParagraph) ?? false));
+        const paragraphCache = options.paragraphCache;
+        if (paragraphCache === undefined &&
+            (usesParagraph(description.root) || (description.portrait !== undefined && usesParagraph(description.portrait))))
+            throw new EgretError('UI_VIEW_BINDING_INVALID', { cause: 'paragraph parts need a paragraphCache' });
+        if (options.gamepad !== undefined && typeof options.gamepad !== 'boolean')
+            throw new EgretError('UI_VIEW_BINDING_INVALID', { cause: 'gamepad takes a boolean' });
+        for (const key of ['dismiss', 'resume'])
+            if (options[key] !== undefined && (description.modal !== true || typeof options[key] !== 'function'))
+                throw new EgretError('UI_VIEW_BINDING_INVALID', { cause: key + ' takes a callback on a modal view' });
+        const invoke = (callback) => {
+            try {
+                callback?.(api);
+            }
+            catch (cause) {
+                hooks.failed(cause);
+            }
+        };
         const id = 'view' + ++counter;
         const state = () => (typeof options.state === 'function' ? options.state() : options.state);
         const root = game.sprite(undefined, game.ui);
         let dim;
         let plan;
+        let paragraphScope;
         let made = [];
         let shown = true, active = true, ended = false;
         const rolls = new Map();
         const removals = [];
+        const scrollHandles = new Map();
+        let scrollItems = [];
         const frame = () => ({ screen: game.screen, safe: game.safe, orientation: game.orientation });
         const colourOf = (part, item) => {
             const skin = plan.skin;
@@ -72,6 +164,68 @@ export function createPlayViews(game, hooks) {
             if (part.type === 'text')
                 return part.color ?? skin.text;
             return skin.text;
+        };
+        const borderWidth = ({ part, rect }) => Math.min(part.border?.width ?? 0, rect.width / 2, rect.height / 2);
+        const placeImage = (item) => {
+            if (item.image === undefined)
+                return;
+            const { width, height } = item.rect;
+            const border = borderWidth(item);
+            const source = item.image.getBounds();
+            // The cover fits inside the same edge used by the border paint.
+            const scale = source.width > 0 && source.height > 0
+                ? Math.min((width - border * 2) / source.width, (height - border * 2) / source.height)
+                : 0;
+            item.image.visible = scale > 0;
+            item.image.x = width / 2;
+            item.image.y = height / 2;
+            item.image.scaleX = item.image.scaleY = scale;
+        };
+        const paintParagraph = (item) => {
+            const { paragraph, part, rect } = item;
+            if (part.type !== 'text' && part.type !== 'button')
+                return;
+            const style = part.paragraph;
+            if (paragraph === undefined || style === undefined)
+                return;
+            const button = part.type === 'button';
+            const at = button ? Math.min(8, rect.width / 2) : 0;
+            const y = button ? Math.min(rect.height, Math.ceil((part.size ?? Math.round(plan.skin.size * 0.9)) + 12)) : 0;
+            const width = rect.width - at * 2;
+            const height = rect.height - y;
+            paragraph.box.x = at;
+            paragraph.box.y = y;
+            paragraph.box.visible = width >= 1 && height > 0;
+            if (!paragraph.box.visible) {
+                paragraph.key = undefined;
+                return;
+            }
+            paragraph.box.clipRect = { x: 0, y: 0, width, height };
+            const text = button ? part.description : item.text;
+            const size = button ? Math.ceil((part.size ?? plan.skin.size) * 0.72) : (part.size ?? plan.skin.size);
+            const color = button ? (part.textColor ?? plan.skin.buttonText) : colourOf(part, item);
+            const key = JSON.stringify([text, size, color, width]);
+            if (key === paragraph.key)
+                return;
+            paragraph.key = key;
+            paragraph.text.setRequest({
+                ...style,
+                text,
+                width,
+                fontSize: size,
+                direction: style.direction ?? 'ltr',
+                locale: style.locale ?? 'en',
+                textAlign: !button && part.type === 'text' ? (part.align ?? 'left') : 'center',
+                fillColor: color,
+                density: 1
+            });
+            void paragraph.text.prepare().catch(cause => {
+                if (!(cause instanceof EgretError && cause.code === 'PARAGRAPH_STALE') &&
+                    !ended &&
+                    !paragraph.text.isDisposed &&
+                    paragraph.key === key)
+                    hooks.failed(cause);
+            });
         };
         // Draws one part at its size; called when it is made, placed again or changed.
         const paint = (item) => {
@@ -105,6 +259,18 @@ export function createPlayViews(game, hooks) {
                     .drawCircle(item.checked ? x + w - h / 2 : x + h / 2, y + h / 2, h / 2 - 3)
                     .endFill();
             }
+            if (part.border !== undefined) {
+                const { width, height } = rect;
+                const edge = borderWidth(item);
+                if (edge > 0) {
+                    g.beginFill(part.border.color)
+                        .drawRect(0, 0, width, edge)
+                        .drawRect(0, height - edge, width, edge)
+                        .drawRect(0, edge, edge, height - edge * 2)
+                        .drawRect(width - edge, edge, edge, height - edge * 2)
+                        .endFill();
+                }
+            }
             const words = item.words;
             if (words !== undefined) {
                 words.text = item.text;
@@ -118,10 +284,15 @@ export function createPlayViews(game, hooks) {
                 }
                 else
                     words.x = 0;
-                words.y = rect.height / 2;
+                words.y =
+                    part.type === 'button' && part.description !== undefined
+                        ? Math.min(rect.height / 2, (part.size ?? Math.round(skin.size * 0.9)) / 2 + 6)
+                        : rect.height / 2;
                 if (part.type === 'toggle')
                     words.alpha = item.disabled ? 0.5 : 1;
             }
+            paintParagraph(item);
+            placeImage(item);
             node.visible = item.visible;
             if (item.dot !== undefined) {
                 const { node: dot, words: count } = item.dot;
@@ -146,9 +317,42 @@ export function createPlayViews(game, hooks) {
             const name = nameOf(item);
             return name === undefined ? undefined : bind[name];
         };
+        const hasAction = (item) => item.part.type === 'button' ||
+            item.part.type === 'toggle' ||
+            (item.part.type === 'panel' && bindingOf(item)?.tap !== undefined);
+        const isShown = () => !ended && shown && visibleOnStage(root, game.browser.stage);
+        const allowsInput = () => active && isShown() && inView(record);
+        const hasInput = (item) => active &&
+            item.visible &&
+            !item.disabled &&
+            hasAction(item) &&
+            visibleOnStage(item.node, game.browser.stage, true);
+        const followsInput = (item) => allowsInput() && hasInput(item);
+        const stageRect = (item) => visibleRect(item.node, item.node.hitArea ?? { x: 0, y: 0, width: item.rect.width, height: item.rect.height }, game.screen);
+        const actionable = (item) => followsInput(item) && stageRect(item) !== undefined;
+        const revealForTab = (item) => {
+            if (!followsInput(item))
+                return false;
+            const offsets = [];
+            const box = item.node.hitArea ?? { x: 0, y: 0, width: item.rect.width, height: item.rect.height };
+            for (let above = item.scrollParent; above !== undefined; above = above.scrollParent) {
+                const viewport = above.scroll;
+                offsets.push({ viewport, offset: viewport.offset });
+                viewport.reveal(item.node, box);
+            }
+            if (actionable(item))
+                return true;
+            // A candidate hidden by an unrelated clip cannot move the list during keyboard traversal.
+            for (const { viewport, offset } of offsets)
+                viewport.scrollTo(offset);
+            return false;
+        };
         const press = (item) => {
-            if (ended || !shown || !active || !item.visible || item.disabled || !visibleUp(item))
+            if (!actionable(item))
                 return;
+            const name = nameOf(item);
+            if (name !== undefined)
+                focus({ owner: record, name });
             const binding = bindingOf(item);
             try {
                 binding?.tap?.(state());
@@ -164,16 +368,45 @@ export function createPlayViews(game, hooks) {
                     return false;
             return true;
         };
-        // Makes the sprites of a plan: one for each part, inside the sprite of its panel.
-        const build = () => {
+        const syncScrollLayout = () => {
+            if (scrollItems.length === 0)
+                return;
+            const sizes = new Map();
+            const visible = [];
+            for (const [index, item] of made.entries()) {
+                const { parent, rect } = plan.parts[index];
+                if (item.scroll !== undefined && item.part.type === 'panel')
+                    sizes.set(item, { y: rect.y, padding: item.part.padding ?? 0, contentLength: 0 });
+                visible[index] = item.visible && (parent < 0 || visible[parent] === true);
+                if (!visible[index] || item.scrollParent === undefined)
+                    continue;
+                const viewport = sizes.get(item.scrollParent);
+                // A nested viewport contributes its own bounds. Its children belong only to that viewport.
+                const end = rect.y - viewport.y + rect.height + viewport.padding;
+                viewport.contentLength = Math.max(viewport.contentLength, end);
+            }
+            for (const item of scrollItems)
+                item.scroll.layout(item.rect.width, item.rect.height, sizes.get(item).contentLength);
+        };
+        const disposeScrolls = () => {
+            for (const item of scrollItems)
+                item.scroll.dispose();
+            scrollItems = [];
+        };
+        // Each part is inside its panel; a scroll panel holds the parts in its moving content.
+        const build = (offsets = new Map()) => {
             plan = planView(description, frame());
             made = [];
             for (const planned of plan.parts) {
                 const { part } = planned;
-                const parent = planned.parent < 0 ? root : made[planned.parent].node;
+                const container = planned.parent < 0 ? undefined : made[planned.parent];
+                const parent = container?.scroll?.content ?? container?.node ?? root;
                 const node = game.sprite(undefined, parent);
+                const scroll = part.type === 'panel' && part.scroll === 'vertical'
+                    ? makeScroll(node, offsets.get(part.name ?? '') ?? 0, () => allowsInput() && visibleOnStage(node, game.browser.stage, true))
+                    : undefined;
                 const start = part.type === 'text' || part.type === 'button' || part.type === 'toggle' ? String(part.text ?? '') : '';
-                const words = part.type === 'text' || part.type === 'button' || part.type === 'toggle'
+                const words = (part.type === 'text' && part.paragraph === undefined) || part.type === 'button' || part.type === 'toggle'
                     ? game.text(start, {
                         layer: node,
                         size: part.size ?? (part.type === 'text' ? plan.skin.size : Math.round(plan.skin.size * 0.9)),
@@ -187,7 +420,11 @@ export function createPlayViews(game, hooks) {
                 const item = {
                     part,
                     node,
+                    scroll,
+                    scrollParent: container?.scroll === undefined ? container?.scrollParent : container,
                     words,
+                    paragraph: undefined,
+                    image: undefined,
                     rect: relative(planned.rect, planned.parent < 0 ? undefined : plan.parts[planned.parent].rect),
                     visible: part.visible ?? true,
                     disabled: false,
@@ -196,8 +433,41 @@ export function createPlayViews(game, hooks) {
                     color: undefined,
                     text: previous !== undefined ? String(previous.shown) : start,
                     badge: false,
-                    dot: undefined
+                    dot: undefined,
+                    focusMark: undefined
                 };
+                if (richStyle(part) !== undefined) {
+                    paragraphScope ??= game.engine.createScope();
+                    const box = game.sprite(undefined, node);
+                    const owner = paragraphScope;
+                    paragraphModule ??= import('./playViewParagraph.js');
+                    void paragraphModule
+                        .then(({ createParagraph }) => {
+                        if (ended || !made.includes(item) || owner.state !== 'open')
+                            return;
+                        const text = createParagraph(game.engine, owner, paragraphCache);
+                        box.addChild(text);
+                        item.paragraph = { box, text, key: undefined };
+                        paintParagraph(item);
+                    })
+                        .catch(cause => {
+                        if (!ended && made.includes(item))
+                            hooks.failed(cause);
+                    });
+                }
+                if (part.type === 'image') {
+                    void game.image(part.src, { layer: node }).then(image => {
+                        if (ended || !made.includes(item)) {
+                            game.remove(image);
+                            return;
+                        }
+                        item.image = image;
+                        placeImage(item);
+                    }, cause => {
+                        if (!ended && made.includes(item))
+                            hooks.failed(cause);
+                    });
+                }
                 if (part.name !== undefined && bind[part.name]?.badge !== undefined) {
                     const dot = game.sprite(undefined, node);
                     item.dot = {
@@ -215,6 +485,8 @@ export function createPlayViews(game, hooks) {
                 node.x = item.rect.x;
                 node.y = item.rect.y;
                 made.push(item);
+                if (scroll !== undefined)
+                    scrollItems.push(item);
                 const binding = part.name === undefined ? undefined : bind[part.name];
                 if (part.type === 'button' || part.type === 'toggle' || (part.type === 'panel' && binding?.tap !== undefined))
                     game.onTap(node, () => press(item));
@@ -229,6 +501,7 @@ export function createPlayViews(game, hooks) {
             read(0);
             for (const item of made)
                 paint(item);
+            syncScrollLayout();
             if (options.built !== undefined) {
                 try {
                     options.built(api);
@@ -254,6 +527,7 @@ export function createPlayViews(game, hooks) {
             if (ended)
                 return false;
             let any = false;
+            let scrollLayoutChanged = false;
             const now = state();
             for (const item of made) {
                 const binding = bindingOf(item);
@@ -264,8 +538,12 @@ export function createPlayViews(game, hooks) {
                     const value = binding.badge(now);
                     item.badge = value === true ? true : typeof value === 'number' && value >= 1 ? Math.floor(value) : false;
                 }
-                if (binding.visible !== undefined)
-                    item.visible = binding.visible(now) === true;
+                if (binding.visible !== undefined) {
+                    const visible = binding.visible(now) === true;
+                    if (item.visible !== visible)
+                        scrollLayoutChanged = true;
+                    item.visible = visible;
+                }
                 if (binding.disabled !== undefined)
                     item.disabled = binding.disabled(now) === true;
                 if (binding.checked !== undefined)
@@ -312,6 +590,8 @@ export function createPlayViews(game, hooks) {
                     any = true;
                 }
             }
+            if (scrollLayoutChanged)
+                syncScrollLayout();
             return any;
         };
         const refresh = () => {
@@ -332,15 +612,6 @@ export function createPlayViews(game, hooks) {
         };
         // Semantics: the view as a group, or a dialog when modal, and each named part as what it is.
         const semantics = hooks.semantics();
-        const stageRect = (item) => {
-            let x = 0, y = 0;
-            for (let at = made.indexOf(item); at >= 0; at = plan.parts[at].parent) {
-                x += made[at].rect.x;
-                y += made[at].rect.y;
-            }
-            const screen = game.screen;
-            return { x: x - screen.x, y: y - screen.y, width: item.rect.width, height: item.rect.height };
-        };
         const registerSemantics = () => {
             if (semantics === undefined)
                 return;
@@ -349,9 +620,9 @@ export function createPlayViews(game, hooks) {
                 role: description.modal === true ? 'dialog' : 'group',
                 describe: () => ({
                     ...(description.label !== undefined ? { name: description.label } : {}),
-                    bounds: stageRect(made[0]),
-                    hidden: !shown || ended,
-                    ...(description.modal === true ? { modal: true } : {})
+                    bounds: stageRect(made[0]) ?? EMPTY,
+                    hidden: !isShown(),
+                    ...(description.modal === true ? { modal: active } : {})
                 })
             });
             removals.push(() => top.remove());
@@ -378,7 +649,9 @@ export function createPlayViews(game, hooks) {
                             ? 'button'
                             : type === 'bar'
                                 ? 'progressbar'
-                                : 'switch';
+                                : type === 'image'
+                                    ? 'image'
+                                    : 'switch';
                 const label = planned.part.label;
                 semantics.add({
                     id: id + ':' + name,
@@ -386,23 +659,56 @@ export function createPlayViews(game, hooks) {
                     parent,
                     describe: () => {
                         const item = find(name);
-                        const hidden = !shown || ended || !visibleUp(item);
-                        const base = { bounds: stageRect(item), hidden };
+                        const rect = stageRect(item), hidden = !isShown() ||
+                            !visibleOnStage(item.node, game.browser.stage) ||
+                            (role !== 'group' && rect === undefined), enabled = rect !== undefined && hasInput(item), base = {
+                            bounds: rect ?? EMPTY,
+                            hidden,
+                            focused: enabled && allowsInput() && focused?.owner === record && focused.name === name
+                        };
                         if (role === 'group')
-                            return { ...base, name: label ?? name };
+                            return { ...base, name: label ?? name, disabled: hasAction(item) && !enabled };
+                        if (role === 'image') {
+                            const imageLabel = item.part.type === 'image' ? item.part.label : undefined;
+                            return { ...base, name: imageLabel ?? '', hidden: hidden || !imageLabel };
+                        }
                         if (role === 'progressbar')
                             return { ...base, name: label ?? name, range: { now: Math.round(item.value * 100), min: 0, max: 100 } };
                         if (role === 'switch')
-                            return { ...base, name: item.text, checked: item.checked, disabled: item.disabled };
-                        if (role === 'button')
-                            return { ...base, name: item.text, disabled: item.disabled };
+                            return { ...base, name: item.text, checked: item.checked, disabled: !enabled };
+                        if (role === 'button') {
+                            const detail = item.part.type === 'button' ? item.part.description?.replace(/\s+/gu, ' ').trim() : '';
+                            // Preserve the title and keep its optional detail within the semantic name limit.
+                            const detailLimit = 1024 - item.text.length - 2;
+                            const suffix = detailLimit > 0
+                                ? detail
+                                    ?.slice(0, detailLimit)
+                                    .replace(/[\uD800-\uDBFF]$/u, '')
+                                    .trimEnd()
+                                : '';
+                            return { ...base, name: suffix ? item.text + '. ' + suffix : item.text, disabled: !enabled };
+                        }
                         return { ...base, name: item.text };
                     },
                     ...(role === 'button' || role === 'switch' || (role === 'group' && bind[name]?.tap !== undefined)
-                        ? { onActivate: () => press(find(name)) }
+                        ? {
+                            onActivate: () => press(find(name)),
+                            onFocus() {
+                                if (actionable(find(name)))
+                                    focus({ owner: record, name });
+                            }
+                        }
                         : {})
                 });
             }
+        };
+        const releaseContent = () => {
+            paragraphScope?.dispose();
+            paragraphScope = undefined;
+            for (const item of made)
+                for (const child of [item.words, item.dot?.words, item.image])
+                    if (child !== undefined)
+                        game.remove(child);
         };
         const api = {
             get: name => find(name).node,
@@ -412,6 +718,31 @@ export function createPlayViews(game, hooks) {
             },
             shows: name => shown && !ended && visibleUp(find(name)),
             badge: name => find(name).badge,
+            scroll(name) {
+                const current = () => {
+                    const viewport = find(name).scroll;
+                    if (viewport === undefined)
+                        throw new EgretError('UI_VIEW_BINDING_INVALID', { cause: name + ': expected a scroll panel' });
+                    return viewport;
+                };
+                current();
+                let handle = scrollHandles.get(name);
+                if (handle === undefined) {
+                    handle = Object.freeze({
+                        get offset() {
+                            return current().offset;
+                        },
+                        get maximum() {
+                            return current().maximum;
+                        },
+                        scrollTo: (position) => current().scrollTo(position),
+                        scrollBy: (delta) => current().scrollBy(delta),
+                        page: (direction) => current().page(direction)
+                    });
+                    scrollHandles.set(name, handle);
+                }
+                return handle;
+            },
             get variant() {
                 return plan.variant;
             },
@@ -424,10 +755,12 @@ export function createPlayViews(game, hooks) {
                     return;
                 shown = true;
                 root.visible = true;
+                syncModalFocus();
             },
             hide() {
                 shown = false;
                 root.visible = false;
+                syncModalFocus();
             },
             cover() {
                 api.hide();
@@ -438,10 +771,12 @@ export function createPlayViews(game, hooks) {
             activate() {
                 active = true;
                 root.touchChildren = true;
+                syncModalFocus();
             },
             deactivate() {
                 active = false;
                 root.touchChildren = false;
+                syncModalFocus();
             },
             close() {
                 api.dispose();
@@ -449,25 +784,49 @@ export function createPlayViews(game, hooks) {
             dispose() {
                 if (ended)
                     return;
-                ended = true;
                 record.end();
             }
         };
         const record = {
             view: api,
+            modal: () => description.modal === true && active && isShown(),
+            padNavigation: () => options.gamepad === true && active && isShown(),
+            targets: () => made.flatMap(item => (item.part.name !== undefined && followsInput(item) ? [item.part.name] : [])),
+            keeps: name => followsInput(find(name)),
+            eligible: name => actionable(find(name)),
+            reveal: name => revealForTab(find(name)),
+            focusMark(name, visible) {
+                const item = find(name);
+                if (item.node.isDisposed)
+                    return;
+                if (item.focusMark === undefined) {
+                    if (!visible)
+                        return;
+                    item.focusMark = game.sprite(undefined, item.node);
+                    setFocusOutline(item, plan.skin.accent);
+                }
+                item.focusMark.visible = visible;
+            },
+            press: name => press(find(name)),
+            dismiss: options.dismiss === undefined ? undefined : () => invoke(options.dismiss),
+            start: () => invoke(options.resume),
             tick(seconds) {
                 read(seconds);
             },
             arrange() {
                 const next = planView(description, frame());
                 if (next.variant !== plan.variant) {
-                    for (const item of made)
-                        for (const words of [item.words, item.dot?.words])
-                            if (words !== undefined)
-                                game.remove(words);
+                    const offsets = new Map();
+                    for (const item of scrollItems)
+                        if (item.part.name !== undefined)
+                            offsets.set(item.part.name, item.scroll.offset);
+                    disposeScrolls();
+                    releaseContent();
                     for (const item of made)
                         game.remove(item.node);
-                    build();
+                    build(offsets);
+                    if (focused?.owner === record)
+                        record.focusMark(focused.name, eligible(focused));
                     return;
                 }
                 plan = next;
@@ -478,22 +837,32 @@ export function createPlayViews(game, hooks) {
                     item.node.x = item.rect.x;
                     item.node.y = item.rect.y;
                     paint(item);
+                    if (item.focusMark?.visible === true)
+                        setFocusOutline(item, plan.skin.accent);
                 });
+                syncScrollLayout();
             },
             end() {
+                if (ended)
+                    return;
+                ended = true;
                 live.delete(record);
+                syncModalFocus();
+                if (focused?.owner === record)
+                    focus(undefined);
                 for (const remove of removals.splice(0))
                     remove();
-                for (const item of made)
-                    for (const words of [item.words, item.dot?.words])
-                        if (words !== undefined)
-                            game.remove(words);
+                disposeScrolls();
+                releaseContent();
                 game.remove(root);
             }
         };
         build();
-        registerSemantics();
-        live.add(record);
+        if (!ended) {
+            registerSemantics();
+            live.add(record);
+            syncModalFocus();
+        }
         return api;
     }
     // Questions asked one at a time; each waits for the one before it to be answered.
@@ -547,8 +916,14 @@ export function createPlayViews(game, hooks) {
                         }
                     ]
                 }
-            }, { bind: { no: { tap: () => answer(false) }, yes: { tap: () => answer(true) } } });
-            open = { answer };
+            }, {
+                dismiss: () => answer(false),
+                bind: { no: { tap: () => answer(false) }, yes: { tap: () => answer(true) } }
+            });
+            open = { answer, view };
+            const owner = [...live].find(record => record.view === view);
+            if (owner !== undefined && owner.eligible('yes'))
+                focus({ owner, name: 'yes' });
             openedAt = frame;
         }));
         asked = turn;
@@ -632,12 +1007,10 @@ export function createPlayViews(game, hooks) {
         };
         current = check(list);
         const record = {
-            view: undefined,
             tick() {
                 if (!ended && game.device !== device)
                     draw();
             },
-            arrange() { },
             end() {
                 ended = true;
                 hintBars.delete(record);
@@ -714,6 +1087,10 @@ export function createPlayViews(game, hooks) {
         }
     };
     const api = view;
+    const noPadButtons = new Set();
+    const navigationPadButtons = new Set(['up', 'down', 'left', 'right', 'a']);
+    const modalPadButtons = new Set([...navigationPadButtons, 'b']);
+    const pausedModalPadButtons = new Set([...modalPadButtons, 'start']);
     return {
         view,
         confirm,
@@ -722,10 +1099,74 @@ export function createPlayViews(game, hooks) {
         get asking() {
             return open !== undefined;
         },
+        get modalActive() {
+            return topModal() !== undefined;
+        },
+        wheel: scrollInput.wheel,
+        keyDown(event, embedded) {
+            if (event.altKey || event.ctrlKey || event.metaKey)
+                return false;
+            if (event.code !== 'Escape' && event.code !== 'Tab' && event.code !== 'Enter' && event.code !== 'Space')
+                return false;
+            syncModalFocus();
+            if (event.code === 'Escape') {
+                if (modalOwner?.dismiss === undefined)
+                    return false;
+                if (!event.repeat)
+                    modalOwner.dismiss();
+                return true;
+            }
+            if (event.code !== 'Tab') {
+                if (!eligible(focused))
+                    return modalOwner !== undefined;
+                if (!event.repeat)
+                    focused.owner.press(focused.name);
+                return true;
+            }
+            if (moveFocus(event.shiftKey ? -1 : 1, !embedded || modalOwner !== undefined))
+                return true;
+            if (modalOwner !== undefined)
+                return true;
+            focus(undefined);
+            return false;
+        },
+        padButtons(pressed, legacyAsking) {
+            syncModalFocus();
+            const modal = modalOwner;
+            let owner = modal;
+            if (owner === undefined && !legacyAsking)
+                for (const record of live)
+                    if (record.padNavigation())
+                        owner = record;
+            if (owner === undefined)
+                return noPadButtons;
+            const claimed = modal === undefined ? navigationPadButtons : game.paused ? pausedModalPadButtons : modalPadButtons;
+            // Keep this sample with its original owner even when a callback closes or replaces the view.
+            if (modal !== undefined && pressed.has('b')) {
+                modal.dismiss?.();
+            }
+            else if (claimed.has('start') && pressed.has('start')) {
+                owner.start();
+            }
+            else {
+                if (pressed.has('up') || pressed.has('left'))
+                    moveFocus(-1, true, owner);
+                else if (pressed.has('down') || pressed.has('right'))
+                    moveFocus(1, true, owner);
+                if (pressed.has('a')) {
+                    if (focused?.owner !== owner || !eligible(focused))
+                        moveFocus(1, true, owner);
+                    if (focused?.owner === owner && eligible(focused))
+                        owner.press(focused.name);
+                }
+            }
+            return claimed;
+        },
         tick(seconds) {
             frame++;
-            if (open !== undefined && frame > openedAt + 1) {
+            if (open !== undefined && topModal()?.view === open.view && frame > openedAt + 1) {
                 const keys = game.keys;
+                // Virtual touch buttons can also send these key names. Hardware decisions go through the active view above.
                 if (keys.pressed('enter', 'space', 'pad:a'))
                     open.answer(true);
                 else if (keys.pressed('escape', 'pad:b'))
@@ -740,6 +1181,13 @@ export function createPlayViews(game, hooks) {
                 catch (cause) {
                     hooks.failed(cause);
                 }
+            }
+            syncModalFocus();
+            if (focused !== undefined) {
+                if (!focused.owner.keeps(focused.name))
+                    focus(undefined);
+                else
+                    focused.owner.focusMark(focused.name, eligible(focused));
             }
         },
         arrange() {
@@ -763,6 +1211,84 @@ export function createPlayViews(game, hooks) {
             live.clear();
         }
     };
+}
+const EMPTY = Object.freeze({ x: 0, y: 0, width: 0, height: 0 });
+function setFocusOutline(item, colour) {
+    const g = item.focusMark.graphics, { x, y, width, height } = item.node.hitArea ?? EMPTY;
+    g.clear();
+    if (width > 4 && height > 4)
+        g.lineStyle(2, colour)
+            .drawRect(x + 1, y + 1, width - 2, height - 2)
+            .lineStyle();
+}
+function visibleOnStage(node, stage, input = false) {
+    if (input && !node.touchEnabled)
+        return false;
+    for (let at = node; at !== undefined; at = at.parent) {
+        if (at.isDisposed || !at.visible)
+            return false;
+        if (at === stage)
+            return true;
+        if (input && at.parent?.touchChildren === false)
+            return false;
+    }
+    return false;
+}
+const edge = (a, b, c) => (b.x - a.x) * (c.y - a.y) - (b.y - a.y) * (c.x - a.x);
+function corners({ x, y, width, height }, node) {
+    if (width <= 0 || height <= 0)
+        return [];
+    const points = [
+        { x, y },
+        { x: x + width, y },
+        { x: x + width, y: y + height },
+        { x, y: y + height }
+    ];
+    return node === undefined ? points : points.map(at => node.localToGlobal(at.x, at.y));
+}
+/** Clip the two actual shapes before enclosing them for the rectangular accessibility projection. */
+function intersect(points, clip) {
+    if (clip.length === 0 || points.length === 0)
+        return [];
+    const winding = Math.sign(edge(clip[0], clip[1], clip[2]));
+    if (!winding)
+        return [];
+    for (let index = 0; index < clip.length && points.length > 0; index++) {
+        const from = clip[index], to = clip[(index + 1) % clip.length], distances = points.map(point => winding * edge(from, to, point)), out = [];
+        for (let at = 0; at < points.length; at++) {
+            const prior = (at + points.length - 1) % points.length, start = points[prior], end = points[at], a = distances[prior], b = distances[at];
+            if (a < 0 !== b < 0) {
+                const fraction = a / (a - b);
+                out.push({ x: start.x + (end.x - start.x) * fraction, y: start.y + (end.y - start.y) * fraction });
+            }
+            if (b >= 0)
+                out.push(end);
+        }
+        points = out;
+    }
+    return points;
+}
+function visibleRect(node, area, screen) {
+    if (node.isDisposed)
+        return undefined;
+    let points = corners(area, node);
+    if (points.length === 0 || !edge(points[0], points[1], points[2]))
+        return undefined;
+    for (let at = node; at !== undefined && points.length !== 0; at = at.parent) {
+        const clip = at.clipRect;
+        if (clip !== undefined)
+            points = intersect(points, corners(clip, at));
+    }
+    points = intersect(points, corners({ x: 0, y: 0, width: screen.width, height: screen.height }));
+    if (points.length < 3)
+        return undefined;
+    let areaTwice = 0;
+    for (let index = 1; index + 1 < points.length; index++)
+        areaTwice += edge(points[0], points[index], points[index + 1]);
+    if (!Number.isFinite(areaTwice) || areaTwice === 0)
+        return undefined;
+    const xs = points.map(point => point.x), ys = points.map(point => point.y), x = Math.min(...xs), y = Math.min(...ys);
+    return { x, y, width: Math.max(...xs) - x, height: Math.max(...ys) - y };
 }
 /** A rectangle measured from the corner of the one it is in. */
 function relative(rect, parent) {

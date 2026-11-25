@@ -254,6 +254,9 @@ export async function play(options) {
         throw invalid('setup is a function');
     if (update !== undefined && typeof update !== 'function')
         throw invalid('update is a function');
+    const renderMode = options.renderMode ?? 'continuous';
+    if (renderMode !== 'continuous' && renderMode !== 'on-demand')
+        throw invalid("renderMode is 'continuous' or 'on-demand'");
     if (onError !== undefined && typeof onError !== 'function')
         throw invalid('onError is a function');
     const fitAsked = options.fit ?? 'contain';
@@ -334,12 +337,19 @@ export async function play(options) {
         ...(options.portrait === undefined ? {} : { portrait: options.portrait }),
         ...(options.insets === undefined ? {} : { insets: options.insets }),
         ...(options.backend === undefined ? {} : { backend: options.backend }),
+        ...(options.pixelRatio === undefined ? {} : { pixelRatio: options.pixelRatio }),
         ...(onError === undefined ? {} : { onError })
     }).catch((cause) => {
         holder?.remove();
         throw cause;
     });
     const { engine, scope, stage } = baseBrowser;
+    const revision = renderMode === 'on-demand' ? engine.watchDisplayRevision(scope) : undefined;
+    let lastFrame, lastRevision = -1, redraw = 0, shownRedraw = 0;
+    const invalidate = () => {
+        if (revision !== undefined)
+            redraw++;
+    };
     let sourceSeconds = 0, clockSeconds = 0, realStep = 0, playStep = 0, generation = 0;
     // Rendering keeps its wall-clock cadence; the real Engine clock advances only by gameplay time.
     const playLoop = createBrowserFrameLoop({
@@ -375,10 +385,25 @@ export async function play(options) {
                         return;
                 } while (clockSeconds < end);
             },
-            renderSharedFrame: frame => engine.renderSharedFrame(frame)
+            renderSharedFrame(frame) {
+                // A refusal or a late mutation must leave the request pending.
+                const pending = redraw, next = revision?.revision;
+                const submitted = engine.renderSharedFrame(frame);
+                if (next !== undefined) {
+                    lastFrame = frame;
+                    lastRevision = next;
+                    shownRedraw = pending;
+                }
+                return submitted;
+            }
         },
         host: baseBrowser.host,
         frame: () => baseBrowser.frame,
+        ...(revision === undefined
+            ? {}
+            : {
+                shouldRender: () => lastRevision !== revision.revision || shownRedraw !== redraw || lastFrame !== baseBrowser.frame
+            }),
         update: () => {
             if (!disposed && playLoop.state === 'running')
                 step(realStep, playStep);
@@ -424,7 +449,7 @@ export async function play(options) {
     })();
     const badges = createBadges();
     // Keys: a set of what is held, and what changed since the last update.
-    const physicalKeys = new Set(), held = new Set(), wentDown = new Set(), cameUp = new Set();
+    const physicalKeys = new Set(), gameplayPadCodes = new Set(), held = new Set(), wentDown = new Set(), cameUp = new Set();
     const typing = (target) => {
         const element = target;
         return (element?.isContentEditable === true ||
@@ -433,8 +458,15 @@ export async function play(options) {
             element?.tagName === 'SELECT');
     };
     const keyDown = (event) => {
-        // Embedded games leave Tab to the page, including the step that leaves the canvas.
-        if (typing(event.target) || (embedded && (event.target !== surface || event.code === 'Tab')))
+        if (typing(event.target) || (embedded && event.target !== surface) || event.defaultPrevented)
+            return;
+        if ((!widgets.asking || views.modalActive) && views.keyDown(event, embedded)) {
+            device = 'keyboard';
+            event.preventDefault();
+            return;
+        }
+        // An embedded view's final control leaves Tab to the page.
+        if (embedded && event.code === 'Tab')
             return;
         if (KEPT_FROM_PAGE.has(event.code))
             event.preventDefault();
@@ -468,6 +500,8 @@ export async function play(options) {
             cameUp.add(code);
         held.clear();
         physicalKeys.clear();
+        gameplayPadCodes.clear();
+        padActive = false;
         pointerOwner = undefined;
     };
     const any = (set, keys) => keys.some(key => set.has(codeOf(String(key))));
@@ -491,26 +525,68 @@ export async function play(options) {
             return { x: 0, y: 0 };
         }
     };
-    // The buttons of the first pad count as keys named `pad:a` and so on: held, pressed and let go as keys are.
+    const padDown = new Set(), padPressed = new Set();
+    let padActive = true, padIndex, padId;
+    const activatePad = () => {
+        padActive = true;
+    };
+    const releasePad = (name) => {
+        const code = 'Pad:' + name;
+        if (gameplayPadCodes.delete(code) && !touchHeld.has(code) && held.delete(code)) {
+            wentDown.delete(code);
+            cameUp.add(code);
+        }
+    };
+    // A consumed hardware press stays consumed until release, even if it resumed or restarted the game.
     const pollPadButtons = () => {
+        if (!padActive || page.visibilityState === 'hidden')
+            return;
         const pad = pads?.input.pads[0];
+        if (padIndex !== pad?.index || padId !== pad?.id) {
+            for (const name of padDown)
+                releasePad(name);
+            padDown.clear();
+            padIndex = pad?.index;
+            padId = pad?.id;
+        }
+        if (pad === undefined)
+            return;
+        padPressed.clear();
         for (const name of PAD_BUTTONS) {
             let down = false;
             try {
-                down = pad !== undefined && pad.standard && pad.pressed(name);
+                down = pad.standard && pad.pressed(name);
             }
             catch {
                 down = false;
             }
+            if (down) {
+                if (!padDown.has(name))
+                    padPressed.add(name);
+                padDown.add(name);
+            }
+            else if (padDown.delete(name)) {
+                releasePad(name);
+            }
+        }
+        if (padDown.size === 0)
+            return;
+        if (padPressed.size > 0)
+            device = 'gamepad';
+        const version = generation;
+        const claimed = views.padButtons(padPressed, widgets.asking);
+        if (disposed || version !== generation)
+            return;
+        for (const name of claimed)
+            releasePad(name);
+        for (const name of padPressed) {
+            if (claimed.has(name))
+                continue;
             const code = 'Pad:' + name;
-            if (down && !held.has(code)) {
-                device = 'gamepad';
+            gameplayPadCodes.add(code);
+            if (!held.has(code)) {
                 held.add(code);
                 wentDown.add(code);
-            }
-            else if (!down && held.has(code) && !touchHeld.has(code)) {
-                held.delete(code);
-                cameUp.add(code);
             }
         }
     };
@@ -568,6 +644,13 @@ export async function play(options) {
         place(event);
     };
     const turned = (event) => {
+        if (!event.ctrlKey && !widgets.asking && finite(event.deltaY) && event.deltaY !== 0) {
+            const at = browser.toStage(event.clientX, event.clientY);
+            if (finite(at.x) && finite(at.y) && views.wheel(at.x, at.y, event.deltaY, event.deltaMode)) {
+                event.preventDefault();
+                return;
+            }
+        }
         if (finite(event.deltaY))
             point.wheel += event.deltaY > 0 ? 1 : event.deltaY < 0 ? -1 : 0;
         // The wheel turns the game, not the page under it.
@@ -688,6 +771,7 @@ export async function play(options) {
         [keyboardTarget, 'keydown', keyDown],
         [keyboardTarget, 'keyup', keyUp],
         [win, 'blur', letGo],
+        [win, 'focus', activatePad],
         [surface, 'pointerdown', pointerDown],
         [win, 'pointermove', moved],
         [surface, 'wheel', turned],
@@ -696,6 +780,17 @@ export async function play(options) {
     ];
     if (embedded)
         listening.push([surface, 'blur', leaveCanvas]);
+    let resizeObserver;
+    if (revision !== undefined) {
+        // Input is observed after its ordinary dispatch. A burst of events requests only the next submitted frame.
+        for (const [target, type] of [...listening])
+            listening.push([target, type, invalidate]);
+        listening.push([win, 'resize', invalidate], [page, 'visibilitychange', invalidate], [surface, 'webglcontextrestored', invalidate]);
+        if (typeof ResizeObserver === 'function') {
+            resizeObserver = new ResizeObserver(invalidate);
+            resizeObserver.observe(surface);
+        }
+    }
     for (const [target, type, listener] of listening)
         target.addEventListener(type, listener, { passive: false });
     // Only the built-in mixer belongs to this game. Opting out also skips its browser gesture listeners.
@@ -881,6 +976,23 @@ export async function play(options) {
     let nextPiece = 0;
     // Text.
     const removers = new WeakMap();
+    const labelVisibility = new Set();
+    let labelVisibilityQueued = false;
+    const syncLabelVisibility = () => {
+        for (const sync of labelVisibility)
+            sync();
+    };
+    const prepareLabelVisibility = () => {
+        if (labelVisibilityQueued)
+            return;
+        labelVisibilityQueued = true;
+        // A page switch can hide a group and create its replacement in one event turn, before the next frame.
+        queueMicrotask(() => {
+            labelVisibilityQueued = false;
+            if (!disposed)
+                syncLabelVisibility();
+        });
+    };
     const text = (given, o = {}) => {
         if (o === null || typeof o !== 'object')
             throw invalid('the options of a text are an object');
@@ -889,13 +1001,19 @@ export async function play(options) {
             throw invalid('a text has a size above 0 and a colour');
         if (align !== 'left' && align !== 'center' && align !== 'right')
             throw invalid("align is 'left', 'center' or 'right'");
-        let label, gone = false;
+        let label, rasterActive = true, gone = false;
+        const round = generation;
+        let pendingReady;
         const settle = () => {
-            if (label === undefined || gone)
+            if (label === undefined || gone || !rasterActive)
                 return;
             const made = label;
-            made.ready.then(() => {
-                if (gone)
+            const ready = made.ready;
+            if (ready === pendingReady)
+                return;
+            pendingReady = ready;
+            ready.then(() => {
+                if (gone || !rasterActive || pendingReady !== ready)
                     return;
                 made.display.x = align === 'center' ? -made.display.width / 2 : align === 'right' ? -made.display.width : 0;
                 made.display.y = o.baseline === 'middle' ? -made.display.height / 2 : 0;
@@ -905,6 +1023,8 @@ export async function play(options) {
         const node = scope.use(new PlayText(String(given), next => {
             if (label === undefined)
                 return;
+            // A label's old wording must not describe an action after its semantic name changed.
+            label.display.visible = false;
             label.text = next;
             settle();
         }, color, size, style => {
@@ -924,7 +1044,30 @@ export async function play(options) {
         if (!(into instanceof Sprite) || into.isDisposed)
             throw invalid("layer is 'ui', 'world' or a sprite");
         into.addChild(node);
+        const syncVisibility = () => {
+            if (node.isDisposed || generation !== round) {
+                removers.get(node)?.();
+                return;
+            }
+            let next = false;
+            for (let current = node; current !== undefined; current = current.parent) {
+                if (!current.visible || current.alpha === 0)
+                    break;
+                if (current === stage) {
+                    next = true;
+                    break;
+                }
+            }
+            if (label !== undefined && rasterActive !== next) {
+                rasterActive = next;
+                label.display.visible = false;
+                label.setRasterActive(next);
+                if (next)
+                    settle();
+            }
+        };
         const words = node.text;
+        prepareLabelVisibility();
         browser
             .createLabel({
             text: words,
@@ -934,7 +1077,7 @@ export async function play(options) {
             locale: o.locale ?? (/[぀-ヿ㐀-鿿가-힯]/.test(words) ? 'zh' : 'en')
         })
             .then(made => {
-            if (gone || node.isDisposed) {
+            if (gone || node.isDisposed || generation !== round) {
                 made.dispose();
                 return;
             }
@@ -942,6 +1085,8 @@ export async function play(options) {
             // Hidden until it has been measured, so centred words never show at the wrong place first.
             made.display.visible = false;
             node.addChild(made.display);
+            labelVisibility.add(syncVisibility);
+            syncVisibility();
             if (node.text !== words)
                 made.text = node.text;
             // What was set while the words were being made.
@@ -951,6 +1096,7 @@ export async function play(options) {
         }, () => { });
         removers.set(node, () => {
             gone = true;
+            labelVisibility.delete(syncVisibility);
             label?.dispose();
         });
         return node;
@@ -1000,6 +1146,7 @@ export async function play(options) {
         frameSeconds = 0;
         if (!disposed) {
             views.tick(seconds);
+            syncLabelVisibility();
             if (options.semantics !== undefined)
                 try {
                     options.semantics.publish();
@@ -1037,14 +1184,21 @@ export async function play(options) {
             failure = undefined;
             throw cause;
         }
+        const version = generation;
+        let padSampled = pads !== undefined;
         try {
             pads?.poll();
-            pollPadButtons();
         }
         catch {
-            // A pad that cannot be read is not there.
+            // A browser read can fail. Do not route a stale sample from the last successful poll.
+            padSampled = false;
         }
-        const version = generation;
+        if (padSampled)
+            pollPadButtons();
+        if (disposed || version !== generation || playLoop.state !== 'running') {
+            endFrame();
+            return;
+        }
         const active = () => !disposed &&
             api !== undefined &&
             !paused &&
@@ -1236,6 +1390,7 @@ export async function play(options) {
         return request.promise;
     }
     const game = {
+        invalidate,
         get width() {
             return shown.design.width;
         },
@@ -1752,8 +1907,22 @@ export async function play(options) {
             const into = o.layer === undefined || o.layer === 'world' ? world : o.layer === 'ui' ? ui : o.layer;
             if (!(into instanceof Sprite) || into.isDisposed)
                 throw invalid("layer is 'ui', 'world' or a sprite");
+            const round = generation;
             const lease = await browser.loadTexture(url);
-            const holder = scope.use(new Sprite()), picture = scope.use(new Bitmap(lease));
+            if (disposed || generation !== round || into.isDisposed || left.has(into)) {
+                lease.release();
+                throw invalid('the layer stopped accepting this image while it loaded');
+            }
+            const holder = scope.use(new Sprite());
+            let picture;
+            try {
+                picture = scope.use(new Bitmap(lease));
+            }
+            catch (cause) {
+                holder.dispose();
+                lease.release();
+                throw cause;
+            }
             picture.sharedMaterial = o.smooth === false ? SHARP : SMOOTH;
             const own = { width: picture.width, height: picture.height }, w = finite(o.width) && o.width > 0 ? o.width : undefined, h = finite(o.height) && o.height > 0 ? o.height : undefined;
             const sx = w !== undefined ? w / own.width : h !== undefined ? h / own.height : 1, sy = h !== undefined ? h / own.height : sx;
@@ -1765,6 +1934,11 @@ export async function play(options) {
             holder.x = finite(o.x) ? o.x : 0;
             holder.y = finite(o.y) ? o.y : 0;
             into.addChild(holder);
+            removers.set(holder, () => {
+                // Detach the bitmap before revoking its texture lease. Its disposal still follows the normal frame boundary.
+                game.remove(picture);
+                lease.release();
+            });
             return holder;
         },
         bar: options => widgets.bar(options),
@@ -1805,6 +1979,7 @@ export async function play(options) {
             void (async () => {
                 try {
                     stopLoops();
+                    resizeObserver?.disconnect();
                     for (const [target, type, listener] of listening)
                         target.removeEventListener(type, listener);
                     if (addedTabIndex && surface.getAttribute('tabindex') === '0')
@@ -1843,7 +2018,7 @@ export async function play(options) {
         letGo(key) {
             const code = codeOf(key);
             touchHeld.delete(code);
-            if (!physicalKeys.has(code) && held.delete(code))
+            if (!physicalKeys.has(code) && !gameplayPadCodes.has(code) && held.delete(code))
                 cameUp.add(code);
         },
         stick(x, y) {

@@ -1,5 +1,4 @@
-import { Bitmap } from '@egret/engine';
-import { BASE_STATS, DIVINE, HEROES, ITEMS, SHOP } from './sim/data.mjs';
+import { DIVINE, HEROES, ITEMS, SHOP } from './sim/data.mjs';
 import { getLanguage, t } from './i18n.mjs';
 import { layoutFor, textWidth, wrap as wrapText } from './ui-layout.mjs';
 
@@ -33,11 +32,10 @@ function metrics(game) {
   return { factor, w, h, key: `${Math.round(w)}:${Math.round(h)}:${factor.toFixed(4)}:${getLanguage()}` };
 }
 
-// Buttons expose their binding as their accessible names. Add the shorter drawn
-// caption as an Egret label to keep the target and accessible name together.
-function partsFor(game, scale, packed) {
+function partsFor(game, scale, aliasPart, currentState) {
   const bind = {};
   const labels = new Map();
+  const aliases = [];
   const box = (x, y, width, height) => ({ x: x * scale, y: y * scale, width: width * scale, height: height * scale });
   const read = (value) => typeof value === 'function' ? value : () => value;
   function panel(name, x, y, w, h, children, options = {}, binding) {
@@ -46,21 +44,20 @@ function partsFor(game, scale, packed) {
   }
   function text(name, value, x, y, w, h, size, options = {}) {
     const { paintColor, ...display } = options;
-    const pack = packed && name !== 'wallet';
-    if (typeof value === 'function') bind[name] = { ...(pack ? {} : { text: value, ...(paintColor ? { color: paintColor } : {}) }), visible: (state) => Boolean(value(state).trim()) };
-    if (pack) packed.label(name, read(value), read(value), { width: w, height: h, size, color: paintColor ?? display.color ?? SKIN.text, align: display.align ?? 'left', bold: display.bold ?? false });
-    return { type: 'text', name, text: pack || typeof value === 'function' ? '' : value, ...box(x, y, w, h), size: size * scale, ...display };
+    if (typeof value === 'function') bind[name] = { text: value, ...(paintColor ? { color: paintColor } : {}), visible: (state) => Boolean(value(state).trim()) };
+    return { type: 'text', name, text: typeof value === 'function' ? '' : value, ...box(x, y, w, h), size: size * scale, ...display };
   }
   function button(name, value, x, y, w, h, size, tap, options = {}) {
     const { disabled, visible, color, textColor, label, caption } = options;
     bind[name] = { tap, ...(disabled ? { disabled } : {}), ...(visible ? { visible } : {}), ...(typeof color === 'function' ? { color } : {}) };
-    const style = { width: w, height: h, size, color: textColor ?? SKIN.buttonText, align: 'center', bold: true };
-    if (packed) packed.label(name, label ?? read(value), caption ?? read(value), style);
-    else {
-      if (typeof value === 'function' || label) bind[name].text = label ?? value;
-      if (label || caption) labels.set(name, { draw: caption ?? read(value), ...style });
-    }
-    return { type: 'button', name, text: packed || typeof value === 'function' ? '' : value, ...box(x, y, w, h), size: size * scale, ...(typeof color === 'number' ? { color } : {}), ...(textColor ? { textColor } : {}) };
+    const style = { width: w, height: h, size, color: textColor ?? SKIN.buttonText };
+    // PlayView uses the visible words as the semantic name. Keep a localized
+    // alias when a short action also needs the item's name or its cost.
+    if (label && aliasPart) aliases.push(aliasPart(name, () => label(currentState())));
+    if (label && !aliasPart) bind[name].text = label;
+    else if (typeof value === 'function') bind[name].text = value;
+    if (caption || (label && !aliasPart)) labels.set(name, { draw: caption ?? read(value), ...style });
+    return { type: 'button', name, text: typeof value === 'function' ? '' : value, ...box(x, y, w, h), size: size * scale, ...(typeof color === 'number' ? { color } : {}), ...(textColor ? { textColor } : {}) };
   }
   let drawn = [];
   function built(view) {
@@ -91,84 +88,7 @@ function partsFor(game, scale, packed) {
       for (let index = rows.length; index < item.nodes.length; index++) item.nodes[index].visible = false;
     }
   }
-  return { panel, text, button, bind, built, paint };
-}
-
-// One Egret bitmap for dense text. BrowserGame's shared cache can hold only 32
-// distinct live label keys, and invisible PlayView parts still occupy slots.
-function packedLabels(game, { factor, w, h }, aliasPart, currentState) {
-  const entries = [];
-  let layer;
-  let bitmap;
-  let lease;
-  let update = 0;
-  let signature = '';
-  let view;
-  const off = [];
-  const density = Math.min(2, Math.max(1, globalThis.devicePixelRatio ?? 1));
-  const canvas = document.createElement('canvas');
-  canvas.width = Math.ceil(w * density);
-  canvas.height = Math.ceil(h * density);
-  const ctx = canvas.getContext('2d', { willReadFrequently: true });
-  const label = (name, accessible, draw, style) => {
-    entries.push({ name, draw, ...style });
-    off.push(aliasPart(name, () => accessible(currentState())));
-  };
-  function attach(made) {
-    view = made;
-    layer = view.get('marketSurface');
-  }
-  function paint(state) {
-    if (!layer || layer.isDisposed) return;
-    const frame = view.rect('marketSurface');
-    const rows = entries.flatMap((item) => {
-      if (!view.shows(item.name)) return [];
-      const rect = view.rect(item.name);
-      const x = (rect.x - frame.x) / factor;
-      const y = (rect.y - frame.y) / factor;
-      const caption = item.draw(state);
-      return (Array.isArray(caption) ? caption : [caption]).map((line) => {
-        const row = typeof line === 'string' ? { text: line } : line;
-        const align = row.align ?? item.align;
-        return { text: row.text, x: x + (row.x ?? (align === 'center' ? item.width / 2 : align === 'right' ? item.width : 0)),
-          y: y + (row.y ?? item.height / 2), size: row.size ?? item.size,
-          color: row.color ?? (typeof item.color === 'function' ? item.color(state) : item.color), bold: row.bold ?? item.bold, align };
-      });
-    });
-    const key = JSON.stringify(rows);
-    if (key === signature) return;
-    signature = key;
-    const revision = ++update;
-    ctx.setTransform(density, 0, 0, density, 0, 0);
-    ctx.clearRect(0, 0, w, h);
-    ctx.textBaseline = 'middle';
-    for (const row of rows) {
-      ctx.font = `${row.bold ? 700 : 400} ${row.size}px system-ui, "Microsoft YaHei", sans-serif`;
-      ctx.textAlign = row.align;
-      ctx.fillStyle = `#${row.color.toString(16).padStart(6, '0')}`;
-      ctx.fillText(row.text, row.x, row.y);
-    }
-    void game.browser.textureFromCanvas(canvas).then((next) => {
-      if (revision !== update || layer.isDisposed || !view.visible) { next.release(); return; }
-      if (!bitmap) {
-        bitmap = new Bitmap(next);
-        bitmap.scaleX = bitmap.scaleY = factor / density;
-        bitmap.touchEnabled = false;
-        layer.addChild(bitmap);
-      } else bitmap.textureLease = next;
-      lease?.release();
-      lease = next;
-    }).catch(console.error);
-  }
-  function dispose() {
-    ++update;
-    if (bitmap && !bitmap.isDisposed) bitmap.dispose();
-    lease?.release();
-    bitmap = undefined;
-    lease = undefined;
-    for (const remove of off.splice(0)) remove();
-  }
-  return { label, attach, paint, dispose };
+  return { panel, text, button, bind, built, paint, dispose() { for (const unregister of aliases.splice(0)) unregister(); } };
 }
 
 function shopLayout(w, h, touch, slots) {
@@ -249,7 +169,7 @@ export function createMarketUi({ game, app, rules, sound, say, present, chooseLe
       sound('select');
       report('restocked');
     } else report('notEnough', undefined, true);
-    showShop({ focus: 'reroll' });
+    showShop({ focus: 'reroll', renew: true });
   }
 
   function merge(first, second) {
@@ -320,7 +240,7 @@ export function createMarketUi({ game, app, rules, sound, say, present, chooseLe
           button('sellCancel', no, 14, height - 58, (width - 36) / 2, 44, 14, () => answer(false)),
           button('sellConfirm', yes, width / 2 + 4, height - 58, (width - 36) / 2, 44, 14, () => answer(true), { color: CTA, textColor: CTA_TEXT })
         ], { color: INK }), anchor: 'center' }
-      }, { bind });
+      }, { bind, dismiss: dismissSale });
       sale = { view, answer };
       focusPart?.('sellCancel');
     });
@@ -405,17 +325,15 @@ export function createMarketUi({ game, app, rules, sound, say, present, chooseLe
 
   function makeShop(frame) {
     const layout = shopLayout(frame.w, frame.h, touch, app.run.slots);
-    const { compact, stacked, width, height, pad, content, columns, slotColumns, headH, barY, offerHeight, offersY, offersEnd, gearY, slotHeight, slotsY, gearActionsY, detailsY, detailRows } = layout;
+    const { compact, stacked, width, height, pad, content, columns, slotColumns, headH, barY, offerHeight, offersY, offersEnd, gearY, slotHeight, slotsY, gearActionsY, detailsY } = layout;
     let snapshot = state(layout);
-    const packed = aliasPart && packedLabels(game, { factor: frame.factor, w: width, h: height }, aliasPart, () => snapshot);
-    const { panel, text, button, bind, built, paint } = partsFor(game, frame.factor, packed);
+    const { panel, text, button, bind, built, paint, dispose } = partsFor(game, frame.factor, aliasPart, () => snapshot);
     const title = t(compact ? 'shopTitleCompact' : 'shopTitle', { n: app.run.wave });
     const titleSize = width < 440 ? 17 : stacked ? 35 : 24;
     const titleRows = wrap(title, content - 108, titleSize, true);
     const body = [
       panel(undefined, 1, 1, width - 2, height - 2, [], { color: INK, alpha: 1 }),
-      ...titleRows.map((row, i) => text(i === 0 ? 'marketTitle' : `marketTitle${i}`, row, pad,
-        titleRows.length > 1 ? 8 + i * (titleSize + 1) : (headH - titleSize) / 2, content - 108, titleSize + 2, titleSize, { color: GOLD, bold: true })),
+      text('marketTitle', titleRows.join('\n'), pad, 3, content - 108, headH - 6, titleSize, { color: GOLD, bold: true }),
       panel(undefined, width - pad - 103, (headH - 30) / 2, 103, 30, [text('wallet', '', 0, 0, 103, 30, 13, { color: GOLD, align: 'center', bold: true })], { color: 0x263e34 }),
       panel(undefined, pad, headH, content, 1, [], { color: 0x688568 }),
     ];
@@ -423,10 +341,10 @@ export function createMarketUi({ game, app, rules, sound, say, present, chooseLe
     const nextWidth = 110;
     const feedbackWidth = content - nextWidth - 8;
     const actionBar = panel(undefined, 1, barY, width - 2, 54, [
-      ...[0, 1, 2].map((line) => text(`marketFeedback${line}`, (s) => s.feedbackLines[line] ?? '', pad, 5 + line * 14, feedbackWidth, 15, 12, { paintColor: (s) => s.feedbackColor })),
+      text('marketFeedback0', (s) => s.feedbackLines.join('\n'), pad, 4, feedbackWidth, 46, 12, { paintColor: (s) => s.feedbackColor }),
       button('next', t('nextWave'), width - pad - nextWidth - 1, 5, nextWidth, 44, 15, () => {
         disposeDrag();
-        packed?.dispose();
+        dispose();
         nextWave();
       }, { label: (s) => t('nextWaveName', { n: s.run.wave + 1 }), color: CTA, textColor: CTA_TEXT })
     ], { color: 0x1a3930 });
@@ -450,8 +368,8 @@ export function createMarketUi({ game, app, rules, sound, say, present, chooseLe
       const { x, y, w, h } = cardSlot(i, columns, content, 8, offerHeight);
       const children = [
         panel(`offerMarkPlate${i}`, 6, 7, 27, 27, [text(`offerMark${i}`, (s) => markOf(get(s)?.kind), 0, 0, 27, 27, 19, { color: GOLD, align: 'center', bold: true })], {}, { color: (s) => WARM_RELICS.has(get(s)?.kind) ? 0x5b382e : 0x405541 }),
-        ...[0, 1].map((line) => text(`offerName${i}_${line}`, (s) => get(s)?.titleLines[line] ?? '', 39, 3 + line * 14, w - 44, 17, 13, { color: GOLD, bold: true })),
-        ...[0, 1, 2].map((line) => text(`offerNote${i}_${line}`, (s) => get(s)?.noteLines[line] ?? '', 6, 34 + line * 12, w - 12, 13, 11)),
+        text(`offerName${i}_0`, (s) => get(s)?.titleLines.join('\n') ?? '', 39, 3, w - 44, 31, 13, { color: GOLD, bold: true }),
+        text(`offerNote${i}_0`, (s) => get(s)?.noteLines.join('\n') ?? '', 6, 31, w - 12, h - 80, 11),
         button(`offerBuy${i}`, (s) => get(s)?.sold ? t('sold') : t('buy', { price: get(s)?.price }), 5, h - 48, (w - 15) / 2, 44, 13,
           () => buy(i), { disabled: (s) => !get(s) || get(s).sold || s.run.pearls < get(s).price,
             label: (s) => get(s)?.sold ? t('sold') : t('buyName', { name: [get(s)?.name, get(s)?.tier].filter(Boolean).join(' · '), price: get(s)?.price }) }),
@@ -470,7 +388,7 @@ export function createMarketUi({ game, app, rules, sound, say, present, chooseLe
     body.push(panel('offerShelf', pad, offersY, content, offersEnd - offersY + 54, cards, {}, { visible: () => !compact || pane === 'offers' }));
 
     const heading = (s) => wrap(compact ? s.picked ? t('selected', { name: weaponLabel(s.picked) }) : t('mergeAdvice') : t('yourTreasures', s.count), content, 13, true);
-    const gear = [0, 1].map((line) => text(line === 0 ? 'gearHeading' : 'gearHeadingExtra', (s) => heading(s)[line] ?? '', 0, 1 + line * 15, content, 17, 13, { color: GOLD, bold: true }));
+    const gear = [text('gearHeading', (s) => heading(s).join('\n'), 0, 0, content, slotsY - gearY - 4, 13, { color: GOLD, bold: true })];
     for (let i = 0; i < SLOT_COUNT; i++) {
       const get = (s) => s.weapons[i];
       const { x, y, w, h } = cardSlot(i, slotColumns, content, 6, slotHeight);
@@ -482,12 +400,12 @@ export function createMarketUi({ game, app, rules, sound, say, present, chooseLe
           const slot = get(s);
           if (!slot) return [{ text: t('emptySlot'), color: 0x97aa9d }];
           const vertical = slotColumns === 3 || stacked;
-          const title = wrap(slot.name, w - (vertical ? 10 : 47), 12, true);
+          const title = wrap(slot.name, w - (vertical ? 10 : 47), 12, true).join('\n');
           if (vertical) return [{ text: markOf(slot.weapon.kind), y: 17, size: 18, color: GOLD },
-            ...title.map((line, row) => ({ text: line, y: 36 + row * 12 })),
+            { text: title, y: 39 },
             { text: slot.tier, y: h - 11, color: GOLD, size: 11 }];
           return [{ text: markOf(slot.weapon.kind), x: 20, size: 22, color: GOLD },
-            ...title.map((line, row) => ({ text: line, x: 39, y: 14 + row * 12, align: 'left' })),
+            { text: title, x: 39, y: 18, align: 'left' },
             { text: slot.partner && w >= 130 ? `${slot.tier} · ${t('mergeWith')}` : slot.tier, x: 39, y: h - 13, color: GOLD, size: 11, align: 'left' }];
         }
       }));
@@ -508,10 +426,8 @@ export function createMarketUi({ game, app, rules, sound, say, present, chooseLe
     };
     const detailsWidth = width < 440 ? 174 : 190;
     body.push(button('details', t('details'), content + pad - detailsWidth, detailsY, detailsWidth, 44, 13, toggleDetails, { visible: (s) => s.gearShowing }));
-    const details = [];
-    for (let row = 0; row < Math.min(Object.keys(BASE_STATS).length + 8, detailRows); row++) {
-      details.push(text(`detailLine${row}`, (s) => s.detailLines[row] ?? '', 6, 3 + row * 17, content - 12, 17, 13));
-    }
+    const detailsHeight = Math.max(1, detailsY - gearY - 5);
+    const details = [text('detailLine0', (s) => s.detailLines.join('\n'), 6, 3, content - 12, detailsHeight - 6, 13)];
     const changeDetailsPage = (step, focus) => () => {
       detailPage += step;
       showShop({ focus });
@@ -523,27 +439,25 @@ export function createMarketUi({ game, app, rules, sound, say, present, chooseLe
         disabled: (s) => step < 0 ? detailPage === 0 : detailPage + 1 >= s.detailPages
       }));
     }
-    body.push(panel('gearDetails', pad, gearY, content, Math.max(1, detailsY - gearY - 5), details, { color: 0x17352e }, { visible: (s) => s.gearShowing && detailsOpen }));
+    body.push(panel('gearDetails', pad, gearY, content, detailsHeight, details, { color: 0x17352e }, { visible: (s) => s.gearShowing && detailsOpen }));
 
     if (compact) body.push(actionBar);
     const view = game.show({ label: title, modal: true, skin: SKIN,
       root: { ...panel('marketSurface', 0, 0, width, height, body, { color: 0x9f895c, label: title }), anchor: compact ? 'center' : 'top', y: compact ? 0 : 12 * frame.factor }
-    }, { bind, state: () => snapshot,
+    }, { bind, state: () => snapshot, dismiss: deselect,
       built: (view) => {
         built(view);
-        packed?.attach(view);
         paint(snapshot);
-        packed?.paint(snapshot);
         registerDrag(view, frame.factor);
       }
     });
     return { view, key: frame.key, wave: app.run.wave,
-      refresh() { snapshot = state(layout); view.refresh(); paint(snapshot); packed?.paint(snapshot); },
-      dispose() { packed?.dispose(); }
+      refresh() { snapshot = state(layout); view.refresh(); paint(snapshot); },
+      dispose
     };
   }
 
-  function showShop({ focus, fresh = false } = {}) {
+  function showShop({ focus, fresh = false, renew = false } = {}) {
     if (fresh || shop?.wave !== app.run.wave) {
       pane = 'offers';
       note = undefined;
@@ -551,8 +465,9 @@ export function createMarketUi({ game, app, rules, sound, say, present, chooseLe
       detailPage = 0;
     }
     const frame = metrics(game);
-    if (shop?.view.visible && shop.key === frame.key && shop.wave === app.run.wave) shop.refresh();
+    if (!renew && shop?.view.visible && shop.key === frame.key && shop.wave === app.run.wave) shop.refresh();
     else {
+      shop?.view.close();
       shop?.dispose();
       shop = makeShop(frame);
     }

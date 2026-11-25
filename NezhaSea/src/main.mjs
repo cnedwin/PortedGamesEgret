@@ -22,8 +22,6 @@ const ui = createUiInput();
 const stack = createUiScreenStack({ onError: console.error });
 let game, view, sound, hud, stick, screens, market, active;
 let ready = false, loadFailed = false, notice = null, announcement = '';
-let pausePadFrame = 0, suppressPadStart = false;
-let titleIdleTimer = 0, idlePadFrame = 0, idlePadConsumed = false;
 const save = openSave(browserSaveStorage(), startLanguage(browserLanguages()), (problem) => {
   notice = problem.kind === 'write-failed' ? 'saveRefused' : 'saveReset';
 });
@@ -69,7 +67,7 @@ function clearPage() {
   if (!active) return Promise.resolve();
   const old = active;
   active = undefined;
-  old.view.hide();
+  if (old.view.visible) old.view.hide();
   return stack.close(old.definition).finally(() => old.view.close());
 }
 
@@ -81,13 +79,12 @@ function present(name, next, focus) {
   const closing = clearPage();
   app.screen = name;
   field.dataset.screen = name;
-  if (name === 'title') wakeTitle();
-  else if (game.browser.loop.state === 'idle') game.browser.loop.start();
   stick?.arrange();
   hud?.enable(false);
   const definition = {
     id: name, layer: name === 'title' ? 'page' : 'popup', back,
-    open: () => next
+    // A market refresh may release its view before the queued route changes.
+    open: () => ({ close: () => next.close() })
   };
   active = { definition, view: next };
   void closing.then(() => active?.definition === definition && stack.open(definition)).catch(console.error);
@@ -113,7 +110,6 @@ function redraw() {
 }
 
 function showTitle(focus = 'start') {
-  cancelAnimationFrame(pausePadFrame);
   app.run = null;
   view.clear();
   hud.close();
@@ -165,13 +161,12 @@ onLanguage(() => {
 });
 
 function openBattle() {
-  if (game.browser.loop.state === 'idle') game.browser.loop.start();
   void clearPage().catch(console.error);
   app.screen = field.dataset.screen = 'play';
   stick.reset();
   stick.arrange();
   hud.enable(true);
-  ui.pick('pause', { outline: false });
+  ui.focusCanvas();
 }
 function startGame() {
   if (!ready) return;
@@ -184,7 +179,6 @@ function startGame() {
   openBattle();
   hud.arrange();
   hud.update();
-  ui.pick('pause', { outline: false });
   sound('wave');
   sound.music('battle', 1 / WAVES);
   if (game.paused) game.resume();
@@ -211,10 +205,8 @@ function pause() {
   game.pause();
   sound.pause();
   renderScreen('menu', 'resume');
-  watchPausedPad();
 }
 function resume() {
-  cancelAnimationFrame(pausePadFrame);
   openBattle();
   sound.resume();
   game.resume();
@@ -240,86 +232,13 @@ function finish() {
   });
 }
 
-function pressedPadButtons() {
-  try {
-    const pad = Array.from(navigator.getGamepads?.() ?? []).find(candidate => candidate?.mapping === 'standard');
-    return pad?.buttons.map(button => button.pressed) ?? [];
-  } catch {
-    return [];
-  }
-}
-
-// The title is still once its portraits are ready. Let the engine redraw it on input, layout or artwork changes.
-function wakeTitle() {
-  if (!game || app.screen !== 'title') return;
-  clearTimeout(titleIdleTimer);
-  cancelAnimationFrame(idlePadFrame);
-  if (game.browser.loop.state === 'idle') game.browser.loop.start();
-  titleIdleTimer = setTimeout(() => {
-    if (app.screen !== 'title' || game.browser.loop.state !== 'running') return;
-    game.browser.loop.stop();
-    let previous = pressedPadButtons();
-    const poll = () => {
-      if (app.screen !== 'title' || game.browser.loop.state !== 'idle') return;
-      const now = pressedPadButtons();
-      const tap = index => now[index] && !previous[index];
-      if (now.some((pressed, index) => pressed && !previous[index])) {
-        wakeTitle();
-        // The first engine tick after a restart has zero delta and retires button edges.
-        idlePadConsumed = true;
-        if (tap(15) || tap(13) || tap(5)) ui.move(1);
-        if (tap(14) || tap(12) || tap(4)) ui.move(-1);
-        if (tap(0)) ui.activate();
-        return;
-      }
-      previous = now;
-      idlePadFrame = requestAnimationFrame(poll);
-    };
-    idlePadFrame = requestAnimationFrame(poll);
-  }, 750);
-}
-
-// play() stops calling update while paused. Poll only the paused menu's standard pad buttons here.
-function watchPausedPad() {
-  let previous = pressedPadButtons();
-  const poll = () => {
-    if (app.screen !== 'menu') return;
-    const now = pressedPadButtons();
-    const tap = index => now[index] && !previous[index];
-    if (tap(15) || tap(13) || tap(5)) ui.move(1);
-    if (tap(14) || tap(12) || tap(4)) ui.move(-1);
-    if (tap(0)) ui.activate();
-    if (app.screen === 'menu' && (tap(1) || tap(9))) {
-      suppressPadStart = tap(9);
-      resume();
-    }
-    previous = now;
-    if (app.screen === 'menu') pausePadFrame = requestAnimationFrame(poll);
-  };
-  pausePadFrame = requestAnimationFrame(poll);
-}
-
-function pad() {
-  if (idlePadConsumed) {
-    if (pressedPadButtons().some(Boolean)) return;
-    idlePadConsumed = false;
-  }
-  if (game.asking) return;
-  const keys = game.keys;
-  if (!keys.down('pad:start')) suppressPadStart = false;
-  if (app.screen === 'play') {
-    if (!suppressPadStart && keys.pressed('pad:start')) pause();
-    return;
-  }
-  if (keys.pressed('pad:right', 'pad:down', 'pad:rb')) ui.move(1);
-  if (keys.pressed('pad:left', 'pad:up', 'pad:lb')) ui.move(-1);
-  if (keys.pressed('pad:a')) ui.activate();
-  if (keys.pressed('pad:b', 'pad:start')) back();
-}
 function frame(seconds) {
   if (!ready) return;
-  pad();
   if (app.screen !== 'play' || !app.run) return;
+  if (game.keys.pressed('pad:start')) {
+    pause();
+    return;
+  }
   const run = app.run;
   const axis = stick.active ? stick.vector : game.keys.axis();
   const events = [];
@@ -357,10 +276,8 @@ function hear(events) {
 
 function wireKeys() {
   // Only the game region owns these shortcuts. Tabs and activations use the published canvas controls.
-  game.canvas.addEventListener('pointerdown', wakeTitle);
-  game.canvas.addEventListener('keydown', wakeTitle, true);
   game.canvas.addEventListener('keydown', (event) => {
-    if (event.repeat || event.ctrlKey || event.metaKey || event.altKey) return;
+    if (event.defaultPrevented || event.repeat || event.ctrlKey || event.metaKey || event.altKey) return;
     const key = event.key.toLowerCase();
     if (app.screen === 'play' && (key === 'escape' || key === 'p')) {
       event.preventDefault();
@@ -377,7 +294,6 @@ function wireKeys() {
   });
   document.addEventListener('visibilitychange', () => {
     if (document.visibilityState === 'hidden') pause();
-    else wakeTitle();
   });
 }
 
@@ -385,7 +301,7 @@ const yieldStartup = () => globalThis.scheduler?.yield?.() ?? new Promise((resol
 applyLanguage();
 await play({
   width: FIELD.width, height: FIELD.height, parent: surface, fit: 'expand',
-  transparent: true, audio: false, seed: app.seed, semantics: ui.semantics,
+  transparent: true, audio: false, renderMode: 'on-demand', seed: app.seed, semantics: ui.semantics,
   setup(made) {
     game = made;
     ui.attach(made);
@@ -397,7 +313,7 @@ await play({
   onError: console.error
 });
 screens = createScreens(game, app, {
-  title: showTitle, start: startGame, hero, danger, language, setting, wakeTitle,
+  title: showTitle, start: startGame, hero, danger, language, setting,
   guide: () => renderScreen('guide', 'start'),
   options: () => renderScreen('options', 'close'),
   resume, quit: showTitle
@@ -429,7 +345,7 @@ try {
 if (!loadFailed) {
   hud = createHud(game, app, rules, pause);
   stick = createSeaStick(game, () => app.screen === 'play', hud.exclude);
-  market = createMarketUi({ game, app, rules, sound, say, present, chooseLevel, nextWave, aliasPart: ui.alias, focusPart: (name) => ui.pick(name, { outline: true }) });
+  market = createMarketUi({ game, app, rules, sound, say, present, chooseLevel, nextWave, aliasPart: ui.alias, focusPart: ui.pick });
   wireKeys();
   showTitle();
   ready = true;

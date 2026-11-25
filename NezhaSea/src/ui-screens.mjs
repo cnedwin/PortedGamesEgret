@@ -10,19 +10,9 @@ const totalFields = ['wave', 'kills', 'merges', 'divines'];
 export function createScreens(game, app, actions) {
   // The portraits live inside the Egret views. Failed downloads leave the same readable card.
   const art = Object.fromEntries(HERO_KINDS.map(hero => [
-    hero, decodePortrait(hero).catch(error => { console.warn('Portrait unavailable', error); return null; })
+    hero, game.browser.loadTexture(new URL('../assets/' + hero + '.webp', import.meta.url).href)
+      .catch(error => { console.warn('Portrait unavailable', error); return null; })
   ]));
-  async function decodePortrait(hero) {
-    // The browser image provider accepts PNG; the supplied artwork is compressed WebP.
-    const image = new Image();
-    image.src = new URL('../assets/' + hero + '.webp', import.meta.url).href;
-    await image.decode();
-    const canvas = document.createElement('canvas');
-    canvas.width = Math.min(300, image.naturalWidth);
-    canvas.height = Math.round(image.naturalHeight * canvas.width / image.naturalWidth);
-    canvas.getContext('2d', { willReadFrequently: true }).drawImage(image, 0, 0, canvas.width, canvas.height);
-    return game.browser.textureFromCanvas(canvas);
-  }
   function portrait(view, part, hero, unlocked, textShade) {
     const root = view.get(part);
     if (textShade && root.numChildren) root.getChildAt(0).visible = false;
@@ -54,7 +44,6 @@ export function createScreens(game, app, actions) {
       ]).drawRect(0, start, width, height - start).endFill();
       shade.graphics.lineStyle(2, 0xe4b976, unlocked ? 0.9 : 0.38).drawRect(1, 1, width - 2, height - 2);
       root.setChildIndex(crop, 0);
-      actions.wakeTitle();
     });
   }
 
@@ -136,14 +125,14 @@ export function createScreens(game, app, actions) {
 
     const y0 = Math.min(top, Math.max(6, ui.height - y - 20));
     return ui.show(t('title'), panel(undefined, side, y0, w, y + 18, { children }), {
-      bind,
+      bind, gamepad: true,
       built(view) {
         for (const hero of HERO_KINDS) portrait(view, 'hero_' + hero, hero, app.save.data.unlocked.includes(hero), true);
       }
     });
   }
 
-  function dialog(heading, render, { maxWidth = 620, artwork, semanticName = heading } = {}) {
+  function dialog(heading, render, { maxWidth = 620, artwork, semanticName = heading, dismiss, resume } = {}) {
     const ui = layoutFor(game);
     const w = Math.min(maxWidth, ui.width - 24);
     const p = ui.height < 500 ? 15 : 24;
@@ -175,7 +164,7 @@ export function createScreens(game, app, actions) {
     render(context);
     const h = y + p - 8;
     return ui.show(semanticName, paper(children, (ui.width - w) / 2, Math.max(4, (ui.height - h) / 2), w, h), {
-      modal: true, bind, built: artwork
+      modal: true, bind, built: artwork, dismiss, resume
     });
   }
 
@@ -203,14 +192,14 @@ export function createScreens(game, app, actions) {
       for (const index of [1, 2, 3]) row(index + '. ' + t('how' + index), { name: 'how' + index, size: small ? 13 : 15 });
       row(t('keysLine'), { name: 'keysLine', size: 12 });
       buttons([['start', t('start'), actions.start, primary], ['close', t('closed'), () => actions.title('guide')]]);
-    });
+    }, { dismiss: () => actions.title('guide') });
   }
 
   function options() {
     return dialog(t('settings'), context => {
       settings(context);
       context.buttons([['close', t('closed'), () => actions.title('options'), primary]]);
-    });
+    }, { dismiss: () => actions.title('options') });
   }
 
   function menu() {
@@ -219,7 +208,7 @@ export function createScreens(game, app, actions) {
       context.buttons([['resume', t('resume'), actions.resume, primary], ['quit', t('quit'), actions.quit]]);
       context.row(t('settings'), { name: 'settingsHeading', size: 21, color: GOLD, bold: true });
       settings(context);
-    });
+    }, { dismiss: actions.resume, resume: actions.resume });
   }
 
   function end() {

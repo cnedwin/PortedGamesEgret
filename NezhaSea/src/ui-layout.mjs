@@ -47,10 +47,10 @@ export function layoutFor(game) {
     if (part.children) made.children = part.children.map(map);
     return made;
   }
-  function show(label, root, { modal = false, state, bind, built, skin = SKIN } = {}) {
+  function show(label, root, { modal = false, skin = SKIN, ...options } = {}) {
     return game.show({ label, root: map(root), modal, area: 'safe', skin: {
       ...skin, radius: units(skin.radius ?? SKIN.radius)
-    } }, { state, bind, built });
+    } }, options);
   }
   return { u, width, height, safe, show };
 }

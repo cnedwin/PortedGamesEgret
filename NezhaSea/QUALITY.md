@@ -1,5 +1,16 @@
 # 品质验收 · Quality — 哪吒闹海 · Nezha Stirs the Sea
 
+## 2026-11-26 引擎复测 · Engine refresh
+
+- **版本 · Version:** Egret main `95897d78095ae8fda9e34dbc13bbbd15db8eaa12`。规则和存档源码逐文件一致。 · Simulation and save source files are unchanged.
+- **浏览器回归 · Browser regression:** Node **31/31**，浏览器 **66/66**，零控制台错误。保留原标题、结算基线，差异为 **0.26% / 0.34%**，均在原阈值内。覆盖 Tab 离开嵌入画布、Shift+Tab、Enter/Space、模拟标准手柄的 A、方向键、B 和按住 Start 恢复。 · All checks passed. Both previous baselines stayed within the unchanged threshold. Checks cover focus, modal navigation, idle first input and a held Start through resume.
+- **集市 · Market:** 在 1280×800、390×844、844×390 和 768×1024 验证原生文字。1280×800 的八法宝场景最高 **60/60** 条可见文字就绪，连续七轮换货、选中与取消未出现空白。768×1024 注入式测量累计 **3 次缓存拒绝**，最终检查文字均可见。 · Tested native market text across all four sizes. The eight-relic desktop fixture reached 60 of 60 visible captions. Seven repeated restocks and selections stayed complete. The 768×1024 fixture reported three transient refusals, with all visible text prepared at inspection.
+- **PC 硬件 · PC hardware:** 本机 Chrome 158.0.8127.37、NVIDIA Blackwell WebGPU。用浏览器键鼠输入验证可见焦点、开场、暂停恢复、集市换货、配对合成与第 2 波，无控制台错误。集市由固定局面驱动。 · The installed Chrome used a hardware WebGPU adapter. Browser keyboard and mouse input drove the game to wave 2 through the dense market fixture without console errors.
+- **质量脚本 · Quality command:** 静置标题 F1 p95 **4.2 ms**。限速首屏 **3.7 s / 2.6 MB**，仍超 3 秒目标。通用 E2 阻断资源未触发致命加载，定向图集失败的错误页和重载通过。其他上一轮达标的自动项通过。 · The settled title F1 passes. L1 and generic E2 remain open, while the targeted atlas failure and retry pass.
+- **设备限制 · Device limits:** 已授权的 Fold7 已连接。标准唤醒后仍锁屏，Android 限制输入，未完成真机游戏或帧率测量。浏览器触屏和标准手柄样本均为自动注入，物理手柄未测。 · The connected Fold7 remained locked after a normal wake. No real-device gameplay or timing was recorded. Browser touch and standard gamepad input were injected. A physical controller was not tested.
+
+以下为第一次迁移的环境与历史结果。 · The environment and results below document the initial migration.
+
 ## 测量环境 · Where it was measured
 
 - 2026-11-25，Windows，Node v26.7.0。Edge Chromium 无头浏览器，WebGL2 SwiftShader 软件渲染。 · Windows, Node v26.7.0, headless Edge Chromium, WebGL2 SwiftShader.

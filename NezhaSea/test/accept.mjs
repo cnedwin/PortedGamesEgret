@@ -25,8 +25,8 @@ const waitPart = (part) => page.waitForFunction((part) => window.nezhaSea.ui.tre
 ), part, { timeout: 8000, polling: 50 });
 const wordsOf = async (part) => (await byPart(part))?.name.replace(/\s+/g, ' ') ?? '';
 const focus = () => state(() => {
-  const { name, part, outlined } = window.nezhaSea.ui;
-  return { name, part, outlined };
+  const { ui } = window.nezhaSea;
+  return { name: ui.name, part: ui.part };
 });
 
 async function tabTo(part, backwards = false) {
@@ -98,7 +98,24 @@ try {
   await page.keyboard.press('Enter');
   await until(page, () => window.nezhaSea.app.danger === 1);
   const danger = await focus();
-  check(danger.part === 'danger1' && danger.outlined && /^浪急/.test(danger.name), 'Enter chooses the danger and the focus ring remains visible');
+  check(danger.part === 'danger1' && /^浪急/.test(danger.name), 'Enter chooses the danger and the native focus remains on it');
+
+  await state(() => {
+    const outside = document.createElement('button');
+    outside.id = 'outside-game';
+    outside.textContent = 'Outside game';
+    document.body.append(outside);
+  });
+  check(await tabTo('danger2'), 'Tab reaches the last title control');
+  await page.keyboard.press('Tab');
+  check(await state(() => document.activeElement.id === 'outside-game'), 'Tab leaves an embedded nonmodal canvas after its last control');
+  await state(() => {
+    document.querySelector('#outside-game').remove();
+    const { game, ui } = window.nezhaSea;
+    game.canvas.focus();
+    const danger = ui.tree.snapshot.nodes.find(node => node.id.endsWith(':danger1'));
+    ui.tree.perform(danger.id, 'focus');
+  });
 
   check(await tabTo('options', true), 'Shift+Tab reaches Settings');
   await page.keyboard.press('Enter');
@@ -367,7 +384,12 @@ try {
   const padButton = (index, pressed) => state(([index, pressed]) => {
     Object.assign(window.acceptancePad.buttons[index], { pressed, value: Number(pressed) });
   }, [index, pressed]);
-  await until(page, () => window.nezhaSea?.ready && window.nezhaSea.game.browser.loop.state === 'idle');
+  await until(page, () => window.nezhaSea?.ready && window.nezhaSea.screen === 'title');
+  await page.waitForTimeout(1200);
+  const beforeIdle = await state(() => window.nezhaSea.game.browser.loop.snapshot());
+  await page.waitForTimeout(300);
+  const afterIdle = await state(() => window.nezhaSea.game.browser.loop.snapshot());
+  check(afterIdle.steps > beforeIdle.steps && afterIdle.frames === beforeIdle.frames, 'native on-demand mode polls input without submitting the settled title again');
   await padButton(0, true);
   await waitScreen('play');
   await padButton(0, false);
@@ -377,6 +399,18 @@ try {
   await page.waitForFunction((x) => window.nezhaSea.app.run.player.x > x + 18, firstPadX);
   await state(() => { window.acceptancePad.axes[0] = 0; });
   check(true, 'the simulated analogue stick moves Nezha');
+  await padButton(9, true);
+  await waitScreen('menu');
+  await padButton(9, false);
+  const waitFocus = (part) => page.waitForFunction(part => window.nezhaSea.ui.part === part, part);
+  await waitFocus('resume');
+  await padButton(13, true);
+  await waitFocus('quit');
+  await padButton(13, false);
+  await padButton(1, true);
+  await waitScreen('play');
+  await padButton(1, false);
+  check(true, 'native gamepad focus moves in the paused menu and B resumes play');
   await padButton(9, true);
   await waitScreen('menu');
   await padButton(9, false);
