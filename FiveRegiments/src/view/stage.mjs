@@ -5,7 +5,6 @@ import {
   Attribute3D,
   CubeTexture3D,
   Geometry3D,
-  InstancedMesh3D,
   Mesh3D,
   Object3D,
   Texture3D,
@@ -495,28 +494,23 @@ function surfaceRock(model, material, scale) {
 }
 
 // A turn at the far end of Stonegate can bring enough pines or rocks into view for auto-instancing
-// for the first time. Prepare the same color programs on detached meshes while the arena loads.
+// for the first time. Prepare both ordinary and batched draws from each prop's real color material.
 async function prepareStonegatePrograms(renderer, set, platforms) {
   const [pine, boulder, materials] = await Promise.all([prop('pine', set), prop('boulder', set), platforms]);
   const color = { fog: true, environment: true, receiveShadows: renderer.shadowsEnabled };
   const requests = [];
-  function addInstances(root, includeOrdinary = false) {
+  function addColorRequests(root) {
     root.traverse((mesh) => {
-      if (!(mesh instanceof Mesh3D)) return;
-      const material = mesh.material;
-      const instance = new InstancedMesh3D(mesh.geometry, material, 1);
-      instance.receiveShadow = mesh.receiveShadow;
-      requests.push({ ...color, mesh: instance, material });
-      if (includeOrdinary) requests.push({ ...color, mesh, material });
+      if (mesh instanceof Mesh3D) requests.push({ ...color, mesh, material: mesh.material });
     });
   }
-  if (pine) addInstances(pine.root);
+  if (pine) addColorRequests(pine.root);
   if (boulder) {
     const rock = boulder.root.clone();
     surfaceRock(rock, materials[1], 2.4);
-    addInstances(rock, true);
+    addColorRequests(rock);
   }
-  if (requests.length) await renderer.preparePrograms(requests);
+  if (requests.length) await renderer.preparePrograms(requests, { includeAutoInstancing: true });
 }
 
 /** The renderer and combat simulation share one layout, including the marked expedition exit. */

@@ -46,3 +46,24 @@ this file; items by hand or on a device are marked not run until someone runs th
 
 - A1m、S4：由本目录的 `test/accept.mjs` 在无头 Chromium 里覆盖——只用键盘走完标题、设置、一局和结算，存档改坏后标题显示提示并重新开始。没有由人另做，也没有用真读屏。 · Covered by this folder's acceptance script in headless Chromium: the whole path by keyboard, and the notice after a broken save. Not done again by a person, nor with a real screen reader.
 - T1、F2、E4、I2：未运行 · not run.
+
+## Stonegate WebGL2 on Windows · 石门关 Windows 真机复验
+
+2026-11-25 · Edge 158.0.4370.33 · RTX 5090 Laptop · ANGLE D3D11 · 1280 × 720 · KHR_parallel_shader_compile
+
+Each version ran in a fresh Edge session. Start the expedition as Vanguard, seed 31, medium quality. Clear Stonegate, turn toward the exit and ride through the gate. Both runs ended in victory. The first color draws batching eight pines and eight rocks used the prepared geometry, material and shader variants, including shadow reception.
+
+两个版本分别使用全新 Edge 会话。选先锋、中画质、种子 31 进入行军，清敌后转向出口，穿过石门关。两次均获胜。松树和岩石分别首次达到 8 个可见实例时，实际颜色绘制使用的几何、材质和着色变体均与预热匹配，并保留了接收阴影的变体。
+
+| Game version · 游戏版本 | Preparation elapsed · 预热总耗时 | First pine batch after clear · 清敌后松树首批 | First rock batch after clear · 清敌后岩石首批 | Draw-time links / LINK_STATUS from clear to victory · 清敌至胜利的绘制期链接／查询 |
+| --- | ---: | ---: | ---: | ---: |
+| [#235](https://github.com/cnedwin/PortedGamesEgret/pull/235) · temporary instance meshes / 临时实例网格 | 300.3 ms | 0.4 ms | 0.6 ms | 0 / 0 |
+| [Engine #458](https://github.com/cnedwin/Egret_rebuild/pull/458) · ordinary meshes / 普通网格 | 322.3 ms | 0.8 ms | 0.4 ms | 0 / 0 |
+
+Preparation elapsed includes asynchronous completion during loading. Each first-batch time measures the CPU submission for the entire World3D render containing that batch. These are single observations for each version. On #235, pines had already batched once during combat (0.6 ms CPU submission, zero links and zero status queries). On the updated copy both props first batched after the fight. Other programs linked earlier in both runs.
+
+预热耗时包含加载期等待异步链接完成的时间。首批耗时取首次合批所在整次 World3D 绘制的 CPU 提交时间。每个版本各记录一次有效实跑。#235 在清敌前就曾首次合批松树，CPU 提交为 0.6 ms，链接和状态查询均为零；新版两种道具均在清敌后首次合批。两个版本的战斗早段另有其他程序发生链接。
+
+For visual comparison, hold the game clock and camera at the wide-field and gate-turn views. Across versions all 921,600 RGBA pixels per view matched with directional shadows enabled and with them disabled. Disabling shadows changed 38,392 pixels in the wide view and 437,238 in the gate view on each version. Re-enabling shadows restored both original images exactly.
+
+画面对照固定游戏时钟，分别拍摄全景和转向关门两个机位。每个机位的 921,600 个 RGBA 像素在新旧版本间完全相同，开、关定向光阴影均通过。两版关闭阴影后，全景均有 38,392 个像素变化，关门机位均有 437,238 个；重新开启阴影后逐像素复原。

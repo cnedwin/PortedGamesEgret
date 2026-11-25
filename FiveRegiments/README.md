@@ -235,7 +235,7 @@ Choose a regiment and make your way through Stonegate Pass, Red Banner Depot and
 
 ## 引擎副本 · Engine copy
 
-- 引擎提交 `450bb9eb62fec9d3032b35766817844adc6eba33`（见 `vendor/SOURCE.md`）。 · Engine commit `450bb9e` (see `vendor/SOURCE.md`).
+- 引擎提交 `5792d800a4932da81ddf6af9314a430c41cb0f30`（见 `vendor/SOURCE.md`）。 · Engine commit `5792d800` (see `vendor/SOURCE.md`).
 - 生成命令（在引擎仓库里）· Made with, in the engine repository:
 
 ```sh
