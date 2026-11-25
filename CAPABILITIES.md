@@ -29,7 +29,7 @@ used or not; only each game's own code is read, not `vendor/`, tests or tools. T
 | `@egret/engine/web/gestures` | 0 |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |
 | `@egret/engine/web/view` | 0 |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |
 | `@egret/engine/web/pointer` | 1 |  |  |  |  |  |  |  |  |  | [✔](LoveElective/src/engine/stage.mjs) |  |  |  |  |  |  |  |  |  |  |  |  |  |
-| `@egret/engine/ui` | 6 |  |  |  |  |  | [✔](InquestScrolls/src/view/notes.mjs) |  |  |  |  | [✔](MechanismCity/src/screens.mjs) |  | [✔](NightWardens/src/screens.mjs) |  |  | [✔](PeachCreek/src/inspector.mjs) |  | [✔](SandScroll/src/ui/kit.mjs) |  |  |  | [✔](TeaHorseRoad/src/ui/card.mjs) |  |
+| `@egret/engine/ui` | 6 |  |  |  |  |  | [✔](InquestScrolls/src/view/notes.mjs) |  |  |  |  | [✔](MechanismCity/src/screens.mjs) |  | [✔](NightWardens/src/screens.mjs) |  |  | [✔](PeachCreek/src/main.mjs) |  | [✔](SandScroll/src/ui/kit.mjs) |  |  |  | [✔](TeaHorseRoad/src/ui/card.mjs) |  |
 | `@egret/engine/animation` | 1 |  |  |  |  |  |  |  |  |  |  |  |  | [✔](NightWardens/src/view/field.mjs) |  |  |  |  |  |  |  |  |  |  |
 | `@egret/engine/paragraph` | 1 |  |  |  |  |  | [✔](InquestScrolls/src/view/type.mjs) |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |
 | `@egret/engine/web/paragraph` | 1 |  |  |  |  |  | [✔](InquestScrolls/src/view/type.mjs) |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |

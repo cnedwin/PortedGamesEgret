@@ -363,7 +363,7 @@ export const MATRIX = {
     },
     {
      "game": "PeachCreek",
-     "file": "PeachCreek/src/inspector.mjs"
+     "file": "PeachCreek/src/main.mjs"
     },
     {
      "game": "SandScroll",
