@@ -29,12 +29,11 @@ body {
   overflow: hidden;
   -webkit-user-select: none;
   user-select: none;
-  touch-action: none;
 }
 #frame {
   position: fixed;
   inset: 0;
-  overflow: hidden;
+  overflow: clip;
 }
 #stage {
   position: absolute;
@@ -44,14 +43,12 @@ body {
   display: block;
   outline: none;
   background: linear-gradient(#78b2ec, #d6e8f0 60%, #a0bc96);
+  touch-action: none;
 }
 #ui {
   position: absolute;
   inset: 0;
   pointer-events: none;
-}
-#ui > * {
-  pointer-events: auto;
 }
 #loading {
   position: absolute;
@@ -121,6 +118,7 @@ body {
   display: flex;
   pointer-events: auto;
   overflow: auto;
+  touch-action: pan-y pinch-zoom;
   padding: 16px;
 }
 .screen > * {
@@ -708,6 +706,11 @@ body {
   transform: translateX(-50%);
   display: flex;
   gap: 6px;
+  width: max-content;
+  max-width: calc(100% - 16px);
+  flex-wrap: wrap;
+  justify-content: center;
+  pointer-events: none;
 }
 .hud-btn {
   font: inherit;
@@ -720,6 +723,7 @@ body {
   padding: 5px 12px;
   box-shadow: 0 3px 0 var(--ink);
   cursor: pointer;
+  pointer-events: auto;
   display: flex;
   align-items: center;
   gap: 4px;
@@ -754,6 +758,7 @@ body {
   gap: 3px;
   max-height: 72vh;
   overflow: auto;
+  touch-action: pan-y pinch-zoom;
   animation: pop 0.12s ease-out;
 }
 @keyframes pop {
@@ -838,6 +843,12 @@ body {
   border: 3px solid var(--team);
   object-fit: cover;
   background: #dfe8f5;
+}
+.fc-structure {
+  display: grid;
+  place-items: center;
+  font-size: 26px;
+  color: var(--ink);
 }
 .fc-name {
   font-weight: 800;
@@ -1036,14 +1047,39 @@ body {
   display: none;
 }
 @media (max-width: 760px) {
+  .hud-top {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+    gap: 6px;
+  }
   .cmd-card {
     min-width: 0;
+    gap: 5px;
+    padding: 4px 6px;
+  }
+  .cmd-card.right {
+    padding: 4px 6px;
   }
   .cmd-card .face {
-    width: 40px;
-    height: 40px;
+    flex: none;
+    width: 32px;
+    height: 32px;
   }
   .cmd-card .name {
+    font-size: 12px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .cmd-card .row {
+    gap: 5px;
+    font-size: 11px;
+    white-space: nowrap;
+  }
+  .turn-chip {
+    padding: 5px 8px;
+    white-space: nowrap;
+  }
+  .turn-chip b {
     font-size: 13px;
   }
   .hud-btn .lbl {
@@ -1075,6 +1111,9 @@ body {
 }
 /* Fingers need room: every control at least 44 px square on a touch screen. */
 @media (pointer: coarse) {
+  button {
+    touch-action: manipulation;
+  }
   .hud-btn,
   .menu-item,
   .seg-btn,
@@ -1089,10 +1128,12 @@ body {
   }
   .hud-bar {
     gap: 4px;
-    flex-wrap: wrap;
-    justify-content: center;
-    width: max-content;
-    max-width: calc(100vw - 16px);
+  }
+}
+@media (pointer: coarse) and (max-width: 395px) {
+  .tile-card,
+  .unit-card {
+    bottom: 110px;
   }
 }
 html,
@@ -1117,6 +1158,7 @@ body {
   font-weight: 800;
   box-shadow: var(--shadow);
   z-index: 5;
+  pointer-events: auto;
 }
 .load-error .btn {
   padding: 6px 16px;

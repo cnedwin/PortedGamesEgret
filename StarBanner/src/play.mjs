@@ -58,7 +58,10 @@ export async function boardProps(set) {
 export async function startBattle(app, { setup, saved = null, attract = false }) {
   const { stage, ui } = app;
   // The title's background is a battle between two computer sides with no interface and no sound of its own.
-  const sound = attract ? { play() {}, music() {} } : app.sound;
+  const sound = {
+    play(...args) { if (!attract) app.sound.play(...args); },
+    music(...args) { if (!attract) app.sound.music(...args); }
+  };
   const map = mapById(setup.map);
   const game = saved ? { ...saved, events: [] } : createGame(map, setup.sides, setup.seed ?? 1);
   const human = setup.human ?? 0;
@@ -67,21 +70,16 @@ export async function startBattle(app, { setup, saved = null, attract = false })
   const reduce = () => app.reducedMotion;
 
   // ---- the board ----
-  stage.setLook(map.look);
   const set = SET_OF[stage.quality] ?? 'mid';
   const bounds = { w: game.w, h: game.h, water: (x, y) => WATER.has(game.terrain[y * game.w + x]) };
-  const [props, library] = await Promise.all([boardProps(set), Promise.resolve(app.library ?? (app.library = createLibrary(set)))]);
-  const board = buildBoard(stage.scene, game, { look: map.look, props, quality: stage.quality, seed: map.id.length * 97 });
+  const library = app.library ?? (app.library = createLibrary(set));
   const wanted = new Set([...Object.values(BUILDING_BODY).map((b) => b.model), ...game.players.map((p) => p.commander)]);
-  for (const u of game.units) wanted.add(modelOf(u));
-  // The units the sides can recruit on this map load in the background after the first picture.
-  await library.want([...wanted]);
-  const later = new Set();
-  for (const b of game.buildings) for (const type of recruitsOf(b.kind)) later.add(type);
-  void library.want([...later]);
+  for (const u of game.units) {
+    wanted.add(modelOf(u));
+    for (const cargo of u.cargo) wanted.add(modelOf(cargo));
+  }
+  const [props] = await Promise.all([boardProps(set), library.want([...wanted])]);
 
-  const overlay = createOverlay(stage.scene, bounds);
-  const fx = createEffects(stage.scene, { amount: stage.quality === 'low' ? 0.5 : 1 });
   const figures = new Map();
   const pieces = new Map();
   const addFigure = (unit) => {
@@ -92,13 +90,33 @@ export async function startBattle(app, { setup, saved = null, attract = false })
     figures.set(unit.id, f);
     return f;
   };
-  for (const u of game.units) addFigure(u);
-  for (const u of game.units) for (const c of u.cargo) addFigure(c).holder.visible = false;
-  for (const b of game.buildings) {
-    const piece = makeBuilding(library, b, bounds);
-    stage.scene.addChild(piece.holder);
-    pieces.set(b.id, piece);
+  // Keep the last frame visible while the new field's actual mesh variants link asynchronously.
+  let board, overlay, fx;
+  const view = stage.app.view;
+  const wasPaused = view.paused;
+  view.paused = true;
+  try {
+    stage.setLook(map.look);
+    board = buildBoard(stage.scene, game, { look: map.look, props, quality: stage.quality, seed: map.id.length * 97 });
+    overlay = createOverlay(stage.scene, bounds);
+    fx = createEffects(stage.scene, { amount: stage.quality === 'low' ? 0.5 : 1 });
+    for (const u of game.units) {
+      addFigure(u);
+      for (const c of u.cargo) addFigure(c).holder.visible = false;
+    }
+    for (const b of game.buildings) {
+      const piece = makeBuilding(library, b, bounds);
+      stage.scene.addChild(piece.holder);
+      pieces.set(b.id, piece);
+    }
+    await stage.preparePrograms().catch((cause) => console.warn('Shader preparation failed', cause));
+  } finally {
+    view.paused = wasPaused;
   }
+  // Recruit models share the pending cache with actual recruit orders.
+  const later = new Set();
+  for (const b of game.buildings) for (const type of recruitsOf(b.kind)) later.add(type);
+  void library.want([...later]);
 
   stage.rig.setBounds(game.w, game.h);
   const home = commanderOf(game, human) ?? game.units.find((u) => u.owner === human);
@@ -111,6 +129,11 @@ export async function startBattle(app, { setup, saved = null, attract = false })
   let hud = makeHud();
   const s = { mode: 'busy', sel: null, reached: null, dest: null, targets: [], ti: 0, threat: false, over: false, disposed: false, dropQueue: null, drops: [], aiRunning: false };
   const isHumanTurn = () => game.current === human && !game.over;
+  const cancellable = new Set(['move', 'act', 'target', 'tile', 'dir', 'drop']);
+  function setMode(mode) {
+    s.mode = mode;
+    hud.setCancel(cancellable.has(mode));
+  }
 
   const worldOf = (x, y, h = 0) => [(x + 0.5 - game.w / 2) * TILE, h, (y + 0.5 - game.h / 2) * TILE];
   const screenOf = (p) => {
@@ -232,7 +255,7 @@ export async function startBattle(app, { setup, saved = null, attract = false })
 
   // ---- the turn of the human ----
   function beginIdle() {
-    s.mode = 'idle';
+    setMode('idle');
     s.sel = null;
     s.reached = null;
     s.dest = null;
@@ -245,7 +268,7 @@ export async function startBattle(app, { setup, saved = null, attract = false })
   function selectUnit(u) {
     s.sel = u.id;
     s.reached = reach(game, u);
-    s.mode = 'move';
+    setMode('move');
     sound.play('select');
     moveMarks();
   }
@@ -256,7 +279,7 @@ export async function startBattle(app, { setup, saved = null, attract = false })
     if (!node || !ok) return sound.play('error');
     sound.play('confirm');
     s.dest = { x, y };
-    s.mode = 'busy';
+    setMode('busy');
     overlay.tiles([]);
     overlay.path([]);
     const path = pathTo(s.reached, x, y);
@@ -270,7 +293,7 @@ export async function startBattle(app, { setup, saved = null, attract = false })
   }
   async function openActions() {
     const u = unitById(game, s.sel);
-    s.mode = 'act';
+    setMode('act');
     const actions = actionsAt(game, u, s.dest.x, s.dest.y);
     const items = actions.map((a) => {
       const item = { key: a, label: t(a.kind === 'art' ? 'artAction' : a.kind) };
@@ -307,7 +330,7 @@ export async function startBattle(app, { setup, saved = null, attract = false })
     const u = unitById(game, s.sel);
     figures.get(u.id).snap(u.x, u.y);
     sound.play('cancel');
-    s.mode = 'move';
+    setMode('move');
     s.dest = null;
     setCursor(u.x, u.y);
     moveMarks();
@@ -317,7 +340,7 @@ export async function startBattle(app, { setup, saved = null, attract = false })
     const u = unitById(game, s.sel);
     s.targets = targetsFrom(game, u, s.dest.x, s.dest.y, s.dest.x !== u.x || s.dest.y !== u.y);
     s.ti = 0;
-    s.mode = 'target';
+    setMode('target');
     hud.hint(t('pickTarget'));
     overlay.tiles(s.targets.map((v) => ({ x: v.x, y: v.y, kind: 'attack' })));
     setCursor(s.targets[0].x, s.targets[0].y);
@@ -342,7 +365,7 @@ export async function startBattle(app, { setup, saved = null, attract = false })
   // A tile within reach: the mage's healing, a blast art.
   function beginTile(kind) {
     const u = unitById(game, s.sel);
-    s.mode = 'tile';
+    setMode('tile');
     s.tileKind = kind;
     const reachN = kind === 'heal' ? UNITS[u.type].heal.reach : COMMANDERS[game.players[u.owner].commander].art.reach;
     s.tileReach = reachN;
@@ -360,7 +383,7 @@ export async function startBattle(app, { setup, saved = null, attract = false })
   }
   // A direction: Seline's lance.
   function beginDir() {
-    s.mode = 'dir';
+    setMode('dir');
     s.dir = [1, 0];
     hud.hint(t('pickDir'));
     artMarks(unitById(game, s.sel));
@@ -380,7 +403,7 @@ export async function startBattle(app, { setup, saved = null, attract = false })
     const u = unitById(game, s.sel);
     s.dropQueue = u.cargo.map((c) => c.id);
     s.drops = [];
-    s.mode = 'drop';
+    setMode('drop');
     hud.hint(t('pickDrop'));
     dropMarks();
   }
@@ -397,7 +420,7 @@ export async function startBattle(app, { setup, saved = null, attract = false })
 
   async function commit(then) {
     const u = unitById(game, s.sel);
-    s.mode = 'busy';
+    setMode('busy');
     hud.setBusy(true);
     hud.hint(null);
     hud.forecast(null);
@@ -443,7 +466,7 @@ export async function startBattle(app, { setup, saved = null, attract = false })
       };
     });
     items.push({ key: null, label: t('cancel') });
-    s.mode = 'menu';
+    setMode('menu');
     const p = screenOf(worldOf(b.x, b.y, 1));
     sound.play('select');
     const type = await hud.menu(items, p, { title: `${t('recruit')} · ${t('gold', { n: gold })}` });
@@ -455,15 +478,16 @@ export async function startBattle(app, { setup, saved = null, attract = false })
     const spots = recruitSpots(game, b, type);
     const foes = game.units.filter((u) => u.owner !== human);
     const at = spots.sort((p, q) => Math.min(...foes.map((f) => distance(p.x, p.y, f.x, f.y)), 99) - Math.min(...foes.map((f) => distance(q.x, q.y, f.x, f.y)), 99))[0];
-    s.mode = 'busy';
+    setMode('busy');
     await library.want([type]);
+    if (s.disposed) return;
     const events = act(game, { kind: 'recruit', building: b.id, type, at });
     await playEvents(events);
     afterAction();
   }
 
   async function mapMenu() {
-    s.mode = 'menu';
+    setMode('menu');
     sound.play('menu');
     const choice = await hud.menu(
       [
@@ -494,13 +518,13 @@ export async function startBattle(app, { setup, saved = null, attract = false })
         null,
         { title: t('surrenderAsk') }
       );
-      if (sure === 'yes') return finish(1 - human, 'commander');
+      if (sure === 'yes') return finish(1 - human, 'surrender');
     }
     beginIdle();
   }
 
   async function endHumanTurn() {
-    s.mode = 'busy';
+    setMode('busy');
     hud.setBusy(true);
     overlay.tiles([]);
     sound.play('confirm');
@@ -600,6 +624,8 @@ export async function startBattle(app, { setup, saved = null, attract = false })
         }
         case 'recruit': {
           const u = unitById(game, e.unit);
+          await library.want([modelOf(u)]);
+          if (s.disposed) return;
           const f = addFigure(u);
           f.face(u.x + (u.owner === 0 ? 1 : 0), u.y + (u.owner === 0 ? 0 : 1));
           sound.play('coin');
@@ -786,7 +812,7 @@ export async function startBattle(app, { setup, saved = null, attract = false })
   async function finish(winner, why) {
     if (s.over) return;
     s.over = true;
-    s.mode = 'over';
+    setMode('over');
     hud.setBusy(true);
     overlay.showCursor(false);
     overlay.tiles([]);
@@ -1019,6 +1045,7 @@ export async function startBattle(app, { setup, saved = null, attract = false })
       hud.closeMenu();
       hud.dispose();
       hud = makeHud();
+      hud.setCancel(cancellable.has(s.mode));
       refreshTop();
       refreshCards();
       if (s.mode === 'busy' || s.aiRunning) hud.setBusy(true);

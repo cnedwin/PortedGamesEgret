@@ -4,7 +4,7 @@
 // the camera looking down on the board at 45 degrees. It keeps a point of the board in view; it pans, zooms, turns in
 // quarter steps and glides to a tile; a point on the screen becomes a tile of the board.
 import { createWorld3DApp } from '@egret/engine/webgpu/world3d';
-import { Raycaster3D, Scene3D, createDirectionalLight3D, createGradientCubeTexture3D, createHemisphereLight3D, createPerspectiveCamera3D } from '@egret/engine/world3d';
+import { Mesh3D, Raycaster3D, Scene3D, createDirectionalLight3D, createGradientCubeTexture3D, createHemisphereLight3D, createPerspectiveCamera3D } from '@egret/engine/world3d';
 
 /** World units per tile. */
 export const TILE = 2;
@@ -26,6 +26,7 @@ export async function createStage(canvas, { quality, backend = 'webgl2', onError
     ...(quality ? { quality } : {}),
     onError: (cause) => (onError ? onError(cause) : console.error(cause))
   });
+  const renderer = app.renderer;
   const scene = new Scene3D();
   const camera = createPerspectiveCamera3D({ fov: 26, near: 1, far: 600 });
   scene.addChild(camera);
@@ -41,7 +42,7 @@ export async function createStage(canvas, { quality, backend = 'webgl2', onError
   }
   scene.addChild(sun);
 
-  const post = app.renderer.postProcess;
+  const post = renderer.postProcess;
   if (post) {
     Object.assign(post, {
       enabled: app.quality !== 'low',
@@ -70,6 +71,24 @@ export async function createStage(canvas, { quality, backend = 'webgl2', onError
     sky.color.set(look.sky);
     sky.groundColor?.set?.(look.ground);
     sun.color.set(look.sun);
+  }
+
+  /** Link scene programs before their first draw on browsers that support asynchronous shader compilation. */
+  async function preparePrograms() {
+    if (app.backend !== 'webgl2' || !renderer.context.getExtension('KHR_parallel_shader_compile')) return;
+    const receiveShadows = renderer.shadowsEnabled && sun.castShadow;
+    const environment = Boolean(scene.environment);
+    const fog = Boolean(scene.fog);
+    const requests = [];
+    scene.traverse((mesh) => {
+      if (!(mesh instanceof Mesh3D)) return;
+      const materials = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
+      for (const material of materials) {
+        requests.push({ mesh, material, environment, fog, receiveShadows });
+        if (receiveShadows && mesh.castShadow) requests.push({ mesh, material, pass: 'shadow' });
+      }
+    });
+    await renderer.preparePrograms(requests, { includeAutoInstancing: true });
   }
 
   // ---- the camera ----
@@ -162,7 +181,7 @@ export async function createStage(canvas, { quality, backend = 'webgl2', onError
     }
   };
   place();
-  return { app, scene, camera, sun, sky, rig, setLook, renderer: app.renderer, quality: app.quality };
+  return { app, scene, camera, sun, sky, rig, setLook, preparePrograms, renderer, quality: app.quality };
 }
 
 /** The world point at the centre of tile (x, y) on a board `bounds` tiles across. */

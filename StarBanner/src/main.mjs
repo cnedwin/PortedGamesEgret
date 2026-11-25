@@ -167,7 +167,7 @@ async function backdrop() {
 // ---- input ----
 const input = createInput(canvas, {
   on(command, detail) {
-    if (app.screens.open) return void app.screens.command(command);
+    if (app.screens.open) return void app.screens.command(command, detail);
     if (app.battle && !app.battle.attract) app.battle.command(command, detail);
     else if (command === 'confirm' || command === 'cancel' || command === 'menu') app.screens.title();
   },

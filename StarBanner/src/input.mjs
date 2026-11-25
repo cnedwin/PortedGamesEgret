@@ -55,11 +55,10 @@ export function createInput(canvas, { on, point, tap, pan, zoom, active = () => 
     }
     if (e.repeat) return;
     if (DIRS.includes(command)) held.set(command, { since: performance.now(), next: performance.now() + 260 });
-    on(command, { device: 'keys' });
+    on(command, { device: 'keys', reverse: e.shiftKey });
   };
   addEventListener('keydown', onKey);
   addEventListener('keyup', onKey);
-  addEventListener('blur', () => held.clear());
 
   // ---- pointer: hover, click, drag to pan, wheel and pinch to zoom ----
   const pointers = new Map();
@@ -69,6 +68,16 @@ export function createInput(canvas, { on, point, tap, pan, zoom, active = () => 
     const r = canvas.getBoundingClientRect();
     return [e.clientX - r.left, e.clientY - r.top];
   };
+  const release = () => {
+    held.clear();
+    for (const id of pointers.keys()) {
+      if (canvas.hasPointerCapture?.(id)) canvas.releasePointerCapture(id);
+    }
+    pointers.clear();
+    drag = null;
+    pinch = null;
+  };
+  addEventListener('blur', release);
   canvas.addEventListener('pointerdown', (e) => {
     canvas.focus({ preventScroll: true });
     lastDevice = e.pointerType === 'touch' ? 'touch' : 'mouse';
@@ -105,6 +114,7 @@ export function createInput(canvas, { on, point, tap, pan, zoom, active = () => 
     }
   });
   const up = (e) => {
+    if (!pointers.has(e.pointerId)) return;
     const p = local(e);
     pointers.delete(e.pointerId);
     if (pointers.size < 2) pinch = null;
@@ -112,11 +122,14 @@ export function createInput(canvas, { on, point, tap, pan, zoom, active = () => 
     if (pointers.size === 0) drag = null;
   };
   canvas.addEventListener('pointerup', up);
-  canvas.addEventListener('pointercancel', (e) => {
+  const cancelPointer = (e) => {
+    if (!pointers.has(e.pointerId)) return;
     pointers.delete(e.pointerId);
     drag = null;
     pinch = null;
-  });
+  };
+  canvas.addEventListener('pointercancel', cancelPointer);
+  canvas.addEventListener('lostpointercapture', cancelPointer);
   canvas.addEventListener('contextmenu', (e) => e.preventDefault());
   canvas.addEventListener(
     'wheel',
@@ -189,8 +202,6 @@ export function createInput(canvas, { on, point, tap, pan, zoom, active = () => 
     get lastDevice() {
       return lastDevice;
     },
-    release() {
-      held.clear();
-    }
+    release
   };
 }

@@ -52,6 +52,7 @@ export function createHud(root, { onButton, touch = false }) {
   const buttons = {
     endTurn: button('endTurn', t('endTurn'), '⚑'),
     next: button('next', t('next'), '➜'),
+    cancel: button('cancel', t('cancel'), '↩'),
     threat: button('threat', t('threat'), '◎'),
     turnLeft: button('turnLeft', t('turnLeft'), '↺'),
     turnRight: button('turnRight', t('turnRight'), '↻'),
@@ -59,6 +60,7 @@ export function createHud(root, { onButton, touch = false }) {
     zoomOut: button('zoomOut', t('zoomOut'), '－'),
     menu: button('menu', t('menu'), '☰')
   };
+  buttons.cancel.classList.add('hidden');
   bar.append(...Object.values(buttons));
   hud.append(bar);
 
@@ -158,6 +160,11 @@ export function createHud(root, { onButton, touch = false }) {
       hint.classList.toggle('hidden', !text);
       hint.textContent = text ?? '';
     },
+    setCancel(show) {
+      const visible = touch && show;
+      buttons.cancel.classList.toggle('hidden', !visible);
+      buttons.next.classList.toggle('hidden', visible);
+    },
     /** The action menu near (x, y) on screen; `items` are { key, label, note, disabled }. */
     menu(items, at, { title } = {}) {
       api.closeMenu();
@@ -249,10 +256,12 @@ export function createHud(root, { onButton, touch = false }) {
       const side = (who, dmg, crit, team, label) => {
         const s = el('div', 'fc-side');
         s.style.setProperty('--team', team);
-        const img = el('img', 'face');
-        img.src = PORTRAIT(who.model);
-        img.alt = '';
-        s.append(img, el('div', 'fc-name', who.name), el('div', 'fc-hp', `♥ ${who.hp}`));
+        const face = who.model ? el('img', 'face') : el('span', 'face fc-structure', '♜');
+        if (who.model) {
+          face.src = PORTRAIT(who.model);
+          face.alt = '';
+        } else face.setAttribute('aria-hidden', 'true');
+        s.append(face, el('div', 'fc-name', who.name), el('div', 'fc-hp', `♥ ${who.hp}`));
         const d = el('div', 'fc-dmg' + (crit ? ' crit' : ''));
         d.append(el('small', '', label), el('b', '', dmg));
         if (crit) d.append(el('em', '', t('critical')));

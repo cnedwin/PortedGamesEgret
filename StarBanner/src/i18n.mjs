@@ -86,6 +86,7 @@ export const WORDS = {
   winWhy_commander: { zh: '敌方指挥官倒下了', en: 'The enemy commander has fallen' },
   winWhy_stronghold: { zh: '敌方要塞被攻破', en: 'The enemy stronghold has fallen' },
   loseWhy_commander: { zh: '你的指挥官倒下了', en: 'Your commander has fallen' },
+  loseWhy_surrender: { zh: '你选择了认输', en: 'You conceded the battle' },
   loseWhy_stronghold: { zh: '你的要塞被攻破', en: 'Your stronghold has fallen' },
   turns: { zh: '回合数', en: 'Turns' },
   kills: { zh: '击倒', en: 'Defeated' },

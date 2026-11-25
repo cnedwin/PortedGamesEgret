@@ -4,11 +4,11 @@
 // walk, strike, hurt, fall); carts, engines, ships and fliers are driven in code (jolt, hover, sway, lunge). A figure
 // walks a path tile by tile, turns to face its target, strikes, flashes white when hit, greys once it has acted and
 // fades when it falls.
-import { AnimationMixer3D, Object3D, createCustomShader3D } from '@egret/engine/world3d';
+import { AnimationMixer3D, Mesh3D, Object3D, createBoxGeometry3D, createConeGeometry3D, createCustomShader3D } from '@egret/engine/world3d';
 import { UNITS, isAir } from '../sim/units.mjs';
 import { TILE, INK } from './stage.mjs';
 import { cloneScene, loadModel, measure } from './assets.mjs';
-import { paintFigure, toonify, NEUTRAL, TEAMS } from './toon.mjs';
+import { paintFigure, toonFrom, toonify, NEUTRAL, TEAMS } from './toon.mjs';
 
 /** How tall each kind stands on the board (world units), how high fliers hover, and whether it is skinned. */
 export const BODY = {
@@ -44,34 +44,67 @@ const STRIKE_CLIP = { archer: 'shoot', mage: 'shoot', edmund: 'shoot', vireta: '
 /** The model that draws a unit: its own kind, or its commander. */
 export const modelOf = (unit) => (unit.type === 'commander' ? unit.commander : unit.type);
 
-/**
- * The library of loaded figures and buildings. `want(names)` loads what is missing; `make(unit)` and
- * `makeBuilding(b)` return a new piece (a placeholder when its model is missing).
- */
+/** The figure library shares the pending model load between preload and immediate requests. */
 export function createLibrary(set) {
   const loaded = new Map();
+  const pending = new Map();
+
+  async function load(name) {
+    const asset = await loadModel(name, set);
+    if (!asset) {
+      // Keep the failure for this session. A page retry will make a fresh library.
+      loaded.set(name, null);
+      return;
+    }
+    const materials = toonify(asset.scene, { swap: true, rim: [1, 0.92, 0.8, 0.16] });
+    for (const m of materials) m.color.set([0.86, 0.86, 0.88]);
+    asset.scene.traverse((node) => {
+      if (node.material) {
+        node.castShadow = true;
+        node.receiveShadow = true;
+        node.layers |= INK;
+      }
+    });
+    loaded.set(name, { asset, materials });
+  }
+
   async function want(names) {
-    await Promise.all(
-      names
-        .filter((n) => !loaded.has(n))
-        .map(async (n) => {
-          loaded.set(n, null);
-          const asset = await loadModel(n, set);
-          if (!asset) return;
-          const materials = toonify(asset.scene, { swap: true, rim: [1, 0.92, 0.8, 0.16] });
-          for (const m of materials) m.color.set([0.86, 0.86, 0.88]);
-          asset.scene.traverse((node) => {
-            if (node.material) {
-              node.castShadow = true;
-              node.receiveShadow = true;
-              node.layers |= INK;
-            }
-          });
-          loaded.set(n, { asset, materials });
-        })
-    );
+    await Promise.all(names.map((name) => {
+      if (loaded.has(name)) return;
+      if (!pending.has(name)) pending.set(name, load(name).finally(() => pending.delete(name)));
+      return pending.get(name);
+    }));
   }
   return { want, get: (n) => loaded.get(n) ?? null, loaded };
+}
+
+let standInGeometry;
+
+/** Keep failed pieces visible and faction-colored without fetching any additional assets. */
+function standIn(holder, { width, height, building = false }) {
+  standInGeometry ??= {
+    block: createBoxGeometry3D({ width: 1, height: 1, depth: 1 }),
+    cap: createConeGeometry3D({ radius: 0.72, height: 1, radialSegments: 4 })
+  };
+  const marker = new Object3D();
+  marker.name = 'model-fallback';
+  holder.addChild(marker);
+  const material = toonFrom(null, { swap: false });
+  const block = new Mesh3D(standInGeometry.block, material);
+  const cap = new Mesh3D(standInGeometry.cap, material);
+  const baseHeight = height * (building ? 0.7 : 0.35);
+  const capHeight = height - baseHeight;
+  block.setScale(width, baseHeight, width);
+  block.setPosition(0, baseHeight * 0.5, 0);
+  cap.setScale(width * (building ? 1.05 : 0.75), capHeight, width * (building ? 1.05 : 0.75));
+  cap.setPosition(0, baseHeight + capHeight * 0.5, 0);
+  for (const bit of [block, cap]) {
+    bit.castShadow = true;
+    bit.receiveShadow = true;
+    bit.layers |= INK;
+    marker.addChild(bit);
+  }
+  return [material];
 }
 
 /** A figure for `unit` on a board `bounds` tiles across. */
@@ -112,6 +145,8 @@ export function makeFigure(library, unit, bounds, team) {
       mixer = new AnimationMixer3D(model);
       for (const clip of entry.asset.animations) clips[clip.name] = mixer.clipAction(clip);
     }
+  } else {
+    materials = standIn(pivot, { width: body.sea ? 1.3 : 0.8, height: body.h });
   }
   const state = {
     unit: unit.id,
@@ -169,7 +204,8 @@ export function makeFigure(library, unit, bounds, team) {
   const paint = () => {
     const g = state.grey * (state.fade < 1 ? 0 : 1);
     for (const m of materials) {
-      paintFigure(m, state.team, { grey: g, flash: state.flash, swap: unit.type !== 'commander' });
+      if (!entry) m.color.set(state.team.ring);
+      paintFigure(m, state.team, { grey: g, flash: state.flash, swap: Boolean(entry) && unit.type !== 'commander' });
       m.opacity = state.fade;
       if (state.fade < 1 && m.alphaMode === 'opaque') m.alphaMode = 'blend';
     }
@@ -325,6 +361,8 @@ export function makeBuilding(library, b, bounds) {
     model.setScale(fit, fit, fit);
     model.setPosition(-size.centre[0] * fit, -size.centre[1] * fit + (b.kind === 'port' ? -0.25 : 0), -size.centre[2] * fit);
     holder.addChild(model);
+  } else {
+    materials = standIn(holder, { width: TILE * 0.7, height: spec.h, building: true });
   }
   const c = { x: (b.x + 0.5 - bounds.w / 2) * TILE, z: (b.y + 0.5 - bounds.h / 2) * TILE };
   holder.setPosition(c.x, 0, c.z);
@@ -336,7 +374,10 @@ export function makeBuilding(library, b, bounds) {
     setOwner(owner) {
       building.owner = owner;
       const team = owner >= 0 ? TEAMS[owner] : NEUTRAL;
-      for (const m of materials) paintFigure(m, team, { flash, grey: owner === -2 ? 0.8 : 0 });
+      for (const m of materials) {
+        if (!entry) m.color.set(team.ring);
+        paintFigure(m, team, { flash, grey: owner === -2 ? 0.8 : 0, swap: Boolean(entry) });
+      }
     },
     async hurt() {
       for (let i = 0; i < 6; i++) {

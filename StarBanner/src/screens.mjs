@@ -81,14 +81,17 @@ export function createScreens(root, app) {
     wrap.setAttribute('role', 'dialog');
     wrap.append(node);
     layer.append(wrap);
-    const entry = { wrap, onCancel, prev: current };
+    const entry = { wrap, onCancel, prev: current, priorFocus: document.activeElement };
     current = entry;
     requestAnimationFrame(() => wrap.querySelector('button:not([disabled])')?.focus({ preventScroll: true }));
     return entry;
   }
   function close(entry) {
     entry.wrap.remove();
-    if (current === entry) current = entry.prev;
+    if (current === entry) {
+      current = entry.prev;
+      if (current?.wrap.contains(entry.priorFocus)) entry.priorFocus.focus({ preventScroll: true });
+    }
   }
 
   const screens = {
@@ -96,11 +99,19 @@ export function createScreens(root, app) {
       return !!current;
     },
     /** Input from the app while a screen is up. Returns true when it was used. */
-    command(name) {
+    command(name, { reverse = false } = {}) {
       if (!current) return false;
       if (['up', 'down', 'left', 'right'].includes(name)) {
         moveFocus(current.wrap, name);
         app.sound.play('cursor', { volume: 0.6 });
+      } else if (name === 'next') {
+        const buttons = [...current.wrap.querySelectorAll('button:not([disabled])')].filter((button) => button.offsetParent !== null);
+        if (buttons.length) {
+          const index = buttons.indexOf(document.activeElement);
+          const step = reverse ? -1 : 1;
+          const next = index < 0 ? (reverse ? buttons.length - 1 : 0) : (index + step + buttons.length) % buttons.length;
+          buttons[next].focus();
+        }
       } else if (name === 'confirm') {
         const f = document.activeElement;
         if (f && current.wrap.contains(f)) f.click();
