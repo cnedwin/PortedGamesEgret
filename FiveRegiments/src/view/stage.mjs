@@ -3,7 +3,9 @@
 // it (and stop men and arrows), the weather, and its own grade of light.
 import {
   Attribute3D,
+  CubeTexture3D,
   Geometry3D,
+  InstancedMesh3D,
   Mesh3D,
   Object3D,
   Texture3D,
@@ -335,15 +337,45 @@ async function image(url) {
   return createImageBitmap(blob, { colorSpaceConversion: 'none', premultiplyAlpha: 'none' });
 }
 
+async function projectSkyInWorker(panorama, size) {
+  const engine = import.meta.resolve('@egret/engine/world3d');
+  const worker = new Worker(new URL('./sky-worker.mjs', import.meta.url), { type: 'module' });
+  try {
+    const faces = await new Promise((resolve, reject) => {
+      worker.onmessage = ({ data }) => data.error ? reject(new Error(data.error)) : resolve(data.faces);
+      worker.onerror = (error) => {
+        error.preventDefault();
+        reject(new Error(error.message));
+      };
+      worker.onmessageerror = reject;
+      // Keep the original pixels available for the synchronous fallback.
+      worker.postMessage({ engine, panorama, size });
+    });
+    return new CubeTexture3D(faces, { colorSpace: 'srgb', mipmaps: true, name: 'equirect' });
+  } finally {
+    worker.terminate();
+  }
+}
+
 /** Sky panorama → background and light cube. */
-async function skyCube(name, size) {
+async function skyCube(name, size, useWorker = false) {
   const bitmap = await image(new URL(`skies/${name}.jpg`, ASSETS));
   const canvas = new OffscreenCanvas(1024, 512);
   const g = canvas.getContext('2d');
   g.drawImage(bitmap, 0, 0, 1024, 512);
   bitmap.close();
   const data = g.getImageData(0, 0, 1024, 512).data;
-  return createCubeTextureFromEquirect3D({ width: 1024, height: 512, data: new Uint8Array(data.buffer) }, { size });
+  const panorama = { width: 1024, height: 512, data: new Uint8Array(data.buffer) };
+  // The 384px Stonegate sky shares the loader with WebGL2 shader prep. Let the page paint
+  // while the same projection runs in a worker. Older browsers can still load the scene.
+  if (useWorker && typeof Worker === 'function' && typeof import.meta.resolve === 'function') {
+    try {
+      return await projectSkyInWorker(panorama, size);
+    } catch {
+      // The pixels and projection are the same on the fallback path.
+    }
+  }
+  return createCubeTextureFromEquirect3D(panorama, { size });
 }
 
 /** A scanned CC0 material: colour, normal and AO/roughness/metal maps. */
@@ -460,6 +492,31 @@ function surfaceRock(model, material, scale) {
     mesh.geometry = geometry;
     mesh.material = material;
   });
+}
+
+// A turn at the far end of Stonegate can bring enough pines or rocks into view for auto-instancing
+// for the first time. Prepare the same color programs on detached meshes while the arena loads.
+async function prepareStonegatePrograms(renderer, set, platforms) {
+  const [pine, boulder, materials] = await Promise.all([prop('pine', set), prop('boulder', set), platforms]);
+  const color = { fog: true, environment: true, receiveShadows: renderer.shadowsEnabled };
+  const requests = [];
+  function addInstances(root, includeOrdinary = false) {
+    root.traverse((mesh) => {
+      if (!(mesh instanceof Mesh3D)) return;
+      const material = mesh.material;
+      const instance = new InstancedMesh3D(mesh.geometry, material, 1);
+      instance.receiveShadow = mesh.receiveShadow;
+      requests.push({ ...color, mesh: instance, material });
+      if (includeOrdinary) requests.push({ ...color, mesh, material });
+    });
+  }
+  if (pine) addInstances(pine.root);
+  if (boulder) {
+    const rock = boulder.root.clone();
+    surfaceRock(rock, materials[1], 2.4);
+    addInstances(rock, true);
+  }
+  if (requests.length) await renderer.preparePrograms(requests);
 }
 
 /** The renderer and combat simulation share one layout, including the marked expedition exit. */
@@ -581,18 +638,26 @@ function buildLookout(root, platform, route, material) {
 }
 
 /** Build the battlefield in a World3D scene. `quality` is 'low' | 'medium' | 'high'. */
-export async function buildPlace(scene, name, { quality = 'high' } = {}) {
+export async function buildPlace(scene, name, { quality = 'high', renderer } = {}) {
   const { look, layout, place, route } = describePlace(name);
   const set = quality === 'low' ? 'low' : quality === 'medium' ? 'mid' : 'high';
   const propNames = [...new Set(layout.map((item) => item.prop))];
+  const platformMaterials = route ? Promise.all([scanned(route.deck, 0.45), scanned(route.support, 0.36)]) : null;
+  const programs = name === 'pass' && quality !== 'low' && renderer?.autoInstancing &&
+    renderer.preparePrograms && renderer.context?.getExtension('KHR_parallel_shader_compile')
+    ? prepareStonegatePrograms(renderer, set, platformMaterials).catch((error) => {
+      console.warn('Stonegate program preparation failed; drawing will retry on demand.', error);
+    })
+    : null;
   // Terrain, props, sky and extra surfaces can load independently.
   const [cube, ground, propEntries, palace, stone, platforms] = await Promise.all([
-    skyCube(look.sky, quality === 'low' ? 128 : 384),
+    skyCube(look.sky, quality === 'low' ? 128 : 384, name === 'pass' && quality !== 'low'),
     scanned(look.ground.material, look.ground.repeat),
     Promise.all(propNames.map(async (id) => [id, await prop(id, set)])),
     ['palace', 'citadel'].includes(name) ? Promise.all([scanned('red_plaster_weathered', 0.25), scanned('grey_roof_tiles', 0.5)]) : null,
     route ? scanned(route.path, 0.37) : name === 'bamboo' ? scanned('stone_pathway_02', 0.4) : null,
-    route ? Promise.all([scanned(route.deck, 0.45), scanned(route.support, 0.36)]) : null
+    platformMaterials,
+    programs
   ]);
   const props = new Map(propEntries);
   const root = new Object3D();
