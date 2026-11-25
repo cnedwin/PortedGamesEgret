@@ -12,6 +12,7 @@ import { createSound } from './audio/sound.mjs';
 import { openSave, settingsOf, recordBattle, battleIsWhole } from './saves.mjs';
 import { setLanguage, getLanguage, t } from './i18n.mjs';
 import { MAPS } from './sim/maps.mjs';
+import { loadProblems } from './view/assets.mjs';
 
 const params = new URLSearchParams(location.search);
 const canvas = document.querySelector('#stage');
@@ -54,8 +55,8 @@ const app = {
     setLanguage(getLanguage() === 'zh' ? 'en' : 'zh');
     app.setSetting('language', getLanguage());
     showLanguage();
-    // A battle keeps going; the title is drawn again in the new language.
-    if (app.battle && !app.battle.attract) return;
+    // A battle keeps going with its interface redrawn; the title is drawn again in the new language.
+    if (app.battle && !app.battle.attract) return app.battle.relabel();
     app.screens.title();
   },
   record: () => save.data.record ?? { won: 0, lost: 0 },
@@ -119,6 +120,30 @@ const startSound = async () => {
 addEventListener('pointerdown', startSound);
 addEventListener('keydown', startSound);
 
+/** When models failed to arrive: say so once, offer to load the page again, or play on with stand-in shapes. */
+let toldProblems = false;
+function tellLoadProblems() {
+  if (toldProblems || !loadProblems.count) return;
+  toldProblems = true;
+  const box = document.createElement('div');
+  box.className = 'load-error';
+  box.setAttribute('role', 'alert');
+  const words = document.createElement('span');
+  words.textContent = t('loadFailed');
+  const again = document.createElement('button');
+  again.type = 'button';
+  again.className = 'btn primary';
+  again.textContent = t('retry');
+  again.addEventListener('click', () => location.reload());
+  const on = document.createElement('button');
+  on.type = 'button';
+  on.className = 'btn quiet';
+  on.textContent = t('dismiss');
+  on.addEventListener('click', () => box.remove());
+  box.append(words, again, on);
+  ui.append(box);
+}
+
 async function play({ setup, saved = null, attract = false }) {
   app.screens.closeAll();
   app.battle?.dispose();
@@ -128,6 +153,7 @@ async function play({ setup, saved = null, attract = false }) {
   battle.attract = attract;
   battle.human = setup.human;
   app.battle = battle;
+  tellLoadProblems();
   return battle;
 }
 

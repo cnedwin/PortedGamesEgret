@@ -107,7 +107,8 @@ export async function startBattle(app, { setup, saved = null, attract = false })
   stage.rig.snap();
 
   // ---- interface ----
-  const hud = attract ? quietHud() : createHud(ui, { onButton: (key) => command(key, { device: 'button' }), touch: app.touch });
+  const makeHud = () => (attract ? quietHud() : createHud(ui, { onButton: (key) => command(key, { device: 'button' }), touch: app.touch }));
+  let hud = makeHud();
   const s = { mode: 'busy', sel: null, reached: null, dest: null, targets: [], ti: 0, threat: false, over: false, disposed: false, dropQueue: null, drops: [], aiRunning: false };
   const isHumanTurn = () => game.current === human && !game.over;
 
@@ -959,7 +960,7 @@ export async function startBattle(app, { setup, saved = null, attract = false })
   // ---- each frame ----
   const badgeList = [];
   function update(seconds) {
-    if (attract) {
+    if (attract && !reduce()) {
       // The backdrop circles the board slowly instead of following the fighting.
       stage.rig.view.tyaw += seconds * 0.06;
       stage.rig.focus(game.w / 2 - 0.5, game.h / 2 - 0.5);
@@ -994,8 +995,13 @@ export async function startBattle(app, { setup, saved = null, attract = false })
     sound.play('banner');
     if (!reduce()) await hud.banner(say(map.name), `${say(COMMANDERS[game.players[0].commander])} VS ${say(COMMANDERS[game.players[1].commander])}`, '#f5c542', 1.6);
   }
+  if (attract) {
+    stage.rig.focus(game.w / 2 - 0.5, game.h / 2 - 0.5);
+    stage.rig.snap();
+  }
+  // With motion reduced, the title's backdrop is a still board rather than a battle in play.
   if (isHumanTurn()) beginIdle();
-  else void runTurns();
+  else if (!(attract && reduce())) void runTurns();
 
   return {
     update,
@@ -1007,6 +1013,29 @@ export async function startBattle(app, { setup, saved = null, attract = false })
     },
     get mode() {
       return s.mode;
+    },
+    /** Draw the interface again in the current language. */
+    relabel() {
+      hud.closeMenu();
+      hud.dispose();
+      hud = makeHud();
+      refreshTop();
+      refreshCards();
+      if (s.mode === 'busy' || s.aiRunning) hud.setBusy(true);
+    },
+    /** Put the cursor on a tile (for checks and scripted demonstrations). */
+    cursorTo(x, y) {
+      setCursor(x, y, { focus: true });
+    },
+    /** A unit of the human side with something to strike after moving, and where from (for checks). */
+    findAttack() {
+      for (const u of game.units.filter((v) => v.owner === human && !v.done))
+        for (const n of stops(game, u, reach(game, u))) {
+          const moved = n.x !== u.x || n.y !== u.y;
+          const targets = targetsFrom(game, u, n.x, n.y, moved);
+          if (targets.length && !unitAt(game, n.x, n.y)?.cargo?.length) return { unit: { x: u.x, y: u.y }, to: { x: n.x, y: n.y }, target: { x: targets[0].x, y: targets[0].y } };
+        }
+      return null;
     },
     figures,
     /** For checks: play the human side with the computer's brain until the battle ends or `turns` pass. */

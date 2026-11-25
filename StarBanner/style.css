@@ -118,11 +118,14 @@ body {
 .screen {
   position: absolute;
   inset: 0;
-  display: grid;
-  place-items: center;
+  display: flex;
   pointer-events: auto;
   overflow: auto;
   padding: 16px;
+}
+.screen > * {
+  /* Centred while it fits, and scrolled from its top edge when it does not. */
+  margin: auto;
 }
 .screen.modal {
   background: rgba(20, 28, 54, 0.45);
@@ -203,10 +206,32 @@ body {
   border: 4px solid var(--ink);
   border-radius: 22px;
   box-shadow: 0 8px 0 rgba(27, 35, 64, 0.9);
-  padding: 18px 24px 20px;
+  padding: 16px 22px 18px;
   max-width: min(980px, 96vw);
-  max-height: 94vh;
-  overflow: auto;
+}
+.setup-sides {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0 22px;
+}
+.setup-sides .cmd {
+  width: 92px;
+  padding: 6px;
+}
+.setup-sides .cmd img {
+  width: 64px;
+  height: 64px;
+}
+.setup-sides .cmd b {
+  font-size: 14px;
+}
+.setup-sides .pick-row {
+  gap: 8px;
+}
+@media (max-width: 860px) {
+  .setup-sides {
+    grid-template-columns: 1fr;
+  }
 }
 .panel h2,
 .setup-screen h2 {
@@ -1047,4 +1072,53 @@ body {
   .meter.full i {
     animation-duration: 0.01s;
   }
+}
+/* Fingers need room: every control at least 44 px square on a touch screen. */
+@media (pointer: coarse) {
+  .hud-btn,
+  .menu-item,
+  .seg-btn,
+  .toggle,
+  .btn,
+  .pick {
+    min-height: 44px;
+    min-width: 44px;
+  }
+  .hud-btn {
+    justify-content: center;
+  }
+  .hud-bar {
+    gap: 4px;
+    flex-wrap: wrap;
+    justify-content: center;
+    width: max-content;
+    max-width: calc(100vw - 16px);
+  }
+}
+html,
+body {
+  overscroll-behavior: none;
+}
+.load-error {
+  position: absolute;
+  left: 50%;
+  bottom: 18px;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  justify-content: center;
+  max-width: calc(100vw - 24px);
+  background: #fff3c4;
+  border: 3px solid var(--ink);
+  border-radius: 16px;
+  padding: 8px 12px;
+  font-weight: 800;
+  box-shadow: var(--shadow);
+  z-index: 5;
+}
+.load-error .btn {
+  padding: 6px 16px;
+  font-size: 15px;
 }

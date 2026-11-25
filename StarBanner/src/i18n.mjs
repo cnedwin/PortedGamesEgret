@@ -4,8 +4,8 @@
 
 export const WORDS = {
   title: { zh: '星旗战记', en: 'Starbanner Tactics' },
-  logoSub: { zh: 'STARBANNER TACTICS', en: '星旗战记' },
-  pageTitle: { zh: '星旗战记 · Starbanner Tactics', en: 'Starbanner Tactics · 星旗战记' },
+  logoSub: { zh: 'STARBANNER TACTICS', en: 'MORNINGSTAR AND NIGHTRAVEN' },
+  pageTitle: { zh: '星旗战记 · Starbanner Tactics', en: 'Starbanner Tactics' },
   tagline: { zh: '晨星与夜鸦，在棋盘上一决胜负', en: 'Morning star and night raven, settled on the board' },
   demoNote: { zh: '基于新白鹭引擎独立开发的战棋游戏 Demo', en: 'A tactics game demo built on the new Egret engine' },
   newBattle: { zh: '遭遇战', en: 'Skirmish' },
@@ -131,6 +131,7 @@ export const WORDS = {
   saveReset: { zh: '存档读不懂，已重新开始；旧存档另存了一份。', en: 'The save could not be read and was started again; the old one was kept aside.' },
   loadFailed: { zh: '有些模型没能载入，先用简单的形状代替。', en: 'Some models did not load; simple shapes stand in for them.' },
   retry: { zh: '重试', en: 'Try again' },
+  dismiss: { zh: '先这样玩', en: 'Play on' },
   fatal: { zh: '画面启动失败：{why}', en: 'The picture could not start: {why}' },
   records: { zh: '战绩：{w} 胜 {l} 负', en: 'Record: {w} won, {l} lost' },
   canvas: { zh: '战场', en: 'Battlefield' },

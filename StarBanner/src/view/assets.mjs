@@ -13,6 +13,9 @@ export const SET_OF = { low: 'low', medium: 'mid', high: 'high' };
 const decode = async ({ bytes, mimeType }) =>
   createImageBitmap(new Blob([bytes], { type: mimeType }), { colorSpaceConversion: 'none', premultiplyAlpha: 'none' });
 
+/** How many models could not be had this page, so the page can say so and offer to try again. */
+export const loadProblems = { count: 0 };
+
 /** Fetch and parse one model; null when it cannot be had. */
 export async function loadModel(name, set, base = new URL('../../assets/models/', import.meta.url)) {
   try {
@@ -20,6 +23,7 @@ export async function loadModel(name, set, base = new URL('../../assets/models/'
     if (!response.ok) throw new Error(`${name}: HTTP ${response.status}`);
     return await loadGltf3D(new Uint8Array(await response.arrayBuffer()), { decodeImage: decode });
   } catch (cause) {
+    loadProblems.count++;
     console.warn('model', name, cause?.message ?? cause);
     return null;
   }

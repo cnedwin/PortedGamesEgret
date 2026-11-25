@@ -21,9 +21,9 @@ const el = (tag, cls, text) => {
 const stars = (n) => (n >= 0 ? '★'.repeat(n) + '☆'.repeat(Math.max(0, 4 - n)) : '☠'.repeat(-n));
 
 export function createHud(root, { onButton, touch = false }) {
-  root.innerHTML = '';
+  // The HUD sits under the screens' layer, which belongs to the page and stays.
   const hud = el('div', 'hud');
-  root.append(hud);
+  root.prepend(hud);
   if (touch) hud.classList.add('touch');
 
   // ---- top: turn and commanders ----
@@ -320,7 +320,7 @@ export function createHud(root, { onButton, touch = false }) {
       hud.classList.toggle('busy', busy);
     },
     dispose() {
-      root.innerHTML = '';
+      hud.remove();
     }
   };
   return api;

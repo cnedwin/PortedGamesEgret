@@ -162,6 +162,9 @@ export function makeFigure(library, unit, bounds, team) {
     const roll = state.sea ? Math.sin(state.clock * 1.3) * 0.05 : state.hover ? Math.sin(state.clock * 1.7) * 0.06 : 0;
     pivot.setPosition(0, 0, state.lunge * 0.55);
     pivot.setRotation(state.rigged ? 0 : -state.lunge * 0.25, 0, roll);
+    // Rigid pieces on the ground breathe a little so the board never stands quite still.
+    const breathe = !state.rigged && !state.hover && !state.sea ? 1 + Math.sin(state.clock * 2.4) * 0.018 : 1;
+    pivot.setScale(1, breathe, 1);
   };
   const paint = () => {
     const g = state.grey * (state.fade < 1 ? 0 : 1);

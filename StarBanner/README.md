@@ -2,85 +2,136 @@
 
 ## 简介 · Introduction
 
-星旗战记是基于[新白鹭引擎 Egret Rebuild](https://github.com/cnedwin/Egret_rebuild)的游戏模板：一个能跑的空游戏，有标题画面、开始、一个能走动的角色、存档、设置和中英文切换，Node 测试、浏览器验收脚本和截图基线都已经能通过。用 `npm run create -- <目录名> --title "中文名 · English"` 从它开始一款新游戏，规则写进 `src/sim/`，画面写进 `src/screens.mjs`。
+星旗战记是基于[新白鹭引擎 Egret Rebuild](https://github.com/cnedwin/Egret_rebuild)独立开发的斜 45 度 3D 战棋游戏 Demo，日系西幻风格，卡通渲染。晨星王国与夜鸦公国在一块浮空沙盘上对阵：用村庄和要塞的收入在兵营、飞羽塔、港口招兵，派剑士和枪兵去占领村庄，用骑士冲锋、弓手守点、投石车轰城，最后击倒敌方指挥官或攻破敌方要塞取胜。
 
-Starbanner Tactics is a game template built on [Egret Rebuild](https://github.com/cnedwin/Egret_rebuild), the new Egret
-engine: an empty game that runs, with a title screen, a start, one character who walks, a save, settings and a switch
-between Chinese and English, and Node tests, a browser acceptance walk and screenshot baselines that already pass.
-Start a new game from it with `npm run create -- <folder> --title "中文名 · English"`, then put the rules in `src/sim/`
-and the screens in `src/screens.mjs`.
+- 规则按原作还原：伤害随攻方剩余生命变化，防御星随守方生命打折，河流与沙滩反而加重伤害；每个兵种有自己的暴击条件（骑士整整冲出 6 格、弓手原地不动、枪兵并肩站、猎犬围猎……）；被打的一方若还活着、够得着就会反击；占领、收入、建筑回血、援军、法师治疗、魔女诅咒、运输都照原作的数值。详见 [docs/DESIGN.md](docs/DESIGN.md)。
+- 四位指挥官（赛琳、埃德蒙、维蕾塔、格伦）、两个阵营、三张地图、全部兵种和建筑的外观与设定都是本作原创；音乐和音效全部由代码合成。
+- 遭遇战可选地图、双方指挥官、难度（轻松 / 标准 / 困难）和先后手；每个回合结束自动存档，关掉页面回来能接着打。
 
-[在线试玩 · Play online](https://cnedwin.github.io/PortedGamesEgret/StarBanner/)
+Starbanner Tactics is a 45-degree 3D tactics game demo built independently on the [new Egret engine, Egret
+Rebuild](https://github.com/cnedwin/Egret_rebuild), in a toon-shaded Japanese western-fantasy style. The Morningstar
+Kingdom and the Nightraven Duchy face each other on a floating diorama: spend the income of villages and strongholds
+on troops from barracks, aeries and harbours, send swordsmen and pikemen to take villages, charge with knights, hold
+ground with archers, batter walls with trebuchets, and win by felling the enemy commander or breaking their
+stronghold.
+
+- The rules follow the original: damage scales with the attacker's remaining health, cover stars weaken as the
+  defender is hurt, rivers and beaches make wounds worse; each unit has its own critical condition (a knight charging
+  exactly six tiles, an archer standing still, pikemen side by side, hounds hunting in pairs…); a surviving defender
+  within reach strikes back; capture, income, building repair, reinforcing, a mage's healing, a witch's hex and
+  carrying use the original's numbers. See [docs/DESIGN.md](docs/DESIGN.md).
+- The four commanders (Seline, Edmund, Vireta, Garron), the two factions, the three maps and the look and lore of
+  every unit and building are this game's own; all music and sound is synthesized in code.
+- A skirmish picks the map, both commanders, the difficulty (easy, normal, hard) and who moves first; the battle is
+  saved at the end of every turn and can be resumed later.
+
+试玩 · Play: <https://cnedwin.github.io/PortedGamesEgret/StarBanner/>
 
 ## 玩法与操作 · How to play
 
-在场地上走动，收齐全部光点；用时越短越好，最快的一次存进浏览器。Walk the field and gather every light; the fastest
-round is kept in the browser.
+**目标 · Goal**：击倒敌方指挥官，或把敌方要塞的耐久打到 0。 · Fell the enemy commander, or bring the enemy stronghold to 0.
 
-| | 键盘 · Keyboard | 手柄 · Gamepad | 触屏 · Touch |
-|---|---|---|---|
-| 走动 · Walk | 方向键或 WASD · arrows or WASD | 十字键 · d-pad | 屏幕上的四个方向键 · the four arrows on the screen |
-| 确认 · Confirm | Enter；焦点在按钮上时 Space · Space on a focused button | A | 点按 · tap |
-| 返回 · Back | Esc | B | 「返回」 · Back |
-| 换焦点 · Move focus | Tab / Shift+Tab | | |
+**一个回合 · A turn**
 
-设置里可以关声音、减弱动画（系统设置了「减少动态效果」时自动减弱）和切换语言。The settings turn the sound off, reduce
-motion (reduced already when the system asks for it) and switch the language.
+1. 回合开始，你的要塞和每座村庄各给 100 金；你的建筑回复 10 点耐久，指挥官回复 5 点生命。 · Your stronghold and each village give 100 gold; your buildings mend 10, your commander 5.
+2. 选一个还没行动的单位 → 选一个能走到的蓝色格子 → 在菜单里选攻击、占领、援军、治疗、诅咒、登乘、卸下、战意技或待命。每个单位每回合行动一次，行动后变灰。 · Pick a ready unit → a blue tile → an action. Each unit acts once a turn and greys out after.
+3. 选自己的兵营（地面兵）、飞羽塔（飞兵）或港口（舰船与鱼人）招募，每座建筑每回合一次，新兵下回合才能动。 · Recruit at your barracks (ground), aerie (air) or harbour (ships and merfolk), once a building a turn; recruits move next turn.
+4. 结束回合，电脑行动。 · End the turn; the computer moves.
+
+**战斗 · Fighting**：攻击前的预测面板写着这一击的伤害范围、会不会暴击、对方的反击。单位卡写着每个兵种的暴击条件；指挥官的战意槽满了就能放战意技。 · The forecast shows the damage range, whether it is critical, and the counter. The unit card states each unit's critical condition; a full rally meter lets the commander use their art.
+
+| 输入 · Input | 操作 · Controls |
+|---|---|
+| 鼠标 · Mouse | 移到格子上看信息，左键选择，右键取消，滚轮缩放，按住拖动平移 · hover for information, click to choose, right-click to cancel, wheel to zoom, drag to pan |
+| 键盘 · Keys | 方向键 / WASD 移动光标，Enter / 空格 / Z 确定，Esc / X 取消，Q / E 转视角，Tab 下一个待命单位，R 敌方威胁范围，F 结束回合，M 菜单，+ / − 缩放 · arrows or WASD move the cursor, Enter / Space / Z confirm, Esc / X cancel, Q / E turn the view, Tab next ready unit, R enemy threat, F end turn, M menu, + / − zoom |
+| 手柄 · Gamepad | 摇杆 / 十字键移动光标，A 确定，B 取消，LB / RB 转视角，Y 下一个单位，X 威胁范围，Start 菜单，Select 结束回合，右摇杆平移 · stick or d-pad move, A confirm, B cancel, LB / RB turn, Y next unit, X threat, Start menu, Select end turn, right stick pans |
+| 触屏 · Touch | 点选单位和格子（移动时点一次看路线、再点一次确认），双指缩放，拖动平移，屏幕下方有结束回合、下一个、威胁范围、转视角、缩放按钮 · tap units and tiles (in a move, one tap shows the path, a second goes), pinch to zoom, drag to pan; buttons along the bottom |
+
+网址参数 · URL parameters：`?quality=low|medium|high`、`?backend=webgpu`、`?lang=en`、`?seed=`、`?battle=wheat|coves|spine`（直接开打 · straight into a battle）。
+
+## 美术、声音与数值 · Art, sound and numbers
+
+- 兵种、指挥官、建筑和树木山石先由文字描述生成原创的概念图，再用 Tripo 生成 3D 模型；人形单位和指挥官绑定骨骼，带待机、行走、出手、受击、倒下五段动作；再压成高、中、低三档。头像取自同一批概念图。来源和处理见 [docs/ASSETS.md](docs/ASSETS.md)。 · Units, commanders, buildings, trees and peaks were first drawn as original concept pictures from written descriptions, then modelled by Tripo; humanoids are rigged with idle, walk, strike, hurt and fall; all packed into high, medium and low sets. Portraits come from the same concept pictures. See docs/ASSETS.md.
+- 卡通渲染：分层明暗、边缘光、阵营换色（模型上的蓝色按阵营换成绯红）、行动后变灰、受击闪白，都在一个自定义片元着色器里；单位和建筑另有后期描边。 · Toon shading: banded light, rim light, the team colour swap, grey once acted and a white flash on a hit live in one custom fragment hook; units and buildings get a post-process ink outline.
+- 声音：标题、我方回合、敌方回合三段循环曲和胜负两段短曲都是本作原创，用代码合成铜管、拨弦、弦乐、笛声和鼓；音效（光标、确定、刀剑、弓弩、投石、魔法、龙息、占领、招募、暴击……）也全部合成。 · Sound: the title, your-turn and enemy-turn loops and the victory and defeat cues are this game's own, synthesized as brass, plucked strings, strings, flute and drums; every effect is synthesized too.
+- 电脑对手按期望伤害、被反击和下回合挨打的风险、占领和地形估值，三档难度的谨慎程度和随机性不同。 · The computer weighs expected damage, the counter and next turn's danger, capture and cover; the three levels differ in caution and noise.
 
 ## 引擎能力对照表 · Engine capabilities
 
 | 引擎入口 / API · Entry / API | 在本游戏中的用途 · Use in this game | 文件 · File |
 |---|---|---|
-| `createBrowserGame`（`@egret/engine/web/game`） | 画布、舞台、帧循环、键盘和指针输入；横屏 960×540、竖屏 540×960，转屏时整块重建 · canvas, stage, loop and input; 960 × 540 wide, 540 × 960 tall, made again when the phone turns | `src/main.mjs` |
-| `createInputActions` + `bindBrowserInputActions` | 走动的两个轴（键盘与手柄）、确认、返回；焦点控件用掉的键不再触发动作 · the two walking axes (keys and pad), confirm, back; a key a focused control used presses nothing | `src/main.mjs` |
-| `createActionControl` | 所有按钮；触屏的四个方向键（按住算按下） · every button; the four touch arrows, held while pressed | `src/ui/kit.mjs`, `src/screens.mjs` |
-| `createToggleControl` + `createSelectionGroup` + `createControlKeys` | 设置里的开关和语言单选，都能用键盘操作 · the switches and the language choice, all working from the keyboard | `src/ui/kit.mjs`, `src/screens.mjs` |
-| `createUiSemantics` + `createBrowserSemantics` | 语义树投影到页面，读屏器能读出按钮、开关和单选 · the semantic tree projected into the page for screen readers | `src/main.mjs`, `src/ui/kit.mjs` |
-| `createSaveStore` + `browserSaveStorage` | 设置和最好成绩；坏档另存后重新开始，存储拒绝写入时提示 · settings and the best time; a broken save set aside, a refusing storage reported | `src/saves.mjs`, `src/main.mjs` |
-| `createBrowserAudio` + `encodeWav` | 合成的按键声和拾取声交给引擎混音器 · synthesized taps and pick-ups through the engine's mixer | `src/audio/sound.mjs` |
-| `animate` | 标题上角色的轻微浮动，减弱动画时关闭 · the title figure's slow bob, off when motion is reduced | `src/screens.mjs` |
-| `createLabel`（`game.createLabel`） | 所有文字，按当前语言排版 · every word, laid out for the current language | `src/ui/kit.mjs` |
+| `@egret/engine/webgpu/world3d` · `createWorld3DApp` | 3D 程序、画质档位、帧循环；默认 WebGL2，`?backend=webgpu` 走 WebGPU · the 3D app, quality presets and frame loop; WebGL2 by default, WebGPU with `?backend=webgpu` | [src/view/stage.mjs](src/view/stage.mjs) |
+| `@egret/engine/world3d` · `createPerspectiveCamera3D`、`createDirectionalLight3D`、`createHemisphereLight3D`、`createGradientCubeTexture3D` | 斜 45 度镜头、带阴影的日光、天光与渐变天空 · the 45-degree camera, shadowed sun, sky light and gradient sky | [src/view/stage.mjs](src/view/stage.mjs) |
+| `renderer.postProcess`（`outlineLayers`、`bloom`、`fxaa`） | 单位与建筑的墨线描边、泛光、抗锯齿 · ink outlines on units and buildings, bloom, antialiasing | [src/view/stage.mjs](src/view/stage.mjs) |
+| `createToonMaterial3D`、`createCustomShader3D`（片元钩子） | 卡通分层光照、边缘光、阵营换色、变灰、闪白 · banded toon light, rim, team colour swap, grey and flash | [src/view/toon.mjs](src/view/toon.mjs) |
+| `createCustomShader3D`（顶点钩子） | 水面起伏、草花摇摆 · the water's swell, swaying grass and flowers | [src/view/board.mjs](src/view/board.mjs) |
+| `createGeometry3D`、`InstancedMesh3D` | 沙盘地面、岸壁和侧壁；树、山、礁石、桥板、草丛按实例批量画 · the board's ground, banks and walls; trees, peaks, reefs, planks and grass as instanced batches | [src/view/board.mjs](src/view/board.mjs) |
+| `loadGltf3D`（meshopt）、`computeObjectBounds3D`、`Skeleton3D` | 读压缩后的模型、量尺寸放进格子、每个单位一副独立骨骼 · compressed models loaded, measured to fit a tile, each unit its own bones | [src/view/assets.mjs](src/view/assets.mjs) |
+| `AnimationMixer3D` | 人形单位的待机、行走、出手、受击、倒下动作与淡入淡出 · humanoid idle, walk, strike, hurt and fall clips with cross-fades | [src/view/figures.mjs](src/view/figures.mjs) |
+| `InstancedMesh3D`、`createUnlitMaterial3D` | 移动、攻击、战意技范围和路线、光标 · move, attack and art ranges, the path, the cursor | [src/view/overlay.mjs](src/view/overlay.mjs) |
+| `InstancedMesh3D`、`createRingGeometry3D` | 火花、光点、箭矢弩箭石弹魔弹、占领光环 · sparks, motes, missiles, capture rings | [src/view/effects.mjs](src/view/effects.mjs) |
+| `Raycaster3D` | 鼠标和触屏点到的格子 · the tile under the mouse or finger | [src/view/stage.mjs](src/view/stage.mjs) |
+| `projectToViewport3D` | 单位头顶的生命数字、伤害飘字、菜单位置 · health badges, damage figures and menu placement | [src/play.mjs](src/play.mjs) |
+| `@egret/engine/kit` · `createSaveStore` | 设置、进行中的一局、战绩，带版本和坏档另存 · settings, the battle in progress and the record, versioned, a bad save set aside | [src/saves.mjs](src/saves.mjs) |
+| `@egret/engine/web/kit` · `browserSaveStorage` | 浏览器里的存档存储，拒绝写入时不报错 · the browser's save storage, quiet when refused | [src/main.mjs](src/main.mjs) |
+| `@egret/engine/kit` · `encodeWav` | 合成好的音效与曲子编码成 WAV 交给混音器 · synthesized effects and pieces encoded for the mixer | [src/audio/sound.mjs](src/audio/sound.mjs) |
+| `@egret/engine/web/audio` · `createBrowserAudio` | 音效与音乐两条总线、循环曲、淡入淡出、限幅 · effects and music buses, looping pieces, fades, a limiter | [src/audio/sound.mjs](src/audio/sound.mjs) |
+| `@egret/engine/input/gamepad` · `createGamepadInput` | 手柄按键、摇杆、方向连发 · gamepad buttons, sticks and repeat | [src/input.mjs](src/input.mjs) |
 
 ## 已验证 · Verified
 
-- `node --test test/*.test.mjs`：规则（同种子同场地、走速、边界、拾取、通关）、存档（新档、写入、最好成绩、坏档、版本过新、存储拒绝写入）、文字表（中英齐全、界面代码不写死中文）、引擎副本的 import map。Node 24。 · rules, save, words and the engine copy's import map, in Node.
-- `node test/accept.mjs`：无头 Chromium（SwiftShader 软件渲染）里走完标题 → 设置 → 开始 → 走动 → 收齐 → 结算 → 返回，坏档恢复，两张截图基线一致，没有控制台错误。 · the whole walk in headless Chromium with software rendering, two baselines matching, a clean console.
+- Node 22：`node --test test/*.test.mjs` 31 项通过——伤害公式与原作资料的算例一致、地形星与骷髅、空中与建筑不吃地形、要塞减半、反击、器械不能移动后攻击、全部暴击条件、占领、收入与回复、招募、援军、治疗、诅咒、运输、四位指挥官的战意技、胜负、非法指令被拒、地图双方对等、存档读回后接着打完全一致、电脑对电脑同种子同结果且对局能结束；存档与文字表。 · 31 Node tests pass: the formula against the documented example, cover, counters, every critical condition, capture, income, recruiting, reinforcing, healing, hexes, carrying, the rally arts, victory, refused orders, fair maps, saves that resume exactly, deterministic computer battles that end; the save and the word table.
+- 无头 Chromium + SwiftShader（软件渲染）：`node test/accept.mjs` 走完标题 → 遭遇战准备（键盘选地图）→ 出阵 → 移动待命 → 招募 → 结束回合、电脑走完 → 读档接着打 → 设置关音乐 → 切英文 → 坏档重来，无控制台错误、无缺失文件；标题、准备、开局三张截图与基线一致。 · Headless Chromium with SwiftShader: the acceptance walk passes with a clean console, and the title, preparation and opening match their baselines.
+- 品质验收见 [QUALITY.md](QUALITY.md)（`node ../tools/quality.mjs .`）。 · Quality results in QUALITY.md.
+- 未运行 · Not run：真 GPU 上的帧率与手感、真鼠标、真触屏设备、真手柄、扬声器里的音乐和音效听感、WebGPU 后端的画面。 · Frame rate and feel on a real GPU, a real mouse, touch device and gamepad, the sound through speakers, the WebGPU backend's picture.
 
 ## 已知问题 · Known issues
 
-- 真机（手机、桌面显卡）上没有运行过，帧时间等只在无头浏览器里量过。 · Not run on a real device; frame times were measured only in a headless browser.
+- 软件渲染下只有每秒几帧，验收截图之外的动画流畅度要在真 GPU 上看。 · Software rendering runs at a few frames a second; smoothness needs a real GPU.
+- 猎犬的绑骨动画包下载被截断，现在用不带骨骼的模型加代码驱动的跳动和扑咬。 · The hound's rigged download was truncated; it uses the unrigged model with code-driven motion.
+- 骑士、马车、器械、热气球、飞兵和舰船是整体模型，只有颠簸、悬浮、摇摆和前冲，没有分件动画。 · Knights, carts, engines, the balloon, fliers and ships are single meshes with bobbing, hovering, rolling and lunging only.
+- 招募的新兵自动放在离敌人最近的空格，不能手选位置。 · A recruit is placed on the free tile nearest the enemy; the player cannot pick it.
+- 电脑不使用运输单位（马车、热气球、渡船）。 · The computer does not use carriers.
+- QUALITY.md 的 F1（桌面帧时间 p95 ≤ 16.7 ms）在无头 Chromium 软件渲染下不达标：带阴影、后期和二十多个骨骼人物的棋盘每帧要几百毫秒；真 GPU 上未测。 · QUALITY.md F1 (desktop p95 ≤ 16.7 ms) fails under headless software rendering, where the shadowed, post-processed board with twenty-odd rigged figures takes hundreds of milliseconds a frame; not measured on a real GPU.
+- 品质验收未达标 · Quality items failing（[QUALITY.md](QUALITY.md)，2026-11-25，无头 Chromium + SwiftShader · headless, software rendering）：F1 桌面帧时间 p95 ≤ 16.7 ms（p95 583.2 ms over 19 frames）；I1 中英文全可切换，英文下无中文（html lang "en", Chinese left: 星旗战记）；E2 资源失败有错误界面和重试（25 files refused; no uncaught error; no error screen with a retry）。
 
 ## 已解决 · Solved
 
-- 存档写入被拒时，`save.update` 返回 `false`（不是对象）；模板据此提示「本次进度不会保留」。 · A refused write makes `save.update` return `false` (not an object); the template says the progress will not be kept.
+- 克隆的材质共用同一个自定义着色器参数，一个单位变灰会让同类全变灰：每个单位的材质克隆后重新 `createCustomShader3D`（ENGINE-NOTES 第 1 条）。 · Cloned materials shared custom shader parameters, so greying one unit greyed its kind: each copy gets its own `createCustomShader3D` (ENGINE-NOTES 1).
+- 只有顶点钩子的着色器误填进 `glsl` 会编译失败：改用 `glslVertex` / `wgslVertex`（ENGINE-NOTES 第 2 条）。 · A vertex-only hook passed as `glsl` failed to compile; it now goes in `glslVertex` / `wgslVertex` (ENGINE-NOTES 2).
+- 软件渲染下镜头插值跟不上，截图前用 `rig.snap()` 直接落位。 · Under software rendering the camera's easing lagged; captures snap it into place first.
+- 生成的模型朝向与引擎约定相反：人形单位整体转半圈。 · Generated rigs faced away from the engine's forward; humanoids are turned half round.
 
 ## 未完成 · Unfinished
 
-- 模板只有一个画面里的玩法；关卡、音乐和更复杂的界面（托管界面 `createUiRoot`）由新游戏自己加，可参考 [CAPABILITIES.md](../../CAPABILITIES.md) 找例子。 · The template has one screen of play; levels, music and managed UI (`createUiRoot`) are for each game to add — [CAPABILITIES.md](../../CAPABILITIES.md) says where to find examples.
+- 战争迷雾、天气、战役剧情、本地双人对战、地图编辑器。 · Fog of war, weather, a story campaign, local two-player, a map editor.
+- 原作后续版本加入的兵种（火枪手、盗贼等）和更多指挥官。 · Units added in the original's later versions (riflemen, thieves) and more commanders.
+- 招募时手选落点；电脑使用运输单位。 · Choosing where a recruit stands; the computer using carriers.
+- 骑士和器械的分件动画（马腿、投石车的抛臂）。 · Part animation for knights and engines (horse legs, the trebuchet's arm).
 
 ## 目录结构 · Layout
 
-| 路径 · Path | 内容 · Contents |
+| 路径 · Path | 用途 · What |
 |---|---|
-| `index.html`, `style.css` | 页面、import map、全屏舞台（不滚动、不下拉刷新、不双击缩放） · the page, the import map, a full-window stage |
-| `src/main.mjs` | 入口：游戏、存档、声音、语义树、键位、画面切换、转屏重建 · the entry |
-| `src/sim/world.mjs` | 规则，不碰页面和引擎 · the rules, free of the page and the engine |
-| `src/screens.mjs` | 标题、游戏、结算、设置 · the screens |
-| `src/ui/kit.mjs` | 界面零件 · the interface parts |
-| `src/i18n.mjs` | 中英文文字表 · the words in both languages |
-| `src/saves.mjs`, `src/audio/sound.mjs` | 存档、声音 · the save, the sound |
-| `test/*.test.mjs` | Node 测试 · Node tests |
-| `test/accept.mjs`, `test/baseline/` | 浏览器验收和截图基线 · browser acceptance and baselines |
+| `index.html`、`style.css` | 页面、import map、界面样式 · the page, import map and interface styles |
+| `src/main.mjs` | 入口：舞台、存档、声音、操作、画面切换 · entry: stage, save, sound, input, screens |
+| `src/play.mjs` | 一局战斗：操作流程、事件演出、电脑回合、存档 · a battle: the order flow, events played out, computer turns, saving |
+| `src/hud.mjs`、`src/screens.mjs` | 战斗界面；标题、准备、设置、玩法、战果 · battle HUD; title, preparation, settings, help, result |
+| `src/input.mjs` | 键盘、鼠标、触屏、手柄 · keys, mouse, touch, gamepad |
+| `src/i18n.mjs` | 中英文字表 · the word table |
+| `src/saves.mjs` | 存档 · the save |
+| `src/sim/` | 规则（不碰页面和引擎）：`terrain.mjs` 地形、`units.mjs` 兵种与建筑、`commanders.mjs` 指挥官与战意技、`maps.mjs` 地图、`rules.mjs` 规则与伤害、`ai.mjs` 电脑 · the rules, free of page and engine |
+| `src/view/` | 画面：`stage.mjs` 舞台与镜头、`board.mjs` 沙盘、`toon.mjs` 卡通材质、`figures.mjs` 单位与建筑、`overlay.mjs` 范围与光标、`effects.mjs` 特效、`assets.mjs` 模型载入 · the picture |
+| `src/audio/` | `synth.mjs` 合成乐器、原创曲子与音效，`sound.mjs` 接到引擎混音器 · synthesis and the mixer |
+| `assets/models/` | 模型的高、中、低三档 · models in three sets |
+| `assets/portraits/` | 头像 · portraits |
+| `tools/assets/` | 模型描述表、打包和头像脚本 · model descriptions, packing and portrait scripts |
+| `docs/DESIGN.md`、`docs/ASSETS.md` | 规则与数值的来源；素材来源 · where the rules and numbers come from; where the assets come from |
+| `test/` | Node 测试、浏览器验收和截图基线 · Node tests, browser acceptance and baselines |
 | `vendor/` | 引擎副本 · the engine copy |
 
 ## 引擎副本 · Engine copy
 
-引擎副本取自 [Egret_rebuild](https://github.com/cnedwin/Egret_rebuild) 提交 `b3b594351e8017ce43a7c3cb20c769403806553e`，由引擎仓库的 `tools/vendor-game.mjs` 复制，见 [vendor/SOURCE.md](vendor/SOURCE.md)。
-
-The engine copy is from [Egret_rebuild](https://github.com/cnedwin/Egret_rebuild) commit
-`b3b594351e8017ce43a7c3cb20c769403806553e`, copied by the engine's `tools/vendor-game.mjs`; see
-[vendor/SOURCE.md](vendor/SOURCE.md).
-
-```sh
-node tools/vendor-game.mjs <this folder> @egret/engine @egret/engine/ui @egret/engine/ui/semantics @egret/engine/web/semantics @egret/engine/kit @egret/engine/web/kit @egret/engine/web/game @egret/engine/audio @egret/engine/web/audio @egret/engine/text @egret/engine/web/text
-```
+- 引擎提交 · Engine commit：`b3b594351e8017ce43a7c3cb20c769403806553e`（见 · see [vendor/SOURCE.md](vendor/SOURCE.md)）。
+- 生成命令 · Made with：`node tools/vendor-game.mjs ../PortedGamesEgret/StarBanner @egret/engine @egret/engine/world3d @egret/engine/webgpu/world3d @egret/engine/webgl2/world3d @egret/engine/kit @egret/engine/web/kit @egret/engine/audio @egret/engine/web/audio @egret/engine/input/gamepad @egret/engine/web/gamepad @egret/engine/input/hover @egret/engine/web/hover @egret/engine/ui/semantics @egret/engine/web/semantics @egret/engine/animation`
+- 用到的入口 · Entries used：`@egret/engine/world3d`、`@egret/engine/webgpu/world3d`、`@egret/engine/kit`、`@egret/engine/web/kit`、`@egret/engine/web/audio`、`@egret/engine/input/gamepad`。

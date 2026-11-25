@@ -226,7 +226,9 @@ export function createScreens(root, app) {
         s.append(el('h3', '', label), node);
         return s;
       };
-      box.append(section(t('pickMap'), maps), section(t('pickYou'), you.row), section(t('pickFoe'), foe.row), detail);
+      const sidesRow = el('div', 'setup-sides');
+      sidesRow.append(section(t('pickYou'), you.row), section(t('pickFoe'), foe.row));
+      box.append(section(t('pickMap'), maps), sidesRow, detail);
       const opts = el('div', 'setup-opts');
       opts.append(section(t('level'), level.row), section('', order.row));
       box.append(opts);

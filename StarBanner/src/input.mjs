@@ -45,7 +45,8 @@ export function createInput(canvas, { on, point, tap, pan, zoom, active = () => 
   const onKey = (e) => {
     const command = KEYS[e.code];
     if (!command || !active()) return;
-    if (e.target && e.target !== document.body && e.target !== canvas && e.target.closest?.('button, input, select, [role="dialog"]')) return;
+    // Enter and Space on a focused button press it the browser's way; everything else is ours.
+    if (command === 'confirm' && e.target && e.target !== document.body && e.target !== canvas && e.target.closest?.('button, input, select')) return;
     e.preventDefault();
     lastDevice = 'keys';
     if (e.type === 'keyup') {
