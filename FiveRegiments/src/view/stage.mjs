@@ -3,6 +3,7 @@
 // it (and stop men and arrows), the weather, and its own grade of light.
 import {
   Attribute3D,
+  CubeTexture3D,
   Geometry3D,
   InstancedMesh3D,
   Mesh3D,
@@ -336,15 +337,45 @@ async function image(url) {
   return createImageBitmap(blob, { colorSpaceConversion: 'none', premultiplyAlpha: 'none' });
 }
 
+async function projectSkyInWorker(panorama, size) {
+  const engine = import.meta.resolve('@egret/engine/world3d');
+  const worker = new Worker(new URL('./sky-worker.mjs', import.meta.url), { type: 'module' });
+  try {
+    const faces = await new Promise((resolve, reject) => {
+      worker.onmessage = ({ data }) => data.error ? reject(new Error(data.error)) : resolve(data.faces);
+      worker.onerror = (error) => {
+        error.preventDefault();
+        reject(new Error(error.message));
+      };
+      worker.onmessageerror = reject;
+      // Keep the original pixels available for the synchronous fallback.
+      worker.postMessage({ engine, panorama, size });
+    });
+    return new CubeTexture3D(faces, { colorSpace: 'srgb', mipmaps: true, name: 'equirect' });
+  } finally {
+    worker.terminate();
+  }
+}
+
 /** Sky panorama → background and light cube. */
-async function skyCube(name, size) {
+async function skyCube(name, size, useWorker = false) {
   const bitmap = await image(new URL(`skies/${name}.jpg`, ASSETS));
   const canvas = new OffscreenCanvas(1024, 512);
   const g = canvas.getContext('2d');
   g.drawImage(bitmap, 0, 0, 1024, 512);
   bitmap.close();
   const data = g.getImageData(0, 0, 1024, 512).data;
-  return createCubeTextureFromEquirect3D({ width: 1024, height: 512, data: new Uint8Array(data.buffer) }, { size });
+  const panorama = { width: 1024, height: 512, data: new Uint8Array(data.buffer) };
+  // The 384px Stonegate sky shares the loader with WebGL2 shader prep. Let the page paint
+  // while the same projection runs in a worker. Older browsers can still load the scene.
+  if (useWorker && typeof Worker === 'function' && typeof import.meta.resolve === 'function') {
+    try {
+      return await projectSkyInWorker(panorama, size);
+    } catch {
+      // The pixels and projection are the same on the fallback path.
+    }
+  }
+  return createCubeTextureFromEquirect3D(panorama, { size });
 }
 
 /** A scanned CC0 material: colour, normal and AO/roughness/metal maps. */
@@ -620,7 +651,7 @@ export async function buildPlace(scene, name, { quality = 'high', renderer } = {
     : null;
   // Terrain, props, sky and extra surfaces can load independently.
   const [cube, ground, propEntries, palace, stone, platforms] = await Promise.all([
-    skyCube(look.sky, quality === 'low' ? 128 : 384),
+    skyCube(look.sky, quality === 'low' ? 128 : 384, name === 'pass' && quality !== 'low'),
     scanned(look.ground.material, look.ground.repeat),
     Promise.all(propNames.map(async (id) => [id, await prop(id, set)])),
     ['palace', 'citadel'].includes(name) ? Promise.all([scanned('red_plaster_weathered', 0.25), scanned('grey_roof_tiles', 0.5)]) : null,
