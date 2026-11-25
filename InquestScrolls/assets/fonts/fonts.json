@@ -1,0 +1,21 @@
+{
+  "format": "inquest.fonts/1",
+  "manifestPath": "build/generations/be5cfbaa5841893651f9d560b641b1199d0ce820422587380575c21184df27f1/manifest.json",
+  "manifestSha256": "8008a1bc549810fd1dd39876cd6088aa381d38c6faa43a678bb4c870b068e86c",
+  "roots": [
+    "e_song",
+    "e_brush"
+  ],
+  "families": {
+    "song": "Inquest Song",
+    "brush": "Inquest Brush"
+  },
+  "blobs": {
+    "song": "build/blobs/sha256/a18382943914aab1c75328bd5f7d2bda3cb803c24c9d9b7263e513aec5448149",
+    "brush": "build/blobs/sha256/1e9a28f47aad1b7ea3d1b9648b2793a513b7799ebdf1a3c0a620581176969a68"
+  },
+  "characters": {
+    "song": 3908,
+    "brush": 283
+  }
+}
