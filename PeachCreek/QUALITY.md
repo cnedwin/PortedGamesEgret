@@ -5,7 +5,19 @@
 Checked against QUALITY-CHECKLIST.md. The automatic items were measured by `node tools/quality.mjs PeachCreek`, which writes
 this file; items by hand or on a device are marked not run until someone runs them.
 
-## 测量环境 · Where it was measured
+## 95897d78 引擎适配验收 · Egret integration check
+
+2026-11-26，候选版本使用白鹭主干 `95897d78`。原生按需渲染、垂直滚动、语义裁剪和 WebP 加载已接入。编译生成的副本与共用它的管理模板入口保持一致。
+
+On 2026-11-26, the candidate used Egret main at `95897d78` for on-demand drawing, vertical scrolling, semantic clipping and WebP loading. The management template was synchronized with its shared engine copy.
+
+- Windows 实机、有窗口的 Chrome 158.0.8127.37、RTX 5090 Laptop、游戏后端 WebGPU。旧公开页与本机候选均验证标题唤醒、设置、地图拖动、营建、保存和重新读档。英文长清单可以滚到底，开发者控制台无游戏错误。 · The previous public release and local candidate were tested on a Windows PC in headed Chrome 158.0.8127.37 on the RTX 5090 Laptop, running the game through WebGPU. The route covered idle title wake, settings, map drag, construction and save/reload. The long English list scrolled to its last entries without game errors.
+- 同一路线分别取县城和营建面板各 5 秒前台浏览器帧间隔。旧版与候选四段的 P95 均为 4.3 ms，无超过 33 ms 的采样。营建最大间隔为 8.3 ms 与 12.5 ms。 · The 5-second foreground RAF intervals for town and Works had a P95 of 4.3 ms in both versions, with no interval over 33 ms. Works maxima were 8.3 ms and 12.5 ms.
+- 无头 Edge 中 53 项浏览器检查通过。标题与旧基线差异 0.00%，设置差异 0.10%。模拟触屏验证了面板拖动、裁剪和偏移保持。实际阻断 WebP 后可从标题重试，解除阻断后装入封面。 · All 53 headless Edge checks passed. Compared to the existing baselines, title differed by 0.00% and Settings by 0.10%. Emulated touch covered dragging, clipping and offset retention. Blocking WebP left the retry available, and a real click restored it after unblocking.
+- 桃溪 Node 测试 41 项，管理模板 Node 测试 4 项。管理模板的现有浏览器截图、键鼠、模拟触屏、建造和存读档均通过。 · All 41 game Node tests and 4 management-template Node tests passed, along with the template's existing browser screenshots, input, construction and save/reload.
+- Fold7 已连接，Android 锁屏仍限制输入，本轮没有取得手机真机画面、帧时间或操作结果。 · The attached Fold7 remained behind an input-restricting lock screen. Phone hardware visuals, performance and operation were unavailable in this run.
+
+## 51b6175d 原生 UI 迁移历史测量 · Prior native UI migration measurements
 
 - 日期 · Date: 2026-11-25
 - 浏览器 · Browser: Windows 上的无头 Edge 158.0.4370.33，Chromium 与 SwiftShader 软件渲染 · headless Edge 158.0.4370.33 on Windows with Chromium and SwiftShader
