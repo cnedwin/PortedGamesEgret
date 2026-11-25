@@ -96,6 +96,7 @@ export async function openNotes(layer, app) {
         }
         ui.commit(prep);
         binding?.sync();
+        game.invalidate?.();
         return;
       }
     });

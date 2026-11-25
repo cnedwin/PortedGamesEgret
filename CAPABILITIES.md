@@ -1,10 +1,10 @@
 # 引擎能力矩阵 · Engine capability matrix
 
-由 `node tools/capability-matrix.mjs` 生成，不要手改；`--check` 检查它是否过期。行是引擎能力，列是游戏，✔ 链接到用这项能力的文件（游戏 README 能力对照表写了文件的，用 README 写的）。入口的全列表取自引擎 `packages/engine/package.json` 的 `exports`（引擎提交 `f0f2e01`），没有游戏用到的也列出；只统计游戏自己的代码，不含 `vendor/`、测试和工具。
+由 `node tools/capability-matrix.mjs` 生成，不要手改；`--check` 检查它是否过期。行是引擎能力，列是游戏，✔ 链接到用这项能力的文件（游戏 README 能力对照表写了文件的，用 README 写的）。入口的全列表取自引擎 `packages/engine/package.json` 的 `exports`（引擎提交 `95897d7`），没有游戏用到的也列出；只统计游戏自己的代码，不含 `vendor/`、测试和工具。
 
 Made by `node tools/capability-matrix.mjs`; do not edit by hand, and `--check` says whether it is out of date. Rows are
 engine capabilities and columns games; each ✔ links the file that uses it (the one named in the game's README
-capability table, when it names one). The entries are the `exports` of the engine's `packages/engine/package.json` (engine commit `f0f2e01`),
+capability table, when it names one). The entries are the `exports` of the engine's `packages/engine/package.json` (engine commit `95897d7`),
 used or not; only each game's own code is read, not `vendor/`, tests or tools. The same table is on the showcase site
 (`capabilities.html`).
 

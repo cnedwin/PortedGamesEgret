@@ -299,6 +299,9 @@ await play({
   // keeps the stage's own shape, so the platform text fields sit exactly over the canvas.
   fit: miniGame ? 'expand' : 'contain',
   background: 0x1b140d,
+  // A still screen (the title, a page of the dossier, a card) keeps its last frame instead of drawing it again; input,
+  // tweens, the scenes' flames and water, and text or pictures becoming ready still draw.
+  renderMode: 'on-demand',
   audio: false,
   saveKey: 'inquest-scrolls-play',
   semantics,

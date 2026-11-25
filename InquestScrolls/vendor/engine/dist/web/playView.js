@@ -13,13 +13,15 @@ const KEYS_OF = {
     button: ['text', 'pick', 'format', 'roll', 'disabled', 'visible', 'color', 'tap', 'badge'],
     bar: ['value', 'visible', 'color'],
     toggle: ['text', 'checked', 'disabled', 'visible', 'tap', 'badge'],
-    space: ['visible']
+    space: ['visible'],
+    image: ['visible']
 };
 /** Views of one play game: made by `game.view`, read every frame, placed again when the screen changes. */
 export function createPlayViews(game, hooks) {
     const live = new Set();
     const scrollInput = createPlayViewScrolls(game);
     const makeScroll = scrollInput.create;
+    let paragraphModule;
     let counter = 0;
     let focused, modalOwner;
     const beforeModal = new WeakMap();
@@ -31,10 +33,10 @@ export function createPlayViews(game, hooks) {
         return modal;
     };
     const inView = (owner, modal = topModal()) => modal === undefined || modal === owner;
-    const targets = () => {
+    const targets = (only) => {
         const modal = topModal();
         return [...live]
-            .filter(owner => inView(owner, modal))
+            .filter(owner => inView(owner, modal) && (only === undefined || owner === only))
             .flatMap(owner => owner.targets().map(name => ({ owner, name })));
     };
     const eligible = (target) => target !== undefined && live.has(target.owner) && inView(target.owner) && target.owner.eligible(target.name);
@@ -67,6 +69,25 @@ export function createPlayViews(game, hooks) {
         }
         focus(eligible(restore) ? restore : targets().find(eligible));
     };
+    const moveFocus = (step, wrap, only) => {
+        const choices = targets(only);
+        const current = choices.findIndex(next => next.owner === focused?.owner && next.name === focused.name);
+        const start = current < 0 ? (step > 0 ? 0 : choices.length - 1) : current + step;
+        for (let offset = 0; offset < choices.length; offset++) {
+            let index = start + offset * step;
+            if (index < 0 || index >= choices.length) {
+                if (!wrap)
+                    break;
+                index = (index + choices.length) % choices.length;
+            }
+            const next = choices[index];
+            if (next.owner.reveal(next.name)) {
+                focus(next);
+                return true;
+            }
+        }
+        return false;
+    };
     function view(description, options = {}) {
         const names = checkView(description);
         if (options === null || typeof options !== 'object')
@@ -98,11 +119,31 @@ export function createPlayViews(game, hooks) {
         }
         if (options.built !== undefined && typeof options.built !== 'function')
             throw new EgretError('UI_VIEW_BINDING_INVALID', { cause: 'built' });
+        const richStyle = (part) => (part.type === 'text' || part.type === 'button' ? part.paragraph : undefined);
+        const usesParagraph = (part) => richStyle(part) !== undefined || (part.type === 'panel' && (part.children?.some(usesParagraph) ?? false));
+        const paragraphCache = options.paragraphCache;
+        if (paragraphCache === undefined &&
+            (usesParagraph(description.root) || (description.portrait !== undefined && usesParagraph(description.portrait))))
+            throw new EgretError('UI_VIEW_BINDING_INVALID', { cause: 'paragraph parts need a paragraphCache' });
+        if (options.gamepad !== undefined && typeof options.gamepad !== 'boolean')
+            throw new EgretError('UI_VIEW_BINDING_INVALID', { cause: 'gamepad takes a boolean' });
+        for (const key of ['dismiss', 'resume'])
+            if (options[key] !== undefined && (description.modal !== true || typeof options[key] !== 'function'))
+                throw new EgretError('UI_VIEW_BINDING_INVALID', { cause: key + ' takes a callback on a modal view' });
+        const invoke = (callback) => {
+            try {
+                callback?.(api);
+            }
+            catch (cause) {
+                hooks.failed(cause);
+            }
+        };
         const id = 'view' + ++counter;
         const state = () => (typeof options.state === 'function' ? options.state() : options.state);
         const root = game.sprite(undefined, game.ui);
         let dim;
         let plan;
+        let paragraphScope;
         let made = [];
         let shown = true, active = true, ended = false;
         const rolls = new Map();
@@ -123,6 +164,68 @@ export function createPlayViews(game, hooks) {
             if (part.type === 'text')
                 return part.color ?? skin.text;
             return skin.text;
+        };
+        const borderWidth = ({ part, rect }) => Math.min(part.border?.width ?? 0, rect.width / 2, rect.height / 2);
+        const placeImage = (item) => {
+            if (item.image === undefined)
+                return;
+            const { width, height } = item.rect;
+            const border = borderWidth(item);
+            const source = item.image.getBounds();
+            // The cover fits inside the same edge used by the border paint.
+            const scale = source.width > 0 && source.height > 0
+                ? Math.min((width - border * 2) / source.width, (height - border * 2) / source.height)
+                : 0;
+            item.image.visible = scale > 0;
+            item.image.x = width / 2;
+            item.image.y = height / 2;
+            item.image.scaleX = item.image.scaleY = scale;
+        };
+        const paintParagraph = (item) => {
+            const { paragraph, part, rect } = item;
+            if (part.type !== 'text' && part.type !== 'button')
+                return;
+            const style = part.paragraph;
+            if (paragraph === undefined || style === undefined)
+                return;
+            const button = part.type === 'button';
+            const at = button ? Math.min(8, rect.width / 2) : 0;
+            const y = button ? Math.min(rect.height, Math.ceil((part.size ?? Math.round(plan.skin.size * 0.9)) + 12)) : 0;
+            const width = rect.width - at * 2;
+            const height = rect.height - y;
+            paragraph.box.x = at;
+            paragraph.box.y = y;
+            paragraph.box.visible = width >= 1 && height > 0;
+            if (!paragraph.box.visible) {
+                paragraph.key = undefined;
+                return;
+            }
+            paragraph.box.clipRect = { x: 0, y: 0, width, height };
+            const text = button ? part.description : item.text;
+            const size = button ? Math.ceil((part.size ?? plan.skin.size) * 0.72) : (part.size ?? plan.skin.size);
+            const color = button ? (part.textColor ?? plan.skin.buttonText) : colourOf(part, item);
+            const key = JSON.stringify([text, size, color, width]);
+            if (key === paragraph.key)
+                return;
+            paragraph.key = key;
+            paragraph.text.setRequest({
+                ...style,
+                text,
+                width,
+                fontSize: size,
+                direction: style.direction ?? 'ltr',
+                locale: style.locale ?? 'en',
+                textAlign: !button && part.type === 'text' ? (part.align ?? 'left') : 'center',
+                fillColor: color,
+                density: 1
+            });
+            void paragraph.text.prepare().catch(cause => {
+                if (!(cause instanceof EgretError && cause.code === 'PARAGRAPH_STALE') &&
+                    !ended &&
+                    !paragraph.text.isDisposed &&
+                    paragraph.key === key)
+                    hooks.failed(cause);
+            });
         };
         // Draws one part at its size; called when it is made, placed again or changed.
         const paint = (item) => {
@@ -156,6 +259,18 @@ export function createPlayViews(game, hooks) {
                     .drawCircle(item.checked ? x + w - h / 2 : x + h / 2, y + h / 2, h / 2 - 3)
                     .endFill();
             }
+            if (part.border !== undefined) {
+                const { width, height } = rect;
+                const edge = borderWidth(item);
+                if (edge > 0) {
+                    g.beginFill(part.border.color)
+                        .drawRect(0, 0, width, edge)
+                        .drawRect(0, height - edge, width, edge)
+                        .drawRect(0, edge, edge, height - edge * 2)
+                        .drawRect(width - edge, edge, edge, height - edge * 2)
+                        .endFill();
+                }
+            }
             const words = item.words;
             if (words !== undefined) {
                 words.text = item.text;
@@ -169,10 +284,15 @@ export function createPlayViews(game, hooks) {
                 }
                 else
                     words.x = 0;
-                words.y = rect.height / 2;
+                words.y =
+                    part.type === 'button' && part.description !== undefined
+                        ? Math.min(rect.height / 2, (part.size ?? Math.round(skin.size * 0.9)) / 2 + 6)
+                        : rect.height / 2;
                 if (part.type === 'toggle')
                     words.alpha = item.disabled ? 0.5 : 1;
             }
+            paintParagraph(item);
+            placeImage(item);
             node.visible = item.visible;
             if (item.dot !== undefined) {
                 const { node: dot, words: count } = item.dot;
@@ -286,7 +406,7 @@ export function createPlayViews(game, hooks) {
                     ? makeScroll(node, offsets.get(part.name ?? '') ?? 0, () => allowsInput() && visibleOnStage(node, game.browser.stage, true))
                     : undefined;
                 const start = part.type === 'text' || part.type === 'button' || part.type === 'toggle' ? String(part.text ?? '') : '';
-                const words = part.type === 'text' || part.type === 'button' || part.type === 'toggle'
+                const words = (part.type === 'text' && part.paragraph === undefined) || part.type === 'button' || part.type === 'toggle'
                     ? game.text(start, {
                         layer: node,
                         size: part.size ?? (part.type === 'text' ? plan.skin.size : Math.round(plan.skin.size * 0.9)),
@@ -303,6 +423,8 @@ export function createPlayViews(game, hooks) {
                     scroll,
                     scrollParent: container?.scroll === undefined ? container?.scrollParent : container,
                     words,
+                    paragraph: undefined,
+                    image: undefined,
                     rect: relative(planned.rect, planned.parent < 0 ? undefined : plan.parts[planned.parent].rect),
                     visible: part.visible ?? true,
                     disabled: false,
@@ -314,6 +436,38 @@ export function createPlayViews(game, hooks) {
                     dot: undefined,
                     focusMark: undefined
                 };
+                if (richStyle(part) !== undefined) {
+                    paragraphScope ??= game.engine.createScope();
+                    const box = game.sprite(undefined, node);
+                    const owner = paragraphScope;
+                    paragraphModule ??= import('./playViewParagraph.js');
+                    void paragraphModule
+                        .then(({ createParagraph }) => {
+                        if (ended || !made.includes(item) || owner.state !== 'open')
+                            return;
+                        const text = createParagraph(game.engine, owner, paragraphCache);
+                        box.addChild(text);
+                        item.paragraph = { box, text, key: undefined };
+                        paintParagraph(item);
+                    })
+                        .catch(cause => {
+                        if (!ended && made.includes(item))
+                            hooks.failed(cause);
+                    });
+                }
+                if (part.type === 'image') {
+                    void game.image(part.src, { layer: node }).then(image => {
+                        if (ended || !made.includes(item)) {
+                            game.remove(image);
+                            return;
+                        }
+                        item.image = image;
+                        placeImage(item);
+                    }, cause => {
+                        if (!ended && made.includes(item))
+                            hooks.failed(cause);
+                    });
+                }
                 if (part.name !== undefined && bind[part.name]?.badge !== undefined) {
                     const dot = game.sprite(undefined, node);
                     item.dot = {
@@ -495,7 +649,9 @@ export function createPlayViews(game, hooks) {
                             ? 'button'
                             : type === 'bar'
                                 ? 'progressbar'
-                                : 'switch';
+                                : type === 'image'
+                                    ? 'image'
+                                    : 'switch';
                 const label = planned.part.label;
                 semantics.add({
                     id: id + ':' + name,
@@ -512,12 +668,26 @@ export function createPlayViews(game, hooks) {
                         };
                         if (role === 'group')
                             return { ...base, name: label ?? name, disabled: hasAction(item) && !enabled };
+                        if (role === 'image') {
+                            const imageLabel = item.part.type === 'image' ? item.part.label : undefined;
+                            return { ...base, name: imageLabel ?? '', hidden: hidden || !imageLabel };
+                        }
                         if (role === 'progressbar')
                             return { ...base, name: label ?? name, range: { now: Math.round(item.value * 100), min: 0, max: 100 } };
                         if (role === 'switch')
                             return { ...base, name: item.text, checked: item.checked, disabled: !enabled };
-                        if (role === 'button')
-                            return { ...base, name: item.text, disabled: !enabled };
+                        if (role === 'button') {
+                            const detail = item.part.type === 'button' ? item.part.description?.replace(/\s+/gu, ' ').trim() : '';
+                            // Preserve the title and keep its optional detail within the semantic name limit.
+                            const detailLimit = 1024 - item.text.length - 2;
+                            const suffix = detailLimit > 0
+                                ? detail
+                                    ?.slice(0, detailLimit)
+                                    .replace(/[\uD800-\uDBFF]$/u, '')
+                                    .trimEnd()
+                                : '';
+                            return { ...base, name: suffix ? item.text + '. ' + suffix : item.text, disabled: !enabled };
+                        }
                         return { ...base, name: item.text };
                     },
                     ...(role === 'button' || role === 'switch' || (role === 'group' && bind[name]?.tap !== undefined)
@@ -531,6 +701,14 @@ export function createPlayViews(game, hooks) {
                         : {})
                 });
             }
+        };
+        const releaseContent = () => {
+            paragraphScope?.dispose();
+            paragraphScope = undefined;
+            for (const item of made)
+                for (const child of [item.words, item.dot?.words, item.image])
+                    if (child !== undefined)
+                        game.remove(child);
         };
         const api = {
             get: name => find(name).node,
@@ -612,6 +790,7 @@ export function createPlayViews(game, hooks) {
         const record = {
             view: api,
             modal: () => description.modal === true && active && isShown(),
+            padNavigation: () => options.gamepad === true && active && isShown(),
             targets: () => made.flatMap(item => (item.part.name !== undefined && followsInput(item) ? [item.part.name] : [])),
             keeps: name => followsInput(find(name)),
             eligible: name => actionable(find(name)),
@@ -629,6 +808,8 @@ export function createPlayViews(game, hooks) {
                 item.focusMark.visible = visible;
             },
             press: name => press(find(name)),
+            dismiss: options.dismiss === undefined ? undefined : () => invoke(options.dismiss),
+            start: () => invoke(options.resume),
             tick(seconds) {
                 read(seconds);
             },
@@ -640,10 +821,7 @@ export function createPlayViews(game, hooks) {
                         if (item.part.name !== undefined)
                             offsets.set(item.part.name, item.scroll.offset);
                     disposeScrolls();
-                    for (const item of made)
-                        for (const words of [item.words, item.dot?.words])
-                            if (words !== undefined)
-                                game.remove(words);
+                    releaseContent();
                     for (const item of made)
                         game.remove(item.node);
                     build(offsets);
@@ -675,10 +853,7 @@ export function createPlayViews(game, hooks) {
                 for (const remove of removals.splice(0))
                     remove();
                 disposeScrolls();
-                for (const item of made)
-                    for (const words of [item.words, item.dot?.words])
-                        if (words !== undefined)
-                            game.remove(words);
+                releaseContent();
                 game.remove(root);
             }
         };
@@ -741,8 +916,11 @@ export function createPlayViews(game, hooks) {
                         }
                     ]
                 }
-            }, { bind: { no: { tap: () => answer(false) }, yes: { tap: () => answer(true) } } });
-            open = { answer };
+            }, {
+                dismiss: () => answer(false),
+                bind: { no: { tap: () => answer(false) }, yes: { tap: () => answer(true) } }
+            });
+            open = { answer, view };
             const owner = [...live].find(record => record.view === view);
             if (owner !== undefined && owner.eligible('yes'))
                 focus({ owner, name: 'yes' });
@@ -909,6 +1087,10 @@ export function createPlayViews(game, hooks) {
         }
     };
     const api = view;
+    const noPadButtons = new Set();
+    const navigationPadButtons = new Set(['up', 'down', 'left', 'right', 'a']);
+    const modalPadButtons = new Set([...navigationPadButtons, 'b']);
+    const pausedModalPadButtons = new Set([...modalPadButtons, 'start']);
     return {
         view,
         confirm,
@@ -917,43 +1099,74 @@ export function createPlayViews(game, hooks) {
         get asking() {
             return open !== undefined;
         },
+        get modalActive() {
+            return topModal() !== undefined;
+        },
         wheel: scrollInput.wheel,
         keyDown(event, embedded) {
             if (event.altKey || event.ctrlKey || event.metaKey)
                 return false;
-            if (event.code !== 'Tab' && event.code !== 'Enter' && event.code !== 'Space')
+            if (event.code !== 'Escape' && event.code !== 'Tab' && event.code !== 'Enter' && event.code !== 'Space')
                 return false;
             syncModalFocus();
+            if (event.code === 'Escape') {
+                if (modalOwner?.dismiss === undefined)
+                    return false;
+                if (!event.repeat)
+                    modalOwner.dismiss();
+                return true;
+            }
             if (event.code !== 'Tab') {
                 if (!eligible(focused))
-                    return false;
+                    return modalOwner !== undefined;
                 if (!event.repeat)
                     focused.owner.press(focused.name);
                 return true;
             }
-            const choices = targets(), step = event.shiftKey ? -1 : 1, current = choices.findIndex(next => next.owner === focused?.owner && next.name === focused.name), start = current < 0 ? (step > 0 ? 0 : choices.length - 1) : current + step;
-            for (let offset = 0; offset < choices.length; offset++) {
-                let index = start + offset * step;
-                if (index < 0 || index >= choices.length) {
-                    if (embedded && modalOwner === undefined)
-                        break;
-                    index = (index + choices.length) % choices.length;
-                }
-                const next = choices[index];
-                if (next.owner.reveal(next.name)) {
-                    focus(next);
-                    return true;
-                }
-            }
+            if (moveFocus(event.shiftKey ? -1 : 1, !embedded || modalOwner !== undefined))
+                return true;
             if (modalOwner !== undefined)
                 return true;
             focus(undefined);
             return false;
         },
+        padButtons(pressed, legacyAsking) {
+            syncModalFocus();
+            const modal = modalOwner;
+            let owner = modal;
+            if (owner === undefined && !legacyAsking)
+                for (const record of live)
+                    if (record.padNavigation())
+                        owner = record;
+            if (owner === undefined)
+                return noPadButtons;
+            const claimed = modal === undefined ? navigationPadButtons : game.paused ? pausedModalPadButtons : modalPadButtons;
+            // Keep this sample with its original owner even when a callback closes or replaces the view.
+            if (modal !== undefined && pressed.has('b')) {
+                modal.dismiss?.();
+            }
+            else if (claimed.has('start') && pressed.has('start')) {
+                owner.start();
+            }
+            else {
+                if (pressed.has('up') || pressed.has('left'))
+                    moveFocus(-1, true, owner);
+                else if (pressed.has('down') || pressed.has('right'))
+                    moveFocus(1, true, owner);
+                if (pressed.has('a')) {
+                    if (focused?.owner !== owner || !eligible(focused))
+                        moveFocus(1, true, owner);
+                    if (focused?.owner === owner && eligible(focused))
+                        owner.press(focused.name);
+                }
+            }
+            return claimed;
+        },
         tick(seconds) {
             frame++;
-            if (open !== undefined && frame > openedAt + 1) {
+            if (open !== undefined && topModal()?.view === open.view && frame > openedAt + 1) {
                 const keys = game.keys;
+                // Virtual touch buttons can also send these key names. Hardware decisions go through the active view above.
                 if (keys.pressed('enter', 'space', 'pad:a'))
                     open.answer(true);
                 else if (keys.pressed('escape', 'pad:b'))

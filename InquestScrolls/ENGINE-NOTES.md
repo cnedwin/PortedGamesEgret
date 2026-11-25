@@ -1,8 +1,8 @@
 # 引擎笔记 · Engine notes
 
-做洗冤笔录时发现的新白鹭引擎（提交 `f0f2e01`）的缺口与建议，格式见 [docs/GAME-STANDARD.md](../docs/GAME-STANDARD.md) 第 3 节。凡是引擎做不到的，游戏都换了一个用引擎现有部件的做法，没有绕过引擎自己去画。
+做洗冤笔录时发现的新白鹭引擎（提交 `f0f2e01`，副本已升到 `95897d7`）的缺口与建议，格式见 [docs/GAME-STANDARD.md](../docs/GAME-STANDARD.md) 第 3 节。凡是引擎做不到的，游戏都换了一个用引擎现有部件的做法，没有绕过引擎自己去画。
 
-The gaps found in the new Egret engine (commit `f0f2e01`) while making The Inquest Scrolls, and suggestions, written as
+The gaps found in the new Egret engine (commit `f0f2e01`; the copy is now at `95897d7`) while making The Inquest Scrolls, and suggestions, written as
 in part 3 of docs/GAME-STANDARD.md. Wherever the engine could not do something, the game found another way with the
 engine's own parts instead of drawing around it.
 
@@ -13,12 +13,13 @@ engine's own parts instead of drawing around it.
 - 建议：段落请求加竖排方向（CanvasKit 的 SkParagraph 目前不排竖排，需要引擎自己按列排字并提供列的文字几何），至少给出“每列一字、标点转向”的简化版。 · Suggestion: a vertical direction for paragraphs, with column geometry; even a simple one-character-per-row mode with turned punctuation would serve titles.
 - 状态：未解决。 · Status: open.
 
-### 2. `game.image` 只收 PNG · `game.image` takes PNG only — 未解决 / open
+### 2. `game.image` 只收 PNG · `game.image` takes PNG only — 已在 95897d7 解决 / resolved in 95897d7
 
 - 现象：`play` 的 `game.image(url)` 读 WebP 时报 `WEB_PNG_STRUCTURE_INVALID`：它自己解 PNG，不走浏览器解码。本作五十多张图都是 WebP（同画质比 PNG 小得多）。 · What happens: `game.image` decodes PNG itself and refuses WebP with `WEB_PNG_STRUCTURE_INVALID`; all of this game's pictures are WebP.
 - 绕过办法：用 `@egret/engine/web/kit` 的 `createBrowserImageTextureProvider` 注册一种资源类型，交给引擎资源管理器，`new Bitmap(lease)` 显示（`src/view/pictures.mjs`）；每案的图再用 `engine.createAssetGroup` 成组载入。 · Workaround: `createBrowserImageTextureProvider` registered as an asset type, shown with `new Bitmap(lease)`; each case's pictures are loaded as one asset group.
-- 建议：`game.image` 按扩展名或文件头改走浏览器解码，或在报错信息里指向 `createBrowserImageTextureProvider`。 · Suggestion: let `game.image` decode through the browser for other formats, or name the lenient provider in its error.
-- 状态：未解决。 · Status: open.
+- 引擎提交 `95897d7`（#471）：`game.image` 按文件字节选解码器，JPEG、WebP、GIF、AVIF 走浏览器解码，PNG 仍严格校验。 · Engine commit `95897d7` (#471): `game.image` picks the decoder from the bytes; JPEG, WebP, GIF and AVIF go through the browser, PNG keeps its strict check.
+- 本作现在：仍用资源类型加 `engine.createAssetGroup`，因为每案的图片要成组载入、成组释放；单张图本可以直接用 `game.image`。 · This game now: keeps the asset type with `engine.createAssetGroup`, since each case's pictures load and go as one group.
+- 状态：已在 `95897d7` 解决。 · Status: resolved in `95897d7`.
 
 ### 3. 小游戏里没有 CanvasKit，段落用不了 · No CanvasKit in a mini game, so no paragraphs — 未解决 / open
 
@@ -41,12 +42,13 @@ engine's own parts instead of drawing around it.
 - 建议：`onTap` 在节点自己没有绘制时用它的包围盒，或在文档和报错里写明这条规则、推荐设置 `hitArea`。 · Suggestion: let `onTap` fall back to the node's bounds when it draws nothing itself, or say so in the docs and recommend `hitArea`.
 - 状态：未解决。 · Status: open.
 
-### 6. 移除精灵不释放标签的光栅 · Removing a sprite does not free a label's raster — 未解决 / open
+### 6. 移除精灵不释放标签的光栅 · Removing a sprite does not free a label's raster — 部分解决 / partly resolved
 
 - 现象：`browser.createLabel` 做出的标签占着文字缓存里的一格，只有 `made.dispose()` 才还。把标签所在的精灵 `game.remove` 掉，缓存不还；反复重排卷宗后新标签等不到缓存位，出现字不显示或旧字残留。 · What happens: a label holds a place in the text cache until its own `dispose()`; removing its sprite does not give it back, and after many re-layouts new labels wait or old ones linger.
 - 绕过办法：`src/view/type.mjs` 的 `discard(node)` 先走一遍子树，逐个释放标签，再移除；全游戏的移除都经过它。 · Workaround: `discard(node)` walks the subtree and frees each label before removing it.
-- 建议：标签的显示对象被移出舞台并销毁时自动释放它的缓存位，或给 `game.remove` 一个“连同标签一起释放”的选项。 · Suggestion: free the label's place when its display object is disposed.
-- 状态：未解决。 · Status: open.
+- 引擎提交 `95897d7`（#472）：标签有了 `setRasterActive(false)`，隐藏时能先还掉光栅、留着文字和样式；`getLabelStatus()` 给出排队、拒绝和释放的计数。play 自己的标签隐藏时会自动释放。 · Engine commit `95897d7` (#472): a label can give back its raster while hidden with `setRasterActive(false)`, and `getLabelStatus()` counts the queue, refusals and releases; play's own labels do this when hidden.
+- 建议：`browser.createLabel` 的标签在显示对象被销毁时也自动释放，省掉游戏自己的 `discard`。 · Suggestion: free a `createLabel` label when its display object is disposed too.
+- 状态：部分解决：移除精灵仍不会自动释放，本作继续用 `discard`。 · Status: partly resolved; removing a sprite still frees nothing, and this game keeps `discard`.
 
 ### 7. 一个资源管理器只能有一个段落缓存 · One paragraph cache per asset manager — 未解决 / open
 

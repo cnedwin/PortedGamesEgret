@@ -23,21 +23,15 @@ async function backdrop(app, layer, artId, { dim = 0 } = {}) {
   // The half-size picture whenever it is enough for the pixels it covers (and always at low quality): a backdrop drawn
   // every frame costs much less from it.
   const low = app.quality === 'low' || w * app.type.density() <= (info.w / 2) * 1.15;
-  const pic = await app.pictures.image(app.art(artId + (low ? '-low' : '')), { layer: holder, x: game.width / 2, y: game.height / 2, width: w, height: h });
+  await app.pictures.image(app.art(artId + (low ? '-low' : '')), { layer: holder, x: game.width / 2, y: game.height / 2, width: w, height: h });
   if (dim) {
     const veil = new Sprite();
     veil.graphics.beginFill(0x1a120a, dim).drawRect(0, 0, game.width, game.height).endFill();
     holder.addChild(veil);
   }
-  let t = 0;
-  const room = (w - game.width) / 2;
-  return {
-    update(dt) {
-      if (game.reducedMotion || room <= 0) return;
-      t += dt;
-      pic.x = game.width / 2 + Math.sin(t * 0.04) * room * 0.9;
-    }
-  };
+  // The backdrop stands still: a still screen keeps its last frame (play draws on demand), where a slow drift of the
+  // whole painting made every frame be drawn again.
+  return { update() {} };
 }
 
 /** A column of buttons placed by the engine's linear layout planner. */
