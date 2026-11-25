@@ -73,6 +73,8 @@ export const WORDS = {
     back: '返回',
     saveBroken: '有存档无法读取，原档会尽量另存备份。',
     saveRefused: '浏览器不让写入存档（可能是无痕模式），离开后进度不会保留。',
+    retryTitleArtwork: '重试加载插画',
+    loadingTitleArtwork: '正在加载插画',
     // Ranks and seasons.
     r0: '下县', r1: '中县', r2: '上县', r3: '望县', r4: '紧县', r5: '雄县', r6: '州',
     season0: '春', season1: '夏', season2: '秋', season3: '冬',
@@ -349,6 +351,8 @@ export const WORDS = {
     back: 'Back',
     saveBroken: 'A save could not be read. The browser will try to keep a backup.',
     saveRefused: 'The browser will not keep the save (private browsing, perhaps); progress will not survive leaving.',
+    retryTitleArtwork: 'Retry loading illustration',
+    loadingTitleArtwork: 'Loading illustration',
     r0: 'Lesser county', r1: 'Middle county', r2: 'Upper county', r3: 'Notable county', r4: 'Vital county', r5: 'Grand county', r6: 'Prefecture',
     season0: 'Spring', season1: 'Summer', season2: 'Autumn', season3: 'Winter',
     countyLine: '{rank}',

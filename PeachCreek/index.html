@@ -29,7 +29,12 @@
         "#egret-textured-frame-state": "./vendor/engine/dist/internal/texturedFrameState.js",
         "@egret/engine/input/hover": "./vendor/engine/dist/hover.js",
         "@egret/engine/play": "./vendor/engine/dist/web/play.js",
-        "@egret/engine/web/kit": "./vendor/engine/dist/web/kit.js"
+        "@egret/engine/web/kit": "./vendor/engine/dist/web/kit.js",
+        "@egret/runtime/ui": "./vendor/runtime/dist/ui/index.js",
+        "@egret/engine/ui": "./vendor/engine/dist/ui/index.js",
+        "@egret/engine/ui/semantics": "./vendor/engine/dist/semantics.js",
+        "@egret/engine/ui/testing": "./vendor/engine/dist/ui/testing.js",
+        "@egret/engine/web/semantics": "./vendor/engine/dist/web/semantics.js"
       }
     }
   </script>
@@ -37,45 +42,8 @@
 <body>
   <main id="frame">
     <div id="back" class="layer"><canvas id="map" aria-hidden="true"></canvas></div>
-    <div id="stage" aria-hidden="true" inert></div>
-    <div id="ui" class="layer">
-      <header id="top">
-        <div class="titleRow"><h1 id="county"></h1><span id="term"></span><button id="almanac" type="button" class="icon"></button><div id="vitals"></div><button id="settingsButton" type="button" class="icon"></button></div>
-        <ul id="resources" aria-live="off"></ul>
-      </header>
-      <div id="hits" role="group" tabindex="0"><div id="mapTargets"></div></div>
-      <button id="taxBubble" type="button" hidden></button>
-      <aside id="goalCard" hidden><span class="goalLabel"></span><b id="goalText"></b><button id="claimButton" type="button" hidden></button></aside>
-      <button id="raidBanner" type="button" hidden></button>
-      <button id="petitionCall" type="button" hidden></button>
-      <div id="mapTools" hidden>
-        <button id="countyFocus" type="button"></button>
-        <button id="overview" type="button"></button>
-        <button id="frontiers" type="button"></button>
-        <button id="zoomOut" type="button">−</button>
-        <button id="zoomIn" type="button">+</button>
-      </div>
-      <nav id="tabs" role="tablist"></nav>
-      <section id="sheet" role="dialog" aria-modal="false" hidden><button class="sheetClose" type="button"></button><div id="sheetBody"></div></section>
-      <div id="toasts" aria-live="polite"></div>
-
-      <section id="title" class="screen" hidden>
-        <div class="seal" aria-hidden="true"></div>
-        <h2 id="titleName"></h2>
-        <p id="tagline"></p>
-        <p class="notice" hidden></p>
-        <div class="titleButtons"><button id="startButton" class="primary" type="button"></button><button id="titleSettings" type="button"></button><button id="languageButton" type="button"></button></div>
-        <p class="demo" id="demoLine"></p>
-      </section>
-      <section id="saveSlots" class="dialog" role="dialog" aria-modal="true" aria-labelledby="saveSlotsTitle" hidden>
-        <h2 id="saveSlotsTitle"></h2>
-        <div id="saveSlotList"></div>
-        <button id="closeSaveSlots" class="closeButton" type="button"></button>
-      </section>
-      <section id="away" class="dialog" role="dialog" aria-labelledby="awayTitle" hidden><h2 id="awayTitle"></h2><div id="awayBody"></div><button id="awayOk" class="primary" type="button"></button></section>
-      <section id="settings" class="dialog" role="dialog" aria-labelledby="settingsTitle" hidden><h2 id="settingsTitle"></h2><div class="settingsList"></div><button class="closeButton" type="button"></button><button id="returnToTitle" type="button" hidden></button></section>
-      <p id="loading" class="loading">桃溪 · Peach Creek</p>
-    </div>
+    <div id="stage"></div>
+    <p id="loading" role="status">桃溪 · Peach Creek</p>
     <span id="rotateHint"></span>
   </main>
   <noscript>这个游戏需要 JavaScript · This game needs JavaScript.</noscript>
