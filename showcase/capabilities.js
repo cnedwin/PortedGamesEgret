@@ -1,6 +1,6 @@
 // 由 tools/capability-matrix.mjs 生成，不要手改 · Made by tools/capability-matrix.mjs; do not edit by hand.
 export const MATRIX = {
- "commit": "a778bed53ecdbf9c65e9abc5624d4b3751a4331d",
+ "commit": "b3b594351e8017ce43a7c3cb20c769403806553e",
  "games": [
   "CanalWatch",
   "FengshenChronicle",
@@ -20,6 +20,7 @@ export const MATRIX = {
   "Rally",
   "SandScroll",
   "SnowTemple",
+  "StarBanner",
   "TaiwanMahjong",
   "TeaHorseRoad",
   "Wulin"
@@ -205,6 +206,10 @@ export const MATRIX = {
      "file": "SnowTemple/src/main.mjs"
     },
     {
+     "game": "StarBanner",
+     "file": "StarBanner/src/view/stage.mjs"
+    },
+    {
      "game": "TeaHorseRoad",
      "file": "TeaHorseRoad/src/art/font.mjs"
     },
@@ -273,6 +278,10 @@ export const MATRIX = {
     {
      "game": "Rally",
      "file": "Rally/src/main.mjs"
+    },
+    {
+     "game": "StarBanner",
+     "file": "StarBanner/src/view/stage.mjs"
     },
     {
      "game": "Wulin",
@@ -417,6 +426,10 @@ export const MATRIX = {
     {
      "game": "NightWardens",
      "file": "NightWardens/src/main.mjs"
+    },
+    {
+     "game": "StarBanner",
+     "file": "StarBanner/src/input.mjs"
     }
    ]
   },
@@ -600,6 +613,10 @@ export const MATRIX = {
      "file": "SnowTemple/tools/balance.mjs"
     },
     {
+     "game": "StarBanner",
+     "file": "StarBanner/src/audio/sound.mjs"
+    },
+    {
      "game": "TaiwanMahjong",
      "file": "TaiwanMahjong/src/i18n.mjs"
     },
@@ -661,6 +678,10 @@ export const MATRIX = {
     {
      "game": "SnowTemple",
      "file": "SnowTemple/src/main.mjs"
+    },
+    {
+     "game": "StarBanner",
+     "file": "StarBanner/src/main.mjs"
     },
     {
      "game": "TaiwanMahjong",
@@ -785,6 +806,10 @@ export const MATRIX = {
     {
      "game": "SandScroll",
      "file": "SandScroll/src/audio/sound.mjs"
+    },
+    {
+     "game": "StarBanner",
+     "file": "StarBanner/src/audio/sound.mjs"
     }
    ]
   },

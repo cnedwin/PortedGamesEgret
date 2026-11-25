@@ -92,8 +92,7 @@ stronghold.
 - 骑士、马车、器械、热气球、飞兵和舰船是整体模型，只有颠簸、悬浮、摇摆和前冲，没有分件动画。 · Knights, carts, engines, the balloon, fliers and ships are single meshes with bobbing, hovering, rolling and lunging only.
 - 招募的新兵自动放在离敌人最近的空格，不能手选位置。 · A recruit is placed on the free tile nearest the enemy; the player cannot pick it.
 - 电脑不使用运输单位（马车、热气球、渡船）。 · The computer does not use carriers.
-- QUALITY.md 的 F1（桌面帧时间 p95 ≤ 16.7 ms）在无头 Chromium 软件渲染下不达标：带阴影、后期和二十多个骨骼人物的棋盘每帧要几百毫秒；真 GPU 上未测。 · QUALITY.md F1 (desktop p95 ≤ 16.7 ms) fails under headless software rendering, where the shadowed, post-processed board with twenty-odd rigged figures takes hundreds of milliseconds a frame; not measured on a real GPU.
-- 品质验收未达标 · Quality items failing（[QUALITY.md](QUALITY.md)，2026-11-25，无头 Chromium + SwiftShader · headless, software rendering）：F1 桌面帧时间 p95 ≤ 16.7 ms（p95 583.2 ms over 19 frames）；I1 中英文全可切换，英文下无中文（html lang "en", Chinese left: 星旗战记）；E2 资源失败有错误界面和重试（25 files refused; no uncaught error; no error screen with a retry）。
+- 品质验收未达标 · Quality items failing（[QUALITY.md](QUALITY.md)，2026-11-25，无头 Chromium + SwiftShader · headless, software rendering）：F1 桌面帧时间 p95 ≤ 16.7 ms（p95 633.3 ms over 14 frames）。
 
 ## 已解决 · Solved
 
@@ -101,6 +100,9 @@ stronghold.
 - 只有顶点钩子的着色器误填进 `glsl` 会编译失败：改用 `glslVertex` / `wgslVertex`（ENGINE-NOTES 第 2 条）。 · A vertex-only hook passed as `glsl` failed to compile; it now goes in `glslVertex` / `wgslVertex` (ENGINE-NOTES 2).
 - 软件渲染下镜头插值跟不上，截图前用 `rig.snap()` 直接落位。 · Under software rendering the camera's easing lagged; captures snap it into place first.
 - 生成的模型朝向与引擎约定相反：人形单位整体转半圈。 · Generated rigs faced away from the engine's forward; humanoids are turned half round.
+- 模型文件读不到时（品质验收 E2）不再只在控制台里警告：画面下方说明哪里出了问题，给出「重试」（重新载入）和「先这样玩」（用代码画的替身继续）。 · When model files fail to arrive (quality item E2) the page now says so and offers to try again or play on with stand-in shapes.
+- 英文模式下标题副标和页面标题里还留着中文（品质验收 I1）：都改成英文。 · Chinese left in the English title and page title (quality item I1) is now English.
+- 战斗中切换语言时界面按钮仍是旧语言：切换后整套战斗界面按新语言重建；战斗界面不再清空页面上的画面层，设置和战果面板能在战斗中正常弹出。 · Switching the language mid-battle now rebuilds the battle interface, and the HUD no longer wipes the screens' layer, so settings and the result show over a battle.
 
 ## 未完成 · Unfinished
 

@@ -94,6 +94,39 @@ export const GAMES = [
     ],
   },
   {
+    id: 'starbanner', folder: 'StarBanner', kind: '3d',
+    scenes: [
+      { zh: "麦浪渡口 · 两军隔着小河对阵，蓝方占下的村庄换上王国的颜色", en: "Wheatwater Ford · The armies face each other across the stream; villages taken by the blue side wear the kingdom's colours" },
+      { zh: "双子海湾 · 两军沿着海湾间的窄路推进，双方骑士在中路相遇", en: "Twin Coves · Both armies push along the narrow land between the bays, and the knights meet in the middle" },
+      { zh: "龙脊隘口 · 攻击前的战斗预测：双方伤害范围、暴击与反击", en: "Dragonspine Pass · The forecast before a strike: both sides' damage ranges, criticals and the counter" },
+    ],
+    zh: "星旗战记", en: "Starbanner Tactics",
+    genre: { zh: "斜 45 度 3D 卡通渲染战棋", en: "45-degree toon-shaded 3D tactics" },
+    summary: { zh: "晨星王国与夜鸦公国在浮空沙盘上对阵：靠村庄收入招兵、占领、推进，击倒敌方指挥官或攻破要塞取胜。伤害、地形、每个兵种的暴击条件、反击、占领、援军、治疗与运输按原作规则还原；十九个兵种、四位原创指挥官与战意技、三张原创地图，全部是原创的卡通渲染 3D 模型，音乐和音效由代码合成。", en: "The Morningstar Kingdom and the Nightraven Duchy meet on a floating diorama: recruit from village income, capture and advance, and fell the enemy commander or break their stronghold. Damage, terrain, each unit's critical condition, counters, capture, reinforcing, healing and carrying follow the original's rules; nineteen units, four original commanders with their rally arts and three original maps, all original toon-shaded 3D models, with music and sound synthesized in code." },
+    features: [
+      {
+        title: { zh: "卡通渲染、阵营换色与墨线描边", en: "Toon shading, team colours and ink outlines" },
+        description: { zh: "生成的模型换成 createToonMaterial3D 的分层光照，一个 createCustomShader3D 片元钩子加上边缘光，把衣甲上的钴蓝按色相换成对方的绯红，行动过的单位变灰、受击闪白；后处理的 outlineLayers 给单位和建筑描上墨线。", en: "Generated models are relit with createToonMaterial3D's bands; one createCustomShader3D fragment hook adds the rim, turns the cobalt of tabards and banners to the other side's crimson by hue, greys a unit that has acted and flashes it on a hit; the post-process outlineLayers inks units and buildings." },
+        source: 'src/view/toon.mjs',
+      },
+      {
+        title: { zh: "骨骼动画的棋子与浮空沙盘", en: "Rigged pieces on a floating diorama" },
+        description: { zh: "人形兵种和指挥官由 loadGltf3D 载入，每个单位克隆一副独立骨骼，AnimationMixer3D 播待机、行走、出手、受击、倒下；沙盘的地面和岸壁用 createGeometry3D 拼成，树、山、礁石、桥板和草丛用 InstancedMesh3D 批量画，水面和草丛用顶点钩子起伏摇摆。", en: "Humanoid units and commanders load with loadGltf3D, each with its own cloned skeleton, AnimationMixer3D playing idle, walk, strike, hurt and fall; the board's ground and banks are built with createGeometry3D, trees, peaks, reefs, planks and grass are InstancedMesh3D batches, and vertex hooks swell the water and sway the grass." },
+        source: 'src/view/figures.mjs',
+      },
+      {
+        title: { zh: "按原作规则的战棋与电脑对手", en: "Tactics by the original's rules, and a computer opponent" },
+        description: { zh: "规则层在 Node 里跑：伤害公式、地形星与骷髅、十六种暴击条件、反击、占领、收入、援军、治疗、诅咒、运输和战意技，状态是纯数据、带种子随机数，每回合存档能原样接着打；电脑按期望伤害、反击和下回合的风险估值，测试保证同种子同结果、对局能分出胜负。", en: "The rules run in Node: the damage formula, stars and skulls, sixteen critical conditions, counters, capture, income, reinforcing, healing, hexes, carrying and rally arts, kept as plain data with a seeded random number so every turn's save resumes exactly; the computer weighs expected damage, the counter and next turn's danger, and tests hold that one seed gives one battle and battles end." },
+        source: 'src/sim/rules.mjs',
+      },
+      {
+        title: { zh: "点选格子、头顶数字与合成的配乐", en: "Picking tiles, labels over pieces and a synthesized score" },
+        description: { zh: "Raycaster3D 把鼠标和触屏换成格子，方向键随视角转动；projectToViewport3D 把生命数字和伤害飘字放到单位头顶；五段原创曲子和全部音效由代码合成，经 encodeWav 交给 createBrowserAudio 的音乐与音效两条总线。", en: "Raycaster3D turns the pointer into a tile and the arrows follow the turned view; projectToViewport3D sets health badges and damage figures over each piece; five original pieces and every effect are synthesized in code and handed through encodeWav to createBrowserAudio's music and effects buses." },
+        source: 'src/play.mjs',
+      },
+    ],
+  },
+  {
     id: 'nine', folder: 'NineProvinces', kind: '3d',
     scenes: [
       { zh: "天下图 · 洛阳城墙、河道渡桥与连接各城的道路", en: "The realm · Luoyang's walls, river crossings and roads linking the cities" },
