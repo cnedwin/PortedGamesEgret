@@ -361,7 +361,7 @@ export const GAMES = [
     scenes: [
       { zh: "首页 · 星空祭前的校园", en: "Title screen · Campus before the Star Festival" },
       { zh: "男主衣橱 · 衬衫与西装叠穿", en: "Protagonist's wardrobe · Layered shirt and blazer" },
-      { zh: "唐蜜衣橱 · 蝴蝶结衬衫与长袜配色", en: "Tang Mi's wardrobe · Bow blouse and stocking colours" },
+      { zh: "睡衣派对 · 唐蜜与不加糖的可可", en: "Pyjama party · Unsweetened cocoa with Tang Mi" },
     ],
     zh: "心动选修课", en: "Love Elective",
     genre: { zh: "校园恋爱养成", en: "Campus romance and dress-up" },
