@@ -37,30 +37,40 @@
   <main>
     <p class="boot-state" id="boot" role="status">正在读取工作区…</p>
     <section class="sign-in" id="sign-in" aria-labelledby="sign-in-title" hidden>
-      <form class="sign-in-card" id="login-form">
+      <div class="sign-in-card">
         <h2 id="sign-in-title">登录工作区</h2>
         <p id="login-note">整理游戏顺序、双语简介和展示截图。</p>
-        <label for="username">用户名</label>
-        <input id="username" name="username" autocomplete="username" autocapitalize="none" spellcheck="false" required>
-        <label for="password">密码</label>
-        <input id="password" name="password" type="password" autocomplete="current-password" required>
         <p class="form-error" id="login-error" role="alert" hidden></p>
-        <button class="button primary" id="login-submit" type="submit">登录</button>
-      </form>
+        <form class="login-form" id="login-form" hidden>
+          <label for="username">用户名</label>
+          <input id="username" name="username" autocomplete="username" autocapitalize="none" spellcheck="false" required>
+          <label for="password">密码</label>
+          <input id="password" name="password" type="password" autocomplete="current-password" required>
+          <button class="button primary" id="login-submit" type="submit">登录</button>
+        </form>
+        <a class="button primary github-login" id="github-login" href="/auth/github" referrerpolicy="no-referrer" hidden>使用 GitHub 登录</a>
+        <button class="button secondary" id="github-recheck" type="button" hidden>检查登录状态</button>
+      </div>
     </section>
 
     <section class="workspace" id="workspace" aria-label="展示站内容" hidden>
       <div class="status-row">
         <p class="draft-state" id="draft-state" role="status"></p>
+        <p class="actor" id="actor" hidden></p>
         <p class="notice" id="notice" role="status" hidden></p>
         <p class="form-error" id="workspace-error" role="alert" hidden></p>
       </div>
+      <section class="review-banner" id="review-banner" aria-labelledby="review-heading" hidden>
+        <strong id="review-heading">更新等待审核</strong>
+        <p>合并到主干后会触发 GitHub Pages 部署。审核合并后，点击「同步主干」继续编辑。</p>
+        <a id="review-link" href="#" target="_blank" rel="noopener noreferrer" referrerpolicy="no-referrer" hidden>查看审核 PR ↗</a>
+      </section>
       <div class="workspace-grid">
         <aside class="sort-panel" aria-label="游戏顺序">
           <details class="sort-disclosure" id="sort-disclosure" open>
             <summary>展示顺序 <span id="sort-count"></span></summary>
             <div class="sort-body" id="sort-body">
-              <p class="sort-help">拖动手柄排序，也可以逐项上移或下移。</p>
+              <p class="sort-help" id="sort-help">拖动手柄排序，也可以逐项上移或下移。</p>
               <ol class="sort-list" id="sort-list"></ol>
               <p class="visually-hidden" id="sort-announcement" aria-live="polite"></p>
             </div>
@@ -74,7 +84,7 @@
   <dialog class="publish-dialog" id="publish-dialog" aria-labelledby="publish-title">
     <form method="dialog" id="publish-form">
       <h2 id="publish-title">发布到公开展示站</h2>
-      <p>已保存的草稿将提交到主干，并触发 GitHub Pages 更新。发布完成后，公开站仍需等待部署。</p>
+      <p id="publish-description">已保存的草稿将提交到主干，并触发 GitHub Pages 更新。发布完成后，公开站仍需等待部署。</p>
       <div class="dialog-actions">
         <button class="button secondary" value="cancel" autofocus>返回编辑</button>
         <button class="button primary" id="confirm-publish" value="publish">确认发布</button>

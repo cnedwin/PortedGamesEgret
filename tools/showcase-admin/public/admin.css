@@ -67,6 +67,7 @@ h1 { margin: 0; font-size: 17px; line-height: 1.25; font-weight: 750; }
 }
 .sign-in-card h2, .publish-dialog h2 { margin: 0; font-size: 22px; line-height: 1.3; }
 .sign-in-card p, .publish-dialog p { margin: 0 0 11px; color: var(--muted); }
+.login-form { display: grid; gap: 8px; }
 .sign-in-card label { font-size: 13px; font-weight: 700; }
 .sign-in-card input, .fields textarea {
   width: 100%; min-width: 0; color: #20363b; background: white;
@@ -74,13 +75,23 @@ h1 { margin: 0; font-size: 17px; line-height: 1.25; font-weight: 750; }
 }
 .sign-in-card input { min-height: 44px; padding: 8px 10px; font-size: 16px; }
 .sign-in-card .primary { margin-top: 8px; }
+.github-login { min-height: 44px; }
 .workspace { max-width: 1516px; margin: 0 auto; padding: 14px clamp(14px, 3vw, 34px) 44px; }
 .status-row { display: flex; flex-wrap: wrap; gap: 6px 14px; align-items: center; min-height: 34px; margin-bottom: 9px; }
 .status-row p { margin: 0; font-size: 13px; }
 .draft-state { color: var(--muted); }
+.actor { color: var(--muted); overflow-wrap: anywhere; }
 .draft-state[data-state="changes"] { color: #674407; }
 .notice { color: var(--teal); }
 .form-error, .sign-in-card .form-error { color: var(--error); font-size: 13px; overflow-wrap: anywhere; }
+.review-banner {
+  display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 3px 12px;
+  margin-bottom: 12px; padding: 10px 12px; border-radius: 8px; border: 1px solid #b6cebf;
+  background: #e4f0e8; color: #24493d; font-size: 13px;
+}
+.review-banner strong { font-size: 14px; }
+.review-banner p { margin: 0; }
+.review-banner a { grid-area: 1 / 2 / span 2 / 3; display: grid; place-items: center; min-height: 44px; white-space: nowrap; }
 .workspace-grid { display: grid; grid-template-columns: var(--rail-width) minmax(0, 1fr); gap: 15px; align-items: start; }
 .sort-panel { position: sticky; top: 82px; }
 .sort-disclosure {
@@ -130,6 +141,7 @@ h1 { margin: 0; font-size: 17px; line-height: 1.25; font-weight: 750; }
 .fields { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 11px; }
 .fields label { display: grid; gap: 4px; align-content: start; min-width: 0; font-size: 12px; font-weight: 700; }
 .fields textarea { min-height: 84px; resize: vertical; padding: 8px 9px; font-size: 14px; font-weight: 400; line-height: 1.5; }
+.fields textarea[readonly] { background: #f3f7f6; }
 .gallery-heading { margin: 14px 0 5px; display: flex; flex-wrap: wrap; gap: 4px 9px; align-items: baseline; font-size: 13px; }
 .gallery-heading small { font-weight: 400; color: var(--muted); font-size: 11px; }
 .gallery { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
@@ -165,6 +177,8 @@ h1 { margin: 0; font-size: 17px; line-height: 1.25; font-weight: 750; }
   .identity-icon { width: 35px; height: 35px; }
   .toolbar { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); }
   .toolbar .button { padding-inline: 3px; font-size: 12px; }
+  .review-banner { grid-template-columns: minmax(0, 1fr); }
+  .review-banner a { grid-area: auto; justify-self: start; }
   .fields { grid-template-columns: 1fr; gap: 7px; }
   .gallery { grid-template-columns: 1fr; }
   .asset { display: grid; grid-template-columns: minmax(0, 1.55fr) minmax(0, 1fr); align-items: stretch; }

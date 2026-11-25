@@ -17,6 +17,7 @@ let games = [];
 let busy = '';
 let encodingCount = 0;
 let drag = null;
+const usesGitHub = () => state?.authMode === 'github';
 
 function element(tag, className = '', text = '') {
   const node = document.createElement(tag);
@@ -46,6 +47,7 @@ async function request(path, method = 'GET', body) {
   if (!response.ok || value === null) {
     const error = new Error(value?.error || ('请求失败（' + response.status + '）'));
     error.status = response.status;
+    error.authMode = value?.authMode;
     throw error;
   }
   return value;
@@ -68,11 +70,12 @@ function announce(text, url) {
   notice.append(' ', anchor);
 }
 
-function safeURL(value) {
+function safeURL(value, httpsOnly = false) {
   if (typeof value !== 'string' || !value.trim()) return null;
   try {
-    const url = new URL(value, location.origin);
-    return url.protocol === 'https:' || url.protocol === 'http:' ? url : null;
+    const url = httpsOnly ? new URL(value) : new URL(value, location.origin);
+    return !url.username && !url.password &&
+      (url.protocol === 'https:' || (!httpsOnly && url.protocol === 'http:')) ? url : null;
   } catch {
     return null;
   }
@@ -89,19 +92,43 @@ function updateStatus() {
   if (!state) return;
   const changed = hasLocalChanges();
   const locked = Boolean(busy || encodingCount);
+  const editingLocked = locked || Boolean(state.review) || recoveryRevision !== null;
+  const nextStep = usesGitHub() ? '提交审核' : '发布';
   const draftStatus = byId('draft-state');
-  draftStatus.dataset.state = changed || state.dirty ? 'changes' : 'clean';
+  draftStatus.dataset.state = changed || state.dirty || state.review ? 'changes' : 'clean';
   const label = busy || (encodingCount ? '正在处理截图…'
+    : state.review ? '草稿已锁定，等待审核合并'
     : recoveryRevision !== null ? '草稿版本已变化，本页修改还未保存'
     : changed ? '本页有未保存的修改'
-    : state.dirty ? '草稿已保存，等待发布' : '当前没有待发布的修改');
+    : state.dirty ? '草稿已保存，等待' + nextStep : '当前没有待' + nextStep + '的修改');
   if (draftStatus.textContent !== label) draftStatus.textContent = label;
-  byId('save').disabled = locked || recoveryRevision !== null || !changed;
-  byId('publish').disabled = locked || recoveryRevision !== null || (!changed && !state.dirty);
+  byId('save').disabled = editingLocked || !changed;
+  byId('publish').disabled = editingLocked || (!changed && !state.dirty);
   byId('refresh').disabled = locked;
   byId('logout').disabled = locked;
   gamePanel.inert = Boolean(busy);
   byId('sort-body').inert = Boolean(busy);
+}
+
+function syncSessionView() {
+  const github = usesGitHub();
+  const actor = github && typeof state.actor?.login === 'string' ? state.actor.login : '';
+  message(byId('actor'), actor ? 'GitHub · @' + actor : '');
+  byId('publish').textContent = github ? '提交审核' : '发布更新';
+  byId('publish-title').textContent = github ? '提交公开站更新审核' : '发布到公开展示站';
+  byId('publish-description').textContent = github
+    ? '已保存的草稿将生成 GitHub Pull Request。审核合并到主干并完成部署后，公开站才会显示这批改动。'
+    : '已保存的草稿将提交到主干，并触发 GitHub Pages 更新。发布完成后，公开站仍需等待部署。';
+  byId('confirm-publish').textContent = github ? '确认提交审核' : '确认发布';
+  const review = github ? state.review : null;
+  const link = byId('review-link');
+  const url = safeURL(review?.url, true);
+  byId('review-banner').hidden = !review;
+  byId('sort-help').textContent = review ? '点选游戏可查看本次提交的内容。'
+    : '拖动手柄排序，也可以逐项上移或下移。';
+  link.hidden = !url;
+  if (url) link.href = url;
+  else link.removeAttribute('href');
 }
 
 function useState(value) {
@@ -113,6 +140,7 @@ function useState(value) {
   cards.clear();
   gamePanel.replaceChildren(...games.map(gameCard));
   renderSort();
+  syncSessionView();
   signIn.hidden = true;
   toolbar.hidden = false;
   workspace.hidden = false;
@@ -120,12 +148,30 @@ function useState(value) {
   updateStatus();
 }
 
-function openLogin() {
+function openLogin(authMode = state?.authMode) {
+  const github = authMode === 'github';
+  const preserve = github && state && hasLocalChanges();
+  const link = byId('github-login');
+  byId('login-form').hidden = github;
+  link.hidden = !github;
+  byId('github-recheck').hidden = !preserve;
+  if (preserve) {
+    link.target = '_blank';
+    link.rel = 'noopener noreferrer';
+    link.textContent = '在新标签页使用 GitHub 登录';
+  } else {
+    link.removeAttribute('target');
+    link.removeAttribute('rel');
+    link.textContent = '使用 GitHub 登录';
+  }
+  byId('login-note').textContent = github
+    ? '使用有编辑权限的 GitHub 账号登录。'
+    : '整理游戏顺序、双语简介和展示截图。';
   byId('boot').hidden = true;
   signIn.hidden = false;
   workspace.hidden = true;
   toolbar.hidden = true;
-  byId('username').focus();
+  (github ? link : byId('username')).focus();
 }
 
 function renderSort(focus) {
@@ -134,6 +180,7 @@ function renderSort(focus) {
     const row = element('li', 'sort-row');
     row.dataset.sortId = game.id;
     const handle = button('⠿', 'sort-button grip', null, '拖动 ' + game.zh + ' 排序');
+    handle.disabled = Boolean(state.review);
     handle.addEventListener('pointerdown', event => startDrag(event, row));
     handle.addEventListener('keydown', event => {
       if (!['ArrowUp', 'ArrowDown'].includes(event.key)) return;
@@ -148,8 +195,8 @@ function renderSort(focus) {
     jump.append(element('b', '', game.zh), element('small', '', game.en));
     const up = button('↑', 'sort-button up', () => moveGame(game.id, -1, 'up'), '上移 ' + game.zh);
     const down = button('↓', 'sort-button down', () => moveGame(game.id, 1, 'down'), '下移 ' + game.zh);
-    up.disabled = index === 0;
-    down.disabled = index === games.length - 1;
+    up.disabled = Boolean(state.review) || index === 0;
+    down.disabled = Boolean(state.review) || index === games.length - 1;
     row.append(handle, jump, up, down);
     if (focus?.id === game.id) queueMicrotask(() => {
       const preferred = row.querySelector('.' + focus.control);
@@ -183,7 +230,7 @@ function reorder(id, destination, after, control) {
 }
 
 function startDrag(event, row) {
-  if (drag || busy || !event.isPrimary || event.button !== 0) return;
+  if (drag || busy || state.review || !event.isPrimary || event.button !== 0) return;
   const grip = event.currentTarget;
   grip.setPointerCapture(event.pointerId);
   drag = {
@@ -258,6 +305,7 @@ function gameCard(game) {
     const label = element('label', '', title);
     const editor = element('textarea');
     editor.value = game.summary[language];
+    editor.readOnly = Boolean(state.review);
     editor.lang = language === 'zh' ? 'zh-CN' : 'en';
     editor.rows = 3;
     editor.maxLength = 1500;
@@ -269,7 +317,7 @@ function gameCard(game) {
     fields.append(label);
   }
   const galleryHeading = element('h3', 'gallery-heading', '展示截图');
-  galleryHeading.append(element('small', '', '保留原比例，保存时使用 WebP'));
+  galleryHeading.append(element('small', '', state.review ? '本次审核版本' : '保留原比例，保存时使用 WebP'));
   const gallery = element('div', 'gallery');
   gallery.append(...[0, 1, 2].map(index => assetCard(game, index)));
   card.append(header, fields, galleryHeading, gallery);
@@ -286,10 +334,12 @@ function assetCard(game, index) {
   if (source && source.origin === location.origin) source.searchParams.set('revision', String(state.revision));
   const choose = element('input');
   choose.type = 'file';
+  choose.disabled = Boolean(state.review);
   choose.accept = 'image/png,image/jpeg,image/webp,image/avif,image/gif,image/bmp';
   choose.hidden = true;
   const replace = button('替换图 ' + (index + 1), 'button secondary', () => choose.click(),
     '替换 ' + image.alt);
+  replace.disabled = Boolean(state.review);
   const undo = button('撤销替换', 'button secondary', () => {
     URL.revokeObjectURL(pending.get(key).preview);
     pending.delete(key);
@@ -417,7 +467,7 @@ async function runAction(label, operation) {
     return true;
   } catch (error) {
     if (error.status === 401) {
-      openLogin();
+      openLogin(error.authMode ?? state?.authMode);
       message(byId('login-error'), '登录会话已失效。当前修改仍在页面中，请重新登录后重试。');
     } else message(workspaceError, error.message);
     return false;
@@ -440,6 +490,31 @@ function saveDraft() {
   });
 }
 
+function useLoginState(next) {
+  if (!state || !hasLocalChanges()) {
+    useState(next);
+    return;
+  }
+  const sameDraft = next.revision === state.revision && !next.review;
+  if (!sameDraft && confirm('服务器草稿已变化。确定放弃本页未保存的修改并载入最新草稿？')) {
+    useState(next);
+    return;
+  }
+  if (sameDraft) {
+    state = next;
+    recoveryRevision = null;
+    message(workspaceError, '');
+  } else {
+    state.csrf = next.csrf;
+    recoveryRevision = next.revision;
+    message(workspaceError, '服务器草稿已变化，本页修改仍在。请先复制需要保留的内容，再同步主干。');
+  }
+  signIn.hidden = true;
+  toolbar.hidden = workspace.hidden = false;
+  syncSessionView();
+  updateStatus();
+}
+
 byId('login-form').addEventListener('submit', async event => {
   event.preventDefault();
   const submit = byId('login-submit');
@@ -449,28 +524,9 @@ byId('login-form').addEventListener('submit', async event => {
   submit.disabled = true;
   submit.textContent = '登录中…';
   try {
-    const next = await request('/api/login', 'POST', {
+    useLoginState(await request('/api/login', 'POST', {
       username: byId('username').value, password: byId('password').value,
-    });
-    if (state && hasLocalChanges()) {
-      if (next.revision === state.revision) {
-        state = next;
-        signIn.hidden = true;
-        toolbar.hidden = workspace.hidden = false;
-        message(workspaceError, '');
-        updateStatus();
-      } else {
-        const discard = confirm('服务器草稿已变化。确定放弃本页未保存的修改并载入最新草稿？');
-        if (!discard) {
-          state.csrf = next.csrf;
-          recoveryRevision = next.revision;
-          signIn.hidden = true;
-          toolbar.hidden = workspace.hidden = false;
-          message(workspaceError, '服务器草稿已变化，本页修改仍在。请先复制需要保留的内容，再同步主干。');
-          updateStatus();
-        } else useState(next);
-      }
-    } else useState(next);
+    }));
   } catch (error) {
     message(errorBox, error.message);
   } finally {
@@ -480,32 +536,48 @@ byId('login-form').addEventListener('submit', async event => {
   }
 });
 
+byId('github-recheck').addEventListener('click', async event => {
+  const control = event.currentTarget;
+  const errorBox = byId('login-error');
+  message(errorBox, '');
+  control.disabled = true;
+  try {
+    useLoginState(await request('/api/state'));
+  } catch (error) {
+    message(errorBox, error.status === 401 ? '请先在新标签页完成 GitHub 登录。' : error.message);
+  } finally {
+    control.disabled = false;
+  }
+});
+
 byId('save').addEventListener('click', () => saveDraft());
 byId('publish').addEventListener('click', async () => {
+  if (state.review) return;
   if (hasLocalChanges() && !await saveDraft()) return;
   if (!state.dirty) {
-    announce('没有需要发布的修改');
+    announce(usesGitHub() ? '没有需要提交审核的修改' : '没有需要发布的修改');
     return;
   }
   publishDialog.returnValue = '';
   publishDialog.showModal();
 });
 publishDialog.addEventListener('close', () => {
-  if (publishDialog.returnValue !== 'publish') return;
-  runAction('正在提交到主干…', async () => {
+  if (publishDialog.returnValue !== 'publish' || state.review) return;
+  runAction(usesGitHub() ? '正在创建审核 PR…' : '正在提交到主干…', async () => {
     const result = await request('/api/publish', 'POST', { revision: state.revision });
     useState(result.state);
-    announce('已提交到主干。请等待公开站部署。', result.url);
+    if (result.pending) announce('已提交审核。');
+    else announce('已提交到主干。请等待公开站部署。', result.url);
   });
 });
 
 byId('refresh').addEventListener('click', () => {
-  if (hasLocalChanges() || state.dirty) {
-    const question = hasLocalChanges()
+  const question = state.review
+    ? '同步主干会检查审核状态。合并后将载入新版并解锁编辑。确定同步？'
+    : hasLocalChanges()
       ? '同步主干会放弃本页未保存的修改以及尚未发布的草稿。建议先取消，保留本页修改。仍要同步？'
-      : '同步主干会放弃已保存但尚未发布的草稿。确定同步？';
-    if (!confirm(question)) return;
-  }
+      : state.dirty ? '同步主干会放弃已保存但尚未发布的草稿。确定同步？' : '';
+  if (question && !confirm(question)) return;
   runAction('正在同步主干…', async () => {
     useState(await request('/api/refresh', 'POST', { revision: recoveryRevision ?? state.revision }));
     announce('已同步主干');
@@ -515,6 +587,7 @@ byId('refresh').addEventListener('click', () => {
 byId('logout').addEventListener('click', () => {
   if (hasLocalChanges() && !confirm('退出登录会放弃本页未保存的修改。确定退出？')) return;
   runAction('正在退出…', async () => {
+    const authMode = state.authMode;
     await request('/api/logout', 'POST', {});
     for (const upload of pending.values()) URL.revokeObjectURL(upload.preview);
     pending.clear();
@@ -524,7 +597,7 @@ byId('logout').addEventListener('click', () => {
     games = [];
     gamePanel.replaceChildren();
     sortList.replaceChildren();
-    openLogin();
+    openLogin(authMode);
   });
 });
 
@@ -534,9 +607,18 @@ window.addEventListener('beforeunload', event => {
   event.returnValue = '';
 });
 
+const currentURL = new URL(location.href);
+const loginDenied = currentURL.searchParams.get('login') === 'denied';
+if (loginDenied) {
+  currentURL.searchParams.delete('login');
+  history.replaceState(history.state, '', currentURL);
+}
+
 try {
   useState(await request('/api/state'));
 } catch (error) {
-  openLogin();
-  if (error.status !== 401) message(byId('login-error'), error.message);
+  openLogin(error.authMode);
+  if (loginDenied && error.authMode === 'github') {
+    message(byId('login-error'), 'GitHub 登录未完成，或此账号无编辑权限。请确认账号后重试。');
+  } else if (error.status !== 401) message(byId('login-error'), error.message);
 }
