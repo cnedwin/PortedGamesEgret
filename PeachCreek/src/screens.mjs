@@ -1,6 +1,5 @@
-import { Bitmap, createAssetRef, createAssetType, createSharedMaterial2D, isTexture } from '@egret/engine';
+import { Bitmap, createSharedMaterial2D } from '@egret/engine';
 import { createUiScreenStack } from '@egret/engine/ui';
-import { createBrowserImageTextureProvider } from '@egret/engine/web/kit';
 import { amount, getLanguage, t } from './i18n.mjs';
 
 const SCALE = 0.75;
@@ -20,7 +19,6 @@ const FONTS = {
   sans: ['Noto Sans SC', 'PingFang SC', 'Microsoft YaHei', 'Noto Sans', 'Roboto', 'Arial']
 };
 const SAVE_FAILURES = ['corrupt', 'unreadable', 'invalid', 'too-new', 'too-old', 'migration-failed'];
-const TITLE_IMAGE = createAssetType('peach-creek.title-illustration', isTexture);
 const TITLE_MATERIAL = createSharedMaterial2D({ filter: 'linear', mipmapFilter: 'linear' });
 
 const panel = (name, x, y, w, h, decorate) => ({ type: 'panel', name, x, y, w, h, decorate });
@@ -63,20 +61,8 @@ function slotPaper(occupied) {
   };
 }
 
-function registerIllustrationProvider(game) {
-  // The simple play image loader loads PNG; this cover keeps its existing WebP file.
-  game.engine.assets.register(TITLE_IMAGE, createBrowserImageTextureProvider({
-    async readBytes({ id }) {
-      const response = await fetch(id);
-      if (!response.ok) throw new Error(`Title illustration request failed (${response.status}).`);
-      return new Uint8Array(await response.arrayBuffer());
-    }
-  }));
-}
-
 async function loadIllustration(game, layer) {
-  const ref = createAssetRef(TITLE_IMAGE, new URL('../assets/title-watercolor.webp', import.meta.url).href);
-  const lease = game.scope.use(await game.engine.assets.acquire(ref, { signal: game.scope.signal }));
+  const lease = await game.browser.loadTexture(new URL('../assets/title-watercolor.webp', import.meta.url).href);
   const bitmap = game.scope.use(new Bitmap(lease));
   bitmap.sharedMaterial = TITLE_MATERIAL;
   bitmap.scaleX = WIDTH * SCALE / bitmap.width;
@@ -85,7 +71,7 @@ async function loadIllustration(game, layer) {
 }
 
 /** Title, save slots, settings and offline harvest, using the engine's screen stack. */
-export function createScreens(game, ui, { slots, problems, preferences, isPlaying, isCompact, onEnter, onSetting, onReturnTitle, onAwayClose, onVisualChange = () => {} }) {
+export function createScreens(game, ui, { slots, problems, preferences, isPlaying, isCompact, onEnter, onSetting, onReturnTitle, onAwayClose }) {
   const screens = createUiScreenStack({ onError: console.error });
   const measure = document.createElement('canvas').getContext('2d');
   const art = game.sprite(undefined, game.ui);
@@ -106,7 +92,6 @@ export function createScreens(game, ui, { slots, problems, preferences, isPlayin
   let artworkStatus = 'loading';
   const labels = new WeakMap();
   const fonts = Object.fromEntries(Object.entries(FONTS).map(([style, choices]) => [style, availableFont(choices)]));
-  registerIllustrationProvider(game);
   const ready = prepareIllustration();
 
   async function prepareIllustration() {
@@ -187,7 +172,6 @@ export function createScreens(game, ui, { slots, problems, preferences, isPlayin
             next.label = label;
             node.addChild(label.display);
             place(next);
-            onVisualChange();
           } else label.dispose();
         } catch (error) {
           label.dispose();
@@ -197,7 +181,6 @@ export function createScreens(game, ui, { slots, problems, preferences, isPlayin
         if (node.isDisposed || labels.get(node) !== next) return;
         game.text(words, { size: size * SCALE, bold: true, color, align, layer: node, baseline: 'middle',
           x: align === 'center' ? rect.w / 2 : 0, y: rect.h / 2 });
-        onVisualChange();
         console.warn('Title typography fell back to the standard game font.', error);
       });
     };

@@ -30,23 +30,6 @@ const app = { ui: null, inspector: null, screens: null, game: null, view: null, 
 const now = () => Date.now() / 1000 + app.offset;
 let stageScale = 1;
 
-// The title and its dialogs are still scenes. Keep the last submitted frame while idle,
-// and wake immediately for input, resize or an asynchronously prepared label or picture.
-let titleIdle;
-function wakeTitle() {
-  if (app.screen !== 'title' || !app.game) return;
-  const loop = app.game.browser.loop;
-  if (loop.state === 'idle') loop.start();
-  clearTimeout(titleIdle);
-  const shown = loop.snapshot().frames;
-  function sleepAfterPaint() {
-    if (app.screen !== 'title' || loop.state !== 'running') return;
-    if (loop.snapshot().frames - shown >= 2) loop.stop();
-    else titleIdle = setTimeout(sleepAfterPaint, 120);
-  }
-  titleIdle = setTimeout(sleepAfterPaint, 240);
-}
-
 // ——— Sizing ———
 function fit() {
   const s = Math.min(innerWidth / STAGE.width, innerHeight / STAGE.height),
@@ -65,7 +48,6 @@ addEventListener('resize', () => {
   app.screens?.refresh();
   if (app.screen === 'play') { paintTop(); paintSheet(); }
   app.semanticSurface?.sync();
-  wakeTitle();
 });
 
 // Painted terrain, animated residents and native map targets share one camera.
@@ -73,12 +55,7 @@ const overviewZoom = Math.min(STAGE.width / MAP.width, (STAGE.height - 114) / MA
 const coreZoom = Math.min(STAGE.width / CORE_BOUNDS.width, STAGE.height / CORE_BOUNDS.height);
 const camera = { x: 0, y: 0, zoom: overviewZoom };
 const host = $('#stage');
-for (const event of ['pointerdown', 'pointerup', 'pointercancel', 'keydown', 'keyup', 'focusin']) {
-  host.addEventListener(event, wakeTitle, true);
-}
-document.addEventListener('visibilitychange', () => { if (!document.hidden) wakeTitle(); });
-
-let drag = null, suppressPointerUntil = 0;
+let drag = null, suppressPointerUntil = 0, sheetPointer = null;
 
 function positionTargets() {
   app.ui?.transform('mapTargets', {
@@ -123,8 +100,8 @@ function allowPointer(event) {
 host.addEventListener('wheel', (event) => {
   if (app.screen !== 'play' || app.screens.modal) return;
   const point = canvasPoint(event);
-  if (inPart('sheet', point)) app.inspector.scrollBy(wheelStep(event, event.deltaY));
-  else if (inPart('resources', point) && resourceScroll.maximum > 0) {
+  if (inPart('sheet', point)) return;
+  if (inPart('resources', point) && resourceScroll.maximum > 0) {
     resourceScroll.scrollBy(wheelStep(event, event.deltaX || event.deltaY));
   } else if (!inPart('top', point) && !inPart('tabs', point)) {
     zoomAround(camera.zoom * (event.deltaY > 0 ? 1 / 1.12 : 1.12), point.x, point.y);
@@ -136,8 +113,11 @@ host.addEventListener('pointerdown', (event) => {
   suppressPointerUntil = 0;
   const point = canvasPoint(event);
   const isScroll = event.pointerType !== 'mouse';
-  const region = inPart('sheet', point) ? isScroll && 'sheet'
-    : inPart('resources', point) && resourceScroll.maximum > 0 ? isScroll && 'resources'
+  if (inPart('sheet', point)) {
+    sheetPointer = event.pointerId;
+    return;
+  }
+  const region = inPart('resources', point) && resourceScroll.maximum > 0 ? isScroll && 'resources'
     : !['top', 'tabs', 'mapTools', 'goalCard', 'taxBubble', 'petitionCall', 'raidBanner'].some((key) => inPart(key, point)) && 'map';
   if (region) drag = { id: event.pointerId, region, x: event.clientX, y: event.clientY, moving: false };
 });
@@ -151,8 +131,7 @@ host.addEventListener('pointermove', (event) => {
     event.target.setPointerCapture?.(event.pointerId);
     host.classList.toggle('dragging', drag.region === 'map');
   }
-  if (drag.region === 'sheet') app.inspector.scrollBy(-dy / stageScale);
-  else if (drag.region === 'resources') resourceScroll.scrollBy(-dx / stageScale);
+  if (drag.region === 'resources') resourceScroll.scrollBy(-dx / stageScale);
   else {
     const zoom = camera.zoom > overviewZoom ? camera.zoom : Math.min(1.4, overviewZoom * 1.24);
     if (zoom !== camera.zoom) {
@@ -165,6 +144,7 @@ host.addEventListener('pointermove', (event) => {
   drag.y = event.clientY;
 });
 function endDrag(event) {
+  if (event.pointerId === undefined || event.pointerId === sheetPointer) sheetPointer = null;
   if (!drag || (event.pointerId !== undefined && event.pointerId !== drag.id)) return;
   if (drag.moving) suppressPointerUntil = performance.now() + 120;
   drag = null;
@@ -1140,7 +1120,7 @@ function afterChange(full = false, ticking = false) {
     app.hitsKey = hitsKey();
   }
   paintTop();
-  if (app.sheet && (!ticking || (drag?.region !== 'sheet' && Math.floor(app.state.time) % 3 === 0))) paintSheet();
+  if (app.sheet && (!ticking || (sheetPointer === null && Math.floor(app.state.time) % 3 === 0))) paintSheet();
   persist();
 }
 const hitsKey = () => JSON.stringify([app.state.plots, app.state.nodes.map((n) => [n.found, n.level]), app.state.defence, app.state.rank, app.state.districts, getLanguage()]);
@@ -1272,8 +1252,6 @@ function enterCounty(index, keyboard) {
   app.screens.hideTitle();
   app.sound.start();
   app.screen = 'play';
-  clearTimeout(titleIdle);
-  if (app.game.browser.loop.state === 'idle') app.game.browser.loop.start();
   app.view.setCountyActivity(app.state);
   afterChange(true);
   welcomeBack();
@@ -1306,8 +1284,13 @@ async function boot() {
   const bridge = bridgeUiSemantics(semantics);
   const game = await play({
     width: STAGE.width * 0.75, height: STAGE.height * 0.75, parent: host, transparent: true, semantics: bridge,
+    renderMode: 'on-demand',
     arrange: () => app.ui?.arrange(),
-    update: (seconds) => { if (app.screen === 'play') app.view.update(Math.min(0.1, seconds)); },
+    update: (seconds) => {
+      if (app.screen !== 'play') return;
+      app.view.update(Math.min(0.1, seconds));
+      app.inspector?.syncScroll();
+    },
     onError: console.error
   });
   game.reducedMotion = preferences.data.reducedMotion || matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -1316,7 +1299,7 @@ async function boot() {
   showCounty();
   app.sound = createSound(game, { sound: preferences.data.sound, music: preferences.data.music });
   app.semantics = semantics;
-  app.ui = createUi(game, bridge, wakeTitle);
+  app.ui = createUi(game, bridge);
   app.semanticSurface = createBrowserSemantics({
     semantics, canvas: game.canvas, width: STAGE.width * 0.75, height: STAGE.height * 0.75, label: t('title')
   });
@@ -1325,7 +1308,7 @@ async function boot() {
   });
   app.screens = createScreens(game, app.ui, {
     slots, problems, preferences, isPlaying: () => app.screen === 'play', isCompact: () => stageScale < 0.72,
-    onEnter: enterCounty, onSetting: changePreference, onReturnTitle: returnToTitle, onVisualChange: wakeTitle,
+    onEnter: enterCounty, onSetting: changePreference, onReturnTitle: returnToTitle,
     onAwayClose: () => app.ui.focus('taxBubble')
   });
   updateLanguage();

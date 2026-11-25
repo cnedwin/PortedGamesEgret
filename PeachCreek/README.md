@@ -69,9 +69,9 @@ Raids follow population, rank and raid count. Defence and losses are decided by 
 | 引擎入口 / API · Entry / API | 在本游戏中的用途 · Use in this game | 文件 · File |
 |---|---|---|
 | `play`（`@egret/engine/play`） | 透明的引擎画布叠在县城画布上，四分之三分辨率建、根节点缩放 0.75；`update` 每帧推动行人、小船和天气 · a clear engine canvas over the county, made at three quarters with the root scaled 0.75; `update` moves people, boats and weather every frame | `src/main.mjs`, `src/view.mjs` |
-| `game.show` | 标题、存档、设置、顶栏、标签、地图点击区和滚动单子；通过状态与操作绑定更新 · title, saves, settings, HUD, tabs, map targets and inspector sheets, updated through bindings | `src/ui.mjs`, `src/screens.mjs`, `src/inspector.mjs` |
+| `game.show` | 标题、存档、设置、顶栏、标签、地图点击区和原生滚动单子，通过状态与操作绑定更新 · title, saves, settings, HUD, tabs, map targets and inspector sheets, updated through bindings | `src/ui.mjs`, `src/screens.mjs`, `src/inspector.mjs` |
 | `createUiScreenStack` | 管理设置、存档槽和离线收获的模态顺序及关闭焦点 · modal order and return focus for settings, slots and the offline report | `src/screens.mjs` |
-| `createScrollControl` / `Sprite.clipRect` | 资源栏横向滚动、单子裁剪与纵向滚动 · horizontal resource scrolling, clipped vertical inspector sheets | `src/main.mjs`, `src/inspector.mjs` |
+| `createScrollControl` / `Sprite.clipRect` | 资源栏横向滚动，单子的纵向滚动由原生视图接管 · horizontal resource scrolling, with native views handling the vertical inspector | `src/main.mjs`, `src/inspector.mjs` |
 | `createUiSemantics` / `createBrowserSemantics` / `createUiTester` | 出现在读屏语义树中的界面，按名称回归测试并检验画布键盘焦点 · browser semantic projection and named tests of the canvas UI | `src/ui.mjs`, `test/accept.mjs` |
 | `game.sprite` / `game.rect` / `game.text` / `game.remove` | 街上的行人（戴斗笠、挑担子）、溪上的小船、花瓣落叶雪花和萤火、选中框、飘起的税银数字 · people in hats and with carrying poles, boats, petals, leaves, snow and fireflies, the focus frame, numbers floating up | `src/view.mjs` |
 | `game.tween` / `game.after` / `game.wait` | 来敌攻城的小戏（敌人逼近、箭楼放箭、胜负收场）、升格时的连串铜钱 · the small play of a raid (foes closing, towers shooting, the end), coins in a row on a rise | `src/view.mjs`, `src/main.mjs` |
@@ -80,6 +80,7 @@ Raids follow population, rank and raid count. Defence and losses are decided by 
 | `createAudioMixer` / Web Audio | 首次交互后加载原创古琴、箫与溪流配乐，合成营建、布防、调兵等音效。配乐与音效可分别关闭。 · Original guqin, xiao and creek score loaded after the first interaction. Synthesized building, defence and deployment cues. Independent mute controls. | `src/sound.mjs` |
 | `createSaveStore` + `browserSaveStorage` | 整座县城、设置和历任记录；坏档另存后重新开始，存储拒绝写入时在标题提示 · the whole county, the settings and the record of terms; a broken save set aside, a refusing storage told on the title | `src/saves.mjs`, `src/main.mjs` |
 | `createTextTable` + `pickLanguage` | 全部中英文文字，换语言时重写界面和地图上的坊名 · every word in both languages, written again with the ward names on the map when the language changes | `src/i18n.mjs` |
+| `renderMode: 'on-demand'` | 标题静止时减少帧提交，交互或素材就绪后继续绘制 · idle title frame submission resumes for interaction or ready assets | `src/main.mjs` |
 
 ## 已验证 · Verified
 
@@ -131,9 +132,9 @@ Raids follow population, rank and raid count. Defence and losses are decided by 
 
 ## 引擎副本 · Engine copy
 
-引擎副本使用白鹭主干 `51b6175de36aa1e85878d3c6ca9b8e841e405504`。生成记录见 [vendor/SOURCE.md](vendor/SOURCE.md)。
+引擎副本使用白鹭主干 `95897d78095ae8fda9e34dbc13bbbd15db8eaa12`。生成记录见 [vendor/SOURCE.md](vendor/SOURCE.md)。
 
-The engine copy was generated from Egret main at `51b6175de36aa1e85878d3c6ca9b8e841e405504`. See [vendor/SOURCE.md](vendor/SOURCE.md) for the source and resolved entries.
+The engine copy was generated from Egret main at `95897d78095ae8fda9e34dbc13bbbd15db8eaa12`. See [vendor/SOURCE.md](vendor/SOURCE.md) for the source and resolved entries.
 
 ```sh
 node tools/vendor-game.mjs <PeachCreek> @egret/engine @egret/engine/play @egret/engine/kit @egret/engine/web/kit @egret/engine/ui @egret/engine/ui/semantics @egret/engine/ui/testing @egret/engine/web/semantics
