@@ -39,6 +39,8 @@ then run `node --test tests/guide.test.mjs` and `node tools/egret-guide.mjs "<qu
 | [camera-page-layer](render/camera-page-layer.txt) | NineProvinces | ENGINE-NOTES 2、4（网页画布上的地图跟着 2D 相机：保留画布、`screenToWorld` 换算、远景半尺寸底图；缩放越界会抛错，要自己夹住）；提交 `de9e10b` | 同上 · the same |
 | [pixel-strips](render/pixel-strips.txt) | SandScroll | ENGINE-NOTES 3、4（2D 贴图不能局部更新，沙盘切成条只重传变了的；换上新租约后再放旧的，仍挂着的贴图被放掉会让下一帧报 `ASSET_LEASE_RELEASED`）；提交 `b218a4b` | 草稿，未提交引擎 · draft, not sent |
 | [label-wrap](render/label-wrap.txt) | SandScroll | ENGINE-NOTES 6（`createLabel` 没有宽度选项，按字号估算插入换行）；提交 `b218a4b` | 同上 · the same |
+| [toon-figure-hooks](world3d/toon-figure-hooks.txt) | StarBanner | ENGINE-NOTES 1、2、3（克隆材质共用着色器参数、只有顶点钩子误放 `glsl`、卡通材质没有边缘光和描边）；`src/view/toon.mjs` | 草稿，未提交引擎 · draft, not sent |
+| [tile-board-camera](world3d/tile-board-camera.txt) | StarBanner | ENGINE-NOTES 4（软件渲染下镜头插值跟不上）；斜 45 度棋盘的点选、方向键随视角、头顶生命数字；`src/view/stage.mjs` | 同上 · the same |
 
 ## 给已有卡片加证据 · Evidence for existing cards
 
@@ -77,6 +79,8 @@ then run `node --test tests/guide.test.mjs` and `node tools/egret-guide.mjs "<qu
 | frame-loop-backpressure | SandScroll | `SandScroll/src/view/play.mjs:420`、ENGINE-NOTES 2：给粒子 `burst` 传小数抛 `PARTICLE_OPTIONS_INVALID`，帧循环随之停下 · a fractional `burst` throws and the loop stops | 草稿 · draft |
 | balance-from-runs | SandScroll | `SandScroll/tools/balance.mjs`：往前看一步的机器人在沙盘副本上试每个放法；规则测试另有"平铺横带能画成""同一处必输"两种对照 · a one-move-ahead robot, with two control strategies in the rules test | 草稿 · draft |
 | synthesized-audio | SandScroll | `SandScroll/src/audio/sound.mjs:43`：Karplus–Strong 拨弦按五声音阶升调表示连消，沙声是滤过的噪声加颗粒 · plucked strings climbing the pentatonic scale for chains, sand as filtered noise with grains | 草稿 · draft |
+| synthesized-audio | StarBanner | `StarBanner/src/audio/synth.mjs`：七种合成音色和鼓，五段原创曲子按小节谱渲染，交给 `playMusic` 循环 · seven synthesized voices and drums, five pieces rendered from bars and looped by `playMusic` | 草稿 · draft |
+| balance-from-runs | StarBanner | `StarBanner/test/rules.test.mjs`：电脑对电脑在三张地图各打两局，要求至少四局在 60 回合内分出胜负，同种子结果相同 · computer against computer on three maps, battles that end and repeat | 草稿 · draft |
 
 ## 每个游戏 · By game
 
