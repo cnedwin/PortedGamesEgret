@@ -5,9 +5,9 @@ applies: [world3d, play3d]
 triggers: [Raycaster3D, setFromCamera, projectToViewport3D, "isometric", "tactics", "grid", "tile picking", "screen to tile", "arrow keys rotate", "health badge", "战棋", "斜45度", "点选格子", "方向键随视角", "血条跟随"]
 local: [rig, tile, bounds, quarter, steps]
 evidence:
-  - { repo: cnedwin/PortedGamesEgret, path: StarBanner/src/view/stage.mjs, line: 139, commit: ceef83c1b806c424ac9fb5ff2e2eed93de3883f0, pin: b3b594351e8017ce43a7c3cb20c769403806553e }
-  - { repo: cnedwin/PortedGamesEgret, path: StarBanner/src/play.mjs, line: 140, commit: ceef83c1b806c424ac9fb5ff2e2eed93de3883f0, pin: b3b594351e8017ce43a7c3cb20c769403806553e }
-  - { repo: cnedwin/PortedGamesEgret, path: StarBanner/ENGINE-NOTES.md, line: 32, commit: ceef83c1b806c424ac9fb5ff2e2eed93de3883f0, pin: b3b594351e8017ce43a7c3cb20c769403806553e }
+  - { repo: cnedwin/PortedGamesEgret, path: StarBanner/src/view/stage.mjs, line: 139, commit: db3de4bf2216225eb7683bb6c0dcfd0fa2303578, pin: b3b594351e8017ce43a7c3cb20c769403806553e }
+  - { repo: cnedwin/PortedGamesEgret, path: StarBanner/src/play.mjs, line: 116, commit: db3de4bf2216225eb7683bb6c0dcfd0fa2303578, pin: b3b594351e8017ce43a7c3cb20c769403806553e }
+  - { repo: cnedwin/PortedGamesEgret, path: StarBanner/ENGINE-NOTES.md, line: 28, commit: db3de4bf2216225eb7683bb6c0dcfd0fa2303578, pin: b3b594351e8017ce43a7c3cb20c769403806553e }
 engine: b3b594351e8017ce43a7c3cb20c769403806553e
 ---
 

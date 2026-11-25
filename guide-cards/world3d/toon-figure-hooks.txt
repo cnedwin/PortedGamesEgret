@@ -5,9 +5,9 @@ applies: [world3d, play3d]
 triggers: [createToonMaterial3D, createCustomShader3D, customFragment, "Material3D.clone", uniforms, "team colour", "palette swap", "rim light", "cel shading", "anime", "卡通渲染", "阵营换色", "边缘光", "变灰", "受击闪白", "克隆材质"]
 local: [material, team, grey, flash, uniforms]
 evidence:
-  - { repo: cnedwin/PortedGamesEgret, path: StarBanner/src/view/toon.mjs, line: 80, commit: ceef83c1b806c424ac9fb5ff2e2eed93de3883f0, pin: b3b594351e8017ce43a7c3cb20c769403806553e }
-  - { repo: cnedwin/PortedGamesEgret, path: StarBanner/src/view/figures.mjs, line: 98, commit: ceef83c1b806c424ac9fb5ff2e2eed93de3883f0, pin: b3b594351e8017ce43a7c3cb20c769403806553e }
-  - { repo: cnedwin/PortedGamesEgret, path: StarBanner/ENGINE-NOTES.md, line: 5, commit: ceef83c1b806c424ac9fb5ff2e2eed93de3883f0, pin: b3b594351e8017ce43a7c3cb20c769403806553e }
+  - { repo: cnedwin/PortedGamesEgret, path: StarBanner/src/view/toon.mjs, line: 80, commit: db3de4bf2216225eb7683bb6c0dcfd0fa2303578, pin: b3b594351e8017ce43a7c3cb20c769403806553e }
+  - { repo: cnedwin/PortedGamesEgret, path: StarBanner/src/view/figures.mjs, line: 98, commit: db3de4bf2216225eb7683bb6c0dcfd0fa2303578, pin: b3b594351e8017ce43a7c3cb20c769403806553e }
+  - { repo: cnedwin/PortedGamesEgret, path: StarBanner/ENGINE-NOTES.md, line: 7, commit: db3de4bf2216225eb7683bb6c0dcfd0fa2303578, pin: b3b594351e8017ce43a7c3cb20c769403806553e }
 engine: b3b594351e8017ce43a7c3cb20c769403806553e
 ---
 
