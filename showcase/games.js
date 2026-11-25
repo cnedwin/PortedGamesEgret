@@ -4,62 +4,6 @@ export const FEATURED_ID = 'snow';
 
 export const GAMES = [
   {
-    id: 'fengshen', folder: 'FengshenChronicle', kind: '2d',
-    scenes: [
-      { zh: '丹霞渡 · 断潮君的空心潮环', en: 'Danxia Ford · The Tidebreaker’s ring' },
-      { zh: '西岐 · 玄甲、方士、游侠择业', en: 'Xiqi · Choose Vanguard, Ritualist, or Ranger' },
-      { zh: '朝歌外城 · 镇门将的十字火线', en: 'Chaoge outer city · The Marshal’s crossfire' },
-    ],
-    zh: '封神 · 西岐战纪', en: 'Fengshen Chronicle',
-    genre: { zh: '单机动作角色扮演', en: 'Single-player action RPG' },
-    summary: { zh: '操纵玄甲、方士或游侠，打过四章与多阶段首领，刷取战利品并精锻行装。', en: 'Fight four chapters and multi-phase bosses as a Vanguard, Ritualist, or Ranger. Find rare loot and forge better gear.' },
-    features: [
-      {
-        title: { zh: '原生 2D 与 WebGL2', en: 'Native 2D and WebGL2' },
-        description: { zh: '以白鹭浏览器游戏容器统一游戏循环和画布缩放，支持 PC 及触屏。', en: 'Egret’s browser game host drives the loop and scales the canvas for desktop and touch.' },
-        source: 'src/main.mjs',
-      },
-      {
-        title: { zh: '分图集与遮挡排序', en: 'Packed atlases and depth sorting' },
-        description: { zh: '角色姿态、不同装备和特效打包进白鹭位图图集，人物、建筑和道具按脚底纵坐标排列。', en: 'Egret texture atlases pack character poses, equipped variants and effects. Sprites and scenery sort by their ground position.' },
-        source: 'src/view.mjs',
-      },
-      {
-        title: { zh: '动态图形与共享材质', en: 'Vector graphics and shared materials' },
-        description: { zh: '白鹭 Graphics 绘制潮环、交叉火线和安全区，乾坤圈和命中反馈复用共享 2D 材质。', en: 'Egret Graphics draws tide rings, intersecting fire lines and safe areas. Ring and hit effects reuse shared 2D materials.' },
-        source: 'src/view.mjs',
-      },
-    ],
-  },
-  {
-    id: 'teahorse', folder: 'TeaHorseRoad', kind: '3d',
-    scenes: [
-      { zh: "滇南茶山 · 车队驶向牌坊", en: "Tea hills · Convoy approaching the gate" },
-      { zh: "浅滩 · 车队涉水", en: "Ford · Convoy crossing" },
-      { zh: "金沙峡谷 · 木吊桥", en: "Gorge · Timber suspension bridge" },
-    ],
-    zh: "茶马古道", en: "Tea Horse Road",
-    genre: { zh: "车队穿越", en: "Convoy driving" },
-    summary: { zh: "护送七十二捆茶，穿过浅滩、吊桥和高原山路。", en: "Escort 72 bundles of tea through a ford, over a rope bridge and along highland roads." },
-    features: [
-      {
-        title: { zh: "流式地形", en: "Streamed terrain" },
-        description: { zh: "按距离载入地块并切换细节，工作线程准备碰撞树与植被布置。", en: "Distance-based tiles and terrain detail use collision trees and planting data prepared in workers." },
-        source: 'src/world/land.mjs',
-      },
-      {
-        title: { zh: "六轮车辆物理", en: "Six-wheel vehicle physics" },
-        description: { zh: "车身与射线车轮模拟悬挂、驱动与地面接触。", en: "Rigid chassis and raycast wheels simulate suspension, drive and road contact." },
-        source: 'src/play/convoy.mjs',
-      },
-      {
-        title: { zh: "动态水面", en: "Dynamic water" },
-        description: { zh: "浅滩和峡谷使用三维水面，高画质下更新镜面倒影。", en: "World3D animates the ford and river, with planar reflections at high quality." },
-        source: 'src/world/water.mjs',
-      },
-    ],
-  },
-  {
     id: 'fps', folder: 'FPS', kind: '3d',
     scenes: [
       { zh: "青岚水电站 · 堆场交锋", en: "Qinglan station · Cargo yard encounter" },
@@ -117,30 +61,73 @@ export const GAMES = [
     ],
   },
   {
-    id: 'rally', folder: 'Rally', kind: '3d',
+    id: 'regiments', folder: 'FiveRegiments', kind: '3d',
     scenes: [
-      { zh: "山水环道 · 牌楼下起跑", en: "Circuit · Starting under the gate" },
-      { zh: "红旗赛段 · 追赶前车", en: "Red-banner section · Chasing the kart ahead" },
-      { zh: "灯笼路段 · 加速冲刺", en: "Lantern section · Boosting through" },
+      { zh: "王城宫前 · 黄昏以一敌二：陷阵营抡起长斧，迎着骑马冲来的银翎卫，武射史在后", en: "Before the palace · One against two at dusk: the Berserker Battalion raises his long axe at the charging Silver Wing Guard, the Archer behind" },
+      { zh: "竹林古道 · 薄雾里银翎卫骑马冲向武射史", en: "Bamboo path · The Silver Wing Guard rides at the Archer through the mist" },
+      { zh: "卷首 · 五营列阵县城校场", en: "Title · The five regiments drawn up on the county drill ground" },
     ],
-    zh: "锦绣飞车", en: "Jinxiu Rally",
-    genre: { zh: "卡丁车竞速", en: "Kart racing" },
-    summary: { zh: "绕过牌楼、石桥和长城，用漂移、尾流和道具争抢第一。", en: "Drift past gates, bridges and the Great Wall, using items and slipstreams to race for first." },
+    zh: "五营争锋", en: "Five Regiments",
+    genre: { zh: "第三人称冷兵器对决", en: "Third-person cold-steel duels" },
+    summary: { zh: "从羽林卫、虎步、陷阵营、银翎卫、武射史里选一营，技能、天赋、战技和生命值按原作的公告与物品面板，伤害公式按武器和护甲面板推算，一刀一成血、打得有来有回。在校场、桃林、竹林、雪原单挑另外四营，最后在王城宫前以一敌二；银翎卫骑马作战、马上架枪。", en: "Choose one of five regiments; skills, talents, weapon arts and health follow the original's notes and item cards, and a damage formula worked out from the weapon and armour cards makes each blow take about a tenth of a man's health, so fights go back and forth. Beat the other four, then two at once before the palace; the Silver Wing Guard fights from the saddle and couches his ji." },
     features: [
       {
-        title: { zh: "赛道水面倒影", en: "Track water reflections" },
-        description: { zh: "高画质下，湖面每隔三帧更新一次赛道倒影。", en: "On high quality, the lake updates its track reflection every third frame." },
-        source: 'src/scenery.mjs',
+        title: { zh: "骨骼人物、动作捕捉与反向动力学", en: "Rigged men, motion capture and inverse kinematics" },
+        description: { zh: "五个生成的骨骼人物和一匹四足骨骼的披甲战马由 loadGltf3D 载入，站走跑和侧移是重定向过的动作捕捉，按速度混合，马的步态按落蹄顺序用代码驱动；出刀、格挡、二十一个技能和战技是按兵器写的姿态，用两骨反向动力学让双手握住兵器，再叠加腰身扭转、受击和倒地。", en: "Five generated, rigged men and a rigged armoured horse are loaded with loadGltf3D; standing, walking, running and side steps are retargeted motion capture blended by speed and the horse's gaits are driven in code by their footfalls, while blows, guards, twenty-one skills and the weapon arts are poses written for each weapon, the hands brought onto it by two-bone IK, with the twist of the body, hits and falls laid over them." },
+        source: 'src/view/figure.mjs',
       },
       {
-        title: { zh: "看台合批与实例化", en: "Merged and instanced grandstands" },
-        description: { zh: "看台观众合并成网格，挥动的旗帜以实例绘制。", en: "Spectators share a merged mesh, and their waving flags are instanced." },
-        source: 'src/grandstand.mjs',
+        title: { zh: "五个场景的光与天气", en: "Light and weather for five places" },
+        description: { zh: "每个场景一张天空全景图经 createCubeTextureFromEquirect3D 做背景和环境光，扫描材质铺地，太阳级联阴影、指数雾，后处理里的泛光、环境光遮蔽、暗角和调色各有一套，落花、飘雪、薄雾和火星用 GPU 粒子。", en: "Each place's sky panorama becomes its background and image-based light through createCubeTextureFromEquirect3D, over scanned ground materials, with cascaded sun shadows, exponential fog, a grade of bloom, ambient occlusion and vignette of its own, and GPU particles for petals, snow, mist and embers." },
+        source: 'src/view/stage.mjs',
       },
       {
-        title: { zh: "glTF 赛道模型", en: "glTF track models" },
-        description: { zh: "白鹭加载赛道资产，并将它们接入实时场景。", en: "Egret loads track assets and places them in the live scene." },
-        source: 'src/track-models.mjs',
+        title: { zh: "刀路、格挡、伤害公式与读刀的电脑", en: "Lines, guards, a damage formula and a computer that reads them" },
+        description: { zh: "规则层按每秒六十次的固定步长算四路刀路、格挡、弹刀、踢、体力、技能、战技与怒气、护甲与偏斜、骑马与架枪；伤害公式的推算表和实测在 Node 里跑。电脑对手有反应时间，会读刀路、假动作、踢盾，一打二时用一个令牌轮流压上。同一种子同一结果。", en: "The rules run at a fixed sixty ticks a second: four lines, guards, deflections, kicks, stamina, skills, weapon arts and rage, armour and deflection, riding and the couched lance; the damage formula's table and its measurement run in Node. The computer's men have a reaction time, read your line, feint and kick shields, and take turns with a token when two fight you. One seed gives one result." },
+        source: 'src/sim/fight.mjs',
+      },
+      {
+        title: { zh: "刀光、火花与动态几何", en: "Blade trails, sparks and live geometry" },
+        description: { zh: "刀光拖尾每帧改写一条动态几何的顶点，剑气、蛛网和落地冲击波用环形几何与无光照材质，火花、血雾、尘土和毒雾用粒子发射器，命中时一盏点光一闪。", en: "Blade trails rewrite the vertices of a live geometry each frame; the flying cut, the web and the ring of a slam use ring geometry and unlit materials; sparks, blood, dust and poison come from particle emitters, and a point light flashes on a hit." },
+        source: 'src/view/effects.mjs',
+      },
+    ],
+  },
+  {
+    id: 'nine', folder: 'NineProvinces', kind: '3d',
+    scenes: [
+      { zh: "天下图 · 洛阳城墙、河道渡桥与连接各城的道路", en: "The realm · Luoyang's walls, river crossings and roads linking the cities" },
+      { zh: "南皮之战 · 关羽率枪兵攻城，战场上实时显示城门耐久", en: "The siege of Nanpi · Guan Yu leads his spearmen to the gate as its remaining strength updates live" },
+      { zh: "演武沙盘 · 鹤翼拒骑，黄忠选择百步穿杨的施策目标", en: "Tactical sandbox · In Crane Wing Defense, Huang Zhong selects a target for his Hundred-Pace Shot" },
+    ],
+    zh: "九州烽烟", en: "Nine Provinces Ablaze",
+    genre: { zh: "三国即时大战略", en: "Three Kingdoms real-time grand strategy" },
+    summary: { zh: "从中平元年黄巾起事到太康元年：执掌三十四路诸侯之一，经营城池、招揽五百多位武将、研究科技树、合纵连横；整个天下是一张可以缩放旋转的三维六角地图，军团按天行军，交兵时就在地图上那片地方亲自指挥即时战斗，攻城要先破城门；六条演义各有剧情树与抉择。", en: "From the Yellow Turbans in 184 to the Jin in 280: lead one of thirty-four lords, run cities, win over five hundred officers, climb a tree of inventions and make alliances. The whole realm is one 3D map of hexes to zoom and turn; armies march day by day, battles are commanded in real time on the very ground where they meet, and a siege must break the gate first; six tales branch with events and choices." },
+    features: [
+      {
+        title: { zh: "流式加载的六角地形", en: "Streamed terrain of hexes" },
+        description: { zh: "三千六百乘两千六百的天下由地形流按镜头远近加载高度块，每块的山、水、林、路颜色在着色器里混合，六角格线、悬停和选中的高亮也在同一个自定义着色器里画，远看渐隐。", en: "A realm 3,600 by 2,600 across is loaded by a terrain stream in height tiles around the camera; each tile's colours of hill, water, wood and road are mixed in a shader, and the hex lines, hover and chosen highlights are drawn in the same custom shader, fading out far away." },
+        source: 'src/view3d/terrain.mjs',
+      },
+      {
+        title: { zh: "代码搭出的城池", en: "Cities built in code" },
+        description: { zh: "七十六座城按规模搭出城墙、角楼、城门、屋顶和里坊，用几何构建器拼成，城墙用砖面材质；镜头走近才搭建，各城的旗帜共用一个实例化网格，换主时只改颜色。", en: "Seventy-six cities raise walls, corner towers, gates, roofs and wards by their size, put together with the geometry builder, walls in a brick surface material; each is built as the camera comes near, and all their banners share one instanced mesh, recoloured when a city changes hands." },
+        source: 'src/view3d/cities.mjs',
+      },
+      {
+        title: { zh: "在天下图上开战", en: "Battles on the map itself" },
+        description: { zh: "交兵时把交战处二十二乘十四格的那片地切成战场，部队是实例化的小兵，头顶的名牌用屏幕标记跟随，点选靠射线拾取六角格，战法和火攻用粒子发射器。", en: "When armies meet, a 22 by 14 window of hexes where they stand becomes the field; troops are instanced figures, their plates follow through screen markers, taps pick hexes by ray casting, and tactics and fire come from particle emitters." },
+        source: 'src/view3d/battle3d.mjs',
+      },
+      {
+        title: { zh: "海、湖与河", en: "Sea, lakes and rivers" },
+        description: { zh: "海是一整片带浪的水面网格；河道沿地形里刻出的河床铺成水带、湖按湖岸铺成平面，共用一种水材质，时间推动波纹；低画质换成不折射的简单水面。", en: "The sea is one wide water mesh with waves; rivers are ribbons laid along beds carved into the terrain and lakes level sheets within their shores, sharing one water material with ripples driven by time; low quality swaps in simple water without refraction." },
+        source: 'src/view3d/water.mjs',
+      },
+      {
+        title: { zh: "代码合成的声音与两段配乐", en: "Sound and two themes made in code" },
+        description: { zh: "十七个音效和天下、战场两段无缝循环的配乐都在代码里合成，经 encodeWav 交给引擎混音器，playMusic 在两段之间交叉淡入淡出。", en: "Seventeen effects and the seamless themes of the realm and the field are made in code, handed to the engine's mixer through encodeWav, and playMusic crossfades between the two." },
+        source: 'src/audio/sound.mjs',
       },
     ],
   },
@@ -169,6 +156,90 @@ export const GAMES = [
         title: { zh: "战场实例化", en: "Instanced battle terrain" },
         description: { zh: "重复地形与布景共享实例，服务于回合制战场。", en: "Repeated terrain and scenery share instances on the turn-based battlefield." },
         source: 'web/jyx2/scene/native-battle-terrain.mjs',
+      },
+    ],
+  },
+  {
+    id: 'rally', folder: 'Rally', kind: '3d',
+    scenes: [
+      { zh: "山水环道 · 牌楼下起跑", en: "Circuit · Starting under the gate" },
+      { zh: "红旗赛段 · 追赶前车", en: "Red-banner section · Chasing the kart ahead" },
+      { zh: "灯笼路段 · 加速冲刺", en: "Lantern section · Boosting through" },
+    ],
+    zh: "锦绣飞车", en: "Jinxiu Rally",
+    genre: { zh: "卡丁车竞速", en: "Kart racing" },
+    summary: { zh: "绕过牌楼、石桥和长城，用漂移、尾流和道具争抢第一。", en: "Drift past gates, bridges and the Great Wall, using items and slipstreams to race for first." },
+    features: [
+      {
+        title: { zh: "赛道水面倒影", en: "Track water reflections" },
+        description: { zh: "高画质下，湖面每隔三帧更新一次赛道倒影。", en: "On high quality, the lake updates its track reflection every third frame." },
+        source: 'src/scenery.mjs',
+      },
+      {
+        title: { zh: "看台合批与实例化", en: "Merged and instanced grandstands" },
+        description: { zh: "看台观众合并成网格，挥动的旗帜以实例绘制。", en: "Spectators share a merged mesh, and their waving flags are instanced." },
+        source: 'src/grandstand.mjs',
+      },
+      {
+        title: { zh: "glTF 赛道模型", en: "glTF track models" },
+        description: { zh: "白鹭加载赛道资产，并将它们接入实时场景。", en: "Egret loads track assets and places them in the live scene." },
+        source: 'src/track-models.mjs',
+      },
+    ],
+  },
+  {
+    id: 'fengshen', folder: 'FengshenChronicle', kind: '2d',
+    scenes: [
+      { zh: '丹霞渡 · 断潮君的空心潮环', en: 'Danxia Ford · The Tidebreaker’s ring' },
+      { zh: '西岐 · 玄甲、方士、游侠择业', en: 'Xiqi · Choose Vanguard, Ritualist, or Ranger' },
+      { zh: '朝歌外城 · 镇门将的十字火线', en: 'Chaoge outer city · The Marshal’s crossfire' },
+    ],
+    zh: '封神 · 西岐战纪', en: 'Fengshen Chronicle',
+    genre: { zh: '单机动作角色扮演', en: 'Single-player action RPG' },
+    summary: { zh: '操纵玄甲、方士或游侠，打过四章与多阶段首领，刷取战利品并精锻行装。', en: 'Fight four chapters and multi-phase bosses as a Vanguard, Ritualist, or Ranger. Find rare loot and forge better gear.' },
+    features: [
+      {
+        title: { zh: '原生 2D 与 WebGL2', en: 'Native 2D and WebGL2' },
+        description: { zh: '以白鹭浏览器游戏容器统一游戏循环和画布缩放，支持 PC 及触屏。', en: 'Egret’s browser game host drives the loop and scales the canvas for desktop and touch.' },
+        source: 'src/main.mjs',
+      },
+      {
+        title: { zh: '分图集与遮挡排序', en: 'Packed atlases and depth sorting' },
+        description: { zh: '角色姿态、不同装备和特效打包进白鹭位图图集，人物、建筑和道具按脚底纵坐标排列。', en: 'Egret texture atlases pack character poses, equipped variants and effects. Sprites and scenery sort by their ground position.' },
+        source: 'src/view.mjs',
+      },
+      {
+        title: { zh: '动态图形与共享材质', en: 'Vector graphics and shared materials' },
+        description: { zh: '白鹭 Graphics 绘制潮环、交叉火线和安全区，乾坤圈和命中反馈复用共享 2D 材质。', en: 'Egret Graphics draws tide rings, intersecting fire lines and safe areas. Ring and hit effects reuse shared 2D materials.' },
+        source: 'src/view.mjs',
+      },
+    ],
+  },
+  {
+    id: 'teahorse', folder: 'TeaHorseRoad', kind: '3d',
+    scenes: [
+      { zh: "滇南茶山 · 车队驶向牌坊", en: "Tea hills · Convoy approaching the gate" },
+      { zh: "浅滩 · 车队涉水", en: "Ford · Convoy crossing" },
+      { zh: "金沙峡谷 · 木吊桥", en: "Gorge · Timber suspension bridge" },
+    ],
+    zh: "茶马古道", en: "Tea Horse Road",
+    genre: { zh: "车队穿越", en: "Convoy driving" },
+    summary: { zh: "护送七十二捆茶，穿过浅滩、吊桥和高原山路。", en: "Escort 72 bundles of tea through a ford, over a rope bridge and along highland roads." },
+    features: [
+      {
+        title: { zh: "流式地形", en: "Streamed terrain" },
+        description: { zh: "按距离载入地块并切换细节，工作线程准备碰撞树与植被布置。", en: "Distance-based tiles and terrain detail use collision trees and planting data prepared in workers." },
+        source: 'src/world/land.mjs',
+      },
+      {
+        title: { zh: "六轮车辆物理", en: "Six-wheel vehicle physics" },
+        description: { zh: "车身与射线车轮模拟悬挂、驱动与地面接触。", en: "Rigid chassis and raycast wheels simulate suspension, drive and road contact." },
+        source: 'src/play/convoy.mjs',
+      },
+      {
+        title: { zh: "动态水面", en: "Dynamic water" },
+        description: { zh: "浅滩和峡谷使用三维水面，高画质下更新镜面倒影。", en: "World3D animates the ford and river, with planar reflections at high quality." },
+        source: 'src/world/water.mjs',
       },
     ],
   },
@@ -370,34 +441,6 @@ export const GAMES = [
     ],
   },
   {
-    id: 'drums', folder: 'OperaDrums', kind: '2d',
-    scenes: [
-      { zh: "急急风 · 难", en: "Swift Wind · Hard" },
-      { zh: "起霸 · 撕边的滚奏", en: "The General Arms · The opening roll" },
-      { zh: "趟马 · 英文下的拼音谱字", en: "Riding Through · Pinyin syllables in English" },
-    ],
-    zh: "锣鼓经", en: "Opera Drums",
-    genre: { zh: "京剧锣鼓节奏", en: "Opera percussion rhythm" },
-    summary: { zh: "坐上京剧鼓师之位，跟着锣鼓经敲鼓打锣。", en: "Take the drummer's seat of a Peking opera band and strike the percussion score." },
-    features: [
-      {
-        title: { zh: "引擎混音器与曲子时钟", en: "The mixer as the song's clock" },
-        description: { zh: "伴奏是混音器里的一个声部，曲子的时间取自它的位置并扣除输出延迟。", en: "The backing is one voice of the engine's mixer; the song's time is its position less the output delay." },
-        source: 'src/audio/sound.mjs',
-      },
-      {
-        title: { zh: "代码合成的锣鼓与京胡", en: "Gongs, drum and fiddle in code" },
-        description: { zh: "单皮鼓、小锣、大锣、铙钹、板和京胡都由数算出，编成 WAV 交给引擎。", en: "The drum, gongs, cymbals, clapper and jinghu are computed and handed to the engine as WAV." },
-        source: 'src/audio/synth.mjs',
-      },
-      {
-        title: { zh: "判定与谱面", en: "Judging and charts" },
-        description: { zh: "锣鼓经的点子按难度排谱，判定、连击和彩槽都能在 Node 里由电脑玩家整首打完。", en: "Patterns become charts by difficulty, judged with combo and gauge, all playable by a bot in Node." },
-        source: 'src/sim/judge.mjs',
-      },
-    ],
-  },
-  {
     id: 'nezha', folder: 'NezhaSea', kind: '2d',
     portraitGallery: true,
     scenes: [
@@ -423,34 +466,6 @@ export const GAMES = [
         title: { zh: "可由电脑打完的规则", en: "Rules a bot can play" },
         description: { zh: "波次、集市、合成和神器全在不依赖页面的规则里，电脑玩家在 Node 里整局打完来调平衡。", en: "Waves, the market, merging and divine recipes live in page-free rules, played through by a bot in Node to tune the balance." },
         source: 'src/sim/world.mjs',
-      },
-    ],
-  },
-  {
-    id: 'mahjong', folder: 'TaiwanMahjong', kind: '2d',
-    scenes: [
-      { zh: "島夜雀室 · 三位牌友等你入座", en: "Island Night Mahjong · Three players await" },
-      { zh: "牌局 · 胡牌金印與十六張牌面", en: "At the table · Win seal and sixteen-tile hand" },
-      { zh: "結算 · 胡牌台數與四家分數", en: "Settlement · Winning tai and scores for all four players" },
-    ],
-    zh: "島夜雀室", en: "Island Night Mahjong",
-    genre: { zh: "台灣十六張麻將", en: "Taiwanese Mahjong" },
-    summary: { zh: "到雨夜巷弄裡的牌室，和三位有台灣國語配音的牌友打十六張，補花、吃碰槓、算台數。", en: "Play Taiwanese sixteen-tile mahjong with three voiced opponents in a rain-soaked neighborhood parlor." },
-    features: [
-      {
-        title: { zh: "可由电脑打完的规则", en: "Rules a computer can play" },
-        description: { zh: "向听数、对局和台数都在不依赖页面的规则里，四家电脑在 Node 里整将对打来比较难度和性格。", en: "Shanten, play and tai live in page-free rules; four computer players play whole games in Node to compare levels and characters." },
-        source: 'src/sim/game.mjs',
-      },
-      {
-        title: { zh: "牌面圖集與叫牌演出", en: "Tile atlas and call effects" },
-        description: { zh: "42 種牌面共用一張圖集，手牌和飛行中的牌使用 Bitmap 的 sourceRect 取圖。叫牌由引擎繪製光紋和粒子。", en: "The 42 faces share one bitmap atlas via sourceRect. The engine animates flying tiles and draws the call effects and particles." },
-        source: 'src/view.mjs',
-      },
-      {
-        title: { zh: "静态牌桌加引擎动画", en: "A still table under the engine" },
-        description: { zh: "桌上静止的牌画在引擎画布下面的页面 canvas 上，只在变化时重画；引擎只画手牌、飞行的牌和大字。", en: "Tiles at rest are painted on a page canvas under the engine's, only when they change; the engine draws the hand, the flights and the words." },
-        source: 'src/felt.mjs',
       },
     ],
   },
@@ -489,6 +504,34 @@ export const GAMES = [
     ],
   },
   {
+    id: 'mahjong', folder: 'TaiwanMahjong', kind: '2d',
+    scenes: [
+      { zh: "島夜雀室 · 三位牌友等你入座", en: "Island Night Mahjong · Three players await" },
+      { zh: "牌局 · 胡牌金印與十六張牌面", en: "At the table · Win seal and sixteen-tile hand" },
+      { zh: "結算 · 胡牌台數與四家分數", en: "Settlement · Winning tai and scores for all four players" },
+    ],
+    zh: "島夜雀室", en: "Island Night Mahjong",
+    genre: { zh: "台灣十六張麻將", en: "Taiwanese Mahjong" },
+    summary: { zh: "到雨夜巷弄裡的牌室，和三位有台灣國語配音的牌友打十六張，補花、吃碰槓、算台數。", en: "Play Taiwanese sixteen-tile mahjong with three voiced opponents in a rain-soaked neighborhood parlor." },
+    features: [
+      {
+        title: { zh: "可由电脑打完的规则", en: "Rules a computer can play" },
+        description: { zh: "向听数、对局和台数都在不依赖页面的规则里，四家电脑在 Node 里整将对打来比较难度和性格。", en: "Shanten, play and tai live in page-free rules; four computer players play whole games in Node to compare levels and characters." },
+        source: 'src/sim/game.mjs',
+      },
+      {
+        title: { zh: "牌面圖集與叫牌演出", en: "Tile atlas and call effects" },
+        description: { zh: "42 種牌面共用一張圖集，手牌和飛行中的牌使用 Bitmap 的 sourceRect 取圖。叫牌由引擎繪製光紋和粒子。", en: "The 42 faces share one bitmap atlas via sourceRect. The engine animates flying tiles and draws the call effects and particles." },
+        source: 'src/view.mjs',
+      },
+      {
+        title: { zh: "静态牌桌加引擎动画", en: "A still table under the engine" },
+        description: { zh: "桌上静止的牌画在引擎画布下面的页面 canvas 上，只在变化时重画；引擎只画手牌、飞行的牌和大字。", en: "Tiles at rest are painted on a page canvas under the engine's, only when they change; the engine draws the hand, the flights and the words." },
+        source: 'src/felt.mjs',
+      },
+    ],
+  },
+  {
     id: 'peach', folder: 'PeachCreek', kind: '2d',
     scenes: [
       { zh: "横屏县城 · 水彩溪流与十二坊", en: "County panorama · Watercolour creek and twelve wards" },
@@ -518,44 +561,6 @@ export const GAMES = [
         title: { zh: "引擎的存档库和文字表", en: "The engine's save store and text table" },
         description: { zh: "整座县城存进有版本的存档，坏档另存后重新开始；中英文文字表切换时连地图上的坊名一起重画。", en: "The whole county goes into a versioned save, a broken one set aside; switching the text table repaints even the ward names on the map." },
         source: 'src/saves.mjs',
-      },
-    ],
-  },
-  {
-    id: 'nine', folder: 'NineProvinces', kind: '3d',
-    scenes: [
-      { zh: "天下图 · 洛阳城墙、河道渡桥与连接各城的道路", en: "The realm · Luoyang's walls, river crossings and roads linking the cities" },
-      { zh: "南皮之战 · 关羽率枪兵攻城，战场上实时显示城门耐久", en: "The siege of Nanpi · Guan Yu leads his spearmen to the gate as its remaining strength updates live" },
-      { zh: "演武沙盘 · 鹤翼拒骑，黄忠选择百步穿杨的施策目标", en: "Tactical sandbox · In Crane Wing Defense, Huang Zhong selects a target for his Hundred-Pace Shot" },
-    ],
-    zh: "九州烽烟", en: "Nine Provinces Ablaze",
-    genre: { zh: "三国即时大战略", en: "Three Kingdoms real-time grand strategy" },
-    summary: { zh: "从中平元年黄巾起事到太康元年：执掌三十四路诸侯之一，经营城池、招揽五百多位武将、研究科技树、合纵连横；整个天下是一张可以缩放旋转的三维六角地图，军团按天行军，交兵时就在地图上那片地方亲自指挥即时战斗，攻城要先破城门；六条演义各有剧情树与抉择。", en: "From the Yellow Turbans in 184 to the Jin in 280: lead one of thirty-four lords, run cities, win over five hundred officers, climb a tree of inventions and make alliances. The whole realm is one 3D map of hexes to zoom and turn; armies march day by day, battles are commanded in real time on the very ground where they meet, and a siege must break the gate first; six tales branch with events and choices." },
-    features: [
-      {
-        title: { zh: "流式加载的六角地形", en: "Streamed terrain of hexes" },
-        description: { zh: "三千六百乘两千六百的天下由地形流按镜头远近加载高度块，每块的山、水、林、路颜色在着色器里混合，六角格线、悬停和选中的高亮也在同一个自定义着色器里画，远看渐隐。", en: "A realm 3,600 by 2,600 across is loaded by a terrain stream in height tiles around the camera; each tile's colours of hill, water, wood and road are mixed in a shader, and the hex lines, hover and chosen highlights are drawn in the same custom shader, fading out far away." },
-        source: 'src/view3d/terrain.mjs',
-      },
-      {
-        title: { zh: "代码搭出的城池", en: "Cities built in code" },
-        description: { zh: "七十六座城按规模搭出城墙、角楼、城门、屋顶和里坊，用几何构建器拼成，城墙用砖面材质；镜头走近才搭建，各城的旗帜共用一个实例化网格，换主时只改颜色。", en: "Seventy-six cities raise walls, corner towers, gates, roofs and wards by their size, put together with the geometry builder, walls in a brick surface material; each is built as the camera comes near, and all their banners share one instanced mesh, recoloured when a city changes hands." },
-        source: 'src/view3d/cities.mjs',
-      },
-      {
-        title: { zh: "在天下图上开战", en: "Battles on the map itself" },
-        description: { zh: "交兵时把交战处二十二乘十四格的那片地切成战场，部队是实例化的小兵，头顶的名牌用屏幕标记跟随，点选靠射线拾取六角格，战法和火攻用粒子发射器。", en: "When armies meet, a 22 by 14 window of hexes where they stand becomes the field; troops are instanced figures, their plates follow through screen markers, taps pick hexes by ray casting, and tactics and fire come from particle emitters." },
-        source: 'src/view3d/battle3d.mjs',
-      },
-      {
-        title: { zh: "海、湖与河", en: "Sea, lakes and rivers" },
-        description: { zh: "海是一整片带浪的水面网格；河道沿地形里刻出的河床铺成水带、湖按湖岸铺成平面，共用一种水材质，时间推动波纹；低画质换成不折射的简单水面。", en: "The sea is one wide water mesh with waves; rivers are ribbons laid along beds carved into the terrain and lakes level sheets within their shores, sharing one water material with ripples driven by time; low quality swaps in simple water without refraction." },
-        source: 'src/view3d/water.mjs',
-      },
-      {
-        title: { zh: "代码合成的声音与两段配乐", en: "Sound and two themes made in code" },
-        description: { zh: "十七个音效和天下、战场两段无缝循环的配乐都在代码里合成，经 encodeWav 交给引擎混音器，playMusic 在两段之间交叉淡入淡出。", en: "Seventeen effects and the seamless themes of the realm and the field are made in code, handed to the engine's mixer through encodeWav, and playMusic crossfades between the two." },
-        source: 'src/audio/sound.mjs',
       },
     ],
   },
@@ -598,35 +603,30 @@ export const GAMES = [
     ],
   },
   {
-    id: 'regiments', folder: 'FiveRegiments', kind: '3d',
+    id: 'drums', folder: 'OperaDrums', kind: '2d',
     scenes: [
-      { zh: "王城宫前 · 黄昏以一敌二：陷阵营抡起长斧，迎着骑马冲来的银翎卫，武射史在后", en: "Before the palace · One against two at dusk: the Berserker Battalion raises his long axe at the charging Silver Wing Guard, the Archer behind" },
-      { zh: "竹林古道 · 薄雾里银翎卫骑马冲向武射史", en: "Bamboo path · The Silver Wing Guard rides at the Archer through the mist" },
-      { zh: "卷首 · 五营列阵县城校场", en: "Title · The five regiments drawn up on the county drill ground" },
+      { zh: "急急风 · 难", en: "Swift Wind · Hard" },
+      { zh: "起霸 · 撕边的滚奏", en: "The General Arms · The opening roll" },
+      { zh: "趟马 · 英文下的拼音谱字", en: "Riding Through · Pinyin syllables in English" },
     ],
-    zh: "五营争锋", en: "Five Regiments",
-    genre: { zh: "第三人称冷兵器对决", en: "Third-person cold-steel duels" },
-    summary: { zh: "从羽林卫、虎步、陷阵营、银翎卫、武射史里选一营，技能、天赋、战技和生命值按原作的公告与物品面板，伤害公式按武器和护甲面板推算，一刀一成血、打得有来有回。在校场、桃林、竹林、雪原单挑另外四营，最后在王城宫前以一敌二；银翎卫骑马作战、马上架枪。", en: "Choose one of five regiments; skills, talents, weapon arts and health follow the original's notes and item cards, and a damage formula worked out from the weapon and armour cards makes each blow take about a tenth of a man's health, so fights go back and forth. Beat the other four, then two at once before the palace; the Silver Wing Guard fights from the saddle and couches his ji." },
+    zh: "锣鼓经", en: "Opera Drums",
+    genre: { zh: "京剧锣鼓节奏", en: "Opera percussion rhythm" },
+    summary: { zh: "坐上京剧鼓师之位，跟着锣鼓经敲鼓打锣。", en: "Take the drummer's seat of a Peking opera band and strike the percussion score." },
     features: [
       {
-        title: { zh: "骨骼人物、动作捕捉与反向动力学", en: "Rigged men, motion capture and inverse kinematics" },
-        description: { zh: "五个生成的骨骼人物和一匹四足骨骼的披甲战马由 loadGltf3D 载入，站走跑和侧移是重定向过的动作捕捉，按速度混合，马的步态按落蹄顺序用代码驱动；出刀、格挡、二十一个技能和战技是按兵器写的姿态，用两骨反向动力学让双手握住兵器，再叠加腰身扭转、受击和倒地。", en: "Five generated, rigged men and a rigged armoured horse are loaded with loadGltf3D; standing, walking, running and side steps are retargeted motion capture blended by speed and the horse's gaits are driven in code by their footfalls, while blows, guards, twenty-one skills and the weapon arts are poses written for each weapon, the hands brought onto it by two-bone IK, with the twist of the body, hits and falls laid over them." },
-        source: 'src/view/figure.mjs',
+        title: { zh: "引擎混音器与曲子时钟", en: "The mixer as the song's clock" },
+        description: { zh: "伴奏是混音器里的一个声部，曲子的时间取自它的位置并扣除输出延迟。", en: "The backing is one voice of the engine's mixer; the song's time is its position less the output delay." },
+        source: 'src/audio/sound.mjs',
       },
       {
-        title: { zh: "五个场景的光与天气", en: "Light and weather for five places" },
-        description: { zh: "每个场景一张天空全景图经 createCubeTextureFromEquirect3D 做背景和环境光，扫描材质铺地，太阳级联阴影、指数雾，后处理里的泛光、环境光遮蔽、暗角和调色各有一套，落花、飘雪、薄雾和火星用 GPU 粒子。", en: "Each place's sky panorama becomes its background and image-based light through createCubeTextureFromEquirect3D, over scanned ground materials, with cascaded sun shadows, exponential fog, a grade of bloom, ambient occlusion and vignette of its own, and GPU particles for petals, snow, mist and embers." },
-        source: 'src/view/stage.mjs',
+        title: { zh: "代码合成的锣鼓与京胡", en: "Gongs, drum and fiddle in code" },
+        description: { zh: "单皮鼓、小锣、大锣、铙钹、板和京胡都由数算出，编成 WAV 交给引擎。", en: "The drum, gongs, cymbals, clapper and jinghu are computed and handed to the engine as WAV." },
+        source: 'src/audio/synth.mjs',
       },
       {
-        title: { zh: "刀路、格挡、伤害公式与读刀的电脑", en: "Lines, guards, a damage formula and a computer that reads them" },
-        description: { zh: "规则层按每秒六十次的固定步长算四路刀路、格挡、弹刀、踢、体力、技能、战技与怒气、护甲与偏斜、骑马与架枪；伤害公式的推算表和实测在 Node 里跑。电脑对手有反应时间，会读刀路、假动作、踢盾，一打二时用一个令牌轮流压上。同一种子同一结果。", en: "The rules run at a fixed sixty ticks a second: four lines, guards, deflections, kicks, stamina, skills, weapon arts and rage, armour and deflection, riding and the couched lance; the damage formula's table and its measurement run in Node. The computer's men have a reaction time, read your line, feint and kick shields, and take turns with a token when two fight you. One seed gives one result." },
-        source: 'src/sim/fight.mjs',
-      },
-      {
-        title: { zh: "刀光、火花与动态几何", en: "Blade trails, sparks and live geometry" },
-        description: { zh: "刀光拖尾每帧改写一条动态几何的顶点，剑气、蛛网和落地冲击波用环形几何与无光照材质，火花、血雾、尘土和毒雾用粒子发射器，命中时一盏点光一闪。", en: "Blade trails rewrite the vertices of a live geometry each frame; the flying cut, the web and the ring of a slam use ring geometry and unlit materials; sparks, blood, dust and poison come from particle emitters, and a point light flashes on a hit." },
-        source: 'src/view/effects.mjs',
+        title: { zh: "判定与谱面", en: "Judging and charts" },
+        description: { zh: "锣鼓经的点子按难度排谱，判定、连击和彩槽都能在 Node 里由电脑玩家整首打完。", en: "Patterns become charts by difficulty, judged with combo and gauge, all playable by a bot in Node." },
+        source: 'src/sim/judge.mjs',
       },
     ],
   },
