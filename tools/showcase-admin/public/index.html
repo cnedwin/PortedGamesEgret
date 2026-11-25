@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="color-scheme" content="light">
+  <meta name="robots" content="noindex, nofollow">
+  <title>白鹭展示站 · 内容管理</title>
+  <link rel="stylesheet" href="/admin.css">
+  <script type="module" src="/admin.js"></script>
+</head>
+<body>
+  <header class="masthead">
+    <div class="masthead-inner">
+      <div class="identity">
+        <span class="identity-icon" aria-hidden="true">
+          <svg viewBox="0 0 32 32" fill="none" width="22" height="22">
+            <path d="m5 23 9-13 4 5 9-8-5 15-8 3z" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+            <path d="m14 25 3-10M5 23l12-8" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>
+          </svg>
+        </span>
+        <div>
+          <h1>白鹭展示站</h1>
+          <span class="identity-subtitle">内容管理</span>
+        </div>
+      </div>
+      <a class="public-link" href="https://cnedwin.github.io/PortedGamesEgret/" target="_blank" rel="noopener noreferrer">查看公开站 <span aria-hidden="true">↗</span></a>
+      <div class="toolbar" id="toolbar" hidden>
+        <button class="button quiet" id="refresh" type="button">同步主干</button>
+        <button class="button quiet" id="logout" type="button">退出登录</button>
+        <button class="button secondary" id="save" type="button">保存草稿</button>
+        <button class="button primary" id="publish" type="button">发布更新</button>
+      </div>
+    </div>
+  </header>
+
+  <main>
+    <p class="boot-state" id="boot" role="status">正在读取工作区…</p>
+    <section class="sign-in" id="sign-in" aria-labelledby="sign-in-title" hidden>
+      <form class="sign-in-card" id="login-form">
+        <h2 id="sign-in-title">登录工作区</h2>
+        <p id="login-note">整理游戏顺序、双语简介和展示截图。</p>
+        <label for="username">用户名</label>
+        <input id="username" name="username" autocomplete="username" autocapitalize="none" spellcheck="false" required>
+        <label for="password">密码</label>
+        <input id="password" name="password" type="password" autocomplete="current-password" required>
+        <p class="form-error" id="login-error" role="alert" hidden></p>
+        <button class="button primary" id="login-submit" type="submit">登录</button>
+      </form>
+    </section>
+
+    <section class="workspace" id="workspace" aria-label="展示站内容" hidden>
+      <div class="status-row">
+        <p class="draft-state" id="draft-state" role="status"></p>
+        <p class="notice" id="notice" role="status" hidden></p>
+        <p class="form-error" id="workspace-error" role="alert" hidden></p>
+      </div>
+      <div class="workspace-grid">
+        <aside class="sort-panel" aria-label="游戏顺序">
+          <details class="sort-disclosure" id="sort-disclosure" open>
+            <summary>展示顺序 <span id="sort-count"></span></summary>
+            <div class="sort-body" id="sort-body">
+              <p class="sort-help">拖动手柄排序，也可以逐项上移或下移。</p>
+              <ol class="sort-list" id="sort-list"></ol>
+              <p class="visually-hidden" id="sort-announcement" aria-live="polite"></p>
+            </div>
+          </details>
+        </aside>
+        <section class="game-panel" id="game-panel" aria-label="游戏简介与截图"></section>
+      </div>
+    </section>
+  </main>
+
+  <dialog class="publish-dialog" id="publish-dialog" aria-labelledby="publish-title">
+    <form method="dialog" id="publish-form">
+      <h2 id="publish-title">发布到公开展示站</h2>
+      <p>已保存的草稿将提交到主干，并触发 GitHub Pages 更新。发布完成后，公开站仍需等待部署。</p>
+      <div class="dialog-actions">
+        <button class="button secondary" value="cancel" autofocus>返回编辑</button>
+        <button class="button primary" id="confirm-publish" value="publish">确认发布</button>
+      </div>
+    </form>
+  </dialog>
+</body>
+</html>
