@@ -141,13 +141,13 @@ export function createNativeRpgUi({ host, build, backend, onAction, onFailure })
   }
 
   function focusName() {
-    const node = semantics.publish().nodes.find(node => node.focused);
-    return node ? partName(node.id) : undefined;
+    return view?.focused;
   }
 
   function focusPart(name) {
-    const node = semantics.publish().nodes.find(node => partName(node.id) === name && !node.disabled && !node.inert);
-    if (node) semantics.perform(node.id, 'focus');
+    // Named native focus reveals scrollable controls and avoids a semantic-tree scan.
+    // A removed item may no longer have an authored part in the rebuilt view.
+    return Boolean(name && view && uiParts && Object.hasOwn(uiParts.bind, name) && view.focus(name));
   }
 
   function draw({ kind, options: { focus, resetScroll } }) {
@@ -191,7 +191,9 @@ export function createNativeRpgUi({ host, build, backend, onAction, onFailure })
       onError: onFailure
     });
     game.canvas.focus({ preventScroll: true });
-    focusPart(focus ?? priorFocus ?? panel.focus ?? close);
+    for (const name of [focus, priorFocus, panel.focus, close]) {
+      if (focusPart(name)) break;
+    }
   }
 
   function snapshot() {

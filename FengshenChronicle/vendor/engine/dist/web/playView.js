@@ -10,7 +10,7 @@ import { createPlayViewScrolls } from './playViewScroll.js';
 // Keep declarative loads within BrowserGame's image budget across all views in this host.
 const MAX_VIEW_IMAGE_LOADS = 4;
 const KEYS_OF = {
-    panel: ['visible', 'color', 'tap', 'badge'],
+    panel: ['visible', 'color', 'tap', 'pointerOnly', 'badge'],
     text: ['text', 'pick', 'format', 'roll', 'visible', 'color', 'badge'],
     button: ['text', 'pick', 'format', 'roll', 'disabled', 'visible', 'color', 'tap', 'badge'],
     bar: ['value', 'visible', 'color'],
@@ -78,7 +78,8 @@ export function createPlayViews(game, hooks) {
         modalOwner = modal;
         if (modal !== undefined && !beforeModal.has(modal)) {
             beforeModal.set(modal, focused);
-            focus(targets().find(eligible));
+            const name = modal.initialFocus;
+            focus(name !== undefined && modal.reveal(name) ? { owner: modal, name } : targets().find(eligible));
             return;
         }
         let restore = previous === undefined ? undefined : beforeModal.get(previous);
@@ -133,12 +134,27 @@ export function createPlayViews(game, hooks) {
                     });
                 const ok = key === 'roll'
                     ? typeof value === 'number' && Number.isFinite(value) && value >= 0
-                    : typeof value === 'function';
+                    : key === 'pointerOnly'
+                        ? typeof value === 'boolean'
+                        : typeof value === 'function';
                 if (!ok)
                     throw new EgretError('UI_VIEW_BINDING_INVALID', { cause: name + ': ' + key });
             }
             if (binding.text !== undefined && binding.pick !== undefined)
                 throw new EgretError('UI_VIEW_BINDING_INVALID', { cause: name + ': text or pick, not both' });
+            if (binding.pointerOnly === true && binding.tap === undefined)
+                throw new EgretError('UI_VIEW_BINDING_INVALID', { cause: name + ': pointerOnly needs tap' });
+        }
+        const initialFocus = options.initialFocus;
+        if (initialFocus !== undefined) {
+            const type = typeof initialFocus === 'string' ? names.get(initialFocus) : undefined;
+            const interactive = type === 'button' ||
+                type === 'toggle' ||
+                (type === 'panel' && bind[initialFocus]?.tap !== undefined && bind[initialFocus]?.pointerOnly !== true);
+            if (description.modal !== true || !interactive)
+                throw new EgretError('UI_VIEW_BINDING_INVALID', {
+                    cause: 'initialFocus names a focusable part on a modal view'
+                });
         }
         if (options.built !== undefined && typeof options.built !== 'function')
             throw new EgretError('UI_VIEW_BINDING_INVALID', { cause: 'built' });
@@ -343,6 +359,7 @@ export function createPlayViews(game, hooks) {
         const hasAction = (item) => item.part.type === 'button' ||
             item.part.type === 'toggle' ||
             (item.part.type === 'panel' && bindingOf(item)?.tap !== undefined);
+        const pointerOnly = (item) => bindingOf(item)?.pointerOnly === true;
         const isShown = () => !ended && shown && visibleOnStage(root, game.browser.stage);
         const allowsInput = () => active && isShown() && inView(record);
         const hasInput = (item) => active &&
@@ -351,10 +368,12 @@ export function createPlayViews(game, hooks) {
             hasAction(item) &&
             visibleOnStage(item.node, game.browser.stage, true);
         const followsInput = (item) => allowsInput() && hasInput(item);
+        const followsFocus = (item) => followsInput(item) && !pointerOnly(item);
         const stageRect = (item) => visibleRect(item.node, item.node.hitArea ?? { x: 0, y: 0, width: item.rect.width, height: item.rect.height }, game.screen);
         const actionable = (item) => followsInput(item) && stageRect(item) !== undefined;
+        const canFocus = (item) => actionable(item) && !pointerOnly(item);
         const revealForTab = (item) => {
-            if (!followsInput(item))
+            if (!followsFocus(item))
                 return false;
             const offsets = [];
             const box = item.node.hitArea ?? { x: 0, y: 0, width: item.rect.width, height: item.rect.height };
@@ -363,7 +382,7 @@ export function createPlayViews(game, hooks) {
                 offsets.push({ viewport, offset: viewport.offset });
                 viewport.reveal(item.node, box);
             }
-            if (actionable(item))
+            if (canFocus(item))
                 return true;
             // A candidate hidden by an unrelated clip cannot move the list during keyboard traversal.
             for (const { viewport, offset } of offsets)
@@ -374,7 +393,7 @@ export function createPlayViews(game, hooks) {
             if (!actionable(item))
                 return;
             const name = nameOf(item);
-            if (name !== undefined)
+            if (name !== undefined && !pointerOnly(item))
                 focus({ owner: record, name });
             const binding = bindingOf(item);
             try {
@@ -687,10 +706,10 @@ export function createPlayViews(game, hooks) {
                             (role !== 'group' && rect === undefined), enabled = rect !== undefined && hasInput(item), base = {
                             bounds: rect ?? EMPTY,
                             hidden,
-                            focused: enabled && allowsInput() && focused?.owner === record && focused.name === name
+                            focused: enabled && !pointerOnly(item) && allowsInput() && focused?.owner === record && focused.name === name
                         };
                         if (role === 'group')
-                            return { ...base, name: label ?? name, disabled: hasAction(item) && !enabled };
+                            return { ...base, name: label ?? name, disabled: hasAction(item) && !pointerOnly(item) && !enabled };
                         if (role === 'image') {
                             const imageLabel = item.part.type === 'image' ? item.part.label : undefined;
                             return { ...base, name: imageLabel ?? '', hidden: hidden || !imageLabel };
@@ -713,11 +732,13 @@ export function createPlayViews(game, hooks) {
                         }
                         return { ...base, name: item.text };
                     },
-                    ...(role === 'button' || role === 'switch' || (role === 'group' && bind[name]?.tap !== undefined)
+                    ...(role === 'button' ||
+                        role === 'switch' ||
+                        (role === 'group' && bind[name]?.tap !== undefined && bind[name]?.pointerOnly !== true)
                         ? {
                             onActivate: () => press(find(name)),
                             onFocus() {
-                                if (actionable(find(name)))
+                                if (canFocus(find(name)))
                                     focus({ owner: record, name });
                             }
                         }
@@ -774,6 +795,15 @@ export function createPlayViews(game, hooks) {
             get visible() {
                 return shown && !ended;
             },
+            get focused() {
+                return focused?.owner === record && eligible(focused) ? focused.name : undefined;
+            },
+            focus(name) {
+                if (!live.has(record) || !allowsInput() || !revealForTab(find(name)))
+                    return false;
+                focus({ owner: record, name });
+                return true;
+            },
             refresh,
             show() {
                 if (ended)
@@ -814,11 +844,12 @@ export function createPlayViews(game, hooks) {
         };
         const record = {
             view: api,
+            initialFocus,
             modal: () => description.modal === true && active && isShown(),
             padNavigation: () => options.gamepad === true && active && isShown(),
-            targets: () => made.flatMap(item => (item.part.name !== undefined && followsInput(item) ? [item.part.name] : [])),
-            keeps: name => followsInput(find(name)),
-            eligible: name => actionable(find(name)),
+            targets: () => made.flatMap(item => (item.part.name !== undefined && followsFocus(item) ? [item.part.name] : [])),
+            keeps: name => followsFocus(find(name)),
+            eligible: name => canFocus(find(name)),
             reveal: name => revealForTab(find(name)),
             focusMark(name, visible) {
                 const item = find(name);
@@ -942,13 +973,11 @@ export function createPlayViews(game, hooks) {
                     ]
                 }
             }, {
+                initialFocus: 'yes',
                 dismiss: () => answer(false),
                 bind: { no: { tap: () => answer(false) }, yes: { tap: () => answer(true) } }
             });
             open = { answer, view };
-            const owner = [...live].find(record => record.view === view);
-            if (owner !== undefined && owner.eligible('yes'))
-                focus({ owner, name: 'yes' });
             openedAt = frame;
         }));
         asked = turn;
