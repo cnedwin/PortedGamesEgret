@@ -11,6 +11,7 @@ import { campaignObjective, createProfessionPicker, createRpgPanels, destination
 import { createInventoryPanel } from './inventory-ui.mjs';
 import { createCommercePanels } from './commerce-ui.mjs';
 import { createNativeRpgUi } from './native-rpg-ui.mjs';
+import { worldPixelRatio } from './render-density.mjs';
 
 const $ = id => document.getElementById(id);
 const canvas = $('stage'), field = $('field'), joystick = $('joystick');
@@ -42,7 +43,7 @@ const panelIds = {
 const nativePhases = new Set(['inventory', 'shop', 'forge']);
 
 let game, view, size = sizeFor(), stageCanvas = canvas, state = createSession(), phase = 'title';
-let ready = false, slot = 1, muted = isMuted(storage);
+let ready = false, startupFailed = false, slot = 1, muted = isMuted(storage);
 let pauseOnBlur = false, saveAge = 0, hudAge = 0, noticeFor = 0, savedAt = 0;
 let activePointer = null, stickX = 0, stickY = 0, holdingAttack = false, pendingAction = null;
 let contextPerson, contextDrop, route, tideGuide, orientationTimer, rebuilding = false;
@@ -114,6 +115,7 @@ function showPhase(nextPhase) {
 function refreshTitle() {
   const record = readSlot(storage, slot);
   $('continue-game').hidden = record.status !== 'ok';
+  $('continue-game').disabled = !ready;
   $('new-game').disabled = !ready;
   setText('new-game', record.status === 'ok' ? '另起战纪' : '初入西岐');
   let description = '';
@@ -124,7 +126,33 @@ function refreshTitle() {
   }
   if (record.status === 'invalid') description = '此存档无法读取，可另选存档位或重新开始。';
   if (record.status === 'unavailable') description = '浏览器禁止使用本地存档，本次游玩仍可继续。';
-  setText('title-status', ready ? description : '正在准备西岐城…');
+  if (!startupFailed) setText('title-status', description);
+  $('startup-loading').hidden = ready;
+}
+
+function updateStartupProgress({ completed, total, phase, mapId }) {
+  if (ready || startupFailed) return;
+  const bar = $('boot-progress');
+  bar.max = total + 2;
+  bar.value = completed + 1; // Engine context is ready; final scene binding remains.
+  setText('boot-count', Math.floor(100 * bar.value / bar.max) + '%');
+  const text = phase === 'decode' ? '载入原画与职业素材…'
+    : phase === 'atlas' ? '生成角色与装备图集…'
+    : '准备' + (MAPS[mapId]?.name ?? '地图') + '场景…';
+  setText('boot-stage', text);
+}
+
+function showStartupFailure(message) {
+  ready = false;
+  startupFailed = true;
+  $('startup-loading').hidden = false;
+  $('boot-progress').hidden = true;
+  $('boot-retry').hidden = false;
+  $('new-game').disabled = true;
+  $('continue-game').disabled = true;
+  setText('boot-stage', '游戏加载失败');
+  setText('boot-count', '');
+  setText('title-status', message);
 }
 
 function saveStatus(message = null) {
@@ -659,10 +687,11 @@ const diagnostics = Object.freeze({
 });
 Object.defineProperty(window, 'egretGame', { value: diagnostics });
 
-async function boot() {
+async function boot({ reportStartup = false } = {}) {
   const backend = new URLSearchParams(location.search).get('backend') === 'webgpu' ? 'webgpu' : 'webgl2';
   const build = async kind => createBrowserGame({
     canvas: stageCanvas, ...size, backend: kind, fit: 'contain', fitTo: field,
+    pixelRatio: worldPixelRatio(size, { width: field.clientWidth, height: field.clientHeight }, devicePixelRatio),
     clearColor: 0x192524, blendSpace: 'srgb', autoStart: false, update: frame
   });
   try {
@@ -677,18 +706,20 @@ async function boot() {
   stageCanvas.tabIndex = 0;
   stageCanvas.addEventListener('pointerdown', fieldPress);
   stageCanvas.addEventListener('contextmenu', event => event.preventDefault());
-  view = await createView(game, game.scope, { ...size, reducedMotion });
+  view = await createView(game, game.scope, { ...size, reducedMotion, onProgress: reportStartup ? updateStartupProgress : undefined });
   game.stage.addChild(view.root);
   view.update(state, 0, []);
   game.loop.start();
 }
 
-boot().then(() => {
+boot({ reportStartup: true }).then(() => {
+  const bar = $('boot-progress');
+  bar.value = bar.max;
   ready = true;
   refreshTitle();
 }).catch(error => {
   console.error(error);
-  setText('title-status', '无法启动画面。请在支持 WebGL2 的浏览器中刷新重试。');
+  showStartupFailure('无法启动画面，请重试加载或使用支持 WebGL2 的浏览器。');
 });
 
 window.addEventListener('resize', () => {
@@ -713,7 +744,7 @@ window.addEventListener('resize', () => {
       ready = false;
       $('new-game').disabled = true;
       $('continue-game').hidden = true;
-      setText('title-status', '画面重建失败，进度已尝试保存。请刷新页面。');
+      showStartupFailure('画面重建失败，进度已尝试保存。请重试加载。');
     } finally {
       rebuilding = false;
     }

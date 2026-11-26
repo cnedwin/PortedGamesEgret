@@ -41,7 +41,18 @@
   }
 }
 </script>
-  <script type="module" src="./src/main.mjs"></script>
+  <script type="module">
+    const retry = document.getElementById('boot-retry');
+    retry.addEventListener('click', () => location.reload());
+    import('./src/main.mjs').catch(error => {
+      console.error('Game startup', error);
+      document.getElementById('boot-stage').textContent = '游戏加载失败';
+      document.getElementById('boot-count').textContent = '';
+      document.getElementById('boot-progress').hidden = true;
+      retry.hidden = false;
+      document.getElementById('title-status').textContent = '部分游戏资源无法读取，请重试。';
+    });
+  </script>
 </head>
 <body>
 <main id="game-shell">
@@ -53,10 +64,15 @@
       <p class="title-line">西岐城外，风起四关。持兵、执符或张弓，踏上封神之途。</p>
       <div class="title-actions">
         <button class="primary" id="new-game" disabled>初入西岐</button>
-        <button id="continue-game" hidden>继续战纪</button>
+        <button id="continue-game" hidden disabled>继续战纪</button>
+      </div>
+      <div id="startup-loading" class="startup-loading">
+        <div class="startup-caption"><strong id="boot-stage" role="status">正在载入游戏…</strong><span id="boot-count" aria-hidden="true"></span></div>
+        <progress id="boot-progress" max="100" aria-label="游戏加载进度"></progress>
+        <button id="boot-retry" type="button" hidden>重试加载</button>
       </div>
       <label class="slot">存档 <select id="slot"><option value="1">一</option><option value="2">二</option><option value="3">三</option></select></label>
-      <p id="title-status" role="status">正在准备西岐城…</p>
+      <p id="title-status" role="status"></p>
     </div>
   </section>
   <div id="hud" hidden>

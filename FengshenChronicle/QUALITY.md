@@ -1,5 +1,17 @@
 # 验收记录 · Quality
 
+
+## 2026-11-26 · 最新引擎、原生 RPG 界面与清晰度 / Latest engine, RPG views and visual density
+
+- **版本 / Version:** Egret main `8e70dcb3a8a0b40c9966483c92cb9f691a1cefd8`，官方 vendor-game 生成并逐文件校对。引擎原生 image 队列、命名焦点与旋转触控滚动；移除语义焦点查找，动态列表与滚动状态保留。规则、伤害、数值、存档、美术和原截图基线均未修改。 · Official engine copy, native image queue, named focus and rotated scrolling. Rules, saves, art and approved references are unchanged.
+- **自动 / Automated:** 当前最终版本 Node 54/54，桌面 Chromium 浏览器 17/17（真实延迟素材的可见加载进度、禁用开始、失败重试、画布物理像素、页签及交易）；标题截图差异 0.24%，西岐城 1.38%，原基线阈值内。引擎定向 Node 42/42、原生 view 浏览器 3/3。项目严格规范通过；独立从主干真实文件构建的展示站校验 24 案例、72 WebP 全过。 · All final automated checks passed without rewriting the baselines.
+- **原生 UI 完整首章 / Natural chapter & commerce:** 在视觉密度增量前，实际 PC Edge 158 与 Fold7 Chrome 157 WebGL2 从新档领取姜尚任务，古道实际击败六敌与首领、取得玉符，回城交易、出售、购买两件材料、合成 fine-ranger-1 及保存刷新。PC/手机分别正常结算至游侠 Lv3、攻击 37，真机冷行囊八种独立图标均像素匹配，首次可操作观测上界 PC 153.6 ms / Fold7 139.3 ms。两机古道与首领各 90 rAF，PC p95 4.3 ms、最大 4.5，手机 p95/max 16.7 ms，无 >50 ms 间隔。 · Real input and natural drops/resources; no gameplay fixture was used as a chapter completion.
+- **最终加载 / Final startup:** 标题自 HTML 显示进度，按实际原画读取、六页图集及地图纹理完成更新，不以计时器模拟。Fold7 实际冷启动 73 个可见状态，约 25.7 ms 第一次显示、2466.9 ms 就绪，98% 时开始仍禁用。PC 人为延迟一份实际资源 1200 ms 的诊断亦验证 98% 仍禁用、4752.8 ms 真正就绪；该时间不是正常网络启动速度。拒绝素材的自动回归中有可用重试，重新加载可正常开局。 · Real work progress, failure recovery and readiness gating; the delayed-PC measurement is not a natural startup benchmark.
+- **最终中文与触屏 / Final Chinese text & touch:** 原生 UI 与地图逻辑尺寸独立于实际显示密度。Fold7 竖屏商店旧/新同构截图的正文笔画明显改善。真实 Android 方向切换 4 次、6 次列表滚动、选配方及判定禁用合成通过，未移动网页、未误交易；PC 原生控件及键盘回归通过。保留已选材料的文字、开关和实际触控目标。 · Same-layout hardware screenshots show sharper Chinese body copy. Physical rotation, scrolling and recipe selection remain usable.
+- **最终战场 / Final map backing:** PC 1440×850 CSS、DPR1 由旧约 915×540 提升至 1441×850，实际古道键盘移动 408 帧 p95/max 4.3 ms，>50 ms 0。Fold7 竖屏画布由旧 878×1740 增至 1079×2137，横屏原有 2902×1080 不降低；实际古道触控移动 103 帧 p95/max 16.7 ms，>50 ms 0。两设备静止与移动均有实拍，分辨率恒定，真实受敌攻击，错误/警告/资源失败均零。 · Backing dimensions remain fixed through real movement. These are sampled browser rAF intervals, not direct GPU execution time. A short sample cannot prove that residual motion-only blur never occurs in all scenes.
+- **覆盖限制 / Limits:** 最终视觉补丁采用针对性真机回归而非重复整章；未覆盖第四章自然通关、Safari、物理手柄或长时间高密度压测。引擎能力反馈见第 4、5 条笔记。 · Final visual changes were retested on hardware; the complete earlier chapter route and targeted final tests are distinguished.
+
+
 2026-11-22 · Egret v7.0.2 · WebGL2
 
 | 真机 · Device | 浏览器 · Browser | 验收输入 · Input |

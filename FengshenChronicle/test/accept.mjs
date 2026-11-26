@@ -44,7 +44,53 @@ async function talkTo(id) {
   await page.locator('#dialogue-next').click();
 }
 
+async function verifyStartup() {
+  const context = await browser.newContext({ viewport: { width: 1280, height: 720 } });
+  const opening = await context.newPage();
+  const url = server.url + gamePath + '/?backend=webgl2';
+  const resource = '**/assets/actors/hero.webp';
+  let release, delayed = false;
+  const gate = new Promise(resolve => { release = resolve; });
+  try {
+    await opening.route(resource, async route => {
+      delayed = true;
+      await gate;
+      await route.continue();
+    });
+    await opening.goto(url, { waitUntil: 'domcontentloaded' });
+    const arrivalDeadline = Date.now() + 25000;
+    while (!delayed && Date.now() < arrivalDeadline) await opening.waitForTimeout(25);
+    await opening.waitForFunction(() => {
+      const bar = document.getElementById('boot-progress');
+      return bar?.hasAttribute('value') && bar.value < bar.max
+        && !document.getElementById('startup-loading').hidden
+        && document.getElementById('new-game').disabled;
+    }, null, { timeout: 25000 });
+    assert(delayed, 'A real art request was held before the title became playable');
+    checks.push([true, 'the cold title shows real work progress and disables Start while art is pending']);
+    release();
+    await opening.waitForFunction(() => window.egretGame?.inspect().ready, null, { timeout: 45000 });
+    assert(await opening.locator('#startup-loading').isHidden());
+    assert(await opening.locator('#new-game').isEnabled());
+    checks.push([true, 'startup progress disappears only after the game is ready']);
+    await opening.unroute(resource);
+    await opening.route(resource, route => route.abort('failed'));
+    await opening.reload({ waitUntil: 'domcontentloaded' });
+    await opening.locator('#boot-retry').waitFor({ state: 'visible', timeout: 25000 });
+    assert(await opening.locator('#new-game').isDisabled());
+    await opening.unroute(resource);
+    await opening.locator('#boot-retry').click();
+    await opening.waitForFunction(() => window.egretGame?.inspect().ready, null, { timeout: 45000 });
+    assert(await opening.locator('#startup-loading').isHidden());
+    checks.push([true, 'failed art loads offer a real retry that returns to a playable title']);
+  } finally {
+    release();
+    await context.close();
+  }
+}
+
 try {
+  await verifyStartup();
   page = await openPage(browser, `${server.url}${gamePath}/?backend=webgl2`, { width: 1280, height: 720, reducedMotion: true });
   await waitPhase('title');
   assert.equal((await inspect()).backend, 'webgl2');
@@ -68,6 +114,12 @@ try {
   assert.equal(initial.state.quest.stage, 'unaccepted');
   assert.equal(initial.state.profession, 'guard');
   checks.push([true, 'the class selection changes the confirmation and Escape leaves the empty save untouched']);
+  const backing = await page.evaluate(() => {
+    const canvas = document.querySelector('#stage'), rect = canvas.getBoundingClientRect();
+    return { width: canvas.width, height: canvas.height, physicalWidth: rect.width * devicePixelRatio, physicalHeight: rect.height * devicePixelRatio };
+  });
+  assert(backing.width >= Math.floor(backing.physicalWidth) - 2 && backing.height >= Math.floor(backing.physicalHeight) - 2);
+  checks.push([true, 'the desktop map backing covers its physical display pixels instead of enlarging a low-resolution canvas']);
   const city = await matchBaseline(page, gameDir, 'city-desktop');
   checks.push([city.written || city.passed, `Xiqi screenshot (${(city.share * 100).toFixed(2)}% changed)`]);
 

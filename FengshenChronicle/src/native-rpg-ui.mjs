@@ -3,6 +3,7 @@ import { createParagraphCache } from '@egret/engine/paragraph';
 import { createUiSemantics } from '@egret/engine/ui/semantics';
 import { createCanvasParagraphProvider } from '@egret/engine/web/paragraph';
 import { createBrowserSemantics } from '@egret/engine/web/semantics';
+import { rpgDensity, scaleViewPart } from './render-density.mjs';
 
 const skin = {
   panel: 0x24332b, panelAlpha: 0.99, text: 0xf1e4c8,
@@ -72,7 +73,7 @@ const partName = id => id.slice(id.lastIndexOf(':') + 1);
 /** One on-demand Play surface for the RPG panels, with the field behind the modal. */
 export function createNativeRpgUi({ host, build, backend, onAction, onFailure }) {
   const semantics = createUiSemantics({ maxNodes: 2048 });
-  let game, projection, paragraphCache, view, viewKind, uiParts;
+  let game, projection, paragraphCache, view, viewKind, uiParts, uiScale = 1;
   let active = null;
   let requested = null;
   let updating = false;
@@ -119,8 +120,13 @@ export function createNativeRpgUi({ host, build, backend, onAction, onFailure })
   async function start() {
     const touch = matchMedia('(pointer: coarse)').matches;
     const landscape = touch ? { width: 780, height: 320 } : { width: 1200, height: 680 };
+    const portrait = { width: 390, height: 740 };
+    const density = rpgDensity(landscape, portrait, host.getBoundingClientRect(), devicePixelRatio);
+    uiScale = density.scale;
+    const highDensity = size => ({ width: Math.round(size.width * uiScale), height: Math.round(size.height * uiScale) });
     game = await play({
-      parent: host, ...landscape, portrait: { width: 390, height: 740 },
+      parent: host, ...highDensity(landscape), portrait: highDensity(portrait),
+      pixelRatio: density.pixelRatio,
       fit: 'expand', backend: backend(), transparent: true, audio: false, renderMode: 'on-demand', semantics,
       arrange: () => { if (game && active) refresh(active); },
       onError: onFailure
@@ -157,7 +163,7 @@ export function createNativeRpgUi({ host, build, backend, onAction, onFailure })
     if (previous && !resetScroll) {
       for (const id of uiParts.scrolls) savedOffsets.set(id, view.scroll(id).offset);
     }
-    const safe = game.safe;
+    const safe = { width: game.safe.width / uiScale, height: game.safe.height / uiScale };
     const width = Math.max(260, Math.min(744, Math.floor(safe.width - 18)));
     const height = Math.max(240, Math.min(716, Math.floor(safe.height - 14)));
     const padding = width < 500 ? 10 : 14;
@@ -174,12 +180,13 @@ export function createNativeRpgUi({ host, build, backend, onAction, onFailure })
       ], { width: 'fill', height: 48 }),
       parts.button(close, kind === 'inventory' ? '关闭 · Esc' : '离开 · Esc', panel.close, { width: 96 })
     ], { height: 54, gap: 8, align: 'center' });
+    const root = parts.column([header, parts.column(panel.children, { width: 'fill', height: contentHeight, gap: 8 })], {
+      anchor: 'center', width, height, padding, gap: 10, card: true,
+      border: { color: 0xd9b879, width: 2 }
+    });
     view = game.show({
-      label: panel.title, modal: true, skin,
-      root: parts.column([header, parts.column(panel.children, { width: 'fill', height: contentHeight, gap: 8 })], {
-        anchor: 'center', width, height, padding, gap: 10, card: true,
-        border: { color: 0xd9b879, width: 2 }
-      })
+      label: panel.title, modal: true, skin: { ...skin, size: skin.size * uiScale, radius: skin.radius * uiScale },
+      root: scaleViewPart(root, uiScale)
     }, { bind: parts.bind, paragraphCache });
     viewKind = kind;
     uiParts = parts;

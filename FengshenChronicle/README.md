@@ -94,7 +94,7 @@ Simulation and data are separate from the 2D view, art preparation, interface an
 
 本作使用 Egret 主干提交 `8e70dcb3a8a0b40c9966483c92cb9f691a1cefd8`。来源、入口和许可证见 `vendor/SOURCE.md`、`vendor/LICENSE` 和 `vendor/NOTICE`。副本由引擎的 `tools/vendor-game.mjs` 生成。
 
-The game vendors Egret main at the commit above. `tools/vendor-game.mjs` retains the imported 2D engine, Play UI and redistribution notices. Gameplay and its three modal panels both use native Egret rendering. Play queues cold equipment images through the native declarative view. · 装备图片冷加载由原生声明式视图排队；面板重建使用引擎原生命名焦点，保留动态物品列表的滚动状态。
+The game vendors Egret main at the commit above. `tools/vendor-game.mjs` retains the imported 2D engine, Play UI and redistribution notices. Gameplay and its three modal panels both use native Egret rendering. Play queues cold equipment images through the native declarative view. · 装备图片冷加载由原生声明式视图排队；面板重建使用引擎原生命名焦点，保留动态物品列表的滚动状态。首屏按实际原画、图集及地图纹理准备项显示进度并可重试；战场与原生行囊按物理显示密度渲染，保留逻辑坐标与玩法。
 
 在仓库根目录通过静态 HTTP 预览打开 `/FengshenChronicle/`。游戏无需业务后端。ES modules 与 import maps 需要 HTTP 或 HTTPS 页面。
 
