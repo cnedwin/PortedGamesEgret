@@ -87,6 +87,71 @@ const measure = (words) => {
         units += wide(character) ? 1 : 0.55;
     return units;
 };
+// The upright forms of marks in vertical writing, as Unicode gives them for CJK compatibility.
+const VERTICAL_FORMS = Object.freeze({
+    '，': '︐',
+    '、': '︑',
+    '。': '︒',
+    '：': '︓',
+    '；': '︔',
+    '！': '︕',
+    '？': '︖',
+    '（': '︵',
+    '）': '︶',
+    '｛': '︷',
+    '｝': '︸',
+    '〔': '︹',
+    '〕': '︺',
+    '【': '︻',
+    '】': '︼',
+    '《': '︽',
+    '》': '︾',
+    '〈': '︿',
+    '〉': '﹀',
+    '「': '﹁',
+    '」': '﹂',
+    '『': '﹃',
+    '』': '﹄',
+    '…': '︙',
+    '—': '︱',
+    '－': '︲',
+    ',': '︐',
+    '.': '︒',
+    ':': '︓',
+    ';': '︔',
+    '!': '︕',
+    '?': '︖',
+    '(': '︵',
+    ')': '︶'
+});
+/**
+ * Words written top to bottom in columns from right to left, as rows a line of text draws: one character under
+ * another, marks turned to their upright forms, a `\n` or `column` characters ending a column, and an ideographic
+ * space where a column is shorter than the longest. For titles and seals in Chinese and Japanese, whose characters
+ * are of one width.
+ */
+export function verticalPlayWords(words, column = Infinity) {
+    if (typeof words !== 'string')
+        throw new TypeError('words are a string');
+    if (!(column >= 1))
+        throw new RangeError('a column holds at least one character');
+    const columns = [];
+    for (const piece of words.split(/\r?\n/)) {
+        const characters = [...piece].map(character => VERTICAL_FORMS[character] ?? character);
+        if (characters.length === 0)
+            columns.push([]);
+        for (let at = 0; at < characters.length; at += column)
+            columns.push(characters.slice(at, at + column));
+    }
+    const tall = Math.max(0, ...columns.map(one => one.length));
+    const rows = [];
+    for (let row = 0; row < tall; row++)
+        rows.push(columns
+            .map(one => one[row] ?? '\u3000')
+            .reverse()
+            .join(''));
+    return rows.join('\n');
+}
 /** Breaks words into lines no wider than `units`: at a space where there is one, between any two wide characters. */
 export function wrapPlayWords(words, units) {
     const lines = [];
@@ -159,10 +224,12 @@ export function createPlayWidgets(game, wake = () => { }) {
             label.color = on ? 0x111827 : 0xffffff;
         });
     };
+    /** The part of the screen nothing covers, in the game's units: where boxes, menus and notices go. */
+    const area = () => game.safe;
     /** The size of the words of a box, and how many lines fit under its name. */
     const boxOf = (named) => {
         const size = Math.max(14, Math.round(game.height / 22)), h = Math.max(size * 4.6, Math.round(game.height * 0.28)), top = 14 + (named ? Math.round(size * 1.3) : 0), step = Math.round(size * 1.35);
-        return { size, width: game.width - 32 - 36, lines: Math.max(1, Math.floor((h - top - 6) / step)) };
+        return { size, width: area().width - 32 - 36, lines: Math.max(1, Math.floor((h - top - 6) / step)) };
     };
     const pagesOf = (words, named) => {
         const { size, width, lines } = boxOf(named), all = wrapPlayWords(words, width / size), pages = [];
@@ -216,15 +283,15 @@ export function createPlayWidgets(game, wake = () => { }) {
             return bar;
         },
         toast(words, o = {}) {
-            const size = Math.max(14, Math.round(game.height / 24)), seconds = finite(o?.seconds) && o.seconds > 0 ? o.seconds : 2, w = Math.min(game.width - 32, measure(String(words)) * size + 40), h = Math.round(size * 2);
+            const size = Math.max(14, Math.round(game.height / 24)), seconds = finite(o?.seconds) && o.seconds > 0 ? o.seconds : 2, w = Math.min(area().width - 32, measure(String(words)) * size + 40), h = Math.round(size * 2);
             toasts = toasts.filter(node => !node.isDisposed && node.parent !== null);
             const node = game.sprite(g => {
                 g.beginFill(0x0b1020, 0.85)
                     .drawRoundRect(-w / 2, 0, w, h, h / 2)
                     .endFill();
             }, game.ui);
-            node.x = game.width / 2;
-            node.y = 12 + toasts.length * (h + 6);
+            node.x = area().x + area().width / 2;
+            node.y = area().y + 12 + toasts.length * (h + 6);
             game.text(String(words), {
                 y: h / 2,
                 size,
@@ -254,9 +321,9 @@ export function createPlayWidgets(game, wake = () => { }) {
             const choices = Array.isArray(o?.choices) && o.choices.length > 0 ? o.choices.map(String) : undefined;
             return new Promise(resolve => {
                 const open = () => {
-                    const margin = 16, w = game.width - 2 * margin, size = Math.max(14, Math.round(game.height / 22)), h = Math.max(size * 4.6, Math.round(game.height * 0.28)), 
+                    const margin = 16, safe = area(), w = safe.width - 2 * margin, size = Math.max(14, Math.round(game.height / 22)), h = Math.max(size * 4.6, Math.round(game.height * 0.28)), 
                     // Opaque, so the covers that hide words not yet shown are the panel's own colour.
-                    panel = panelOf(margin, game.height - h - margin, w, h, 1), color = colour(o?.color, 0xfacc15);
+                    panel = panelOf(safe.x + margin, safe.y + safe.height - h - margin, w, h, 1), color = colour(o?.color, 0xfacc15);
                     let top = 14;
                     if (typeof o?.who === 'string' && o.who !== '') {
                         game.text(o.who, { x: 18, y: 10, size: Math.round(size * 0.9), bold: true, color, layer: panel });
@@ -322,9 +389,9 @@ export function createPlayWidgets(game, wake = () => { }) {
             const list = items.map(String);
             return new Promise(resolve => {
                 menu?.choice.finish(-1);
-                const size = Math.max(14, Math.round(game.height / 20)), row = Math.round(size * 1.9) + 6, titleLines = typeof o?.title === 'string' ? o.title.split('\n') : [], longest = Math.max(...list.map(measure), ...titleLines.map(line => measure(line) * 1.2)), w = finite(o?.width) && o.width > 0 ? o.width : Math.min(game.width - 32, longest * size + 64), titled = typeof o?.title === 'string' && o.title !== '', 
+                const size = Math.max(14, Math.round(game.height / 20)), row = Math.round(size * 1.9) + 6, titleLines = typeof o?.title === 'string' ? o.title.split('\n') : [], longest = Math.max(...list.map(measure), ...titleLines.map(line => measure(line) * 1.2)), w = finite(o?.width) && o.width > 0 ? o.width : Math.min(area().width - 32, longest * size + 64), titled = typeof o?.title === 'string' && o.title !== '', 
                 // A title of several lines takes as many lines of room, so the first item is never under it.
-                titleHeight = titled ? Math.round(size * (0.35 + 1.45 * titleLines.length)) : 0, h = list.length * row + 24 + titleHeight, x = (finite(o?.x) ? o.x : game.width / 2) - w / 2, y = (finite(o?.y) ? o.y : game.height / 2) - h / 2;
+                titleHeight = titled ? Math.round(size * (0.35 + 1.45 * titleLines.length)) : 0, h = list.length * row + 24 + titleHeight, x = (finite(o?.x) ? o.x : area().x + area().width / 2) - w / 2, y = (finite(o?.y) ? o.y : area().y + area().height / 2) - h / 2;
                 const panel = panelOf(x, y, w, h);
                 if (titled)
                     game.text(o.title, {
@@ -412,12 +479,12 @@ export function createPlayWidgets(game, wake = () => { }) {
             const from = 18 + measure(characters.slice(0, shown).join('')) * open.words[index].size;
             cover.visible = shown < characters.length;
             cover.x = from;
-            cover.scaleX = Math.max(1, game.width - 48 - from);
+            cover.scaleX = Math.max(1, area().width - 48 - from);
         });
         const done = open.shown >= open.total;
         open.hint.visible = done && open.choices === undefined;
         if (done && open.choices !== undefined && open.choice === undefined) {
-            const size = open.words[0].size, row = Math.round(size * 1.9) + 6, w = Math.min(game.width - 32, Math.max(...open.choices.map(measure)) * size + 64), x = game.width - 16 - w, y = open.panel.y - open.choices.length * row - 20;
+            const size = open.words[0].size, row = Math.round(size * 1.9) + 6, w = Math.min(area().width - 32, Math.max(...open.choices.map(measure)) * size + 64), x = area().x + area().width - 16 - w, y = open.panel.y - open.choices.length * row - 20;
             const holder = panelOf(x, y, w, open.choices.length * row + 14);
             const close = open.finish;
             open.choice = choose(open.choices, holder, 8, 8, w - 16, size, open.color, index => {

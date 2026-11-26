@@ -25,23 +25,7 @@ export function createLandingPreview({ canvas, view, world, onSelect }) {
     return current?.mode === 'intercept' ? current.raiders.filter(isCarrier) : [];
   }
 
-  canvas.addEventListener('pointerdown', (event) => {
-    if (world()?.mode === 'intercept' && event.isPrimary && event.button === 0) {
-      press = { id: event.pointerId, x: event.clientX, y: event.clientY };
-    }
-  });
-  canvas.addEventListener('pointercancel', (event) => {
-    if (press?.id === event.pointerId) press = null;
-  });
-  canvas.addEventListener('pointerup', (event) => {
-    if (press?.id !== event.pointerId) return;
-    const start = press;
-    press = null;
-    if (Math.hypot(event.clientX - start.x, event.clientY - start.y) > 10) return;
-    const box = canvas.getBoundingClientRect();
-    if (!box.width || !box.height) return;
-    const x = (event.clientX - box.left) * FIELD.width / box.width;
-    const y = (event.clientY - box.top) * FIELD.height / box.height;
+  function selectAt(x, y) {
     let target;
     let closest = Infinity;
     for (const boat of carriers()) {
@@ -50,10 +34,33 @@ export function createLandingPreview({ canvas, view, world, onSelect }) {
       target = boat;
       closest = distance;
     }
-    change(target?.id === selected ? null : target);
+    return change(target?.id === selected ? null : target);
+  }
+
+  // The legacy stand-alone field adapter remains useful to headless rules tests. The
+  // native view now supplies already transformed stage coordinates through selectAt.
+  canvas?.addEventListener('pointerdown', (event) => {
+    if (world()?.mode === 'intercept' && event.isPrimary && event.button === 0) {
+      press = { id: event.pointerId, x: event.clientX, y: event.clientY };
+    }
+  });
+  canvas?.addEventListener('pointercancel', (event) => {
+    if (press?.id === event.pointerId) press = null;
+  });
+  canvas?.addEventListener('pointerup', (event) => {
+    if (press?.id !== event.pointerId) return;
+    const start = press;
+    press = null;
+    if (Math.hypot(event.clientX - start.x, event.clientY - start.y) > 10) return;
+    const box = canvas.getBoundingClientRect();
+    if (!box.width || !box.height) return;
+    const x = (event.clientX - box.left) * FIELD.width / box.width;
+    const y = (event.clientY - box.top) * FIELD.height / box.height;
+    selectAt(x, y);
   });
 
   return {
+    selectAt,
     cycle() {
       const boats = carriers();
       const index = boats.findIndex((boat) => boat.id === selected);

@@ -28,38 +28,23 @@
         "robust-predicates": "./vendor/robust-predicates/index.js",
         "#egret-textured-frame-state": "./vendor/engine/dist/internal/texturedFrameState.js",
         "@egret/engine/input/hover": "./vendor/engine/dist/hover.js",
+        "@egret/runtime/ui": "./vendor/runtime/dist/ui/index.js",
+        "@egret/engine/ui": "./vendor/engine/dist/ui/index.js",
+        "@egret/runtime/paragraph": "./vendor/runtime/dist/paragraph/index.js",
+        "@egret/engine/paragraph": "./vendor/engine/dist/paragraph.js",
         "@egret/engine/play": "./vendor/engine/dist/web/play.js",
-        "@egret/engine/web/kit": "./vendor/engine/dist/web/kit.js"
+        "@egret/engine/web/kit": "./vendor/engine/dist/web/kit.js",
+        "@egret/engine/ui/semantics": "./vendor/engine/dist/semantics.js",
+        "@egret/engine/ui/testing": "./vendor/engine/dist/ui/testing.js",
+        "@egret/engine/web/semantics": "./vendor/engine/dist/web/semantics.js"
       }
     }
   </script>
 </head>
 <body>
-  <main id="frame">
-    <header id="bar" hidden>
-      <div class="stats">
-        <p class="stat" id="silver"></p>
-        <p class="stat" id="lives"></p>
-        <p class="stat" id="wave"></p>
-      </div>
-      <div class="tools">
-        <button type="button" id="gate0" data-gate="0"></button>
-        <button type="button" id="gate1" data-gate="1"></button>
-        <button type="button" id="call" class="strong"></button>
-        <button type="button" id="speed"></button>
-        <button type="button" id="menuButton"></button>
-      </div>
-    </header>
-    <p id="guide" class="game-guide" hidden></p>
-    <div id="field">
-      <canvas id="ground" aria-hidden="true"></canvas>
-      <div id="plots"></div>
-      <div id="picker" role="dialog" hidden></div>
-    </div>
-    <p id="keys" hidden></p>
-    <section id="title" class="panel" hidden></section>
-    <section id="menu" class="panel" role="dialog" aria-modal="true" hidden></section>
-    <section id="end" class="panel" role="dialog" aria-modal="true" hidden></section>
+  <main id="frame" data-screen="title">
+    <!-- The cached map is decorative. All player controls and screens are native Egret views. -->
+    <canvas id="ground" aria-hidden="true" hidden></canvas>
     <p id="say" class="quiet" aria-live="polite"></p>
     <p id="loading">载入中 · Loading</p>
   </main>

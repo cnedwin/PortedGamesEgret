@@ -64,10 +64,18 @@ if it sank now. The report tracks ships held at each gate and crews ashore, stop
 | 引擎入口 / API · Entry / API | 在本游戏中的用途 · Use in this game | 文件 · File |
 |---|---|---|
 | `play`（`@egret/engine/play`） | 一次调用建好画布、帧循环和地图框里的透明舞台 · one call makes the canvas, the loop and the clear stage inside the map's box | `src/main.mjs` |
-| `game.sprite` + Graphics | 四种塔（每级多一点红）、五种敌人、箭石火、闸门、射程圈，全用代码画 · the towers (a red pip a level), the raiders, arrows, stones and fire, the gates and the reach rings, all drawn in code | `src/view.mjs` |
-| `game.rect`、`game.circle`、图层精灵 · layer sprites | 血条、火苗；塔、敌人、箭石分层，后建的塔也在敌人后面 · health bars and flames; towers, raiders and shots in layers | `src/view.mjs` |
+| `game.show` + native UI views | 标题、帮助、设置、战场操作栏、塔位、建造和结算；通过布局与状态绑定适配横竖屏 · all screens, controls, tower picker and results via native layout and bindings | `src/native-screens.mjs`, `src/native-field-ui.mjs` |
+| `createUiSemantics` + `createBrowserSemantics` | 原生控件的可访问名称、焦点和浏览器语义投影 · accessible names, focus and browser projection for native controls | `src/native-ui.mjs`, `src/main.mjs` |
+| `game.sprite` + Graphics | 四种塔（每级多一点红）、五种敌人、箭石火、闸门、射程圈，全用代码画 · the towers (a red pip a level), the raiders, arrows, stones and fire, the gates and the reach rings, all drawn in code | `src/native-layout.mjs`, `src/native-ui.mjs` | 屏幕几何、原生视图句柄及语义投影 · screen geometry, native view handles and semantics |
+| `src/native-screens.mjs`, `src/native-field-ui.mjs` | 原生标题、帮助、暂停、结算、战斗栏和塔位建造 · native title, help, pause, results, field HUD and picker |
+| `src/view.mjs` |
+| `game.rect`、`game.circle`、图层精灵 · layer sprites | 血条、火苗；塔、敌人、箭石分层，后建的塔也在敌人后面 · health bars and flames; towers, raiders and shots in layers | `src/native-layout.mjs`, `src/native-ui.mjs` | 屏幕几何、原生视图句柄及语义投影 · screen geometry, native view handles and semantics |
+| `src/native-screens.mjs`, `src/native-field-ui.mjs` | 原生标题、帮助、暂停、结算、战斗栏和塔位建造 · native title, help, pause, results, field HUD and picker |
+| `src/view.mjs` |
 | `game.burst`、`game.shake` | 投石尘浪和落水、沉船碎片、失守反馈。减弱动画时保留静态命中标记 · debris, water impacts, and a breach cue. Reduced motion keeps static hit markers | `src/combat-fx.mjs` |
-| `game.text` + `game.tween` | 击退时飘起的「+银子」· the floating silver on a kill | `src/view.mjs` |
+| `game.text` + `game.tween` | 击退时飘起的「+银子」· the floating silver on a kill | `src/native-layout.mjs`, `src/native-ui.mjs` | 屏幕几何、原生视图句柄及语义投影 · screen geometry, native view handles and semantics |
+| `src/native-screens.mjs`, `src/native-field-ui.mjs` | 原生标题、帮助、暂停、结算、战斗栏和塔位建造 · native title, help, pause, results, field HUD and picker |
+| `src/view.mjs` |
 | `game.toast` | 「第 n 波来了」「旗舰来了」· the wave notices | `src/main.mjs` |
 | `game.timeScale`、`pause`、`resume`、`after` | ×1/×2/×3 加速、菜单暂停、结算前的停顿 · the speeds, the pause behind the menu, the beat before the end | `src/main.mjs` |
 | `game.reducedMotion` | 设置里的「减弱动画」，没设时跟随系统 · the reduced-motion setting, following the system unless set | `src/main.mjs` |
@@ -102,21 +110,20 @@ node tools/balance.mjs 12
 
 ## 已验证 · Verified
 
-- `node --test test/*.test.mjs`（Node 22，28 项全部通过）：规则——建造位不压道且都够得着一条道、同种子同结果、建塔升级拆塔与银子、瞄准最靠前的敌人、盾兵减伤和对船加成、溅射、燃烧、铜锣减速和加快塔、闸门拦船不拦人且有冷却、沉船船员上岸、进城扣命与失败、提前叫波的奖励、险峻难度更少命更强敌、十二波编排、星数、不建塔必败、电脑玩家在寻常难度的 4 个种子上都守住且至少两星；存档——新档、设置与星数写入、只有更多星才算新纪录、坏档另存、版本过新、存储拒绝写入；文字——两种语言齐全且占位符一致、英文里没有中文、按浏览器语言开局、界面代码不写死中文；引擎副本——import map 一致、用到的入口都在副本里、规则文件不碰页面和引擎。 · All 28 Node tests pass: the rules, the save, the words and the engine copy.
-- `node test/accept.mjs`（无头 Chromium 153，SwiftShader 软件渲染，1280×800）：只用键盘走完——标题第一个难度有焦点；Tab 到「音效」按 Space 关掉并存档；切到英文后所有按钮读英文、语言存档；Enter 开局、焦点落在建造位 6；Enter 打开选单、再 Enter 建弩楼扣 70 两、焦点回到建造位并读出塔名；Tab 到下一个建造位按 4 建铜锣哨；N 开第一波；F 两次三倍速；Q 关上闸；P 暂停后画面不动；Esc 继续；剩一条命时第一个进城的敌人结束这一局、结算写「城门失守」并计数；Enter 再来一局地图清空；把第十二波打完得三星和「新的最好成绩」并存档；回标题显示最好星数；存档改坏后标题提示并重新开始。标题、开局地图和结算三张截图基线一致，控制台没有错误。 · The whole game by keyboard alone in headless Chromium with software rendering, three baselines matching and a clean console.
-- `node ../tools/quality.mjs CanalWatch`：自动项全部达标，见 [QUALITY.md](QUALITY.md)。桌面帧时间 p95 16.7 ms（标题，无头 SwiftShader）；另在同一环境里量了第十波、几十个敌人同屏时 p95 16.8 ms。 · Every automatic item passes; frame time p95 16.7 ms on the title and 16.8 ms in a crowded tenth wave, headless and software-drawn.
-- `node tools/balance.mjs 12`：结果见上一节 · results in the section above.
-
+- Node 26：35/35 规则、存档、双语、引擎副本及三种屏幕布局几何测试。· 35/35 rule, save, locale, vendor and geometry tests.
+- 浏览器验收：51/51；标题、地图、结算三张新基线差异 0.00%，无控制台或页面错误。覆盖键盘、鼠标、模拟触屏、双语、横竖屏、建塔/升级/拆除、关闸、速度、暂停、胜败、存档及真实生成的载人船点击预判。· 51/51 browser checks and 0.00% differences against the three reviewed new baselines; keyboard, mouse, emulated touch, both languages, layout, tower actions, gates, speed, pause, results, saves and actual carrier preview.
+- 两种模式与原有数值、存档格式和美术资源均未变化。真机结果及性能限制见 [QUALITY.md](QUALITY.md)。· Both modes, numbers, save format and art are unchanged; see QUALITY.md for device results and performance limits.
+- `node tools/balance.mjs 12`：原有结果见上一节 · original results in the section above.
 ## 已知问题 · Known issues
 
-- 没有在真机（手机、带显卡的桌面）上运行过；触屏走完一局、中端手机帧时间、切回后台后的声音和计时都「未运行」。帧时间只在无头浏览器的软件渲染里量过。 · Not run on a real phone or a desktop with a GPU; touch play, phone frame times and sound after coming back are not run. Frame times come only from software rendering in a headless browser.
-- 竖着拿手机时地图只有屏幕宽，建造位按钮保持 44 像素，彼此最近处只隔几个像素；横过来玩更从容。 · On an upright phone the map is only as wide as the screen; the plot buttons keep 44 pixels and come within a few pixels of each other. Turning the phone sideways gives more room.
+- 真机验收的设备、路线和未覆盖项目请见 QUALITY.md；软件渲染指标与真实 GPU 指标分开记录。 · See QUALITY.md for devices, routes and uncovered items; software-rendered and physical GPU measurements are separate.
+- 竖屏采用上下操作区，手机横屏采用侧操作栏，桌面采用顶栏；地图保持原有宽高比，塔位密集时横屏更从容。 · Portrait uses stacked controls, landscape a side deck, desktop a top deck. The fixed-aspect map is more spacious in landscape.
 - 没有手柄操作。 · No gamepad controls.
 - 读屏只在无头 Chromium 的无障碍树里查过名字，没有用真读屏器走过。 · Screen-reader names were checked only in headless Chromium's accessibility tree, not with a real screen reader.
 
 ## 已解决 · Solved
 
-- 页面按钮上的 Tab 和 Space 失灵：引擎 `play` 在窗口上拦下这两个键（ENGINE-NOTES 1）。在捕获阶段先接住按键并停止传播，`play` 自己的按键就不用了，全部快捷键由 `src/main.mjs` 处理。 · Tab and Space did nothing on the page's buttons because `play` keeps them from the page (ENGINE-NOTES 1); keys are caught first, in the capture phase, and the game reads its own shortcuts.
+- 旧页面按钮的 Tab 和 Space 问题已由引擎解决（ENGINE-NOTES 1）；现在原生 UI 处理焦点与按键激活，游戏仅保留专用快捷键。 · The old page-button issue is resolved; native UI owns focus and activation while the game keeps dedicated shortcuts.
 - 透明画布下面是一片黑：`play` 给装画布的盒子写死了黑底（ENGINE-NOTES 2），开局后把它改成透明。 · A black box under the clear canvas, from the holder `play` makes (ENGINE-NOTES 2); made clear after start.
 - 标题画面帧时间 p95 33 ms：静止的地图交给引擎每帧重画，大片半透明的填充在软件渲染下太贵（ENGINE-NOTES 3）。地图改由页面在一块二维画布上画一次（`src/ground.mjs`），画法函数和引擎 Graphics 同名，p95 回到 16.7 ms。 · A title frame time of 33 ms p95 from the still map being drawn again each frame (ENGINE-NOTES 3); the page now paints it once on a 2D canvas, and p95 is 16.7 ms.
 - `game.browser.canvas` 是 `undefined`，画布在 `game.canvas`（ENGINE-NOTES 4）。 · The canvas is `game.canvas`, not `game.browser.canvas` (ENGINE-NOTES 4).
@@ -125,15 +132,17 @@ node tools/balance.mjs 12
 ## 未完成 · Unfinished
 
 - 手柄操作。 · Gamepad controls.
-- 真机上的触屏、帧时间和声音验收。 · Touch, frame-time and sound checks on real devices.
+- 更多中端设备、系统读屏器和手机扬声器实听验收。 · Broader mid-range-device, screen-reader and phone-speaker listening checks.
 - 更多地图与关卡；现在只有一张汴河图、一套十二波。 · More maps; there is one canal and one set of twelve waves.
 
 ## 目录结构 · Layout
 
 | 路径 · Path | 内容 · Contents |
 |---|---|
-| `index.html`, `style.css` | 页面、import map、顶栏、地图框、建造位按钮层、标题 / 菜单 / 结算 · the page, the import map, the bar, the map's box, the plot buttons, the panels |
+| `index.html`, `style.css` | 页面外壳、import map、加载提示与装饰性底图 · page shell, import map, loading notice and decorative ground |
 | `src/main.mjs` | 入口：存档、语言、`play`、建造位和选单、顶栏、键位、画面切换 · the entry |
+| `src/native-layout.mjs`, `src/native-ui.mjs` | 屏幕几何、原生视图句柄及语义投影 · screen geometry, native view handles and semantics |
+| `src/native-screens.mjs`, `src/native-field-ui.mjs` | 原生标题、帮助、暂停、结算、战斗栏和塔位建造 · native title, help, pause, results, field HUD and picker |
 | `src/view.mjs` | 地图的画法；塔、敌人、箭石火、闸门的精灵和事件效果 · how the map is drawn; the sprites and the effects of events |
 | `src/ground.mjs` | 把地图画到页面的二维画布上（只画一次） · paints the map once on the page's 2D canvas |
 | `src/sound.mjs` | 合成音效与配乐 · effects and music |
@@ -148,13 +157,12 @@ node tools/balance.mjs 12
 
 ## 引擎副本 · Engine copy
 
-引擎副本取自 [Egret_rebuild](https://github.com/cnedwin/Egret_rebuild) 提交 `b5628eb9997b67cf6163a388f5aa06f321f3833a`，由引擎仓库的 `tools/vendor-game.mjs` 复制，见 [vendor/SOURCE.md](vendor/SOURCE.md)。用到的入口：`@egret/engine/play`、`@egret/engine/kit`、`@egret/engine/web/kit`（`@egret/engine` 随 `play` 一起复制）。
+引擎副本取自 [Egret_rebuild](https://github.com/cnedwin/Egret_rebuild) 提交 `8e70dcb3a8a0b40c9966483c92cb9f691a1cefd8`，由引擎仓库的 `tools/vendor-game.mjs` 复制，见 [vendor/SOURCE.md](vendor/SOURCE.md)。用到的入口详见 SOURCE.md；包括 play、kit、UI、语义及浏览器语义投影。
 
 The engine copy is from [Egret_rebuild](https://github.com/cnedwin/Egret_rebuild) commit
-`b5628eb9997b67cf6163a388f5aa06f321f3833a`, copied by the engine's `tools/vendor-game.mjs`; see
-[vendor/SOURCE.md](vendor/SOURCE.md). Entries used: `@egret/engine/play`, `@egret/engine/kit` and
-`@egret/engine/web/kit` (`@egret/engine` comes with `play`).
+`8e70dcb3a8a0b40c9966483c92cb9f691a1cefd8`, copied by the engine's `tools/vendor-game.mjs`; see
+[vendor/SOURCE.md](vendor/SOURCE.md). Entries used include the play, kit, UI, semantics and browser semantics packages; see the exact list in SOURCE.md.
 
 ```sh
-node tools/vendor-game.mjs ../PortedGamesEgret/CanalWatch @egret/engine @egret/engine/play @egret/engine/kit @egret/engine/web/kit
+node tools/vendor-game.mjs ../PortedGamesEgret/CanalWatch @egret/engine @egret/engine/play @egret/engine/kit @egret/engine/web/kit @egret/engine/ui @egret/engine/ui/semantics @egret/engine/ui/testing @egret/engine/web/semantics
 ```
