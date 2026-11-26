@@ -48,4 +48,17 @@ this file; items by hand or on a device are marked not run until someone runs th
 - S4：同一脚本把存档改坏后重开，游戏记下坏档、另存并重新开始（标题上方的提示文字由代码显示，截图没有逐字核对）。 · The walk breaks the save; the game notes it, sets it aside and starts again (the notice on the title was not checked word by word).
 - I2：同一脚本在设置里切到英文，案件画面整屏按英文重建；画布上的字随语言切换。 · The same walk switches to English and the case screen is rebuilt in English.
 - 微信小游戏：`test/minigame.mjs` 在引擎的微信替身里（无头 Chromium，390×844）用鼠标当手指走完标题到最后一案的判词，见 README。不是微信开发者工具，也不是手机。 · The mini game walk in the engine's WeChat stand-in, not WeChat DevTools and not a phone.
-- T1、F2、E4：未运行 · not run（没有真机和真触屏 · no phone, no real touch screen）。
+- 上表保留 2026-11-25 的自动基线。另见下方实机结果。 · The table retains the 2026-11-25 automated baseline. See below for device results.
+
+### 2026-11-26 网页真机回归 · Web device regression
+
+公开基线为 `a564e1d2`，修订版在本机提供，两版的白鹭引擎副本均为 `95897d78`。 · Public baseline `a564e1d2` and locally served fixes, both on Egret `95897d78`.
+
+- Windows Chrome 157、RTX 5090 Laptop GPU，使用 WebGPU。以真实键鼠从新档完成首案的 10 个证物、14 张词签和两页核验，进入第二案查三级提示、写笔录并刷新续档。修订版的首案 8 次点选填词均成功，Shift+Tab、弹窗 Esc、英文标题复测通过。 · On Windows Chrome 157 and RTX 5090 Laptop GPU with WebGPU, mouse and keyboard covered the first case's 10 hotspots, 14 slips and both seals, then second-case hints, notes and resume. Eight click-to-place actions, quick Shift+Tab, modal Escape and the English title passed on the fixes.
+- PC 以真实键鼠完成全部六案，共 65 张证物、102 张词签、17 页核验。快速核验后从第四案进入第五案，完成最后判词并看到终卷，刷新保留六案进度。之后单独按公开版报障路径复测笔录，工具栏点按、逐键输入、换行、Tab 离开再点纸面、编辑中刷新和读档均通过。 · Mouse and keyboard completed all six cases, with 65 evidence cards, 102 slips and 17 seals. Quick seals advanced from case four to five, the final verdict reached the ending, and reload retained all progress. The reported public notes path was retested separately on the candidate, including the toolbar, physical key events, line breaks, Tab and mouse re-entry and reload during editing.
+- 同一 PC 的首案动态图景采样 525 帧，帧间隔 P95 4.3 ms、最高 8.4 ms。静置卷宗后，公开版 481 次帧回调提交 460 次 WebGPU 队列，修订版 528 次回调提交 0 次。 · On that PC the animated first scene logged 525 intervals at P95 4.3 ms and a maximum of 8.4 ms. The settled dossier went from 460 WebGPU queue submissions over 481 callbacks to zero over 528 callbacks.
+- Galaxy Z Fold7（Android 17、Chrome 157、WebGPU）。横屏从开卷读到第一案，竖屏验证单指平移、双指缩放、点词、笔录原生键盘和自动存档。首案两页填词、核验与结案均用实际触点，其余线索预置以重复验证卷宗。首案动态场景 181 帧，P95 和最高帧间隔均为 16.7 ms。中文由系统编辑框接收提交，真人输入法组字未测。 · On the Fold7 in Chrome 157 on Android 17 with WebGPU, landscape reached the first case and portrait covered pan, pinch, evidence, the native notes keyboard and autosave. Touch completed both first-case pages and the closing screen with the remaining evidence seeded. In 181 first-scene intervals, P95 and maximum were both 16.7 ms. Text was committed through the native editor, with manual IME composition untested.
+- Fold7 的横屏「开卷」高度从 26.2 增到 45.1 CSS 像素。竖屏「书写」和「合上」均高 48.0 CSS 像素，前者原为 26.3。 · On Fold7, landscape Begin grew from 26.2 to 45.1 CSS px. Portrait Write and Close both measure 48.0 CSS px, with Write previously 26.3.
+- Fold7 的软键盘把可见高度压到 487 CSS 像素时，单次点「合上」即可回到现场，文本保留。另复测失焦后点纸面续写和刷新恢复。 · With the Fold7 keyboard open at a 487 CSS px visual viewport, one touch on Close returned to the case and retained the text. Tap-to-resume and reload were checked as well.
+- 本轮 Node 测试 28 项、无头浏览器验收 39 项与项目规范检查均通过。 · All 28 Node tests, 39 headless browser checks and the project standard check pass.
+- 限制：手机覆盖首案；扬声器听感、实体手柄、微信开发者工具和中端设备性能未验收。 · Mobile coverage is the first case. Speaker playback, a physical controller, WeChat DevTools and mid-range device performance remain unverified.

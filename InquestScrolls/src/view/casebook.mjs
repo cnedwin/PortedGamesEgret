@@ -185,6 +185,8 @@ export async function caseScreen(app, layer, caseId) {
   const overlayLayer = new Sprite();
   layer.addChild(overlayLayer);
   let overlay = null;
+  let disposed = false;
+  let closingCase = false;
   const common = {
     ...app,
     st,
@@ -193,6 +195,7 @@ export async function caseScreen(app, layer, caseId) {
     picture: (spotId) => pictureOf(caseId, spotId),
     onClose: () => {
       overlay = null;
+      if (disposed) return;
       scene.root.visible = true;
       // A lesson given over the dossier goes with it.
       if (layer.getChildIndex(qin) > layer.getChildIndex(overlayLayer)) {
@@ -240,7 +243,7 @@ export async function caseScreen(app, layer, caseId) {
       {
         ...common,
         onFocus: (list) => app.setFocus(list),
-        onSealed: (pageId) => sealed(pageId),
+        onSealed: finishCase,
         onChecked: (result) => result === 'near' && teach('near', true),
         onHint: (pageId) => hint(pageId)
       },
@@ -251,14 +254,20 @@ export async function caseScreen(app, layer, caseId) {
     scene.root.visible = false;
     teach('names', true);
   }
-  async function openNotesNow() {
-    if (overlay) overlay.close?.();
-    overlay = { kind: 'notes' };
-    overlay = await openNotes(overlayLayer, common);
-    overlay.kind = 'notes';
-    app.setFocus(overlay.focus);
+  function openNotesNow() {
+    if (overlay && !overlay.close) return;
+    overlay?.close();
+    try {
+      overlay = { ...openNotes(overlayLayer, common), kind: 'notes' };
+      app.setFocus(overlay.focus);
+    } catch (cause) {
+      common.onClose();
+      console.warn('notes', cause);
+      kit.toast(app.say('loadFailed'));
+    }
   }
   function openVerdictNow() {
+    if (disposed || overlay?.kind === 'verdict') return;
     overlay?.close?.();
     overlay = openVerdict(overlayLayer, c, {
       ...common,
@@ -280,15 +289,18 @@ export async function caseScreen(app, layer, caseId) {
     overlay.kind = 'menu';
     app.setFocus(overlay.focus);
   }
-  function sealed(pageId) {
-    if (!pagesDone(st, c)) return;
+  function finishCase() {
+    // Adjacent page seals can finish animating after all pages are already checked.
+    if (disposed || closingCase || !pagesDone(st, c)) return;
+    closingCase = true;
     if (c.verdict) {
       if (!st.solved) openVerdictNow();
       return;
     }
     app.sound.music('closed');
-    game.after(game.reducedMotion ? 0.2 : 0.8, () => app.go('outro', caseId));
-    void pageId;
+    game.after(game.reducedMotion ? 0.2 : 0.8, () => {
+      if (!disposed) void app.go('outro', caseId);
+    });
   }
   function hint(pageId) {
     const h = nextHint(st, c, pageId);
@@ -431,19 +443,21 @@ export async function caseScreen(app, layer, caseId) {
       return true;
     },
     keys: {
-      j: () => (overlay?.kind === 'dossier' ? overlay.close() : openDossierNow()),
-      n: () => (overlay?.kind === 'notes' ? overlay.close() : openNotesNow()),
+      j: () => (overlay?.kind === 'dossier' ? overlay.close?.() : openDossierNow()),
+      n: () => (overlay?.kind === 'notes' ? overlay.close?.() : openNotesNow()),
       h: () => hint(overlay?.kind === 'dossier' ? overlay.page : undefined)
     },
     pan: (dx, dy) => !overlay && scene.pan(dx, dy),
     zoom: (f) => !overlay && scene.zoomBy(f),
     update(dt) {
-      scene.update(dt);
+      if (scene.root.visible) scene.update(dt);
       if (qin.visible && game.time > qinUntil) qin.visible = false;
       if (!hover && game.device === 'mouse' && !game.pointer.down) hoverAt(game.pointer.x, game.pointer.y);
       if (game.pointer.wheel && !hover && !overlay) scene.zoomBy(game.pointer.wheel < 0 ? 1.12 : 1 / 1.12, game.pointer.x, game.pointer.y);
     },
     dispose() {
+      disposed = true;
+      overlay?.close?.();
       for (const node of spotNodes) node.remove();
       hintScope.dispose();
       hoverScope.dispose();

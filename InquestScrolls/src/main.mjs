@@ -61,6 +61,7 @@ let screen = null,
   screenLayer = null,
   over = null,
   overLayer = null,
+  dismissConfirm = null,
   focus = null,
   busy = false;
 
@@ -84,8 +85,6 @@ app.go = async (name, arg) => {
     if (name === 'begin') {
       name = app.progress().prologue ? 'intro' : 'prologue';
       arg = currentCase(app.progress());
-      app.progress().prologue = true;
-      app.save();
     }
     if (name === 'resume') {
       arg = currentCase(app.progress());
@@ -109,8 +108,19 @@ app.go = async (name, arg) => {
     screen.name ??= name;
     screen.arg = arg;
     focus.set(screen.focus ?? [], false, screen.focusStart ?? 0);
+    if (name === 'prologue' && !app.progress().prologue) {
+      app.progress().prologue = true;
+      app.save();
+    }
     if (name !== 'case') app.sound?.play('paper');
     g.ready = true;
+  } catch (cause) {
+    console.warn('loading screen', cause);
+    app.type.discard(screenLayer);
+    screenLayer = null;
+    focus.clear();
+    showLoadFailure(app.game);
+    window.egretGame.failed = true;
   } finally {
     busy = false;
     window.egretGame.busy = false;
@@ -126,7 +136,7 @@ app.overlay = (kind) => {
   app.game.ui.addChild(overLayer);
   const close = () => {
     closeOverlay();
-    focus.set(screen?.focus ?? [], false, screen?.focusStart ?? 0);
+    restoreScreenFocus();
   };
   over = kind === 'settings' ? settingsOverlay(app, overLayer, close) : helpOverlay(app, overLayer, close);
   over.kind = kind;
@@ -134,18 +144,28 @@ app.overlay = (kind) => {
   window.egretGame.overlay = kind;
 };
 app.confirm = (question, yes) => {
+  if (dismissConfirm) return;
   const layer = new Sprite();
   app.game.ui.addChild(layer);
-  const prev = { over, overLayer };
+  const previous = focus.current();
   const done = () => {
+    if (dismissConfirm !== done) return;
+    dismissConfirm = null;
     app.type.discard(layer);
     q.dispose?.();
-    focus.set(prev.over?.focus ?? screen?.focus ?? []);
+    const items = over?.focus ?? screen?.overlay?.focus ?? screen?.focus ?? [];
+    focus.set(items, false, Math.max(0, items.indexOf(previous)));
   };
   const q = confirmOverlay(app, layer, question, yes, done);
+  dismissConfirm = done;
   focus.set(q.focus);
 };
+function restoreScreenFocus() {
+  const local = screen?.overlay?.focus;
+  focus.set(local ?? screen?.focus ?? [], false, local ? 0 : screen?.focusStart ?? 0);
+}
 function closeOverlay() {
+  dismissConfirm?.();
   if (!over) return;
   over.dispose?.();
   app.type.discard(overLayer);
@@ -197,39 +217,43 @@ app.resetProgress = () => {
 };
 
 // ---- input ----
+function moveFocus(step, game) {
+  game.focusVisible = true;
+  focus.move(step);
+  focus.current()?.onFocus?.();
+}
 const HELD = { left: [-1, 0], right: [1, 0], up: [0, -1], down: [0, 1] };
 function handleKeys(dt, g) {
   const k = g.keys;
   const typing = app.editing || document.activeElement?.tagName === 'TEXTAREA' || document.activeElement?.tagName === 'INPUT';
   if (typing) return;
   const pressed = (...names) => k.pressed(...names);
-  if (pressed('Tab', 'pad:r1', 'pad:down', 'pad:right')) {
-    g.focusVisible = true;
-    const back = k.down('shift') || pressed('pad:l1', 'pad:up', 'pad:left');
-    focus.move(back ? -1 : 1);
-    focus.current()?.onFocus?.();
-  } else if (pressed('pad:l1', 'pad:up', 'pad:left')) {
-    g.focusVisible = true;
-    focus.move(-1);
-    focus.current()?.onFocus?.();
+  const backPressed = pressed('escape', 'Backspace', 'pad:b');
+  if (dismissConfirm && backPressed) {
+    dismissConfirm();
+    return;
   }
+  if (pressed('pad:r1', 'pad:down', 'pad:right')) moveFocus(1, g);
+  else if (pressed('pad:l1', 'pad:up', 'pad:left')) moveFocus(-1, g);
   if (pressed('enter', 'space', 'pad:a') && focus.current()) {
     g.focusVisible = true;
     focus.activate();
   }
-  if (pressed('escape', 'Backspace', 'pad:b')) {
+  if (backPressed) {
     if (over) {
       closeOverlay();
-      focus.set(screen?.focus ?? [], false, screen?.focusStart ?? 0);
+      restoreScreenFocus();
     } else if (screen?.back) screen.back();
     else if (screen?.name !== 'title') void app.go(screen?.name === 'case' || screen?.name === 'intro' ? 'list' : 'title');
   }
+  if (g.pointer.pressed) g.focusVisible = false;
+  if (over || dismissConfirm) return;
   if (screen?.keys) {
     if (pressed('j', 'pad:y')) screen.keys.j();
     if (pressed('n')) screen.keys.n();
     if (pressed('h', 'pad:x')) screen.keys.h();
   }
-  if (screen?.pan && !over) {
+  if (screen?.pan) {
     let dx = 0,
       dy = 0;
     for (const [key, [x, y]] of Object.entries(HELD))
@@ -244,7 +268,6 @@ function handleKeys(dt, g) {
     if (k.down('Equal', 'NumpadAdd', 'pad:r2')) screen.zoom(1 + dt * 1.6);
     if (k.down('Minus', 'NumpadSubtract', 'pad:l2')) screen.zoom(1 / (1 + dt * 1.6));
   }
-  if (g.pointer.pressed) g.focusVisible = false;
 }
 
 const loading = document.getElementById('loading');
@@ -338,6 +361,15 @@ await play({
     const top = new Sprite();
     game.ui.addChild(top);
     focus = createFocus(game, top);
+    game.canvas?.addEventListener?.('pointerdown', () => {
+      game.focusVisible = false;
+      focus.redraw();
+    });
+    game.canvas?.addEventListener?.('keydown', (event) => {
+      if (event.key !== 'Tab' || event.defaultPrevented || event.ctrlKey || event.metaKey || event.altKey || app.editing || busy) return;
+      event.preventDefault();
+      moveFocus(event.shiftKey ? -1 : 1, game);
+    });
     loading?.remove();
     const jump = params.get('case');
     if (jump && caseById(jump)) await app.go('case', jump);
@@ -359,4 +391,3 @@ await play({
     if (window.egretGame.ready && screen) void app.go(screen.name, screen.arg);
   }
 });
-

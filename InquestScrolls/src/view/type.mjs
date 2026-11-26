@@ -75,10 +75,12 @@ export async function openType(game, { plain = false } = {}) {
     return measurer.measureText(text).width;
   };
 
-  /** Pixels per stage unit, so text is drawn sharp at the canvas's real size. */
+  /** Match raster density to the visible canvas, which can be letterboxed on a high-DPR phone. */
   const density = () => {
-    const c = game.canvas;
-    const d = c && game.width ? c.width / game.width : 1;
+    const canvas = game.canvas;
+    const cssWidth = canvas?.getBoundingClientRect?.().width;
+    const pixels = cssWidth > 0 ? cssWidth * (globalThis.devicePixelRatio || 1) : canvas?.width;
+    const d = pixels > 0 && game.width > 0 ? pixels / game.width : 1;
     return Math.max(1, Math.min(3, Math.round(d * 4) / 4));
   };
 
@@ -92,29 +94,35 @@ export async function openType(game, { plain = false } = {}) {
     const node = createParagraph(engine, scope, cache);
     holder.addChild(node);
     let last;
-    const set = (o) => {
-      last = { ...last, ...o };
-      const families = last.brush ? [brush, song] : [song];
-      node.setRequest({
-        text: last.text || ' ',
-        width: Math.max(8, last.width),
-        fontFamilies: families,
+    const set = async (options) => {
+      const next = last = { ...last, ...options };
+      const request = {
+        text: next.text || ' ',
+        width: Math.max(8, next.width),
+        fontFamilies: next.brush ? [brush, song] : [song],
         fontSet: fonts.key,
-        fontSize: last.size ?? 24,
-        ...(last.lineHeight ? { lineHeight: last.lineHeight } : {}),
-        locale: last.locale ?? 'zh',
+        fontSize: next.size ?? 24,
+        ...(next.lineHeight ? { lineHeight: next.lineHeight } : {}),
+        locale: next.locale ?? 'zh',
         direction: 'ltr',
-        fillColor: last.colour ?? INK,
-        density: density(),
+        fillColor: next.colour ?? INK,
         textGeometry: true,
-        ...(last.align ? { textAlign: last.align } : {}),
-        ...(last.runs?.length ? { runs: last.runs } : {})
-      });
-      // A newer request replaces an older one still being laid out; the older promise just gives way.
-      return node.prepare().catch((cause) => {
-        if (cause?.code === 'PARAGRAPH_STALE' || String(cause?.message).includes('PARAGRAPH_STALE')) return null;
-        throw cause;
-      });
+        ...(next.align ? { textAlign: next.align } : {}),
+        ...(next.runs?.length ? { runs: next.runs } : {})
+      };
+      let scale = density();
+      for (;;) {
+        node.setRequest({ ...request, density: scale });
+        try {
+          return await node.prepare();
+        } catch (cause) {
+          const message = String(cause?.message);
+          if (last !== next || scope.signal.aborted || cause?.code === 'PARAGRAPH_STALE' || message.includes('PARAGRAPH_STALE')) return null;
+          if (scale <= 0.5 || !message.includes('PARAGRAPH_IMAGE_LIMIT')) throw cause;
+          // Keep the layout and hit geometry. Retry only its backing image at a smaller density.
+          scale = Math.max(0.5, Math.floor(scale * 3) / 4);
+        }
+      }
     };
     const ready = set(opts);
     return { holder, node, ready, set, geometry: () => node.getStatus().geometry };

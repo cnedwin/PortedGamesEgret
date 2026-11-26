@@ -53,7 +53,7 @@ engine's own parts instead of drawing around it.
 ### 7. 一个资源管理器只能有一个段落缓存 · One paragraph cache per asset manager — 未解决 / open
 
 - 现象：段落缓存要在资源管理器上注册段落这种资源类型，同一个管理器上第二次 `createParagraphCache(engine.assets, …)` 会被拒绝；段落的文档里没有写这一点，笔录编辑器又要求传入缓存，容易各建一个。 · What happens: a paragraph cache registers the paragraph asset type on the manager, so a second `createParagraphCache` on the same manager is refused; the paragraph documents do not say so, and the notes editor asks for a cache too, which invites making a second one.
-- 游戏里：全游戏共用 `openType` 里建的一个缓存（`src/view/type.mjs`），笔录编辑器也用它。 · In the game: one cache made in `openType` serves the whole game, the notes editor included.
+- 游戏里：全游戏的段落共用 `openType` 里建的一个缓存（`src/view/type.mjs`），包括笔录合上输入框后的正文。 · One cache made in `openType` serves all paragraphs, including notes after the native input closes.
 - 建议：在 `createParagraphCache` 和段落 SDK 的文档里写明“一个资源管理器一个缓存，全游戏共用”。 · Suggestion: say "one cache per asset manager, shared by the whole game" in the function's and the paragraph SDK's documentation.
 - 状态：未解决。 · Status: open.
 
@@ -77,3 +77,18 @@ engine's own parts instead of drawing around it.
 - 游戏里：`tools/assets/fonts.mjs` 只在换字体或改了文字时跑，用官方的 Node 26.7.0 压缩包；产物（`assets/fonts/build/`）提交进仓库，游戏和测试只用 Node 22。 · In the game: the font build runs only when the words change, with the official Node 26.7.0 archive; its output is committed, and the game and tests need only Node 22.
 - 建议：在字体资源文档里也写上这个版本要求。 · Suggestion: say so in the font resource document too.
 - 状态：已写入文档（引擎的 `tools/doctor.mjs` 与 `tools/verify-content-build.mjs`）。 · Status: documented in the engine's `tools/doctor.mjs` and `tools/verify-content-build.mjs`.
+
+### 11. 段落图像超过尺寸上限 · Paragraph image exceeds the size limit — 已在游戏侧绕过 / worked around
+
+- 现象：Fold7 横屏开卷时，段落按画布缓冲区选择的像素密度过高，序言准备失败。外层报 `ASSET_LOAD_FAILED`，内层为 `PARAGRAPH_IMAGE_LIMIT`。 · On a Fold7 in landscape, the density chosen from the canvas backing buffer was too high for the prologue paragraph. Preparation failed with `ASSET_LOAD_FAILED` wrapping `PARAGRAPH_IMAGE_LIMIT`.
+- 绕过办法：`src/view/type.mjs` 按可见画布尺寸和 DPR 算密度。遇到尺寸上限时降低密度重试，沿用原段落布局和命中几何。 · The game derives density from the displayed canvas and DPR, and retries size-limit failures at a lower density while preserving layout and hit geometry.
+- 建议：给应用提供可用的最大光栅尺寸及结构化错误原因，便于在准备前选择密度。 · Expose raster limits and a structured failure cause so callers can choose a density before preparation.
+- 状态：网页真机复测通过。 · Workaround verified on the physical Fold7.
+
+### 12. 笔录托管编辑器创建和失焦 · Managed editor creation and blur — 已在游戏侧绕过 / worked around
+
+- 现象：Windows Chrome 和 Fold7 在 `game.onTap` 派发内调用 `createUiTextEditor` 会报 `UI_BUSY: input is being delivered`。延后创建可首次输入，但 PC 键入后按 Tab，`createBrowserTextEditor` 保留只读输入框，点纸面重进报 `BROWSER_TEXT_EDITOR_PRESENTATION_PENDING`。 · Creating the managed editor during tap dispatch raised `UI_BUSY: input is being delivered` on Windows Chrome and Fold7. Deferring creation let the first edit work. On PC, typing then pressing Tab left a readonly textarea, and tapping the paper to re-enter raised `BROWSER_TEXT_EDITOR_PRESENTATION_PENDING`.
+- 绕过办法：`src/view/notes.mjs` 改用 `createBrowserTextInput`，沿用宣纸段落，保存已完成输入法组字的文本，失焦时提交。 · Notes now use `createBrowserTextInput` over the canvas paragraph. Completed input is autosaved and blur commits.
+- 建议：记录派发限制，并提供已改值的托管多行编辑器在 Tab 失焦后提交展示、退役只读控件和重新激活的示例。 · Document the dispatch restriction and provide a changed multiline example that publishes after Tab blur, retires the readonly control and reopens cleanly.
+- Fold7 额外复现：软键盘展开时，点「合上」的按下触发失焦。可见区域移动后，松手被引擎解析到按钮外。`src/view/notes.mjs` 用同一触点的物理落点复核松手，保留原生失焦提交。 · Fold7 also reproduced blur moving the visual viewport between touch down and up on Close. The game checks the release of the same touch in visual viewport coordinates while retaining native blur-to-commit.
+- 状态：游戏侧修复，白鹭副本保持 `95897d78`。 · Game-side workaround on unmodified Egret `95897d78`.
