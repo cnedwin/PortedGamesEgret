@@ -1,6 +1,6 @@
 // 由 tools/capability-matrix.mjs 生成，不要手改 · Made by tools/capability-matrix.mjs; do not edit by hand.
 export const MATRIX = {
- "commit": "8637ace9a40667714abd6d74157e8dcf4587232d",
+ "commit": "aab331d617241c967e71c323775cb3006c6ea5a2",
  "games": [
   "CanalWatch",
   "FengshenChronicle",
@@ -371,6 +371,10 @@ export const MATRIX = {
     {
      "game": "NightWardens",
      "file": "NightWardens/src/screens.mjs"
+    },
+    {
+     "game": "OperaDrums",
+     "file": "OperaDrums/src/ui/screens.mjs"
     },
     {
      "game": "PeachCreek",
@@ -969,6 +973,10 @@ export const MATRIX = {
      "file": "NightWardens/src/main.mjs"
     },
     {
+     "game": "OperaDrums",
+     "file": "OperaDrums/src/main.mjs"
+    },
+    {
      "game": "PeachCreek",
      "file": "PeachCreek/src/main.mjs"
     },
@@ -1021,6 +1029,10 @@ export const MATRIX = {
     {
      "game": "NightWardens",
      "file": "NightWardens/src/main.mjs"
+    },
+    {
+     "game": "OperaDrums",
+     "file": "OperaDrums/src/main.mjs"
     },
     {
      "game": "PeachCreek",

@@ -32,7 +32,7 @@ test('no Chinese is written into the interface code outside the word table', asy
   const CJK = /[㐀-鿿]/;
   const files = [];
   const exceptions = new Set(['../src/i18n.mjs', '../src/sim/songs.mjs', '../src/audio/sound.mjs']);
-  for (const folder of ['../src/', '../src/sim/', '../src/audio/'])
+  for (const folder of ['../src/', '../src/sim/', '../src/audio/', '../src/ui/'])
     for (const name of await readdir(new URL(folder, import.meta.url))) if (name.endsWith('.mjs') && !exceptions.has(folder + name)) files.push(folder + name);
   for (const file of files) {
     const code = (await readFile(new URL(file, import.meta.url), 'utf8')).replace(/\/\/.*$/gm, '').replace(/\/\*[\s\S]*?\*\//g, '');
