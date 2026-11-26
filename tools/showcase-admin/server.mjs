@@ -301,7 +301,16 @@ export async function createAdmin({ publisher, account, dataDir, online }) {
         if (draft.review) {
           if (key !== 'POST /api/refresh') fail(409, '草稿正在 GitHub 审阅。处理 PR 后再同步主干。');
           const status = await publisher.reviewStatus({ ...draft.review, accessToken: session.accessToken });
-          if (status !== 'merged' && status !== 'closed') fail(409, '审阅请求尚未处理，草稿已保留。');
+          if (status === 'closed') {
+            // A closed PR did not publish these edits. Retain the immutable base
+            // so a later submission still checks changes on main for conflicts.
+            const { review: _review, ...retained } = draft;
+            const next = { ...retained, revision: token() };
+            await save(next);
+            draft = next;
+            return { ...view(session), reviewOutcome: 'closed-unmerged' };
+          }
+          if (status !== 'merged') fail(409, '审阅请求尚未处理，草稿已保留。');
         }
         if (key === 'PUT /api/draft') {
           const next = { base: draft.base, revision: token(), ...gameChanges(catalog.games, draft, edit) };

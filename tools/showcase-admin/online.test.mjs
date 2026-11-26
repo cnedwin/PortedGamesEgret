@@ -11,6 +11,7 @@ const origin = 'https://editor.example.test', host = new URL(origin).host;
 const base = 'a'.repeat(40), proposed = 'b'.repeat(40);
 const pr = 'https://github.com/cnedwin/PortedGamesEgret/pull/901';
 const source = await readFile(new URL('../../showcase/games.js', import.meta.url));
+const image = await readFile(new URL('../../showcase/media/nine/detail-1.webp', import.meta.url));
 
 test('public mode requires GitHub login and locks the saved draft pending PR review', async t => {
   const dataDir = await mkdtemp(join(tmpdir(), 'showcase-online-'));
@@ -19,22 +20,28 @@ test('public mode requires GitHub login and locks the saved draft pending PR rev
     if (server?.listening) await new Promise(resolve => server.close(resolve));
     await rm(dataDir, { recursive: true, force: true });
   });
-  let attempts = 0, review = 'open', ref = base;
+  let attempts = 0, review = 'open', ref = base, conflict = false;
+  const submissions = [], proposedAgain = 'd'.repeat(40), prAgain = pr.replace('/901', '/902');
   const publisher = {
     sync: async () => ref,
     read: async () => source,
     publish: async ({ base: draftBase, files, accessToken, submissionId, actor }) => {
       assert.equal(draftBase, base);
-      assert.deepEqual([...files.keys()], ['showcase/games.js']);
+      assert.deepEqual([...files.keys()].sort(), ['showcase/games.js', 'showcase/media/nine/detail-1.webp']);
+      assert.deepEqual(files.get('showcase/media/nine/detail-1.webp'), image);
       assert.equal(accessToken, 'temporary-test-user-token');
       assert.match(submissionId, /^[0-9a-f]{48}$/);
       assert.deepEqual(actor, { id: 42, login: 'editor' });
+      if (conflict) throw Object.assign(new Error('edited path changed on main'), { code: 'CONFLICT' });
+      submissions.push(submissionId);
       attempts++;
-      return { commit: proposed, url: pr, pending: true };
+      return attempts === 1
+        ? { commit: proposed, url: pr, pending: true }
+        : { commit: proposedAgain, url: prAgain, pending: true };
     },
     reviewStatus: async ({ url, commit, accessToken }) => {
-      assert.equal(url, pr);
-      assert.equal(commit, proposed);
+      assert.equal(url, attempts === 1 ? pr : prAgain);
+      assert.equal(commit, attempts === 1 ? proposed : proposedAgain);
       assert.equal(accessToken, 'temporary-test-user-token');
       return review;
     }
@@ -98,8 +105,10 @@ test('public mode requires GitHub login and locks the saved draft pending PR rev
     return { state: signedIn.json, headers: { ...headers, 'X-CSRF-Token': signedIn.json.csrf } };
   }
   const { state, headers } = await login();
-  const update = { revision: state.revision, order: state.games.map(game => game.id),
-    summaries: { nine: { zh: '新简介', en: 'New overview' } }, uploads: [] };
+  const order = ['nine', ...state.games.map(game => game.id).filter(id => id !== 'nine')];
+  const update = { revision: state.revision, order,
+    summaries: { nine: { zh: '新简介', en: 'New overview' } },
+    uploads: [{ id: 'nine', index: 1, data: image.toString('base64') }] };
   assert.equal((await call('/api/draft', 'PUT', update, { ...headers, Origin: 'http://' + host })).status, 403);
   const saved = await call('/api/draft', 'PUT', update, headers);
   assert.equal(saved.status, 200);
@@ -117,10 +126,48 @@ test('public mode requires GitHub login and locks the saved draft pending PR rev
   await start();
   const resumed = await login();
   assert.equal(resumed.state.review.commit, proposed);
-  ref = proposed;
+  // A closed review is not a published edit. Even when main has advanced,
+  // keep its basis and all saved content so conflict checks can run again.
+  ref = 'c'.repeat(40);
+  review = 'closed';
+  const closed = await call('/api/refresh', 'POST', { revision: resumed.state.revision }, resumed.headers);
+  assert.equal(closed.status, 200);
+  assert.equal(closed.json.base, base);
+  assert.equal(closed.json.reviewOutcome, 'closed-unmerged');
+  assert.equal(closed.json.review, null);
+  assert.equal(closed.json.dirty, true);
+  assert.notEqual(closed.json.revision, resumed.state.revision);
+  assert.deepEqual(closed.json.games.map(game => game.id), order);
+  assert.deepEqual(closed.json.games[0].summary, update.summaries.nine);
+  const keptDraft = JSON.parse(await readFile(join(dataDir, 'draft.json'), 'utf8'));
+  assert.equal(keptDraft.base, base);
+  assert.equal(keptDraft.review, undefined);
+  assert.deepEqual(keptDraft.uploads, update.uploads);
+
+  await new Promise(resolve => server.close(resolve));
+  await start();
+  const reopened = await login();
+  assert.equal(reopened.state.revision, closed.json.revision);
+  assert.equal(reopened.state.dirty, true);
+  assert.equal(reopened.state.base, base);
+  assert.deepEqual(reopened.state.games[0].summary, update.summaries.nine);
+  conflict = true;
+  const refused = await call('/api/publish', 'POST', { revision: reopened.state.revision }, reopened.headers);
+  assert.equal(refused.status, 409);
+  assert.equal((await call('/api/state', 'GET', undefined, reopened.headers)).json.revision, reopened.state.revision);
+  conflict = false;
+  review = 'open';
+  const resubmitted = await call('/api/publish', 'POST', { revision: reopened.state.revision }, reopened.headers);
+  assert.equal(resubmitted.status, 200);
+  assert.equal(resubmitted.json.state.review.url, prAgain);
+  assert.equal(attempts, 2);
+  assert.notEqual(submissions[0], submissions[1], 'a new review has a new submission ID');
+
+  ref = proposedAgain;
   review = 'merged';
-  const refreshed = await call('/api/refresh', 'POST', { revision: resumed.state.revision }, resumed.headers);
+  const refreshed = await call('/api/refresh', 'POST', { revision: resubmitted.json.state.revision }, reopened.headers);
   assert.equal(refreshed.status, 200);
-  assert.equal(refreshed.json.base, proposed);
+  assert.equal(refreshed.json.base, proposedAgain);
   assert.equal(refreshed.json.review, null);
+  assert.equal(refreshed.json.dirty, false);
 });

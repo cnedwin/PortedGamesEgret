@@ -573,14 +573,17 @@ publishDialog.addEventListener('close', () => {
 
 byId('refresh').addEventListener('click', () => {
   const question = state.review
-    ? '同步主干会检查审核状态。合并后将载入新版并解锁编辑。确定同步？'
+    ? '同步主干会检查审核状态。合并后载入新版；未合并而关闭时保留草稿并解锁编辑。确定继续？'
     : hasLocalChanges()
       ? '同步主干会放弃本页未保存的修改以及尚未发布的草稿。建议先取消，保留本页修改。仍要同步？'
       : state.dirty ? '同步主干会放弃已保存但尚未发布的草稿。确定同步？' : '';
   if (question && !confirm(question)) return;
   runAction('正在同步主干…', async () => {
-    useState(await request('/api/refresh', 'POST', { revision: recoveryRevision ?? state.revision }));
-    announce('已同步主干');
+    const refreshed = await request('/api/refresh', 'POST', { revision: recoveryRevision ?? state.revision });
+    useState(refreshed);
+    announce(refreshed.reviewOutcome === 'closed-unmerged'
+      ? '审核已关闭但未合并，原草稿已保留。可继续编辑或重新提交审核。'
+      : '已同步主干');
   });
 });
 
