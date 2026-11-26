@@ -1,8 +1,8 @@
 # 引擎笔记 · Engine notes
 
-本游戏发现的新白鹭引擎（早期提交 unknown，当前为 8e70dcb3）的缺陷与建议，格式见 [docs/GAME-STANDARD.md](../docs/GAME-STANDARD.md) 第 3 节。
+本游戏发现的新白鹭引擎（早期提交 unknown，当前为 f0dfde36（与 8e70dcb3 运行时一致））的缺陷与建议，格式见 [docs/GAME-STANDARD.md](../docs/GAME-STANDARD.md) 第 3 节。
 
-The faults found in the new Egret engine (early commit unknown; current copy 8e70dcb3) while making this game, and suggestions,
+The faults found in the new Egret engine (early commit unknown; current copy f0dfde36, runtime byte-identical to 8e70dcb3) while making this game, and suggestions,
 written as in part 3 of [docs/GAME-STANDARD.md](../docs/GAME-STANDARD.md).
 
 ### 1. 每帧的几何预算连复用的几何也一起算 · The per-frame geometry budget also counts reused geometry — 部分解决 / partly resolved

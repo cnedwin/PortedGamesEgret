@@ -176,8 +176,10 @@ The playable UI is drawn through a single native Egret canvas. The original cove
 | `tools/` | 立绘预览、Spine 导出、无头浏览器探针 |
 | `vendor/` | 本作自带的一份引擎（与 LanternShadows 一致，每个 Demo 各带一份） |
 
+- 发布前将官方来源刷新至 f0dfde36；355 个 vendor 文件除 SOURCE.md 的提交标识外逐字节一致，测试运行时没有改变。 · Final pin f0dfde36 differs from the tested 8e70dcb3 vendor only in SOURCE.md. The runtime bytes are unchanged.
+
 ## 引擎副本 · Engine copy
 
-引擎副本取自 [Egret_rebuild](https://github.com/cnedwin/Egret_rebuild) 提交 `8e70dcb3a8a0b40c9966483c92cb9f691a1cefd8`，由引擎仓库的 `tools/vendor-game.mjs` 复制（入口为 Play、原生 UI、语义树、段落及相关浏览器模块），见 [vendor/SOURCE.md](vendor/SOURCE.md)。2026-11-21 之前的副本没有记录提交号，早于引擎 `66f7c59`。
+引擎副本取自 [Egret_rebuild](https://github.com/cnedwin/Egret_rebuild) 提交 `f0dfde367431713578e23fb3931544177b443c3c`，由引擎仓库的 `tools/vendor-game.mjs` 复制（入口为 Play、原生 UI、语义树、段落及相关浏览器模块），见 [vendor/SOURCE.md](vendor/SOURCE.md)。2026-11-21 之前的副本没有记录提交号，早于引擎 `66f7c59`。
 
-The engine copy is from [Egret_rebuild](https://github.com/cnedwin/Egret_rebuild) commit `8e70dcb3a8a0b40c9966483c92cb9f691a1cefd8`, copied by the engine's `tools/vendor-game.mjs` (Play, UI, semantics, paragraph and related browser entries); see [vendor/SOURCE.md](vendor/SOURCE.md). The copy before 2026-11-21 had no recorded commit and predated engine `66f7c59`.
+The engine copy is from [Egret_rebuild](https://github.com/cnedwin/Egret_rebuild) commit `f0dfde367431713578e23fb3931544177b443c3c`, copied by the engine's `tools/vendor-game.mjs` (Play, UI, semantics, paragraph and related browser entries); see [vendor/SOURCE.md](vendor/SOURCE.md). The copy before 2026-11-21 had no recorded commit and predated engine `66f7c59`.
