@@ -29,6 +29,8 @@ then run `node --test tests/guide.test.mjs` and `node tools/egret-guide.mjs "<qu
 | [rhythm-clock](audio/rhythm-clock.txt) | OperaDrums | ENGINE-NOTES 4（声部位置比听到的早、换算到页面时间、事件时间戳、延迟校准）；提交 `6e7d5bb` | 草稿，未提交引擎；在引擎 `b5628eb` 的临时副本里过了 `tests/guide.test.mjs` · draft, not sent; passed the engine's guide tests in a scratch copy |
 | [moving-shapes](perf/moving-shapes.txt) | OperaDrums | ENGINE-NOTES 3（每帧移动的圆和路径比矩形贵，文字打断合批）；提交 `6e7d5bb` | 同上 · the same |
 | [still-background](perf/still-background.txt) | CanalWatch | ENGINE-NOTES 3（静止地图每帧重画让软件渲染帧时间翻倍，改由页面画一次）；提交 `13dcd4b` | 同上 · the same |
+| [bridge-frames](physics/bridge-frames.txt) | LubanBridge | ENGINE-NOTES 1（距离关节连成桁架太软、受力不对称、读不到杆件的力）· item 1 | 草稿 · draft |
+| [body-angle-degrees](physics/body-angle-degrees.txt) | LubanBridge | ENGINE-NOTES 2（刚体的 `angle` 是角度）· item 2 | 草稿 · draft |
 | [sprite-swarm](perf/sprite-swarm.txt) | NezhaSea | ENGINE-NOTES 3（共用贴图的 Bitmap 比矩形精灵贵得多，改用矩形加精灵池）；提交 `9b3d926` | 同上 · the same |
 | [play-resolution](perf/play-resolution.txt) | TaiwanMahjong | ENGINE-NOTES 3（play 没有分辨率选项，1280×720 空画布 p95 33 ms；开 960×540 加根节点缩放）；提交 `936d1e6` | 同上 · the same |
 | [play-turned-table](input/play-turned-table.txt) | TaiwanMahjong | ENGINE-NOTES 4（外层旋转时 play 拒绝启动；分三层、引擎竖着开）；提交 `936d1e6` | 同上 · the same |
@@ -76,6 +78,7 @@ then run `node --test tests/guide.test.mjs` and `node tools/egret-guide.mjs "<qu
 | balance-from-runs | NineProvinces | `NineProvinces/tools/balance.mjs`：三十四路诸侯全由电脑执掌，从 184 年推到 280 年，每十年记势力数和最大的三家 · all thirty-four lords run by the computer for a century, a line every ten years | 草稿，未提交引擎 · draft, not sent |
 | sim-view-split | NineProvinces | `NineProvinces/test/rules.test.mjs:70`：同种子两局不同，查出战场缓存的邻格列表被排序改动（`src/sim/battle.mjs:469`） · a same-seed test caught a cached neighbour list sorted in place | 草稿，未提交引擎 · draft, not sent |
 | still-background（本仓库草稿 · a draft here） | SandScroll | `SandScroll/src/main.mjs:82`、ENGINE-NOTES 7：`createBrowserGame` 的透明画布下垫页面画布，框、碟子、手卷只在变化时画；全屏贴图反而更慢（p95 33.4 → 66.7 ms） · a page canvas under `createBrowserGame`; one full-screen texture was slower | 草稿 · draft |
+| still-background（本仓库草稿 · a draft here） | LubanBridge | `LubanBridge/src/main.mjs:319`、ENGINE-NOTES 4：试通时每帧重画山水和界面；检测到软件渲染时 `pixelRatio: 0.75`，天空改成不透明色带，p50 从 66.7 ms 降到 33.4 ms · the still landscape drawn every frame of a crossing; `pixelRatio: 0.75` under software rendering and an opaque sky, p50 66.7 → 33.4 ms | 草稿 · draft |
 | frame-loop-backpressure | SandScroll | `SandScroll/src/view/play.mjs:420`、ENGINE-NOTES 2：给粒子 `burst` 传小数抛 `PARTICLE_OPTIONS_INVALID`，帧循环随之停下 · a fractional `burst` throws and the loop stops | 草稿 · draft |
 | balance-from-runs | SandScroll | `SandScroll/tools/balance.mjs`：往前看一步的机器人在沙盘副本上试每个放法；规则测试另有"平铺横带能画成""同一处必输"两种对照 · a one-move-ahead robot, with two control strategies in the rules test | 草稿 · draft |
 | synthesized-audio | SandScroll | `SandScroll/src/audio/sound.mjs:43`：Karplus–Strong 拨弦按五声音阶升调表示连消，沙声是滤过的噪声加颗粒 · plucked strings climbing the pentatonic scale for chains, sand as filtered noise with grains | 草稿 · draft |
@@ -106,6 +109,7 @@ then run `node --test tests/guide.test.mjs` and `node tools/egret-guide.mjs "<qu
 | balance-from-runs | NightWardens | `NightWardens/tools/balance.mjs:29`：`runHeadless` 让替身玩家按两种移动快慢把三夜各跑 12 个种子，结果写进 README · the stand-in at two speeds plays 12 seeds of each night | 草稿，未提交引擎 · draft, not sent |
 | save-update-callbacks | NightWardens | `NightWardens/test/saves.test.mjs:88`：测试钉住「表达式箭头的 `update` 被拒、数据不变」 · a test pins the refusal of an expression arrow | 草稿，未提交引擎 · draft, not sent |
 | choose-entry | NightWardens | `NightWardens/src/main.mjs:159`：`createBrowserGame` 的后端用 `auto`（有 WebGPU 适配器就用），`?backend=webgl2` 可指定 · `backend: 'auto'` with a `?backend=` override | 草稿，未提交引擎 · draft, not sent |
+| LubanBridge | 3（2 张新卡，1 条证据） | 都是草稿，还没提交引擎 · all drafts, not yet sent to the engine |
 
 注意：本目录的新卡草稿若一次全部加进引擎索引，`guide/index.txt` 会超出它的 token 上限（五张一起时 1565 token），提交引擎时需要合并或精简索引行；分批放进去时每批都通过了 `tests/guide.test.mjs`。
 
