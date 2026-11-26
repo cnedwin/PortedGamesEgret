@@ -174,3 +174,12 @@ were written during that work.
 - 绕过办法：`src/view.mjs` 把判定线的点按容器换成世界坐标，大小和速度乘上容器的缩放。 · Workaround: `src/view.mjs` carries the timing line's point into world coordinates and multiplies size and speed by the container's scale.
 - 建议：`burst` 加 `layer`，和 `game.text`、`game.image` 一样。 · Suggestion: A `layer` on `burst`, as `game.text` and `game.image` have.
 - 状态：未解决 · Open.
+
+### 21. 没有 `label` 的面板按部件名读出 · A panel without a `label` is read by its part's name — 未解决 / open
+<!-- engine-note: {"id": "OperaDrums#21", "status": "open", "topic": "view-group-name-fallback", "workaround": ["src/ui/screens.mjs", "src/ui/stage-ui.mjs"]} -->
+
+- 现象：有 `name` 的面板在语义树里是组，没有 `label` 时组的名字就是部件名。演出页的 `readout-box`、标题上「已选」牌子的 `chosen-qiba` 都这样进了页面投影的 `aria-label`，读屏会念出这些内部名字；发布时不报错，上线后在线上页面里才看到。给面板起名往往只是为了绑定颜色或显隐。 · What happens: a named panel is a group of the tree, and without a `label` its name is the part's name, so `readout-box` and `chosen-qiba` reached the page projection's `aria-label` and a screen reader would say them. Nothing complains at publish time; it was found on the live page. A panel is often named only to bind its colour or visibility.
+- 绕过办法：需要绑定的面板都给 `label`；只为排版的面板不起名；装饰性的图片不给 `label`。验收里加了一项：语义树里没有名字等于部件名的组。 · Workaround: every bound panel has a `label`, panels only for layout have no name, and decorative pictures no `label`; the acceptance checks that no group of the tree is named by its part.
+- 建议：没有 `label` 的面板发布成没有名字的组（或者只作为容器，不进语义树），而不是拿部件名当名字；或者在开发时对这种组给出警告。 · Suggestion: publish a panel without a `label` as a group with no name, or as a plain container left out of the tree, instead of using the part's name; or warn about it while developing.
+- 状态：未解决 · Open.
+
