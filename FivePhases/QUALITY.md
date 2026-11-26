@@ -71,7 +71,7 @@ this file; items by hand or on a device are marked not run until someone runs th
 - 引擎 · Engine: 94bd70fb26b1f81794c9c6fbbb258c655fcd19df；预发布 CI 候选 b1f275d7 实测，正式副本的运行时代码逐文件哈希核对一致。 · Tested the complete CI candidate, then verified the official runtime payload byte for byte.
 - 自动 · Automated: Node 80/80; existing Chromium browser acceptance passed, reviewed screenshot baselines were not overwritten.
 - 实机 · Physical devices: Windows Edge 158 / RTX 5090 Laptop GPU; Samsung Fold7 Android 17 / Chrome 157 / Adreno 830, actual trusted mouse/keyboard and touch input through the respective browser control, isolated game saves.
-- 代表路线 · Representative route: 实际两点消除、不可用卡牌反馈、真实出牌、手牌详情、奖励/结算。 · legal two-point swap, insufficient-energy feedback, real card cast, hand details, reward and settlement.
+- 代表路线 · Representative route: 真机实际两点消除、不可用卡牌反馈、手牌详情；PC 实际出牌。奖励/结算在软件浏览器固定夹具验证。 · Device runs cover legal two-point swaps, insufficient-energy feedback and details; PC also casts a card. Reward and settlement run in the browser fixture.
 - PC: 180 rAF: p95 4.3 → 4.2 ms; max 4.3 → 4.5 ms.
 - Fold7: 120/121 rAF: p95 16.7 → 16.7 ms; max 33.1 → 16.7 ms.
 - 原生角色由 group 升为 button；固定种子浏览器回归验证出牌后手牌列表容器身份保留。实机盘面因自然 RNG 不同，不做像素级比较。 / Native card roles become buttons; the keyed hand container is retained on a real card cast in the seeded browser test. Natural RNG differs across device runs.

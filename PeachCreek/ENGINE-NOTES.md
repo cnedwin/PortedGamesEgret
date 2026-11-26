@@ -1,8 +1,8 @@
 # 引擎笔记 · Engine notes
 
-本轮适配使用白鹭主干 `95897d78095ae8fda9e34dbc13bbbd15db8eaa12`。复跑游戏全流程可用 `node test/accept.mjs`。副本和入口见 [vendor/SOURCE.md](vendor/SOURCE.md)。
+早期适配使用白鹭主干 `95897d78095ae8fda9e34dbc13bbbd15db8eaa12`。复跑游戏全流程可用 `node test/accept.mjs`。副本和入口见 [vendor/SOURCE.md](vendor/SOURCE.md)。
 
-This integration uses Egret main at `95897d78095ae8fda9e34dbc13bbbd15db8eaa12`. Run `node test/accept.mjs` for the full route. The [vendor record](vendor/SOURCE.md) lists the source and entries.
+The previous integration used Egret main at `95897d78095ae8fda9e34dbc13bbbd15db8eaa12`. Run `node test/accept.mjs` for the full route. The [vendor record](vendor/SOURCE.md) lists the source and entries.
 
 本轮引擎集成：主干 `94bd70fb26b1f81794c9c6fbbb258c655fcd19df`（#502–#506），按需采用原生能力；下列原先的版本号保留作为问题发生时的历史。
 

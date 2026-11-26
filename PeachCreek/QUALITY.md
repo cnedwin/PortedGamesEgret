@@ -103,7 +103,7 @@ The mixed entry point counts map interaction, visual feedback and UI actions, ex
 - 引擎 · Engine: 94bd70fb26b1f81794c9c6fbbb258c655fcd19df；预发布 CI 候选 b1f275d7 实测，正式副本的运行时代码逐文件哈希核对一致。 · Tested the complete CI candidate, then verified the official runtime payload byte for byte.
 - 自动 · Automated: Node 41/41; existing Chromium browser acceptance passed, reviewed screenshot baselines were not overwritten.
 - 实机 · Physical devices: Windows Edge 158 / RTX 5090 Laptop GPU; Samsung Fold7 Android 17 / Chrome 157 / Adreno 830, actual trusted mouse/keyboard and touch input through the respective browser control, isolated game saves.
-- 代表路线 · Representative route: 选档、县城、建造、滚动、地图点选；离线收益和坏档语义回归。 · slot, county, build, scroll, plot selection; away report and corrupt-slot semantics.
+- 代表路线 · Representative route: 选档、县城、建造、滚动、地图点选；离线收益和坏档语义另在软件浏览器验收。 · slot, county, build, scroll, and plot selection; away report and corrupt-slot semantics are separate browser checks.
 - PC: county 180 rAF p95 4.3 → 4.3 ms; still title submissions 0 → 0.
 - Fold7: 121/121 rAF: p95/max 16.7/16.7 → 16.7/16.7 ms; scroll offset 303.36 → 303.36.
 - 原生 bind.label 保留独立美术文字语义，原两个失败断言恢复。共享管理模板 4 个 Node 与浏览器验收也通过。 / Native label restores two previously failing semantic assertions. Shared management preview also passes four Node tests and browser acceptance.

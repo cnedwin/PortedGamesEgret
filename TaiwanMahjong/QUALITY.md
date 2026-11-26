@@ -49,7 +49,7 @@ Android 17、Chrome 157、硬件 WebGPU。使用 CDP 向真机浏览器注入触
 - 引擎 · Engine: 94bd70fb26b1f81794c9c6fbbb258c655fcd19df；预发布 CI 候选 b1f275d7 实测，正式副本的运行时代码逐文件哈希核对一致。 · Tested the complete CI candidate, then verified the official runtime payload byte for byte.
 - 自动 · Automated: Node 32/32; existing Chromium browser acceptance passed, reviewed screenshot baselines were not overwritten.
 - 实机 · Physical devices: Windows Edge 158 / RTX 5090 Laptop GPU; Samsung Fold7 Android 17 / Chrome 157 / Adreno 830, actual trusted mouse/keyboard and touch input through the respective browser control, isolated game saves.
-- 代表路线 · Representative route: 规则滚动、开局、真实出牌、暂停恢复、横竖投影。 · rules scroll, deal, real discard, pause and resume, rotated projection.
+- 代表路线 · Representative route: 规则滚动、开局、暂停恢复；PC 真实出牌，Fold7 竖屏旋转投影。 · Rules scroll, deal, pause and resume; actual discard on PC, rotated portrait projection on Fold7.
 - PC: round rAF p95 4.3 → 4.3 ms; title 180 rAF engine submissions 0 → 1.
 - Fold7: 121/121 rAF: p95/max 16.7/16.7 → 16.7/16.7 ms.
 - 同一竖屏旋转列表 offset −115.62，默认 WebGPU/按需。原静态 felt 保留，#505 WebGL2 捕获不是等价替代。 / Same rotated scroll offset on physical Fold7; default WebGPU/on-demand; keep the already rasterized felt rather than a redundant WebGL2 bake.
