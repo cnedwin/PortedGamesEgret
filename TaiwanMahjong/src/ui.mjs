@@ -65,27 +65,27 @@ function plan({ label, modal = false, items, skin }) {
     parent.children.push(row.part);
   }
   const description = { label, modal, area: 'screen', root };
-  if (skin !== undefined) description.skin = {
+  description.skin = {
+    accent: 0x9d7438,
     ...skin,
-    ...(skin.radius === undefined ? {} : { radius: skin.radius * UNIT }),
-    ...(skin.size === undefined ? {} : { size: skin.size * UNIT })
+    ...(skin?.radius === undefined ? {} : { radius: skin.radius * UNIT }),
+    ...(skin?.size === undefined ? {} : { size: skin.size * UNIT })
   };
   const signature = JSON.stringify([description, [...entries.values()].map(({ item, name }) => [
-    name, !!item.action, item.role, !!styleOf(item)
+    name, !!item.action, !!item.pointerOnly, item.role, !!styleOf(item)
   ])]);
   return { description, entries, signature };
 }
 
-/** Renders table screens with Egret views and keeps their pointer, keyboard and assistive actions aligned. */
+/** Adapts table coordinates and decoration to native views; the engine owns focus. */
 export function createUi(game, semantics) {
   const layers = new Map();
   const canvas = game.canvas;
-  const outline = game.sprite(undefined, game.ui);
   const buildWithSemantics = bridges.get(semantics) ?? ((_describe, build) => build());
-  let nextOrder = 0, selected = null, modal = null, origin = 'pointer', keyboard = true;
-  outline.touchEnabled = false;
-  outline.visible = false;
+  let nextOrder = 0;
   if (!canvas.hasAttribute('tabindex')) canvas.tabIndex = 0;
+  const frontModal = () => [...layers.values()].findLast(record => record.modal);
+  const publish = () => semantics?.publish();
 
   function bounds(record, entry) {
     const native = record.describe.get(entry.name)?.().bounds;
@@ -95,53 +95,20 @@ export function createUi(game, semantics) {
     return rectangle(Math.min(a.x, b.x) / UNIT, Math.min(a.y, b.y) / UNIT,
       Math.abs(b.x - a.x) / UNIT, Math.abs(b.y - a.y) / UNIT);
   }
-  const control = ({ item }) => item.type === 'button' && !!item.action;
 
-  function eligible(record, entry) {
-    if (!entry || !record.view.shows(entry.name) || (modal !== null && record.key !== modal) ||
-      read(entry.item.disabled) === true) return false;
-    const rect = bounds(record, entry);
-    return rect.w > 0 && rect.h > 0;
-  }
-
-  function find(name, active = false) {
+  function find(name) {
     for (const record of [...layers.values()].reverse()) {
       const entry = record.entries.get(name);
-      if (entry && (!active || eligible(record, entry))) return { record, entry };
+      if (entry) return { record, entry };
     }
     return null;
   }
 
-  function paintFocus() {
-    const record = layers.get(selected?.key), entry = record?.entries.get(selected?.name);
-    if (!keyboard || !entry || !eligible(record, entry)) {
-      if (outline.visible) outline.graphics.clear();
-      outline.visible = false;
-      return;
-    }
-    outline.visible = true;
-    const { x, y, w, h } = bounds(record, entry);
-    outline.graphics.clear()
-      .lineStyle(2.25, 0x9d7438)
-      .drawRoundRect((x - 2) * UNIT, (y - 2) * UNIT, (w + 4) * UNIT, (h + 4) * UNIT, 6);
-    game.ui.setChildIndex(outline, game.ui.numChildren - 1);
-  }
-
-  function focus(name, { via } = {}) {
-    const found = find(name, true);
-    if (!found || !control(found.entry)) return false;
-    selected = { key: found.record.key, name };
-    if (via !== undefined) keyboard = via !== 'pointer';
+  function focus(name) {
+    const record = find(name)?.record;
+    if (!record?.view.focus(name)) return false;
     canvas.focus({ preventScroll: true });
-    paintFocus();
-    return true;
-  }
-
-  function activate(name, via = 'keyboard') {
-    const found = find(name, true);
-    const action = found?.entry.item.action;
-    if (!action) return false;
-    action({ via });
+    publish();
     return true;
   }
 
@@ -155,7 +122,7 @@ export function createUi(game, semantics) {
     if (!entry) return definition;
     record.describe.set(name, definition.describe);
     const role = entry.item.role ?? definition.role;
-    const config = {
+    return {
       ...definition,
       role,
       describe() {
@@ -172,22 +139,11 @@ export function createUi(game, semantics) {
           name: label || (role === 'button' || role === 'switch' || role === 'tab' ? name : ''),
           hidden: item.decorative === true || initial.hidden || !rect?.width || !rect.height ||
             ((role === 'text' || role === 'heading') && !label.trim()),
-          focused: selected?.key === record.key && selected.name === name,
+          focused: initial.focused,
           bounds: rect
         };
       }
     };
-    if (control(entry)) config.onFocus = () => { focus(name, { via: 'semantics' }); };
-    if (definition.onActivate !== undefined) config.onActivate = () => {
-      const previous = origin;
-      origin = 'semantics';
-      try {
-        definition.onActivate();
-      } finally {
-        origin = previous;
-      }
-    };
-    return config;
   }
 
   function bindParts(record) {
@@ -199,10 +155,13 @@ export function createUi(game, semantics) {
       };
       if (words.has(type)) binding.text = () => current().invisible ? '' : read(current().text) ?? '';
       if (type === 'button') binding.disabled = () => read(current().disabled) === true;
-      if (item.action) binding.tap = () => {
-        const part = current();
-        if (read(part.disabled) !== true) part.action?.({ via: origin });
-      };
+      if (item.action) {
+        if (type === 'panel' && item.pointerOnly) binding.pointerOnly = true;
+        binding.tap = () => {
+          const part = current();
+          if (read(part.disabled) !== true) part.action?.();
+        };
+      }
       bindings[name] = binding;
     }
     return bindings;
@@ -212,7 +171,9 @@ export function createUi(game, semantics) {
     for (const [name, { item, w, h }] of record.entries) {
       const host = view.get(name);
       const style = styleOf(item);
-      host.alpha = item.invisible ? 0 : read(item.alpha) ?? (style && item.type === 'button' && read(item.disabled) ? 0.58 : 1);
+      host.alpha = read(item.alpha) ?? (style && item.type === 'button' && read(item.disabled) ? 0.58 : 1);
+      // Keep hit testing and the native focus outline; only the button's fill is hidden over a real tile.
+      if (item.invisible) host.graphics.clear();
       if (style || item.decorate) {
         let visual = record.decorations.get(name);
         if (visual?.host !== host) {
@@ -241,105 +202,86 @@ export function createUi(game, semantics) {
   function arrange() {
     for (const record of layers.values()) {
       for (const { name, item } of record.entries.values()) {
-        if (styleOf(item)) record.view.get(name).graphics.clear();
+        if (styleOf(item) || item.invisible) record.view.get(name).graphics.clear();
       }
     }
-    paintFocus();
-  }
-
-  function sync() {
-    const records = [...layers.values()];
-    modal = records.findLast(record => record.modal)?.key ?? null;
-    for (const record of records) {
-      if (modal !== null && modal !== record.key) record.view.deactivate();
-      else record.view.activate();
-    }
-    const record = layers.get(selected?.key), entry = record?.entries.get(selected?.name);
-    if (!entry || !eligible(record, entry) || !control(entry)) selected = null;
-    paintFocus();
-    semantics?.publish();
   }
 
   function show(key, options) {
-    const { description, entries, signature } = plan(options);
+    const { description, entries, signature: layoutSignature } = plan(options);
+    const signature = JSON.stringify([layoutSignature, options.initialFocus, !!options.dismiss, !!options.resume]);
     const previous = layers.get(key);
     if (previous?.signature === signature) {
+      previous.options = options;
+      previous.pending = null;
       previous.entries = entries;
       previous.view.refresh();
       applyParts(previous, previous.view);
-      if (selected?.key === key && !eligible(previous, entries.get(selected.name))) selected = null;
-      paintFocus();
+      publish();
       return previous.view;
+    }
+    const front = frontModal();
+    if (previous && front && front !== previous) {
+      // A covered view keeps its existing engine handle until it can restore the modal's original opener.
+      previous.pending = options;
+      return previous.view;
+    }
+
+    const priorFocus = previous?.view.focused;
+    const scrollOffsets = new Map();
+    if (previous) {
+      for (const [name, { item }] of previous.entries) {
+        if (item.scroll) scrollOffsets.set(name, previous.view.scroll(name).offset);
+      }
     }
     const oldIndex = previous === undefined ? undefined : game.ui.getChildIndex(previous.root);
     previous?.view.close();
     const record = {
       key, signature, entries, modal: description.modal, order: previous?.order ?? ++nextOrder,
-      decorations: new Map(), describe: new Map(),
-      returnFocus: previous?.returnFocus ?? selected
+      options, pending: null, decorations: new Map(), describe: new Map()
     };
     const insertion = game.ui.numChildren;
     record.view = buildWithSemantics(definition => semanticPart(record, definition), () => game.show(description, {
       bind: bindParts(record),
-      built: view => applyParts(record, view)
+      built: view => applyParts(record, view),
+      ...(description.modal && options.initialFocus ? { initialFocus: options.initialFocus } : {}),
+      ...(description.modal && options.dismiss ? { dismiss: view => record.options.dismiss(view) } : {}),
+      ...(description.modal && options.resume ? { resume: view => record.options.resume(view) } : {})
     }));
     record.root = game.ui.getChildAt(insertion);
     if (oldIndex !== undefined) game.ui.setChildIndex(record.root, oldIndex);
     layers.set(key, record);
-    if (oldIndex === undefined && !record.modal && modal !== null) {
-      game.ui.setChildIndex(record.root, game.ui.getChildIndex(layers.get(modal).root));
+    if (oldIndex === undefined && !record.modal && front) {
+      game.ui.setChildIndex(record.root, game.ui.getChildIndex(front.root));
     }
+    for (const [name, offset] of scrollOffsets) {
+      if (entries.get(name)?.item.scroll) record.view.scroll(name).scrollTo(offset);
+    }
+    if (priorFocus && entries.has(priorFocus)) record.view.focus(priorFocus);
+    if (record.modal && !document.hidden) canvas.focus({ preventScroll: true });
     record.view.refresh();
     applyParts(record, record.view);
-    sync();
+    publish();
     return record.view;
   }
 
   function hide(key) {
     const record = layers.get(key);
     if (!record) return;
-    record.view.close();
     layers.delete(key);
-    if (selected?.key === key || (selected === null && record.modal)) {
-      selected = record.modal ? record.returnFocus : null;
+    record.view.close();
+    const front = frontModal();
+    for (const layer of [...layers.values()]) {
+      if (layer.pending && (!front || layer === front)) show(layer.key, layer.pending);
     }
-    sync();
+    publish();
   }
 
-  function keydown(event) {
-    if (event.defaultPrevented || event.ctrlKey || event.metaKey || event.altKey) return;
-    if (event.key === 'Tab') {
-      keyboard = true;
-      const controls = [...layers.values()].flatMap(record =>
-        [...record.entries.values()].filter(entry => control(entry) && eligible(record, entry))
-          .map(entry => ({ key: record.key, name: entry.name })));
-      if (!controls.length) return;
-      event.preventDefault();
-      const from = controls.findIndex(({ key, name }) => selected?.key === key && selected.name === name);
-      const next = event.shiftKey ? (from < 0 ? controls.length - 1 : from + controls.length - 1) : from + 1;
-      focus(controls[next % controls.length].name, { via: 'keyboard' });
-    } else if (event.key === 'Enter' || event.key === ' ') {
-      keyboard = true;
-      if (selected === null) return;
-      event.preventDefault();
-      if (!event.repeat) activate(selected.name);
-      paintFocus();
-    }
-  }
-
-  function pointerdown() {
-    keyboard = false;
-    paintFocus();
-  }
-
-  // The embedded engine takes Space in its target listener. Route focused UI controls first.
-  canvas.addEventListener('keydown', keydown, true);
-  canvas.addEventListener('pointerdown', pointerdown);
   return {
-    show, hide, focus, activate, arrange, refreshFocus: paintFocus,
+    show, hide, focus, arrange,
+    view(key) { return layers.get(key)?.view; },
     get(name) {
-      const found = find(name);
-      return found?.record.view.get(name);
+      return find(name)?.record.view.get(name);
     },
     rect(name) {
       const found = find(name);
@@ -354,56 +296,17 @@ export function createUi(game, semantics) {
       const pixels = canvas.getBoundingClientRect();
       return { x: pixels.left + anchor.x * pixels.width / game.width, y: pixels.top + anchor.y * pixels.height / game.height };
     },
-    blur() {
-      selected = null;
-      paintFocus();
+    get focused() {
+      for (const record of [...layers.values()].reverse()) {
+        if (record.view.focused !== undefined) return record.view.focused;
+      }
+      return null;
     },
-    get focused() { return selected?.name ?? null; },
-    get modal() { return modal; },
+    get modal() { return frontModal()?.key ?? null; },
     dispose() {
-      canvas.removeEventListener('keydown', keydown, true);
-      canvas.removeEventListener('pointerdown', pointerdown);
-      for (const record of layers.values()) record.view.close();
+      for (const record of [...layers.values()].reverse()) record.view.close();
       layers.clear();
-      game.remove(outline);
-      semantics?.publish();
+      publish();
     }
   };
-}
-
-// A rotated viewport needs its local axes when deciding whether to take a scrolling gesture.
-export function scrollRotatedTouch(game, visibleView, name) {
-  const pointer = game.browser.pointer;
-  if (!pointer) return;
-  let drag;
-  const dispose = pointer.observe(({ kind, contact, target }) => {
-    const view = game.ui.rotation === 0 ? null : visibleView();
-    if (!view || contact.session.pointerType !== 'touch') return;
-    const viewport = view.get(name), scroll = view.scroll(name);
-    if (drag?.viewport !== viewport) drag = undefined;
-    if (!viewport || !scroll) return;
-    const local = viewport.globalToLocal(contact.globalX, contact.globalY);
-    if (kind === 'begin' && !drag && scroll.maximum > 0) {
-      let owner = target;
-      while (owner && owner !== viewport) owner = owner.parent;
-      if (owner) drag = { viewport, session: contact.session, local, offset: scroll.offset, dragging: false };
-      return;
-    }
-    if (drag?.session !== contact.session) return;
-    if (kind !== 'move') {
-      drag = undefined;
-      return;
-    }
-    const dx = local.x - drag.local.x, dy = local.y - drag.local.y;
-    if (!drag.dragging) {
-      if (Math.abs(dy) <= 12 || Math.abs(dx) >= Math.abs(dy)) return;
-      if (!pointer.capture(contact.session, viewport)) {
-        drag = undefined;
-        return;
-      }
-      drag.dragging = true;
-    }
-    scroll.scrollTo(drag.offset - dy);
-  });
-  game.scope.use({ dispose });
 }

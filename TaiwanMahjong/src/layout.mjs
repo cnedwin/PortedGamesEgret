@@ -7,7 +7,19 @@
 import { CELL } from './tiles.mjs';
 
 export const STAGE = { width: 1280, height: 720 };
+export const STAGE_SCALE = 0.75;
 export const CENTRE = { x: 640, y: 360, half: 76 };
+
+/** Preserve the logical table and pick enough native pixels for its actual display size.
+ * The 2× ceiling keeps both the render target and Egret's text atlas within the existing mobile budget.
+ */
+export function displayPixelRatio(cssWidth, cssHeight, tall, deviceRatio) {
+  const width = (tall ? STAGE.height : STAGE.width) * STAGE_SCALE;
+  const height = (tall ? STAGE.width : STAGE.height) * STAGE_SCALE;
+  const dpr = Number.isFinite(deviceRatio) && deviceRatio > 0 ? deviceRatio : 1;
+  const displayDensity = Math.min(cssWidth / width, cssHeight / height) * dpr;
+  return Math.min(2, Math.max(1, dpr, displayDensity));
+}
 
 /** Scales of a tile cell (128 × 172 pixels) in each place. */
 export const SCALE = { hand: 0.54, meld: 0.42, river: 0.25, small: 0.25, back: 0.28, side: 0.26, flower: 0.2 };

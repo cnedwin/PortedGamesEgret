@@ -72,6 +72,18 @@ async function chooseBackend(asked) {
  * pointer input that threw, which ends that input, is told as a failure of the loop is: to `onError`, or to the page,
  * where the console shows it. Without this it was told to no one, and the game went on without its input.
  */
+/** Tells a tool's `globalThis.__egretAgent.warning`, where a page has one, of a warning; what it throws is the tool's. */
+function tellAgent(warning) {
+    const agent = globalThis.__egretAgent;
+    if (typeof agent?.warning !== 'function')
+        return;
+    try {
+        agent.warning(warning);
+    }
+    catch {
+        /* The tool's own failure, not the game's. */
+    }
+}
 export function gameDiagnostics(onError) {
     return diagnostic => {
         if (diagnostic.severity !== 'error')
@@ -189,6 +201,7 @@ export async function createBrowserGame(options) {
         });
         let nearLimit = false, refusing = false;
         const warn = (warning) => {
+            tellAgent(Object.freeze(warning));
             if (onWarning === undefined)
                 return;
             try {
