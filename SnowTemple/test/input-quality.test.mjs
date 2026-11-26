@@ -59,6 +59,48 @@ test('settings input suppression drops taps and resumes with a clean state, but 
   } finally { globalThis.addEventListener = oldAdd; globalThis.document = oldDocument; }
 });
 
+test('Tab remains focus navigation and canceling a rebind notifies its settings row', () => {
+  const oldAdd = globalThis.addEventListener, oldDocument = globalThis.document;
+  const events = {};
+  globalThis.addEventListener = (type, listener) => { events[type] = listener; };
+  globalThis.document = { hidden: false, addEventListener() {} };
+  const keydown = (code) => {
+    const event = { code, defaultPrevented: false, preventDefault() { this.defaultPrevented = true; } };
+    events.keydown(event);
+    return event;
+  };
+  try {
+    const keys = { ...DEFAULT_KEYS, attack: 'Tab', guard: 'Mouse0', stars: 'KeyR' };
+    const input = createInput({ addEventListener() {} }, keys);
+    assert.equal(keys.attack, 'Mouse2');
+    assert.equal(keys.guard, 'Mouse0');
+    assert.equal(keys.stars, 'KeyR');
+    assert.equal(keydown('Tab').defaultPrevented, false);
+    assert.equal(input.sample({ x: 0, z: 0 }, null).attack, false);
+
+    input.setEnabled(false);
+    const commits = [], cancels = [];
+    const ask = () => input.ask(code => commits.push(code), code => cancels.push(code));
+    ask();
+    assert.equal(keydown('Tab').defaultPrevented, false);
+    keydown('KeyT');
+    ask();
+    assert.equal(keydown('Escape').defaultPrevented, true);
+    keydown('KeyT');
+    assert.deepEqual(cancels, ['Tab', 'Escape']);
+    assert.deepEqual(commits, []);
+    ask();
+    keydown('KeyT');
+    assert.deepEqual(commits, ['KeyT']);
+
+    let observed;
+    input.on('any', (code, event) => { if (code === 'F3') observed = event; });
+    const event = keydown('F3');
+    assert.equal(observed, event);
+    assert.equal(event.defaultPrevented, false);
+  } finally { globalThis.addEventListener = oldAdd; globalThis.document = oldDocument; }
+});
+
 test('a touch control has one owner; another finger cannot steal or release it', async () => {
   const { createPointerOwner } = await import('../src/input.mjs');
   const owner = createPointerOwner();

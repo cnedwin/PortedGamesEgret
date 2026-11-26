@@ -1,7 +1,7 @@
 // The people of the chapter: sculpted figures on a shared skeleton, and the poses that move them.
 // A figure faces +z; its left is +x. Poses are sets of joint angles; each frame every joint eases toward
 // the pose its state asks for, which is what gives the cuts their snap and the walk its weight.
-import { Geometry3D, InstancedMesh3D, MESH3D_LIMITS, Material3D, Mesh3D, Object3D, Skeleton3D, createCustomShader3D, createCylinderGeometry3D, createStandardMaterial3D, mat4LookAt, quatFromRotationMatrix, quatMultiply, quatNormalize, quatSlerp, vec3TransformQuat } from '@egret/engine/world3d';
+import { Geometry3D, MESH3D_LIMITS, Material3D, Mesh3D, Object3D, Skeleton3D, createCustomShader3D, createCylinderGeometry3D, createStandardMaterial3D, mat4LookAt, quatFromRotationMatrix, quatMultiply, quatNormalize, quatSlerp, vec3TransformQuat } from '@egret/engine/world3d';
 import { LOCOMOTION, sampleLocomotion } from './locomotion.mjs';
 import { BIND, BONES, HANDS, JOINTS, YARD_BONES, YARD_GRIPS } from './rig.mjs';
 import { groundBoots } from './boot-contact.mjs';
@@ -99,10 +99,10 @@ const ARTICULATED_POSED = [...POSED, 'footL', 'footR'];
 const bowCord = createCylinderGeometry3D({ radiusTop: 0.0045, radiusBottom: 0.0045, height: 1, radialSegments: 5 });
 const bowCordMaterial = createStandardMaterial3D({ color: 0xc9c0ae, roughness: 0.82 });
 /**
- * Bowstrings as the renderer draws them: one by one, and as one instanced batch once four bowmen are in
- * view. The bowmen arrive after the game has started, so neither would otherwise be ready before then.
+ * A representative ordinary bowstring for the renderer to prepare both plain and auto-batched variants.
+ * Bowmen arrive after the opening, so these programs are needed before the first fight.
  */
-export const bowstringDraws = () => [new Mesh3D(bowCord, bowCordMaterial), new InstancedMesh3D(bowCord, bowCordMaterial, 1)];
+export const bowstringDraws = () => [new Mesh3D(bowCord, bowCordMaterial)];
 
 /** Build one figure of the given kind from the sculpted models. */
 export function createFigure(kind, models, detail = 'high', externalBody) {

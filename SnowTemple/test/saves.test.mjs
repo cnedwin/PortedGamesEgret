@@ -5,7 +5,28 @@ import '../vendor/node-register.mjs';
 
 const { createMemorySaveStorage } = await import('@egret/engine/kit');
 const { openProgress, recordClear, recordStand } = await import('../src/progress.mjs');
-const { openSave } = await import('../src/saves.mjs');
+const { openSave, snowSaveStorage } = await import('../src/saves.mjs');
+
+test('browser storage stays available for reads when writes exceed quota', () => {
+  const legacy = { open: 3, tier: 2, marks: { 1: '乙' }, wave: 7 };
+  const stored = createMemorySaveStorage({ 'snow-temple-progress': JSON.stringify(legacy) });
+  let writes = 0;
+  stored.setItem = () => {
+    writes++;
+    throw new Error('quota');
+  };
+  const storage = snowSaveStorage(() => stored);
+  assert.equal(writes, 0);
+  assert.deepEqual(openProgress(storage).progress, legacy);
+});
+
+test('unreadable browser storage uses memory for the current visit', () => {
+  const storage = snowSaveStorage(() => ({ getItem() { throw new Error('denied'); } }));
+  const { progress, save } = openProgress(storage);
+  recordClear(progress, 1, '甲');
+  assert.ok(save());
+  assert.equal(openProgress(storage).progress.open, 2);
+});
 
 test('what is earned is kept: a clear opens the next tier, and only a better mark or a farther wave replaces the old', () => {
   const storage = createMemorySaveStorage(),
@@ -36,6 +57,25 @@ test('a record from before saves carried a version is read, not set aside', () =
 
   const settings = createMemorySaveStorage({ 'snow-temple-settings': JSON.stringify({ quality: 'low', keys: { dodge: 'KeyC' } }) });
   assert.deepEqual(openSave(settings, 'snow-temple-settings', { defaults: () => ({}) }).data, { quality: 'low', keys: { dodge: 'KeyC' } });
+});
+
+test('a valid legacy record remains usable if writing its version envelope fails', () => {
+  const key = 'snow-temple-progress';
+  const legacy = { open: 3, tier: 2, marks: { 1: '甲', 2: '乙' }, wave: 7 };
+  const original = JSON.stringify(legacy);
+  const storage = createMemorySaveStorage({ [key]: original });
+  const write = storage.setItem;
+  storage.setItem = (keyToWrite, value) => {
+    if (keyToWrite === key) throw new Error('quota');
+    write(keyToWrite, value);
+  };
+  const { progress, save } = openProgress(storage);
+  assert.deepEqual(progress, legacy);
+  assert.equal(storage.getItem(key + '.unread'), null);
+  assert.ok(recordStand(progress, 9));
+  assert.equal(save(), false);
+  assert.equal(storage.getItem(key), original);
+  assert.equal(progress.wave, 9);
 });
 
 test('a record that cannot be trusted starts again within bounds, and the old text is kept', () => {

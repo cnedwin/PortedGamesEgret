@@ -19,6 +19,17 @@ export function keyName(code) {
 }
 
 export function createInput(canvas, keys) {
+  // Tab is used to reach the settings and title buttons. Recover older
+  // assignments without moving any other action to a different key.
+  const configurable = Object.keys(DEFAULT_KEYS);
+  const occupied = new Set(configurable.map(action => keys[action]));
+  for (const action of configurable) {
+    if (keys[action] !== 'Tab') continue;
+    const preferred = DEFAULT_KEYS[action];
+    const available = occupied.has(preferred) ? Object.values(DEFAULT_KEYS).find(code => !occupied.has(code)) : preferred;
+    keys[action] = available;
+    occupied.add(available);
+  }
   const keyboard = new Set(),
     touch = new Set(),
     canvasPointers = new Map(),
@@ -28,7 +39,7 @@ export function createInput(canvas, keys) {
     listeners = { bag: () => {}, any: () => {}, reset: () => {} };
   let asking = null, enabled = true;
 
-  const actionOf = (code) => Object.keys(keys).find((action) => keys[action] === code);
+  const actionOf = (code) => code === 'Tab' ? undefined : Object.keys(keys).find((action) => keys[action] === code);
   function held(action) {
     if (keyboard.has(action) || touch.has(action)) return true;
     for (const owner of canvasPointers.values()) {
@@ -38,10 +49,13 @@ export function createInput(canvas, keys) {
   }
   function press(code, event, owner) {
     if (asking) {
-      // The next key or button pressed becomes the binding being asked for.
-      event?.preventDefault();
-      if (code !== 'Escape') asking(code);
+      const { commit, cancel } = asking;
       asking = null;
+      // Let Tab move focus naturally from the row after leaving the prompt.
+      if (code === 'Tab') return void cancel?.(code);
+      event?.preventDefault();
+      if (code === 'Escape') cancel?.(code);
+      else commit(code);
       return;
     }
     if (!enabled) return;
@@ -59,7 +73,7 @@ export function createInput(canvas, keys) {
   }
   addEventListener('keydown', (event) => {
     if (event.repeat) return void (actionOf(event.code) && event.preventDefault());
-    listeners.any(event.code);
+    listeners.any(event.code, event);
     press(event.code, event);
   });
   addEventListener('keyup', (event) => release(event.code));
@@ -82,7 +96,7 @@ export function createInput(canvas, keys) {
     const owner = { type: event.pointerType, buttons: new Map() };
     canvasPointers.set(event.pointerId, owner);
     const code = 'Mouse' + event.button;
-    listeners.any(code);
+    listeners.any(code, event);
     press(code, event, owner);
   });
   // A chord only sends pointerup for the last button. Reconcile the actual
@@ -121,8 +135,8 @@ export function createInput(canvas, keys) {
       reset();
     },
     on: (name, call) => (listeners[name] = call),
-    /** Ask for the next key pressed, for rebinding. */
-    ask: (call) => (asking = call),
+    /** Capture the next key or clear the prompt when the row is redrawn. */
+    ask: (commit, cancel) => (asking = commit ? { commit, cancel } : null),
     /** The stick and the buttons on glass feed the same state. */
     setStick(x, z) {
       if (!enabled) return;

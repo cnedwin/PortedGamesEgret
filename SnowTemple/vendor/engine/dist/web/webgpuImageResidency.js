@@ -1,5 +1,5 @@
 /** Accumulates demand into the submission's existing maps without taking ownership of any native resources. */
-export function collectWebGPUImageDemand(projectionPlan, draws, shared, directory, enabled, epoch, hits, candidates) {
+export function collectWebGPUImageDemand(projectionPlan, draws, shared, directory, enabled, epoch, hits, candidates, borrowSubmitted) {
     const buckets = new Map();
     let bytes = 0;
     for (const draw of draws) {
@@ -19,7 +19,9 @@ export function collectWebGPUImageDemand(projectionPlan, draws, shared, director
             buckets.set(view.image, bucket);
         }
         const entry = bucket.get(cropKey);
-        if (enabled && entry?.epoch === epoch && entry.state === 'ready')
+        if (enabled &&
+            entry?.epoch === epoch &&
+            (entry.state === 'ready' || (borrowSubmitted && entry.state === 'submitted')))
             hits.set(draw.viewIndex, entry);
         else {
             candidates.set(draw.viewIndex, {

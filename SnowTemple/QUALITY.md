@@ -5,6 +5,45 @@
 Checked against QUALITY-CHECKLIST.md. The automatic items were measured by `node tools/quality.mjs SnowTemple`, which writes
 this file; items by hand or on a device are marked not run until someone runs them.
 
+## 2026-11-26：引擎 `8e70dcb3` 实机回归 · Engine refresh on physical devices
+
+官方引擎工具生成 306 个文件，逻辑、数值、模型、动画、音频与原主干一致。适配原生自动实例化预热，去掉已不需要的特定硬件阴影禁用，保留有效像素比的动态调节及旧档读取容错。Node 回归 92/92 通过。 · The official vendor tool generated 306 files. Rules, balance, models, animation and audio are unchanged. Auto-instancing program preparation uses the native option, the obsolete adapter-specific shadow disable is removed, and effective render-density control and legacy-save fallback are retained. All 92 Node tests passed.
+
+### 实际 PC · Physical PC
+
+Windows Edge 158.0.4370.33、RTX 5090 Laptop GPU (ANGLE/D3D11)、WebGL2，实际浏览器键鼠事件。新档从标题和雪路打到草料场两波、山门、陆谦两阶段，结算甲等，未倒地；完整流程、设置按键取消/Tab、暂停、性能读数、重战及刷新读档通过。实时阴影开启、没有上下文丢失，五个高档角色均加载成功且无错误。正常获得的 `open:2` 和第一重甲等记录在刷新后保留。 · Real Windows Edge with hardware WebGL2 and browser keyboard/mouse input completed the chapter. Settings, pause, performance readout, rematch and reload passed. Shadows remained enabled, the WebGL context remained valid and all five high-detail characters loaded. The naturally earned second tier and first-tier A mark survive reload.
+
+| 场景 · Scene | P95 帧间隔 · Frame interval | Max |
+| --- | ---: | ---: |
+| 雪路开场动画 · Road cinematic | 8.2 ms | 25.1 ms |
+| 雪路操作 · Road | 4.3 ms | 111.3 ms |
+| 草料场 · Yard | 4.4 ms | 72.7 ms |
+| 山门 · Gate | 8.3 ms | 9.0 ms |
+| 首领第一阶段 · Boss I | 8.3 ms | 8.7 ms |
+| 首领第二阶段 · Boss II | 8.3 ms | 10.7 ms |
+
+PC 为高刷新率浏览器帧间隔，不等价于显示器真实呈现或 GPU 独立耗时。3.90 秒标题就绪；雪路与草料场仍有少量长帧，不能据此宣布启动卡顿完全消失。音乐层与场景对白媒体事件通过监测，未做人耳听感验收。 · PC intervals are high-refresh browser callbacks rather than measured presentation or isolated GPU time. Title ready in 3.90 s. Occasional long road/yard frames remain. Music and dialogue media events were observed; no subjective speaker listening.
+
+雪路 111.3 ms 与一条 112.4 ms 浏览器长动画帧对齐，发生于设置操作之前；该记录无归因脚本或主线程阻塞，不能区分 GPU、音频、引擎提交或浏览器调度。草料场 72.7 ms 发生在奖励选择面板，详细追踪已结束，两者保留为后续专项复现。 · The 111.3 ms road interval aligned with a 112.4 ms browser long-animation frame before settings interaction, with no attributed script or blocking; cause remains unresolved. The 72.7 ms yard interval coincided with the reward modal outside the detailed trace window. Neither has a proven engine or application cause.
+
+### Galaxy Z Fold7 实机 · Galaxy Z Fold7 physical device
+
+Android 17、Chrome 157、WebGL2，873×325 CSS 横屏，DPR 2.625，实际 GL 画布 1091×406；实时阴影、分块灯光均开启。使用 CDP 真机触控，从开场正常打完整章，结算甲等 1:30，弹反 5、回马枪 9、倒地 0。重战后实际战败，演出正常；独立静音恢复、八段对白媒体事件、变幅摇杆、进度与设置刷新读回均通过。508/508 资源指纹匹配、零页面或加载错误。 · Automated CDP touch on the physical Fold7 completed the normal chapter, earned grade A in 1:30, verified rematch and defeat, independent mute, eight dialogue events, stick amplitude and progress/settings reload. All 508 expected resource fingerprints matched; no page or load errors.
+
+| 场景 · Scene | P95 帧间隔 · Frame interval | Max | 样本 · Samples |
+| --- | ---: | ---: | ---: |
+| 雪路 · Road | 17.3 ms | 19.2 ms | 808 |
+| 草料场 · Yard | 17.2 ms | 37.0 ms | 1814 |
+| 山门 · Gate | 17.4 ms | 26.0 ms | 316 |
+| 首领第一阶段 · Boss I | 17.2 ms | 22.4 ms | 1193 |
+| 首领第二阶段 · Boss II | 17.3 ms | 21.9 ms | 1125 |
+
+实测章节样本内没有超过 50 ms 的帧间隔。手机测试环境、方向和连接已恢复；不把自动注入触摸称为真人操作，也未覆盖低端手机、多种硬件或扬声器实听。 · No interval over 50 ms in the recorded chapter. Test-device settings and connections were restored. This is physical-device automation, not human-finger or speaker acceptance, nor broad hardware qualification.
+
+### 可重复浏览器验收 · Repeatable browser acceptance
+
+新增 `node test/accept.mjs`：固定种子 7、低档画质和模型、640×360 无头 Chromium／SwiftShader，验证标题与两个入口、实际点选章节、角色进入雪路及开场游戏时钟推进。初次截图生成和不带 `--update` 的复跑均 7/7，零页面或 HTTP 错误；审核过的标题截图基线差异 0.77%。这是自动冒烟检查，不替代上面的实机完整章节。 · Fixed-seed, low-detail headless smoke: title and entry controls, a trusted Chapter click and advancing opening clock. Both capture and normal runs passed 7/7, with no errors and 0.77% screenshot difference. This does not substitute for the physical-device chapter runs.
+
 ## 测量环境 · Where it was measured
 
 - 日期 · Date: 2026-11-21

@@ -33,6 +33,7 @@ const el = (tag, attrs = {}, html = '') => {
 };
 const icon = (name, className = '') => `<svg class="${className}" viewBox="0 0 40 40" aria-hidden="true">${ICONS[name]}</svg>`;
 const actionFace = (name) => `${icon(name, 'action-icon')}${name === 'attack' ? icon('counter', 'counter-icon') : ''}<span class="action-label">${ACTION_LABELS[name]}</span>`;
+const meterFace = '<svg class="pad-meter" viewBox="0 0 100 100" aria-hidden="true"><circle cx="50" cy="50" r="48.5" pathLength="1" transform="rotate(-90 50 50)" vector-effect="non-scaling-stroke" stroke-dasharray="0 1"/></svg>';
 const bar = (kind) => `<div class="bar ${kind}">${kind === 'hp' ? '<i class="lag"></i>' : ''}<i class="fill"></i></div>`;
 
 export function createHud(root, input, settings, { onSettings, onStart, onUiSound, onTier, onPick }) {
@@ -67,6 +68,7 @@ export function createHud(root, input, settings, { onSettings, onStart, onUiSoun
   // ---- the row of deeds, for keys and for thumbs ---------------------------------------------
   const deeds = {},
     pads = {},
+    padMeters = {},
     padOwners = [];
   const order = DEEDS;
   for (const name of order) {
@@ -76,7 +78,9 @@ export function createHud(root, input, settings, { onSettings, onStart, onUiSoun
   }
   const PAD_PLACES = { attack: [0, 0], dodge: [96, 6], guard: [66, 92], stars: [0, 98], rain: [8, 170], drink: [136, 112], glide: [164, 40] };
   for (const name of order) {
-    const node = el('button', { class: 'pad', 'data-deed': name, type: 'button', 'aria-label': DEED_NAMES[name] }, `${actionFace(name)}${name === 'drink' ? '<em>3</em>' : ''}`);
+    const hasMeter = name === 'attack' || name === 'stars' || name === 'rain';
+    const node = el('button', { class: 'pad', 'data-deed': name, type: 'button', 'aria-label': DEED_NAMES[name] }, `${actionFace(name)}${name === 'drink' ? '<em>3</em>' : ''}${hasMeter ? meterFace : ''}`);
+    if (hasMeter) padMeters[name] = { arc: node.querySelector('.pad-meter circle'), charge: '0.000' };
     if (name === 'attack') node.classList.add('main');
     node.style.setProperty('--pad-right', PAD_PLACES[name][0]);
     node.style.setProperty('--pad-bottom', PAD_PLACES[name][1]);
@@ -352,19 +356,25 @@ export function createHud(root, input, settings, { onSettings, onStart, onUiSoun
 
   const panel = $('#settings');
   const CHOICES = {
-    quality: ['画质', '自动会按帧率升降；选定后固定不变。高档草更密、阴影更清晰、分辨率更高。', [['auto', '自动'], ['low', '低'], ['mid', '中'], ['high', '高']]],
+    quality: ['画质', '自动按帧率调整分辨率。高档草更密，阴影更清晰。', [['auto', '自动'], ['low', '低'], ['mid', '中'], ['high', '高']]],
     models: ['模型', '人物、兵器和建筑的精细程度。高档约 23MB，脸和手最细，带布纹和皮肤细节；低档适合手机。重新载入后生效。', [['auto', '自动'], ['low', '低'], ['mid', '中'], ['high', '高']]],
     particles: ['粒子', '枪光火星、雪尘和飘雪的数量。', [['few', '少'], ['some', '标准'], ['many', '多']]],
     sound: ['声音', '风声、配乐和兵刃声。', [['off', '关'], ['on', '开']]]
   };
-  function drawSettings() {
+  function drawSettings(focusKey) {
+    input.ask();
     const rows = Object.entries(CHOICES)
       .map(([key, [name, hint, options]]) => `<div class="row"><div>${name}<small>${hint}</small></div><div class="pick">${options.map(([value, label]) => `<button type="button" data-set="${key}" data-value="${value}" class="${settings[key] === value ? 'on' : ''}">${label}</button>`).join('')}</div></div>`)
       .join('');
     const keys = Object.keys(DEFAULT_KEYS)
       .map((action) => `<div class="row"><div>${DEED_NAMES[action]}</div><button type="button" class="key" data-key="${action}">${keyName(input.keys[action])}</button></div>`)
       .join('');
-    panel.innerHTML = `<h2>设置</h2>${rows}<div class="row"><small>模型、画质里的草和粒子里的飘雪在重新载入后生效。</small><button type="button" class="act" data-do="reload">重新载入</button></div><h3>按键</h3>${keys}<div class="foot"><button type="button" class="act" data-do="defaults">恢复默认</button><button type="button" class="act" data-do="close">关闭</button></div>`;
+    panel.innerHTML = `<h2>设置</h2>${rows}<div class="row"><small>画质、模型和粒子设置在重新载入后生效。</small><button type="button" class="act" data-do="reload">重新载入</button></div><h3>按键</h3>${keys}<div class="foot"><button type="button" class="act" data-do="defaults">恢复默认</button><button type="button" class="act" data-do="close">关闭</button></div>`;
+    if (focusKey) panel.querySelector(`[data-key="${focusKey}"]`)?.focus({ preventScroll: true });
+  }
+  function clearKeyPrompt(button) {
+    button.classList.remove('asking');
+    button.textContent = keyName(input.keys[button.dataset.key]);
   }
   root.addEventListener('click', (event) => {
     const target = event.target.closest('button');
@@ -378,6 +388,8 @@ export function createHud(root, input, settings, { onSettings, onStart, onUiSoun
       drawSettings();
     } else if (key) {
       onUiSound('select');
+      const previous = panel.querySelector('.key.asking');
+      if (previous) clearKeyPrompt(previous);
       target.classList.add('asking');
       target.textContent = '请按键…';
       input.ask((code) => {
@@ -388,7 +400,10 @@ export function createHud(root, input, settings, { onSettings, onStart, onUiSoun
         onSettings(settings);
         onUiSound('confirm');
         labelKeys();
-        drawSettings();
+        drawSettings(key);
+      }, (code) => {
+        clearKeyPrompt(target);
+        if (code === 'Escape') target.focus({ preventScroll: true });
       });
     } else if (act === 'set') {
       drawSettings();
@@ -485,7 +500,14 @@ export function createHud(root, input, settings, { onSettings, onStart, onUiSoun
         if (mask) mask.style.setProperty('--wait', wait);
         if (count !== undefined) node.querySelector('em').textContent = count;
       }
-      if (charge !== undefined) pads[name].style.setProperty('--charge', charge.toFixed(3));
+      if (charge !== undefined) {
+        const meter = padMeters[name];
+        const value = Math.min(1, Math.max(0, charge)).toFixed(3);
+        if (meter.charge !== value) {
+          meter.arc.setAttribute('stroke-dasharray', `${value} 1`);
+          meter.charge = value;
+        }
+      }
     };
     const counter = hero.counter > 0 && hero.state !== 'dead';
     const attackLabel = counter ? '反击' : ACTION_LABELS.attack;
