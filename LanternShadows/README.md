@@ -197,7 +197,7 @@ The game's code and its generated art are released under Apache-2.0. The engine 
 
 - 2026-11-26 三星 Galaxy Z Fold7（SM-F966U1，Android 17，Chrome 157.0.8103.78）横屏真机 WebGL2：仅用触控输入连续通过三幕（C/B/B，游戏内 89.08/75.63/91.07 秒），每幕两次百身术、峰值 100 个分身；老君炉内阶段、落幕、成绩刷新续读正常。移动摇杆越界跟踪、释放/取消、多点操作、暂停恢复及唯一跳键通过。普通战斗 p95 16.7 ms，百身术约 33.2–33.3 ms；普通战斗出现三次 >50 ms（最大 116 ms），第一幕分身三次 >50 ms（最大 66.7 ms）。音乐切换和运行状态通过，扬声器音色未人工实听。 · Physical Fold7 (SM-F966U1, Android 17, Chrome 157), landscape WebGL2: all acts completed through touch (C/B/B), each with two natural clone casts and a peak of 100 clones. Furnace, results, record reload, drag-out, release/cancel, multitouch, pause/resume and a single Jump control verified. Normal p95 16.7 ms; dense p95 33.2–33.3 ms, with occasional long frames (max 116 ms normal, 66.7 ms dense). Music playback state, not acoustic quality, was checked.
 
-- 2026-11-26：浏览器验收主流程 8 项及结算布局专项 1 项均通过；新增标题、暂停战场基线，复跑差异 0.00% 与 1.27%。T2 触控目标和 I1 双语语义检查通过。 · Eight browser acceptance checks and one separate layout fixture passed; new title/paused-scene baselines changed 0.00%/1.27%. T2 and I1 now pass.
+- 2026-11-26：最终浏览器验收 10/10，包含英文标题横转竖、真实控件命中（浏览器模拟）、390×844 触控和横屏结算布局；标题和暂停战场基线差异 0.00% / 1.69%。T2 触控目标和 I1 双语语义检查通过。 · Final headless browser acceptance 10/10; image differences 0.00% / 1.69%. T2 and I1 now pass.
 
 ## 已知问题 · Known issues
 
@@ -214,6 +214,8 @@ The game's code and its generated art are released under Apache-2.0. The engine 
 - 触屏上分身计数挡住提示（`15621a1`）；丹房炉火特效分批绘制（`0cf5159`）。 · The clones' line covered the notice on touch screens; the furnace effects are batched.
 
 - Fold7 真实竖屏旋转时英文标题撑大布局而无法开锣：限制网格内在尺寸和字体，英文允许换行。实际 411×813 屏幕开锣、摇杆、单跳及暂停恢复通过。 · Rotating a physical Fold7 had pushed the English Start button off-screen; bounded grid tracks and wrapping fix it, verified on the real portrait phone.
+
+- 短横屏落幕上下裁切：印章与统计并排，操作区和挑战完整显示；Fold7 实打第三幕落幕验证 12/12 内容及入口可见/命中。仍有 2 CSS px 装饰性滚动余量。 · Short landscape result clipping fixed; 12/12 result items and control centers were in bounds in a physical-device win, with a 2 px scroll remainder.
 
 ## 未完成 · Unfinished
 
