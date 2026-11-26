@@ -141,10 +141,12 @@ The playable UI is drawn through a single native Egret canvas. The original cove
 - 2026-11-20 `node tools/quality.mjs FivePhases` 在无头 Chromium + SwiftShader 下测了 16 个自动项，结果见 [QUALITY.md](QUALITY.md)。 · The 16 automatic quality items in headless Chromium, see QUALITY.md.
 - 上面「前期矢量版的引擎测量」一节记录的压测：`tools/probe.mjs` 让机器人以最快速度出牌和交换，几何预算问题修复后连跑九次没有复现。 · The stress runs recorded above: after the geometry fix, nine runs of the fastest robot play showed no recurrence.
 
+- 最终浏览器 12/12 通过（含故障重试），标题/手牌详情基线差异 0.00%；最终冻结文件 Fold7 9 个 SHA 一致的短回归通过。 · Final browser acceptance 12/12, both baselines unchanged; final exact-source Fold7 smoke passed.
+
 ## 已知问题 · Known issues
 
 - 只有中文界面，`<html lang>` 也固定为中文（品质 I1）。 · Chinese only.
-- 品质验收未达标 · Quality items failing（[QUALITY.md](QUALITY.md)，2026-11-21，无头 Chromium + SwiftShader · headless, software rendering）：T2 触控区 ≥ 44×44 CSS px（2 of 2 under 44×44: 开阵 121×43; 静音 40×40）；F1 桌面帧时间 p95 ≤ 16.7 ms（p95 66.7 ms over 74 frames）；I1 中英文全可切换，英文下无中文（html lang "zh-CN", Chinese left: 五行牌阵 消除聚灵 出牌破阵 开阵 阵法说明）。
+- 本轮统一品质检查仍有 F1（SwiftShader 软件标题 p95 112.5 ms，优化前 325.1 ms）和原版未本地化的 I1 未达标。真机操作帧时间见 QUALITY.md。 · Software-only F1 and the original Chinese-only I1 remain; see QUALITY.md for separate physical results.
 
 ## 已解决 · Solved
 

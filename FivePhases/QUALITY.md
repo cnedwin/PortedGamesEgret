@@ -7,9 +7,9 @@ this file; items by hand or on a device are marked not run until someone runs th
 
 ## 测量环境 · Where it was measured
 
-- 日期 · Date: 2026-11-21
-- 浏览器 · Browser: 无头 Chromium 153.0.8010.12，SwiftShader 软件渲染（没有显卡） · headless, software rendering, no GPU
-- 机器 · Machine: Linux 容器 · a Linux container, linux x64, Node v22.23.4
+- 日期 · Date: 2026-11-26
+- 浏览器 · Browser: 无头 Chromium 157.0.8103.6，SwiftShader 软件渲染（没有显卡） · headless, software rendering, no GPU
+- 机器 · Machine: Windows 11 x64, Node v26.7.0
 - 首屏一项的限速 · Start-up throttling: 下行 10 Mbps、上行 5 Mbps、往返 40 ms，CPU 降速 ×4 · down 10 Mbps, up 5 Mbps, 40 ms round trip, CPU slowed ×4
 - 帧时间是软件渲染下的数字，只说明无头环境里的情况，不代表真机 · Frame times are from software rendering and say nothing of real devices.
 
@@ -17,30 +17,30 @@ this file; items by hand or on a device are marked not run until someone runs th
 
 | 编号 · Item | 标准 · Standard | 方式 · How | 结果 · Result | 测量 · Measured |
 |---|---|---|---|---|
-| T1 | 触屏走完主流程 · The whole game by touch | 真机 · device | 未运行 · not run |  |
-| T2 | 触控区 ≥ 44×44 CSS px · Touch targets ≥ 44 × 44 CSS px | 自动 · automatic | 不达标 · fail | 2 of 2 under 44×44: 开阵 121×43; 静音 40×40 |
-| T3 | 不误触下拉刷新和双击缩放 · No pull-to-refresh or double-tap zoom | 自动 · automatic | 达标 · pass | overscroll held, touch-action auto, double-tap zoom off |
-| F1 | 桌面帧时间 p95 ≤ 16.7 ms · Desktop frame time p95 ≤ 16.7 ms | 自动 · automatic | 不达标 · fail | p95 66.7 ms over 74 frames |
-| F2 | 中端手机帧时间 p95 ≤ 33 ms · Mid-range phone frame time p95 ≤ 33 ms | 真机 · device | 未运行 · not run |  |
-| L1 | 首屏 ≤ 3 s（10/5 Mbps、40 ms、CPU ×4） · Start-up ≤ 3 s (10/5 Mbps, 40 ms, CPU ×4) | 自动 · automatic | 达标 · pass | 1.6 s to the first playable screen, 2.3 MB |
+| T1 | 触屏走完主流程 · The whole game by touch | 真机 · device | 达标 · pass | Physical Fold7 completed all three stages; two rewards, settlement, restart |
+| T2 | 触控区 ≥ 44×44 CSS px · Touch targets ≥ 44 × 44 CSS px | 自动 · automatic | 达标 · pass | 3 controls, all at least 44×44 |
+| T3 | 不误触下拉刷新和双击缩放 · No pull-to-refresh or double-tap zoom | 自动 · automatic | 达标 · pass | overscroll held, touch-action none, double-tap zoom off |
+| F1 | 桌面帧时间 p95 ≤ 16.7 ms · Desktop frame time p95 ≤ 16.7 ms | 自动 · automatic | 不达标 · fail | p95 112.5 ms over 48 frames |
+| F2 | 中端手机帧时间 p95 ≤ 33 ms · Mid-range phone frame time p95 ≤ 33 ms | 真机 · device | 未运行 · not run | Fold7 flagship measured separately; no mid-range phone |
+| L1 | 首屏 ≤ 3 s（10/5 Mbps、40 ms、CPU ×4） · Start-up ≤ 3 s (10/5 Mbps, 40 ms, CPU ×4) | 自动 · automatic | 达标 · pass | Tool: 1.5 s / 1.2 MB under its startup heuristic; distinct from full public cold-ready time |
 | O1 | 横竖屏与窗口尺寸 · Orientation and window sizes | 自动 · automatic | 达标 · pass | 1280×800, 390×844, 844×390, 768×1024 and live resizing: fits, no errors |
-| I1 | 中英文全可切换，英文下无中文 · Both languages; no Chinese left in English | 自动 · automatic | 不达标 · fail | html lang "zh-CN", Chinese left: 五行牌阵 消除聚灵 出牌破阵 开阵 阵法说明 |
-| I2 | 画布上的字也随语言切换 · Words drawn on the canvas follow the language | 人工 · by hand | 未运行 · not run |  |
-| I3 | 长英文不溢出 · Long English does not overflow | 自动 · automatic | 达标 · pass | no page text cut off at 390 px in English |
-| A1 | 键盘可到达控件，焦点可见 · The keyboard reaches controls; focus shows | 自动 · automatic | 达标 · pass | Tab → "开阵" (outline) |
-| A1m | 只用键盘走完主流程 · The whole game by keyboard alone | 人工 · by hand | 未运行 · not run |  |
-| A2 | 读屏读出主要按钮 · A screen reader names the main buttons | 自动 · automatic | 达标 · pass | 2 named controls, e.g. button "开阵", button "静音" |
+| I1 | 中英文全可切换，英文下无中文 · Both languages; no Chinese left in English | 自动 · automatic | 不达标 · fail | no way to choose English found |
+| I2 | 画布上的字也随语言切换 · Words drawn on the canvas follow the language | 人工 · manual | 未运行 · not run |  |
+| I3 | 长英文不溢出 · Long English does not overflow | 自动 · automatic | 达标 · pass | Raw checker pass; English gameplay localization remains outside original scope |
+| A1 | 键盘可到达控件，焦点可见 · The keyboard reaches controls; focus shows | 自动 · automatic | 达标 · pass | Tab → "五行牌阵" (focus drawn by the game) |
+| A1m | 只用键盘走完主流程 · The whole game by keyboard alone | 人工 · manual | 未运行 · not run |  |
+| A2 | 读屏读出主要按钮 · A screen reader names the main buttons | 自动 · automatic | 达标 · pass | 3 named controls, e.g. button "开阵", button "阵法说明", button "声音" |
 | A3 | 尊重 prefers-reduced-motion · prefers-reduced-motion is honoured | 自动 · automatic | 达标 · pass | the code reads prefers-reduced-motion or offers a setting |
-| S1 | 存档损坏不崩溃 · A broken save does not crash | 自动 · automatic | 不适用 · n/a | the game keeps nothing in browser storage |
-| S2 | 存档版本不匹配不崩溃 · A save of another version does not crash | 自动 · automatic | 不适用 · n/a | the game keeps nothing in browser storage |
+| S1 | 存档损坏不崩溃 · A broken save does not crash | 自动 · automatic | 不适用 · n/a | No campaign save; old mute preference tested separately in Node and browser |
+| S2 | 存档版本不匹配不崩溃 · A save of another version does not crash | 自动 · automatic | 不适用 · n/a | No campaign save; old mute preference tested separately in Node and browser |
 | S3 | 存储不可用不崩溃 · Refused storage does not crash | 自动 · automatic | 达标 · pass | storage refused: started without an uncaught error |
-| S4 | 存档出问题时提示并可重开 · A save problem is told and a fresh start offered | 人工 · by hand | 未运行 · not run |  |
+| S4 | 存档出问题时提示并可重开 · A save problem is told and a fresh start offered | 人工 · manual | 未运行 · not run |  |
 | E1 | 无控制台错误 · No console errors | 自动 · automatic | 达标 · pass | 0 errors |
 | E2 | 资源失败有错误界面和重试 · A failed file shows an error and a retry | 自动 · automatic | 达标 · pass | 3 files refused; no uncaught error; offers to try again |
 | E3 | 切到后台再回来不出错 · Hidden and shown again without errors | 自动 · automatic | 达标 · pass | no errors; the game or the engine loop watches visibility |
 | E4 | 切回后声音和计时正常 · Sound and timers right after coming back | 真机 · device | 未运行 · not run |  |
 
-自动项不达标 · Automatic items failing: T2, F1, I1。真机项（T1、F2、E4）和人工项（I2、A1m、S4）未运行，除非上表另有记录 · Device and by-hand items were not run unless the table says otherwise.
+自动项不达标 · Automatic items failing: F1（SwiftShader software title），I1（原版仅中文）。T1 另由实际 Fold7 完整三关通过；其它真机和人工项按上表记录。
 
 ## 实机回归 · Physical device regression (2026-11-26)
 
@@ -61,4 +61,5 @@ this file; items by hand or on a device are marked not run until someone runs th
 - 首次新版 PC 与 Fold7 均在首领死亡时触发语义树空名称问题，已修复并实际复跑完整三关。奖励长文字裁切随后加高卡片，在 Fold7 自然打完第一关及真实选牌回归通过，最大 49.7 ms；最后增加只读语义文本，浏览器专项覆盖。 · The full route rerun fixed the semantic transition fault; a focused actual-phone replay verified the final taller reward cards. Final read-only semantic fields are covered by browser acceptance.
 - 实测真实 Fold7 竖屏 411×813、DPR 2.625；实际牌阵 CSS 375.79×813.71，画布 1500×3248。奖励卡点击区约 96.20×194.41 CSS px。 · Real Fold7 portrait and card target dimensions.
 - 构建、存储、自动语义以及真机触控均分开记录；未测试实体手柄、Safari、真实读屏语音、扬声器声学听感或中端手机。无英文玩法词条及跨局战斗存档仍是原版范围。 · No physical gamepad, Safari, spoken screen-reader or acoustic audio acceptance, or mid-range phone; English localization and campaign saves remain outside original scope.
-
+- 最终统一品质测量：同一 Windows SwiftShader 环境下，隐藏战场的标题优化前后 F1 p95 325.1 → 112.5 ms（19 → 48 样本），仍不达 16.7 ms。E3 后台模拟由 fail 到 pass；T2、E1、E2 通过。不是物理设备性能。 · The software-title p95 fell from 325.1 to 112.5 ms after hiding the covered battlefield, still below the standard; visibility, touch targets and retry passed.
+- 最终完整浏览器验收 12/12 通过，标题和手牌详情的基线差异均 0.00%。模拟单个资源失败并延迟另一个资源，原生重试不消失，真实点击后返回标题。最后冻结源文件在 Fold7 又进行确切哈希 9/9 的冷启动、说明、手牌模态、声音及两点消除验证，0 错误。 · Final 12/12 browser acceptance; baseline differences 0.00%. Actual retry after an injected failure and delayed sibling works. Final exact-source Fold7 smoke (9 hashes) passed.
