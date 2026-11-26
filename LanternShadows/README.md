@@ -200,14 +200,16 @@ The game's code and its generated art are released under Apache-2.0. The engine 
 
 - 2026-11-26 原生 UI：89 项 Node、12 项浏览器验收全部通过；PC 和 Fold7 真机按正常规则实打三幕，原生触控会话、结算、记录刷新、单棒试演通过。PC 分身独立短测 p95 16.8 ms；Fold7 普通战斗仍为 16.7 ms，密集分身 p95 49.7 ms。详见 [QUALITY.md](QUALITY.md)。 · Native UI migration: 89 Node and 12 browser checks pass; real PC and Fold7 clear all acts, with records and trial. Isolated desktop clone p95 16.8 ms; Fold7 ordinary 16.7 ms and dense 49.7 ms. See QUALITY.md.
 
+- 2026-11-26 百身术专项：Fold7 固定场景 100 分身实测九块（共 2,970 帧）；原生 HUD 共享装饰图集减少实际 draw calls 中位 43→33、提交间隔中位 33.1→17.8 ms，密集 p95 仍约 49.7 ms。最终正式包真实触控短测、90 项 Node、12 项浏览器验收通过。可公开复现见 [test/perf](test/perf/README.md)。 · Controlled 100-clone profiling and native HUD atlas reduce median rendering cost; tail remains open.
+
 ## 已知问题 · Known issues
 
-- Fold7 原生 UI 密集百身术仍存在帧率差距，旧版 p95 33.2–33.3 ms、新版短测 49.7 ms；已验证 backing 和幕布裁切对照，保留全部分身，详见 ENGINE-NOTES 第 9 条。 · Native UI dense clone p95 remains higher on Fold7; the measured backing and clip comparison did not restore the old result. All clones are retained; see engine note 9.
+- Fold7 原生 UI 密集百身术仍存在帧率差距，此前自然路线 rAF p95 旧版 33.2–33.3 ms、新版 49.7 ms；本轮固定同背板测量旧新实际提交 p95 均约 50 ms，Atlas 已降低中位开销但尾部仍待优化；已验证 backing 和幕布裁切对照，保留全部分身，详见 ENGINE-NOTES 第 9 条。 · Native UI dense clone p95 remains higher on Fold7; the measured backing and clip comparison did not restore the old result. All clones are retained; see engine note 9.
 
 - `?clones` 设得太大（例如 200）时，同台的 Spine 实例超过引擎每个骨骼的 128 个上限，多出的分身建不出来，控制台报 `SPINE_INSTANCE_LIMIT_FAILED`（ENGINE-NOTES 第 3 条）；默认的一百个不会碰到。 · A large `?clones` (200, say) passes the engine's limit of 128 Spine instances; the default hundred does not.
 - 画面太慢时会自动收回一部分分身（写了 `?clones` 就不收），所以慢的设备上身外身的分身数会少于一百。 · On a slow device some clones are sent back, so fewer than a hundred appear unless `?clones` is given.
 - 第一次加载页面要先下载打包文件和第一幕的全部文件，改过 `src/`、`vendor/` 或 `assets/` 后必须重新运行 `tools/bundle.mjs`，否则页面跑的是旧代码（测试会指出来）。 · After a change under `src/`, `vendor/` or `assets/` the page runs old code until `tools/bundle.mjs` is run again (a test says so).
-- 新版统一品质检查：[QUALITY.md](QUALITY.md)，F1 无头软件渲染 p95 16.7 ms 达标；L1 限速通用首屏由 4.9 s 改善为 3.1 s，仍未达 3 s 阈值，需区分引擎原生画布首屏和真正可开始状态。 · F1 passes in the generic software probe; L1 is above its 3 s threshold and the generic screen probe is not the same as actual game readiness.
+- 新版统一品质检查：[QUALITY.md](QUALITY.md)，本批 14/16 达标；F1 无头软件渲染 p95 17.5 ms、L1 限速通用首屏 3.3 s 略超阈值（此前 16.7 ms / 3.1 s）。真实 Fold7 同场景 A/B 单列，不将通用软件测试当真机。 · The generic software F1 and startup proxy remain above their thresholds; physical Fold7 profiling is separate.
 
 ## 已解决 · Solved
 

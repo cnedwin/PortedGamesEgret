@@ -1,0 +1,3031 @@
+{
+  "protocol": "lantern-dense-fixed-step/1",
+  "device": {
+    "model": "Samsung Galaxy Z Fold7 (SM-F966U1)",
+    "platform": "Android 17",
+    "browser": "Chrome 157",
+    "renderer": "Adreno 830 WebGL2",
+    "power": "USB"
+  },
+  "source": {
+    "old": "c971c0ff / 8e70dcb3",
+    "new": "c389f1d8 / f0dfde36",
+    "optimized": "HUD decoration atlas / same f0dfde36"
+  },
+  "fixedDt": 0.016666666666666666,
+  "denseAgeWindow": [
+    1,
+    6.5
+  ],
+  "note": "Diagnostic virtual time; real device RAF and CPU span clocks. 100 actual visible and posed clone instances in every exported row. Blank means not observed/not executed, not zero. Host submission interval is not display presentation or GPU execution time. Device temperature is the battery sensor, not GPU die. Instrumentation overhead is common within like-for-like comparisons; no human playthrough claim.",
+  "blocks": [
+    {
+      "scenario": "expanded-native-A",
+      "variant": "srgb",
+      "mode": "native-on",
+      "backing": [
+        2291,
+        854
+      ],
+      "temperatureBefore": {
+        "batterySensorC": 29.9,
+        "thermalStatus": 0,
+        "usbPowered": true,
+        "acPowered": false
+      },
+      "temperatureAfter": {
+        "batterySensorC": 29.9,
+        "thermalStatus": 0,
+        "usbPowered": true,
+        "acPowered": false
+      },
+      "hashes": {
+        "index.html": "f75b812f9d7738a6a353e1ff14c6e36b0836540c7dc4882579d9659daafdff28",
+        "build/lantern.js": "77b47211eadbb496367b8b5f821b261cba9d703fdfff5559a5e6c8dd0d4d4cda",
+        "style.css": "9c2d5fc38a582acfb4bfac2e2df81705e24cbaf6dbcf0555a61eee6e9ddc81d7",
+        "vendor/SOURCE.md": "48151d33b98ffd24d8f7c830fa5a16bc1442f96c82984cfecf4d2fc216e4490e"
+      },
+      "denseRows": 330,
+      "hostRows": 283,
+      "backpressureObserved": 0,
+      "backpressureInstrumented": false,
+      "raf": {
+        "n": 330,
+        "p50": 16.7,
+        "p95": 34.4,
+        "p99": 49.8,
+        "max": 49.9,
+        "mean": 25.165
+      },
+      "hostCadence": {
+        "n": 282,
+        "p50": 33.1,
+        "p95": 49.8,
+        "p99": 66.3,
+        "max": 66.4,
+        "mean": 29.33
+      },
+      "drawCalls": {
+        "n": 283,
+        "p50": 43,
+        "p95": 81,
+        "p99": 82,
+        "max": 83,
+        "mean": 51.258
+      },
+      "commands": {
+        "n": 283,
+        "p50": 183,
+        "p95": 184,
+        "p99": 185,
+        "max": 185,
+        "mean": 183.025
+      },
+      "hostSpans": {
+        "engine.frame.cpu": {
+          "inclusive": {
+            "n": 283,
+            "p50": 25.2,
+            "p95": 36.1,
+            "p99": 40.7,
+            "max": 47.8,
+            "mean": 24.961
+          },
+          "exclusive": {
+            "n": 283,
+            "p50": 0,
+            "p95": 0.1,
+            "p99": 0.2,
+            "max": 0.3,
+            "mean": 0.026
+          }
+        },
+        "demo.rules": {
+          "inclusive": {
+            "n": 283,
+            "p50": 0.1,
+            "p95": 0.3,
+            "p99": 0.9,
+            "max": 1.9,
+            "mean": 0.114
+          },
+          "exclusive": {
+            "n": 283,
+            "p50": 0.1,
+            "p95": 0.3,
+            "p99": 0.9,
+            "max": 1.9,
+            "mean": 0.114
+          }
+        },
+        "demo.spine.advance": {
+          "inclusive": {
+            "n": 283,
+            "p50": 8.4,
+            "p95": 17.7,
+            "p99": 21.4,
+            "max": 23.1,
+            "mean": 8.871
+          },
+          "exclusive": {
+            "n": 283,
+            "p50": 8.4,
+            "p95": 17.7,
+            "p99": 21.4,
+            "max": 23.1,
+            "mean": 8.871
+          }
+        },
+        "demo.ui.refresh": {
+          "inclusive": {
+            "n": 283,
+            "p50": 0,
+            "p95": 0.1,
+            "p99": 0.1,
+            "max": 0.2,
+            "mean": 0.019
+          },
+          "exclusive": {
+            "n": 283,
+            "p50": 0,
+            "p95": 0.1,
+            "p99": 0.1,
+            "max": 0.2,
+            "mean": 0.019
+          }
+        },
+        "engine.ui.views": {
+          "inclusive": {
+            "n": 283,
+            "p50": 0,
+            "p95": 0.1,
+            "p99": 0.2,
+            "max": 0.2,
+            "mean": 0.053
+          },
+          "exclusive": {
+            "n": 283,
+            "p50": 0,
+            "p95": 0.1,
+            "p99": 0.2,
+            "max": 0.2,
+            "mean": 0.053
+          }
+        },
+        "engine.ui.semantics.publish": {
+          "inclusive": {
+            "n": 283,
+            "p50": 0.4,
+            "p95": 0.7,
+            "p99": 6.5,
+            "max": 9,
+            "mean": 0.537
+          },
+          "exclusive": {
+            "n": 283,
+            "p50": 0.4,
+            "p95": 0.6,
+            "p99": 6.5,
+            "max": 9,
+            "mean": 0.496
+          }
+        },
+        "engine.ui.semantics.projection": {
+          "inclusive": {
+            "n": 84,
+            "p50": 0.1,
+            "p95": 0.2,
+            "p99": 0.3,
+            "max": 0.3,
+            "mean": 0.137
+          },
+          "exclusive": {
+            "n": 84,
+            "p50": 0.1,
+            "p95": 0.2,
+            "p99": 0.3,
+            "max": 0.3,
+            "mean": 0.137
+          }
+        },
+        "engine.frame.capture": {
+          "inclusive": {
+            "n": 283,
+            "p50": 2.8,
+            "p95": 4.9,
+            "p99": 6.6,
+            "max": 12.1,
+            "mean": 3.06
+          },
+          "exclusive": {
+            "n": 283,
+            "p50": 2.8,
+            "p95": 4.9,
+            "p99": 6.6,
+            "max": 12.1,
+            "mean": 3.06
+          }
+        },
+        "engine.webgl2.prepare": {
+          "inclusive": {
+            "n": 283,
+            "p50": 6.4,
+            "p95": 12.7,
+            "p99": 18.1,
+            "max": 20.1,
+            "mean": 6.74
+          },
+          "exclusive": {
+            "n": 283,
+            "p50": 0,
+            "p95": 0.2,
+            "p99": 0.3,
+            "max": 0.3,
+            "mean": 0.056
+          }
+        },
+        "engine.webgl2.prepare.geometry": {
+          "inclusive": {
+            "n": 283,
+            "p50": 5.1,
+            "p95": 11,
+            "p99": 15.2,
+            "max": 16.7,
+            "mean": 5.401
+          },
+          "exclusive": {
+            "n": 283,
+            "p50": 5.1,
+            "p95": 11,
+            "p99": 15.2,
+            "max": 16.7,
+            "mean": 5.401
+          }
+        },
+        "engine.webgl2.prepare.pack": {
+          "inclusive": {
+            "n": 283,
+            "p50": 0.9,
+            "p95": 1.6,
+            "p99": 3.9,
+            "max": 15.2,
+            "mean": 1.072
+          },
+          "exclusive": {
+            "n": 283,
+            "p50": 0.9,
+            "p95": 1.6,
+            "p99": 3.9,
+            "max": 15.2,
+            "mean": 1.072
+          }
+        },
+        "engine.webgl2.prepare.texture": {
+          "inclusive": {
+            "n": 283,
+            "p50": 0,
+            "p95": 0.2,
+            "p99": 0.3,
+            "max": 0.4,
+            "mean": 0.042
+          },
+          "exclusive": {
+            "n": 283,
+            "p50": 0,
+            "p95": 0.2,
+            "p99": 0.3,
+            "max": 0.4,
+            "mean": 0.042
+          }
+        },
+        "engine.webgl2.prepare.batch": {
+          "inclusive": {
+            "n": 283,
+            "p50": 0.1,
+            "p95": 0.4,
+            "p99": 0.6,
+            "max": 2.2,
+            "mean": 0.168
+          },
+          "exclusive": {
+            "n": 283,
+            "p50": 0.1,
+            "p95": 0.4,
+            "p99": 0.6,
+            "max": 2.2,
+            "mean": 0.168
+          }
+        },
+        "engine.webgl2.submit": {
+          "inclusive": {
+            "n": 283,
+            "p50": 4.2,
+            "p95": 9.9,
+            "p99": 14.2,
+            "max": 19.8,
+            "mean": 4.925
+          },
+          "exclusive": {
+            "n": 283,
+            "p50": 1,
+            "p95": 3.2,
+            "p99": 4.4,
+            "max": 4.8,
+            "mean": 1.254
+          }
+        },
+        "engine.webgl2.upload": {
+          "inclusive": {
+            "n": 283,
+            "p50": 0.1,
+            "p95": 0.3,
+            "p99": 0.3,
+            "max": 0.5,
+            "mean": 0.122
+          },
+          "exclusive": {
+            "n": 283,
+            "p50": 0.1,
+            "p95": 0.3,
+            "p99": 0.3,
+            "max": 0.5,
+            "mean": 0.122
+          }
+        },
+        "engine.webgl2.draw": {
+          "inclusive": {
+            "n": 283,
+            "p50": 2.8,
+            "p95": 7.4,
+            "p99": 13.6,
+            "max": 19.4,
+            "mean": 3.549
+          },
+          "exclusive": {
+            "n": 283,
+            "p50": 2.8,
+            "p95": 7.4,
+            "p99": 13.6,
+            "max": 19.4,
+            "mean": 3.549
+          }
+        }
+      }
+    },
+    {
+      "scenario": "expanded-static",
+      "variant": "srgb",
+      "mode": "native-static",
+      "backing": [
+        2291,
+        854
+      ],
+      "temperatureBefore": {
+        "batterySensorC": 29.9,
+        "thermalStatus": 0,
+        "usbPowered": true,
+        "acPowered": false
+      },
+      "temperatureAfter": {
+        "batterySensorC": 30.1,
+        "thermalStatus": 0,
+        "usbPowered": true,
+        "acPowered": false
+      },
+      "hashes": {
+        "index.html": "f75b812f9d7738a6a353e1ff14c6e36b0836540c7dc4882579d9659daafdff28",
+        "build/lantern.js": "77b47211eadbb496367b8b5f821b261cba9d703fdfff5559a5e6c8dd0d4d4cda",
+        "style.css": "9c2d5fc38a582acfb4bfac2e2df81705e24cbaf6dbcf0555a61eee6e9ddc81d7",
+        "vendor/SOURCE.md": "48151d33b98ffd24d8f7c830fa5a16bc1442f96c82984cfecf4d2fc216e4490e"
+      },
+      "denseRows": 330,
+      "hostRows": 289,
+      "backpressureObserved": 0,
+      "backpressureInstrumented": false,
+      "raf": {
+        "n": 330,
+        "p50": 16.6,
+        "p95": 49.6,
+        "p99": 49.8,
+        "max": 49.8,
+        "mean": 24.464
+      },
+      "hostCadence": {
+        "n": 288,
+        "p50": 33.1,
+        "p95": 49.8,
+        "p99": 49.8,
+        "max": 66.2,
+        "mean": 27.917
+      },
+      "drawCalls": {
+        "n": 289,
+        "p50": 41,
+        "p95": 79,
+        "p99": 80,
+        "max": 82,
+        "mean": 48.9
+      },
+      "commands": {
+        "n": 289,
+        "p50": 179,
+        "p95": 180,
+        "p99": 180,
+        "max": 180,
+        "mean": 178.709
+      },
+      "hostSpans": {
+        "engine.frame.cpu": {
+          "inclusive": {
+            "n": 289,
+            "p50": 23.7,
+            "p95": 38.2,
+            "p99": 45.1,
+            "max": 49.3,
+            "mean": 24.461
+          },
+          "exclusive": {
+            "n": 289,
+            "p50": 0,
+            "p95": 0.1,
+            "p99": 0.2,
+            "max": 0.2,
+            "mean": 0.029
+          }
+        },
+        "demo.rules": {
+          "inclusive": {
+            "n": 289,
+            "p50": 0.1,
+            "p95": 0.2,
+            "p99": 3.9,
+            "max": 9.5,
+            "mean": 0.17
+          },
+          "exclusive": {
+            "n": 289,
+            "p50": 0.1,
+            "p95": 0.2,
+            "p99": 3.9,
+            "max": 9.5,
+            "mean": 0.17
+          }
+        },
+        "demo.spine.advance": {
+          "inclusive": {
+            "n": 289,
+            "p50": 8.4,
+            "p95": 18,
+            "p99": 23,
+            "max": 33,
+            "mean": 9.286
+          },
+          "exclusive": {
+            "n": 289,
+            "p50": 8.4,
+            "p95": 18,
+            "p99": 23,
+            "max": 33,
+            "mean": 9.286
+          }
+        },
+        "demo.ui.refresh": {
+          "inclusive": {
+            "n": 289,
+            "p50": 0,
+            "p95": 0.1,
+            "p99": 0.1,
+            "max": 0.2,
+            "mean": 0.022
+          },
+          "exclusive": {
+            "n": 289,
+            "p50": 0,
+            "p95": 0.1,
+            "p99": 0.1,
+            "max": 0.2,
+            "mean": 0.022
+          }
+        },
+        "engine.ui.views": null,
+        "engine.ui.semantics.publish": null,
+        "engine.ui.semantics.projection": null,
+        "engine.frame.capture": {
+          "inclusive": {
+            "n": 289,
+            "p50": 2.6,
+            "p95": 5.3,
+            "p99": 6.6,
+            "max": 12.4,
+            "mean": 3.057
+          },
+          "exclusive": {
+            "n": 289,
+            "p50": 2.6,
+            "p95": 5.3,
+            "p99": 6.6,
+            "max": 12.4,
+            "mean": 3.057
+          }
+        },
+        "engine.webgl2.prepare": {
+          "inclusive": {
+            "n": 289,
+            "p50": 6.2,
+            "p95": 12,
+            "p99": 15.1,
+            "max": 22.8,
+            "mean": 6.745
+          },
+          "exclusive": {
+            "n": 289,
+            "p50": 0,
+            "p95": 0.2,
+            "p99": 0.3,
+            "max": 0.3,
+            "mean": 0.06
+          }
+        },
+        "engine.webgl2.prepare.geometry": {
+          "inclusive": {
+            "n": 289,
+            "p50": 4.8,
+            "p95": 10.4,
+            "p99": 13.8,
+            "max": 19.4,
+            "mean": 5.385
+          },
+          "exclusive": {
+            "n": 289,
+            "p50": 4.8,
+            "p95": 10.4,
+            "p99": 13.8,
+            "max": 19.4,
+            "mean": 5.385
+          }
+        },
+        "engine.webgl2.prepare.pack": {
+          "inclusive": {
+            "n": 289,
+            "p50": 1.1,
+            "p95": 1.7,
+            "p99": 2.4,
+            "max": 3.4,
+            "mean": 1.121
+          },
+          "exclusive": {
+            "n": 289,
+            "p50": 1.1,
+            "p95": 1.7,
+            "p99": 2.4,
+            "max": 3.4,
+            "mean": 1.121
+          }
+        },
+        "engine.webgl2.prepare.texture": {
+          "inclusive": {
+            "n": 289,
+            "p50": 0,
+            "p95": 0.1,
+            "p99": 0.1,
+            "max": 0.1,
+            "mean": 0.008
+          },
+          "exclusive": {
+            "n": 289,
+            "p50": 0,
+            "p95": 0.1,
+            "p99": 0.1,
+            "max": 0.1,
+            "mean": 0.008
+          }
+        },
+        "engine.webgl2.prepare.batch": {
+          "inclusive": {
+            "n": 289,
+            "p50": 0.1,
+            "p95": 0.4,
+            "p99": 0.5,
+            "max": 0.6,
+            "mean": 0.171
+          },
+          "exclusive": {
+            "n": 289,
+            "p50": 0.1,
+            "p95": 0.4,
+            "p99": 0.5,
+            "max": 0.6,
+            "mean": 0.171
+          }
+        },
+        "engine.webgl2.submit": {
+          "inclusive": {
+            "n": 289,
+            "p50": 3.2,
+            "p95": 11.1,
+            "p99": 22,
+            "max": 32.1,
+            "mean": 4.544
+          },
+          "exclusive": {
+            "n": 289,
+            "p50": 0.9,
+            "p95": 2.6,
+            "p99": 4.3,
+            "max": 12.6,
+            "mean": 1.138
+          }
+        },
+        "engine.webgl2.upload": {
+          "inclusive": {
+            "n": 289,
+            "p50": 0.1,
+            "p95": 0.2,
+            "p99": 0.3,
+            "max": 0.3,
+            "mean": 0.101
+          },
+          "exclusive": {
+            "n": 289,
+            "p50": 0.1,
+            "p95": 0.2,
+            "p99": 0.3,
+            "max": 0.3,
+            "mean": 0.101
+          }
+        },
+        "engine.webgl2.draw": {
+          "inclusive": {
+            "n": 289,
+            "p50": 2,
+            "p95": 8.9,
+            "p99": 21.4,
+            "max": 31.1,
+            "mean": 3.305
+          },
+          "exclusive": {
+            "n": 289,
+            "p50": 2,
+            "p95": 8.9,
+            "p99": 21.4,
+            "max": 31.1,
+            "mean": 3.305
+          }
+        }
+      }
+    },
+    {
+      "scenario": "expanded-native-linear",
+      "variant": "linear",
+      "mode": "native-on",
+      "backing": [
+        2291,
+        854
+      ],
+      "temperatureBefore": {
+        "batterySensorC": 30.1,
+        "thermalStatus": 0,
+        "usbPowered": true,
+        "acPowered": false
+      },
+      "temperatureAfter": {
+        "batterySensorC": 30.1,
+        "thermalStatus": 0,
+        "usbPowered": true,
+        "acPowered": false
+      },
+      "hashes": {
+        "index.html": "14e4da24813df66ac177c39f440836bc681c41f327218459552c99cdc85481c3",
+        "build/lantern.js": "77b47211eadbb496367b8b5f821b261cba9d703fdfff5559a5e6c8dd0d4d4cda",
+        "style.css": "9c2d5fc38a582acfb4bfac2e2df81705e24cbaf6dbcf0555a61eee6e9ddc81d7",
+        "vendor/SOURCE.md": "48151d33b98ffd24d8f7c830fa5a16bc1442f96c82984cfecf4d2fc216e4490e"
+      },
+      "denseRows": 330,
+      "hostRows": 289,
+      "backpressureObserved": 0,
+      "backpressureInstrumented": false,
+      "raf": {
+        "n": 330,
+        "p50": 16.7,
+        "p95": 49.7,
+        "p99": 51.1,
+        "max": 66.5,
+        "mean": 26.02
+      },
+      "hostCadence": {
+        "n": 288,
+        "p50": 33.1,
+        "p95": 49.8,
+        "p99": 66.3,
+        "max": 66.5,
+        "mean": 29.642
+      },
+      "drawCalls": {
+        "n": 289,
+        "p50": 43,
+        "p95": 81,
+        "p99": 82,
+        "max": 84,
+        "mean": 50.99
+      },
+      "commands": {
+        "n": 289,
+        "p50": 183,
+        "p95": 184,
+        "p99": 185,
+        "max": 185,
+        "mean": 183.017
+      },
+      "hostSpans": {
+        "engine.frame.cpu": {
+          "inclusive": {
+            "n": 289,
+            "p50": 24.5,
+            "p95": 41,
+            "p99": 51.9,
+            "max": 57.9,
+            "mean": 25.689
+          },
+          "exclusive": {
+            "n": 289,
+            "p50": 0,
+            "p95": 0.1,
+            "p99": 0.2,
+            "max": 0.3,
+            "mean": 0.03
+          }
+        },
+        "demo.rules": {
+          "inclusive": {
+            "n": 289,
+            "p50": 0.1,
+            "p95": 0.3,
+            "p99": 0.9,
+            "max": 5.3,
+            "mean": 0.128
+          },
+          "exclusive": {
+            "n": 289,
+            "p50": 0.1,
+            "p95": 0.3,
+            "p99": 0.9,
+            "max": 5.3,
+            "mean": 0.128
+          }
+        },
+        "demo.spine.advance": {
+          "inclusive": {
+            "n": 289,
+            "p50": 8.6,
+            "p95": 17.9,
+            "p99": 23.9,
+            "max": 26,
+            "mean": 9.281
+          },
+          "exclusive": {
+            "n": 289,
+            "p50": 8.6,
+            "p95": 17.9,
+            "p99": 23.9,
+            "max": 26,
+            "mean": 9.281
+          }
+        },
+        "demo.ui.refresh": {
+          "inclusive": {
+            "n": 289,
+            "p50": 0,
+            "p95": 0.1,
+            "p99": 0.1,
+            "max": 0.2,
+            "mean": 0.025
+          },
+          "exclusive": {
+            "n": 289,
+            "p50": 0,
+            "p95": 0.1,
+            "p99": 0.1,
+            "max": 0.2,
+            "mean": 0.025
+          }
+        },
+        "engine.ui.views": {
+          "inclusive": {
+            "n": 289,
+            "p50": 0,
+            "p95": 0.1,
+            "p99": 0.2,
+            "max": 0.4,
+            "mean": 0.049
+          },
+          "exclusive": {
+            "n": 289,
+            "p50": 0,
+            "p95": 0.1,
+            "p99": 0.2,
+            "max": 0.4,
+            "mean": 0.049
+          }
+        },
+        "engine.ui.semantics.publish": {
+          "inclusive": {
+            "n": 289,
+            "p50": 0.4,
+            "p95": 0.9,
+            "p99": 6.1,
+            "max": 8,
+            "mean": 0.529
+          },
+          "exclusive": {
+            "n": 289,
+            "p50": 0.4,
+            "p95": 0.9,
+            "p99": 6.1,
+            "max": 8,
+            "mean": 0.49
+          }
+        },
+        "engine.ui.semantics.projection": {
+          "inclusive": {
+            "n": 88,
+            "p50": 0.1,
+            "p95": 0.2,
+            "p99": 0.3,
+            "max": 0.3,
+            "mean": 0.131
+          },
+          "exclusive": {
+            "n": 88,
+            "p50": 0.1,
+            "p95": 0.2,
+            "p99": 0.3,
+            "max": 0.3,
+            "mean": 0.131
+          }
+        },
+        "engine.frame.capture": {
+          "inclusive": {
+            "n": 289,
+            "p50": 2.8,
+            "p95": 6.4,
+            "p99": 7.1,
+            "max": 10.8,
+            "mean": 3.275
+          },
+          "exclusive": {
+            "n": 289,
+            "p50": 2.8,
+            "p95": 6.4,
+            "p99": 7.1,
+            "max": 10.8,
+            "mean": 3.275
+          }
+        },
+        "engine.webgl2.prepare": {
+          "inclusive": {
+            "n": 289,
+            "p50": 6.7,
+            "p95": 13.2,
+            "p99": 19.8,
+            "max": 28.6,
+            "mean": 7.13
+          },
+          "exclusive": {
+            "n": 289,
+            "p50": 0,
+            "p95": 0.2,
+            "p99": 0.3,
+            "max": 0.3,
+            "mean": 0.063
+          }
+        },
+        "engine.webgl2.prepare.geometry": {
+          "inclusive": {
+            "n": 289,
+            "p50": 5.1,
+            "p95": 11.1,
+            "p99": 17.2,
+            "max": 19.5,
+            "mean": 5.67
+          },
+          "exclusive": {
+            "n": 289,
+            "p50": 5.1,
+            "p95": 11.1,
+            "p99": 17.2,
+            "max": 19.5,
+            "mean": 5.67
+          }
+        },
+        "engine.webgl2.prepare.pack": {
+          "inclusive": {
+            "n": 289,
+            "p50": 1.1,
+            "p95": 1.8,
+            "p99": 2.5,
+            "max": 15.2,
+            "mean": 1.187
+          },
+          "exclusive": {
+            "n": 289,
+            "p50": 1.1,
+            "p95": 1.8,
+            "p99": 2.5,
+            "max": 15.2,
+            "mean": 1.187
+          }
+        },
+        "engine.webgl2.prepare.texture": {
+          "inclusive": {
+            "n": 289,
+            "p50": 0,
+            "p95": 0.2,
+            "p99": 0.2,
+            "max": 0.3,
+            "mean": 0.036
+          },
+          "exclusive": {
+            "n": 289,
+            "p50": 0,
+            "p95": 0.2,
+            "p99": 0.2,
+            "max": 0.3,
+            "mean": 0.036
+          }
+        },
+        "engine.webgl2.prepare.batch": {
+          "inclusive": {
+            "n": 289,
+            "p50": 0.1,
+            "p95": 0.4,
+            "p99": 0.5,
+            "max": 0.6,
+            "mean": 0.174
+          },
+          "exclusive": {
+            "n": 289,
+            "p50": 0.1,
+            "p95": 0.4,
+            "p99": 0.5,
+            "max": 0.6,
+            "mean": 0.174
+          }
+        },
+        "engine.webgl2.submit": {
+          "inclusive": {
+            "n": 289,
+            "p50": 3.5,
+            "p95": 10.2,
+            "p99": 21.5,
+            "max": 24.8,
+            "mean": 4.619
+          },
+          "exclusive": {
+            "n": 289,
+            "p50": 0.9,
+            "p95": 2.4,
+            "p99": 4.1,
+            "max": 13.3,
+            "mean": 1.124
+          }
+        },
+        "engine.webgl2.upload": {
+          "inclusive": {
+            "n": 289,
+            "p50": 0.1,
+            "p95": 0.2,
+            "p99": 0.3,
+            "max": 2.3,
+            "mean": 0.127
+          },
+          "exclusive": {
+            "n": 289,
+            "p50": 0.1,
+            "p95": 0.2,
+            "p99": 0.3,
+            "max": 2.3,
+            "mean": 0.127
+          }
+        },
+        "engine.webgl2.draw": {
+          "inclusive": {
+            "n": 289,
+            "p50": 2.2,
+            "p95": 8.9,
+            "p99": 20.8,
+            "max": 24,
+            "mean": 3.369
+          },
+          "exclusive": {
+            "n": 289,
+            "p50": 2.2,
+            "p95": 8.9,
+            "p99": 20.8,
+            "max": 24,
+            "mean": 3.369
+          }
+        }
+      }
+    },
+    {
+      "scenario": "expanded-native-A-repeat",
+      "variant": "srgb",
+      "mode": "native-on",
+      "backing": [
+        2291,
+        854
+      ],
+      "temperatureBefore": {
+        "batterySensorC": 30.1,
+        "thermalStatus": 0,
+        "usbPowered": true,
+        "acPowered": false
+      },
+      "temperatureAfter": {
+        "batterySensorC": 30.4,
+        "thermalStatus": 0,
+        "usbPowered": true,
+        "acPowered": false
+      },
+      "hashes": {
+        "index.html": "f75b812f9d7738a6a353e1ff14c6e36b0836540c7dc4882579d9659daafdff28",
+        "build/lantern.js": "77b47211eadbb496367b8b5f821b261cba9d703fdfff5559a5e6c8dd0d4d4cda",
+        "style.css": "9c2d5fc38a582acfb4bfac2e2df81705e24cbaf6dbcf0555a61eee6e9ddc81d7",
+        "vendor/SOURCE.md": "48151d33b98ffd24d8f7c830fa5a16bc1442f96c82984cfecf4d2fc216e4490e"
+      },
+      "denseRows": 330,
+      "hostRows": 296,
+      "backpressureObserved": 0,
+      "backpressureInstrumented": false,
+      "raf": {
+        "n": 330,
+        "p50": 16.7,
+        "p95": 49.7,
+        "p99": 49.8,
+        "max": 49.8,
+        "mean": 25.469
+      },
+      "hostCadence": {
+        "n": 295,
+        "p50": 33.1,
+        "p95": 49.8,
+        "p99": 49.8,
+        "max": 66.3,
+        "mean": 28.379
+      },
+      "drawCalls": {
+        "n": 296,
+        "p50": 43,
+        "p95": 81,
+        "p99": 83,
+        "max": 84,
+        "mean": 50.932
+      },
+      "commands": {
+        "n": 296,
+        "p50": 183,
+        "p95": 184,
+        "p99": 185,
+        "max": 185,
+        "mean": 183.007
+      },
+      "hostSpans": {
+        "engine.frame.cpu": {
+          "inclusive": {
+            "n": 296,
+            "p50": 24.1,
+            "p95": 38.6,
+            "p99": 48.8,
+            "max": 52.6,
+            "mean": 24.904
+          },
+          "exclusive": {
+            "n": 296,
+            "p50": 0,
+            "p95": 0.1,
+            "p99": 0.2,
+            "max": 0.2,
+            "mean": 0.031
+          }
+        },
+        "demo.rules": {
+          "inclusive": {
+            "n": 296,
+            "p50": 0.1,
+            "p95": 0.2,
+            "p99": 1,
+            "max": 7.7,
+            "mean": 0.129
+          },
+          "exclusive": {
+            "n": 296,
+            "p50": 0.1,
+            "p95": 0.2,
+            "p99": 1,
+            "max": 7.7,
+            "mean": 0.129
+          }
+        },
+        "demo.spine.advance": {
+          "inclusive": {
+            "n": 296,
+            "p50": 8,
+            "p95": 17.3,
+            "p99": 23.3,
+            "max": 28.1,
+            "mean": 8.955
+          },
+          "exclusive": {
+            "n": 296,
+            "p50": 8,
+            "p95": 17.3,
+            "p99": 23.3,
+            "max": 28.1,
+            "mean": 8.955
+          }
+        },
+        "demo.ui.refresh": {
+          "inclusive": {
+            "n": 296,
+            "p50": 0,
+            "p95": 0.1,
+            "p99": 0.1,
+            "max": 0.2,
+            "mean": 0.024
+          },
+          "exclusive": {
+            "n": 296,
+            "p50": 0,
+            "p95": 0.1,
+            "p99": 0.1,
+            "max": 0.2,
+            "mean": 0.024
+          }
+        },
+        "engine.ui.views": {
+          "inclusive": {
+            "n": 296,
+            "p50": 0,
+            "p95": 0.1,
+            "p99": 0.2,
+            "max": 0.3,
+            "mean": 0.052
+          },
+          "exclusive": {
+            "n": 296,
+            "p50": 0,
+            "p95": 0.1,
+            "p99": 0.2,
+            "max": 0.3,
+            "mean": 0.052
+          }
+        },
+        "engine.ui.semantics.publish": {
+          "inclusive": {
+            "n": 296,
+            "p50": 0.4,
+            "p95": 0.9,
+            "p99": 6.7,
+            "max": 7.3,
+            "mean": 0.52
+          },
+          "exclusive": {
+            "n": 296,
+            "p50": 0.3,
+            "p95": 0.8,
+            "p99": 6.7,
+            "max": 7.3,
+            "mean": 0.476
+          }
+        },
+        "engine.ui.semantics.projection": {
+          "inclusive": {
+            "n": 95,
+            "p50": 0.1,
+            "p95": 0.2,
+            "p99": 0.4,
+            "max": 0.4,
+            "mean": 0.138
+          },
+          "exclusive": {
+            "n": 95,
+            "p50": 0.1,
+            "p95": 0.2,
+            "p99": 0.4,
+            "max": 0.4,
+            "mean": 0.138
+          }
+        },
+        "engine.frame.capture": {
+          "inclusive": {
+            "n": 296,
+            "p50": 2.6,
+            "p95": 4.9,
+            "p99": 7.6,
+            "max": 10.2,
+            "mean": 2.978
+          },
+          "exclusive": {
+            "n": 296,
+            "p50": 2.6,
+            "p95": 4.9,
+            "p99": 7.6,
+            "max": 10.2,
+            "mean": 2.978
+          }
+        },
+        "engine.webgl2.prepare": {
+          "inclusive": {
+            "n": 296,
+            "p50": 5.8,
+            "p95": 12.5,
+            "p99": 17.7,
+            "max": 25.4,
+            "mean": 6.892
+          },
+          "exclusive": {
+            "n": 296,
+            "p50": 0,
+            "p95": 0.2,
+            "p99": 0.3,
+            "max": 0.4,
+            "mean": 0.06
+          }
+        },
+        "engine.webgl2.prepare.geometry": {
+          "inclusive": {
+            "n": 296,
+            "p50": 4.5,
+            "p95": 10.4,
+            "p99": 17.1,
+            "max": 23.1,
+            "mean": 5.436
+          },
+          "exclusive": {
+            "n": 296,
+            "p50": 4.5,
+            "p95": 10.4,
+            "p99": 17.1,
+            "max": 23.1,
+            "mean": 5.436
+          }
+        },
+        "engine.webgl2.prepare.pack": {
+          "inclusive": {
+            "n": 296,
+            "p50": 1.1,
+            "p95": 1.9,
+            "p99": 3.5,
+            "max": 11,
+            "mean": 1.179
+          },
+          "exclusive": {
+            "n": 296,
+            "p50": 1.1,
+            "p95": 1.9,
+            "p99": 3.5,
+            "max": 11,
+            "mean": 1.179
+          }
+        },
+        "engine.webgl2.prepare.texture": {
+          "inclusive": {
+            "n": 296,
+            "p50": 0,
+            "p95": 0.2,
+            "p99": 0.3,
+            "max": 0.4,
+            "mean": 0.044
+          },
+          "exclusive": {
+            "n": 296,
+            "p50": 0,
+            "p95": 0.2,
+            "p99": 0.3,
+            "max": 0.4,
+            "mean": 0.044
+          }
+        },
+        "engine.webgl2.prepare.batch": {
+          "inclusive": {
+            "n": 296,
+            "p50": 0.1,
+            "p95": 0.4,
+            "p99": 0.5,
+            "max": 0.6,
+            "mean": 0.173
+          },
+          "exclusive": {
+            "n": 296,
+            "p50": 0.1,
+            "p95": 0.4,
+            "p99": 0.5,
+            "max": 0.6,
+            "mean": 0.173
+          }
+        },
+        "engine.webgl2.submit": {
+          "inclusive": {
+            "n": 296,
+            "p50": 3.8,
+            "p95": 10.3,
+            "p99": 19.3,
+            "max": 23,
+            "mean": 4.767
+          },
+          "exclusive": {
+            "n": 296,
+            "p50": 1,
+            "p95": 2.8,
+            "p99": 3.7,
+            "max": 8,
+            "mean": 1.175
+          }
+        },
+        "engine.webgl2.upload": {
+          "inclusive": {
+            "n": 296,
+            "p50": 0.1,
+            "p95": 0.2,
+            "p99": 0.3,
+            "max": 0.5,
+            "mean": 0.114
+          },
+          "exclusive": {
+            "n": 296,
+            "p50": 0.1,
+            "p95": 0.2,
+            "p99": 0.3,
+            "max": 0.5,
+            "mean": 0.114
+          }
+        },
+        "engine.webgl2.draw": {
+          "inclusive": {
+            "n": 296,
+            "p50": 2.4,
+            "p95": 8.9,
+            "p99": 18.6,
+            "max": 21.9,
+            "mean": 3.478
+          },
+          "exclusive": {
+            "n": 296,
+            "p50": 2.4,
+            "p95": 8.9,
+            "p99": 18.6,
+            "max": 21.9,
+            "mean": 3.478
+          }
+        }
+      }
+    },
+    {
+      "scenario": "expanded-ui-hidden",
+      "variant": "srgb",
+      "mode": "native-off",
+      "backing": [
+        2291,
+        854
+      ],
+      "temperatureBefore": {
+        "batterySensorC": 30.7,
+        "thermalStatus": 0,
+        "usbPowered": true,
+        "acPowered": false
+      },
+      "temperatureAfter": {
+        "batterySensorC": 30.7,
+        "thermalStatus": 0,
+        "usbPowered": true,
+        "acPowered": false
+      },
+      "hashes": {
+        "index.html": "f75b812f9d7738a6a353e1ff14c6e36b0836540c7dc4882579d9659daafdff28",
+        "build/lantern.js": "77b47211eadbb496367b8b5f821b261cba9d703fdfff5559a5e6c8dd0d4d4cda",
+        "style.css": "9c2d5fc38a582acfb4bfac2e2df81705e24cbaf6dbcf0555a61eee6e9ddc81d7",
+        "vendor/SOURCE.md": "48151d33b98ffd24d8f7c830fa5a16bc1442f96c82984cfecf4d2fc216e4490e"
+      },
+      "denseRows": 330,
+      "hostRows": 291,
+      "backpressureObserved": 0,
+      "backpressureInstrumented": false,
+      "raf": {
+        "n": 330,
+        "p50": 16.6,
+        "p95": 33.2,
+        "p99": 49.8,
+        "max": 66.3,
+        "mean": 22.502
+      },
+      "hostCadence": {
+        "n": 290,
+        "p50": 16.7,
+        "p95": 49.7,
+        "p99": 49.8,
+        "max": 66.3,
+        "mean": 25.435
+      },
+      "drawCalls": {
+        "n": 291,
+        "p50": 11,
+        "p95": 49,
+        "p99": 51,
+        "max": 52,
+        "mean": 18.938
+      },
+      "commands": {
+        "n": 291,
+        "p50": 139,
+        "p95": 140,
+        "p99": 140,
+        "max": 140,
+        "mean": 138.725
+      },
+      "hostSpans": {
+        "engine.frame.cpu": {
+          "inclusive": {
+            "n": 291,
+            "p50": 21.4,
+            "p95": 37,
+            "p99": 43.2,
+            "max": 54.7,
+            "mean": 22.27
+          },
+          "exclusive": {
+            "n": 291,
+            "p50": 0,
+            "p95": 0.1,
+            "p99": 0.2,
+            "max": 0.3,
+            "mean": 0.032
+          }
+        },
+        "demo.rules": {
+          "inclusive": {
+            "n": 291,
+            "p50": 0.1,
+            "p95": 0.3,
+            "p99": 0.7,
+            "max": 7.6,
+            "mean": 0.127
+          },
+          "exclusive": {
+            "n": 291,
+            "p50": 0.1,
+            "p95": 0.3,
+            "p99": 0.7,
+            "max": 7.6,
+            "mean": 0.127
+          }
+        },
+        "demo.spine.advance": {
+          "inclusive": {
+            "n": 291,
+            "p50": 7.5,
+            "p95": 16.9,
+            "p99": 22.5,
+            "max": 26.5,
+            "mean": 8.36
+          },
+          "exclusive": {
+            "n": 291,
+            "p50": 7.5,
+            "p95": 16.9,
+            "p99": 22.5,
+            "max": 26.5,
+            "mean": 8.36
+          }
+        },
+        "demo.ui.refresh": {
+          "inclusive": {
+            "n": 291,
+            "p50": 0,
+            "p95": 0.1,
+            "p99": 0.1,
+            "max": 0.1,
+            "mean": 0.019
+          },
+          "exclusive": {
+            "n": 291,
+            "p50": 0,
+            "p95": 0.1,
+            "p99": 0.1,
+            "max": 0.1,
+            "mean": 0.019
+          }
+        },
+        "engine.ui.views": null,
+        "engine.ui.semantics.publish": null,
+        "engine.ui.semantics.projection": null,
+        "engine.frame.capture": {
+          "inclusive": {
+            "n": 291,
+            "p50": 2.2,
+            "p95": 4.2,
+            "p99": 9.8,
+            "max": 10.7,
+            "mean": 2.537
+          },
+          "exclusive": {
+            "n": 291,
+            "p50": 2.2,
+            "p95": 4.2,
+            "p99": 9.8,
+            "max": 10.7,
+            "mean": 2.537
+          }
+        },
+        "engine.webgl2.prepare": {
+          "inclusive": {
+            "n": 291,
+            "p50": 5.8,
+            "p95": 12.6,
+            "p99": 16.8,
+            "max": 17.5,
+            "mean": 6.369
+          },
+          "exclusive": {
+            "n": 291,
+            "p50": 0,
+            "p95": 0.2,
+            "p99": 0.2,
+            "max": 0.4,
+            "mean": 0.047
+          }
+        },
+        "engine.webgl2.prepare.geometry": {
+          "inclusive": {
+            "n": 291,
+            "p50": 5,
+            "p95": 11.1,
+            "p99": 14.6,
+            "max": 16.4,
+            "mean": 5.418
+          },
+          "exclusive": {
+            "n": 291,
+            "p50": 5,
+            "p95": 11.1,
+            "p99": 14.6,
+            "max": 16.4,
+            "mean": 5.418
+          }
+        },
+        "engine.webgl2.prepare.pack": {
+          "inclusive": {
+            "n": 291,
+            "p50": 0.7,
+            "p95": 1.4,
+            "p99": 2.9,
+            "max": 3.6,
+            "mean": 0.771
+          },
+          "exclusive": {
+            "n": 291,
+            "p50": 0.7,
+            "p95": 1.4,
+            "p99": 2.9,
+            "max": 3.6,
+            "mean": 0.771
+          }
+        },
+        "engine.webgl2.prepare.texture": {
+          "inclusive": {
+            "n": 291,
+            "p50": 0,
+            "p95": 0,
+            "p99": 0.1,
+            "max": 0.1,
+            "mean": 0.001
+          },
+          "exclusive": {
+            "n": 291,
+            "p50": 0,
+            "p95": 0,
+            "p99": 0.1,
+            "max": 0.1,
+            "mean": 0.001
+          }
+        },
+        "engine.webgl2.prepare.batch": {
+          "inclusive": {
+            "n": 291,
+            "p50": 0.1,
+            "p95": 0.4,
+            "p99": 0.7,
+            "max": 0.8,
+            "mean": 0.132
+          },
+          "exclusive": {
+            "n": 291,
+            "p50": 0.1,
+            "p95": 0.4,
+            "p99": 0.7,
+            "max": 0.8,
+            "mean": 0.132
+          }
+        },
+        "engine.webgl2.submit": {
+          "inclusive": {
+            "n": 291,
+            "p50": 3.2,
+            "p95": 10.7,
+            "p99": 17,
+            "max": 22.5,
+            "mean": 4.272
+          },
+          "exclusive": {
+            "n": 291,
+            "p50": 0.8,
+            "p95": 3.7,
+            "p99": 5,
+            "max": 6.9,
+            "mean": 1.242
+          }
+        },
+        "engine.webgl2.upload": {
+          "inclusive": {
+            "n": 291,
+            "p50": 0.1,
+            "p95": 0.2,
+            "p99": 0.2,
+            "max": 0.2,
+            "mean": 0.065
+          },
+          "exclusive": {
+            "n": 291,
+            "p50": 0.1,
+            "p95": 0.2,
+            "p99": 0.2,
+            "max": 0.2,
+            "mean": 0.065
+          }
+        },
+        "engine.webgl2.draw": {
+          "inclusive": {
+            "n": 291,
+            "p50": 1.9,
+            "p95": 9.6,
+            "p99": 16.2,
+            "max": 21.8,
+            "mean": 2.965
+          },
+          "exclusive": {
+            "n": 291,
+            "p50": 1.9,
+            "p95": 9.6,
+            "p99": 16.2,
+            "max": 21.8,
+            "mean": 2.965
+          }
+        }
+      }
+    },
+    {
+      "scenario": "compact-old-dom",
+      "variant": "old",
+      "mode": "old",
+      "backing": [
+        1517,
+        854
+      ],
+      "temperatureBefore": {
+        "batterySensorC": 30.9,
+        "thermalStatus": 0,
+        "usbPowered": true,
+        "acPowered": false
+      },
+      "temperatureAfter": {
+        "batterySensorC": 30.9,
+        "thermalStatus": 0,
+        "usbPowered": true,
+        "acPowered": false
+      },
+      "hashes": {
+        "index.html": "b55f6fe94b9ef1e971260a176b08bfa0ccc8ea822e52e5644009d48c55339c83",
+        "build/lantern.js": "09a1c34008a6018d88029413d1f31b7017bb2b7518c919934f7d4045d4d19903",
+        "style.css": "b5cffc6547051779ea8dae652b70cc696503aa4135d6a0d29dd81a985bcffac8",
+        "vendor/SOURCE.md": "ffd6cc9c350f50b7a987d03d4d5ee9db2740eba6cc07c41f909181c8a496e0e0"
+      },
+      "denseRows": 330,
+      "hostRows": 289,
+      "backpressureObserved": 41,
+      "backpressureInstrumented": true,
+      "raf": {
+        "n": 330,
+        "p50": 16.6,
+        "p95": 33.2,
+        "p99": 49.7,
+        "max": 49.8,
+        "mean": 21.499
+      },
+      "hostCadence": {
+        "n": 288,
+        "p50": 16.6,
+        "p95": 49.7,
+        "p99": 49.8,
+        "max": 49.8,
+        "mean": 24.519
+      },
+      "drawCalls": {
+        "n": 289,
+        "p50": 11,
+        "p95": 49,
+        "p99": 51,
+        "max": 52,
+        "mean": 18.99
+      },
+      "commands": {
+        "n": 289,
+        "p50": 137,
+        "p95": 138,
+        "p99": 138,
+        "max": 138,
+        "mean": 136.716
+      },
+      "hostSpans": {
+        "engine.frame.cpu": {
+          "inclusive": {
+            "n": 289,
+            "p50": 20.5,
+            "p95": 31.3,
+            "p99": 36.8,
+            "max": 41.5,
+            "mean": 20.864
+          },
+          "exclusive": {
+            "n": 289,
+            "p50": 0,
+            "p95": 0.1,
+            "p99": 0.2,
+            "max": 0.3,
+            "mean": 0.026
+          }
+        },
+        "demo.rules": {
+          "inclusive": {
+            "n": 289,
+            "p50": 0.1,
+            "p95": 0.3,
+            "p99": 3.7,
+            "max": 7.6,
+            "mean": 0.169
+          },
+          "exclusive": {
+            "n": 289,
+            "p50": 0.1,
+            "p95": 0.3,
+            "p99": 3.7,
+            "max": 7.6,
+            "mean": 0.169
+          }
+        },
+        "demo.spine.advance": {
+          "inclusive": {
+            "n": 289,
+            "p50": 7.6,
+            "p95": 14,
+            "p99": 19.2,
+            "max": 20.4,
+            "mean": 7.957
+          },
+          "exclusive": {
+            "n": 289,
+            "p50": 7.6,
+            "p95": 14,
+            "p99": 19.2,
+            "max": 20.4,
+            "mean": 7.957
+          }
+        },
+        "demo.ui.refresh": null,
+        "engine.ui.views": null,
+        "engine.ui.semantics.publish": null,
+        "engine.ui.semantics.projection": null,
+        "engine.frame.capture": {
+          "inclusive": {
+            "n": 289,
+            "p50": 2.2,
+            "p95": 3.4,
+            "p99": 4.3,
+            "max": 5.5,
+            "mean": 2.318
+          },
+          "exclusive": {
+            "n": 289,
+            "p50": 2.2,
+            "p95": 3.4,
+            "p99": 4.3,
+            "max": 5.5,
+            "mean": 2.318
+          }
+        },
+        "engine.webgl2.prepare": {
+          "inclusive": {
+            "n": 289,
+            "p50": 5.9,
+            "p95": 10.3,
+            "p99": 14.5,
+            "max": 15.7,
+            "mean": 5.826
+          },
+          "exclusive": {
+            "n": 289,
+            "p50": 0,
+            "p95": 0.2,
+            "p99": 0.3,
+            "max": 0.3,
+            "mean": 0.045
+          }
+        },
+        "engine.webgl2.prepare.geometry": {
+          "inclusive": {
+            "n": 289,
+            "p50": 4.8,
+            "p95": 8.8,
+            "p99": 12.7,
+            "max": 14,
+            "mean": 4.819
+          },
+          "exclusive": {
+            "n": 289,
+            "p50": 4.8,
+            "p95": 8.8,
+            "p99": 12.7,
+            "max": 14,
+            "mean": 4.819
+          }
+        },
+        "engine.webgl2.prepare.pack": {
+          "inclusive": {
+            "n": 289,
+            "p50": 0.8,
+            "p95": 1.3,
+            "p99": 3.6,
+            "max": 4.4,
+            "mean": 0.809
+          },
+          "exclusive": {
+            "n": 289,
+            "p50": 0.8,
+            "p95": 1.3,
+            "p99": 3.6,
+            "max": 4.4,
+            "mean": 0.809
+          }
+        },
+        "engine.webgl2.prepare.texture": {
+          "inclusive": {
+            "n": 289,
+            "p50": 0,
+            "p95": 0,
+            "p99": 0.1,
+            "max": 0.1,
+            "mean": 0.004
+          },
+          "exclusive": {
+            "n": 289,
+            "p50": 0,
+            "p95": 0,
+            "p99": 0.1,
+            "max": 0.1,
+            "mean": 0.004
+          }
+        },
+        "engine.webgl2.prepare.batch": {
+          "inclusive": {
+            "n": 289,
+            "p50": 0.1,
+            "p95": 0.4,
+            "p99": 0.5,
+            "max": 0.6,
+            "mean": 0.148
+          },
+          "exclusive": {
+            "n": 289,
+            "p50": 0.1,
+            "p95": 0.4,
+            "p99": 0.5,
+            "max": 0.6,
+            "mean": 0.148
+          }
+        },
+        "engine.webgl2.submit": {
+          "inclusive": {
+            "n": 289,
+            "p50": 2.9,
+            "p95": 9.3,
+            "p99": 16.6,
+            "max": 19.2,
+            "mean": 4.031
+          },
+          "exclusive": {
+            "n": 289,
+            "p50": 0.8,
+            "p95": 3.3,
+            "p99": 5.3,
+            "max": 5.5,
+            "mean": 1.123
+          }
+        },
+        "engine.webgl2.upload": {
+          "inclusive": {
+            "n": 289,
+            "p50": 0.1,
+            "p95": 0.2,
+            "p99": 0.2,
+            "max": 0.3,
+            "mean": 0.066
+          },
+          "exclusive": {
+            "n": 289,
+            "p50": 0.1,
+            "p95": 0.2,
+            "p99": 0.2,
+            "max": 0.3,
+            "mean": 0.066
+          }
+        },
+        "engine.webgl2.draw": {
+          "inclusive": {
+            "n": 289,
+            "p50": 1.8,
+            "p95": 6.9,
+            "p99": 15.6,
+            "max": 18.1,
+            "mean": 2.842
+          },
+          "exclusive": {
+            "n": 289,
+            "p50": 1.8,
+            "p95": 6.9,
+            "p99": 15.6,
+            "max": 18.1,
+            "mean": 2.842
+          }
+        }
+      }
+    },
+    {
+      "scenario": "compact-native-linear",
+      "variant": "current",
+      "mode": "native-on",
+      "backing": [
+        1517,
+        854
+      ],
+      "temperatureBefore": {
+        "batterySensorC": 30.9,
+        "thermalStatus": 0,
+        "usbPowered": true,
+        "acPowered": false
+      },
+      "temperatureAfter": {
+        "batterySensorC": 30.9,
+        "thermalStatus": 0,
+        "usbPowered": true,
+        "acPowered": false
+      },
+      "hashes": {
+        "index.html": "14e4da24813df66ac177c39f440836bc681c41f327218459552c99cdc85481c3",
+        "build/lantern.js": "826ac6f201917b4e4adb0152c619c4aa9a54225a3b06e463df2d3aecfdeef995",
+        "style.css": "07ae500c230abcf189da0195bd645c2597695add2da9564975fb4a8894709dfe",
+        "vendor/SOURCE.md": "48151d33b98ffd24d8f7c830fa5a16bc1442f96c82984cfecf4d2fc216e4490e"
+      },
+      "denseRows": 330,
+      "hostRows": 295,
+      "backpressureObserved": 35,
+      "backpressureInstrumented": true,
+      "raf": {
+        "n": 330,
+        "p50": 16.6,
+        "p95": 49.7,
+        "p99": 49.8,
+        "max": 49.8,
+        "mean": 24.566
+      },
+      "hostCadence": {
+        "n": 294,
+        "p50": 33.1,
+        "p95": 49.8,
+        "p99": 50.8,
+        "max": 66.3,
+        "mean": 27.518
+      },
+      "drawCalls": {
+        "n": 295,
+        "p50": 43,
+        "p95": 81,
+        "p99": 83,
+        "max": 84,
+        "mean": 50.997
+      },
+      "commands": {
+        "n": 295,
+        "p50": 181,
+        "p95": 182,
+        "p99": 183,
+        "max": 183,
+        "mean": 181.034
+      },
+      "hostSpans": {
+        "engine.frame.cpu": {
+          "inclusive": {
+            "n": 295,
+            "p50": 22.7,
+            "p95": 39.2,
+            "p99": 46.2,
+            "max": 54.1,
+            "mean": 24.031
+          },
+          "exclusive": {
+            "n": 295,
+            "p50": 0,
+            "p95": 0.1,
+            "p99": 0.2,
+            "max": 0.2,
+            "mean": 0.031
+          }
+        },
+        "demo.rules": {
+          "inclusive": {
+            "n": 295,
+            "p50": 0.1,
+            "p95": 0.3,
+            "p99": 1.4,
+            "max": 3.9,
+            "mean": 0.121
+          },
+          "exclusive": {
+            "n": 295,
+            "p50": 0.1,
+            "p95": 0.3,
+            "p99": 1.4,
+            "max": 3.9,
+            "mean": 0.121
+          }
+        },
+        "demo.spine.advance": {
+          "inclusive": {
+            "n": 295,
+            "p50": 7.4,
+            "p95": 19.1,
+            "p99": 22.2,
+            "max": 24.8,
+            "mean": 8.351
+          },
+          "exclusive": {
+            "n": 295,
+            "p50": 7.4,
+            "p95": 19.1,
+            "p99": 22.2,
+            "max": 24.8,
+            "mean": 8.351
+          }
+        },
+        "demo.ui.refresh": {
+          "inclusive": {
+            "n": 295,
+            "p50": 0,
+            "p95": 0.1,
+            "p99": 0.1,
+            "max": 0.1,
+            "mean": 0.024
+          },
+          "exclusive": {
+            "n": 295,
+            "p50": 0,
+            "p95": 0.1,
+            "p99": 0.1,
+            "max": 0.1,
+            "mean": 0.024
+          }
+        },
+        "engine.ui.views": {
+          "inclusive": {
+            "n": 295,
+            "p50": 0.1,
+            "p95": 0.1,
+            "p99": 0.2,
+            "max": 0.2,
+            "mean": 0.054
+          },
+          "exclusive": {
+            "n": 295,
+            "p50": 0.1,
+            "p95": 0.1,
+            "p99": 0.2,
+            "max": 0.2,
+            "mean": 0.054
+          }
+        },
+        "engine.ui.semantics.publish": {
+          "inclusive": {
+            "n": 295,
+            "p50": 0.4,
+            "p95": 0.9,
+            "p99": 1.2,
+            "max": 6.6,
+            "mean": 0.468
+          },
+          "exclusive": {
+            "n": 295,
+            "p50": 0.4,
+            "p95": 0.8,
+            "p99": 1,
+            "max": 6.6,
+            "mean": 0.431
+          }
+        },
+        "engine.ui.semantics.projection": {
+          "inclusive": {
+            "n": 89,
+            "p50": 0.1,
+            "p95": 0.2,
+            "p99": 0.4,
+            "max": 0.4,
+            "mean": 0.124
+          },
+          "exclusive": {
+            "n": 89,
+            "p50": 0.1,
+            "p95": 0.2,
+            "p99": 0.4,
+            "max": 0.4,
+            "mean": 0.124
+          }
+        },
+        "engine.frame.capture": {
+          "inclusive": {
+            "n": 295,
+            "p50": 2.8,
+            "p95": 6.2,
+            "p99": 7.3,
+            "max": 8.8,
+            "mean": 3.18
+          },
+          "exclusive": {
+            "n": 295,
+            "p50": 2.8,
+            "p95": 6.2,
+            "p99": 7.3,
+            "max": 8.8,
+            "mean": 3.18
+          }
+        },
+        "engine.webgl2.prepare": {
+          "inclusive": {
+            "n": 295,
+            "p50": 6,
+            "p95": 11.6,
+            "p99": 15.1,
+            "max": 24.3,
+            "mean": 6.774
+          },
+          "exclusive": {
+            "n": 295,
+            "p50": 0.1,
+            "p95": 0.2,
+            "p99": 0.3,
+            "max": 0.3,
+            "mean": 0.069
+          }
+        },
+        "engine.webgl2.prepare.geometry": {
+          "inclusive": {
+            "n": 295,
+            "p50": 4.6,
+            "p95": 9.8,
+            "p99": 13.4,
+            "max": 23.2,
+            "mean": 5.296
+          },
+          "exclusive": {
+            "n": 295,
+            "p50": 4.6,
+            "p95": 9.8,
+            "p99": 13.4,
+            "max": 23.2,
+            "mean": 5.296
+          }
+        },
+        "engine.webgl2.prepare.pack": {
+          "inclusive": {
+            "n": 295,
+            "p50": 1.1,
+            "p95": 2,
+            "p99": 2.6,
+            "max": 6.5,
+            "mean": 1.193
+          },
+          "exclusive": {
+            "n": 295,
+            "p50": 1.1,
+            "p95": 2,
+            "p99": 2.6,
+            "max": 6.5,
+            "mean": 1.193
+          }
+        },
+        "engine.webgl2.prepare.texture": {
+          "inclusive": {
+            "n": 295,
+            "p50": 0,
+            "p95": 0.2,
+            "p99": 0.3,
+            "max": 0.7,
+            "mean": 0.043
+          },
+          "exclusive": {
+            "n": 295,
+            "p50": 0,
+            "p95": 0.2,
+            "p99": 0.3,
+            "max": 0.7,
+            "mean": 0.043
+          }
+        },
+        "engine.webgl2.prepare.batch": {
+          "inclusive": {
+            "n": 295,
+            "p50": 0.1,
+            "p95": 0.4,
+            "p99": 0.5,
+            "max": 0.7,
+            "mean": 0.172
+          },
+          "exclusive": {
+            "n": 295,
+            "p50": 0.1,
+            "p95": 0.4,
+            "p99": 0.5,
+            "max": 0.7,
+            "mean": 0.172
+          }
+        },
+        "engine.webgl2.submit": {
+          "inclusive": {
+            "n": 295,
+            "p50": 3.5,
+            "p95": 9.6,
+            "p99": 15.9,
+            "max": 25.1,
+            "mean": 4.407
+          },
+          "exclusive": {
+            "n": 295,
+            "p50": 0.9,
+            "p95": 2.8,
+            "p99": 4.7,
+            "max": 7.3,
+            "mean": 1.123
+          }
+        },
+        "engine.webgl2.upload": {
+          "inclusive": {
+            "n": 295,
+            "p50": 0.1,
+            "p95": 0.2,
+            "p99": 0.3,
+            "max": 0.3,
+            "mean": 0.119
+          },
+          "exclusive": {
+            "n": 295,
+            "p50": 0.1,
+            "p95": 0.2,
+            "p99": 0.3,
+            "max": 0.3,
+            "mean": 0.119
+          }
+        },
+        "engine.webgl2.draw": {
+          "inclusive": {
+            "n": 295,
+            "p50": 2.2,
+            "p95": 8.3,
+            "p99": 14.9,
+            "max": 24.3,
+            "mean": 3.165
+          },
+          "exclusive": {
+            "n": 295,
+            "p50": 2.2,
+            "p95": 8.3,
+            "p99": 14.9,
+            "max": 24.3,
+            "mean": 3.165
+          }
+        }
+      }
+    },
+    {
+      "scenario": "expanded-atlas-control",
+      "variant": "baseline",
+      "mode": "native-on",
+      "backing": [
+        2291,
+        854
+      ],
+      "temperatureBefore": {
+        "batterySensorC": 30.7,
+        "thermalStatus": 0,
+        "usbPowered": true,
+        "acPowered": false
+      },
+      "temperatureAfter": {
+        "batterySensorC": 30.7,
+        "thermalStatus": 0,
+        "usbPowered": true,
+        "acPowered": false
+      },
+      "hashes": {
+        "index.html": "f75b812f9d7738a6a353e1ff14c6e36b0836540c7dc4882579d9659daafdff28",
+        "build/lantern.js": "77b47211eadbb496367b8b5f821b261cba9d703fdfff5559a5e6c8dd0d4d4cda",
+        "style.css": "9c2d5fc38a582acfb4bfac2e2df81705e24cbaf6dbcf0555a61eee6e9ddc81d7",
+        "vendor/SOURCE.md": "48151d33b98ffd24d8f7c830fa5a16bc1442f96c82984cfecf4d2fc216e4490e"
+      },
+      "denseRows": 330,
+      "hostRows": 287,
+      "backpressureObserved": 0,
+      "backpressureInstrumented": false,
+      "raf": {
+        "n": 330,
+        "p50": 16.7,
+        "p95": 49.7,
+        "p99": 51,
+        "max": 66.3,
+        "mean": 25.267
+      },
+      "hostCadence": {
+        "n": 286,
+        "p50": 33.1,
+        "p95": 49.8,
+        "p99": 66.3,
+        "max": 66.4,
+        "mean": 29.038
+      },
+      "drawCalls": {
+        "n": 287,
+        "p50": 43,
+        "p95": 81,
+        "p99": 83,
+        "max": 84,
+        "mean": 51.46
+      },
+      "commands": {
+        "n": 287,
+        "p50": 183,
+        "p95": 184,
+        "p99": 185,
+        "max": 185,
+        "mean": 182.997
+      },
+      "hostSpans": {
+        "engine.frame.cpu": {
+          "inclusive": {
+            "n": 287,
+            "p50": 24.9,
+            "p95": 39.6,
+            "p99": 44.4,
+            "max": 45.5,
+            "mean": 25.005
+          },
+          "exclusive": {
+            "n": 287,
+            "p50": 0,
+            "p95": 0.1,
+            "p99": 0.2,
+            "max": 0.2,
+            "mean": 0.027
+          }
+        },
+        "demo.rules": {
+          "inclusive": {
+            "n": 287,
+            "p50": 0.1,
+            "p95": 0.3,
+            "p99": 0.9,
+            "max": 5.3,
+            "mean": 0.123
+          },
+          "exclusive": {
+            "n": 287,
+            "p50": 0.1,
+            "p95": 0.3,
+            "p99": 0.9,
+            "max": 5.3,
+            "mean": 0.123
+          }
+        },
+        "demo.spine.advance": {
+          "inclusive": {
+            "n": 287,
+            "p50": 8,
+            "p95": 16.4,
+            "p99": 24.1,
+            "max": 26.8,
+            "mean": 8.925
+          },
+          "exclusive": {
+            "n": 287,
+            "p50": 8,
+            "p95": 16.4,
+            "p99": 24.1,
+            "max": 26.8,
+            "mean": 8.925
+          }
+        },
+        "demo.ui.refresh": {
+          "inclusive": {
+            "n": 287,
+            "p50": 0,
+            "p95": 0.1,
+            "p99": 0.1,
+            "max": 0.2,
+            "mean": 0.021
+          },
+          "exclusive": {
+            "n": 287,
+            "p50": 0,
+            "p95": 0.1,
+            "p99": 0.1,
+            "max": 0.2,
+            "mean": 0.021
+          }
+        },
+        "engine.ui.views": {
+          "inclusive": {
+            "n": 287,
+            "p50": 0,
+            "p95": 0.1,
+            "p99": 0.2,
+            "max": 0.3,
+            "mean": 0.046
+          },
+          "exclusive": {
+            "n": 287,
+            "p50": 0,
+            "p95": 0.1,
+            "p99": 0.2,
+            "max": 0.3,
+            "mean": 0.046
+          }
+        },
+        "engine.ui.semantics.publish": {
+          "inclusive": {
+            "n": 287,
+            "p50": 0.4,
+            "p95": 0.7,
+            "p99": 0.9,
+            "max": 6.6,
+            "mean": 0.456
+          },
+          "exclusive": {
+            "n": 287,
+            "p50": 0.4,
+            "p95": 0.6,
+            "p99": 0.9,
+            "max": 6.6,
+            "mean": 0.421
+          }
+        },
+        "engine.ui.semantics.projection": {
+          "inclusive": {
+            "n": 97,
+            "p50": 0.1,
+            "p95": 0.2,
+            "p99": 0.2,
+            "max": 0.2,
+            "mean": 0.102
+          },
+          "exclusive": {
+            "n": 97,
+            "p50": 0.1,
+            "p95": 0.2,
+            "p99": 0.2,
+            "max": 0.2,
+            "mean": 0.102
+          }
+        },
+        "engine.frame.capture": {
+          "inclusive": {
+            "n": 287,
+            "p50": 3,
+            "p95": 4.8,
+            "p99": 8.9,
+            "max": 13.7,
+            "mean": 3.125
+          },
+          "exclusive": {
+            "n": 287,
+            "p50": 3,
+            "p95": 4.8,
+            "p99": 8.9,
+            "max": 13.7,
+            "mean": 3.125
+          }
+        },
+        "engine.webgl2.prepare": {
+          "inclusive": {
+            "n": 287,
+            "p50": 6.1,
+            "p95": 13.1,
+            "p99": 17.3,
+            "max": 20.3,
+            "mean": 6.7
+          },
+          "exclusive": {
+            "n": 287,
+            "p50": 0,
+            "p95": 0.2,
+            "p99": 0.3,
+            "max": 0.4,
+            "mean": 0.064
+          }
+        },
+        "engine.webgl2.prepare.geometry": {
+          "inclusive": {
+            "n": 287,
+            "p50": 4.8,
+            "p95": 11.5,
+            "p99": 15.8,
+            "max": 17,
+            "mean": 5.331
+          },
+          "exclusive": {
+            "n": 287,
+            "p50": 4.8,
+            "p95": 11.5,
+            "p99": 15.8,
+            "max": 17,
+            "mean": 5.331
+          }
+        },
+        "engine.webgl2.prepare.pack": {
+          "inclusive": {
+            "n": 287,
+            "p50": 0.9,
+            "p95": 2.1,
+            "p99": 4.1,
+            "max": 6.7,
+            "mean": 1.098
+          },
+          "exclusive": {
+            "n": 287,
+            "p50": 0.9,
+            "p95": 2.1,
+            "p99": 4.1,
+            "max": 6.7,
+            "mean": 1.098
+          }
+        },
+        "engine.webgl2.prepare.texture": {
+          "inclusive": {
+            "n": 287,
+            "p50": 0,
+            "p95": 0.2,
+            "p99": 0.3,
+            "max": 0.6,
+            "mean": 0.044
+          },
+          "exclusive": {
+            "n": 287,
+            "p50": 0,
+            "p95": 0.2,
+            "p99": 0.3,
+            "max": 0.6,
+            "mean": 0.044
+          }
+        },
+        "engine.webgl2.prepare.batch": {
+          "inclusive": {
+            "n": 287,
+            "p50": 0.1,
+            "p95": 0.4,
+            "p99": 0.6,
+            "max": 0.8,
+            "mean": 0.164
+          },
+          "exclusive": {
+            "n": 287,
+            "p50": 0.1,
+            "p95": 0.4,
+            "p99": 0.6,
+            "max": 0.8,
+            "mean": 0.164
+          }
+        },
+        "engine.webgl2.submit": {
+          "inclusive": {
+            "n": 287,
+            "p50": 4.1,
+            "p95": 11.5,
+            "p99": 19.4,
+            "max": 32.2,
+            "mean": 4.982
+          },
+          "exclusive": {
+            "n": 287,
+            "p50": 0.9,
+            "p95": 3.1,
+            "p99": 4.4,
+            "max": 8.9,
+            "mean": 1.245
+          }
+        },
+        "engine.webgl2.upload": {
+          "inclusive": {
+            "n": 287,
+            "p50": 0.1,
+            "p95": 0.2,
+            "p99": 0.3,
+            "max": 0.4,
+            "mean": 0.117
+          },
+          "exclusive": {
+            "n": 287,
+            "p50": 0.1,
+            "p95": 0.2,
+            "p99": 0.3,
+            "max": 0.4,
+            "mean": 0.117
+          }
+        },
+        "engine.webgl2.draw": {
+          "inclusive": {
+            "n": 287,
+            "p50": 2.4,
+            "p95": 10.2,
+            "p99": 18.6,
+            "max": 31.8,
+            "mean": 3.619
+          },
+          "exclusive": {
+            "n": 287,
+            "p50": 2.4,
+            "p95": 10.2,
+            "p99": 18.6,
+            "max": 31.8,
+            "mean": 3.619
+          }
+        }
+      }
+    },
+    {
+      "scenario": "expanded-atlas",
+      "variant": "optimized",
+      "mode": "native-on",
+      "backing": [
+        2291,
+        854
+      ],
+      "temperatureBefore": {
+        "batterySensorC": 30.7,
+        "thermalStatus": 0,
+        "usbPowered": true,
+        "acPowered": false
+      },
+      "temperatureAfter": {
+        "batterySensorC": 30.8,
+        "thermalStatus": 0,
+        "usbPowered": true,
+        "acPowered": false
+      },
+      "hashes": {
+        "index.html": "f75b812f9d7738a6a353e1ff14c6e36b0836540c7dc4882579d9659daafdff28",
+        "build/lantern.js": "4ca080d23e5c92648f248e25461467ad63ad3a2541d4ee9050071132719b6f05",
+        "style.css": "9c2d5fc38a582acfb4bfac2e2df81705e24cbaf6dbcf0555a61eee6e9ddc81d7",
+        "vendor/SOURCE.md": "48151d33b98ffd24d8f7c830fa5a16bc1442f96c82984cfecf4d2fc216e4490e",
+        "assets/ui/hud-skin.png": "3d6be999fbb63f8a6b4c2e0002ab8ca63b52d51e4226a8977213361d6736da93"
+      },
+      "denseRows": 330,
+      "hostRows": 293,
+      "backpressureObserved": 0,
+      "backpressureInstrumented": false,
+      "raf": {
+        "n": 330,
+        "p50": 16.6,
+        "p95": 49.7,
+        "p99": 49.8,
+        "max": 66.3,
+        "mean": 24.262
+      },
+      "hostCadence": {
+        "n": 292,
+        "p50": 17.8,
+        "p95": 49.7,
+        "p99": 66.3,
+        "max": 66.3,
+        "mean": 27.363
+      },
+      "drawCalls": {
+        "n": 293,
+        "p50": 33,
+        "p95": 71,
+        "p99": 73,
+        "max": 74,
+        "mean": 41.403
+      },
+      "commands": {
+        "n": 293,
+        "p50": 183,
+        "p95": 184,
+        "p99": 185,
+        "max": 185,
+        "mean": 183.017
+      },
+      "hostSpans": {
+        "engine.frame.cpu": {
+          "inclusive": {
+            "n": 293,
+            "p50": 22,
+            "p95": 40.4,
+            "p99": 45.6,
+            "max": 55,
+            "mean": 23.783
+          },
+          "exclusive": {
+            "n": 293,
+            "p50": 0,
+            "p95": 0.1,
+            "p99": 0.2,
+            "max": 0.2,
+            "mean": 0.029
+          }
+        },
+        "demo.rules": {
+          "inclusive": {
+            "n": 293,
+            "p50": 0.1,
+            "p95": 0.2,
+            "p99": 1.2,
+            "max": 1.4,
+            "mean": 0.105
+          },
+          "exclusive": {
+            "n": 293,
+            "p50": 0.1,
+            "p95": 0.2,
+            "p99": 1.2,
+            "max": 1.4,
+            "mean": 0.105
+          }
+        },
+        "demo.spine.advance": {
+          "inclusive": {
+            "n": 293,
+            "p50": 7,
+            "p95": 16.7,
+            "p99": 22.7,
+            "max": 25.9,
+            "mean": 8.018
+          },
+          "exclusive": {
+            "n": 293,
+            "p50": 7,
+            "p95": 16.7,
+            "p99": 22.7,
+            "max": 25.9,
+            "mean": 8.018
+          }
+        },
+        "demo.ui.refresh": {
+          "inclusive": {
+            "n": 293,
+            "p50": 0,
+            "p95": 0.1,
+            "p99": 0.1,
+            "max": 0.2,
+            "mean": 0.022
+          },
+          "exclusive": {
+            "n": 293,
+            "p50": 0,
+            "p95": 0.1,
+            "p99": 0.1,
+            "max": 0.2,
+            "mean": 0.022
+          }
+        },
+        "engine.ui.views": {
+          "inclusive": {
+            "n": 293,
+            "p50": 0,
+            "p95": 0.1,
+            "p99": 0.2,
+            "max": 0.2,
+            "mean": 0.054
+          },
+          "exclusive": {
+            "n": 293,
+            "p50": 0,
+            "p95": 0.1,
+            "p99": 0.2,
+            "max": 0.2,
+            "mean": 0.054
+          }
+        },
+        "engine.ui.semantics.publish": {
+          "inclusive": {
+            "n": 293,
+            "p50": 0.4,
+            "p95": 1,
+            "p99": 7.7,
+            "max": 8.6,
+            "mean": 0.57
+          },
+          "exclusive": {
+            "n": 293,
+            "p50": 0.4,
+            "p95": 0.9,
+            "p99": 7.6,
+            "max": 8.6,
+            "mean": 0.532
+          }
+        },
+        "engine.ui.semantics.projection": {
+          "inclusive": {
+            "n": 87,
+            "p50": 0.1,
+            "p95": 0.3,
+            "p99": 0.4,
+            "max": 0.4,
+            "mean": 0.128
+          },
+          "exclusive": {
+            "n": 87,
+            "p50": 0.1,
+            "p95": 0.3,
+            "p99": 0.4,
+            "max": 0.4,
+            "mean": 0.128
+          }
+        },
+        "engine.frame.capture": {
+          "inclusive": {
+            "n": 293,
+            "p50": 2.2,
+            "p95": 5,
+            "p99": 6.2,
+            "max": 7.6,
+            "mean": 2.627
+          },
+          "exclusive": {
+            "n": 293,
+            "p50": 2.2,
+            "p95": 5,
+            "p99": 6.2,
+            "max": 7.6,
+            "mean": 2.627
+          }
+        },
+        "engine.webgl2.prepare": {
+          "inclusive": {
+            "n": 293,
+            "p50": 6.3,
+            "p95": 13.1,
+            "p99": 19.8,
+            "max": 20.7,
+            "mean": 6.891
+          },
+          "exclusive": {
+            "n": 293,
+            "p50": 0,
+            "p95": 0.2,
+            "p99": 0.3,
+            "max": 0.3,
+            "mean": 0.059
+          }
+        },
+        "engine.webgl2.prepare.geometry": {
+          "inclusive": {
+            "n": 293,
+            "p50": 4.9,
+            "p95": 11.3,
+            "p99": 18,
+            "max": 18.7,
+            "mean": 5.666
+          },
+          "exclusive": {
+            "n": 293,
+            "p50": 4.9,
+            "p95": 11.3,
+            "p99": 18,
+            "max": 18.7,
+            "mean": 5.666
+          }
+        },
+        "engine.webgl2.prepare.pack": {
+          "inclusive": {
+            "n": 293,
+            "p50": 0.9,
+            "p95": 1.7,
+            "p99": 2.2,
+            "max": 4.6,
+            "mean": 0.958
+          },
+          "exclusive": {
+            "n": 293,
+            "p50": 0.9,
+            "p95": 1.7,
+            "p99": 2.2,
+            "max": 4.6,
+            "mean": 0.958
+          }
+        },
+        "engine.webgl2.prepare.texture": {
+          "inclusive": {
+            "n": 293,
+            "p50": 0,
+            "p95": 0.2,
+            "p99": 0.3,
+            "max": 0.4,
+            "mean": 0.042
+          },
+          "exclusive": {
+            "n": 293,
+            "p50": 0,
+            "p95": 0.2,
+            "p99": 0.3,
+            "max": 0.4,
+            "mean": 0.042
+          }
+        },
+        "engine.webgl2.prepare.batch": {
+          "inclusive": {
+            "n": 293,
+            "p50": 0.1,
+            "p95": 0.4,
+            "p99": 0.6,
+            "max": 2.9,
+            "mean": 0.167
+          },
+          "exclusive": {
+            "n": 293,
+            "p50": 0.1,
+            "p95": 0.4,
+            "p99": 0.6,
+            "max": 2.9,
+            "mean": 0.167
+          }
+        },
+        "engine.webgl2.submit": {
+          "inclusive": {
+            "n": 293,
+            "p50": 3.4,
+            "p95": 13.6,
+            "p99": 27.5,
+            "max": 32.6,
+            "mean": 4.89
+          },
+          "exclusive": {
+            "n": 293,
+            "p50": 0.9,
+            "p95": 3,
+            "p99": 6.8,
+            "max": 13.7,
+            "mean": 1.258
+          }
+        },
+        "engine.webgl2.upload": {
+          "inclusive": {
+            "n": 293,
+            "p50": 0.1,
+            "p95": 0.2,
+            "p99": 0.4,
+            "max": 1.2,
+            "mean": 0.103
+          },
+          "exclusive": {
+            "n": 293,
+            "p50": 0.1,
+            "p95": 0.2,
+            "p99": 0.4,
+            "max": 1.2,
+            "mean": 0.103
+          }
+        },
+        "engine.webgl2.draw": {
+          "inclusive": {
+            "n": 293,
+            "p50": 2.2,
+            "p95": 10.9,
+            "p99": 26.9,
+            "max": 31.6,
+            "mean": 3.528
+          },
+          "exclusive": {
+            "n": 293,
+            "p50": 2.2,
+            "p95": 10.9,
+            "p99": 26.9,
+            "max": 31.6,
+            "mean": 3.528
+          }
+        }
+      }
+    }
+  ]
+}

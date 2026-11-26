@@ -45,7 +45,7 @@ export function inputsHash() {
  */
 export function startupAssets() {
   const manifest = JSON.parse(read('assets/manifest.json'));
-  const files = [...manifest.entries.map(entry => 'assets/' + entry.artifact.path), ...filesUnder('assets/scene', '').filter(file => /\.(png|jpg)$/.test(file))];
+  const files = [...manifest.entries.map(entry => 'assets/' + entry.artifact.path), ...filesUnder('assets/scene', '').filter(file => /\.(png|jpg)$/.test(file)), ...filesUnder('assets/ui', '.png')];
   const bySize = files.map(file => [file, fs.statSync(path.join(ROOT, file)).size]).sort((a, b) => b[1] - a[1] || (a[0] < b[0] ? -1 : 1));
   return ['assets/manifest.json', ...filesUnder('assets/levels', '.tmj'), ...bySize.map(([file]) => file)];
 }

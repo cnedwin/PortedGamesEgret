@@ -1,5 +1,7 @@
 // Native Lantern Shadows UI. The shadow-puppet world and the interface both
 // live in the same Play game; this layer only reads state and invokes commands.
+import { Bitmap } from '@egret/engine';
+import { HUD_SKIN } from './hud-skin-layout.mjs';
 import { createParagraphCache } from '@egret/engine/paragraph';
 import { createCanvasParagraphProvider } from '@egret/engine/web/paragraph';
 
@@ -91,7 +93,7 @@ export function createLanternUi(play,state,cb) {
   }));
   let mainView=null,touchView=null,modalView=null,modalKind=null,layoutKey='',currentScreen='',closed=false;
   let stickBase=0,stickTravel=0,comboBaseX=0,comboW=0,comboPulseAt=0;
-  let peachNodes=[],touchDecor=new Map();
+  let peachNodes=[],touchDecor=new Map(),hudSkin=null;
   const info=new Map();
   const tr=(zh,en)=>state.lang==='en'?en:zh;
   const english=()=>state.lang==='en';
@@ -128,6 +130,15 @@ export function createLanternUi(play,state,cb) {
   function decorate(view,name,paint){
     const parent=view.get(name),node=play.sprite(paint,parent);
     node.touchEnabled=false;parent.setChildIndex(node,0);info.get(view).decor.push(node);return node;
+  }
+  // The view still owns the native focus/touch nodes. Only its static art uses the
+  // shared texture; all crops borrow the one scope-owned lease.
+  function decorateSkin(view,name,key,width,height,paint){
+    if(!hudSkin)return decorate(view,name,paint);
+    const parent=view.get(name),node=play.scope.use(new Bitmap(hudSkin)),crop=HUD_SKIN[key];
+    node.sourceRect=crop;node.scaleX=width/crop.width;node.scaleY=height/crop.height;
+    node.touchEnabled=false;parent.addChild(node);parent.setChildIndex(node,0);
+    info.get(view).decor.push(node);return node;
   }
   function destroy(view){if(view){for(const node of info.get(view)?.decor??[])if(!node.isDisposed)play.remove(node);info.delete(view);view.close();}}
   function closeModal(){const old=modalView;modalView=null;modalKind=null;destroy(old);}
@@ -323,7 +334,7 @@ export function createLanternUi(play,state,cb) {
     parts.push(text('stats',a.left+16,p?cy+690:cy+468,a.sw-32,p?50:30,'—',p?23:16,{color:C.pale}));
     bind.stats={text:s=>String(s.stats??'').replaceAll('\n','  ·  ')};
     const native=make(tr('战斗界面','Battle HUD'),parts,bind,{gamepad:false});
-    peachNodes=Array.from({length:maxHealth},(_,i)=>decorate(native,'peach-'+i,g=>paintPeach(g,healthSize)));
+    peachNodes=Array.from({length:maxHealth},(_,i)=>decorateSkin(native,'peach-'+i,p?'peachLarge':'peachSmall',healthSize,healthSize,g=>paintPeach(g,healthSize)));
     return native;
   }
   function buildTouch() {
@@ -351,15 +362,21 @@ export function createLanternUi(play,state,cb) {
       bind[name]={tap:()=>{},pointerOnly:true,visible:enabled};
     });
     const native=make(tr('屏幕按键','On-screen controls'),parts,bind,{gamepad:false});
-    decorate(native,'stick',g=>paintTrack(g,stickW,stickH));
-    decorate(native,'stick-knob',g=>paintKnob(g,knob));
+    decorateSkin(native,'stick','track',stickW,stickH,g=>paintTrack(g,stickW,stickH));
+    decorateSkin(native,'stick-knob','knob',knob,knob,g=>paintKnob(g,knob));
     touchDecor=new Map();
     for(const [name] of actionDefs){
-      const normal=decorate(native,name,g=>paintAction(g,size,name,false));
-      const hot=decorate(native,name,g=>paintAction(g,size,name,true));
-      // Both the held face and normal face stay beneath the native label.
-      native.get(name).setChildIndex(normal,0);
-      hot.alpha=0;touchDecor.set(name,{hot});
+      const key=name==='attack'?'attack':'action';
+      const normal=decorateSkin(native,name,key,size,size,g=>paintAction(g,size,name,false));
+      if(hudSkin) {
+        // Normal and held share the same crop dimensions. Change the crop only on
+        // an input/status transition, instead of drawing two superposed faces.
+        touchDecor.set(name,{bitmap:normal,key,glowing:false});
+      } else {
+        const hot=decorate(native,name,g=>paintAction(g,size,name,true));
+        native.get(name).setChildIndex(normal,0);
+        hot.alpha=0;touchDecor.set(name,{hot});
+      }
     }
     return native;
   }
@@ -455,11 +472,13 @@ export function createLanternUi(play,state,cb) {
     if(touchView){
       const knob=touchView.get('stick-knob'),x=stickBase+clamp(state.stickAxis,-1,1)*stickTravel;
       if(Math.abs(knob.x-x)>.1)knob.x=x;
-      for(const [name,{hot}] of touchDecor){
+      for(const [name,decor] of touchDecor){
         const held=Boolean(state.heldActions?.[name]||(name==='special'&&state.heldActions?.special));
         const glowing=held||(name==='special'&&state.tuftReady&&!state.solo);
         const alpha=name==='special'&&(state.solo||!state.tuftReady)&&!held?.46:1;
-        if(hot.alpha!==(glowing?1:0))hot.alpha=glowing?1:0;
+        if(decor.bitmap) {
+          if(decor.glowing!==glowing){decor.bitmap.sourceRect=HUD_SKIN[decor.key+(glowing?'Hot':'')];decor.glowing=glowing;}
+        } else if(decor.hot.alpha!==(glowing?1:0))decor.hot.alpha=glowing?1:0;
         const target=touchView.get(name);if(target.alpha!==alpha)target.alpha=alpha;
       }
     }
@@ -499,7 +518,12 @@ export function createLanternUi(play,state,cb) {
     return found;
   }
   function close(){if(closed)return;closed=true;closeModal();destroy(touchView);destroy(mainView);touchView=mainView=null;}
+  function setHudSkin(lease){
+    if(hudSkin===lease)return;
+    hudSkin=lease??null;
+    if(state.screen==='play'){layoutKey='';refresh();}
+  }
   refresh();
-  return {refresh,close,touchTarget,rect,buttons,pulseCombo:()=>{if(!play.reducedMotion)comboPulseAt=performance.now();},get modalOpen(){return modalView!==null;},
+  return {refresh,close,touchTarget,rect,buttons,setHudSkin,pulseCombo:()=>{if(!play.reducedMotion)comboPulseAt=performance.now();},get modalOpen(){return modalView!==null;},
     get views(){return {main:mainView,touch:touchView,modal:modalView};}};
 }

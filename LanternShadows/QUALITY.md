@@ -20,9 +20,9 @@ this file; items by hand or on a device are marked not run until someone runs th
 | T1 | 触屏走完主流程 · The whole game by touch | 真机 · device | 达标 · pass | Fold7 / Chrome 157, three acts C/C/C, records and trial; see physical evidence |
 | T2 | 触控区 ≥ 44×44 CSS px · Touch targets ≥ 44 × 44 CSS px | 自动 · automatic | 达标 · pass | 8 controls, all at least 44×44 |
 | T3 | 不误触下拉刷新和双击缩放 · No pull-to-refresh or double-tap zoom | 自动 · automatic | 达标 · pass | overscroll held, touch-action none, double-tap zoom off |
-| F1 | 桌面帧时间 p95 ≤ 16.7 ms · Desktop frame time p95 ≤ 16.7 ms | 自动 · automatic | 达标 · pass | p95 16.7 ms over 328 frames |
+| F1 | 桌面帧时间 p95 ≤ 16.7 ms · Desktop frame time p95 ≤ 16.7 ms | 自动 · automatic | 不达标 · fail | p95 17.5 ms over 329 frames |
 | F2 | 中端手机帧时间 p95 ≤ 33 ms · Mid-range phone frame time p95 ≤ 33 ms | 真机 · device | 未运行 · not run | Fold7 flagship measured, not a mid-range device; see below |
-| L1 | 首屏 ≤ 3 s（10/5 Mbps、40 ms、CPU ×4） · Start-up ≤ 3 s (10/5 Mbps, 40 ms, CPU ×4) | 自动 · automatic | 不达标 · fail | 3.1 s to the first playable screen, 2.9 MB |
+| L1 | 首屏 ≤ 3 s（10/5 Mbps、40 ms、CPU ×4） · Start-up ≤ 3 s (10/5 Mbps, 40 ms, CPU ×4) | 自动 · automatic | 不达标 · fail | 3.3 s to the first playable screen, 3.0 MB |
 | O1 | 横竖屏与窗口尺寸 · Orientation and window sizes | 自动 · automatic | 达标 · pass | 1280×800, 390×844, 844×390, 768×1024 and live resizing: fits, no errors |
 | I1 | 中英文全可切换，英文下无中文 · Both languages; no Chinese left in English | 自动 · automatic | 达标 · pass | html lang "en", no Chinese in page text or names |
 | I2 | 画布上的字也随语言切换 · Words drawn on the canvas follow the language | 人工 · by hand | 达标 · pass | Native Chinese/English title, HUD and results reviewed; actual localized semantic names tested |
@@ -36,11 +36,11 @@ this file; items by hand or on a device are marked not run until someone runs th
 | S3 | 存储不可用不崩溃 · Refused storage does not crash | 自动 · automatic | 达标 · pass | storage refused: started without an uncaught error |
 | S4 | 存档出问题时提示并可重开 · A save problem is told and a fresh start offered | 人工 · by hand | 未运行 · not run |  |
 | E1 | 无控制台错误 · No console errors | 自动 · automatic | 达标 · pass | 0 errors |
-| E2 | 资源失败有错误界面和重试 · A failed file shows an error and a retry | 自动 · automatic | 达标 · pass | 27 files refused; no uncaught error; offers to try again |
+| E2 | 资源失败有错误界面和重试 · A failed file shows an error and a retry | 自动 · automatic | 达标 · pass | 28 files refused; no uncaught error; offers to try again |
 | E3 | 切到后台再回来不出错 · Hidden and shown again without errors | 自动 · automatic | 达标 · pass | no errors; the game or the engine loop watches visibility |
 | E4 | 切回后声音和计时正常 · Sound and timers right after coming back | 真机 · device | 未运行 · not run |  |
 
-自动项不达标 · Automatic items failing: L1（限速通用首屏 / generic throttled first-screen probe）。F1 软件渲染现达标；E2 通用故障重载与独立故障重载均通过。F2 中端机、E4 后台声音与计时、A1m 与 S4 未完整验证。 · F1 now passes in software; E2 passes both the generic probe and the independent failure/reload test. F2, E4, A1m and S4 remain unverified.
+自动项不达标 · Automatic items failing: F1（无头软件渲染 p95 17.5 ms / software only）, L1（限速通用首屏 3.3 s / generic throttled screen）。E2 自动及独立故障重载均通过；F2、E4、A1m、S4 未完整验证。 · E2 passes both retry tests; F2, E4, A1m and S4 remain unverified.
 
 ## 实机证据 · Physical device evidence (2026-11-26)
 
@@ -95,3 +95,25 @@ this file; items by hand or on a device are marked not run until someone runs th
 | 开锣真正可用 / Begin genuinely enabled | 3,779 ms | 5,568 ms | 5,109 ms |
 
 - 入口优先使原生画布首次绘制在这一次对照中提前约 1.82 s，真正就绪也提前约 0.46 s；没有把加载挪到首次游戏操作。原生版实际可开锣仍比旧版慢约 1.33 s，未达到 3 s 完全就绪目标；首次绘制提交不是浏览器最终合成呈现时刻。原先通用 L1 1.5 s 是可见 HTML 元素的近似探测，不等于旧版实际就绪。 · The entry-first policy helps both first draw and actual readiness in this one comparison, not a controlled mean. Actual ready remains slower than the old page and above 3 seconds; no claim of compositor presentation.
+
+### 2026-11-26 · Fold7 百身术受控分阶段验收 / Controlled dense-frame follow-up
+
+实机：Samsung Galaxy Z Fold7 (SM-F966U1), Android 17, Chrome 157, Adreno 830, WebGL2, USB 供电；固定 1/60 虚拟时步，同一第一幕起始位置/天兵/场地/种子，预建 100，授予一次技能毫毛及临时保护（仅诊断，不记录成绩，也不是手动自然通关）。取每段分身年龄 1–6.5 秒，九块各 330 逻辑帧，共 2,970 帧，所有帧均为 100 个 shown、posed 分身。实机设备/输入环境均已恢复。 · Matched deterministic diagnostic, not a player clear. All sampled clones remained visible and posed.
+
+| 对照 / Mode | 实际 backing | rAF p95 | 实际提交间隔 p50 / p95 | 提交数 / 330 | Draw calls p50 |
+|---|---:|---:|---:|---:|---:|
+| Expanded native A | 2291×854 | 34.4 ms | 33.1 / 49.8 ms | 283 | 43 |
+| Expanded static bindings | 2291×854 | 49.6 ms | 33.1 / 49.8 ms | 289 | 41 |
+| Expanded native linear | 2291×854 | 49.7 ms | 33.1 / 49.8 ms | 289 | 43 |
+| Expanded native A repeat | 2291×854 | 49.7 ms | 33.1 / 49.8 ms | 296 | 43 |
+| Expanded UI hidden (diagnostic) | 2291×854 | 33.2 ms | 16.7 / 49.7 ms | 291 | 11 |
+| Compact old DOM / linear | 1517×854 | 33.2 ms | 16.6 / 49.7 ms | 289 | 11 |
+| Compact native / linear | 1517×854 | 49.7 ms | 33.1 / 49.8 ms | 295 | 43 |
+| Expanded atlas control | 2291×854 | 49.7 ms | 33.1 / 49.8 ms | 287 | 43 |
+| **Expanded atlas** | 2291×854 | 49.7 ms | **17.8 / 49.7 ms** | **293** | **33** |
+
+最终 Atlas 对照实际提交行 CPU p50 24.9→22.0 ms（p95 39.6→40.4），capture p50 3.0→2.2 ms，draw calls p50/p95 43/81→33/71；因此保留共享装饰图集。高分位未解决。Compact 对照 direct hook 确认旧/新 41/35 行因 pending=2 被跳过。分阶段值及逐帧资料在 [test/perf](test/perf/README.md)，所有时间为实际墙钟 CPU/rAF，实际提交间隔≠屏幕呈现。 · Atlas reduces median cost and draws, does not restore tail. Compact skips were explicitly measured. See reproducible CPU profiling data.
+
+最终未插桩 packed 文件真机网络内容 5/5 hashes 匹配（包括新增图集），真实触控 Start、摇杆拖出轴 1、松手轴 0、暂停时间冻结/恢复通过，0 errors。该短测只覆盖第一幕，并未重新跑完整三幕。Node 90/90、packed browser acceptance 12/12，标题差 0.00%、暂停画面差 0.52%，原基线保持。 · Exact release package and real physical touch smoke passed; prior all-act acceptance remains history, not repeated here.
+
+本批通用自动品质复测 14/16 通过：F1 无头 SwiftShader p95 17.5 ms（上一版 16.7），L1 通用限速首屏 3.3 s（上一版 3.1），均略超阈值；E2 通过（28 项拒绝请求仍可恢复）。这两次单次软件/启动测量不等于真机帧率，不能由此断言相同场景的稳定回退；真实 Fold7 的同条件 A/B 数据单列。 · Generic quality: 14/16 pass; software F1 and approximate L1 exceed thresholds. Do not conflate these with physical-device performance.

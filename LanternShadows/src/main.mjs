@@ -168,16 +168,19 @@ const PICTURES = ['screen', 'frame', 'far', 'gate', 'wisp', 'spark', 'chaff', 't
   ACTS = ['act1', 'act2', 'act3'];
 // The line under the gong fills as the files come in: the pictures, three files for each puppet, the list of
 // them, and the levels.
-const awaited = PICTURES.length + PUPPETS.length * 3 + 1 + ACTS.length,
+const awaited = PICTURES.length + PUPPETS.length * 3 + 2 + ACTS.length,
   filled=watchReading(count=>{state.progress=Math.min(1,count/awaited); ui.refresh();});
 let art, puppetOf, maps;
 try {
-  const [pictures, puppets, levelMaps] = await Promise.all([
+  const [pictures, puppets, levelMaps, hudSkin] = await Promise.all([
     // The cloth is the one picture with nothing to see through, and is kept as a JPEG.
     Promise.all(PICTURES.map(name => loadPicture(asset(`scene/${name}.${name === 'screen' ? 'jpg' : 'png'}`).href))),
     loadPuppets(engine, scope, PUPPETS, asset('')),
-    Promise.all(ACTS.map(name => readJson(asset(`levels/${name}.tmj`).href)))
+    Promise.all(ACTS.map(name => readJson(asset(`levels/${name}.tmj`).href))),
+    // A small shared decoration atlas reduces HUD geometry. A missing optional skin retains the vector art.
+    loadPicture(asset('ui/hud-skin.png').href).catch(() => null)
   ]);
+  ui.setHudSkin(hudSkin);
   art = Object.fromEntries(PICTURES.map((name, index) => [name, pictures[index]]));
   puppetOf = puppets;
   maps = Object.fromEntries(ACTS.map((name, index) => [name, levelMaps[index]]));
