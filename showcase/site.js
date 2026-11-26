@@ -1,4 +1,5 @@
 import { FEATURED_ID, GAMES } from './games.js';
+import { ADMIN_URL } from './admin-url.js';
 
 const REPO = 'https://github.com/cnedwin/PortedGamesEgret';
 const MEDIA = ['cover.webp', 'detail-1.webp', 'detail-2.webp'];
@@ -8,7 +9,7 @@ const WORDS = {
   zh: {
     brand: '白鹭游戏案例', heroEngine: '新白鹭引擎', heroCases: '游戏案例',
     heroLead: '浏览可直接试玩的游戏，查看实机画面和背后的引擎实现。',
-    matrix: '能力矩阵', engine: '引擎源码', repo: '游戏源码', browse: '浏览游戏',
+    matrix: '能力矩阵', engine: '引擎源码', repo: '游戏源码', admin: '展示站管理', browse: '浏览游戏',
     all: '全部游戏', full: '全部', '3d': '3D', '2d': '2D',
     count: (count) => `${count} 款游戏`, filterLabel: '按渲染类型筛选', featured: '精选案例',
     details: '案例详情', play: '开始试玩', back: '全部游戏', capabilities: '引擎能力',
@@ -23,7 +24,7 @@ const WORDS = {
   en: {
     brand: 'Egret Showcase', heroEngine: 'Egret Rebuild', heroCases: 'Game Showcase',
     heroLead: 'Play the demos, see them in action and explore how they use the engine.',
-    matrix: 'Capability matrix', engine: 'Engine source', repo: 'Game source', browse: 'Browse games',
+    matrix: 'Capability matrix', engine: 'Engine source', repo: 'Game source', admin: 'Showcase admin', browse: 'Browse games',
     all: 'All games', full: 'All', '3d': '3D', '2d': '2D',
     count: (count) => `${count} games`, filterLabel: 'Filter by rendering type', featured: 'Featured case',
     details: 'Case study', play: 'Play now', back: 'All games', capabilities: 'Engine capabilities',
@@ -61,6 +62,19 @@ function initialLanguage() {
   return navigator.language?.toLowerCase().startsWith('zh') ? 'zh' : 'en';
 }
 let lang = initialLanguage();
+
+function linkAdminWorkspace() {
+  if (typeof ADMIN_URL !== 'string' || !ADMIN_URL.trim()) return;
+  try {
+    const url = new URL(ADMIN_URL);
+    if (url.protocol !== 'https:' || url.username || url.password) return;
+    const link = $('.admin-link');
+    link.href = url;
+    link.hidden = false;
+  } catch {
+    // Leave the entry hidden until a deployment URL has been configured.
+  }
+}
 
 function caption(game, index) {
   return game.scenes?.[index]?.[lang] ?? WORDS[lang].genericShot(game[lang], index + 1);
@@ -263,5 +277,6 @@ window.addEventListener('hashchange', () => {
   if (viewer.open) viewer.close();
   renderRoute({ focus: true });
 });
+linkAdminWorkspace();
 renderWords();
 renderRoute();
