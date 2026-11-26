@@ -14,12 +14,16 @@
 // 画面立刻变成一团乱麻（设计文档 10.2）。
 
 import { Bitmap, DisplayObjectContainer, Sprite } from '@egret/engine';
-import { createBrowserGame } from '@egret/engine/web/game';
+import { play as enginePlay } from '@egret/engine/play';
+import { createUiSemantics } from '@egret/engine/ui/semantics';
+import { createUiTester } from '@egret/engine/ui/testing';
+import { createBrowserSemantics } from '@egret/engine/web/semantics';
 
 import { BONDS, ENEMIES, addCard, canPlay, createBattle, endTurn, playCard, previewSwap, rewardChoices, swapAndSettle } from './core/battle.mjs';
 import { ELEMENT_INFO, ELEMENT_ORDER, STARTER_DECK } from './core/cards.mjs';
 import { ATLAS_PORTRAITS, loadPortraitAtlas } from './portrait/atlas.mjs';
-import { cardMarkup, createHud } from './ui/hud.mjs';
+import { createHud } from './ui/hud.mjs';
+import { createBoardInput } from './view/board-input.mjs';
 import { createAudio } from './view/audio.mjs';
 import { cascadeTempo, createBoardView } from './view/board-view.mjs';
 import { PALETTE } from './view/draw.mjs';
@@ -29,19 +33,11 @@ import { buildPortrait } from './view/portrait.mjs';
 import { createSequence, ease } from './view/sequence.mjs';
 import { createTilePainter } from './view/tile-atlas.mjs';
 
-const $ = (id) => document.getElementById(id);
-
-const canvas = $('stage');
-const stageBox = $('stage-box');
-const hudRoot = $('hud');
-const touch = $('board-touch');
-const rewardsEl = $('rewards');
-const startButton = $('start');
-const muteButton = $('mute');
-const attackCue = $('attack-cue');
-startButton.disabled = true;
-const startLabel = startButton.textContent;
-startButton.textContent = '正在备阵…';
+const canvas = document.querySelector('#stage');
+const stageBox = document.querySelector('#stage-box');
+const semantics = createUiSemantics({ maxNodes: 2048 });
+let boardInput, titleArt, battleArt, ready = false;
+let currentRewards = [];
 
 const audio = createAudio();
 const sequence = createSequence();
@@ -87,24 +83,7 @@ let run = null;
 /** 覆盖层锁：'title' / 'reward' / 'over' / 'pending' / null。非 null 时输入全关。 */
 let lock = 'title';
 
-// ── 屏幕适配 ────────────────────────────────────────────────────
-// --u 是"设计稿一个像素"值多少真实像素。CSS 里所有尺寸都写成 calc(N * var(--u))，
-// 于是任何屏幕比例下位置和字号都同比例缩放。
-function fitUnit() {
-  const unit = stageBox.clientWidth / STAGE.width;
-  if (unit > 0) document.documentElement.style.setProperty('--u', `${unit}px`);
-}
-
-// 棋盘触控层：位置和大小从 layout.mjs 来，和画布上的格子严丝合缝。
-function placeTouchLayer() {
-  const pctX = (value) => `${(value / STAGE.width) * 100}%`;
-  const pctY = (value) => `${(value / STAGE.height) * 100}%`;
-  const side = BOARD.cell * BOARD.size;
-  touch.style.left = pctX(BOARD.x);
-  touch.style.top = pctY(BOARD.y);
-  touch.style.width = pctX(side);
-  touch.style.height = pctY(side);
-}
+// One portrait canvas: the engine uses the same design units for board art, UI and input.
 
 // ── 背景 ────────────────────────────────────────────────────────
 function paintBackdrop(g) {
@@ -116,13 +95,25 @@ function paintBackdrop(g) {
 }
 
 // ── 搭台 ────────────────────────────────────────────────────────
-function buildScene(game, atlases) {
-  const { stage, scope } = game;
+function coverBitmap(parent, scope, lease, verticalAlignment = 0.5) {
+  const node = parent.addChild(scope.use(new Bitmap(lease)));
+  const { width, height } = lease.value;
+  const scale = Math.max(STAGE.width / width, STAGE.height / height);
+  node.scaleX = node.scaleY = scale;
+  node.x = (STAGE.width - width * scale) / 2;
+  node.y = (STAGE.height - height * scale) * verticalAlignment;
+  return node;
+}
+
+function buildScene(game, atlases, arenaTexture, titleTexture) {
+  const { world: stage, scope } = game;
+  battleArt = stage.addChild(scope.use(new DisplayObjectContainer()));
+  coverBitmap(battleArt, scope, arenaTexture);
 
   // 背景和整屏闪光固定在舞台上，避免震屏把贴边三角形裁成极细的碎片。
-  const backdrop = stage.addChild(scope.use(new Sprite()));
+  const backdrop = battleArt.addChild(scope.use(new Sprite()));
   paintBackdrop(backdrop.graphics);
-  world = stage.addChild(scope.use(new DisplayObjectContainer()));
+  world = battleArt.addChild(scope.use(new DisplayObjectContainer()));
 
   const enemyLayer = world.addChild(scope.use(new DisplayObjectContainer()));
   for (const id of ENEMIES.map((entry) => entry.id)) {
@@ -139,8 +130,23 @@ function buildScene(game, atlases) {
 
   boardLayer = world.addChild(scope.use(new DisplayObjectContainer()));
   fxLayer = world.addChild(scope.use(new DisplayObjectContainer()));
-  flashLayer = stage.addChild(scope.use(new DisplayObjectContainer()));
+  flashLayer = battleArt.addChild(scope.use(new DisplayObjectContainer()));
   fx = createFx({ Sprite, scope, world, layer: fxLayer, flashLayer });
+
+  titleArt = stage.addChild(scope.use(new DisplayObjectContainer()));
+  coverBitmap(titleArt, scope, titleTexture, 0.38);
+  // Same dark-jade fade as the original cover, now rendered by Egret.
+  const shade = titleArt.addChild(scope.use(new Sprite()));
+  const stops = [[0, 0.18], [0.27, 0], [0.42, 0], [0.56, 0.25], [0.74, 0.85], [0.92, 0.98], [1, 1]];
+  for (let i = 0; i < 72; i++) {
+    const t = (i + .5) / 72;
+    const b = stops.findIndex(row => row[0] >= t);
+    const a = stops[Math.max(0,b-1)], z = stops[b];
+    const alpha = a[1] + (z[1]-a[1]) * ((t-a[0]) / Math.max(.0001,z[0]-a[0]));
+    const y = i * STAGE.height / 72;
+    shade.graphics.beginFill(0x0d1715, alpha).drawRect(0, y, STAGE.width, STAGE.height / 72 + .1).endFill();
+  }
+  titleArt.visible = false;
 }
 
 // ── 一局的开始与结束 ────────────────────────────────────────────
@@ -191,16 +197,12 @@ function startBattle(index) {
   hud.banner(`${battle.enemy.name}　${battle.enemy.title}`, 1700);
 }
 
-/** 三个覆盖层收在一处开关，免得某条路径漏关一个，界面就卡死了。 */
-function setOverlayVisible(id, visible) {
-  if (visible) hud?.closeDetails();
-  const overlay = $(id);
-  overlay.inert = !visible;
-  overlay.classList.toggle('is-on', visible);
-}
-
+/** A native page or modal owns the input; the board stays untouched beneath it. */
 function hideOverlays() {
-  for (const id of ['overlay-title', 'overlay-reward', 'overlay-over']) setOverlayVisible(id, false);
+  boardInput?.cancel();
+  hud.hideOverlays();
+  if (titleArt) titleArt.visible = false;
+  if (battleArt) battleArt.visible = true;
 }
 
 function beginRun() {
@@ -236,26 +238,20 @@ function endOfBattle() {
 
 function showReward() {
   lock = 'reward';
-  $('reward-kicker').textContent = `${battle.enemy.name}已破　气血 ${run.heroHp}`;
-  rewardsEl.replaceChildren();
+  boardInput?.cancel();
+  currentRewards = rewardChoices(battle, 3);
+  hud.showReward({enemyName: battle.enemy.name, heroHp: run.heroHp, cards: currentRewards});
+}
 
-  for (const card of rewardChoices(battle, 3)) {
-    const button = document.createElement('button');
-    button.type = 'button';
-    button.className = 'card is-ready';
-    button.dataset.element = card.element;
-    button.style.setProperty('--tint', ELEMENT_INFO[card.element].color);
-    button.style.setProperty('--deep', ELEMENT_INFO[card.element].deep);
-    button.innerHTML = cardMarkup(card);
-    button.addEventListener('click', () => {
-      audio.reward();
-      run.extra.push(card.id);
-      addCard(battle, card);
-      nextBattle();
-    });
-    rewardsEl.append(button);
-  }
-  setOverlayVisible('overlay-reward', true);
+function chooseReward(id) {
+  if (lock !== 'reward') return;
+  const card = currentRewards.find(item => item.id === id);
+  if (!card) return;
+  audio.unlock();
+  audio.reward();
+  run.extra.push(card.id);
+  addCard(battle, card);
+  nextBattle();
 }
 
 function nextBattle() {
@@ -267,19 +263,13 @@ function nextBattle() {
 
 function showOver(result) {
   lock = 'over';
+  boardInput?.cancel();
   audio.setScene(null);
-  $('overlay-over').dataset.outcome = result;
-  $('over-kicker').textContent = result === 'win' ? '阵成' : '阵破';
-  $('over-title').textContent = result === 'win' ? '三关皆破' : '倒下了';
-  $('over-text').textContent =
-    result === 'win'
-      ? `三关全破，剩余气血 ${Math.round(battle.hero.hp)}，最高连锁 ${run.bestChain} 层。`
-      : `倒在第 ${run.index + 1} 关·${battle.enemy.name}，最高连锁 ${run.bestChain} 层。`;
-  setOverlayVisible('overlay-over', true);
+  hud.showOver({ result, index: run.index, enemyName: battle.enemy.name, heroHp: Math.round(battle.hero.hp), bestChain: run.bestChain });
 }
 
 // ── 锁 ──────────────────────────────────────────────────────────
-const locked = () => lock !== null || !battle || sequence.busy || battle.phase !== 'player' || battle.over !== null;
+const locked = () => lock !== null || hud?.modalOpen || !battle || sequence.busy || battle.phase !== 'player' || battle.over !== null;
 
 // ── 演出：事件表 → 画面 ─────────────────────────────────────────
 //
@@ -402,9 +392,7 @@ function play(events, before) {
         } else if (event.to === 'hero') {
           const boss = bossAttacks[battle.enemy.id];
           queueAttack(enemy, enemyMotion, () => {
-            attackCue.dataset.boss = battle.enemy.id;
-            attackCue.textContent = `${boss.label}　${event.source}`;
-            attackCue.classList.add('is-on');
+            hud.attackCue(boss.label + '　' + event.source, battle.enemy.id);
             audio[boss.cue]();
           }, () => showImpact(event, boss));
         } else {
@@ -553,8 +541,7 @@ function setMotion(motion, name) {
 }
 
 function closeAttackCue() {
-  attackCue.classList.remove('is-on');
-  attackCue.textContent = '';
+  hud?.clearAttackCue();
 }
 
 /** 关键帧和命中事件一起推进，即使一帧跨过事件，也只触发一次。 */
@@ -637,7 +624,6 @@ function tryEndTurn() {
 }
 
 // 拖动 / 点选
-let drag = null;
 let selected = -1;
 let highlighted = [];
 
@@ -678,71 +664,24 @@ function isNeighbour(a, b) {
 }
 
 function bindTouch(game) {
-  touch.addEventListener('pointerdown', (event) => {
-    if (locked()) return;
-    const point = game.toStage(event.clientX, event.clientY);
-    const cell = view.cellAt(point.x, point.y);
-    if (cell < 0) return;
-    try {
-      touch.setPointerCapture(event.pointerId);
-    } catch {
-      /* 指针已经抬起时 setPointerCapture 会抛，不影响后续 */
-    }
-
-    // 已经选中一格，再点相邻的一格 = 交换
-    if (selected >= 0 && selected !== cell) {
-      if (isNeighbour(selected, cell)) {
-        runSwap(selected, cell);
-        return;
-      }
-      select(cell);
-      return;
-    }
-    if (selected === cell) {
-      clearSelection();
-      return;
-    }
-
-    drag = { cell, x: point.x, y: point.y, previewed: -1 };
+  const hit = game.world.addChild(game.scope.use(new Sprite()));
+  const side = BOARD.cell * BOARD.size;
+  // A nearly-transparent native hit area, never a DOM overlay.
+  hit.graphics.beginFill(0xffffff, .001).drawRect(BOARD.x, BOARD.y, side, side).endFill();
+  hit.touchEnabled = true;
+  boardInput = createBoardInput({
+    cellAt: (x,y) => view?.cellAt(x,y) ?? -1,
+    acceptTarget: target => target === hit,
+    locked, selected: () => selected, select, clear: clearSelection,
+    neighbour: neighbourOf, adjacent: isNeighbour, reach: BOARD.cell * .4,
+    preview: (a,b) => {
+      highlighted = previewSwap(battle, a, b);
+      if (highlighted.length) view.highlight(highlighted, true);
+    },
+    swap: runSwap, unlock: audio.unlock
   });
-
-  touch.addEventListener('pointermove', (event) => {
-    if (!drag || locked()) return;
-    const point = game.toStage(event.clientX, event.clientY);
-    const dx = point.x - drag.x;
-    const dy = point.y - drag.y;
-    const target = neighbourOf(drag.cell, dx, dy);
-    if (target < 0) return;
-
-    const reach = BOARD.cell * 0.4;
-    if (Math.abs(dx) < reach && Math.abs(dy) < reach) {
-      // 还没拖够：只是预览这一换会消掉什么（设计文档 4.1）
-      if (drag.previewed !== target) {
-        drag.previewed = target;
-        clearSelection();
-        highlighted = previewSwap(battle, drag.cell, target);
-        if (highlighted.length) view.highlight(highlighted, true);
-      }
-      return;
-    }
-
-    const from = drag.cell;
-    drag = null;
-    runSwap(from, target);
-  });
-
-  const finish = () => {
-    if (!drag) return;
-    // 没拖出距离就是点了一下：选中它，等第二次点击
-    const cell = drag.cell;
-    drag = null;
-    select(cell);
-  };
-  touch.addEventListener('pointerup', () => {
-    audio.unlock();
-    finish();
-  });
-  touch.addEventListener('pointercancel', finish);
+  const stop = game.browser.pointer.observe(boardInput.contact);
+  game.scope.use({ dispose: stop });
 }
 
 // ── 启动 ────────────────────────────────────────────────────────
@@ -775,86 +714,92 @@ function report(cause) {
 }
 
 async function boot() {
-  fitUnit();
-  placeTouchLayer();
-
-  const game = await createBrowserGame({
-    canvas,
-    width: STAGE.width,
-    height: STAGE.height,
-    clearColor: 0x080b10,
-    clearAlpha: 0,
+  const game = await enginePlay({
+    canvas, parent: stageBox,
+    width: STAGE.width, height: STAGE.height,
+    background: 0x101b19,
     pixelRatio: Math.min(2, Math.max(1, window.devicePixelRatio || 1)),
-    backend: 'webgl2',
-    fit: 'contain',
-    fitTo: stageBox,
-    pointer: false,
-    keyboard: false,
-    autoStart: false,
+    backend: 'webgl2', fit: 'contain', audio: false, semantics,
+    setup(made) {
+      runtime = made.browser;
+      gameScope = made.scope;
+      hud = createHud({
+        game: made, audio, onCard: tryPlay, onEndTurn: tryEndTurn,
+        onStart: start, onRestart: start, onReward: chooseReward,
+        onSkip: () => { if (lock === 'reward') { audio.unlock(); audio.ui(); nextBattle(); } },
+        onToggleMute: () => { audio.unlock(); audio.toggleMute(); },
+        onShake: value => { shakeOn = Boolean(value); },
+        getShake: () => shakeOn
+      });
+      made.scope.use(createBrowserSemantics({semantics, canvas: made.canvas, width: STAGE.width, height: STAGE.height, label:'五行牌阵', onError:report}));
+      hud.showLoading(0, '正在备阵…');
+      document.querySelector('#boot')?.remove();
+    },
     update,
-    onError: report,
+    onError: report
   });
 
-  runtime = game;
-  gameScope = game.scope;
-
-  // 白鹭的 PNG 提供器一次最多接收四个任务。棋子载入后再并发解码角色。
-  const tileTexture = await game.loadTexture(new URL('../assets/art/tiles.png', import.meta.url).href);
-  const loadedPortraits = await Promise.all(ATLAS_PORTRAITS.map((id) => loadPortraitAtlas(game, id)));
+  // The native loading view reflects actual resource completion. Keep concurrent
+  // image decoding below the engine's four-job budget.
+  let complete = 0;
+  const step = (promise, label) => promise.then(value => {
+    ++complete;
+    // Late siblings of a refused asset must never replace the actionable error view.
+    if (hud.active === 'loading') hud.showLoading(complete / 7, label);
+    return value;
+  });
+  const texture = file => game.browser.loadTexture(new URL('../assets/art/' + file, import.meta.url).href);
+  const [tileTexture, arenaTexture, titleTexture] = await Promise.all([
+    step(texture('tiles.png'), '棋子图集'),
+    step(texture('arena.webp'), '战场绘卷'),
+    step(texture('title.webp'), '封面绘卷')
+  ]);
+  const loadedPortraits = await Promise.all(ATLAS_PORTRAITS.map(id => step(loadPortraitAtlas(game.browser,id), '角色立绘')));
   paintTile = createTilePainter({ Bitmap, scope: gameScope, textureLease: tileTexture });
-  const atlases = new Map(loadedPortraits.map((data) => [data.portrait.id, data]));
-  buildScene(game, atlases);
-
-  hud = createHud({ root: hudRoot, onCard: tryPlay, onEndTurn: tryEndTurn });
-
-  // 先摆一局出来当封面：标题页背后是一张真棋盘，不是一张图
+  const atlases = new Map(loadedPortraits.map(data => [data.portrait.id, data]));
+  buildScene(game, atlases, arenaTexture, titleTexture);
   run = { index: 0, heroHp: 1000, extra: [], bestChain: 0 };
   startBattle(0);
   audio.setScene('title');
-
   bindTouch(game);
-  const title = $('overlay-title');
-  title.addEventListener('pointerup', audio.unlock, { once: true });
-  title.addEventListener('keydown', audio.unlock, { once: true });
+  const visibility = () => { if (document.hidden) { boardInput.cancel(); clearSelection(); } };
+  document.addEventListener('visibilitychange', visibility);
+  game.scope.use({dispose: () => document.removeEventListener('visibilitychange', visibility)});
+  titleArt.visible = true;
+  // The opaque title covers the fight completely. Do not submit or animate it underneath.
+  battleArt.visible = false;
+  hud.setReady(true);
+  hud.showTitle();
+  ready = true;
 
-  const start = () => {
-    audio.unlock();
-    audio.ui();
-    beginRun();
+  function start() {
+    if (!ready || (lock !== 'title' && lock !== 'over')) return;
+    audio.unlock(); audio.ui(); beginRun();
+  }
+  function clientRect(rect) {
+    if (!rect) return null;
+    const b = game.canvas.getBoundingClientRect();
+    return {x:b.left+rect.x*b.width/STAGE.width,y:b.top+rect.y*b.height/STAGE.height,width:rect.width*b.width/STAGE.width,height:rect.height*b.height/STAGE.height};
+  }
+  const ui = {
+    buttons: () => hud.buttons(),
+    rect: name => hud.rect(name),
+    clientRect: name => clientRect(hud.rect(name)),
+    boardRect: () => clientRect({x:BOARD.x,y:BOARD.y,width:BOARD.cell*BOARD.size,height:BOARD.cell*BOARD.size}),
+    get active() { return hud.active; },
+    get modalOpen() { return hud.modalOpen; },
+    tester: createUiTester({semantics}),
+    get backend() { return game.browser.backend; }
   };
-  startButton.addEventListener('click', start);
-  $('skip-reward').addEventListener('click', () => {
-    audio.ui();
-    nextBattle();
-  });
-  $('restart').addEventListener('click', start);
-
-  const syncMute = () => {
-    muteButton.setAttribute('aria-pressed', String(audio.muted));
-    muteButton.setAttribute('aria-label', audio.muted ? '恢复声音' : '静音');
-    muteButton.textContent = audio.muted ? '静' : '音';
-  };
-  syncMute();
-  muteButton.addEventListener('click', () => {
-    audio.unlock();
-    audio.toggleMute();
-    syncMute();
-  });
-
-  const resize = () => {
-    fitUnit();
-    placeTouchLayer();
-  };
-  window.addEventListener('resize', resize);
-  new ResizeObserver(resize).observe(stageBox);
 
   // 给自动化测试和手感实测留一个入口：不靠像素点，直接调状态。
   window.fivephases = {
+    ui, get ready() { return ready; },
     get battle() {
       return battle;
     },
     get busy() {
-      return sequence.busy || lock !== null;
+      return sequence.busy || lock !== null || hud.modalOpen;
     },
     get lock() {
       return lock;
@@ -909,9 +854,6 @@ async function boot() {
     },
   };
 
-  game.loop.start();
-  startButton.textContent = startLabel;
-  startButton.disabled = false;
 }
 
 let updateFaults = 0;
@@ -922,6 +864,9 @@ function update(seconds) {
   // 一帧里抛出去，引擎只会报一句 FRAME_RENDER_FAILED，真正的原因就丢了。
   // 自己接住，把原始错误打出来——这是排查"画面卡住"唯一有用的线索。
   try {
+    if (document.hidden) return;
+    hud?.tick(dt);
+    if (!ready || lock === 'title') return;
     sequence.update(dt);
     fx.update(dt);
     posePortrait(hero, heroMotion, dt);
@@ -935,7 +880,15 @@ function update(seconds) {
 
 boot().catch((cause) => {
   report(cause);
-  startButton.textContent = '重新加载';
-  startButton.disabled = false;
-  startButton.addEventListener('click', () => window.location.reload(), { once: true });
+  if (hud) {
+    hud.showError(describe(cause), () => location.reload());
+  } else {
+    const status = document.querySelector('#boot');
+    if (!status) return;
+    status.textContent = '引擎未能启动，请重试。';
+    const retry = document.createElement('button');
+    retry.textContent = '重新加载';
+    retry.addEventListener('click', () => location.reload(), {once:true});
+    status.append(retry);
+  }
 });
