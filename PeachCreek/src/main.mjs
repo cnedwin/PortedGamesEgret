@@ -1,6 +1,7 @@
 // The county clock, world camera, native UI and persistence meet here.
 import { play } from '@egret/engine/play';
 import { createScrollControl } from '@egret/engine/ui';
+import { uiRenderDensity } from './display-density.mjs';
 import { createUiSemantics } from '@egret/engine/ui/semantics';
 import { createBrowserSemantics } from '@egret/engine/web/semantics';
 import { createInspector, part, wrapText } from './inspector.mjs';
@@ -1282,8 +1283,12 @@ async function boot() {
   fit();
   const semantics = createUiSemantics({ maxNodes: 1024 });
   const bridge = bridgeUiSemantics(semantics);
+  const uiDensity = uiRenderDensity({ width: innerWidth, height: innerHeight, dpr: devicePixelRatio,
+    coarse: matchMedia('(any-pointer: coarse)').matches || navigator.maxTouchPoints > 0,
+    screenWidth: screen.width, screenHeight: screen.height }, STAGE);
   const game = await play({
     width: STAGE.width * 0.75, height: STAGE.height * 0.75, parent: host, transparent: true, semantics: bridge,
+    pixelRatio: uiDensity,
     renderMode: 'on-demand',
     arrange: () => app.ui?.arrange(),
     update: (seconds) => {
@@ -1307,7 +1312,7 @@ async function boot() {
     close: () => closeSheet(), compact: () => stageScale < 0.72, allowPointer
   });
   app.screens = createScreens(game, app.ui, {
-    slots, problems, preferences, isPlaying: () => app.screen === 'play', isCompact: () => stageScale < 0.72,
+    slots, problems, preferences, uiDensity, isPlaying: () => app.screen === 'play', isCompact: () => stageScale < 0.72,
     onEnter: enterCounty, onSetting: changePreference, onReturnTitle: returnToTitle,
     onAwayClose: () => app.ui.focus('taxBubble')
   });

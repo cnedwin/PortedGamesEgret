@@ -12,9 +12,9 @@ This integration vendors official main `94bd70fb26b1f81794c9c6fbbb258c655fcd19df
 <!-- engine-note: {"id": "PeachCreek#1", "status": "partly", "topic": "semantic-bounds-transform"} -->
 
 - 现象：在旧版 `51b6175d`，将 `game.show` 父面板左移 75 并裁到高度 20 后，初始区域为 `(620, 430, 120, 42)` 的子按钮仍可被语义测试激活。 · On `51b6175d`, moving a parent left by 75 and clipping it to 20 left its initially reported `(620, 430, 120, 42)` child button accessible and actionable.
-- 绕过办法：语义发布直接沿用引擎算出的变换与裁剪区域。Demo 保留标签名、角色和主动焦点策略，作地图、标签页和弹窗的返回焦点。 · The demo uses the engine's transformed and clipped semantic bounds, keeping its own labels, roles and deliberate focus restoration for map targets, tabs and dialogs.
+- 绕过办法：点选和定位直接使用 `view.visibleRect()` 的原生裁剪矩形，动态名称交给 `binding.label`，点击来源交给原生 activation；不再缓存语义描述函数或使用可变的输入来源代理。仍保留标签页、标题和弹窗的专用语义角色、选中状态与返回焦点策略。 · Hit testing and positioning use native `view.visibleRect()`, dynamic names use `binding.label`, and tap origin uses native activation; the cached semantic bounds and mutable input-origin bridge are removed. Specialized tab, heading and dialog roles, selected state and focus policy remain.
 - 建议：开放声明式视图的主动聚焦与角色绑定，供业务设置标签选中、焦点返回和自动化定位。 · Expose programmatic focus and declarative semantic roles for selection, focus return and automation.
-- 状态：原生遮挡和裁剪已接入，游戏的主动焦点策略保留。 · Native visibility and clipping are integrated. The game retains its explicit focus policy.
+- 状态：引擎 #499 已提供裁剪矩形、点击来源、动态名称和装饰排除。本作已接入；特定角色与焦点策略继续保留。 · Engine #499 provides clipped bounds, activation source, dynamic labels and decorative exclusion. The game uses these while retaining specialized roles and focus policy.
 
 ### 2. 经营单子的原生滚动 · Native scrolling for county inspectors — 部分解决 / partly resolved
 <!-- engine-note: {"id": "PeachCreek#2", "status": "partly", "topic": "native-scrolling"} -->
@@ -30,7 +30,7 @@ This integration vendors official main `94bd70fb26b1f81794c9c6fbbb258c655fcd19df
 - 现象：标题字需要字体和行距。建筑按钮需要名称、两行以上的说明、选址得分和资源限制。新版声明式部件有图片与富文字入口。本作仍需既有字距、分行、描边和程序生成的建筑预览。 · The title needs typeface and leading. Building options need a name, multiple lines of description, site efficiency and resource constraints. The current declarative API offers images and rich text. The demo still needs its existing tracking, line breaks, outlines and procedural building previews.
 - 绕过办法：应用换行以保持中英文可读，标题用 `game.browser.createLabel`，卡片用 `Graphics` 描边和渐变。建筑预览用引擎纹理和 Bitmap。按钮保留原生的点击与语义行为。 · The project wraps Chinese and English text locally, uses `game.browser.createLabel` for title typography, draws panel borders and gradients with `Graphics`, and displays building previews as engine bitmaps. Native buttons retain tap and semantic actions.
 - 建议：为文字开放字体回退、行距、宽度与截断；为按钮开放带焦点样式的内容节点；为视图增加 image/nine-slice 和逐项皮肤。 · Expose font fallback, leading, width and truncation on text, button content with focus styling, and image/nine-slice parts with per-item skins.
-- 状态：部分解决。 · Status: partly resolved.
+- 状态：部分解决。引擎 #499 提供单行字体、字重、斜体和版本就绪接口，以及 UI 图集像素对齐。本作继续使用 `createLabel` 实现多行标题与指定行距，并将其栅格原点对齐实际画布像素。 · Partly resolved. Engine #499 provides short-label typography, revision readiness and UI atlas pixel alignment. The game retains `createLabel` for multiline title and leading, and aligns its raster origin to backing pixels.
 
 - 本轮实测 · Integration evidence：新版空文字语义处理会隐藏美术层单独绘字的离线收益和坏档提示；改用原生 bind.label 保留语义名称，保留美术画字与 tab/heading 角色扩展。完整浏览器验收复测通过。 · Native bound labels now retain the accessible names of artwork-rendered text; the original away report and corrupt-slot checks pass. Visual decoration and tab/heading semantics remain custom.
 
@@ -46,9 +46,9 @@ This integration vendors official main `94bd70fb26b1f81794c9c6fbbb258c655fcd19df
 <!-- engine-note: {"id": "PeachCreek#5", "status": "resolved", "topic": "play-resolution"} -->
 
 - 现象：旧版县城需要单独控制渲染分辨率，统一逻辑画布和输入位置。 · The earlier integration needed a separate raster resolution while retaining its layout and input coordinates.
-- 绕过办法：新版 `play({ pixelRatio })` 提供独立像素倍率。本作这一轮保留原有 960×540 引擎坐标和 1280×720 设计坐标之间的换算。 · `play({ pixelRatio })` is available upstream. This pass retains the existing conversion between 960×540 engine coordinates and the 1280×720 design.
-- 建议：调整分辨率时对同一真机的字形、命中和渲染开销做一并对照。 · Compare readability, hit targets and rendering cost on the same device when changing pixel density.
-- 状态：引擎已提供独立倍率。 · The engine exposes the independent multiplier.
+- 绕过办法：引擎提供 `play({ pixelRatio })`。旧集成默认 DPR 使 1280×720 显示面只有 960×540 背面像素；本轮用 `uiRenderDensity` 按 CSS 适配尺寸和实际 DPR 计算倍率，触屏设备同时预留旋转与浏览器工具栏变化，设定像素预算。逻辑布局仍保持原值。 · `play({ pixelRatio })` separates layout and raster sizing. The old default DPR produced only 960×540 backing pixels for a 1280×720 CSS surface; this integration chooses density from fitted physical viewport pixels, reserves both touch orientations and browser chrome changes, and caps the pixel budget without changing layout.
+- 建议：继续建议提供安全的运行时像素倍率更新（当前倍率在宿主创建后固定），以便大幅扩窗或 Fold 更换内外屏时同步调整背面与文字栅格；已有横竖屏通过预留密度覆盖。 · A safe runtime density update would help very large window resizes or switching foldable panels: density is currently fixed at host creation. Both ordinary orientations are covered by the reserved density.
+- 状态：引擎已提供独立倍率；本作实测修正显示欠采样，字体、命中与滚动通过回归。 · The independent multiplier is used to correct the measured undersampling, with text, hit testing and scroll regression.
 
 ### 6. 存档更新与预制绘图对象 · Save updates and convenience drawing objects — 部分解决 / partly resolved
 <!-- engine-note: {"id": "PeachCreek#6", "status": "partly", "topic": "save-update-return"} -->
@@ -79,6 +79,6 @@ This integration vendors official main `94bd70fb26b1f81794c9c6fbbb258c655fcd19df
 
 - 现象：用白鹭原生垂直滚动面板挂载完整英文建造清单，在 Edge 上打开空地单子会报 `FRAME_IMAGE_BUDGET`。当时视区只显示约六个选项，完全裁掉的内容也进入共享帧捕获的纹理预算。 · In Edge, opening a full English construction list with native vertical scrolling hit `FRAME_IMAGE_BUDGET`. About six actions were visible. Fully clipped descendants still entered the shared-frame image budget.
 - 复现：让原生滚动面板保持固定高度，放入足够多的不同文字项以越过 64 个图片页，再在顶部绘制。 · Put enough distinct text items to exceed 64 image pages into a fixed-height native scroll viewport and render at the top.
-- 绕过办法：保留全部行的原生布局、焦点和语义，捕获前把完全离屏的条目设为透明。滚入视区后立即恢复。 · Keep rows in native layout, focus and semantics, while setting fully offscreen display rows transparent before capture. Restore them as they scroll into view.
+- 绕过办法：原先捕获前手动将离屏行设为透明。本轮使用已修复的原生裁剪捕获，移除该透明化与恢复逻辑，保留滚动指示和焦点。 · The previous workaround set offscreen rows transparent before capture. This integration removes the workaround and relies on native clip culling, retaining the scrollbar and focus.
 - 建议：在纹理计入预算前剔除与裁剪交集为空的显示项，覆盖长列表和滚入视区的首帧。 · Cull empty clipped intersections before charging texture pages, with tests for long lists and the first frame after a row scrolls into view.
 - 状态：已在 `a7be833` 解决（引擎 #480）：完全在裁剪区外的位图和文字不计入帧图片预算。 · Resolved in `a7be833` (engine #480): bitmaps and text wholly outside the clip no longer count toward the frame image budget.

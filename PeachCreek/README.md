@@ -80,6 +80,8 @@ Raids follow population, rank and raid count. Defence and losses are decided by 
 | `createAudioMixer` / Web Audio | 首次交互后加载原创古琴、箫与溪流配乐，合成营建、布防、调兵等音效。配乐与音效可分别关闭。 · Original guqin, xiao and creek score loaded after the first interaction. Synthesized building, defence and deployment cues. Independent mute controls. | `src/sound.mjs` |
 | `createSaveStore` + `browserSaveStorage` | 整座县城、设置和历任记录；坏档另存后重新开始，存储拒绝写入时在标题提示 · the whole county, the settings and the record of terms; a broken save set aside, a refusing storage told on the title | `src/saves.mjs`, `src/main.mjs` |
 | `createTextTable` + `pickLanguage` | 全部中英文文字，换语言时重写界面和地图上的坊名 · every word in both languages, written again with the ward names on the map when the language changes | `src/i18n.mjs` |
+| `play({ pixelRatio })` / `view.textReady` | 按实际物理像素渲染短文字和标题，读取当前文字版本就绪 · physical-pixel UI and current native text readiness | `src/main.mjs`, `src/display-density.mjs`, `src/ui.mjs` |
+| `view.visibleRect` / activation | 原生裁剪后可见区域和点击来源、局部坐标 · native clipped bounds and activation context | `src/ui.mjs` |
 | `renderMode: 'on-demand'` | 标题静止时减少帧提交，交互或素材就绪后继续绘制 · idle title frame submission resumes for interaction or ready assets | `src/main.mjs` |
 
 ## 已验证 · Verified
@@ -90,14 +92,16 @@ Raids follow population, rank and raid count. Defence and losses are decided by 
 ## 已知问题 · Known issues
 
 - 沿用横向画布等比留边。390×844 竖屏的标题按钮仍小于 44×44 CSS px，横握时更易操作。 · Portrait keeps the original letterbox. At 390×844 the title targets remain below 44×44 CSS px, and landscape offers larger controls.
-- 文字由 960×540 白鹭画布缩放显示，桌面小字号的边缘略软。 · The 960×540 canvas is scaled for display, which softens the edges of small text on desktop.
+- 画布分辨率在启动时按实际显示计算并设上限；超大窗口扩展或折叠屏切换到另一块面板后可能需要重新打开页面。 · Backing resolution is chosen at launch within a pixel budget; very large window expansion or switching to a different foldable panel may require reopening the page.
 
-- 横屏触摸流程已用桌面浏览器的触控模拟验收。手机实机帧时间与扬声器听感仍待验收。 · A desktop browser's landscape touch emulation covered the touch flow. Phone frame pacing and speaker listening still need physical-device checks.
+- 本轮手机外屏横竖屏实际操作和帧间隔已测；扬声器实听与完整三天经营仍未运行。 · This integration covers operation and frame cadence on the physical phone in both outer-screen orientations; speaker listening and a full three-day county term remain untested.
 - 手机在全城视图里可先用加号放大，再点选地块。 · On a phone, use zoom before selecting a plot if the overview is too small.
 - 数值只用模拟玩家调过，没有真人玩满三天的记录。 · The numbers were tuned with a simulated player only; no person has played a full three days.
-- 品质验收未达标 · Quality items failing（[QUALITY.md](QUALITY.md)，2026-11-25，无头 Chromium + SwiftShader · headless, software rendering）：T2 触控区 ≥ 44×44 CSS px（3 of 3 under 44×44: Take office 91×19; Settings 44×13; Switch to Chines 44×13）。
+- 品质验收未达标 · Quality items failing（[QUALITY.md](QUALITY.md)，2026-11-26，无头 Chromium + SwiftShader · headless, software rendering）：T2 触控区 ≥ 44×44 CSS px（3 of 3 under 44×44: Take office 91×19; Settings 44×13; Switch to Chines 44×13）。
 
 ## 已解决 · Solved
+
+- 全局 UI 模糊：背面像素曾低于实际显示像素，本轮按物理像素选择 `play({ pixelRatio })`，并采用原生 UI 图集对齐及自定义标题栅格对齐，保持原布局和存档。 · UI text was undersampled by the backing canvas; density now follows fitted physical screen pixels, with native UI atlas and custom title raster alignment, preserving layout and saves.
 
 - 模拟玩家把市坊修满了医馆、卡在没有绸：建筑优先修在自己的坊并限制同类数量，产业链提前一级解锁，集市留下升格要用的货。 · The simulated player filled the market ward with clinics and stalled without silk: buildings now prefer their own ward with a cap per kind, chains open a rank earlier, and markets keep what the next rise needs.
 - 来敌比城防长得快：来敌战力改为跟着县等和人口走，城防等级的里程碑也翻倍。 · Raids outgrew defences: raid strength now follows rank and people, and defence levels get the milestone doubling too.

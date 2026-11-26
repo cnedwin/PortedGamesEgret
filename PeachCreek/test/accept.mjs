@@ -16,6 +16,10 @@ const state = (page, fn) => page.evaluate(fn);
 const settle = page => page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
 const nodes = page => state(page, () => window.peach.semantics.publish().nodes);
 const ready = page => until(page, () => window.peach?.ready);
+const coverage = page => page.evaluate(() => {
+  const canvas = window.peach.game.canvas, rect = canvas.getBoundingClientRect();
+  return Math.min(canvas.width / (rect.width * devicePixelRatio), canvas.height / (rect.height * devicePixelRatio));
+});
 const start = page => until(page, () => window.peach.screen === 'play');
 const close = async page => {
   await page.keyboard.press('Escape');
@@ -122,6 +126,7 @@ try {
   await page.reload();
   await ready(page);
   await until(page, () => window.peach.ui.rect('startButton')?.width > 0);
+  check(await coverage(page) >= .999, 'title canvas has at least one backing pixel per physical screen pixel');
   const idleTitle = await state(page, async () => {
     const loop = window.peach.game.browser.loop;
     for (let attempt = 0; attempt < 15; attempt++) {
@@ -173,6 +178,12 @@ try {
   await settle(page);
   await page.keyboard.press('Enter');
   await start(page);
+  const titleTextReady = await state(page, async () => {
+    const ready = window.peach.ui.textReady('county');
+    if (!(ready instanceof Promise)) return false;
+    return Promise.race([ready.then(() => true), new Promise(resolve => setTimeout(() => resolve(false), 3000))]);
+  });
+  check(titleTextReady, 'the county heading settles through the native text-ready promise');
   const mapControls = (await nodes(page)).filter(node => !node.inert && node.role === 'button');
   check(mapControls.length > 20 && !mapControls.some(node => node.name === 'Take office'), 'Enter takes office and the map has its buttons');
   check(mapControls.filter(node => /\bGatehouse\b/.test(node.name)).length === 4, 'all four gatehouses have map controls');
@@ -370,7 +381,7 @@ try {
     slots.slice(1).every(node => !/Empty|空白/.test(node.name)) && await state(page, () => window.peach.app.state === null),
     'a corrupt first slot leaves the other two counties intact');
 
-  phone = await openPage(browser, url, { width: 411, height: 813, touch: true });
+  phone = await openPage(browser, url, { width: 411, height: 813, touch: true, scale: 3 });
   await ready(phone);
   const titleRect = await bounds(phone, 'startButton');
   const portraitFits = await phone.evaluate(rect => {
@@ -380,10 +391,13 @@ try {
       document.elementFromPoint(rect.x + rect.width / 2, rect.y + rect.height / 2) === game.canvas;
   }, titleRect);
   check(portraitFits, 'a narrow portrait viewport retains its full frame and a tappable title');
+  check(await coverage(phone) >= .999, '3x portrait keeps the UI backing at physical resolution');
   await pickSlot(phone, 2, true);
   await phone.setViewportSize({ width: 844, height: 390 });
   await until(phone, () => matchMedia('(orientation: landscape)').matches, 4);
   check(await state(phone, () => window.peach.app.state.plots.length === 144), 'landscape resize keeps the county open');
+  // Real phone rotation can change the usable viewport thanks to browser chrome. The logical surface is fixed.
+  check(await coverage(phone) >= .999, '3x landscape keeps physical UI resolution after rotation');
 } catch (error) {
   check(false, 'the walk stopped: ' + error.message.split('\n')[0]);
 } finally {
