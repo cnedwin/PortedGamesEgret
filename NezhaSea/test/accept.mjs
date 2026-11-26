@@ -153,6 +153,17 @@ try {
   await page.keyboard.up('KeyD');
   const x1 = await state(() => window.nezhaSea.app.run.player.x);
   check(x1 > x0 + 60, 'D moves Nezha right (' + x0.toFixed() + ' to ' + x1.toFixed() + ')');
+  const pointerOrigin = await state(() => {
+    const bounds = window.nezhaSea.game.canvas.getBoundingClientRect();
+    return { x: bounds.left + bounds.width * 0.35, y: bounds.top + bounds.height * 0.6 };
+  });
+  await page.mouse.move(pointerOrigin.x, pointerOrigin.y);
+  await page.mouse.down();
+  await page.mouse.move(pointerOrigin.x + 48, pointerOrigin.y);
+  check(await state(() => window.nezhaSea.stick.active && window.nezhaSea.stick.vector.x > 0.4),
+    'desktop mouse dragging retains the existing battlefield steering');
+  await page.mouse.up();
+  check(await state(() => !window.nezhaSea.stick.active), 'releasing the mouse clears its steering');
   await page.keyboard.press('p');
   await waitScreen('menu');
   const t0 = await state(() => window.nezhaSea.app.run.time);
@@ -323,15 +334,24 @@ try {
   const contact = { id: 1, x: 285, y: 440 };
   const secondary = { id: 2, x: 220, y: 550 };
   const outside = { ...contact, x: 430 };
-  const touch = (type, ...touchPoints) => cdp.send('Input.dispatchTouchEvent', { type, touchPoints });
+  const touch = async (type, ...touchPoints) => {
+    await cdp.send('Input.dispatchTouchEvent', { type, touchPoints });
+    await state(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
+  };
   const axes = () => state(() => {
     const { active, vector } = window.nezhaSea.stick;
     return { active, x: vector.x, y: vector.y, scroll: scrollX + scrollY };
   });
   await touch('touchStart', contact);
   const held = await axes();
-  check(held.active && held.x === 0 && held.y === 0, 'the floating stick starts away from its resting ring');
-  await touch('touchStart', contact, secondary);
+  check(held.active && held.x === 0 && held.y === 0, 'the native floating stick starts at an arbitrary battlefield point');
+  await touch('touchMove', { ...contact, x: contact.x + 4 });
+  check(Math.abs((await axes()).x) < 0.001, 'native touch steering preserves the five CSS pixel dead zone');
+  const nudged = { ...contact, x: contact.x + 18 };
+  await touch('touchMove', nudged);
+  const gentle = await axes();
+  check(gentle.x > 0.18 && gentle.x < 0.4, 'native touch steering preserves proportional movement before full reach');
+  await touch('touchStart', nudged, secondary);
   await touch('touchMove', outside, { ...secondary, y: 650 });
   const steered = await axes();
   check(steered.active && steered.x > 0.95 && steered.scroll === 0, 'the first touch steers outside the field, even with a second touch and no page movement');
@@ -444,6 +464,35 @@ try {
   await pressPart('reload');
   await until(page, () => window.nezhaSea?.ready && window.nezhaSea.screen === 'title');
   check(true, 'the error screen can reload to a playable title');
+
+  let refusePortraits = true;
+  let refused = 0, allowed = 0;
+  page = await newPage('en', {
+    width: 390,
+    height: 844,
+    touch: true,
+    before: (page) => page.route(/\/assets\/(boy|lotus|sixArms)\.webp(?:\?|$)/, (route) => {
+      if (refusePortraits) {
+        refused++;
+        return route.abort('failed');
+      }
+      allowed++;
+      return route.continue();
+    })
+  });
+  await until(page, () => window.nezhaSea?.ready && window.nezhaSea.screen === 'title');
+  await waitPart('artworkRetry');
+  check(refused === 3 && Boolean(await byPart('start')), 'portrait network failures leave the game playable and offer an artwork retry');
+  refusePortraits = false;
+  await pressPart('artworkRetry');
+  await until(page, () => window.nezhaSea?.ready && window.nezhaSea.screen === 'title' &&
+    !window.nezhaSea.ui.tree.snapshot.nodes.some(node => node.id.endsWith(':artworkRetry')));
+  check(allowed === 3, 'retry requests all three previously refused portraits and restores the ordinary title');
+  // Chromium reports each route we deliberately aborted as a network console error.
+  // Keep every unexpected error in the regular acceptance report.
+  const refusedErrors = page.problems.filter(problem => /^console: Failed to load resource: net::ERR_FAILED$/.test(problem));
+  check(refusedErrors.length <= refused, 'only the deliberately aborted requests may report a network failure');
+  for (const problem of refusedErrors) page.problems.splice(page.problems.indexOf(problem), 1);
 
 } catch (error) {
   const location = error.stack?.match(/accept\.mjs:\d+/)?.[0];

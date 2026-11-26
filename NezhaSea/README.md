@@ -63,11 +63,11 @@ Nezha Stirs the Sea is a survival action game built with [Egret Rebuild](https:/
 | 引擎入口 / API · Entry / API | 在本游戏中的用途 · Use in this game | 文件 · File |
 |---|---|---|
 | `play`（`@egret/engine/play`） | 一次调用建好竖屏 540×960 的透明画布和帧循环 · the clear 540 × 960 canvas and the loop from one call | `src/main.mjs` |
-| `game.keys.axis()` | 键盘及手柄输入由引擎提供，触屏摇杆有独立的触点归属 · engine keyboard and gamepad input, with independent touch ownership | `src/main.mjs` |
+| `game.keys.axis()`、`game.touchStick({ floating })` | 键盘、手柄和触屏方向由引擎提供，浮动摇杆保留独立触点归属 · engine keyboard, gamepad and native floating touch input with independent contact ownership | `src/main.mjs`, `src/sea-stick.mjs` |
 | `game.show`、`createUiScreenStack` | 标题、设置、暂停、结算、升级与集市由白鹭绘制和管理；顶栏绑定血量、经验与滚动数字 · Egret views and navigation for all screens, with bound health, experience and rolling counters | `src/main.mjs`, `src/ui-screens.mjs`, `src/ui-hud.mjs`, `src/ui-market.mjs` |
 | `game.hints`、`game.dragAndDrop` | 随输入设备切换的操作提示；允许拖放合成两件匹配法宝 · device-aware hints and drag-and-drop merging | `src/ui-hud.mjs`, `src/ui-market.mjs` |
 | `createUiSemantics`、`createBrowserSemantics`、`createUiTester` | 浏览器无障碍树和按名称验收；白鹭处理键盘及手柄焦点 · browser accessibility tree, named-control testing and native keyboard and gamepad focus | `src/ui-input.mjs`, `test/accept.mjs` |
-| Pointer Events | 战场接管单个触点，越界继续追踪，取消和暂停时归零 · a single owned contact continues outside the field and resets on cancel and pause | `src/sea-stick.mjs` |
+| Pointer Events | 兼容桌面原有的鼠标及触控笔拖动 · retains the original mouse and pen steering on desktop | `src/sea-stick.mjs` |
 | Egret Bitmap + Graphics | 三种哪吒、六类水族兵、两位首领和法宝共用一张运行时画集，动态特效按类型复用 · pooled actors on one shared runtime atlas, with separate weapon effects | `src/view.mjs`, `src/actor-art.mjs` |
 | `game.burst`、`game.shake`、`game.flash`、`game.text` | 击退、砸落、升级的碎片；受伤一抖；合成神器一闪；伤害数字（减弱动画时不抖不闪） · bursts, a shake when hurt, a flash for a divine merge, damage numbers | `src/view.mjs`, `src/ui-market.mjs` |
 | `game.pause`、`resume`、`after` | 暂停菜单、结算前的停顿 · the pause menu, the beat before the end | `src/main.mjs` |
@@ -95,6 +95,8 @@ Nezha Stirs the Sea is a survival action game built with [Egret Rebuild](https:/
 
 窄屏集市的购买、选中和合成分成两个切换页，下一波入口固定在底部。暂停会清除战场摇杆的触点。 · The compact market separates stock from equipped treasures and pins the next-wave action. Pause releases the battlefield touch stick.
 
+浮动触屏摇杆采用白鹭原生捕获，保留原有 5 CSS 像素死区及响应幅度；触点越出战场仍受控。立绘加载失败时保留可读角色卡，标题提供重试。 · Egret handles floating-touch capture with the original five-CSS-pixel dead zone and movement response. Failed portrait downloads leave readable cards and an explicit title-screen retry.
+
 首领登场提示显示在独立的血条下方，文字不会被顶栏盖住。 · Boss introductions appear directly below the boss health bar.
 
 ## 未完成 · Unfinished
@@ -121,7 +123,7 @@ Nezha Stirs the Sea is a survival action game built with [Egret Rebuild](https:/
 
 ## 引擎副本 · Engine copy
 
-引擎副本取自 [Egret_rebuild](https://github.com/cnedwin/Egret_rebuild) 的 main 提交 `95897d78095ae8fda9e34dbc13bbbd15db8eaa12`，生成记录见 [vendor/SOURCE.md](vendor/SOURCE.md)。
+引擎副本取自 [Egret_rebuild](https://github.com/cnedwin/Egret_rebuild) 的 main 提交 `253bd197febfff80608fa4b313b4026e5694e23f`，生成记录见 [vendor/SOURCE.md](vendor/SOURCE.md)。
 
 The runtime is from Egret Rebuild main at the commit above. Run the following command in the engine checkout to reproduce it.
 

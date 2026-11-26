@@ -53,50 +53,65 @@ SwiftShader. Sections 4 and 5 use Chrome with hardware acceleration.
 
 以下问题首次在 `51b6175d` 下复现，并在 `95897d78` 复测。按对玩家的影响排列于 [界面迁移验收](UI-MIGRATION.md)。 · These findings were first reproduced at `51b6175d` and rechecked at `95897d78`. See the [migration readout](UI-MIGRATION.md) for priority and evidence.
 
-### 6. 声明式控件的键盘与手柄导航 · Keyboard and gamepad navigation for declarative controls — 已解决 / fixed
+### 6. 声明式控件的键盘与手柄导航 · Keyboard and gamepad navigation for declarative controls — 已在 `95897d78` 解决 / resolved in `95897d78`
+<!-- engine-note: {"id": "NezhaSea#6", "status": "resolved", "topic": "play-view-input-focus", "workaround": ["src/ui-input.mjs"]} -->
 
 - 现象：`51b6175d` 的声明式视图需要应用维护 Tab 导航、焦点框和暂停手柄轮询。 · At `51b6175d`, the application managed Tab navigation, the focus indicator and polling in the paused game.
 - 绕过办法：在 `95897d78` 删掉这些绕过。白鹭接管焦点、原生焦点框和模态的 Escape、B、Start。应用在重建视图时使用语义树的 focus 操作指定初始控件。 · The updated engine owns navigation, the visible mark and Escape, B and Start on modals. The game uses semantic focus to set the initial target when rebuilding a view.
 - 建议：保留这套输入仲裁与按住 Start 恢复的回归覆盖。 · Keep coverage for the input arbitration and resume while Start remains held.
+- 状态：`253bd197` 下原生导航及暂停恢复浏览器验收通过；应用仍通过语义树指定重建视图的初始控件。 · Native navigation and resume pass on `253bd197`; the app still uses semantics to choose the opening focus of a rebuilt view.
 
-### 7. 浮动摇杆要从整块战场任意点起手 · Floating stick needs the full battlefield as its start area — 未解决 / open
+### 7. 浮动摇杆要从整块战场任意点起手 · Floating stick needs the full battlefield as its start area — 已在 `253bd197` 解决 / resolved in `253bd197`
+<!-- engine-note: {"id": "NezhaSea#7", "status": "resolved", "topic": "play-floating-stick", "workaround": ["src/sea-stick.mjs"]} -->
 
 - 现象：`game.touchStick` 只接受预置控件区域。手势拖动有识别阈值，无法保留按下瞬间的原点与 5 CSS 像素死区。 · The built-in stick starts in a fixed region. Gesture recognition alone cannot preserve the immediate origin and 5 CSS pixel dead zone.
-- 绕过办法：[`src/sea-stick.mjs`](src/sea-stick.mjs) 将 Pointer Events 绑定到白鹭画布，持续捕获首触点，画面上的摇杆由引擎绘制。 · Canvas pointer capture owns the first contact while Egret draws the stick.
-- 建议：支持指定浮动区域、触点过滤、按下即捕获和显式取消。 · Allow a floating zone, contact filtering, capture on press and explicit cancellation.
+- 游戏里：[`src/sea-stick.mjs`](src/sea-stick.mjs) 使用 `game.touchStick({ floating })` 的战场区域、排除函数及 5 CSS 像素死区。应用根据画布比例换算原位移幅度，触屏捕获、越界、取消和暂停清理交给引擎。保留鼠标及触控笔的原有拖动入口。 · Native Play owns the touch capture, exclusion, dead zone, outside motion and pause/cancel lifecycle. The app converts the previous CSS travel radius to game units and retains mouse and pen dragging.
+- 状态：引擎 [#473](https://github.com/cnedwin/Egret_rebuild/pull/473) 已随主干进入本作。在 Chromium 157 的 390×844 样本中，4 CSS px 位移仍为零、18 px 位移为 0.2622；越界拖动时幅度达到 1，第二触点未接管，松开原控制触点后立即归零，页面没有移动。浮动圆环只在按住时出现。 · The native integration passes the browser dead-zone, capture, second-contact, termination and pause cases. The ring is visible during an owned touch.
 
-### 8. 密集集市中的文字缓存 · Dense market text cache — 已解决 / fixed
+### 8. 密集集市中的文字缓存 · Dense market text cache — 已在 `95897d78` 解决 / resolved in `95897d78`
+<!-- engine-note: {"id": "NezhaSea#8", "status": "resolved", "topic": "text-cache-budget-batch", "workaround": ["src/ui-market.mjs"]} -->
 
 - 现象：`51b6175d` 中超过 32 个占用槽时，集市会留下可点击但缺字的按钮。 · At `51b6175d`, exceeding 32 occupied slots left market controls active with blank labels.
 - 绕过办法：`95897d78` 的原生文字接管集市，已删除离屏位图替代。刷新货架时先释放旧视图，合并属于同一控件的多行说明。不同法宝的动态无障碍长名称仍通过语义映射维护。 · The offscreen bitmap fallback is removed. The market uses native text, combines lines within a control and releases the prior view before replacing stock. A semantic mapping keeps the distinct dynamic names that describe each relic.
 - 建议：继续覆盖反复更新文字的高密度场景。768×1024 的测试录到 3 次缓存拒绝，最终显示恢复；保留预算观察与回收验收。 · Keep coverage for densely changing copy and budget recovery. The 768×1024 fixture reported three refusals, with all text ready at the final check.
+- 状态：`253bd197` 下集市原生文字、购买、刷新及合成的自动流程仍通过。 · The market's native labels, purchase, restocking and merging still pass the browser flow at `253bd197`.
 
 ### 9. 确认框按舞台单位固定大小 · Confirmation sizes are fixed in design units — 未解决 / open
+<!-- engine-note: {"id": "NezhaSea#9", "status": "open", "topic": "play-confirm-css-targets", "workaround": ["src/ui-market.mjs"]} -->
 
 - 现象：`game.confirm` 的按钮高 48 舞台单位。在 844×390 中约 19.5 CSS 像素。长标签和确认说明也不能自动换行。 · Native confirmation uses 48 design-unit buttons, about 19.5 CSS pixels at 844×390. Long labels and the question cannot wrap automatically.
 - 绕过办法：[`src/ui-market.mjs`](src/ui-market.mjs) 在原生按钮尺寸和文案能放下时走 `game.confirm`，其余用有明确焦点、可 Esc 取消的白鹭模态。 · Use `game.confirm` when its targets and copy fit, otherwise a measured Egret modal with explicit focus and Escape cancellation.
 - 建议：确认框支持主题、换行和 CSS 像素级最小点击区。 · Accept a theme, wrapping and a minimum target in CSS pixels.
+- 状态：当前原生 `game.confirm` 仍使用固定设计单位，保留适配。 · The current native confirm still uses fixed design units, so the measured modal remains.
 
 ### 10. 声明式视图的集市组件 · Market building blocks in declarative views — 未解决 / open
+<!-- engine-note: {"id": "NezhaSea#10", "status": "open", "topic": "play-view-market-building-blocks", "workaround": ["src/ui-market.mjs"]} -->
 
 - 现象：`95897d78` 已支持声明式滚动区、段落和静态图片。市场仍需要应用组织货架、动态法宝格和语义页签。 · At `95897d78`, declarative scroll, paragraphs and static images are available. The market still arranges its stock, dynamic loadout and semantic tabs itself.
 - 绕过办法：[`src/ui-market.mjs`](src/ui-market.mjs) 按安全区生成货架和法宝格位，短屏分页查看属性、宝物和配方，合成、出售与下一波固定可用。画布图标和逐行排版保留原本信息。 · Generate bounded offer and gear positions from the safe area and paginate stats, items and recipes on short screens. Keep the next-wave action available. Canvas icons and measured lines retain the original information.
 - 建议：提供可变行数的数据源、可绑定的图片与具有语义的页签。 · Add data-driven rows, bound images and semantic tabs.
+- 状态：本轮保留既有数据、分页和语义实现。 · The existing dynamic rows, tabs and semantic labels remain.
 
-### 11. 默认纹理加载器支持 WebP · WebP in the default texture loader — 已解决 / fixed
+### 11. 默认纹理加载器支持 WebP · WebP in the default texture loader — 已在 `95897d78` 解决 / resolved in `95897d78`
+<!-- engine-note: {"id": "NezhaSea#11", "status": "resolved", "topic": "play-webp-loader", "workaround": ["src/ui-screens.mjs"]} -->
 
 - 现象：`51b6175d` 的 `loadTexture` 对原 WebP 立绘报 `WEB_PNG_STRUCTURE_INVALID`。 · At `51b6175d`, loading the WebP portraits through the default loader returned `WEB_PNG_STRUCTURE_INVALID`.
 - 绕过办法：`95897d78` 直接用 `game.browser.loadTexture` 读取 WebP。已删除浏览器画布解码和二次像素上传。 · The game now loads the original WebP files with the Egret loader. The extra decoding canvas and its upload are removed.
 - 建议：给声明式图片增加铺满裁切和焦点坐标。现有立绘继续在 Bitmap 上指定裁切区域。 · Add cover crop and a focal point to declarative image parts. The portrait layout retains a Bitmap crop.
+- 状态：`253bd197` 下 WebP 原生加载及立绘拒绝后重新加载通过。引擎 [#482](https://github.com/cnedwin/Egret_rebuild/pull/482) 新增声明式图片并发队列，本作的三张立绘仍需要 Bitmap 裁切。 · Direct WebP loading and portrait failure recovery pass. The new declarative image queue is available; the three cropped portraits retain Bitmap cropping.
 
 ### 12. 提示换行、首领入场与启动失败 · Hint wrapping, Boss entry and boot recovery — 未解决 / open
+<!-- engine-note: {"id": "NezhaSea#12", "status": "open", "topic": "play-hints-wrapping", "workaround": ["src/ui-hud.mjs", "index.html", "src/ui-screens.mjs"]} -->
 
 - 现象：长的 `game.hints` 提示在 390 宽度下被裁切。Boss 入场可通过命名控件精灵做淡入。若引擎模块尚未加载，白鹭无法绘制加载失败页。 · The long native device hint clipped at 390 px. A named sprite supports the Boss fade. Egret cannot draw failure before its module loads.
 - 绕过办法：[`src/ui-hud.mjs`](src/ui-hud.mjs) 用短原生设备提示配一块自动换行的战斗说明，Boss 文字尊重减弱动效。[`index.html`](index.html) 仅保留引擎启动前的加载提示和可重试错误界面。引擎已启动的加载和资源失败在白鹭内部绘制。 · Use short native device hints, a wrapped tutorial card and a reduced-motion-aware Boss fade. The bootstrap HTML only handles startup before Egret exists. Once initialized, loading and failure are drawn in Egret.
 - 建议：`game.hints` 支持换行和自定义放置，保留当前命名精灵的动画扩展能力。 · Add wrapping and placement to hints, keeping animation access to named sprites.
+- 状态：首领与提示验收通过，提示换行仍由游戏控制。通用资源拒绝 5 件时，标题可继续使用并出现立绘重试；定向图集失败的引擎错误界面也可重载。 · Boss and hint checks pass, while wrapped hints remain application-managed. Refusing five files now produces an actionable retry without an exception; the forced atlas failure also remains recoverable.
 
-### 13. 静止视图重复提交，首屏依赖在后段串行加载 · Repeated static frames and late startup dependencies — 未解决 / open
+### 13. 静止视图重复提交，首屏依赖在后段串行加载 · Repeated static frames and late startup dependencies — 部分解决 / partly resolved
+<!-- engine-note: {"id": "NezhaSea#13", "status": "partly", "topic": "play-startup-dependencies", "workaround": ["src/main.mjs", "index.html"]} -->
 
 - 现象：每帧提交不变化的标题时，同机软件渲染 F1 为 33.4 ms。限速样本里主模块约 2.7 s 完成载入和执行入口，随后启动图形后端、文字与角色图集，首屏仍约 3.6 s。 · Continuous redraws of the settled title measured 33.4 ms p95 on the software renderer. One throttled startup reached the app entry at about 2.7 s, then initialized graphics, text and the actor atlas. The quality startup remains around 3.6 s.
 - 绕过办法：`95897d78` 由 [Play 的 `renderMode: 'on-demand'`](src/main.mjs) 跳过静止标题重复提交。保留输入轮询，无需 Demo 启停循环或自行监听手柄唤醒。限速首屏另测。 · Native on-demand Play skips redundant title submissions while retaining input polling. The demo's loop suspension and controller wake code are removed. Cold startup is measured separately.
 - 建议：保留按需绘制的输入回归。冷启动仍可继续优化模块依赖调度。 · Retain on-demand input regressions and continue profiling startup dependency scheduling.
+- 状态：`253bd197` 通用品质复测 F1 静置标题 p95 4.2 ms，L1 3.7 s / 2.6 MB，仍超 3 秒门槛。 · On-demand title F1 passes; throttled L1 still exceeds the 3-second target.

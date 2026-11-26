@@ -8,10 +8,16 @@ const totalKeys = ['wavesStat', 'killsStat', 'mergesStat', 'divineStat'];
 const totalFields = ['wave', 'kills', 'merges', 'divines'];
 
 export function createScreens(game, app, actions) {
-  // The portraits live inside the Egret views. Failed downloads leave the same readable card.
+  // Failed portraits leave readable cards and offer a retry at the title.
+  const missingArt = new Set();
   const art = Object.fromEntries(HERO_KINDS.map(hero => [
     hero, game.browser.loadTexture(new URL('../assets/' + hero + '.webp', import.meta.url).href)
-      .catch(error => { console.warn('Portrait unavailable', error); return null; })
+      .catch(error => {
+        console.warn('Portrait unavailable', error);
+        missingArt.add(hero);
+        if (missingArt.size === 1) actions.artworkUnavailable();
+        return null;
+      })
   ]));
   function portrait(view, part, hero, unlocked, textShade) {
     const root = view.get(part);
@@ -56,7 +62,7 @@ export function createScreens(game, app, actions) {
     const top = portraitMode ? 14 + Math.min(222, Math.max(90, ui.height * 0.27)) : Math.max(13, (ui.height - (short ? 353 : 535)) / 2);
     const buttonH = 44, gap = 8;
     const heroW = (w - gap * 2) / 3;
-    const heroH = short ? 74 : Math.min(heroW / 0.87, ui.height * (portraitMode ? 0.2 : 0.26));
+    const heroH = short ? (missingArt.size > 0 ? 64 : 74) : Math.min(heroW / 0.87, ui.height * (portraitMode ? 0.2 : 0.26));
     const titleSize = short ? (getLanguage() === 'zh' ? 50 : 37) :
       portraitMode ? Math.min(72, Math.max(44, ui.width * 0.119)) : getLanguage() === 'zh' ? 91 : 73;
     const lineSize = short ? 13 : 16;
@@ -122,6 +128,11 @@ export function createScreens(game, app, actions) {
     }), () => actions.danger(danger)));
     y += buttonH + 2;
     add(label('dangerNote', 0, y, w, 18, t('danger' + app.danger + 'Note'), 12, { color: MUTED }));
+    if (missingArt.size > 0) {
+      y += 25;
+      add(button('artworkRetry', 0, y, w, 44, t('artworkRetry'), { size: 14 }), () => location.reload());
+      y += 44;
+    }
 
     const y0 = Math.min(top, Math.max(6, ui.height - y - 20));
     return ui.show(t('title'), panel(undefined, side, y0, w, y + 18, { children }), {

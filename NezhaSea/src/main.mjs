@@ -218,8 +218,7 @@ function finish() {
   if (!kept) notice = 'saveRefused';
   app.result = { won, wave: run.wave, kills: run.kills, level: run.level, merges: run.merges, divines: run.divines, ...record, kept };
   app.screen = 'end';
-  stick.reset();
-  stick.arrange();
+  stick.retire();
   hud.enable(false);
   sound.stopMusic();
   sound(won ? 'win' : 'lose');
@@ -314,6 +313,7 @@ await play({
 });
 screens = createScreens(game, app, {
   title: showTitle, start: startGame, hero, danger, language, setting,
+  artworkUnavailable: () => { if (ready && app.screen === 'title') renderScreen('title', ui.part); },
   guide: () => renderScreen('guide', 'start'),
   options: () => renderScreen('options', 'close'),
   resume, quit: showTitle

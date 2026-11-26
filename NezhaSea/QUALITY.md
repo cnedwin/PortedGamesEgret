@@ -1,5 +1,15 @@
 # 品质验收 · Quality — 哪吒闹海 · Nezha Stirs the Sea
 
+## 2026-11-26 原生浮动摇杆与恢复 · Native floating stick and recovery
+
+- **版本 · Version:** Egret main `253bd197febfff80608fa4b313b4026e5694e23f`。玩法、数值及存档源码没有改动。 · The rules and save sources are unchanged.
+- **浏览器自动验收 · Browser acceptance:** 31/31 Node 测试，73/73 Chromium 157 SwiftShader 验收。正常标题/结算与原基线分别相差 0.26% / 0.34%；未更新截图。新增鼠标拖动、原生触摸死区、比例方向、越界捕获及立绘网络拒绝后的重试。 · The rule, save, words and browser walks pass. The approved screenshots remain unchanged. The new cases cover desktop dragging, native touch, and retrying failed portrait downloads.
+- **浮动摇杆 · Floating stick:** 390×844 触屏的 4 CSS px 位移为零、18 px 位移为 0.2622。首触点拖出视口到 x=430 时方向为 1，第二触点未接管；松开首触点后归零，页面位移为零。 · The browser's touch protocol verified the original dead zone, proportional motion, outside capture and contact ownership. This measurement uses injected Chromium input.
+- **通用品质 · Automatic quality:** F1 静置标题 p95 4.2 ms（961 帧）。T2、T3、O1、I1、I3、A1–A3、S1–S3、E1–E3 均通过。E2 拒绝 5 个资源时没有未捕获错误，界面出现重试。L1 仍为 3.7 s / 2.6 MB，超过 3 秒门槛，是本轮唯一未通过的自动项。 · The generic quality command now passes E2. L1 remains the sole failing automatic check; the original target is retained.
+- **恢复 · Recovery:** 定向拒绝三张角色立绘仍可出海；标题的重试按钮重新请求三张图片并返回普通标题。独立的图集生成失败/重载继续通过。 · The optional artwork failure remains playable and can be retried. A forced actor-atlas failure still has a working native reload dialog.
+
+下面保留上一轮及初次迁移的历史环境和数据。 · The following sections retain the earlier engine and migration measurements.
+
 ## 2026-11-26 引擎复测 · Engine refresh
 
 - **版本 · Version:** Egret main `95897d78095ae8fda9e34dbc13bbbd15db8eaa12`。规则和存档源码逐文件一致。 · Simulation and save source files are unchanged.

@@ -7,6 +7,8 @@ import { EgretError } from '@egret/runtime';
 import { checkView, planView } from './view.js';
 import { keyCap } from './viewParts.js';
 import { createPlayViewScrolls } from './playViewScroll.js';
+// Keep declarative loads within BrowserGame's image budget across all views in this host.
+const MAX_VIEW_IMAGE_LOADS = 4;
 const KEYS_OF = {
     panel: ['visible', 'color', 'tap', 'badge'],
     text: ['text', 'pick', 'format', 'roll', 'visible', 'color', 'badge'],
@@ -23,6 +25,27 @@ export function createPlayViews(game, hooks) {
     const makeScroll = scrollInput.create;
     let paragraphModule;
     let counter = 0;
+    const waitingImages = new Set();
+    let loadingImages = 0;
+    function startWaitingImages() {
+        for (const load of waitingImages) {
+            if (loadingImages >= MAX_VIEW_IMAGE_LOADS)
+                break;
+            waitingImages.delete(load);
+            loadingImages++;
+            void load().finally(() => {
+                loadingImages--;
+                startWaitingImages();
+            });
+        }
+    }
+    function queueImage(load) {
+        waitingImages.add(load);
+        startWaitingImages();
+        return () => {
+            waitingImages.delete(load);
+        };
+    }
     let focused, modalOwner;
     const beforeModal = new WeakMap();
     const topModal = () => {
@@ -456,7 +479,7 @@ export function createPlayViews(game, hooks) {
                     });
                 }
                 if (part.type === 'image') {
-                    void game.image(part.src, { layer: node }).then(image => {
+                    item.cancelImage = queueImage(() => game.image(part.src, { layer: node }).then(image => {
                         if (ended || !made.includes(item)) {
                             game.remove(image);
                             return;
@@ -466,7 +489,7 @@ export function createPlayViews(game, hooks) {
                     }, cause => {
                         if (!ended && made.includes(item))
                             hooks.failed(cause);
-                    });
+                    }));
                 }
                 if (part.name !== undefined && bind[part.name]?.badge !== undefined) {
                     const dot = game.sprite(undefined, node);
@@ -705,10 +728,12 @@ export function createPlayViews(game, hooks) {
         const releaseContent = () => {
             paragraphScope?.dispose();
             paragraphScope = undefined;
-            for (const item of made)
+            for (const item of made) {
+                item.cancelImage?.();
                 for (const child of [item.words, item.dot?.words, item.image])
                     if (child !== undefined)
                         game.remove(child);
+            }
         };
         const api = {
             get: name => find(name).node,
