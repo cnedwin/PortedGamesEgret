@@ -16,7 +16,7 @@ import { wrapLines, wrapped } from './wrap.mjs';
 const ACT_IDS = ['qiba', 'tangma', 'jijifeng'];
 const LEVELS = ['easy', 'normal', 'hard'];
 const card = (more) => ({ type: 'panel', card: true, color: C.sheet, border: BRASS, ...more });
-const text = (name, words, more = {}) => ({ type: 'text', name, text: words, ...more });
+const text = (name, words, more = {}) => ({ type: 'text', ...(name === undefined ? {} : { name }), text: words, ...more });
 
 /**
  * The screens of the game, over `game`. `words` is { t, language, songName, levelName }; `app` is the state the
@@ -46,12 +46,13 @@ export function createScreens(game, { words, app, act, semantics }) {
     return {
       type: 'panel', name: 'act-' + id, label: words.songName(id), width: 'fill', height, color: C.lacquer, border: EDGE,
       children: [
-        { type: 'image', name: 'portrait-' + id, src: `assets/${id}.webp`, label: words.songName(id), width: 'fill', height: 'fill' },
+        // The picture says nothing the act's name does not; it stays out of the tree.
+        { type: 'image', src: `assets/${id}.webp`, width: 'fill', height: 'fill' },
         { type: 'panel', anchor: 'bottom', width: 'fill', height: 40, color: 0x120f0d, alpha: 0.86, children: [
           text('act-name-' + id, words.songName(id), { anchor: 'center', width: 'fill', height: 40, size: 21, bold: true, align: 'center' })
         ] },
-        { type: 'panel', name: 'chosen-' + id, anchor: 'top-right', x: 6, y: 6, width: 66, height: 26, color: C.gold, alpha: 1, children: [
-          text('chosen-word-' + id, t('chosen'), { anchor: 'center', width: 'fill', height: 26, size: 14, bold: true, align: 'center', color: C.gongText })
+        { type: 'panel', name: 'chosen-' + id, label: t('chosen'), anchor: 'top-right', x: 6, y: 6, width: 66, height: 26, color: C.gold, alpha: 1, children: [
+          text(undefined, t('chosen'), { anchor: 'center', width: 'fill', height: 26, size: 14, bold: true, align: 'center', color: C.gongText })
         ] }
       ]
     };
@@ -299,7 +300,7 @@ export function createScreens(game, { words, app, act, semantics }) {
             { width: 300, height: 26, size: 15, align: 'right', color: C.gold })
         ] },
         { type: 'panel', layout: 'row', gap: 18, height: leadHeight, align: 'center', children: [
-          { type: 'image', name: 'end-portrait', src: `assets/${portraitId}.webp`, label: words.songName(portraitId), width: Math.round(leadHeight * 0.75), height: leadHeight, border: EDGE },
+          { type: 'image', src: `assets/${portraitId}.webp`, width: Math.round(leadHeight * 0.75), height: leadHeight, border: EDGE },
           { type: 'panel', layout: 'column', gap: 4, width: 'fill', height: leadHeight, justify: 'center', children: [
             text('rank', t(r.rank), { height: 64, size: 52, bold: true, color: r.rank === 'fail' ? C.rose : C.bright }),
             text('end-score', t('score', { n: r.score }), { height: 34, size: 24 }),

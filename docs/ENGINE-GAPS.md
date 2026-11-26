@@ -4,9 +4,9 @@
 
 Made by `node tools/engine-notes.mjs --write` from the ENGINE-NOTES of the games; do not edit by hand, and `--check` says whether it is out of date. What the engine resolved is copied from the engine's `guide/resolved.json` into [engine-resolved.json](engine-resolved.json) (15 entries). The form of a note is in part 3 of [GAME-STANDARD.md](GAME-STANDARD.md).
 
-24 个游戏、161 条笔记：未解决 44，部分解决 13，游戏侧绕过 2，已写入文档 40，已解决 62。
+24 个游戏、162 条笔记：未解决 45，部分解决 13，游戏侧绕过 2，已写入文档 40，已解决 62。
 
-161 notes from 24 games: 44 open, 13 partly resolved, 2 worked around in the game, 40 documented, 62 resolved.
+162 notes from 24 games: 45 open, 13 partly resolved, 2 worked around in the game, 40 documented, 62 resolved.
 
 ## 1. 引擎已经解决、游戏还标着未解决 · Resolved by the engine, still open in a game
 
@@ -80,6 +80,7 @@ Write the lesson as a card of the engine's guide (`guide/cards` in the engine re
 | `view-during-setup` | OperaDrums#10 `setup` 等着的界面不画 · A view that `setup` awaits is not drawn | 未解决 · open |
 | `view-empty-text-semantics` | OperaDrums#8 空字的文字部件让语义树发布失败 · An empty text part makes the semantic tree refuse to publish | 未解决 · open |
 | `view-focus-call` | OperaDrums#14 没有把焦点放到某个部件上的调用 · No call to put the focus on a named part | 未解决 · open |
+| `view-group-name-fallback` | OperaDrums#21 没有 `label` 的面板按部件名读出 · A panel without a `label` is read by its part's name | 未解决 · open |
 | `view-label-binding` | OperaDrums#17 组的读屏名字不能绑定，隐藏的部件仍占位置 · Group names cannot be bound, and hidden parts keep their room | 未解决 · open |
 | `view-press-down` | OperaDrums#11 界面的点按在抬起时才算 · A view's tap counts when the finger lifts | 未解决 · open |
 | `view-selected-state` | OperaDrums#12 选中状态进不了语义树 · A chosen part cannot say it is chosen | 未解决 · open |
@@ -109,7 +110,7 @@ Write the lesson as a card of the engine's guide (`guide/cards` in the engine re
 | [NezhaSea](../NezhaSea/ENGINE-NOTES.md) | 5 | 1 | 0 | 0 | 1 | 3 | 0 | `b5628eb` |
 | [NightWardens](../NightWardens/ENGINE-NOTES.md) | 3 | 0 | 0 | 0 | 3 | 0 | 0 | `a778bed` |
 | [NineProvinces](../NineProvinces/ENGINE-NOTES.md) | 8 | 4 | 1 | 0 | 1 | 2 | 0 | `9d801be` |
-| [OperaDrums](../OperaDrums/ENGINE-NOTES.md) | 20 | 14 | 0 | 0 | 3 | 3 | 0 | `aab331d` |
+| [OperaDrums](../OperaDrums/ENGINE-NOTES.md) | 21 | 15 | 0 | 0 | 3 | 3 | 0 | `aab331d` |
 | [PeachCreek](../PeachCreek/ENGINE-NOTES.md) | 9 | 0 | 4 | 0 | 0 | 5 | 0 | `95897d7` |
 | [Rally](../Rally/ENGINE-NOTES.md) | 4 | 1 | 0 | 0 | 2 | 1 | 0 | `b5628eb` |
 | [SandScroll](../SandScroll/ENGINE-NOTES.md) | 7 | 2 | 0 | 0 | 5 | 0 | 0 | `450bb9e` |

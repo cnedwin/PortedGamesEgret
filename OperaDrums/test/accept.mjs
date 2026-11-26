@@ -31,6 +31,12 @@ const tabTo = async (pattern, back = false) => {
 };
 /** The names the screen shows now, as the semantic tree publishes them. */
 const shown = () => state(() => window.operaDrums.semantics.publish().nodes.filter((n) => !n.hidden && !n.inert && n.name.trim()).map((n) => `${n.role}:${n.name}`));
+/** Groups the tree would read by a part's own name (`view3:readout-box`) rather than words for a person, gathered over the walk. */
+const leaked = new Set();
+const unnamed = async () => {
+  for (const name of await state(() => window.operaDrums.semantics.publish().nodes
+    .filter((n) => !n.hidden && !n.inert && n.role === 'group' && n.name === n.id.split(':').pop()).map((n) => n.name))) leaked.add(name);
+};
 /** Where the part named `name` is on the page: its element in the projection for assistive technology. */
 const placeOf = (name) => state((name) => {
   const element = [...document.querySelectorAll('[aria-label]')].find((e) => e.getAttribute('aria-label') === name && e.getBoundingClientRect().width > 0);
@@ -47,7 +53,8 @@ try {
   const title = await matchBaseline(page, GAME, 'title');
   check(title.written || title.passed, `title looks as its baseline (${(title.share * 100).toFixed(2)}% differs)`);
   check(await focused() === '起霸', `the title opens on the first act (${await focused()})`);
-  check((await shown()).includes('text:已选'), 'the chosen act carries its tag where the tree reads it');
+  check((await shown()).includes('group:已选'), 'the chosen act carries its tag where the tree reads it');
+  await unnamed();
 
   // Dialogs by keyboard: the guide, then the settings with the sound off and on, then English.
   check(await tabTo(/^怎么敲$/), 'Tab reaches the controls guide');
@@ -55,6 +62,7 @@ try {
   await until(page, () => window.operaDrums.screen === 'guide');
   const guide = await shown();
   check(guide.includes('button:\u25a1 试敲鼓') && guide.includes('button:\u25c7 试敲锣'), 'the guide offers drum and gong practice');
+  await unnamed();
   check(!guide.includes('button:设置'), 'behind the dialog the title takes no keys or presses');
   await page.keyboard.press('Escape');
   await until(page, () => window.operaDrums.screen === 'title' && window.operaDrums.focused() !== '');
@@ -63,6 +71,7 @@ try {
   await page.keyboard.press('Enter');
   await until(page, () => window.operaDrums.screen === 'options');
   check(await tabTo(/^声音$/), 'Tab reaches the sound switch');
+  await unnamed();
   await page.keyboard.press('Space');
   await until(page, () => window.operaDrums.app.save.data.settings.sound === false);
   check(await focused() === '声音', `Space turns the sound off and keeps the focus there (${await focused()})`);
@@ -93,6 +102,7 @@ try {
   }
   const struck = await state(() => window.operaDrums.app.strokes.length);
   check(struck >= 3, `F and D strike the notes as they come (${struck} of 4 judged; the timing of keys sent through the browser protocol is not the player's)`);
+  await unnamed();
   const pad = await placeOf('Strike the drum (F)');
   check(pad && pad.height >= 44, `the F drum pad is on the page where the tree says (${pad && Math.round(pad.width)}×${pad && Math.round(pad.height)} px)`);
   const before = await state(() => window.operaDrums.sound.heardAt());
@@ -115,6 +125,7 @@ try {
   await page.waitForTimeout(700);
   check(Math.abs((await state(() => window.operaDrums.sound.heardAt())) - paused) < 0.02, 'P pauses: the song stands still behind the menu');
   check(await focused() === 'Resume', `the pause opens on Resume (${await focused()})`);
+  await unnamed();
   await page.keyboard.press('Escape');
   await until(page, () => window.operaDrums.screen === 'play' && !window.operaDrums.game.paused);
   await page.waitForTimeout(300);
@@ -153,6 +164,7 @@ try {
   const saved = await state(() => JSON.parse(localStorage.getItem('opera-drums')).data.best.jijifeng?.easy);
   check(saved && saved.rank === result.rank && saved.score === result.score, `the run is kept as the best (${JSON.stringify(saved)})`);
   check((await shown()).includes(`text:${result.score} pts`), 'the curtain call shows the score');
+  await unnamed();
   const end = await matchBaseline(page, GAME, 'end', { limit: 0.03 });
   check(end.written || end.passed, `the end looks as its baseline (${(end.share * 100).toFixed(2)}% differs; the numbers change a little from run to run)`);
   check(/^Play it again$/.test(await focused()), `the end offers the song again first (${await focused()})`);
@@ -169,6 +181,7 @@ try {
   await page.keyboard.press('Enter');
   await until(page, () => window.operaDrums.screen === 'calIdle' && window.operaDrums.focused() !== '');
   check(await focused() === 'Start', `the measure opens on Start (${await focused()})`);
+  await unnamed();
   await page.keyboard.press('Enter');
   await until(page, () => window.operaDrums.screen === 'cal');
   await page.waitForTimeout(300);
@@ -215,6 +228,7 @@ try {
   check(gong && drumF && gong.y < drumF.y && gong.width > 150, `on the phone the pads are two by two, gongs above the drums (${gong && Math.round(gong.width)}×${gong && Math.round(gong.height)} px)`);
   const stageTop = await state(() => window.operaDrums.app.portrait());
   check(stageTop, 'the phone is held upright and the portrait parts are used');
+  await unnamed();
   const presses = await state(() => window.operaDrums.app.padPresses);
   await page.touchscreen.tap(gong.x, gong.y);
   await page.waitForTimeout(200);
@@ -231,6 +245,7 @@ try {
   await until(page, () => window.operaDrums?.ready && window.operaDrums.screen === 'title');
   await page.waitForTimeout(300);
   check((await shown()).some((name) => /The save could not be read|存档读不懂/.test(name)), 'a broken save is started again, and the title says so');
+  check(leaked.size === 0, `every group the tree reads has words for a person, not a part's name (${[...leaked].join(', ') || 'none'})`);
 } catch (error) {
   check(false, `the walk stopped: ${error.message.split('\n')[0]}`);
 } finally {

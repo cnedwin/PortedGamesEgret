@@ -40,7 +40,7 @@ function pad({ name, kind, hand }, t, { size, keySize }) {
 
 function hud(t, o) {
   return {
-    type: 'panel', name: 'hud', anchor: 'top', y: o.top, width: o.width, height: o.height, layout: 'row', gap: 8, align: 'center', children: [
+    type: 'panel', anchor: 'top', y: o.top, width: o.width, height: o.height, layout: 'row', gap: 8, align: 'center', children: [
       { type: 'panel', card: true, color: DARK, alpha: 0.88, border: EDGE, width: o.now, height: o.height, padding: 5, layout: 'column', gap: 3, children: [
         { type: 'text', name: 'song-line', text: '', height: 'fill', size: o.words, bold: true },
         { type: 'bar', name: 'progress', label: t('scoreProgress'), height: 4, color: C.gold }
@@ -56,7 +56,7 @@ function hud(t, o) {
 
 function coach(t, o) {
   return {
-    type: 'panel', name: 'coach', anchor: 'bottom', y: o.bottom, width: o.width, height: o.height, card: true, color: 0x201910, alpha: 0.95,
+    type: 'panel', name: 'coach', label: t('coachGroup'), anchor: 'bottom', y: o.bottom, width: o.width, height: o.height, card: true, color: 0x201910, alpha: 0.95,
     border: { color: 0xba8554, width: 1 }, padding: 5, layout: 'row', gap: 10, align: 'center', children: [
       { type: 'text', name: 'coach-label', text: '', width: o.label, height: o.height - 10, size: o.words, bold: true, color: C.gold },
       { type: 'text', name: 'coach-hint', text: '', width: 'fill', height: o.height - 10, size: o.words - 1 },
@@ -68,7 +68,7 @@ function coach(t, o) {
 /** The performance page: a view whose parts follow `app.hud`. `onBuilt(view)` is told each time its parts are made. */
 export function openPlayPage(game, { t, app, act, onBuilt }) {
   // On a phone held upright the line under the stage also holds Pause, where a thumb reaches it at full size.
-  const readout = (o) => ({ type: 'panel', name: 'readout-box', card: true, color: 0x261e17, alpha: 1, border: { color: 0x936947, width: 1 }, width: o.width, height: o.height,
+  const readout = (o) => ({ type: 'panel', name: 'readout-box', label: t('readoutGroup'), card: true, color: 0x261e17, alpha: 1, border: { color: 0x936947, width: 1 }, width: o.width, height: o.height,
     layout: 'row', gap: 8, padding: o.pause ? 2 : 0, align: 'center', children: [
       { type: 'text', name: 'readout', text: '', width: 'fill', height: o.height - 4, size: o.words, bold: true, align: 'center' },
       ...(o.pause ? [button('pause', t('pause'), { width: o.pause, height: o.height - 4, size: o.words, color: 0x271c15 })] : [])
