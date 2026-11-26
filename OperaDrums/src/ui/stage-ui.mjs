@@ -16,6 +16,7 @@
 // `begin` of the engine's pointer input and takes the event's time stamp (see ENGINE-NOTES.md); keys and assistive
 // technology activate a pad through the view's tap.
 import { C, EDGE, SKIN, button } from './skin.mjs';
+import { fitWords } from './wrap.mjs';
 
 export const PADS = [
   { name: 'pad-d', kind: 'gong', hand: 'd' },
@@ -86,8 +87,8 @@ export function openPlayPage(game, { t, app, act, onBuilt }) {
   const portrait = {
     type: 'panel', width: 'fill', height: 'fill', layout: 'column', gap: 8, children: [
       { type: 'panel', name: 'stage', label: t('stage'), width: 'fill', height: 304, children: [
-        hud(t, { top: 4, width: 528, height: 36, now: 240, score: 120, words: 13 }),
-        coach(t, { bottom: 6, width: 524, height: 32, label: 128, bar: 70, words: 13 })
+        hud(t, { top: 4, width: 528, height: 40, now: 260, score: 130, words: 16 }),
+        coach(t, { bottom: 6, width: 524, height: 38, label: 140, bar: 60, words: 15 })
       ] },
       readout({ width: 'fill', height: 68, words: 15, pause: 110 }),
       { type: 'panel', layout: 'column', gap: 8, height: 'fill', padding: 4, children: [
@@ -120,7 +121,8 @@ export function openPlayPage(game, { t, app, act, onBuilt }) {
     };
     bind['key-' + p.hand] = { visible: () => game.device !== 'touch' };
   }
-  return game.show({ label: t('stage'), skin: SKIN, root: landscape, portrait }, { bind, built: onBuilt });
+  // Words too wide for their part are made smaller before the engine sees them (wrap.mjs).
+  return game.show({ label: t('stage'), skin: SKIN, root: fitWords(landscape, 960, SKIN), portrait: fitWords(portrait, 540, SKIN) }, { bind, built: onBuilt });
 }
 
 /** A frame round the stage, in its own units. */

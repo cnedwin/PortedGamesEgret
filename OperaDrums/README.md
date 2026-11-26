@@ -101,6 +101,7 @@ gong pull, torn edge, a drum figure, and the bridge. Each piece has a written pe
 ## 已解决 · Solved
 
 - 所有界面从网页按钮和 CSS 改成引擎的数据界面、屏幕栈和语义树（引擎 `aab331d`）。标题、对话框、结算和演出页横竖屏各一套部件；载入失败时有「再试一次」。 · Every screen moved from page buttons and CSS to the engine's views, screen stack and semantic tree (engine `aab331d`), with a wide and a tall set of parts and a retry when loading fails.
+- 上线后发现英文下标题、开演按钮和戏名比部件宽、画到了旁边（ENGINE-NOTES 22、23）：量字改用引擎同样的字体，放不下的字缩小或在「 · 」处分两行；竖屏手机上三档难度和暂停菜单改成一行一个的大按钮，说明文字加大；戏台的音符在戏台边上截断。 · In English the title, the way in and the act names ran past their parts on the live page (items 22 and 23): words are measured in the engine's font and shrunk or broken at « · »; upright, the difficulties and the pause menu are full-width buttons and the words larger; notes are cut at the stage's edge.
 - 上线后发现读屏会念出 `readout-box`、`chosen-qiba` 这样的内部名字（ENGINE-NOTES 21）：需要绑定的面板都给了读得懂的名字，戏画当作装饰不进语义树，验收里加了这一项。 · Internal names such as `readout-box` reached screen readers on the live page (item 21): bound panels now have words for a person, the portraits are decoration, and the acceptance checks it.
 - 页面按钮上的 Tab 和 Space 失灵（ENGINE-NOTES 1）：引擎已修好；现在没有页面按钮，敲击键只读时间戳、不停止传播。 · Tab and Space on the page's buttons (item 1): fixed in the engine; no page buttons are left.
 - 透明画布下面是黑的（ENGINE-NOTES 2）：引擎已修好。 · The black holder (item 2): fixed in the engine.

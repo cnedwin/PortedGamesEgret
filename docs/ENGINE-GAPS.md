@@ -4,9 +4,9 @@
 
 Made by `node tools/engine-notes.mjs --write` from the ENGINE-NOTES of the games; do not edit by hand, and `--check` says whether it is out of date. What the engine resolved is copied from the engine's `guide/resolved.json` into [engine-resolved.json](engine-resolved.json) (15 entries). The form of a note is in part 3 of [GAME-STANDARD.md](GAME-STANDARD.md).
 
-24 个游戏、162 条笔记：未解决 45，部分解决 13，游戏侧绕过 2，已写入文档 40，已解决 62。
+24 个游戏、164 条笔记：未解决 47，部分解决 13，游戏侧绕过 2，已写入文档 40，已解决 62。
 
-162 notes from 24 games: 45 open, 13 partly resolved, 2 worked around in the game, 40 documented, 62 resolved.
+164 notes from 24 games: 47 open, 13 partly resolved, 2 worked around in the game, 40 documented, 62 resolved.
 
 ## 1. 引擎已经解决、游戏还标着未解决 · Resolved by the engine, still open in a game
 
@@ -72,6 +72,7 @@ Write the lesson as a card of the engine's guide (`guide/cards` in the engine re
 | `terrain-color-tile` | NineProvinces#6 地形流的 `colorAt` 只给地块内的坐标，不知道是哪一块 · The terrain stream's `colorAt` is given coordinates within a tile, and no way to tell which tile | 未解决 · open |
 | `terrain-view-distance-budget` | NineProvinces#8 地形流视距稍大就抛 `WORLD3D_BUDGET` · The terrain stream throws `WORLD3D_BUDGET` for a view distance a little too large | 未解决 · open |
 | `text-cache-budget-batch` | JY#1 同时准备很多文字时超出文字缓存的预算 · Preparing many texts at once passes the text cache's budget | 部分解决 · partly |
+| `text-font-quoted-generic` | OperaDrums#22 引擎要的字体是带引号的 `"sans-serif"` · The engine asks for `"sans-serif"` in quotes | 未解决 · open |
 | `texture-from-canvas-scope` | NineProvinces#3 `textureFromCanvas` 的纹理只能归游戏本身的作用域 · Textures from `textureFromCanvas` belong to the game's own scope only | 未解决 · open |
 | `two-bone-ik` | FiveRegiments#5 引擎没有现成的两骨反向动力学 · No two-bone IK in the engine | 未解决 · open |
 | `vertex-hook-error` | StarBanner#2 只有顶点钩子的着色器写进 `glsl` 时报错不直观 · A vertex-only hook given as `glsl` fails with an unhelpful error | 未解决 · open |
@@ -85,6 +86,7 @@ Write the lesson as a card of the engine's guide (`guide/cards` in the engine re
 | `view-press-down` | OperaDrums#11 界面的点按在抬起时才算 · A view's tap counts when the finger lifts | 未解决 · open |
 | `view-selected-state` | OperaDrums#12 选中状态进不了语义树 · A chosen part cannot say it is chosen | 未解决 · open |
 | `view-size-classes` | OperaDrums#18 只有横屏和竖屏两套部件 · Only a wide and a tall set of parts | 未解决 · open |
+| `view-text-fit` | OperaDrums#23 放不下的字不缩小，多行字只能整块居中 · Words that do not fit are not shrunk, and lines are centred only as a block | 未解决 · open |
 | `view-text-wrap` | OperaDrums#6 文字部件不按宽度折行 · A text part is not wrapped to its width | 未解决 · open |
 | `webgl2-2d-program-link-startup` | TeaHorseRoad#25 2D 宿主创建时同步链接全部着色器 · The 2D host links all its programs synchronously when made | 未解决 · open |
 | `webgpu-cold-atlas-upload` | NezhaSea#5 WebGPU 首次可见的图集可能在连续帧重复上传 · Two consecutive WebGPU frames can upload a cold atlas twice | 未解决 · open |
@@ -110,7 +112,7 @@ Write the lesson as a card of the engine's guide (`guide/cards` in the engine re
 | [NezhaSea](../NezhaSea/ENGINE-NOTES.md) | 5 | 1 | 0 | 0 | 1 | 3 | 0 | `b5628eb` |
 | [NightWardens](../NightWardens/ENGINE-NOTES.md) | 3 | 0 | 0 | 0 | 3 | 0 | 0 | `a778bed` |
 | [NineProvinces](../NineProvinces/ENGINE-NOTES.md) | 8 | 4 | 1 | 0 | 1 | 2 | 0 | `9d801be` |
-| [OperaDrums](../OperaDrums/ENGINE-NOTES.md) | 21 | 15 | 0 | 0 | 3 | 3 | 0 | `aab331d` |
+| [OperaDrums](../OperaDrums/ENGINE-NOTES.md) | 23 | 17 | 0 | 0 | 3 | 3 | 0 | `aab331d` |
 | [PeachCreek](../PeachCreek/ENGINE-NOTES.md) | 9 | 0 | 4 | 0 | 0 | 5 | 0 | `95897d7` |
 | [Rally](../Rally/ENGINE-NOTES.md) | 4 | 1 | 0 | 0 | 2 | 1 | 0 | `b5628eb` |
 | [SandScroll](../SandScroll/ENGINE-NOTES.md) | 7 | 2 | 0 | 0 | 5 | 0 | 0 | `450bb9e` |

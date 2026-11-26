@@ -24,7 +24,8 @@ const server = await serve(),
   check = (ok, words) => checks.push([Boolean(ok), words]);
 let page;
 const state = (expression, argument) => page.evaluate(expression, argument);
-const focused = () => state(() => window.operaDrums.focused());
+// A name broken over two lines (and led by spaces to stand centred) reads as one line here.
+const focused = () => state(() => window.operaDrums.focused().replace(/\s+/gu, ' ').trim());
 const tabTo = async (pattern, back = false) => {
   for (let i = 0; i < 40 && !pattern.test(await focused()); i++) await page.keyboard.press(back ? 'Shift+Tab' : 'Tab');
   return pattern.test(await focused());
@@ -91,7 +92,7 @@ try {
   // A song: Swift Wind on easy, from the keyboard.
   check(await tabTo(/^Swift Wind$/), 'Tab reaches Swift Wind');
   await page.keyboard.press('Enter');
-  check(await tabTo(/^Take the stage · Swift Wind · Easy$/), 'the primary action names the act and difficulty');
+  check(await tabTo(/^Take the stage( ·)? Swift Wind · Easy$/), 'the primary action names the act and difficulty');
   await page.keyboard.press('Enter');
   await until(page, () => window.operaDrums.screen === 'play', 15);
   check(true, 'Enter starts the song once its backing is ready');
