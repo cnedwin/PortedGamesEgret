@@ -96,7 +96,8 @@ export async function createLand(scene, physics, { quality = 'medium', onTile } 
       const body = physics.createBody({
         type: 'static',
         shape: { type: 'mesh', mesh },
-        position: [(tile.x + 0.5) * TILE, 0, (tile.z + 0.5) * TILE],
+        // The tile's height field is centred on the tile (ENGINE-NOTES.md, item 6).
+        position: [tile.center[0], 0, tile.center[1]],
         friction: 0.9,
         layer: LAYER.ground,
         userData: { kind: 'ground' }

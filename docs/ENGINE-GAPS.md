@@ -4,9 +4,9 @@
 
 Made by `node tools/engine-notes.mjs --write` from the ENGINE-NOTES of the games; do not edit by hand, and `--check` says whether it is out of date. What the engine resolved is copied from the engine's `guide/resolved.json` into [engine-resolved.json](engine-resolved.json) (15 entries). The form of a note is in part 3 of [GAME-STANDARD.md](GAME-STANDARD.md).
 
-24 个游戏、142 条笔记：未解决 26，部分解决 13，游戏侧绕过 2，已写入文档 39，已解决 62。
+24 个游戏、146 条笔记：未解决 30，部分解决 13，游戏侧绕过 2，已写入文档 39，已解决 62。
 
-142 notes from 24 games: 26 open, 13 partly resolved, 2 worked around in the game, 39 documented, 62 resolved.
+146 notes from 24 games: 30 open, 13 partly resolved, 2 worked around in the game, 39 documented, 62 resolved.
 
 ## 1. 引擎已经解决、游戏还标着未解决 · Resolved by the engine, still open in a game
 
@@ -44,8 +44,11 @@ Write the lesson as a card of the engine's guide (`guide/cards` in the engine re
 | `gltf-webp-texture` | FiveRegiments#1 `loadGltf3D` 不认 `EXT_texture_webp` · `loadGltf3D` does not take `EXT_texture_webp` | 未解决 · open |
 | `instanced-lod` | TeaHorseRoad#2 实例网格没有距离剔除和 LOD · No distance culling or LOD for instanced meshes | 部分解决 · partly |
 | `managed-editor-focus` | InquestScrolls#12 笔录托管编辑器创建和失焦 · Managed editor creation and blur | 已在游戏侧绕过 · worked around |
+| `mesh-shape-worker-transfer` | TeaHorseRoad#26 三角网碰撞形状不能在 Worker 里建好再交回 · A triangle mesh shape cannot be built in a worker and handed back | 未解决 · open |
 | `mouse-right-button` | LubanBridge#5 `web/input` 的鼠标输入只认左键 · The mouse input of `web/input` knows only the left button | 未解决 · open |
 | `native-scrolling` | PeachCreek#2 经营单子的原生滚动 · Native scrolling for county inspectors | 部分解决 · partly |
+| `nav-agent-forward-axis` | TeaHorseRoad#27 导航体转身以 -Z 为前方 · A navigation agent turns with -Z as its front | 未解决 · open |
+| `navmesh-heightfield-holes` | TeaHorseRoad#28 从高度场铺导航网格：只能是一块高度场，洞只按顶点挖 · A navigation mesh from a height field takes one field, and holes go by vertices | 未解决 · open |
 | `on-demand-rendering` | NineProvinces#5 画面不变时帧循环也每帧整屏合成 · The frame loop composites the whole stage every frame even when nothing changes | 部分解决 · partly |
 | `paragraph-image-size-limit` | InquestScrolls#11 段落图像超过尺寸上限 · Paragraph image exceeds the size limit | 已在游戏侧绕过 · worked around |
 | `particle-burst-fraction` | SandScroll#2 粒子 `burst` 传小数时报"选项无效"，并让整个帧循环停下 · A fractional `burst` count reports invalid options and stops the frame loop | 未解决 · open |
@@ -69,6 +72,7 @@ Write the lesson as a card of the engine's guide (`guide/cards` in the engine re
 | `ui-typography-styling` | PeachCreek#3 文字和按钮样式需要显示对象补充 · Typography and button styling need display-object extensions | 部分解决 · partly |
 | `vertex-hook-error` | StarBanner#2 只有顶点钩子的着色器写进 `glsl` 时报错不直观 · A vertex-only hook given as `glsl` fails with an unhelpful error | 未解决 · open |
 | `vertical-text` | InquestScrolls#1 段落不支持竖排 · Paragraphs cannot set text vertically | 部分解决 · partly |
+| `webgl2-2d-program-link-startup` | TeaHorseRoad#25 2D 宿主创建时同步链接全部着色器 · The 2D host links all its programs synchronously when made | 未解决 · open |
 | `webgpu-cold-atlas-upload` | NezhaSea#5 WebGPU 首次可见的图集可能在连续帧重复上传 · Two consecutive WebGPU frames can upload a cold atlas twice | 未解决 · open |
 | `webgpu-compute` | SandScroll#5 WebGPU 没有开放计算通道 · No compute pass on WebGPU | 未解决 · open |
 | `webgpu-headless-3d` | FiveRegiments#3 无头 Chromium 里 WebGPU 后端画不出 3D 画面 · The WebGPU backend draws no 3D scene in headless Chromium | 未解决 · open |
@@ -99,5 +103,5 @@ Write the lesson as a card of the engine's guide (`guide/cards` in the engine re
 | [SnowTemple](../SnowTemple/ENGINE-NOTES.md) | 3 | 0 | 0 | 0 | 0 | 3 | 0 | `b5628eb` |
 | [StarBanner](../StarBanner/ENGINE-NOTES.md) | 4 | 1 | 0 | 0 | 3 | 0 | 0 | `b3b5943` |
 | [TaiwanMahjong](../TaiwanMahjong/ENGINE-NOTES.md) | 7 | 1 | 0 | 0 | 3 | 3 | 0 | `2e53f45` |
-| [TeaHorseRoad](../TeaHorseRoad/ENGINE-NOTES.md) | 24 | 2 | 1 | 0 | 7 | 14 | 0 | `687037a` |
+| [TeaHorseRoad](../TeaHorseRoad/ENGINE-NOTES.md) | 28 | 6 | 1 | 0 | 7 | 14 | 0 | `8637ace` |
 | [Wulin](../Wulin/ENGINE-NOTES.md) | 0 | 0 | 0 | 0 | 0 | 0 | 0 | `b5628eb` |

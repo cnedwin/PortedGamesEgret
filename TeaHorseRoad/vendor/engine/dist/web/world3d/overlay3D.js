@@ -25,6 +25,10 @@ export async function createWorld3DOverlay(canvas, options) {
         throw new EgretError('WORLD3D_OVERLAY_OPTIONS_INVALID');
     if (!options || !(options.width > 0) || !(options.height > 0))
         throw new EgretError('WORLD3D_OVERLAY_OPTIONS_INVALID');
+    const fit = options.fit ?? 'stretch';
+    if (fit !== 'stretch' && fit !== 'contain' && fit !== 'cover')
+        throw new EgretError('WORLD3D_OVERLAY_OPTIONS_INVALID');
+    let placed = { x: 0, y: 0, width: 0, height: 0, scale: 0 };
     const doc = canvas.ownerDocument;
     const overlay = doc.createElement('canvas');
     overlay.className = 'egret-world3d-overlay';
@@ -33,10 +37,18 @@ export async function createWorld3DOverlay(canvas, options) {
     // The overlay follows the 3D canvas's box, wherever the page lays it out.
     const place = () => {
         const parent = canvas.parentElement.getBoundingClientRect(), box = canvas.getBoundingClientRect();
-        overlay.style.left = `${box.left - parent.left + canvas.parentElement.scrollLeft}px`;
-        overlay.style.top = `${box.top - parent.top + canvas.parentElement.scrollTop}px`;
-        overlay.style.width = `${box.width}px`;
-        overlay.style.height = `${box.height}px`;
+        let width = box.width, height = box.height;
+        if (fit !== 'stretch' && width > 0 && height > 0) {
+            const wide = width / options.width, tall = height / options.height, scale = fit === 'contain' ? Math.min(wide, tall) : Math.max(wide, tall);
+            width = options.width * scale;
+            height = options.height * scale;
+        }
+        const x = (box.width - width) / 2, y = (box.height - height) / 2;
+        placed = Object.freeze({ x, y, width, height, scale: width / options.width });
+        overlay.style.left = `${box.left - parent.left + canvas.parentElement.scrollLeft + x}px`;
+        overlay.style.top = `${box.top - parent.top + canvas.parentElement.scrollTop + y}px`;
+        overlay.style.width = `${width}px`;
+        overlay.style.height = `${height}px`;
     };
     place();
     const Resize = globalThis.ResizeObserver;
@@ -159,6 +171,9 @@ export async function createWorld3DOverlay(canvas, options) {
     return {
         game,
         canvas: overlay,
+        get box() {
+            return placed;
+        },
         async dispose() {
             for (const type of FORWARDED)
                 win.removeEventListener(type, forward, { capture: true });
