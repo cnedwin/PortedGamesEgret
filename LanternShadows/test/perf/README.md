@@ -74,3 +74,48 @@ The profile adds measurement overhead, fixes simulation time, writes no gameplay
 - 最终 Atlas A/B 同一 expanded 位置、初始状态、100 shown+posed；draw calls median 43→33、host CPU median 24.9→22.0 ms、submission cadence median 33.1→17.8 ms，p95 49.8→49.7 ms. No claim that high-percentile regression was solved.
 
 The actual Fold7 report is summarized in [QUALITY.md](../../QUALITY.md) and [ENGINE-NOTES.md §9](../../ENGINE-NOTES.md). Do not publish the instrumented diagnostic as a game build or use it as a campaign record.
+
+
+## 6. Spine 提交拆分与背压 / Detailed Spine submission and backpressure (optional)
+
+此附加实验使用新协议 `lantern-dense-fixed-step/2`；上面的普通构建及 `reference-fold7.*` 继续使用原协议和原始数据。若要复跑细分 Spine 的 A/B/A 实验，启动独立诊断构建：
+
+```sh
+node test/perf/build-profile.mjs --serve --spine-detail
+```
+
+The optional flag selects `spine-instrument.mjs` and `dense-spine-harness.mjs`, enables the explicit backpressure probe, and writes a protocol/version marker into `build/profile.json`. Without the flag, the original v1 implementation and reference remain unchanged. Use the normal expanded layout, or add `--compact` to **every** block when geometry needs to be controlled.
+
+Open the same foreground page at the same size/backing and use a fresh reload for each block:
+
+```js
+__lanternDenseProfile.start({mode:'native-on', fixedDt:1/60})
+// Save JSON.stringify(__lanternDenseProfile.result()) when status().phase is done.
+```
+
+For the experimental block use `mode:'defer-display'`; then repeat `native-on` from a fresh page. Keep full JSON results from all three blocks as A.json, B.json and A2.json. Compare them without changing the data:
+
+```sh
+node test/perf/compare-spine.mjs A.json B.json A2.json
+```
+
+### 实验具体改变的范围 / Prototype boundary
+
+- The prototype always advances animation state, solves physics/bones, publishes the immutable semantic snapshot and delivers committed events on every virtual tick. In this v2 diagnostic, exact fixedDt is also supplied directly to the game rule accumulator and Spine advance delta; engine tick IDs and elapsed clocks retain their monotonic identity. The only coalesced work is Spine's graphics preparation/mesh publication. Deferred rows retain the latest semantic revision and a callback, not stale prepared geometry.
+- **Only before the actual frame capture/render branch**, flush the queue and check each publication's revision against the corresponding latest committed semantic revision. The queue must be empty and individual revision checks must match before rendering. A backpressure skip leaves current graphics work queued for the next real submission.
+- This diagnostic changes graphics/event ordering relative to normal Spine delivery (events may be dispatched before the deferred graphics commit). It is tested for the fixture's own behavior, not proof that arbitrary public listeners, disposal, errors or other games' integrations have identical ordering. Do not use the experimental mode as a release feature or general public API guarantee.
+- `row.spine.pendingBefore/pendingAfter/limit/skipReason` measure the real host admission decision. `pendingStart/pendingEnd` are the separate deferred **Spine display** queue. Do not conflate them. `row.render` confirms actual host submission; `revisionOk` requires true render branch, empty queue, sufficient individual revision checks and no mismatch. The summed current-frame revisions can differ if a flush includes earlier pending instances; the authoritative test maps each publication to its own expected revision. A raw display revision counter is not treated as a semantic revision.
+
+### 计时与一致性 / Timings and equivalence
+
+The detailed `row.spine.timings` values are per-frame **CPU** sums; `timingCounts` records actual calls. They distinguish animation update/apply, physics solve, semantic snapshot publication, event delivery, display extract/copy, mesh prepare/create/commit, display commit/retire and queue flush. `spine.display.prepare` includes its extract/copy/mesh preparation children, and `spine.display.flush` includes that preparation, commit and retirement—do not add the inclusive parents to their children. The fixture's state-hash measurement is separately marked `qa.stateDigest`; the sparse Spine checkpoints are separately marked `spine.checkpoint.digest`. Host render/prepare/submit spans remain JS timings, not hardware execution.
+
+Validation uses 330 samples in the same fixed dense window, requiring all 100 logical, emerged, shown and actually posed clones. It matches the logical step and clone age, not wall-clock rAF IDs. `stateDigest` and `stateDigestRounded` hash ordered selected logical fields of hero, foes, clones, crowd and other first-act state. The first preserves exact floating-point bits; the second rounds finite numbers to 1e−6. A rounded-only match must be disclosed as such, not silently described as exact.
+
+`eventDigest/eventCount` record the actual Spine committed event stream per virtual frame; the cumulative digest/count covers the entire fixture. Rounded event variants remain separate. Sparse checkpoints around clone ages 1, 3 and 5 verify committed bones, slots and tracks and semantic revision; both exact and rounded checkpoint content digests exclude absolute engine tick IDs, which can differ before measurement. Separate semanticTickSum preserves those diagnostic IDs, and the comparator reports fresh-context tick numbering differences without confusing them with changed poses. Exact and rounded content must both match. It rejects missing events or checkpoints, unmatched logical rows, geometry mismatch, stale submitted revision checks, and count/digest differences. Its pass is evidence for this specific diagnostic fixture only.
+
+No release file, vendored engine or saved campaign is modified by this tool. Preserve the raw per-frame data, device conditions, actual submissions and exact source revision alongside any claimed performance improvement.
+
+### Fold7 实测参考 / Physical-device reference (v2)
+
+[reference-spine-fold7.json](reference-spine-fold7.json) reports the three real Fold7 A/B/A blocks and strict comparison results; [reference-spine-fold7.csv](reference-spine-fold7.csv) contains 990 dense rows. Each block has 330 dense rows with 100 shown and posed clones, and each complete fixture contains 548 matched logical rows, with identical exact/rounded state and cumulative events (6,421 per run). The three sparse semantic checkpoints match; every admitted frame satisfies the freshness check. All three blocks used 2291×854, WebGL2, engine f0dfde36 and the same Atlas game build. In the dense window, display publication counts are 34,229 / 28,115 / 34,229 and the host admits 296 / 271 / 303 frames. B's skipped-frame CPU p50/p95 is 4.7/9.9 ms, compared with A 11.3/22.2 and A′ 13.3/24.2 ms. However actual submission cadence p50 is 16.7 / 33.1 / 16.7 ms. Hence no release optimization is justified. See [QUALITY.md](../../QUALITY.md) for the phase table and [ENGINE-NOTES.md §10](../../ENGINE-NOTES.md) for the proposed public contract. The instrumented build is not shipped.

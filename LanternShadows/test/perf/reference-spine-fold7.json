@@ -1,0 +1,2759 @@
+{
+  "protocol": "lantern-dense-fixed-step/2",
+  "device": {
+    "model": "Samsung Galaxy Z Fold7 (SM-F966U1)",
+    "platform": "Android 17",
+    "browser": "Chrome 157",
+    "renderer": "Adreno 830 / WebGL2",
+    "power": "USB"
+  },
+  "engine": "f0dfde36",
+  "source": "5188e53c (production atlas; diagnostic build only)",
+  "fixedDt": 0.016666666666666666,
+  "denseAgeWindow": [
+    1,
+    6.5
+  ],
+  "initialFailedAttempt": {
+    "note": "Clock-v1 diagnostic added fixed gap to independent real page clocks. A/B absolute tick and floating delta differed, 503/548 aligned exact logical digests matched, 45 unmatched each and event totals 6386 vs6390; not accepted as equivalent. Clock-v2 normalizes actual rule and Spine delta inputs, excludes absolute tick identity from content digest; the failed run is retained locally."
+  },
+  "note": "CPU wall-clock aggregates, not GPU or display presentation. Checkpoint hashing excluded only from explicitly labelled steady groups; every raw dense row retained. blank phase means no measured operation, not a fabricated zero; displayWork group sum counts intentionally absent phases as no display work.",
+  "blocks": [
+    {
+      "case": "native-on-A",
+      "mode": "native-on",
+      "geometry": {
+        "viewport": [
+          873,
+          325
+        ],
+        "dpr": 2.625,
+        "canvasCss": [
+          0.1547619104385376,
+          0,
+          872.6845703125,
+          325
+        ],
+        "canvasBacking": [
+          2291,
+          854
+        ],
+        "backend": "webgl2"
+      },
+      "allRows": 548,
+      "denseRows": 330,
+      "hostRows": 296,
+      "backpressureRows": 34,
+      "hostCadence": {
+        "n": 295,
+        "p50": 16.7,
+        "p95": 49.7,
+        "max": 66.3,
+        "mean": 26.13
+      },
+      "raf": {
+        "n": 330,
+        "p50": 16.6,
+        "p95": 33.2,
+        "max": 49.8,
+        "mean": 23.409
+      },
+      "validation": {
+        "submitted": 501,
+        "submittedRevisionOk": 501,
+        "staleSubmitted": [],
+        "denseSubmitted": 296,
+        "denseRevisionOk": 296,
+        "spineMetaRows": 548,
+        "eventCumulativeDigest": "339cf634dad20e20",
+        "eventRoundedCumulativeDigest": "02750cb08f08f9a4",
+        "eventCumulativeCount": 6421,
+        "spineCounts": {
+          "semanticDeliveries": 41613,
+          "events": 6421,
+          "deferred": 0,
+          "flushed": 0,
+          "dropped": 0,
+          "published": 41613,
+          "revisionChecks": 41613,
+          "revisionMismatch": 0
+        },
+        "checkpoints": [
+          {
+            "sampleIndex": 159,
+            "logicStep": 320,
+            "actTime": 2.66666666666666,
+            "age": 1.0500000000000522,
+            "stateDigest": "e25aca74443bee88",
+            "stateDigestRounded": "b385cfbe55b7be92",
+            "semanticDigest": 4110732575,
+            "semanticRoundedDigest": 3124591603,
+            "semanticTickSum": 56264,
+            "semanticInstances": 104,
+            "events": 529
+          },
+          {
+            "sampleIndex": 279,
+            "logicStep": 560,
+            "actTime": 4.666666666666688,
+            "age": 3.0500000000001486,
+            "stateDigest": "406b4503034cdaf7",
+            "stateDigestRounded": "1a25c4c9ef47ca35",
+            "semanticDigest": 2282308210,
+            "semanticRoundedDigest": 3533702371,
+            "semanticTickSum": 68744,
+            "semanticInstances": 104,
+            "events": 1321
+          },
+          {
+            "sampleIndex": 399,
+            "logicStep": 800,
+            "actTime": 6.666666666666788,
+            "age": 5.050000000000141,
+            "stateDigest": "8189f8736c7d9b0f",
+            "stateDigestRounded": "97c7326887ae5b2c",
+            "semanticDigest": 2182066899,
+            "semanticRoundedDigest": 278947910,
+            "semanticTickSum": 80443,
+            "semanticInstances": 103,
+            "events": 3295
+          }
+        ]
+      },
+      "denseComparisonsToA": {
+        "sameLogic": 330,
+        "sameEvents": 330
+      },
+      "denseAll": {
+        "rows": 330,
+        "frameCpu": {
+          "n": 330,
+          "p50": 20.5,
+          "p95": 37.1,
+          "max": 51.2,
+          "mean": 21.487
+        },
+        "advance": {
+          "n": 330,
+          "p50": 6.7,
+          "p95": 16.4,
+          "max": 30.7,
+          "mean": 8.156
+        },
+        "qaStateDigest": {
+          "n": 330,
+          "p50": 0.4,
+          "p95": 0.9,
+          "max": 8.7,
+          "mean": 0.523
+        },
+        "phase": {
+          "spine.animation.update": {
+            "calls": 34229,
+            "present": 330,
+            "ms": {
+              "n": 330,
+              "p50": 0.1,
+              "p95": 0.3,
+              "max": 0.7,
+              "mean": 0.088
+            }
+          },
+          "spine.animation.apply": {
+            "calls": 34229,
+            "present": 330,
+            "ms": {
+              "n": 330,
+              "p50": 0.4,
+              "p95": 1,
+              "max": 2.7,
+              "mean": 0.451
+            }
+          },
+          "spine.physics.solve": {
+            "calls": 34229,
+            "present": 330,
+            "ms": {
+              "n": 330,
+              "p50": 0.2,
+              "p95": 0.5,
+              "max": 2.4,
+              "mean": 0.198
+            }
+          },
+          "spine.semantic.publish": {
+            "calls": 34229,
+            "present": 330,
+            "ms": {
+              "n": 330,
+              "p50": 0.5,
+              "p95": 1.3,
+              "max": 6.9,
+              "mean": 0.646
+            }
+          },
+          "spine.events.deliver": {
+            "calls": 34229,
+            "present": 330,
+            "ms": {
+              "n": 330,
+              "p50": 0,
+              "p95": 0.1,
+              "max": 2,
+              "mean": 0.036
+            }
+          },
+          "spine.display.extract": {
+            "calls": 34229,
+            "present": 330,
+            "ms": {
+              "n": 330,
+              "p50": 1.5,
+              "p95": 5.5,
+              "max": 13.1,
+              "mean": 1.875
+            }
+          },
+          "spine.display.copy": {
+            "calls": 34229,
+            "present": 330,
+            "ms": {
+              "n": 330,
+              "p50": 2.9,
+              "p95": 9.6,
+              "max": 22.7,
+              "mean": 3.706
+            }
+          },
+          "spine.mesh.prepare": {
+            "calls": 34229,
+            "present": 330,
+            "ms": {
+              "n": 330,
+              "p50": 0.1,
+              "p95": 0.3,
+              "max": 4.9,
+              "mean": 0.098
+            }
+          },
+          "spine.mesh.create": {
+            "calls": 0,
+            "present": 0,
+            "ms": null
+          },
+          "spine.display.prepare": {
+            "calls": 34229,
+            "present": 330,
+            "ms": {
+              "n": 330,
+              "p50": 4.5,
+              "p95": 12.8,
+              "max": 25.6,
+              "mean": 5.907
+            }
+          },
+          "spine.mesh.commit": {
+            "calls": 34229,
+            "present": 330,
+            "ms": {
+              "n": 330,
+              "p50": 0,
+              "p95": 0.2,
+              "max": 0.5,
+              "mean": 0.065
+            }
+          },
+          "spine.display.commit": {
+            "calls": 34229,
+            "present": 330,
+            "ms": {
+              "n": 330,
+              "p50": 0.1,
+              "p95": 0.4,
+              "max": 0.8,
+              "mean": 0.159
+            }
+          },
+          "spine.display.retire": {
+            "calls": 34229,
+            "present": 330,
+            "ms": {
+              "n": 330,
+              "p50": 0,
+              "p95": 0.1,
+              "max": 0.3,
+              "mean": 0.02
+            }
+          },
+          "spine.display.flush": {
+            "calls": 296,
+            "present": 296,
+            "ms": {
+              "n": 296,
+              "p50": 0,
+              "p95": 0,
+              "max": 0.1,
+              "mean": 0.001
+            }
+          },
+          "spine.checkpoint.digest": {
+            "calls": 311,
+            "present": 3,
+            "ms": {
+              "n": 3,
+              "p50": 5.4,
+              "p95": 5.6,
+              "max": 5.6,
+              "mean": 5.2
+            }
+          }
+        },
+        "measuredAnimation": {
+          "n": 330,
+          "p50": 0.6,
+          "p95": 1.6,
+          "max": 3.7,
+          "mean": 0.736
+        },
+        "displayWork": {
+          "n": 330,
+          "p50": 4.7,
+          "p95": 13.1,
+          "max": 25.7,
+          "mean": 6.086
+        },
+        "totals": {
+          "semanticDeliveries": 34229,
+          "events": 4949,
+          "deferred": 0,
+          "flushed": 0,
+          "dropped": 0,
+          "published": 34229,
+          "revisionChecks": 34229,
+          "revisionMismatch": 0,
+          "latestRevisionSum": 7086619,
+          "publishedRevisionSum": 7086619
+        }
+      },
+      "denseSteady": {
+        "rows": 327,
+        "frameCpu": {
+          "n": 327,
+          "p50": 20.4,
+          "p95": 37.1,
+          "max": 51.2,
+          "mean": 21.461
+        },
+        "advance": {
+          "n": 327,
+          "p50": 6.7,
+          "p95": 16.4,
+          "max": 30.7,
+          "mean": 8.142
+        },
+        "qaStateDigest": {
+          "n": 327,
+          "p50": 0.4,
+          "p95": 0.9,
+          "max": 8.7,
+          "mean": 0.524
+        },
+        "phase": {
+          "spine.animation.update": {
+            "calls": 33918,
+            "present": 327,
+            "ms": {
+              "n": 327,
+              "p50": 0.1,
+              "p95": 0.3,
+              "max": 0.7,
+              "mean": 0.088
+            }
+          },
+          "spine.animation.apply": {
+            "calls": 33918,
+            "present": 327,
+            "ms": {
+              "n": 327,
+              "p50": 0.4,
+              "p95": 1,
+              "max": 2.7,
+              "mean": 0.452
+            }
+          },
+          "spine.physics.solve": {
+            "calls": 33918,
+            "present": 327,
+            "ms": {
+              "n": 327,
+              "p50": 0.2,
+              "p95": 0.5,
+              "max": 2.4,
+              "mean": 0.198
+            }
+          },
+          "spine.semantic.publish": {
+            "calls": 33918,
+            "present": 327,
+            "ms": {
+              "n": 327,
+              "p50": 0.5,
+              "p95": 1.3,
+              "max": 6.9,
+              "mean": 0.649
+            }
+          },
+          "spine.events.deliver": {
+            "calls": 33918,
+            "present": 327,
+            "ms": {
+              "n": 327,
+              "p50": 0,
+              "p95": 0.1,
+              "max": 2,
+              "mean": 0.036
+            }
+          },
+          "spine.display.extract": {
+            "calls": 33918,
+            "present": 327,
+            "ms": {
+              "n": 327,
+              "p50": 1.5,
+              "p95": 5.5,
+              "max": 13.1,
+              "mean": 1.883
+            }
+          },
+          "spine.display.copy": {
+            "calls": 33918,
+            "present": 327,
+            "ms": {
+              "n": 327,
+              "p50": 2.9,
+              "p95": 9.6,
+              "max": 22.7,
+              "mean": 3.722
+            }
+          },
+          "spine.mesh.prepare": {
+            "calls": 33918,
+            "present": 327,
+            "ms": {
+              "n": 327,
+              "p50": 0.1,
+              "p95": 0.3,
+              "max": 4.9,
+              "mean": 0.099
+            }
+          },
+          "spine.mesh.create": {
+            "calls": 0,
+            "present": 0,
+            "ms": null
+          },
+          "spine.display.prepare": {
+            "calls": 33918,
+            "present": 327,
+            "ms": {
+              "n": 327,
+              "p50": 4.6,
+              "p95": 12.8,
+              "max": 25.6,
+              "mean": 5.934
+            }
+          },
+          "spine.mesh.commit": {
+            "calls": 33918,
+            "present": 327,
+            "ms": {
+              "n": 327,
+              "p50": 0,
+              "p95": 0.2,
+              "max": 0.5,
+              "mean": 0.066
+            }
+          },
+          "spine.display.commit": {
+            "calls": 33918,
+            "present": 327,
+            "ms": {
+              "n": 327,
+              "p50": 0.1,
+              "p95": 0.4,
+              "max": 0.8,
+              "mean": 0.16
+            }
+          },
+          "spine.display.retire": {
+            "calls": 33918,
+            "present": 327,
+            "ms": {
+              "n": 327,
+              "p50": 0,
+              "p95": 0.1,
+              "max": 0.3,
+              "mean": 0.02
+            }
+          },
+          "spine.display.flush": {
+            "calls": 293,
+            "present": 293,
+            "ms": {
+              "n": 293,
+              "p50": 0,
+              "p95": 0,
+              "max": 0.1,
+              "mean": 0.001
+            }
+          },
+          "spine.checkpoint.digest": {
+            "calls": 0,
+            "present": 0,
+            "ms": null
+          }
+        },
+        "measuredAnimation": {
+          "n": 327,
+          "p50": 0.6,
+          "p95": 1.6,
+          "max": 3.7,
+          "mean": 0.739
+        },
+        "displayWork": {
+          "n": 327,
+          "p50": 4.7,
+          "p95": 13.1,
+          "max": 25.7,
+          "mean": 6.113
+        },
+        "totals": {
+          "semanticDeliveries": 33918,
+          "events": 4922,
+          "deferred": 0,
+          "flushed": 0,
+          "dropped": 0,
+          "published": 33918,
+          "revisionChecks": 33918,
+          "revisionMismatch": 0,
+          "latestRevisionSum": 7035187,
+          "publishedRevisionSum": 7035187
+        }
+      },
+      "hostSteady": {
+        "rows": 293,
+        "frameCpu": {
+          "n": 293,
+          "p50": 21.5,
+          "p95": 38.4,
+          "max": 51.2,
+          "mean": 22.663
+        },
+        "advance": {
+          "n": 293,
+          "p50": 6.2,
+          "p95": 16.4,
+          "max": 30.7,
+          "mean": 8.042
+        },
+        "qaStateDigest": {
+          "n": 293,
+          "p50": 0.4,
+          "p95": 0.9,
+          "max": 8.7,
+          "mean": 0.524
+        },
+        "phase": {
+          "spine.animation.update": {
+            "calls": 30390,
+            "present": 293,
+            "ms": {
+              "n": 293,
+              "p50": 0.1,
+              "p95": 0.3,
+              "max": 0.7,
+              "mean": 0.087
+            }
+          },
+          "spine.animation.apply": {
+            "calls": 30390,
+            "present": 293,
+            "ms": {
+              "n": 293,
+              "p50": 0.4,
+              "p95": 1,
+              "max": 2.7,
+              "mean": 0.443
+            }
+          },
+          "spine.physics.solve": {
+            "calls": 30390,
+            "present": 293,
+            "ms": {
+              "n": 293,
+              "p50": 0.1,
+              "p95": 0.5,
+              "max": 2.4,
+              "mean": 0.188
+            }
+          },
+          "spine.semantic.publish": {
+            "calls": 30390,
+            "present": 293,
+            "ms": {
+              "n": 293,
+              "p50": 0.5,
+              "p95": 1.3,
+              "max": 6.9,
+              "mean": 0.637
+            }
+          },
+          "spine.events.deliver": {
+            "calls": 30390,
+            "present": 293,
+            "ms": {
+              "n": 293,
+              "p50": 0,
+              "p95": 0.2,
+              "max": 2,
+              "mean": 0.037
+            }
+          },
+          "spine.display.extract": {
+            "calls": 30390,
+            "present": 293,
+            "ms": {
+              "n": 293,
+              "p50": 1.4,
+              "p95": 5.5,
+              "max": 13.1,
+              "mean": 1.841
+            }
+          },
+          "spine.display.copy": {
+            "calls": 30390,
+            "present": 293,
+            "ms": {
+              "n": 293,
+              "p50": 2.8,
+              "p95": 9.8,
+              "max": 22.7,
+              "mean": 3.72
+            }
+          },
+          "spine.mesh.prepare": {
+            "calls": 30390,
+            "present": 293,
+            "ms": {
+              "n": 293,
+              "p50": 0.1,
+              "p95": 0.3,
+              "max": 4.9,
+              "mean": 0.101
+            }
+          },
+          "spine.mesh.create": {
+            "calls": 0,
+            "present": 0,
+            "ms": null
+          },
+          "spine.display.prepare": {
+            "calls": 30390,
+            "present": 293,
+            "ms": {
+              "n": 293,
+              "p50": 4.4,
+              "p95": 12.8,
+              "max": 25.6,
+              "mean": 5.889
+            }
+          },
+          "spine.mesh.commit": {
+            "calls": 30390,
+            "present": 293,
+            "ms": {
+              "n": 293,
+              "p50": 0,
+              "p95": 0.3,
+              "max": 0.5,
+              "mean": 0.066
+            }
+          },
+          "spine.display.commit": {
+            "calls": 30390,
+            "present": 293,
+            "ms": {
+              "n": 293,
+              "p50": 0.1,
+              "p95": 0.4,
+              "max": 0.8,
+              "mean": 0.159
+            }
+          },
+          "spine.display.retire": {
+            "calls": 30390,
+            "present": 293,
+            "ms": {
+              "n": 293,
+              "p50": 0,
+              "p95": 0.1,
+              "max": 0.3,
+              "mean": 0.019
+            }
+          },
+          "spine.display.flush": {
+            "calls": 293,
+            "present": 293,
+            "ms": {
+              "n": 293,
+              "p50": 0,
+              "p95": 0,
+              "max": 0.1,
+              "mean": 0.001
+            }
+          },
+          "spine.checkpoint.digest": {
+            "calls": 0,
+            "present": 0,
+            "ms": null
+          }
+        },
+        "measuredAnimation": {
+          "n": 293,
+          "p50": 0.6,
+          "p95": 1.5,
+          "max": 3.7,
+          "mean": 0.717
+        },
+        "displayWork": {
+          "n": 293,
+          "p50": 4.6,
+          "p95": 13.1,
+          "max": 25.7,
+          "mean": 6.067
+        },
+        "totals": {
+          "semanticDeliveries": 30390,
+          "events": 4469,
+          "deferred": 0,
+          "flushed": 0,
+          "dropped": 0,
+          "published": 30390,
+          "revisionChecks": 30390,
+          "revisionMismatch": 0,
+          "latestRevisionSum": 6308847,
+          "publishedRevisionSum": 6308847
+        }
+      },
+      "skippedSteady": {
+        "rows": 34,
+        "frameCpu": {
+          "n": 34,
+          "p50": 11.3,
+          "p95": 22.2,
+          "max": 23.1,
+          "mean": 11.103
+        },
+        "advance": {
+          "n": 34,
+          "p50": 9.1,
+          "p95": 17.5,
+          "max": 20.9,
+          "mean": 9.006
+        },
+        "qaStateDigest": {
+          "n": 34,
+          "p50": 0.5,
+          "p95": 1.2,
+          "max": 1.2,
+          "mean": 0.524
+        },
+        "phase": {
+          "spine.animation.update": {
+            "calls": 3528,
+            "present": 34,
+            "ms": {
+              "n": 34,
+              "p50": 0.1,
+              "p95": 0.4,
+              "max": 0.4,
+              "mean": 0.1
+            }
+          },
+          "spine.animation.apply": {
+            "calls": 3528,
+            "present": 34,
+            "ms": {
+              "n": 34,
+              "p50": 0.5,
+              "p95": 1.3,
+              "max": 1.5,
+              "mean": 0.535
+            }
+          },
+          "spine.physics.solve": {
+            "calls": 3528,
+            "present": 34,
+            "ms": {
+              "n": 34,
+              "p50": 0.3,
+              "p95": 0.5,
+              "max": 1,
+              "mean": 0.288
+            }
+          },
+          "spine.semantic.publish": {
+            "calls": 3528,
+            "present": 34,
+            "ms": {
+              "n": 34,
+              "p50": 0.7,
+              "p95": 1.4,
+              "max": 1.4,
+              "mean": 0.75
+            }
+          },
+          "spine.events.deliver": {
+            "calls": 3528,
+            "present": 34,
+            "ms": {
+              "n": 34,
+              "p50": 0,
+              "p95": 0.1,
+              "max": 0.2,
+              "mean": 0.024
+            }
+          },
+          "spine.display.extract": {
+            "calls": 3528,
+            "present": 34,
+            "ms": {
+              "n": 34,
+              "p50": 2.1,
+              "p95": 7,
+              "max": 9.5,
+              "mean": 2.247
+            }
+          },
+          "spine.display.copy": {
+            "calls": 3528,
+            "present": 34,
+            "ms": {
+              "n": 34,
+              "p50": 3.7,
+              "p95": 7.6,
+              "max": 10.7,
+              "mean": 3.741
+            }
+          },
+          "spine.mesh.prepare": {
+            "calls": 3528,
+            "present": 34,
+            "ms": {
+              "n": 34,
+              "p50": 0.1,
+              "p95": 0.2,
+              "max": 0.3,
+              "mean": 0.082
+            }
+          },
+          "spine.mesh.create": {
+            "calls": 0,
+            "present": 0,
+            "ms": null
+          },
+          "spine.display.prepare": {
+            "calls": 3528,
+            "present": 34,
+            "ms": {
+              "n": 34,
+              "p50": 6.5,
+              "p95": 13.9,
+              "max": 16.2,
+              "mean": 6.318
+            }
+          },
+          "spine.mesh.commit": {
+            "calls": 3528,
+            "present": 34,
+            "ms": {
+              "n": 34,
+              "p50": 0.1,
+              "p95": 0.2,
+              "max": 0.2,
+              "mean": 0.065
+            }
+          },
+          "spine.display.commit": {
+            "calls": 3528,
+            "present": 34,
+            "ms": {
+              "n": 34,
+              "p50": 0.1,
+              "p95": 0.5,
+              "max": 0.7,
+              "mean": 0.171
+            }
+          },
+          "spine.display.retire": {
+            "calls": 3528,
+            "present": 34,
+            "ms": {
+              "n": 34,
+              "p50": 0,
+              "p95": 0.1,
+              "max": 0.1,
+              "mean": 0.024
+            }
+          },
+          "spine.display.flush": {
+            "calls": 0,
+            "present": 0,
+            "ms": null
+          },
+          "spine.checkpoint.digest": {
+            "calls": 0,
+            "present": 0,
+            "ms": null
+          }
+        },
+        "measuredAnimation": {
+          "n": 34,
+          "p50": 0.8,
+          "p95": 1.8,
+          "max": 1.8,
+          "mean": 0.924
+        },
+        "displayWork": {
+          "n": 34,
+          "p50": 6.6,
+          "p95": 13.9,
+          "max": 16.4,
+          "mean": 6.512
+        },
+        "totals": {
+          "semanticDeliveries": 3528,
+          "events": 453,
+          "deferred": 0,
+          "flushed": 0,
+          "dropped": 0,
+          "published": 3528,
+          "revisionChecks": 3528,
+          "revisionMismatch": 0,
+          "latestRevisionSum": 726340,
+          "publishedRevisionSum": 726340
+        }
+      }
+    },
+    {
+      "case": "defer-display-B",
+      "mode": "defer-display",
+      "geometry": {
+        "viewport": [
+          873,
+          325
+        ],
+        "dpr": 2.625,
+        "canvasCss": [
+          0.1547619104385376,
+          0,
+          872.6845703125,
+          325
+        ],
+        "canvasBacking": [
+          2291,
+          854
+        ],
+        "backend": "webgl2"
+      },
+      "allRows": 548,
+      "denseRows": 330,
+      "hostRows": 271,
+      "backpressureRows": 59,
+      "hostCadence": {
+        "n": 270,
+        "p50": 33.1,
+        "p95": 49.8,
+        "max": 66.3,
+        "mean": 30.022
+      },
+      "raf": {
+        "n": 330,
+        "p50": 16.6,
+        "p95": 49.7,
+        "max": 66.3,
+        "mean": 24.664
+      },
+      "validation": {
+        "submitted": 472,
+        "submittedRevisionOk": 472,
+        "staleSubmitted": [],
+        "denseSubmitted": 271,
+        "denseRevisionOk": 271,
+        "spineMetaRows": 548,
+        "eventCumulativeDigest": "339cf634dad20e20",
+        "eventRoundedCumulativeDigest": "02750cb08f08f9a4",
+        "eventCumulativeCount": 6421,
+        "spineCounts": {
+          "semanticDeliveries": 41613,
+          "events": 6421,
+          "deferred": 41613,
+          "flushed": 34175,
+          "dropped": 0,
+          "published": 34175,
+          "revisionChecks": 34175,
+          "revisionMismatch": 0
+        },
+        "checkpoints": [
+          {
+            "sampleIndex": 159,
+            "logicStep": 320,
+            "actTime": 2.66666666666666,
+            "age": 1.0500000000000522,
+            "stateDigest": "e25aca74443bee88",
+            "stateDigestRounded": "b385cfbe55b7be92",
+            "semanticDigest": 4110732575,
+            "semanticRoundedDigest": 3124591603,
+            "semanticTickSum": 45448,
+            "semanticInstances": 104,
+            "events": 529
+          },
+          {
+            "sampleIndex": 279,
+            "logicStep": 560,
+            "actTime": 4.666666666666688,
+            "age": 3.0500000000001486,
+            "stateDigest": "406b4503034cdaf7",
+            "stateDigestRounded": "1a25c4c9ef47ca35",
+            "semanticDigest": 2282308210,
+            "semanticRoundedDigest": 3533702371,
+            "semanticTickSum": 57928,
+            "semanticInstances": 104,
+            "events": 1321
+          },
+          {
+            "sampleIndex": 399,
+            "logicStep": 800,
+            "actTime": 6.666666666666788,
+            "age": 5.050000000000141,
+            "stateDigest": "8189f8736c7d9b0f",
+            "stateDigestRounded": "97c7326887ae5b2c",
+            "semanticDigest": 2182066899,
+            "semanticRoundedDigest": 278947910,
+            "semanticTickSum": 69731,
+            "semanticInstances": 103,
+            "events": 3295
+          }
+        ]
+      },
+      "denseComparisonsToA": {
+        "sameLogic": 330,
+        "sameEvents": 330
+      },
+      "denseAll": {
+        "rows": 330,
+        "frameCpu": {
+          "n": 330,
+          "p50": 23.4,
+          "p95": 39.7,
+          "max": 66.4,
+          "mean": 22.2
+        },
+        "advance": {
+          "n": 330,
+          "p50": 2.1,
+          "p95": 4,
+          "max": 16.6,
+          "mean": 2.358
+        },
+        "qaStateDigest": {
+          "n": 330,
+          "p50": 0.5,
+          "p95": 1.2,
+          "max": 8.8,
+          "mean": 0.586
+        },
+        "phase": {
+          "spine.animation.update": {
+            "calls": 34229,
+            "present": 330,
+            "ms": {
+              "n": 330,
+              "p50": 0.1,
+              "p95": 0.3,
+              "max": 0.6,
+              "mean": 0.099
+            }
+          },
+          "spine.animation.apply": {
+            "calls": 34229,
+            "present": 330,
+            "ms": {
+              "n": 330,
+              "p50": 0.5,
+              "p95": 1.2,
+              "max": 3.6,
+              "mean": 0.586
+            }
+          },
+          "spine.physics.solve": {
+            "calls": 34229,
+            "present": 330,
+            "ms": {
+              "n": 330,
+              "p50": 0.2,
+              "p95": 0.6,
+              "max": 2.3,
+              "mean": 0.268
+            }
+          },
+          "spine.semantic.publish": {
+            "calls": 34229,
+            "present": 330,
+            "ms": {
+              "n": 330,
+              "p50": 0.6,
+              "p95": 1.5,
+              "max": 10,
+              "mean": 0.73
+            }
+          },
+          "spine.events.deliver": {
+            "calls": 34229,
+            "present": 330,
+            "ms": {
+              "n": 330,
+              "p50": 0,
+              "p95": 0.1,
+              "max": 0.3,
+              "mean": 0.024
+            }
+          },
+          "spine.display.extract": {
+            "calls": 28115,
+            "present": 271,
+            "ms": {
+              "n": 271,
+              "p50": 2.1,
+              "p95": 4.7,
+              "max": 11.4,
+              "mean": 2.464
+            }
+          },
+          "spine.display.copy": {
+            "calls": 28115,
+            "present": 271,
+            "ms": {
+              "n": 271,
+              "p50": 4,
+              "p95": 12.3,
+              "max": 17.3,
+              "mean": 4.858
+            }
+          },
+          "spine.mesh.prepare": {
+            "calls": 28115,
+            "present": 271,
+            "ms": {
+              "n": 271,
+              "p50": 0.1,
+              "p95": 0.3,
+              "max": 4.7,
+              "mean": 0.102
+            }
+          },
+          "spine.mesh.create": {
+            "calls": 0,
+            "present": 0,
+            "ms": null
+          },
+          "spine.display.prepare": {
+            "calls": 28115,
+            "present": 271,
+            "ms": {
+              "n": 271,
+              "p50": 7.2,
+              "p95": 15.9,
+              "max": 22.6,
+              "mean": 7.768
+            }
+          },
+          "spine.mesh.commit": {
+            "calls": 28115,
+            "present": 271,
+            "ms": {
+              "n": 271,
+              "p50": 0,
+              "p95": 0.2,
+              "max": 0.6,
+              "mean": 0.07
+            }
+          },
+          "spine.display.commit": {
+            "calls": 28115,
+            "present": 271,
+            "ms": {
+              "n": 271,
+              "p50": 0.1,
+              "p95": 0.4,
+              "max": 0.7,
+              "mean": 0.173
+            }
+          },
+          "spine.display.retire": {
+            "calls": 28115,
+            "present": 271,
+            "ms": {
+              "n": 271,
+              "p50": 0,
+              "p95": 0.1,
+              "max": 0.2,
+              "mean": 0.025
+            }
+          },
+          "spine.display.flush": {
+            "calls": 271,
+            "present": 271,
+            "ms": {
+              "n": 271,
+              "p50": 7.6,
+              "p95": 16.4,
+              "max": 23.4,
+              "mean": 8.127
+            }
+          },
+          "spine.checkpoint.digest": {
+            "calls": 311,
+            "present": 3,
+            "ms": {
+              "n": 3,
+              "p50": 9.5,
+              "p95": 14,
+              "max": 14,
+              "mean": 10.733
+            }
+          }
+        },
+        "measuredAnimation": {
+          "n": 330,
+          "p50": 0.9,
+          "p95": 1.7,
+          "max": 4.3,
+          "mean": 0.952
+        },
+        "displayWork": {
+          "n": 330,
+          "p50": 5.7,
+          "p95": 15.1,
+          "max": 22.9,
+          "mean": 6.542
+        },
+        "totals": {
+          "semanticDeliveries": 34229,
+          "events": 4949,
+          "deferred": 34229,
+          "flushed": 28115,
+          "dropped": 0,
+          "published": 28115,
+          "revisionChecks": 28115,
+          "revisionMismatch": 0,
+          "latestRevisionSum": 7086619,
+          "publishedRevisionSum": 5720900
+        }
+      },
+      "denseSteady": {
+        "rows": 327,
+        "frameCpu": {
+          "n": 327,
+          "p50": 23.3,
+          "p95": 39.2,
+          "max": 66.4,
+          "mean": 22.102
+        },
+        "advance": {
+          "n": 327,
+          "p50": 2.1,
+          "p95": 3.9,
+          "max": 12.1,
+          "mean": 2.259
+        },
+        "qaStateDigest": {
+          "n": 327,
+          "p50": 0.5,
+          "p95": 1.2,
+          "max": 8.8,
+          "mean": 0.586
+        },
+        "phase": {
+          "spine.animation.update": {
+            "calls": 33918,
+            "present": 327,
+            "ms": {
+              "n": 327,
+              "p50": 0.1,
+              "p95": 0.3,
+              "max": 0.6,
+              "mean": 0.099
+            }
+          },
+          "spine.animation.apply": {
+            "calls": 33918,
+            "present": 327,
+            "ms": {
+              "n": 327,
+              "p50": 0.5,
+              "p95": 1.1,
+              "max": 3.6,
+              "mean": 0.585
+            }
+          },
+          "spine.physics.solve": {
+            "calls": 33918,
+            "present": 327,
+            "ms": {
+              "n": 327,
+              "p50": 0.2,
+              "p95": 0.6,
+              "max": 2.3,
+              "mean": 0.267
+            }
+          },
+          "spine.semantic.publish": {
+            "calls": 33918,
+            "present": 327,
+            "ms": {
+              "n": 327,
+              "p50": 0.6,
+              "p95": 1.5,
+              "max": 10,
+              "mean": 0.731
+            }
+          },
+          "spine.events.deliver": {
+            "calls": 33918,
+            "present": 327,
+            "ms": {
+              "n": 327,
+              "p50": 0,
+              "p95": 0.1,
+              "max": 0.3,
+              "mean": 0.024
+            }
+          },
+          "spine.display.extract": {
+            "calls": 27908,
+            "present": 269,
+            "ms": {
+              "n": 269,
+              "p50": 2.1,
+              "p95": 4.7,
+              "max": 11.4,
+              "mean": 2.465
+            }
+          },
+          "spine.display.copy": {
+            "calls": 27908,
+            "present": 269,
+            "ms": {
+              "n": 269,
+              "p50": 4,
+              "p95": 12.3,
+              "max": 17.3,
+              "mean": 4.856
+            }
+          },
+          "spine.mesh.prepare": {
+            "calls": 27908,
+            "present": 269,
+            "ms": {
+              "n": 269,
+              "p50": 0.1,
+              "p95": 0.3,
+              "max": 4.7,
+              "mean": 0.102
+            }
+          },
+          "spine.mesh.create": {
+            "calls": 0,
+            "present": 0,
+            "ms": null
+          },
+          "spine.display.prepare": {
+            "calls": 27908,
+            "present": 269,
+            "ms": {
+              "n": 269,
+              "p50": 7.2,
+              "p95": 15.9,
+              "max": 22.6,
+              "mean": 7.769
+            }
+          },
+          "spine.mesh.commit": {
+            "calls": 27908,
+            "present": 269,
+            "ms": {
+              "n": 269,
+              "p50": 0,
+              "p95": 0.2,
+              "max": 0.6,
+              "mean": 0.07
+            }
+          },
+          "spine.display.commit": {
+            "calls": 27908,
+            "present": 269,
+            "ms": {
+              "n": 269,
+              "p50": 0.1,
+              "p95": 0.4,
+              "max": 0.7,
+              "mean": 0.174
+            }
+          },
+          "spine.display.retire": {
+            "calls": 27908,
+            "present": 269,
+            "ms": {
+              "n": 269,
+              "p50": 0,
+              "p95": 0.1,
+              "max": 0.2,
+              "mean": 0.025
+            }
+          },
+          "spine.display.flush": {
+            "calls": 269,
+            "present": 269,
+            "ms": {
+              "n": 269,
+              "p50": 7.6,
+              "p95": 16.4,
+              "max": 23.4,
+              "mean": 8.127
+            }
+          },
+          "spine.checkpoint.digest": {
+            "calls": 0,
+            "present": 0,
+            "ms": null
+          }
+        },
+        "measuredAnimation": {
+          "n": 327,
+          "p50": 0.9,
+          "p95": 1.7,
+          "max": 4.3,
+          "mean": 0.95
+        },
+        "displayWork": {
+          "n": 327,
+          "p50": 5.7,
+          "p95": 15.1,
+          "max": 22.9,
+          "mean": 6.554
+        },
+        "totals": {
+          "semanticDeliveries": 33918,
+          "events": 4922,
+          "deferred": 33918,
+          "flushed": 27908,
+          "dropped": 0,
+          "published": 27908,
+          "revisionChecks": 27908,
+          "revisionMismatch": 0,
+          "latestRevisionSum": 7035187,
+          "publishedRevisionSum": 5686762
+        }
+      },
+      "hostSteady": {
+        "rows": 269,
+        "frameCpu": {
+          "n": 269,
+          "p50": 25.3,
+          "p95": 40.1,
+          "max": 66.4,
+          "mean": 25.763
+        },
+        "advance": {
+          "n": 269,
+          "p50": 2,
+          "p95": 3.9,
+          "max": 12.1,
+          "mean": 2.148
+        },
+        "qaStateDigest": {
+          "n": 269,
+          "p50": 0.5,
+          "p95": 1.2,
+          "max": 8.8,
+          "mean": 0.594
+        },
+        "phase": {
+          "spine.animation.update": {
+            "calls": 27908,
+            "present": 269,
+            "ms": {
+              "n": 269,
+              "p50": 0.1,
+              "p95": 0.3,
+              "max": 0.6,
+              "mean": 0.092
+            }
+          },
+          "spine.animation.apply": {
+            "calls": 27908,
+            "present": 269,
+            "ms": {
+              "n": 269,
+              "p50": 0.5,
+              "p95": 1.1,
+              "max": 1.7,
+              "mean": 0.539
+            }
+          },
+          "spine.physics.solve": {
+            "calls": 27908,
+            "present": 269,
+            "ms": {
+              "n": 269,
+              "p50": 0.2,
+              "p95": 0.6,
+              "max": 1,
+              "mean": 0.241
+            }
+          },
+          "spine.semantic.publish": {
+            "calls": 27908,
+            "present": 269,
+            "ms": {
+              "n": 269,
+              "p50": 0.5,
+              "p95": 1.5,
+              "max": 10,
+              "mean": 0.723
+            }
+          },
+          "spine.events.deliver": {
+            "calls": 27908,
+            "present": 269,
+            "ms": {
+              "n": 269,
+              "p50": 0,
+              "p95": 0.1,
+              "max": 0.3,
+              "mean": 0.022
+            }
+          },
+          "spine.display.extract": {
+            "calls": 27908,
+            "present": 269,
+            "ms": {
+              "n": 269,
+              "p50": 2.1,
+              "p95": 4.7,
+              "max": 11.4,
+              "mean": 2.465
+            }
+          },
+          "spine.display.copy": {
+            "calls": 27908,
+            "present": 269,
+            "ms": {
+              "n": 269,
+              "p50": 4,
+              "p95": 12.3,
+              "max": 17.3,
+              "mean": 4.856
+            }
+          },
+          "spine.mesh.prepare": {
+            "calls": 27908,
+            "present": 269,
+            "ms": {
+              "n": 269,
+              "p50": 0.1,
+              "p95": 0.3,
+              "max": 4.7,
+              "mean": 0.102
+            }
+          },
+          "spine.mesh.create": {
+            "calls": 0,
+            "present": 0,
+            "ms": null
+          },
+          "spine.display.prepare": {
+            "calls": 27908,
+            "present": 269,
+            "ms": {
+              "n": 269,
+              "p50": 7.2,
+              "p95": 15.9,
+              "max": 22.6,
+              "mean": 7.769
+            }
+          },
+          "spine.mesh.commit": {
+            "calls": 27908,
+            "present": 269,
+            "ms": {
+              "n": 269,
+              "p50": 0,
+              "p95": 0.2,
+              "max": 0.6,
+              "mean": 0.07
+            }
+          },
+          "spine.display.commit": {
+            "calls": 27908,
+            "present": 269,
+            "ms": {
+              "n": 269,
+              "p50": 0.1,
+              "p95": 0.4,
+              "max": 0.7,
+              "mean": 0.174
+            }
+          },
+          "spine.display.retire": {
+            "calls": 27908,
+            "present": 269,
+            "ms": {
+              "n": 269,
+              "p50": 0,
+              "p95": 0.1,
+              "max": 0.2,
+              "mean": 0.025
+            }
+          },
+          "spine.display.flush": {
+            "calls": 269,
+            "present": 269,
+            "ms": {
+              "n": 269,
+              "p50": 7.6,
+              "p95": 16.4,
+              "max": 23.4,
+              "mean": 8.127
+            }
+          },
+          "spine.checkpoint.digest": {
+            "calls": 0,
+            "present": 0,
+            "ms": null
+          }
+        },
+        "measuredAnimation": {
+          "n": 269,
+          "p50": 0.8,
+          "p95": 1.6,
+          "max": 2.5,
+          "mean": 0.871
+        },
+        "displayWork": {
+          "n": 269,
+          "p50": 7.5,
+          "p95": 16.4,
+          "max": 22.9,
+          "mean": 7.967
+        },
+        "totals": {
+          "semanticDeliveries": 27908,
+          "events": 3998,
+          "deferred": 27908,
+          "flushed": 27908,
+          "dropped": 0,
+          "published": 27908,
+          "revisionChecks": 27908,
+          "revisionMismatch": 0,
+          "latestRevisionSum": 5686762,
+          "publishedRevisionSum": 5686762
+        }
+      },
+      "skippedSteady": {
+        "rows": 58,
+        "frameCpu": {
+          "n": 58,
+          "p50": 4.7,
+          "p95": 8.8,
+          "max": 16.4,
+          "mean": 5.122
+        },
+        "advance": {
+          "n": 58,
+          "p50": 2.7,
+          "p95": 5.2,
+          "max": 6.4,
+          "mean": 2.774
+        },
+        "qaStateDigest": {
+          "n": 58,
+          "p50": 0.5,
+          "p95": 0.8,
+          "max": 1.2,
+          "mean": 0.548
+        },
+        "phase": {
+          "spine.animation.update": {
+            "calls": 6010,
+            "present": 58,
+            "ms": {
+              "n": 58,
+              "p50": 0.1,
+              "p95": 0.4,
+              "max": 0.5,
+              "mean": 0.131
+            }
+          },
+          "spine.animation.apply": {
+            "calls": 6010,
+            "present": 58,
+            "ms": {
+              "n": 58,
+              "p50": 0.7,
+              "p95": 1.5,
+              "max": 3.6,
+              "mean": 0.798
+            }
+          },
+          "spine.physics.solve": {
+            "calls": 6010,
+            "present": 58,
+            "ms": {
+              "n": 58,
+              "p50": 0.4,
+              "p95": 0.8,
+              "max": 2.3,
+              "mean": 0.388
+            }
+          },
+          "spine.semantic.publish": {
+            "calls": 6010,
+            "present": 58,
+            "ms": {
+              "n": 58,
+              "p50": 0.7,
+              "p95": 1.5,
+              "max": 1.8,
+              "mean": 0.769
+            }
+          },
+          "spine.events.deliver": {
+            "calls": 6010,
+            "present": 58,
+            "ms": {
+              "n": 58,
+              "p50": 0,
+              "p95": 0.1,
+              "max": 0.3,
+              "mean": 0.034
+            }
+          },
+          "spine.display.extract": {
+            "calls": 0,
+            "present": 0,
+            "ms": null
+          },
+          "spine.display.copy": {
+            "calls": 0,
+            "present": 0,
+            "ms": null
+          },
+          "spine.mesh.prepare": {
+            "calls": 0,
+            "present": 0,
+            "ms": null
+          },
+          "spine.mesh.create": {
+            "calls": 0,
+            "present": 0,
+            "ms": null
+          },
+          "spine.display.prepare": {
+            "calls": 0,
+            "present": 0,
+            "ms": null
+          },
+          "spine.mesh.commit": {
+            "calls": 0,
+            "present": 0,
+            "ms": null
+          },
+          "spine.display.commit": {
+            "calls": 0,
+            "present": 0,
+            "ms": null
+          },
+          "spine.display.retire": {
+            "calls": 0,
+            "present": 0,
+            "ms": null
+          },
+          "spine.display.flush": {
+            "calls": 0,
+            "present": 0,
+            "ms": null
+          },
+          "spine.checkpoint.digest": {
+            "calls": 0,
+            "present": 0,
+            "ms": null
+          }
+        },
+        "measuredAnimation": {
+          "n": 58,
+          "p50": 1.2,
+          "p95": 3.2,
+          "max": 4.3,
+          "mean": 1.317
+        },
+        "displayWork": {
+          "n": 58,
+          "p50": 0,
+          "p95": 0,
+          "max": 0,
+          "mean": 0
+        },
+        "totals": {
+          "semanticDeliveries": 6010,
+          "events": 924,
+          "deferred": 6010,
+          "flushed": 0,
+          "dropped": 0,
+          "published": 0,
+          "revisionChecks": 0,
+          "revisionMismatch": 0,
+          "latestRevisionSum": 1348425,
+          "publishedRevisionSum": 0
+        }
+      }
+    },
+    {
+      "case": "native-on-A-repeat",
+      "mode": "native-on",
+      "geometry": {
+        "viewport": [
+          873,
+          325
+        ],
+        "dpr": 2.625,
+        "canvasCss": [
+          0.1547619104385376,
+          0,
+          872.6845703125,
+          325
+        ],
+        "canvasBacking": [
+          2291,
+          854
+        ],
+        "backend": "webgl2"
+      },
+      "allRows": 548,
+      "denseRows": 330,
+      "hostRows": 303,
+      "backpressureRows": 27,
+      "hostCadence": {
+        "n": 302,
+        "p50": 16.7,
+        "p95": 49.7,
+        "max": 66.3,
+        "mean": 26.564
+      },
+      "raf": {
+        "n": 330,
+        "p50": 16.6,
+        "p95": 49.6,
+        "max": 66.3,
+        "mean": 24.361
+      },
+      "validation": {
+        "submitted": 510,
+        "submittedRevisionOk": 510,
+        "staleSubmitted": [],
+        "denseSubmitted": 303,
+        "denseRevisionOk": 303,
+        "spineMetaRows": 548,
+        "eventCumulativeDigest": "339cf634dad20e20",
+        "eventRoundedCumulativeDigest": "02750cb08f08f9a4",
+        "eventCumulativeCount": 6421,
+        "spineCounts": {
+          "semanticDeliveries": 41613,
+          "events": 6421,
+          "deferred": 0,
+          "flushed": 0,
+          "dropped": 0,
+          "published": 41613,
+          "revisionChecks": 41613,
+          "revisionMismatch": 0
+        },
+        "checkpoints": [
+          {
+            "sampleIndex": 159,
+            "logicStep": 320,
+            "actTime": 2.66666666666666,
+            "age": 1.0500000000000522,
+            "stateDigest": "e25aca74443bee88",
+            "stateDigestRounded": "b385cfbe55b7be92",
+            "semanticDigest": 4110732575,
+            "semanticRoundedDigest": 3124591603,
+            "semanticTickSum": 44096,
+            "semanticInstances": 104,
+            "events": 529
+          },
+          {
+            "sampleIndex": 279,
+            "logicStep": 560,
+            "actTime": 4.666666666666688,
+            "age": 3.0500000000001486,
+            "stateDigest": "406b4503034cdaf7",
+            "stateDigestRounded": "1a25c4c9ef47ca35",
+            "semanticDigest": 2282308210,
+            "semanticRoundedDigest": 3533702371,
+            "semanticTickSum": 56576,
+            "semanticInstances": 104,
+            "events": 1321
+          },
+          {
+            "sampleIndex": 399,
+            "logicStep": 800,
+            "actTime": 6.666666666666788,
+            "age": 5.050000000000141,
+            "stateDigest": "8189f8736c7d9b0f",
+            "stateDigestRounded": "97c7326887ae5b2c",
+            "semanticDigest": 2182066899,
+            "semanticRoundedDigest": 278947910,
+            "semanticTickSum": 68392,
+            "semanticInstances": 103,
+            "events": 3295
+          }
+        ]
+      },
+      "denseComparisonsToA": {
+        "sameLogic": 330,
+        "sameEvents": 330
+      },
+      "denseAll": {
+        "rows": 330,
+        "frameCpu": {
+          "n": 330,
+          "p50": 21.2,
+          "p95": 39.1,
+          "max": 55.4,
+          "mean": 22.601
+        },
+        "advance": {
+          "n": 330,
+          "p50": 7.2,
+          "p95": 18.1,
+          "max": 29.2,
+          "mean": 8.916
+        },
+        "qaStateDigest": {
+          "n": 330,
+          "p50": 0.4,
+          "p95": 0.8,
+          "max": 8.9,
+          "mean": 0.53
+        },
+        "phase": {
+          "spine.animation.update": {
+            "calls": 34229,
+            "present": 330,
+            "ms": {
+              "n": 330,
+              "p50": 0.1,
+              "p95": 0.3,
+              "max": 0.5,
+              "mean": 0.076
+            }
+          },
+          "spine.animation.apply": {
+            "calls": 34229,
+            "present": 330,
+            "ms": {
+              "n": 330,
+              "p50": 0.4,
+              "p95": 1,
+              "max": 2.7,
+              "mean": 0.478
+            }
+          },
+          "spine.physics.solve": {
+            "calls": 34229,
+            "present": 330,
+            "ms": {
+              "n": 330,
+              "p50": 0.1,
+              "p95": 0.5,
+              "max": 1,
+              "mean": 0.192
+            }
+          },
+          "spine.semantic.publish": {
+            "calls": 34229,
+            "present": 330,
+            "ms": {
+              "n": 330,
+              "p50": 0.5,
+              "p95": 1.2,
+              "max": 9.6,
+              "mean": 0.659
+            }
+          },
+          "spine.events.deliver": {
+            "calls": 34229,
+            "present": 330,
+            "ms": {
+              "n": 330,
+              "p50": 0,
+              "p95": 0.1,
+              "max": 0.2,
+              "mean": 0.023
+            }
+          },
+          "spine.display.extract": {
+            "calls": 34229,
+            "present": 330,
+            "ms": {
+              "n": 330,
+              "p50": 1.5,
+              "p95": 4.6,
+              "max": 12.2,
+              "mean": 1.985
+            }
+          },
+          "spine.display.copy": {
+            "calls": 34229,
+            "present": 330,
+            "ms": {
+              "n": 330,
+              "p50": 3.3,
+              "p95": 10.7,
+              "max": 22.8,
+              "mean": 4.256
+            }
+          },
+          "spine.mesh.prepare": {
+            "calls": 34229,
+            "present": 330,
+            "ms": {
+              "n": 330,
+              "p50": 0.1,
+              "p95": 0.3,
+              "max": 6.6,
+              "mean": 0.111
+            }
+          },
+          "spine.mesh.create": {
+            "calls": 0,
+            "present": 0,
+            "ms": null
+          },
+          "spine.display.prepare": {
+            "calls": 34229,
+            "present": 330,
+            "ms": {
+              "n": 330,
+              "p50": 5.1,
+              "p95": 15,
+              "max": 26.5,
+              "mean": 6.591
+            }
+          },
+          "spine.mesh.commit": {
+            "calls": 34229,
+            "present": 330,
+            "ms": {
+              "n": 330,
+              "p50": 0,
+              "p95": 0.2,
+              "max": 0.5,
+              "mean": 0.062
+            }
+          },
+          "spine.display.commit": {
+            "calls": 34229,
+            "present": 330,
+            "ms": {
+              "n": 330,
+              "p50": 0.1,
+              "p95": 0.5,
+              "max": 3.9,
+              "mean": 0.167
+            }
+          },
+          "spine.display.retire": {
+            "calls": 34229,
+            "present": 330,
+            "ms": {
+              "n": 330,
+              "p50": 0,
+              "p95": 0.1,
+              "max": 0.2,
+              "mean": 0.019
+            }
+          },
+          "spine.display.flush": {
+            "calls": 303,
+            "present": 303,
+            "ms": {
+              "n": 303,
+              "p50": 0,
+              "p95": 0,
+              "max": 0.1,
+              "mean": 0.001
+            }
+          },
+          "spine.checkpoint.digest": {
+            "calls": 311,
+            "present": 3,
+            "ms": {
+              "n": 3,
+              "p50": 9.3,
+              "p95": 16.1,
+              "max": 16.1,
+              "mean": 10.8
+            }
+          }
+        },
+        "measuredAnimation": {
+          "n": 330,
+          "p50": 0.7,
+          "p95": 1.6,
+          "max": 3.3,
+          "mean": 0.746
+        },
+        "displayWork": {
+          "n": 330,
+          "p50": 5.2,
+          "p95": 15.1,
+          "max": 26.8,
+          "mean": 6.777
+        },
+        "totals": {
+          "semanticDeliveries": 34229,
+          "events": 4949,
+          "deferred": 0,
+          "flushed": 0,
+          "dropped": 0,
+          "published": 34229,
+          "revisionChecks": 34229,
+          "revisionMismatch": 0,
+          "latestRevisionSum": 7086619,
+          "publishedRevisionSum": 7086619
+        }
+      },
+      "denseSteady": {
+        "rows": 327,
+        "frameCpu": {
+          "n": 327,
+          "p50": 21.1,
+          "p95": 38.1,
+          "max": 55.4,
+          "mean": 22.468
+        },
+        "advance": {
+          "n": 327,
+          "p50": 7.1,
+          "p95": 18,
+          "max": 29.2,
+          "mean": 8.811
+        },
+        "qaStateDigest": {
+          "n": 327,
+          "p50": 0.4,
+          "p95": 0.8,
+          "max": 8.9,
+          "mean": 0.53
+        },
+        "phase": {
+          "spine.animation.update": {
+            "calls": 33918,
+            "present": 327,
+            "ms": {
+              "n": 327,
+              "p50": 0,
+              "p95": 0.3,
+              "max": 0.5,
+              "mean": 0.076
+            }
+          },
+          "spine.animation.apply": {
+            "calls": 33918,
+            "present": 327,
+            "ms": {
+              "n": 327,
+              "p50": 0.4,
+              "p95": 1,
+              "max": 2.7,
+              "mean": 0.478
+            }
+          },
+          "spine.physics.solve": {
+            "calls": 33918,
+            "present": 327,
+            "ms": {
+              "n": 327,
+              "p50": 0.1,
+              "p95": 0.5,
+              "max": 1,
+              "mean": 0.193
+            }
+          },
+          "spine.semantic.publish": {
+            "calls": 33918,
+            "present": 327,
+            "ms": {
+              "n": 327,
+              "p50": 0.5,
+              "p95": 1.2,
+              "max": 9.6,
+              "mean": 0.657
+            }
+          },
+          "spine.events.deliver": {
+            "calls": 33918,
+            "present": 327,
+            "ms": {
+              "n": 327,
+              "p50": 0,
+              "p95": 0.1,
+              "max": 0.2,
+              "mean": 0.023
+            }
+          },
+          "spine.display.extract": {
+            "calls": 33918,
+            "present": 327,
+            "ms": {
+              "n": 327,
+              "p50": 1.5,
+              "p95": 4.6,
+              "max": 12.2,
+              "mean": 1.987
+            }
+          },
+          "spine.display.copy": {
+            "calls": 33918,
+            "present": 327,
+            "ms": {
+              "n": 327,
+              "p50": 3.2,
+              "p95": 10.7,
+              "max": 22.8,
+              "mean": 4.251
+            }
+          },
+          "spine.mesh.prepare": {
+            "calls": 33918,
+            "present": 327,
+            "ms": {
+              "n": 327,
+              "p50": 0.1,
+              "p95": 0.3,
+              "max": 6.6,
+              "mean": 0.112
+            }
+          },
+          "spine.mesh.create": {
+            "calls": 0,
+            "present": 0,
+            "ms": null
+          },
+          "spine.display.prepare": {
+            "calls": 33918,
+            "present": 327,
+            "ms": {
+              "n": 327,
+              "p50": 5,
+              "p95": 15,
+              "max": 26.5,
+              "mean": 6.588
+            }
+          },
+          "spine.mesh.commit": {
+            "calls": 33918,
+            "present": 327,
+            "ms": {
+              "n": 327,
+              "p50": 0,
+              "p95": 0.2,
+              "max": 0.5,
+              "mean": 0.062
+            }
+          },
+          "spine.display.commit": {
+            "calls": 33918,
+            "present": 327,
+            "ms": {
+              "n": 327,
+              "p50": 0.1,
+              "p95": 0.5,
+              "max": 3.9,
+              "mean": 0.168
+            }
+          },
+          "spine.display.retire": {
+            "calls": 33918,
+            "present": 327,
+            "ms": {
+              "n": 327,
+              "p50": 0,
+              "p95": 0.1,
+              "max": 0.2,
+              "mean": 0.019
+            }
+          },
+          "spine.display.flush": {
+            "calls": 300,
+            "present": 300,
+            "ms": {
+              "n": 300,
+              "p50": 0,
+              "p95": 0,
+              "max": 0.1,
+              "mean": 0.001
+            }
+          },
+          "spine.checkpoint.digest": {
+            "calls": 0,
+            "present": 0,
+            "ms": null
+          }
+        },
+        "measuredAnimation": {
+          "n": 327,
+          "p50": 0.7,
+          "p95": 1.6,
+          "max": 3.3,
+          "mean": 0.746
+        },
+        "displayWork": {
+          "n": 327,
+          "p50": 5.2,
+          "p95": 15.1,
+          "max": 26.8,
+          "mean": 6.775
+        },
+        "totals": {
+          "semanticDeliveries": 33918,
+          "events": 4922,
+          "deferred": 0,
+          "flushed": 0,
+          "dropped": 0,
+          "published": 33918,
+          "revisionChecks": 33918,
+          "revisionMismatch": 0,
+          "latestRevisionSum": 7035187,
+          "publishedRevisionSum": 7035187
+        }
+      },
+      "hostSteady": {
+        "rows": 300,
+        "frameCpu": {
+          "n": 300,
+          "p50": 21.5,
+          "p95": 39.6,
+          "max": 55.4,
+          "mean": 23.182
+        },
+        "advance": {
+          "n": 300,
+          "p50": 6.3,
+          "p95": 17.9,
+          "max": 29.2,
+          "mean": 8.534
+        },
+        "qaStateDigest": {
+          "n": 300,
+          "p50": 0.4,
+          "p95": 0.8,
+          "max": 7.6,
+          "mean": 0.504
+        },
+        "phase": {
+          "spine.animation.update": {
+            "calls": 31114,
+            "present": 300,
+            "ms": {
+              "n": 300,
+              "p50": 0,
+              "p95": 0.2,
+              "max": 0.5,
+              "mean": 0.072
+            }
+          },
+          "spine.animation.apply": {
+            "calls": 31114,
+            "present": 300,
+            "ms": {
+              "n": 300,
+              "p50": 0.4,
+              "p95": 1,
+              "max": 2.7,
+              "mean": 0.464
+            }
+          },
+          "spine.physics.solve": {
+            "calls": 31114,
+            "present": 300,
+            "ms": {
+              "n": 300,
+              "p50": 0.1,
+              "p95": 0.5,
+              "max": 1,
+              "mean": 0.185
+            }
+          },
+          "spine.semantic.publish": {
+            "calls": 31114,
+            "present": 300,
+            "ms": {
+              "n": 300,
+              "p50": 0.5,
+              "p95": 1.2,
+              "max": 9.6,
+              "mean": 0.603
+            }
+          },
+          "spine.events.deliver": {
+            "calls": 31114,
+            "present": 300,
+            "ms": {
+              "n": 300,
+              "p50": 0,
+              "p95": 0.1,
+              "max": 0.2,
+              "mean": 0.022
+            }
+          },
+          "spine.display.extract": {
+            "calls": 31114,
+            "present": 300,
+            "ms": {
+              "n": 300,
+              "p50": 1.5,
+              "p95": 4.6,
+              "max": 12.2,
+              "mean": 1.933
+            }
+          },
+          "spine.display.copy": {
+            "calls": 31114,
+            "present": 300,
+            "ms": {
+              "n": 300,
+              "p50": 3,
+              "p95": 9.6,
+              "max": 22.8,
+              "mean": 4.153
+            }
+          },
+          "spine.mesh.prepare": {
+            "calls": 31114,
+            "present": 300,
+            "ms": {
+              "n": 300,
+              "p50": 0.1,
+              "p95": 0.3,
+              "max": 6.6,
+              "mean": 0.107
+            }
+          },
+          "spine.mesh.create": {
+            "calls": 0,
+            "present": 0,
+            "ms": null
+          },
+          "spine.display.prepare": {
+            "calls": 31114,
+            "present": 300,
+            "ms": {
+              "n": 300,
+              "p50": 4.8,
+              "p95": 14.7,
+              "max": 26.5,
+              "mean": 6.425
+            }
+          },
+          "spine.mesh.commit": {
+            "calls": 31114,
+            "present": 300,
+            "ms": {
+              "n": 300,
+              "p50": 0,
+              "p95": 0.2,
+              "max": 0.5,
+              "mean": 0.058
+            }
+          },
+          "spine.display.commit": {
+            "calls": 31114,
+            "present": 300,
+            "ms": {
+              "n": 300,
+              "p50": 0.1,
+              "p95": 0.4,
+              "max": 3.9,
+              "mean": 0.162
+            }
+          },
+          "spine.display.retire": {
+            "calls": 31114,
+            "present": 300,
+            "ms": {
+              "n": 300,
+              "p50": 0,
+              "p95": 0.1,
+              "max": 0.2,
+              "mean": 0.018
+            }
+          },
+          "spine.display.flush": {
+            "calls": 300,
+            "present": 300,
+            "ms": {
+              "n": 300,
+              "p50": 0,
+              "p95": 0,
+              "max": 0.1,
+              "mean": 0.001
+            }
+          },
+          "spine.checkpoint.digest": {
+            "calls": 0,
+            "present": 0,
+            "ms": null
+          }
+        },
+        "measuredAnimation": {
+          "n": 300,
+          "p50": 0.6,
+          "p95": 1.6,
+          "max": 3.3,
+          "mean": 0.721
+        },
+        "displayWork": {
+          "n": 300,
+          "p50": 4.9,
+          "p95": 14.8,
+          "max": 26.8,
+          "mean": 6.604
+        },
+        "totals": {
+          "semanticDeliveries": 31114,
+          "events": 4568,
+          "deferred": 0,
+          "flushed": 0,
+          "dropped": 0,
+          "published": 31114,
+          "revisionChecks": 31114,
+          "revisionMismatch": 0,
+          "latestRevisionSum": 6519362,
+          "publishedRevisionSum": 6519362
+        }
+      },
+      "skippedSteady": {
+        "rows": 27,
+        "frameCpu": {
+          "n": 27,
+          "p50": 13.3,
+          "p95": 24.2,
+          "max": 25.6,
+          "mean": 14.533
+        },
+        "advance": {
+          "n": 27,
+          "p50": 10.9,
+          "p95": 19.9,
+          "max": 22.5,
+          "mean": 11.893
+        },
+        "qaStateDigest": {
+          "n": 27,
+          "p50": 0.5,
+          "p95": 0.9,
+          "max": 8.9,
+          "mean": 0.819
+        },
+        "phase": {
+          "spine.animation.update": {
+            "calls": 2804,
+            "present": 27,
+            "ms": {
+              "n": 27,
+              "p50": 0.1,
+              "p95": 0.3,
+              "max": 0.3,
+              "mean": 0.111
+            }
+          },
+          "spine.animation.apply": {
+            "calls": 2804,
+            "present": 27,
+            "ms": {
+              "n": 27,
+              "p50": 0.5,
+              "p95": 1.4,
+              "max": 1.4,
+              "mean": 0.633
+            }
+          },
+          "spine.physics.solve": {
+            "calls": 2804,
+            "present": 27,
+            "ms": {
+              "n": 27,
+              "p50": 0.2,
+              "p95": 0.6,
+              "max": 0.6,
+              "mean": 0.281
+            }
+          },
+          "spine.semantic.publish": {
+            "calls": 2804,
+            "present": 27,
+            "ms": {
+              "n": 27,
+              "p50": 0.8,
+              "p95": 4.7,
+              "max": 7.5,
+              "mean": 1.259
+            }
+          },
+          "spine.events.deliver": {
+            "calls": 2804,
+            "present": 27,
+            "ms": {
+              "n": 27,
+              "p50": 0,
+              "p95": 0.1,
+              "max": 0.2,
+              "mean": 0.026
+            }
+          },
+          "spine.display.extract": {
+            "calls": 2804,
+            "present": 27,
+            "ms": {
+              "n": 27,
+              "p50": 2.2,
+              "p95": 5.7,
+              "max": 9.5,
+              "mean": 2.585
+            }
+          },
+          "spine.display.copy": {
+            "calls": 2804,
+            "present": 27,
+            "ms": {
+              "n": 27,
+              "p50": 4.9,
+              "p95": 12.8,
+              "max": 13.7,
+              "mean": 5.341
+            }
+          },
+          "spine.mesh.prepare": {
+            "calls": 2804,
+            "present": 27,
+            "ms": {
+              "n": 27,
+              "p50": 0.1,
+              "p95": 0.3,
+              "max": 2.1,
+              "mean": 0.163
+            }
+          },
+          "spine.mesh.create": {
+            "calls": 0,
+            "present": 0,
+            "ms": null
+          },
+          "spine.display.prepare": {
+            "calls": 2804,
+            "present": 27,
+            "ms": {
+              "n": 27,
+              "p50": 7.6,
+              "p95": 16.1,
+              "max": 18.9,
+              "mean": 8.404
+            }
+          },
+          "spine.mesh.commit": {
+            "calls": 2804,
+            "present": 27,
+            "ms": {
+              "n": 27,
+              "p50": 0.1,
+              "p95": 0.3,
+              "max": 0.4,
+              "mean": 0.115
+            }
+          },
+          "spine.display.commit": {
+            "calls": 2804,
+            "present": 27,
+            "ms": {
+              "n": 27,
+              "p50": 0.2,
+              "p95": 0.5,
+              "max": 0.6,
+              "mean": 0.233
+            }
+          },
+          "spine.display.retire": {
+            "calls": 2804,
+            "present": 27,
+            "ms": {
+              "n": 27,
+              "p50": 0,
+              "p95": 0.1,
+              "max": 0.2,
+              "mean": 0.03
+            }
+          },
+          "spine.display.flush": {
+            "calls": 0,
+            "present": 0,
+            "ms": null
+          },
+          "spine.checkpoint.digest": {
+            "calls": 0,
+            "present": 0,
+            "ms": null
+          }
+        },
+        "measuredAnimation": {
+          "n": 27,
+          "p50": 0.9,
+          "p95": 2,
+          "max": 2,
+          "mean": 1.026
+        },
+        "displayWork": {
+          "n": 27,
+          "p50": 8,
+          "p95": 16.2,
+          "max": 19.3,
+          "mean": 8.667
+        },
+        "totals": {
+          "semanticDeliveries": 2804,
+          "events": 354,
+          "deferred": 0,
+          "flushed": 0,
+          "dropped": 0,
+          "published": 2804,
+          "revisionChecks": 2804,
+          "revisionMismatch": 0,
+          "latestRevisionSum": 515825,
+          "publishedRevisionSum": 515825
+        }
+      }
+    }
+  ]
+}

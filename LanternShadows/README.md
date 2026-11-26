@@ -202,6 +202,9 @@ The game's code and its generated art are released under Apache-2.0. The engine 
 
 - 2026-11-26 百身术专项：Fold7 固定场景 100 分身实测九块（共 2,970 帧）；原生 HUD 共享装饰图集减少实际 draw calls 中位 43→33、提交间隔中位 33.1→17.8 ms，密集 p95 仍约 49.7 ms。最终正式包真实触控短测、90 项 Node、12 项浏览器验收通过。可公开复现见 [test/perf](test/perf/README.md)。 · Controlled 100-clone profiling and native HUD atlas reduce median rendering cost; tail remains open.
 
+
+- Fold7 最新百身术受控 A/B/A：拆开 Spine 动画/骨骼语义与网格发布，延期可省去背压跳过帧的网格工作；但真实提交间隔 p50 16.7→33.1→16.7 ms，因此保留生产同步发布。完整逐帧严格等价检查及 990 帧数据在 [test/perf](test/perf/README.md)，正式版 100 分身、规则与引擎副本未改。 · Controlled physical-device A/B/A found that mesh deferral saved rejected-frame CPU but worsened cadence. The release is unchanged; see the detailed reproducer and evidence.
+
 ## 已知问题 · Known issues
 
 - Fold7 原生 UI 密集百身术仍存在帧率差距，此前自然路线 rAF p95 旧版 33.2–33.3 ms、新版 49.7 ms；本轮固定同背板测量旧新实际提交 p95 均约 50 ms，Atlas 已降低中位开销但尾部仍待优化；已验证 backing 和幕布裁切对照，保留全部分身，详见 ENGINE-NOTES 第 9 条。 · Native UI dense clone p95 remains higher on Fold7; the measured backing and clip comparison did not restore the old result. All clones are retained; see engine note 9.
