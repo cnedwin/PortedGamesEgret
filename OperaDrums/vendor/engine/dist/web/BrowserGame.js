@@ -4,6 +4,7 @@
 import { EgretError } from '@egret/runtime';
 import { Bitmap, copyImageData2DPixels, createAssetRef, createAssetType, createEngineForProfile, createImageData2D, createTexture, isTexture, SHARED_FRAME_PROFILE_2D, Sprite } from '@egret/engine';
 import { createBrowserTextureProvider } from './image.js';
+import { createBrowserStaticLayers } from './browserStaticLayers.js';
 import { decodeBrowserImage, sniffBrowserImageFormat } from './BrowserImageTextures.js';
 import { createTextField, createTextRasterCache } from '@egret/engine/text';
 import { createBrowserFrameLoop } from './loop.js';
@@ -129,8 +130,16 @@ export async function createBrowserGame(options) {
         typeof enableEffects !== 'boolean' ||
         (update !== undefined && typeof update !== 'function') ||
         (onError !== undefined && typeof onError !== 'function') ||
+        (options.beforeRender !== undefined && typeof options.beforeRender !== 'function') ||
+        (options.renderRetry !== undefined &&
+            (options.renderRetry === null ||
+                typeof options.renderRetry !== 'object' ||
+                !Number.isSafeInteger(options.renderRetry.maxConsecutive) ||
+                options.renderRetry.maxConsecutive < 1 ||
+                options.renderRetry.maxConsecutive > 8 ||
+                typeof options.renderRetry.shouldRetry !== 'function')) ||
         (onWarning !== undefined && typeof onWarning !== 'function') ||
-        [options.pointer, options.keyboard, options.hover, options.autoStart, options.stats].some(flag => flag !== undefined && typeof flag !== 'boolean') ||
+        [options.pointer, options.keyboard, options.hover, options.autoStart, options.stats, options.staticLayers].some(flag => flag !== undefined && typeof flag !== 'boolean') ||
         !['none', 'contain', 'cover', 'stretch', 'expand'].includes(options.fit ?? 'none') ||
         (options.fitTo !== undefined && (options.fitTo === null || typeof options.fitTo !== 'object')))
         throw invalid();
@@ -154,9 +163,10 @@ export async function createBrowserGame(options) {
     const host = backend === 'webgpu'
         ? (await import('./webgpu.js')).createSharedWebGPUHost({ canvas, pixelRatio, blendSpace, enableEffects })
         : (await import('./webgl2.js')).createSharedWebGL2Host({ canvas, pixelRatio, blendSpace, enableEffects });
+    const staticCache = options.staticLayers === true && 'createSharedLayer2D' in host ? createBrowserStaticLayers(host) : undefined;
     let engine;
     try {
-        engine = await createEngineForProfile({ host, onDiagnostic: gameDiagnostics(onError) }, SHARED_FRAME_PROFILE_2D);
+        engine = await createEngineForProfile({ host: staticCache?.adapter ?? host, onDiagnostic: gameDiagnostics(onError) }, SHARED_FRAME_PROFILE_2D);
     }
     catch (cause) {
         try {
@@ -295,6 +305,8 @@ export async function createBrowserGame(options) {
             engine: drawing,
             host,
             frame: frameNow,
+            ...(options.beforeRender === undefined ? {} : { beforeRender: options.beforeRender }),
+            ...(options.renderRetry === undefined ? {} : { renderRetry: options.renderRetry }),
             ...(onError === undefined ? {} : { onError }),
             update(seconds) {
                 if (panel !== undefined) {
@@ -488,6 +500,7 @@ export async function createBrowserGame(options) {
                 style.marginTop = next.top + 'px';
                 const moved = next.width !== before.width ||
                     next.height !== before.height ||
+                    next.scale !== before.scale ||
                     next.orientation !== before.orientation ||
                     ['x', 'y', 'width', 'height'].some(key => next.safe[key] !== before.safe[key]);
                 if (moved)
@@ -1154,6 +1167,7 @@ export async function createBrowserGame(options) {
             backend,
             engine,
             host,
+            ...(staticCache === undefined ? {} : { staticLayers: staticCache.api }),
             stage: engine.stage,
             scope,
             get frame() {

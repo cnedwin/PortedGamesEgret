@@ -4,25 +4,7 @@ import { createBrowserSemantics } from '@egret/engine/web/semantics';
 // Play owns navigation and draws its focus ring. The projection exposes the same controls to assistive technology.
 export function createUiInput() {
   const tree = createUiSemantics();
-  const aliases = new Map();
   let game, projection, projectedSize;
-  const semantics = Object.create(tree, {
-    add: { value(part) {
-      const name = part.id.split(':').at(-1);
-      return tree.add({
-        ...part,
-        describe: () => {
-          const state = part.describe();
-          const alias = aliases.get(name);
-          return alias ? { ...state, name: alias() } : state;
-        }
-      });
-    } }
-  });
-  function alias(name, get) {
-    aliases.set(name, get);
-    return () => { if (aliases.get(name) === get) aliases.delete(name); };
-  }
   function focused() {
     const snapshot = tree.publish();
     return snapshot.nodes.find(node => node.id === snapshot.focused);
@@ -67,7 +49,7 @@ export function createUiInput() {
   }
 
   return {
-    semantics, tree, alias, attach, resize, pick, focusCanvas,
+    semantics: tree, tree, attach, resize, pick, focusCanvas,
     get name() { return focused()?.name; },
     get part() { return focused()?.id.split(':').at(-1); }
   };

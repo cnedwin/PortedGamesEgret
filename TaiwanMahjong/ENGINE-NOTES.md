@@ -4,6 +4,10 @@
 
 The current engine copy is `8e70dcb3`. Items 1–6 retain findings from `b5628eb`, with frame timings from headless Chromium 153 and SwiftShader. Items 7 and 8 record native UI issues and the migration after the engine fixes. See [QUALITY.md](QUALITY.md) for the tested versions and results.
 
+本轮引擎集成：主干 `94bd70fb26b1f81794c9c6fbbb258c655fcd19df`（#502–#506），按需采用原生能力；下列原先的版本号保留作为问题发生时的历史。
+
+This integration vendors official main `94bd70fb26b1f81794c9c6fbbb258c655fcd19df` (#502–#506), adopting native capabilities where equivalent; older revisions below are historical evidence.
+
 ### 1. `play` 让页面按钮上的 Tab 和 Space 失灵 · `play` takes Tab and Space from the page's buttons — 已在 `450bb9e` 解决 / resolved in `450bb9e`
 <!-- engine-note: {"id": "TaiwanMahjong#1", "status": "resolved", "topic": "play-page-keys", "workaround": ["src/main.mjs"]} -->
 
@@ -43,6 +47,8 @@ The current engine copy is `8e70dcb3`. Items 1–6 retain findings from `b5628eb
 - 绕过办法：桌上静止的牌（牌河、副露、别家的手牌、花）画在引擎画布下面的一张页面 2D canvas 上，只在牌局变化时重画（`src/felt.mjs`）；引擎只画玩家的手牌（最多十几张）、飞行中的牌和大字、火花。 · Workaround: tiles at rest are painted on a page 2D canvas under the engine's, again only when the hand changes; the engine draws the player's hand, tiles in flight, and the words and sparks.
 - 建议：同 NezhaSea 第 3 条：查贴图路径在软件渲染下的开销；另外可以考虑一个「静态层」——内容不变时只合成一次的容器（类似 `cacheAsBitmap`）。 · Suggestion: as NezhaSea's item 3; and perhaps a still layer — a container drawn once into a texture until its content changes, as `cacheAsBitmap` was.
 - 状态：已写入文档（引擎 #485，`8637ace`）：同 NezhaSea 第 3 条，写进 guide 卡片 sprite-swarm。 · Documented (engine #485, `8637ace`): as NezhaSea item 3, in the sprite-swarm guide card.
+
+- 本轮评估 · Integration：#505 提供显式 WebGL2 静态层捕获，但本游戏原本已将静止牌一次画成单层且实机默认可选 WebGPU；不额外读回、上传或强制切换后端。原来的旋转布局与语义扩展仍需保留。 · #505 adds explicit WebGL2 static-layer capture; the felt is already a single raster and the normal device path can be WebGPU, so a second capture/upload or backend change is not equivalent.
 
 ### 6. 存档库的 `update` 把回调的返回值当新数据 · The save store's `update` takes the callback's return value as the new data — 已写入文档 / documented
 <!-- engine-note: {"id": "TaiwanMahjong#6", "status": "documented", "topic": "save-update-return", "workaround": ["src/main.mjs"]} -->

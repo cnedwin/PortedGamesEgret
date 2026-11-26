@@ -99,10 +99,10 @@ export function createInventoryPanel({current, command, repaint, close}) {
           {width: 38, height: 44, label: slotNames[slot]}),
         ui.button(id, slotNames[slot], () => filterSlot(slot, id),
           {width: 'fill', height: 48, size: 14, active: filter === slot, description: name})
-      ], {width: slotWidth, height: 48, gap: 4, align: 'center'});
+      ], {name: 'bag-slot-row-' + slot, width: slotWidth, height: 48, gap: 4, align: 'center'});
     });
     const slotRows = wide ? slots : [0, 2, 4].map(index =>
-      ui.row(slots.slice(index, index + 2), {width, height: 48, gap: 6}));
+      ui.row(slots.slice(index, index + 2), {name: 'bag-slot-pair-' + index, width, height: 48, gap: 6}));
     const listHeader = [
       ui.text('bag-list-title', filter ? '筛选 · ' + slotNames[filter] : '全部装备', {width: 'fill', height: 32, size: 17})
     ];
@@ -110,7 +110,7 @@ export function createInventoryPanel({current, command, repaint, close}) {
       filterSlot(null, 'bag-slot-' + EQUIPMENT_SLOTS[0]);
     }, {width: 88, height: 44, size: 14}));
     const list = [
-      ui.row(listHeader, {width: listWidth, height: 44, align: 'center', gap: 6}),
+      ui.row(listHeader, {name: 'bag-list-header', width: listWidth, height: 44, align: 'center', gap: 6}),
       ...gearRows(ui, state, listWidth)
     ];
     const stats = ui.text('bag-quick-stats', '攻击 ' + hero.attack + '   防御 ' + hero.defense + '   气血 ' + health(hero),
@@ -120,9 +120,9 @@ export function createInventoryPanel({current, command, repaint, close}) {
       const listHeight = 44 + (list.length - 1) * (listWidth < 440 ? 114 : 98);
       const slotsHeight = 25 + slots.length * 54;
       return [stats, ui.row([
-        ui.column([wornHeading, ...slotRows], {width: slotsWidth, height: slotsHeight, gap: 6}),
-        ui.column(list, {width: listWidth, height: listHeight, gap: 6})
-      ], {width, height: Math.max(slotsHeight, listHeight), align: 'start', gap: 12})];
+        ui.column([wornHeading, ...slotRows], {name: 'bag-worn-list', width: slotsWidth, height: slotsHeight, gap: 6}),
+        ui.collection('bag-gear-list', list, {width: listWidth, height: listHeight, gap: 6})
+      ], {name: 'bag-equipment-columns', width, height: Math.max(slotsHeight, listHeight), align: 'start', gap: 12})];
     }
     return [stats, wornHeading, ...slotRows, ...list];
   }
@@ -140,7 +140,7 @@ export function createInventoryPanel({current, command, repaint, close}) {
         ui.text('bag-xp', '经验 ' + xp, {width: profileWidth, height: 19, size: 13}),
         ui.bar('bag-xp-meter', hero.level >= 20 ? 1 : hero.xp / hero.needXp, {height: 5, color: 0xe0ba75, label: '经验 ' + xp})
       ], {width: profileWidth, height: 122, gap: 2})
-    ], {width, height: 126, align: 'center', gap: 8});
+    ], {name: 'bag-profile', width, height: 126, align: 'center', gap: 8});
     const base = professionStats(role.id, hero.level);
     const stats = attributes.map(([key, label]) => ui.column([
       ui.text('bag-attribute-' + key, label + ' ' + hero[key], {height: 24, size: 16, color: 0xf7da99}),
@@ -149,7 +149,7 @@ export function createInventoryPanel({current, command, repaint, close}) {
     ], {width: 'fill', height: 52, gap: 2}));
     const statRows = [];
     for (let index = 0; index < stats.length; index += 2) {
-      statRows.push(ui.row(stats.slice(index, index + 2), {width, height: 52, gap: 8}));
+      statRows.push(ui.row(stats.slice(index, index + 2), {name: 'bag-stat-row-' + index, width, height: 52, gap: 8}));
     }
     const artifact = ITEMS[inventory.find(instance => instance.uid === equipment.skill)?.itemId];
     const abilities = [
@@ -166,7 +166,7 @@ export function createInventoryPanel({current, command, repaint, close}) {
       ...abilities.map(([id, name, description]) => ui.column([
         ui.text('bag-ability-' + id, name, {height: 20, size: 15, color: 0xe8c58a}),
         ui.text('bag-ability-detail-' + id, description, {height: 41, size: 13, lines: 2})
-      ], {width, height: 64, gap: 3}))
+      ], {name: 'bag-ability-row-' + id, width, height: 64, gap: 3}))
     ];
   }
 

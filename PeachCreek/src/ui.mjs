@@ -198,10 +198,18 @@ export function createUi(game, semantics, onVisualChange = () => {}) {
     for (const [name, { item }] of record.entries) {
       const type = item.type, current = () => record.entries.get(name).item;
       const binding = { visible: () => read(current().visible) !== false };
-      if (words.has(type)) binding.text = () => {
-        const part = current();
-        return part.invisible || part.hideText ? '' : read(part.text) ?? '';
-      };
+      if (words.has(type)) {
+        binding.text = () => {
+          const part = current();
+          return part.invisible || part.hideText ? '' : read(part.text) ?? '';
+        };
+        // The artwork may draw its own lettering. A blank engine raster is not
+        // an empty accessible name when those words are present in the artwork.
+        binding.label = () => {
+          const part = current();
+          return String(read(part.label) ?? read(part.text) ?? '');
+        };
+      }
       if (colored.has(type)) binding.color = () => {
         const part = current();
         if (styleOf(part)) return undefined;

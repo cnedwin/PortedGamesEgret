@@ -12,6 +12,10 @@ The game later moved to `aab331d` and every screen was made again with the engin
 (`game.show`), its screen stack and its semantic tree; items 1, 2 and 5 say what the game does now, and items from 6 on
 were written during that work.
 
+本轮引擎集成：主干 `94bd70fb26b1f81794c9c6fbbb258c655fcd19df`（#502–#506），按需采用原生能力；下列原先的版本号保留作为问题发生时的历史。
+
+This integration vendors official main `94bd70fb26b1f81794c9c6fbbb258c655fcd19df` (#502–#506), adopting native capabilities where equivalent; older revisions below are historical evidence.
+
 ### 1. `play` 让页面按钮上的 Tab 和 Space 失灵 · `play` takes Tab and Space from the page's buttons — 已在 `450bb9e` 解决 / resolved in `450bb9e`
 <!-- engine-note: {"id": "OperaDrums#1", "status": "resolved", "topic": "play-page-keys", "workaround": ["src/main.mjs"]} -->
 
@@ -71,13 +75,13 @@ were written during that work.
 - 建议：`text` 和皮肤加 `family`（页面已有的字体或系统字体族），和 `game.text` 底下的标签用同一套。 · Suggestion: A `family` on text parts and in the skin (a face the page has, or a system family), the same as the labels under `game.text`.
 - 状态：未解决 · Open.
 
-### 8. 空字的文字部件让语义树发布失败 · An empty text part makes the semantic tree refuse to publish — 未解决 / open
-<!-- engine-note: {"id": "OperaDrums#8", "status": "open", "topic": "view-empty-text-semantics", "workaround": ["src/ui/screens.mjs"]} -->
+### 8. 空字的文字部件让语义树发布失败 · An empty text part makes the semantic tree refuse to publish — 已解决 / resolved (#501)
+<!-- engine-note: {"id": "OperaDrums#8", "status": "resolved", "topic": "view-empty-text-semantics"} -->
 
 - 现象：有名字的 `text` 部件在语义树里是 `text` 节点，名字必须有非空白的字。绑定一时给出 `''`（校准对话框还没有读数时）时，`publish()` 抛 `UI_SEMANTICS_DESCRIPTION`（cause：`view5:count: name`），每帧末尾的发布也会抛。 · What happens: A named text part is a `text` node of the tree, whose name must have a visible character. When its binding gives `''` for a while (the delay dialog before its count), `publish()` throws `UI_SEMANTICS_DESCRIPTION` (cause `view5:count: name`), the publication at the end of each frame included.
-- 绕过办法：可能为空的文字部件都加 `visible` 绑定，没有字时藏起来。 · Workaround: Every text part that can be empty has a `visible` binding that hides it while it has no words.
+- 已移除的绕过办法：校准读数和可选通知无需仅为语义树追加 visible。 · Removed the visibility shim for optional calibration readout and notice.
 - 建议：没有字的文字部件在语义树里当作隐藏，而不是让整棵树拒绝发布。 · Suggestion: Publish a text part with no words as hidden rather than refusing the whole tree.
-- 状态：未解决 · Open.
+- 状态：#501 原生处理空文字，严格校验仍适用于控件名称。 · Native blank text handling in #501; control names remain strict.
 
 ### 9. 同时载入第五张图片时直接拒绝，不排队 · A fifth image loading at once is refused, not queued — 未解决 / open
 <!-- engine-note: {"id": "OperaDrums#9", "status": "open", "topic": "image-job-limit", "workaround": ["src/main.mjs"]} -->
@@ -95,13 +99,13 @@ were written during that work.
 - 建议：`setup` 等着的数据界面也提前开始帧，和 `say`、`menu` 一样。 · Suggestion: Start the frames for a view that `setup` awaits, as for `say` and `menu`.
 - 状态：未解决 · Open.
 
-### 11. 界面的点按在抬起时才算 · A view's tap counts when the finger lifts — 未解决 / open
-<!-- engine-note: {"id": "OperaDrums#11", "status": "open", "topic": "view-press-down", "workaround": ["src/main.mjs", "src/ui/stage-ui.mjs"]} -->
+### 11. 界面的点按在抬起时才算 · A view's tap counts when the finger lifts — 部分解决 / partly resolved (#499)
+<!-- engine-note: {"id": "OperaDrums#11", "status": "partly", "topic": "view-press-down", "workaround": ["src/main.mjs", "src/ui/stage-ui.mjs"]} -->
 
 - 现象：敲击区要的是按下的那一刻：音符判定按的是按下的时间。数据界面的 `tap` 在抬起时才调用，也不带事件的时间戳。 · What happens: A pad wants the moment it goes down: a note is judged by the time of the press. A view's `tap` is called when the contact lifts, and carries no time stamp.
 - 绕过办法：敲击区的部件用 `view.get(name)` 取出精灵，直接听引擎指针输入的 `events.begin`，取 `contact.timestamp`；抬起后的 `tap` 不再算一下，按键和读屏软件激活时才由 `tap` 敲（`src/main.mjs` 的 `padBuilt`）。 · Workaround: Each pad's sprite from `view.get(name)` listens to `events.begin` of the engine's pointer input and takes `contact.timestamp`; the `tap` after a press is not counted again, and strikes only when a key or assistive technology activates the pad.
 - 建议：绑定加 `press`（按下时调用，带时间戳）和 `release`，供敲击、蓄力和按住的控件用。 · Suggestion: A `press` binding (called as the contact goes down, with its time stamp) and a `release`, for pads, charges and held controls.
-- 状态：未解决 · Open.
+- 状态：#499 已提供原生 tap 激活来源，删除 1500 ms 猜测窗口，指针抬起不再重复敲击；保留引擎 begin/end/cancel 与真实时间戳供节奏判定。原生声明式按下/抬起绑定仍待补充。 · #499 activation.source removes the 1500 ms heuristic. Pointer release never strikes twice; engine begin/end/cancel and timestamps are still needed for timing. Declarative press/release remains open.
 
 ### 12. 选中状态进不了语义树 · A chosen part cannot say it is chosen — 未解决 / open
 <!-- engine-note: {"id": "OperaDrums#12", "status": "open", "topic": "view-selected-state", "workaround": ["src/ui/screens.mjs"]} -->

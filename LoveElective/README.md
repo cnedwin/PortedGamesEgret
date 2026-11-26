@@ -244,6 +244,6 @@ The game synthesises music and effects from its notes and plays them through the
 
 ## 引擎与许可 · Engine and license
 
-`vendor/` 中是新白鹭引擎的运行时副本，采用 Apache-2.0 许可，引擎提交 `f0dfde367431713578e23fb3931544177b443c3c`，来源和版本见 [vendor/SOURCE.md](vendor/SOURCE.md)。
+`vendor/` 中是新白鹭引擎的运行时副本，采用 Apache-2.0 许可，引擎提交 `94bd70fb26b1f81794c9c6fbbb258c655fcd19df`，来源和版本见 [vendor/SOURCE.md](vendor/SOURCE.md)。
 
-`vendor/` holds a copy of the Egret Rebuild runtime under Apache-2.0. See [vendor/SOURCE.md](vendor/SOURCE.md) for the source and engine commit `f0dfde367431713578e23fb3931544177b443c3c`.
+`vendor/` holds a copy of the Egret Rebuild runtime under Apache-2.0. See [vendor/SOURCE.md](vendor/SOURCE.md) for the source and engine commit `94bd70fb26b1f81794c9c6fbbb258c655fcd19df`.

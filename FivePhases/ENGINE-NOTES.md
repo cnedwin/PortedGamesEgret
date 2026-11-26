@@ -1,9 +1,13 @@
 # 引擎笔记 · Engine notes
 
-本游戏发现的新白鹭引擎（早期提交 unknown，当前为 f0dfde36（与 8e70dcb3 运行时一致））的缺陷与建议，格式见 [docs/GAME-STANDARD.md](../docs/GAME-STANDARD.md) 第 3 节。
+本游戏发现的新白鹭引擎（早期提交 unknown，UI 迁移时为 f0dfde36（与 8e70dcb3 运行时一致））的缺陷与建议，格式见 [docs/GAME-STANDARD.md](../docs/GAME-STANDARD.md) 第 3 节。
 
-The faults found in the new Egret engine (early commit unknown; current copy f0dfde36, runtime byte-identical to 8e70dcb3) while making this game, and suggestions,
+The faults found in the new Egret engine (early commit unknown; previous UI-migration copy f0dfde36, runtime byte-identical to 8e70dcb3) while making this game, and suggestions,
 written as in part 3 of [docs/GAME-STANDARD.md](../docs/GAME-STANDARD.md).
+
+本轮引擎集成：主干 `94bd70fb26b1f81794c9c6fbbb258c655fcd19df`（#502–#506），按需采用原生能力；下列原先的版本号保留作为问题发生时的历史。
+
+This integration vendors official main `94bd70fb26b1f81794c9c6fbbb258c655fcd19df` (#502–#506), adopting native capabilities where equivalent; older revisions below are historical evidence.
 
 ### 1. 每帧的几何预算连复用的几何也一起算 · The per-frame geometry budget also counts reused geometry — 部分解决 / partly resolved
 <!-- engine-note: {"id": "FivePhases#1", "status": "partly", "topic": "geometry-budget-reuse"} -->
@@ -21,13 +25,13 @@ written as in part 3 of [docs/GAME-STANDARD.md](../docs/GAME-STANDARD.md).
 - 建议 · Suggestion：已由引擎采纳：这种退化的数值当作 0 处理。 · Adopted by the engine: such values are taken as zero.
 - 状态 · Status：引擎 `66f7c59` 起把小于 `2^-100` 的值当作 0；2026-11-21 本作的副本升级到 `b5628eb`，已包含这个修复，游戏自己的归零仍保留 · resolved in the engine; the copy has had the fix since 2026-11-21, and the game's own snap stays.
 
-### 3. 帧循环出错后停在 `failed`，画面冻住 · After an error the frame loop stays `failed` and the picture freezes — 未解决 / open
-<!-- engine-note: {"id": "FivePhases#3", "status": "open", "topic": "frame-loop-failed-freeze", "workaround": ["src/main.mjs"]} -->
+### 3. 帧循环出错后停在 `failed`，画面冻住 · After an error the frame loop stays `failed` and the picture freezes — 已解决 / resolved (#502)
+<!-- engine-note: {"id": "FivePhases#3", "status": "resolved", "topic": "frame-loop-failed-freeze"} -->
 
 - 现象 · What happens：一帧渲染失败后，`createBrowserGame` 的帧循环停在 `failed`：画面还在，但什么都不动，也没有明显的报错，比崩溃更难查。 · After one failed frame the loop stays `failed`: the picture is still there and nothing moves.
-- 游戏里 · In the game：`src/main.mjs` 接 `onError`，把完整的 `cause` 链打出来，`runtime.loop.state === 'failed'` 时最多重启五次。 · `onError` prints the whole cause chain and restarts the loop up to five times.
+- 原做法 · Previous workaround：发生失败后最多五次重启整个 loop。现在移除，onError 仅报告不可恢复的失败。 · Previously restarted the whole loop up to five times; that restart is removed.
 - 建议 · Suggestion：给 `createBrowserGame` 一个"渲染失败后重试"的选项，每个游戏就不用各写一遍。 · Give `createBrowserGame` a retry-after-failure option.
-- 状态 · Status：引擎还没有这个选项 · no such option yet.
+- 状态 · Status：使用 #502 的 renderRetry；仅已知 WebGL2 几何准备预算错误允许连续最多五次重试渲染，不重跑规则、未知错误仍失败。几何预算本身是第 1 条的独立问题。 · Uses #502 renderRetry for the known geometry-preparation-budget error only; at most five consecutive render retries, no replay of gameplay and strict unknown errors. The underlying budget remains item 1.
 
 ### 4. Play 手势入口未覆盖棋盘按下即预览的完整会话 · High-level Play gestures omit the whole press-to-preview session — 未解决 / open
 <!-- engine-note: {"id":"FivePhases#4","status":"open","topic":"play-gesture-session","workaround":["src/view/board-input.mjs","src/main.mjs"]} -->
@@ -37,20 +41,20 @@ written as in part 3 of [docs/GAME-STANDARD.md](../docs/GAME-STANDARD.md).
 - 建议 · Suggestion：在 Play 高层增加可选 tap/slop 及 begin/end/cancel 会话接口，或在指南中明确此类棋盘应使用 pointer.observe。 · Expose the complete contact lifecycle in Play, or document the lower-level route.
 - 状态 · Status：高层接口缺口，底层可以实现；非规则缺陷 · open capability gap, with a native lower-level route.
 
-### 5. 可选文本成为空字符串时语义发布中断帧循环 · Empty optional text stops the semantic frame — 未解决 / open
-<!-- engine-note: {"id":"FivePhases#5","status":"open","topic":"ui-empty-bound-text","workaround":["src/ui/hud.mjs"]} -->
+### 5. 可选文本成为空字符串时语义发布中断帧循环 · Empty optional text stops the semantic frame — 已解决 / resolved (#501)
+<!-- engine-note: {"id":"FivePhases#5","status": "resolved","topic":"ui-empty-bound-text"} -->
 
 - 现象 · What happens：新版 8e70dcb3 的 game.show 命名文本绑定从非空敌招变为 ""（Boss 被击败）时，PC Edge 与三星 Fold7 上均出现 UI_SEMANTICS_DESCRIPTION ← view1:enemy-intent: name，BrowserPlay.endFrame 失败并阻塞战斗结算。 · A named text part bound to the upcoming attack changes from non-empty text to an empty string when the boss dies. On physical Edge and Fold7, semantic publication throws and the frame stops before settlement.
 - 最小复现 · Minimal reproduction：声明命名 text 部件，通过 bind.text 读 state.intent；state.intent 初始为 "4 步后 扑击"，运行后赋值 ""，不重建 view。 · Bind a named text to a state string, show it non-empty, then set it to an empty string while the view remains mounted.
-- 绕过办法 · Workaround：可空文本统一提供非空兜底名称并在内容为空时通过 visible 隐藏，保持原视觉意图。 · Supply a nonempty fallback for optional text and hide the part when it has no content.
+- 已移除的绕过办法 · Removed workaround：统一非空占位与额外隐藏 binding 已删除，保留由玩法控制的显隐。 · Removed the dummy label and extra hiding shim, preserving gameplay visibility.
 - 建议 · Suggestion：声明式 UI 对合法的空字符串应将语义节点隐藏或省略，而不是令渲染帧失败；保留严谨校验但让可选文本/动态提示自然工作。加 visible/empty 过渡的无头回归。 · Omit/hide the semantic node for empty optional bound text without failing the render loop. Add a transition regression.
-- 状态 · Status：本作适配，待引擎改进 · worked around in the game, engine change not made.
+- 状态 · Status：#501 原生可选空文字不破坏语义树，结算可正常发布。 · #501 natively omits blank optional text without breaking publication during settlement.
 
-### 6. 卡牌需要富内容操作容器与动态列表复用 · Rich actionable cards and keyed list reuse — 未解决 / open
-<!-- engine-note: {"id":"FivePhases#6","status":"open","topic":"ui-rich-action-content","workaround":["src/ui/hud.mjs"]} -->
+### 6. 卡牌需要富内容操作容器与动态列表复用 · Rich actionable cards and keyed list reuse — 已解决 / resolved (#499, #506)
+<!-- engine-note: {"id":"FivePhases#6","status": "resolved","topic":"ui-rich-action-content"} -->
 
 - 现象 · What happens：原生 button 仅支持标题、描述与段落，不允许图标/费用徽章/子部件。复合卡牌需要带 tap 的 panel；panel 原生可激活与焦点，但语义角色为 group，且不能单个绑定 disabled。当前视图绑定也没有 keyed children、动态 image.src 或 description。 · A card needs an icon, cost badge, title and effect; the native button cannot contain parts. A tappable panel is focusable but has group semantics and no individual disabled binding. The view does not yet reconcile keyed child lists.
-- 绕过办法 · Workaround：使用复合原生 panel、完整语义名称、整手牌视图 activate/deactivate 与动作锁；仅在卡牌 UID 或费用改变时重建手牌，使用共享段落缓存。 · Use native composite panels, accessible names, activation gating and identity-based hand rebuilds with a shared paragraph cache.
+- 游戏里 · In the game：卡片通过 role: button 的复合原生 panel 表达，手牌 UID 为原生 replaceChildren 的键。保留动作锁和点击能量不足时的反馈。 · A rich native panel with role: button represents each card, and its UID keys replaceChildren. Keeps the action lock and the insufficient-energy feedback.
 - 建议 · Suggestion：提供原生复合按钮/可选角色和禁用绑定、keyed/repeat 列表以复用同一个卡牌精灵、焦点、图标和段落。 · Add rich buttons with explicit role/disabled, and keyed repeat/reconciliation to retain focus, content and image/paragraph borrows.
-- 状态 · Status：可使用原生组合实现；未改引擎 · native workaround, engine unchanged.
+- 状态 · Status：#499 与 #506 提供相应原生能力；无需变更时保留行，位置、静态内容变化仍由引擎重建受影响的行。不是虚拟列表。 · Native role and keyed reconciliation are available; rows with changed static geometry or content may be rebuilt. This is not virtualization.
 

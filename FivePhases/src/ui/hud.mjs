@@ -20,7 +20,6 @@ const BOND_LABELS = { swordShield: '剑盾同源', samadhi: '三昧', echo: '残
 const FONTS = ['Microsoft YaHei', 'PingFang SC', 'Noto Sans CJK SC', 'sans-serif'];
 const paragraph = (lineHeight, maxLines) => ({ fontFamilies: FONTS, locale: 'zh-CN', lineHeight, maxLines });
 const clamp = n => Math.max(0, Math.min(1, Number(n) || 0));
-const hasWords = value => value !== null && value !== undefined && String(value).trim().length > 0;
 const hex = s => Number.parseInt(s.slice(1), 16);
 function tint(a, b, n) {
   return [16, 8, 0].reduce((sum, bit) => sum + (Math.round(((a >> bit) & 255) * (1 - n) + ((b >> bit) & 255) * n) << bit), 0);
@@ -58,7 +57,7 @@ function makeCard(card, name, x, y, width, height, { reward = false } = {}) {
     word(null,8,bodyY,width-16,bodyH,card.text,reward?24:19,{
       paragraph:paragraph(reward?28:21,reward?7:3),align:'left',color:C.ivory,
     }),
-  ],{name,label:card.name+' · '+cardDetail(card).replaceAll('\n',' · '),
+  ],{name,role:'button',label:card.name+' · '+cardDetail(card).replaceAll('\n',' · '),
       color:cardColor(card,reward),alpha:.99,border:{color:card.ult?C.gold:tint(C.edge,color,.45),width:card.ult?3:2}});
 }
 const guideLines = [
@@ -85,29 +84,18 @@ export function createHud({
   let handActive = null;
   const floats = [], specs = new Map();
 
-  // The semantic tree requires a nonempty name even at a frame boundary. Keep
-  // optional text invisible when its data is empty; never publish an empty name.
   function show(label, children, bindings={}, { modal=false, dim=SKIN.dim, initialFocus, dismiss, meta={}, gamepad=true }={}) {
     const description = {label,area:'screen',modal,skin:{...SKIN,dim},root:root(children)};
-    const safeBindings={...bindings},parts=[];
+    const parts=[];
     function visit(part) {
-      const binding=bindings[part.name];
-      if(part.name && part.type==='text'){
-        if(!hasWords(part.text))part.text='—';
-        if(binding?.text){
-          const get=binding.text,shown=binding.visible;
-          safeBindings[part.name]={...binding,text:s=>hasWords(get(s))?get(s):'—',
-            visible:s=>hasWords(get(s))&&(!shown||Boolean(shown(s)))};
-        }
-      }
-      if(part.type==='button'||part.type==='toggle'||(part.type==='panel'&&binding?.tap))parts.push(part);
+      if(part.type==='button'||part.type==='toggle'||(part.type==='panel'&&bindings[part.name]?.tap))parts.push(part);
       (part.children??[]).forEach(visit);
     }
     visit(description.root);
-    const options={state,bind:safeBindings,paragraphCache,gamepad,
+    const options={state,bind:bindings,paragraphCache,gamepad,
       ...(initialFocus?{initialFocus}:{}),...(dismiss?{dismiss}:{})};
     const view=game.show(description,options);
-    specs.set(view,{parts,bindings:safeBindings,meta});
+    specs.set(view,{parts,bindings,meta});
     return view;
   }
   function close(view) {
@@ -237,25 +225,28 @@ export function createHud({
   }
 
   function rebuildHand() {
-    const previous = handView;
-    const focus = previous?.focused;
-    handView = null;
-    handActive = null;
-    close(previous);
-    if (!state.hand.length) return;
+    if (!state.hand.length) {
+      close(handView);handView=null;handActive=null;return;
+    }
     const width=130,height=169,gap=8,left=(STAGE.width-(state.hand.length*width+(state.hand.length-1)*gap))/2;
-    const parts = [], bindings = {}, meta = {};
-    state.hand.forEach((card,index) => {
-      const name='hand-'+index;
+    const parts=[], bindings={}, meta={};
+    state.hand.forEach((card,index)=>{
+      const name='hand-'+card.uid;
       parts.push(makeCard(card,name,left+index*(width+gap),658,width,height));
-      bindings[name] = {color:s=>actionLocked(s)?cardColor(card,false):cardColor(card,(s.battle?.energy[card.element]??0)>=card.cost),
+      bindings[name]={color:s=>actionLocked(s)?cardColor(card,false):cardColor(card,(s.battle?.energy[card.element]??0)>=card.cost),
         tap:()=>{if(active==='battle' && !sub && !actionLocked(state))onCard?.(card.uid);}};
       meta[name]={uid:card.uid,card:{...card}};
     });
-    handView = show('手牌',parts,bindings,{meta});
-    if (active !== 'battle') handView.hide();
+    if(handView){
+      // The engine retains rows whose key and authored geometry remain unchanged.
+      handView.replaceChildren('hand-collection',parts,bindings);
+      specs.set(handView,{parts,bindings,meta});
+    }else{
+      handView=show('手牌',[box(0,0,STAGE.width,STAGE.height,parts,{name:'hand-collection',label:'当前手牌'})],bindings,{meta});
+      handActive=null;
+      if(active!=='battle')handView.hide();
+    }
     syncHandAction();
-    if (handActive && focus && bindings[focus]) handView.focus(focus);
   }
 
   function openDetails() {

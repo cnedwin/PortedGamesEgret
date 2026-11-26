@@ -132,9 +132,9 @@ Raids follow population, rank and raid count. Defence and losses are decided by 
 
 ## 引擎副本 · Engine copy
 
-引擎副本使用白鹭主干 `95897d78095ae8fda9e34dbc13bbbd15db8eaa12`。生成记录见 [vendor/SOURCE.md](vendor/SOURCE.md)。
+引擎副本使用白鹭主干 `94bd70fb26b1f81794c9c6fbbb258c655fcd19df`。生成记录见 [vendor/SOURCE.md](vendor/SOURCE.md)。
 
-The engine copy was generated from Egret main at `95897d78095ae8fda9e34dbc13bbbd15db8eaa12`. See [vendor/SOURCE.md](vendor/SOURCE.md) for the source and resolved entries.
+The engine copy was generated from Egret main at `94bd70fb26b1f81794c9c6fbbb258c655fcd19df`. See [vendor/SOURCE.md](vendor/SOURCE.md) for the source and resolved entries.
 
 ```sh
 node tools/vendor-game.mjs <PeachCreek> @egret/engine @egret/engine/play @egret/engine/kit @egret/engine/web/kit @egret/engine/ui @egret/engine/ui/semantics @egret/engine/ui/testing @egret/engine/web/semantics

@@ -49,7 +49,7 @@ The pause menu has separate music and effects controls and a global mute. Three 
 | 引擎入口 / API · Entry / API | 在本游戏中的用途 · Use in this game | 文件 · File |
 |---|---|---|
 | `createBrowserGame` | 网页中的 2D 舞台与帧循环 · browser 2D stage and frame loop | `src/main.mjs` |
-| `play`、`game.show`、`createBrowserSemantics` | 行囊、商店和铁匠铺由原生按需绘制层承载，含滚动、长文换行、焦点和语义树 · native on-demand inventory, shop and forge with scrolling, wrapped text, focus and semantics | `src/native-rpg-ui.mjs`, `src/inventory-ui.mjs`, `src/commerce-ui.mjs` |
+| `play`、`game.show`、`view.replaceChildren`、`createBrowserSemantics` | 行囊、商店和铁匠铺由原生按需绘制层承载，含键控集合、图片地址绑定、段落密度、滚动与命名焦点 · native on-demand inventory, shop and forge with keyed rows, bound images, paragraph density, scrolling and named focus | `src/native-rpg-ui.mjs`, `src/inventory-ui.mjs`, `src/commerce-ui.mjs` |
 | `Bitmap` | 角色动作、场景、掉落与法宝图集 · actors, scenery, loot and artifact atlases | `src/view.mjs` |
 | `DisplayObjectContainer` | 地面、预警、按纵深排序的人物与建筑 · ground, warnings and depth-sorted actors/scenery | `src/view.mjs` |
 | `Sprite.graphics` | 敌人预警圈、路径与血条 · warnings, paths and health bars | `src/view.mjs` |
@@ -92,9 +92,9 @@ Simulation and data are separate from the 2D view, art preparation, interface an
 
 ## 引擎副本 · Engine copy
 
-本作使用 Egret 主干提交 `8e70dcb3a8a0b40c9966483c92cb9f691a1cefd8`。来源、入口和许可证见 `vendor/SOURCE.md`、`vendor/LICENSE` 和 `vendor/NOTICE`。副本由引擎的 `tools/vendor-game.mjs` 生成。
+本作使用 Egret 主干提交 `94bd70fb26b1f81794c9c6fbbb258c655fcd19df`。来源、入口和许可证见 `vendor/SOURCE.md`、`vendor/LICENSE` 和 `vendor/NOTICE`。副本由引擎的 `tools/vendor-game.mjs` 生成。
 
-The game vendors Egret main at the commit above. `tools/vendor-game.mjs` retains the imported 2D engine, Play UI and redistribution notices. Gameplay and its three modal panels both use native Egret rendering. Play queues cold equipment images through the native declarative view. · 装备图片冷加载由原生声明式视图排队；面板重建使用引擎原生命名焦点，保留动态物品列表的滚动状态。首屏按实际原画、图集及地图纹理准备项显示进度并可重试；战场与原生行囊按物理显示密度渲染，保留逻辑坐标与玩法。
+The game vendors Egret main at the commit above. `tools/vendor-game.mjs` retains the imported 2D engine, Play UI and redistribution notices. Gameplay and its three modal panels both use native Egret rendering. Keyed rows retain the list and surviving controls on compatible membership changes. Image sources and paragraph raster density use native bindings and styles. · 装备图片冷加载由原生声明式视图排队；同结构的物品列表通过键控集合更新，保留滚动、焦点和仍存在的行。原生段落密度替代整个 UI 坐标树的缩放；物理背板预算不变。首屏按实际资源准备项显示进度并可重试，保留逻辑坐标、规则和存档。
 
 在仓库根目录通过静态 HTTP 预览打开 `/FengshenChronicle/`。游戏无需业务后端。ES modules 与 import maps 需要 HTTP 或 HTTPS 页面。
 

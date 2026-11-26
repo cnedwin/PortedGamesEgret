@@ -60,3 +60,15 @@
 - 软件文字缺笔已在独立原生 game.show（不依赖本游戏）复现：size16、height23、ratio1 断笔；同文字 height24 及 ratio2 清晰，atlasPending/refusals 均 0。详细复现和验收建议见 ENGINE-NOTES 第 7 条。· Independently reproduced without game code; odd/even height and raster density A/B.
 - 增加悬停后的最终版本也在 Fold7 横屏完整复跑：17/17、60/60 文件指纹；32 次可信触点、128 个事件、三段各 181 帧 p95/max 16.7 ms、0 错误。竖屏为仅差桌面原生悬停与行尾整理的前一候选版（11/11）。· Final exact landscape physical rerun with native hover passes; portrait was tested before the desktop hover-only adaptation.
 - 浏览器最终冻结运行时：桌面 25/25、模拟竖屏 18/18、模拟横屏 18/18，合计 61/61 实际输入/语义/玩法断言；ratio2 独立视觉路径完成，四张静态对照均通过（标题 0.00%、手机 0.36%、衣橱 0.34%、商店 0.84%）。校园全景差异 17.21% 来自不同时刻动态视差，截图逐张审查后保留为参考，测试改为行为与布局验收；未调宽其他像素容差。最终变更仅移除此不稳定全景像素门槛，语法检查通过，未重复整个浏览器流程。· 61/61 input checks; four reproducible pixel gates passed and animated map kept as reviewed reference. The in-flight run included the removed nondeterministic map pixel assertion; no second whole-suite run was performed.
+
+
+## 2026-11-27 官方主干同步 · Official main integration
+
+- 引擎 · Engine: 94bd70fb26b1f81794c9c6fbbb258c655fcd19df；预发布 CI 候选 b1f275d7 实测，正式副本的运行时代码逐文件哈希核对一致。 · Tested the complete CI candidate, then verified the official runtime payload byte for byte.
+- 自动 · Automated: Node 65/65; existing Chromium browser acceptance passed, reviewed screenshot baselines were not overwritten.
+- 实机 · Physical devices: Windows Edge 158 / RTX 5090 Laptop GPU; Samsung Fold7 Android 17 / Chrome 157 / Adreno 830, actual trusted mouse/keyboard and touch input through the respective browser control, isolated game saves.
+- 代表路线 · Representative route: 序章、手机七页签、连续换装染色、换回和续档。 · prologue, seven phone pages, coordinate-based dye, re-equip and reload.
+- PC: campus/wardrobe/dyed rAF p95 4.3/4.2/4.3 → 4.3/4.3/4.3 ms.
+- Fold7: three 180/181 rAF windows: p95 all 16.7 ms; max 33.2 → 16.7 ms.
+- 相同两点染色值 #e6d477→#9126a3，旧存档隔离续读；原先软件 ratio=1 奇数高度断笔的 14 标签最小复现已通过。 / Identical dye values and save reload. The 14-label software ratio-1 odd-height repro is clear now.
+- 限制 · Limits: 短前台 rAF 不是独立 GPU 时间，也不是整局、所有设备或中端手机验收。未跑真实读屏、物理手柄、Safari 或整局声学测试。 · Short foreground rAF samples are not isolated GPU time or a whole-game/device matrix. No physical screen reader, controller, Safari or speaker/acoustic certification.

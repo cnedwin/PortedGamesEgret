@@ -12,7 +12,7 @@ import { createLandingPreview } from './landing-preview.mjs';
 import { createSound } from './sound.mjs';
 import { createView } from './view.mjs';
 import { planCanalLayout, stageToField } from './native-layout.mjs';
-import { createCanalUi, describeCanalUi } from './native-ui.mjs';
+import { createCanalUi } from './native-ui.mjs';
 import { buildTitle, buildMenu, buildEnd, buildHelp } from './native-screens.mjs';
 import { buildFieldUi, buildPicker } from './native-field-ui.mjs';
 
@@ -38,21 +38,10 @@ const uiState = {
 };
 let game, mapRoot, view, sound, ui, layout, projection, layoutSignature, helpOpen = false, ready = false;
 let pickerState = null, feedback = null, previewBoat = null, mapPress = null, lastFocus = null, lastHover = null;
-let userInput = {type: 'keyboard', at: 0};
+let pointerSource = 'keyboard';
 const wavesOf = world => world.waves ?? WAVES;
 const isIntercept = world => world?.mode === 'intercept';
 const semantics = createUiSemantics({ maxNodes: 1024 });
-const bridge = describeCanalUi(semantics, name => {
-  const plot = /^plot-(\d+)$/.exec(name), gate = /^gate-(\d+)$/.exec(name);
-  if (plot) return uiState.plots[Number(plot[1])]?.label;
-  if (gate) return uiState.gates[Number(gate[1])]?.label;
-  if (name === 'landing-preview') return t('landingPreviewName');
-  if (name.startsWith('kind-')) {
-    const kind = name.slice(5), entry = TOWERS[kind];
-    if (entry) return t('buildFor', { tower: t(kind), cost: entry.levels[0].cost }) + '. ' + t(kind + 'Note');
-  }
-  return null;
-});
 
 function setSetting(key, value) {
   if (!save.update(data => { data.settings[key] = value; })) notice = 'saveRefused';
@@ -93,7 +82,7 @@ function arrange(made) {
 
 await play({
   width: 1120, height: 680, portrait: { width: 540, height: 960 }, fit: 'expand',
-  parent: frameElement, transparent: true, seed: app.seed, semantics: bridge,
+  parent: frameElement, transparent: true, seed: app.seed, semantics,
   setup(made) {
     game = made;
     sound = createSound(game, { on: settings().sound, music: settings().music });
@@ -105,7 +94,7 @@ await play({
   onError: cause => console.error(cause)
 });
 paintGround(ground);
-Object.assign(game.canvas.parentElement.style, { background: 'transparent', zIndex: '1' });
+game.canvas.parentElement.style.zIndex = '1';
 game.canvas.setAttribute('aria-label', t('stage'));
 game.reducedMotion = settings().reducedMotion || prefersReducedMotion();
 ui = createCanalUi(game, app, semantics);
@@ -115,8 +104,8 @@ placeMap(game);
 projection = createBrowserSemantics({ semantics, canvas: game.canvas,
   width: layout.width, height: layout.height, label: t('stage') });
 
-// Native view taps do not yet carry an input-origin argument. Remember the actual activation
-// event only briefly; keyboard activation clears a stale pointer event.
+// Keep the map's raw press pairing and mouse hover source separate from native
+// control activations; tower cards receive their own activation context.
 function clientOnMap(event) {
   const box = game.canvas.getBoundingClientRect();
   if (!box.width || !box.height) return null;
@@ -127,7 +116,7 @@ function clientOnMap(event) {
 }
 const recordPointer = event => {
   const onCanvas = event.target === game.canvas || game.canvas.contains(event.target);
-  if (onCanvas) userInput = { type: event.pointerType || 'mouse', at: performance.now() };
+  if (onCanvas) pointerSource = event.pointerType || 'mouse';
   if (event.type === 'pointerdown') {
     mapPress = onCanvas && app.screen === 'play' && event.isPrimary && event.button === 0 && clientOnMap(event)
       ? { id: event.pointerId, x: event.clientX, y: event.clientY } : null;
@@ -145,9 +134,8 @@ window.addEventListener('pointerdown', recordPointer, true);
 window.addEventListener('pointerup', recordPointer, true);
 window.addEventListener('pointercancel', event => {
   if (mapPress?.id === event.pointerId) mapPress = null;
-  userInput = {type:'keyboard',at:0};
+  pointerSource = 'keyboard';
 }, true);
-const touchActivation = () => ['touch','pen'].includes(userInput.type) && performance.now() - userInput.at < 1800;
 
 function showReachOf(plot, kind, level) {
   const tower = app.world?.towers[plot];
@@ -322,7 +310,7 @@ const fieldActions = {
   gate: i => { closePicker();shutGate(i); },
   call: () => {closePicker();callWave();}, speed:()=>{closePicker();setSpeed(app.speed===3?1:app.speed+1);},
   menu:()=>openMenu(), landing:()=>{closePicker();landingPreview.cycle();},
-  choose: kind => touchActivation()?buildPreview(kind):act('build',kind),
+  choose: (kind, activation) => ['touch', 'pen'].includes(activation.source) ? buildPreview(kind) : act('build', kind),
   confirm:()=>{if(pickerState)act('build',pickerState.previewKind);},
   upgrade:()=>act('upgrade'),sell:()=>act('sell'),cancel:()=>closePicker(true)
 };
@@ -401,7 +389,7 @@ function updateViewInput(){
     }
   }
   const pointer=game.pointer,hit=ui.hit(pointer.x,pointer.y);
-  if(userInput.type==='mouse'&&!pointer.down&&hit!==lastHover){
+  if(pointerSource==='mouse'&&!pointer.down&&hit!==lastHover){
     lastHover=hit;
     if(pickerState&&hit?.startsWith('kind-'))buildPreview(hit.slice(5));
     else if(!pickerState&&/^plot-\d+$/.test(hit??''))showReachOf(Number(hit.slice(5)));
@@ -429,7 +417,7 @@ function frame(seconds){
 }
 
 window.addEventListener('keydown',event=>{
-  userInput={type:'keyboard',at:performance.now()};
+  pointerSource='keyboard';
   if(event.ctrlKey||event.metaKey||event.altKey)return;
   const key=event.key.toLowerCase();
   const handle=fn=>{event.preventDefault();event.stopPropagation();if(!event.repeat)fn();};

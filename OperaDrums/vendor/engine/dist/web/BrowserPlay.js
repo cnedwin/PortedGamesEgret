@@ -19,6 +19,7 @@ import { MUSIC_MOODS, MUSIC_PARTS, composeMusic, musicMix } from './playMusic.js
 import { createDragAndDrop, createGestures } from './gestures.js';
 import { createPlayViews } from './playView.js';
 import { createBadges, createRequest, formatCompact } from './viewParts.js';
+import { pointerTapActivation, semanticTapActivation } from './playActivation.js';
 /** A line of text: a sprite to place, fade, tween and remove like any other, with words that can be changed. */
 export class PlayText extends Sprite {
     #text;
@@ -26,13 +27,35 @@ export class PlayText extends Sprite {
     #size;
     #changed;
     #styled;
-    constructor(text, changed, color = 0xffffff, size = 24, styled = () => { }) {
+    #readReady;
+    #ended;
+    constructor(text, changed, color = 0xffffff, size = 24, styled = () => { }, readReady = () => Promise.resolve(), ended = () => { }) {
         super();
         this.#text = text;
         this.#changed = changed;
         this.#color = color;
         this.#size = size;
         this.#styled = styled;
+        this.#readReady = readReady;
+        this.#ended = ended;
+    }
+    /** The current words/style are installed on the display when this resolves. Read again after a change.
+     * A superseded, hidden or removed pending revision rejects with AbortError; raster failures reject too.
+     * This is not a promise that the GPU has presented a frame.
+     */
+    get ready() {
+        return this.#readReady();
+    }
+    dispose() {
+        if (this.isDisposed)
+            return;
+        try {
+            super.dispose();
+        }
+        finally {
+            if (this.isDisposed)
+                this.#ended();
+        }
     }
     get text() {
         return this.#text;
@@ -256,6 +279,8 @@ export async function play(options) {
         throw invalid('setup is a function');
     if (update !== undefined && typeof update !== 'function')
         throw invalid('update is a function');
+    if (options.staticLayers !== undefined && typeof options.staticLayers !== 'boolean')
+        throw invalid('staticLayers is true or false');
     const renderMode = options.renderMode ?? 'continuous';
     if (renderMode !== 'continuous' && renderMode !== 'on-demand')
         throw invalid("renderMode is 'continuous' or 'on-demand'");
@@ -326,6 +351,8 @@ export async function play(options) {
     }
     const surface = canvas;
     let api;
+    const deviceDensity = Number(globalThis.devicePixelRatio);
+    const playDensity = options.pixelRatio ?? (deviceDensity > 0 ? Math.min(deviceDensity, 2) : 1);
     const baseBrowser = await createBrowserGame({
         canvas: surface,
         width,
@@ -335,13 +362,16 @@ export async function play(options) {
         blendSpace,
         // Masks, glows, outlines, blurs and colour matrices are drawn, as Egret 5 code expects of them.
         effects: true,
+        ...(options.staticLayers === undefined ? {} : { staticLayers: options.staticLayers }),
         autoStart: false,
         keyboard: false,
         ...(holder === undefined ? {} : { fit: fitAsked, fitTo: holder }),
         ...(options.portrait === undefined ? {} : { portrait: options.portrait }),
         ...(options.insets === undefined ? {} : { insets: options.insets }),
         ...(options.backend === undefined ? {} : { backend: options.backend }),
-        ...(options.pixelRatio === undefined ? {} : { pixelRatio: options.pixelRatio }),
+        pixelRatio: playDensity,
+        ...(options.beforeRender === undefined ? {} : { beforeRender: options.beforeRender }),
+        ...(options.renderRetry === undefined ? {} : { renderRetry: options.renderRetry }),
         ...(onError === undefined ? {} : { onError }),
         ...(options.onWarning === undefined ? {} : { onWarning: options.onWarning })
     }).catch((cause) => {
@@ -350,7 +380,7 @@ export async function play(options) {
     });
     const { engine, scope, stage } = baseBrowser;
     const revision = renderMode === 'on-demand' ? engine.watchDisplayRevision(scope) : undefined;
-    let lastFrame, lastRevision = -1, redraw = 0, shownRedraw = 0;
+    let lastFrame, lastRevision = -1, lastLayerRevision = -1, redraw = 0, shownRedraw = 0;
     const invalidate = () => {
         if (revision !== undefined)
             redraw++;
@@ -392,7 +422,7 @@ export async function play(options) {
             },
             renderSharedFrame(frame) {
                 // A refusal or a late mutation must leave the request pending.
-                const pending = redraw, next = revision?.revision;
+                const pending = redraw, next = revision?.revision, nextLayer = baseBrowser.staticLayers?.revision ?? 0;
                 // Drawn as the game draws: a frame of too many images is left undrawn with a warning, not the game stopped.
                 const submitted = baseBrowser.drawFrame(frame);
                 if (submitted === undefined)
@@ -400,6 +430,7 @@ export async function play(options) {
                 if (next !== undefined) {
                     lastFrame = frame;
                     lastRevision = next;
+                    lastLayerRevision = nextLayer;
                     shownRedraw = pending;
                 }
                 return submitted;
@@ -407,10 +438,15 @@ export async function play(options) {
         },
         host: baseBrowser.host,
         frame: () => baseBrowser.frame,
+        ...(options.beforeRender === undefined ? {} : { beforeRender: options.beforeRender }),
+        ...(options.renderRetry === undefined ? {} : { renderRetry: options.renderRetry }),
         ...(revision === undefined
             ? {}
             : {
-                shouldRender: () => lastRevision !== revision.revision || shownRedraw !== redraw || lastFrame !== baseBrowser.frame
+                shouldRender: () => lastRevision !== revision.revision ||
+                    lastLayerRevision !== (baseBrowser.staticLayers?.revision ?? 0) ||
+                    shownRedraw !== redraw ||
+                    lastFrame !== baseBrowser.frame
             }),
         update: () => {
             if (!disposed && playLoop.state === 'running')
@@ -1078,6 +1114,11 @@ export async function play(options) {
         if (o === null || typeof o !== 'object')
             throw invalid('the options of a text are an object');
         const { size = 24, color = 0xffffff, align = 'left', bold = false } = o;
+        const { fontFamily, fontWeight = bold ? 700 : 400, italic = false } = o;
+        if (fontFamily !== undefined && (typeof fontFamily !== 'string' || !fontFamily.trim() || fontFamily.length > 256))
+            throw invalid('fontFamily is one nonempty family, at most 256 characters');
+        if (!Number.isInteger(fontWeight) || fontWeight < 1 || fontWeight > 1000 || typeof italic !== 'boolean')
+            throw invalid('fontWeight is an integer from 1 to 1000, italic is true or false');
         if (!finite(size) || size <= 0 || !colour(color))
             throw invalid('a text has a size above 0 and a colour');
         if (align !== 'left' && align !== 'center' && align !== 'right')
@@ -1095,27 +1136,97 @@ export async function play(options) {
             : verticalPlayWords(words, typeof vertical === 'object' ? (vertical.column ?? Infinity) : Infinity);
         // The words are drawn on pages shared with the game's other texts, so a screen of many short texts takes few of
         // the images a frame may hold.
-        let label, rasterActive = true, gone = false;
+        let label, rasterActive = true, gone = false, alignRaster = false;
         const round = generation;
+        const newRevision = () => {
+            const next = pending();
+            // A label may be changed or closed without any caller waiting for the old words.
+            void next.promise.catch(() => { });
+            return next;
+        };
+        let revision = newRevision();
+        let creationFailure;
         let pendingReady;
+        const abortRevision = (reason) => {
+            const cause = new DOMException(reason, 'AbortError');
+            revision.reject(cause);
+            revision = newRevision();
+            revision.reject(cause);
+            pendingReady = undefined;
+        };
+        const changeRevision = () => {
+            revision.reject(new DOMException('Text revision was superseded', 'AbortError'));
+            revision = newRevision();
+            pendingReady = undefined;
+            if (creationFailure !== undefined)
+                revision.reject(creationFailure.cause);
+            else if (!rasterActive)
+                revision.reject(new DOMException('Text is hidden', 'AbortError'));
+        };
+        // The raster's logical origin is on its own texel grid. Middle baselines and centre alignment can move that
+        // origin by half a physical pixel, producing inconsistent sampling (notably missing stems at density 1).
+        // Snap only the atlas display, in device pixels, not the authored PlayText/layout position. Keep the transform
+        // continuous in the world or under rotated/skewed parents. Reapply after scroll, layout or surface size changes.
+        const position = (made) => {
+            const box = made.bounds;
+            let x = align === 'center' ? -box.width / 2 : align === 'right' ? -box.width : 0;
+            let y = o.baseline === 'middle' ? -box.height / 2 : 0;
+            if (alignRaster && made.display.numChildren > 0) {
+                const picture = made.display.getChildAt(0);
+                const lx = x + picture.x, ly = y + picture.y;
+                const at = node.localToGlobal(lx, ly);
+                const sx = Math.ceil(browser.frame.width * playDensity) / browser.frame.width;
+                const sy = Math.ceil(browser.frame.height * playDensity) / browser.frame.height;
+                const ax = Math.round(at.x * sx) / sx, ay = Math.round(at.y * sy) / sy;
+                if (Math.abs(ax - at.x) > 1e-8 || Math.abs(ay - at.y) > 1e-8) {
+                    const offset = node.globalToLocal(ax, ay);
+                    x += offset.x - lx;
+                    y += offset.y - ly;
+                }
+            }
+            made.display.x = x;
+            made.display.y = y;
+        };
         const settle = () => {
             if (label === undefined || gone || !rasterActive)
                 return;
             const made = label;
             const ready = made.ready;
-            if (ready === pendingReady)
+            if (ready === pendingReady?.ready && revision === pendingReady.revision)
                 return;
-            pendingReady = ready;
-            ready.then(() => {
-                if (gone || !rasterActive || pendingReady !== ready)
+            const request = { ready, revision };
+            pendingReady = request;
+            void ready
+                .then(() => {
+                if (gone || pendingReady !== request)
                     return;
-                const box = made.bounds;
-                made.display.x = align === 'center' ? -box.width / 2 : align === 'right' ? -box.width : 0;
-                made.display.y = o.baseline === 'middle' ? -box.height / 2 : 0;
+                syncVisibility();
+                if (!rasterActive || pendingReady !== request)
+                    return;
+                position(made);
                 made.display.visible = true;
-            }, () => { });
+                request.revision.resolve();
+            }, cause => {
+                if (pendingReady === request)
+                    request.revision.reject(cause);
+            })
+                .catch(cause => {
+                if (pendingReady === request)
+                    request.revision.reject(cause);
+            });
+        };
+        const removeText = () => {
+            if (gone)
+                return;
+            gone = true;
+            abortRevision('Text was removed');
+            labelVisibility.delete(syncVisibility);
+            label?.dispose();
         };
         const node = scope.use(new PlayText(String(given), next => {
+            if (gone)
+                return;
+            changeRevision();
             if (label === undefined)
                 return;
             // A label's old wording must not describe an action after its semantic name changed.
@@ -1123,14 +1234,21 @@ export async function play(options) {
             label.text = drawn(next);
             settle();
         }, color, size, style => {
+            if (gone)
+                return;
+            changeRevision();
             if (label === undefined)
                 return;
+            label.display.visible = false;
             label.set({
                 ...(style.color === undefined ? {} : { color: style.color }),
-                ...(style.size === undefined ? {} : { fontSize: style.size })
+                ...(style.size === undefined ? {} : { fontSize: style.size }),
+                ...(style.size !== undefined && vertical !== undefined && vertical !== false
+                    ? { lineHeight: style.size * 1.1 }
+                    : {})
             });
             settle();
-        }));
+        }, () => revision.promise, removeText));
         node.x = finite(o.x) ? o.x : 0;
         node.y = finite(o.y) ? o.y : 0;
         if (o.baseline !== undefined && o.baseline !== 'top' && o.baseline !== 'middle')
@@ -1139,29 +1257,51 @@ export async function play(options) {
         if (!(into instanceof Sprite) || into.isDisposed)
             throw invalid("layer is 'ui', 'world' or a sprite");
         into.addChild(node);
-        const syncVisibility = () => {
+        function syncVisibility() {
             if (node.isDisposed || generation !== round) {
-                removers.get(node)?.();
+                removeText();
                 return;
             }
-            let next = false;
+            let next = false, inUi = false, axisAligned = true;
             for (let current = node; current !== undefined; current = current.parent) {
                 if (!current.visible || current.alpha === 0)
                     break;
+                if (current === ui || current === glass || current === cover)
+                    inUi = true;
+                if (axisAligned &&
+                    (current.rotation % 360 !== 0 ||
+                        current.skewX !== 0 ||
+                        current.skewY !== 0 ||
+                        current.scaleX === 0 ||
+                        current.scaleY === 0))
+                    axisAligned = false;
                 if (current === stage) {
                     next = true;
                     break;
                 }
             }
-            if (label !== undefined && rasterActive !== next) {
+            const wasAligned = alignRaster;
+            alignRaster = inUi && axisAligned;
+            if (rasterActive !== next) {
                 rasterActive = next;
-                label.display.visible = false;
-                label.setRasterActive(next);
+                if (next) {
+                    changeRevision();
+                }
+                else {
+                    abortRevision('Text is hidden');
+                }
+                if (label !== undefined) {
+                    label.display.visible = false;
+                    label.setRasterActive(next);
+                }
                 if (next)
                     settle();
             }
-        };
+            if (next && label !== undefined && label.display.visible && (alignRaster || wasAligned !== alignRaster))
+                position(label);
+        }
         const words = node.text;
+        labelVisibility.add(syncVisibility);
         prepareLabelVisibility();
         browser
             .createAtlasLabel({
@@ -1170,32 +1310,41 @@ export async function play(options) {
             // A column's characters stand one under another, as close as their size.
             ...(vertical === undefined || vertical === false ? {} : { lineHeight: size * 1.1 }),
             color,
-            fontWeight: bold ? 700 : 400,
+            ...(fontFamily === undefined ? {} : { fontFamily }),
+            fontWeight,
+            italic,
             locale: o.locale ?? (/[぀-ヿ㐀-鿿가-힯]/.test(words) ? 'zh' : 'en')
         })
             .then(made => {
             if (gone || node.isDisposed || generation !== round) {
                 made.dispose();
+                removeText();
                 return;
             }
             label = made;
             // Hidden until it has been measured, so centred words never show at the wrong place first.
             made.display.visible = false;
             node.addChild(made.display);
-            labelVisibility.add(syncVisibility);
+            made.setRasterActive(rasterActive);
             syncVisibility();
             if (node.text !== words)
                 made.text = drawn(node.text);
             // What was set while the words were being made.
             if (node.color !== color || node.size !== size)
-                made.set({ color: node.color, fontSize: node.size });
+                made.set({
+                    color: node.color,
+                    fontSize: node.size,
+                    ...(vertical === undefined || vertical === false ? {} : { lineHeight: node.size * 1.1 })
+                });
             settle();
-        }, () => { });
-        removers.set(node, () => {
-            gone = true;
-            labelVisibility.delete(syncVisibility);
-            label?.dispose();
+        }, cause => {
+            // No label exists to retry the request. Preserve the actual failure for later revisions as well.
+            if (gone)
+                return;
+            creationFailure = { cause };
+            revision.reject(cause);
         });
+        removers.set(node, removeText);
         return node;
     };
     const boxOf = (node) => {
@@ -1652,9 +1801,9 @@ export async function play(options) {
             const name = tapOptions?.name;
             if (name !== undefined && (typeof name !== 'string' || name.trim() === '' || name.length > 1024))
                 throw invalid('the name of a tap is words');
-            const tap = () => {
+            const tap = (activation) => {
                 const round = generation;
-                tapListener(callback, cause => {
+                tapListener(() => callback(activation), cause => {
                     // A delayed input callback belongs to the round that received the press.
                     if (!disposed && generation === round)
                         failure ??= { cause };
@@ -1684,13 +1833,13 @@ export async function play(options) {
                             hidden: !shownNow
                         };
                     },
-                    onActivate: tap
+                    onActivate: () => tap(semanticTapActivation(node))
                 }));
             }
             if (browser.pointer === undefined)
                 return;
             node.touchEnabled = true;
-            node.on(browser.pointer.events.tap, tap);
+            node.on(browser.pointer.events.tap, event => tap(pointerTapActivation(node, event)));
             areaFromBounds(node);
             if (!tappable.includes(node))
                 tappable.push(node);

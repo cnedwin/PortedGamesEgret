@@ -151,10 +151,10 @@ quarter of their discards are not the best) and hardly defend; experts defend ha
 
 ## 引擎副本 · Engine copy
 
-引擎副本取自 [Egret_rebuild](https://github.com/cnedwin/Egret_rebuild) 提交 `8e70dcb3a8a0b40c9966483c92cb9f691a1cefd8`，由引擎仓库的 `tools/vendor-game.mjs` 复制，见 [vendor/SOURCE.md](vendor/SOURCE.md)。用到的入口见下方命令。
+引擎副本取自 [Egret_rebuild](https://github.com/cnedwin/Egret_rebuild) 提交 `94bd70fb26b1f81794c9c6fbbb258c655fcd19df`，由引擎仓库的 `tools/vendor-game.mjs` 复制，见 [vendor/SOURCE.md](vendor/SOURCE.md)。用到的入口见下方命令。
 
 The engine copy is from [Egret_rebuild](https://github.com/cnedwin/Egret_rebuild) commit
-`8e70dcb3a8a0b40c9966483c92cb9f691a1cefd8`, copied by the engine's `tools/vendor-game.mjs`; see
+`94bd70fb26b1f81794c9c6fbbb258c655fcd19df`, copied by the engine's `tools/vendor-game.mjs`; see
 [vendor/SOURCE.md](vendor/SOURCE.md) and the entries below.
 
 ```sh

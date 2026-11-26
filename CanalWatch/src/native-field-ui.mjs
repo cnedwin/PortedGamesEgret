@@ -64,7 +64,7 @@ export function buildFieldUi({ layout, app, uiState, actions }) {
   const value = name => () => {
     if (name.startsWith('gate-')) {
       const words = gate(name).text ?? '';
-      // Shorten only the wide English presentation; the semantic bridge
+      // Shorten only the wide English presentation; the native label
       // keeps the original detailed gate status for accessibility.
       return isWide && getLanguage() === 'en' ? words.replace(/^(Upper|Lower) gate/i, '$1')
         .replace(/: shut it$/, ' · close').replace(/: shut for (\d+) s$/, ' · shut $1s')
@@ -94,6 +94,8 @@ export function buildFieldUi({ layout, app, uiState, actions }) {
       name === 'landing-preview' ? actions.landing : actions[name];
     bind[name] = {
       text: value(name), tap: () => action?.(),
+      ...(name.startsWith('gate-') ? { label: () => gate(name).label || value(name)() } :
+        name === 'landing-preview' ? { label: () => t('landingPreviewName') } : {}),
       color: () => name.startsWith('gate-') ? gateColor(name) :
         name === 'call' ? (uiState.callReady ? RED : MUTE) :
           name === 'landing-preview' ? (uiState.landingPressed ? SELECT : DEEP) : JADE,
@@ -180,11 +182,11 @@ export function buildFieldUi({ layout, app, uiState, actions }) {
       children: [label(builtWord, 0, 0, builtSize, builtSize, '', Math.max(11, builtSize * 0.63), { bold: true })]
     });
     parts.push({
-      type: 'panel', name, ...box(cx - hit / 2, cy - hit / 2, hit, hit),
+      type: 'panel', name, role: 'button', ...box(cx - hit / 2, cy - hit / 2, hit, hit),
       label: state().label || t('plotEmpty', { n: i + 1 }),
       children: [emptyBadge, builtBadge]
     });
-    bind[name] = { tap: () => actions.plot(i) };
+    bind[name] = { label: () => state().label || t('plotEmpty', { n: i + 1 }), tap: () => actions.plot(i) };
     bind[emptyName] = {
       visible: () => !state().built,
       color: () => state().selected ? SELECT : state().recommended ? READY : DEEP
@@ -271,7 +273,8 @@ export function buildPicker({ layout, app, uiState, picker, actions }) {
       bind[name] = {
         text: () => (i + 1) + ' · ' + (wide && getLanguage() === 'en' ? t(kind).replace(/ tower$/i, '') : t(kind)),
         color: () => !affordable(cost) ? MUTE : selected() ? SELECT : JADE,
-        tap: () => actions.choose(kind)
+        label: () => t('buildFor', { tower: t(kind), cost }) + '. ' + t(kind + 'Note'),
+        tap: (_state, activation) => actions.choose(kind, activation)
       };
       const priceTop = yy + bh + 1, available = Math.max(1, cardH - bh - 2),
         costSize = clamp(10, (wide ? 22 : portrait ? 20 : 17) * ratio, available * 0.78);

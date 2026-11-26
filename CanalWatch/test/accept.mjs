@@ -133,6 +133,10 @@ async function desktop() {
   await layoutCheck(page, 'desktop');
   await focusCheck(page, 'field', 'plot-5', 'the game starts on plot six');
   check(/Plot 6/.test(await nodeName(page, 'plot-5')), 'the compact plot control has its richer accessible name');
+  const fieldNodes = await nodes(page);
+  check(fieldNodes.find(n => n.id.endsWith(':plot-5'))?.role === 'button' &&
+    !fieldNodes.some(n => /:plot-(mark|word|builtmark|builtword)-\d+$/.test(n.id)),
+    'native plot button is a semantic leaf, with its badge decoration excluded');
   const silver = await state(page, () => window.canalWatch.app.world.silver);
   await key(page, 'Enter');
   await waitView(page, 'picker');
@@ -243,6 +247,12 @@ async function portrait() {
   await activate(page, 'sell', true);
   await wait(page, () => !window.canalWatch.app.world.towers[5]);
   check(await state(page, () => window.canalWatch.app.world.silver) > silver - 210, 'selling removes the tower and refunds silver');
+  const mouseSilver = await state(page, () => window.canalWatch.app.world.silver);
+  await activate(page, 'plot-5', true);
+  await activate(page, 'kind-crossbow', false);
+  await wait(page, () => window.canalWatch.app.world.towers[5]?.kind === 'crossbow');
+  check(await state(page, () => window.canalWatch.app.world.silver) === mouseSilver - 70,
+    'mouse activation immediately after touch still builds once, without inheriting touch preview');
   await activate(page, 'menu', true);
   await screen(page, 'menu');
   await shot(page, 'portrait-menu');

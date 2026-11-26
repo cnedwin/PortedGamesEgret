@@ -55,13 +55,13 @@ written as in part 3 of [docs/GAME-STANDARD.md](../docs/GAME-STANDARD.md).
 - 建议 · Suggestion：语义投影可以接受尺寸回调或在 sync 时更新逻辑尺寸，减少游戏侧重建。 · Accept a logical-size callback or an explicit resize in sync, reducing game-side adapter recreation.
 - 状态 · Status：浏览器英文横转竖与按键输入回归已通过；此为便利性建议，非已复现的引擎故障。 · Browser rotation and keyboard input checks passed; a convenience suggestion, not a reproduced engine failure.
 
-### 7. 可见按钮文字与语义名称的分别配置 · Separate visible button text and semantic name — 已记录 / documented
-<!-- engine-note: {"id":"LanternShadows#7","status":"documented","topic":"native-ui-accessible-button-name","workaround":["src/native-ui.mjs"]} -->
+### 7. 可见按钮文字与语义名称的分别配置 · Separate visible button text and semantic name — 已在 `7f32c3b9` 解决 / resolved in `7f32c3b9`
+<!-- engine-note: {"id":"LanternShadows#7","status":"resolved","topic":"native-ui-accessible-button-name","workaround":["src/native-ui.mjs"]} -->
 
 - 现象 · What happens：短横屏工具栏若把 Effects 缩成 FX，原生按钮的语义名称也变成 FX。当前原生视图的按钮名称直接来自文字绑定；部件 label 不能作为独立按钮名称。 · Abbreviating Effects to FX also changes the semantic name, because a native button's name follows its text binding rather than an independent part label.
 - 绕过办法 · Workaround：恢复完整的 Effects、Music、On-screen 和中文名称，用开关状态后缀及自适应字号保持含义明确。 · Restore full localized labels and state suffixes, using adaptive text size.
 - 建议 · Suggestion：为按钮增加独立的无障碍名称（或明确现有 label 的优先级），使短文字、图标与更完整的语音描述可以共存。 · Offer an independent accessible button name, or clarify label precedence, so short text/icons and full spoken names can coexist.
-- 状态 · Status：已通过实际语义树复现；本作使用完整可见名称绕过，不需要修改引擎。 · Reproduced in the semantic tree; full visible names are the game-side workaround.
+- 状态 · Status：引擎 #499 支持动态 `bind.label` 独立于可见文字。本作保留原本明确的全称及状态，避免无必要缩写。 · Engine #499 added independent bound accessible names; the game keeps its readable full labels and state suffixes.
 
 ### 8. 扩展舞台的画布像素密度 · Backing density on an expanded stage — 已在游戏内绕过 / worked around
 <!-- engine-note: {"id":"LanternShadows#8","status":"worked-around","topic":"expanded-stage-pixel-ratio","workaround":["src/main.mjs"]} -->
@@ -95,3 +95,20 @@ written as in part 3 of [docs/GAME-STANDARD.md](../docs/GAME-STANDARD.md).
 - 诊断绕过 · Diagnostic workaround：仅在独立测试构建中，继续每次动画/骨骼/物理/语义推进及事件，用最新语义版本合并待发布网格，在实际准入绘制前 flush。三组各 548/548 状态与事件逐帧严格一致，均 6,421 次事件；所有实际提交的网格版本正确（501/501、472/472、510/510），未发现过期网格。密集段语义推进均 34,229 次；B 网格发布少 6,114 次。此诊断会调整绘制与事件的顺序，不能证明任意事件监听、seek/reset/dispose/error 情形均安全。正式版不采用私有 API，也不改规则。 · Coalesce only the latest graphics revision before admitted render in the diagnostic. Exact fixture equivalence and freshness passed, but event ordering changes and arbitrary lifecycle/listener behavior is not proven. The release is unchanged.
 - 建议 · Suggestion：优先优化 extract/geometry copy（基准实际提交 p50/p95：1.4/5.5、2.8/9.8 ms）；提供显式 opt-in 的语义推进与绘制准备分离契约，以及 Host 准入后的 before-capture 调度点；保留事件顺序、碰撞与动画时间，定义最新 revision、可取消/退役的生命周期，避免把全部成本集中到下一次提交。以提交帧 CPU 与间隔、跳过帧 CPU、网格新鲜度、事件与状态一致性一并验收。 · Optimize extraction/copy first; expose an explicit semantic/display split and admission-aware before-capture scheduling, with event ordering, latest revision and cancellation/retirement contracts. Evaluate whole-frame cadence and correctness, not only eliminated work.
 - 状态 · Status：公开 Spine advance 接口不能独立延期绘制，暂不采用实验方案。复现说明、990 帧数据及严格等价脚本见 [test/perf](test/perf/README.md)、[JSON](test/perf/reference-spine-fold7.json)、[CSV](test/perf/reference-spine-fold7.csv)。计时均 CPU 墙钟，不是 GPU 执行或显示呈现。 · Open; measurements are CPU/timing, not GPU execution or presentation.
+
+- 更新 · Update：当前正式引擎 94bd70fb 已提供帧准入后的 beforeRender（#502），并合入 Spine 临时几何复制优化（#500）及 GPU 层缓存等能力。本作只将精确的呈现恢复放在该回调，不改变语义推进；公开 API 尚未解耦 Spine advance 与网格发布。短实机回归见 QUALITY.md，并非重跑上述固定步长深度诊断。 · The admission-aware presentation hook and geometry optimizations are available; the semantic/display split remains open. No deferred Spine display is shipped.
+
+### 11. 空的命名状态文字不再破坏语义树 · Optional blank text stays out of semantics — 已在 `fb8d101c` 解决 / resolved in `fb8d101c`
+<!-- engine-note: {"id":"LanternShadows#11","status":"resolved","topic":"native-ui-empty-text","workaround":["src/native-ui.mjs"]} -->
+
+- 原现象 · Previously：Boss、连击、百身术及战斗提示在没有内容时为空；旧版本需要给命名文字保留非空语义名称并隐藏该节点。 · A named dynamic status could be blank during normal battles, requiring hidden placeholder text to satisfy semantic naming.
+- 状态 · Status：引擎 #501 支持空的非交互文字不发布语义。游戏删除动态状态的破折号替代内容，保留空时隐藏的视觉行为，明确把 null/undefined 转为空串。 · The engine now omits optional blank text from semantics, so the game's dynamic text has its real empty value and retains visibility handling. Static interactive labels still have readable names.
+- 回归 · Regression：`test/accept.mjs` 检查第一幕没有首领或分身时不发布占位语义，同时保留中英文、暂停及原截图基线。 · The browser suite checks the optional status during the first scene, along with localized names, pause and existing baselines.
+
+### 12. 仅对已拒绝的渲染作有界重试 · Bounded render-only recovery — 已在 `e8476128` 提供 / supported in `e8476128`
+<!-- engine-note: {"id":"LanternShadows#12","status":"resolved","topic":"frame-loop-render-retry","workaround":["src/main.mjs"]} -->
+
+- 现象 · What happens：游戏曾通过停止后的循环重启，恢复 WebGL2 打包裁剪细碎几何时被精度守卫拒绝的渲染。该办法会把循环生命周期与呈现错误处理耦合。 · The game used to restart a failed frame loop after a narrowly identified WebGL2 precision rejection.
+- 绕过办法及现适配 · Workaround and adaptation：引擎 #502 提供 `renderRetry` 与已通过帧准入后的 `beforeRender`。保留仅匹配 FRAME_RENDER_FAILED / WEBGL2_PRECISION_UNSUPPORTED / Shared preparation precision、1.4 秒最多两次的限制；利用 beforeRender 将已准入画面的相机变换舍入一次。任何时钟、规则、输入、动画/骨骼更新或其他渲染错误都不重试。移除游戏侧 queueMicrotask 重启，使用官方 recoveredRenderFailures 计数。 · Only the identified render precision case is accepted for bounded retry. A presentation transform is settled before the next admitted render; timing, rules, input and Spine semantics continue unchanged. All other failures remain fatal, with no custom loop restart.
+- 建议及边界 · Suggestion and limit：保持匹配范围严格、排除业务更新错误、不因重试加速游戏。没有采用试验性的 Spine 延迟构建；beforeRender 只用于呈现补偿，不能说明独立骨骼语义推进已经支持。 · The presentation hook is not a semantic/display split; the experimental Spine deferral is not shipped.
+- 状态 · Status：公开渲染重试和准入后呈现准备接口已在 #502 提供；保留本作精度补偿，删除私有循环重启。 · Public render-only retry and admitted preparation are now available; keep the narrow visual compensation, not a game-owned loop restart.

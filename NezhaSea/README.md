@@ -124,7 +124,7 @@ Nezha Stirs the Sea is a survival action game built with [Egret Rebuild](https:/
 
 ## 引擎副本 · Engine copy
 
-引擎副本取自 [Egret_rebuild](https://github.com/cnedwin/Egret_rebuild) 的 main 提交 `0728eccc8ee5340f786fdeacd375927d3d8e315a`，生成记录见 [vendor/SOURCE.md](vendor/SOURCE.md)。
+引擎副本取自 [Egret_rebuild](https://github.com/cnedwin/Egret_rebuild) 的 main 提交 `94bd70fb26b1f81794c9c6fbbb258c655fcd19df`，生成记录见 [vendor/SOURCE.md](vendor/SOURCE.md)。集市与强化卡片使用原生标签绑定和多文字叶子按钮面板；仅 CSS 缩放由引擎 arrange 通知。 · Market and upgrade cards use native bound labels and leaf-button panels; the engine's arrange hook also covers CSS-only scaling.
 
 The runtime is from Egret Rebuild main at the commit above. Run the following command in the engine checkout to reproduce it.
 

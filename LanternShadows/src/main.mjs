@@ -74,23 +74,34 @@ const describe = cause => {
   return parts.join(' ← ');
 };
 let game;
-let lastPrecisionFault = -Infinity, consecutivePrecisionFaults = 0, renderRecoveries = 0, settleView = false;
+let lastPrecisionFault = -Infinity, consecutivePrecisionFaults = 0, settleView = false;
+// A clipped sliver can reverse winding when packed to f32. The engine retries
+// only rejected renders; keep the original narrow error predicate and burst limit.
+function recoverRender(cause) {
+  const reason = describe(cause);
+  if (!staged || cause?.code !== 'FRAME_RENDER_FAILED' ||
+      !reason.includes('WEBGL2_PRECISION_UNSUPPORTED') || !reason.includes('Shared preparation precision')) return false;
+  const now = performance.now();
+  if (now - lastPrecisionFault > 1400) consecutivePrecisionFaults = 0;
+  lastPrecisionFault = now;
+  if (++consecutivePrecisionFaults > 2) return false;
+  settleView = true;
+  return true;
+}
+// Only settle presentation transforms just before a newly admitted capture.
+// The game clock, rules, input, Spine events and all animation updates still run.
+function settleRetryView() {
+  if (settleView) {
+    for (const node of [world, far, drift]) {
+      node.x = Math.round(node.x);
+      node.y = Math.round(node.y);
+      node.rotation = 0;
+    }
+    settleView = false;
+  }
+}
 const fail = cause => {
   const reason = describe(cause);
-  // A clipped sliver can reverse winding when the WebGL2 host packs it to f32.
-  // Retire the rejected frame and retry briefly without the fractional camera shake.
-  if (staged && game?.loop.state === 'failed' && cause?.code === 'FRAME_RENDER_FAILED' &&
-      reason.includes('WEBGL2_PRECISION_UNSUPPORTED') && reason.includes('Shared preparation precision')) {
-    const now = performance.now();
-    if (now - lastPrecisionFault > 1400) consecutivePrecisionFaults = 0;
-    lastPrecisionFault = now;
-    if (++consecutivePrecisionFaults <= 2) {
-      renderRecoveries++;
-      settleView = true;
-      queueMicrotask(() => game.loop.start());
-      return;
-    }
-  }
   state.error = (lang === 'zh' ? '戏台没搭起来：' : 'The booth could not be set up: ') + reason;
   ui?.refresh();
   if (!ui || game?.loop.state === 'failed') {
@@ -154,7 +165,7 @@ try {
       made.scope.use({dispose:()=>projection?.dispose()});
       made.scope.use({dispose:made.browser.pointer.observe(note=>input.contact(note,ui,staged && playing && !paused && state.screen==='play' && state.controls))});
       arrange(made); boot.hidden=true;
-    },arrange,update,onError:fail
+    },arrange,update,beforeRender:settleRetryView,onError:fail,renderRetry:{maxConsecutive:2,shouldRetry:recoverRender}
   });
 } catch(cause) { fail(cause); throw cause; }
 const { engine, scope } = game;
@@ -1047,14 +1058,6 @@ function update(seconds) {
   lead += (hero.facing * 90 - lead) * Math.min(1, dt * 3);
   if (zoomBack > 0 && (zoomBack -= dt) <= 0) camera.zoomTo(1, 0.35);
   camera.update(paused ? 0 : dt);
-  if (settleView) {
-    for (const node of [world, far, drift]) {
-      node.x = Math.round(node.x);
-      node.y = Math.round(node.y);
-      node.rotation = 0;
-    }
-    settleView = false;
-  }
   // A shake that has all but died away can leave the stage moved or turned by a number too small to be told
   // from nothing, and the renderer refuses a frame with such a number in it. What is that small is made nothing.
   for (const node of [world, far, drift]) for (const key of ['x', 'y', 'rotation']) if (node[key] !== 0 && Math.abs(node[key]) < 1e-6) node[key] = 0;
@@ -1227,7 +1230,7 @@ globalThis.__lantern = {
   hold: (action, down) => input.hold(action, down),
   sounds: () => sound.ready,
   soundState: () => sound.state(),
-  get renderRecoveries() { return renderRecoveries; },
+  get renderRecoveries() { return game?.loop.snapshot().recoveredRenderFailures ?? 0; },
   pause,
   again,
   health: TUNE.health

@@ -139,3 +139,17 @@ A 实际提交的稳态 CPU p50/p95：动画 update 0.1/0.3 ms、apply 0.4/1.0�
 严格查验：三组逐帧 548/548 对齐，相同逻辑状态、随机数、动画事件摘要及累计 6,421 次事件，三个骨骼/槽/轨道语义检查点完全一致；全段实际提交版本正确 501/501、472/472、510/510。初次诊断因两个独立页面时钟导致时步误差，有 45 行无法对齐，未认定等价；改为精确固定规则与 Spine delta 输入后重新实测，保留绝对 tick ID 作单列诊断。 · The initial clock-v1 run was rejected; exact clock-v2 A/B/A passed. This is fixture-specific proof, not an arbitrary-listener/lifecycle contract.
 
 **结论：不采用延期作为正式版优化。** 它消除了被 Host 拒绝的帧的重复绘制工作，但成本移至真实提交帧，吞吐未改善。公开 API 目前不支持独立延期。保留上一批共享 UI 图集、100 分身及原有判定；生产源码、引擎副本、正式包均未改变。诊断脚本、[汇总 JSON](test/perf/reference-spine-fold7.json)、[990 行 CSV](test/perf/reference-spine-fold7.csv) 与引擎反馈 [#10](ENGINE-NOTES.md) 已保存。没有重新做三幕自然通关或 GPU 执行/屏幕呈现测试。 · The diagnostic is not a release optimization; it moved work to admitted frames and did not improve overall cadence. No new natural-play or GPU/presentation claim.
+
+## 2026-11-27 引擎更新回归 · Engine refresh regression
+
+本轮先对同一游戏源码的引擎候选 `b1f275d7c208784f73824f20d8de4b093de3d00c` 执行回归与实机对照，再核对正式提交的运行时字节；上面的全量自动质量表与 11-26 深度诊断为历史证据，本轮不重新执行整套 `tools/quality.mjs` 或旧私有计时探针。· Historical full-table and detailed profiling results remain version-bound. This refresh uses focused regression and physical-device comparisons.
+
+- Node `--test test/*.test.mjs`：90/90；`node test/accept.mjs`：13/13，无页面错误。既有标题/暂停画面差异 0.67%/1.87%，不更新基线。新增空 Boss/百身术状态不会发布语义占位符；packed、?dev、键盘、模拟触屏、转向、坏资源恢复、单棒/剧目记录通过。· All tests pass with baselines retained and optional text covered.
+- PC 真机 · Physical PC：Windows / Edge 158.0.4370.33 / RTX 5090 Laptop / WebGL2，1280×800 CSS、backing 1281×801。同路线正常键鼠开锣、移动、暂停恢复通过；普通 120 rAF 间隔 p95 4.3→4.3 ms，最大 8.4→4.3。单独诊断固定 `?clones=100`、给予一次百身术毫毛和临时安全时间、实际 I 键释放；均实际出现并携带 100 个分身，120 rAF p95 20.8→20.8 ms，最大 25.0→25.1 ms，零错误、零 >33.4 ms、零渲染重试。· Natural short play and explicit 100-clone fixture are separate; visual review preserves the puppets, stage and native HUD. They are not frame-by-frame matched poses.
+- Fold7 真机 · Physical Fold7：SM-F966U1 / Android 17 / Chrome 157 / Adreno 830 / WebGL2，实际横屏 873×325 CSS、backing 2291×854。真实触控移动 168→341.25、摇杆释放归零、跳跃及暂停恢复通过，121 rAF p95/最大值均为 16.7/16.7 ms（旧版→新版不变），零错误。· Matched physical touch short route; this round does not retest simultaneous multi-touch.
+- Fold7 单独简化诊断 · Separate simplified dense fixture：仍以实际一次百身术和 100 个分身为条件，不使用 11-26 复杂私有测点。旧→新 rAF p50/p95/max 16.7/49.6/49.8→16.6/33.2/66.2 ms，游戏统计平滑 pose 计时 p50/p95 9.91/11.53→6.60/8.66 ms。实测有单次 66.2 ms；两组均为横屏 873×325 CSS、2291×854 backing、DPR 2.625、WebGL2，温度 33.2→33.3°C（thermal 0），120/120 帧均为 logical/out/carried=100。逻辑采样年龄因自动化输入启动时差为 3.59–6.64 s 对 6.91–9.46 s，骨骼样本不完全相同，不据此归因 #500 或 #504，也不承诺全面帧率提升。· The simplified outcome has a lower observed p95 and pose duration but a higher worst frame, with different natural pose ages. No causal or universal FPS claim.
+- 保留玩法 · Gameplay retained：百身术 100 分身没有人为裁减来制造测试收益，不采用上一轮否决的延迟网格发布；数值、三幕规则、存档与动作资源未改变。原生 `beforeRender` 只为特定精度错误的下一次 admitted 画面准备补偿。实际短测没有触发该精度错误，因此恢复接口验证为正常集成，不声称复现了旧精度异常。
+- 未覆盖 · Limits：不是新的完整三幕通关、无实体手柄或真实扬声器听感复验、无中端设备、Safari/Firefox、GPU 执行或屏幕呈现计时；之前完整路线仍见历史记录。
+
+正式副本 · Released engine copy：94bd70fb26b1f81794c9c6fbbb258c655fcd19df。官方工具重生成后，与实测候选的所有 451 个记录文件逐项校验 SHA-256，除 vendor/SOURCE.md 的正式版本标记外 450 个文件均完全相同（运行时、导入映射、页面与发布包均一致），因此上述实际验收适用于正式运行时代码。 · Official generation from main is byte-identical to the tested candidate except the provenance pin in SOURCE.md.
+发布包 · Packed JS SHA-256: a9862dd15f396023ed4489f07aac5d1426b6b005b9469d3dbcc12bf5218cf60a (1,256,814 bytes).

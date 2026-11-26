@@ -67,24 +67,3 @@ export function createCanalUi(game, app, semantics) {
     clear() { for (const id of [...views.keys()].reverse()) close(id); }
   };
 }
-
-/** Keep the small plot icon separate from its richer screen-reader description.
- * The public semantic definition provides the live name without injecting DOM buttons.
- */
-export function describeCanalUi(semantics, nameFor) {
-  return Object.create(semantics, {
-    add: { value(definition) {
-      const describe = definition.describe;
-      if (typeof describe !== 'function') return semantics.add(definition);
-      const part = definition.id.split(':').at(-1);
-      const decoration = /^plot-(mark|word|builtmark|builtword)-\d+$/.test(part);
-      return semantics.add({ ...definition, ...(/^plot-\d+$/.test(part) ? {role: 'button'} : {}),
-        ...(decoration ? {parent: definition.id.split(':')[0]} : {}), describe: () => {
-        const data = describe();
-        if (decoration) return {...data, hidden: true};
-        const name = nameFor(part);
-        return name ? { ...data, name } : data;
-      } });
-    } }
-  });
-}

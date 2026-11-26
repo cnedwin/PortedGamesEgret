@@ -84,13 +84,13 @@ SwiftShader. Sections 4 and 5 use Chrome with hardware acceleration.
 - 建议：确认框支持主题、换行和 CSS 像素级最小点击区。 · Accept a theme, wrapping and a minimum target in CSS pixels.
 - 状态：当前原生 `game.confirm` 仍使用固定设计单位，保留适配。 · The current native confirm still uses fixed design units, so the measured modal remains.
 
-### 10. 声明式视图的集市组件 · Market building blocks in declarative views — 未解决 / open
-<!-- engine-note: {"id": "NezhaSea#10", "status": "open", "topic": "play-view-market-building-blocks", "workaround": ["src/ui-market.mjs"]} -->
+### 10. 声明式视图的集市组件 · Market building blocks in declarative views — 部分解决 / partly resolved
+<!-- engine-note: {"id": "NezhaSea#10", "status": "partly", "topic": "play-view-market-building-blocks", "workaround": ["src/ui-market.mjs"]} -->
 
 - 现象：`95897d78` 已支持声明式滚动区、段落和静态图片。市场仍需要应用组织货架、动态法宝格和语义页签。 · At `95897d78`, declarative scroll, paragraphs and static images are available. The market still arranges its stock, dynamic loadout and semantic tabs itself.
 - 绕过办法：[`src/ui-market.mjs`](src/ui-market.mjs) 按安全区生成货架和法宝格位，短屏分页查看属性、宝物和配方，合成、出售与下一波固定可用。画布图标和逐行排版保留原本信息。 · Generate bounded offer and gear positions from the safe area and paginate stats, items and recipes on short screens. Keep the next-wave action available. Canvas icons and measured lines retain the original information.
 - 建议：提供可变行数的数据源、可绑定的图片与具有语义的页签。 · Add data-driven rows, bound images and semantic tabs.
-- 状态：本轮保留既有数据、分页和语义实现。 · The existing dynamic rows, tabs and semantic labels remain.
+- 状态：原生标签绑定与叶子按钮面板（引擎 #499）已接管集市语义名称、多行法宝格和强化卡片；不再包裹语义树或逐个添加自绘文字 Sprite。#506 提供键控集合和图片地址绑定。本作固定数量货架及法宝槽保留原有数据绑定，不需要反复增删行。仍需原生选中语义页签及小屏确认布局能力；拖放合成和分页保留各自逻辑。 · Native labels and leaf button panels (#499) now own market accessible names, the multiline relic cells and upgrade cards; the semantic wrapper and custom caption sprites are removed. #506 adds keyed collections and bound image addresses. Fixed-size offer and equipment slots keep ordinary bindings instead of churning rows. Selected tab semantics and responsive confirmation layout remain requests; paging and drag merging retain their game behavior.
 
 ### 11. 默认纹理加载器支持 WebP · WebP in the default texture loader — 已在 `95897d78` 解决 / resolved in `95897d78`
 <!-- engine-note: {"id": "NezhaSea#11", "status": "resolved", "topic": "play-webp-loader", "workaround": ["src/ui-screens.mjs"]} -->
@@ -124,10 +124,10 @@ SwiftShader. Sections 4 and 5 use Chrome with hardware acceleration.
 - 建议：提供可安全排队的无显示纹理预热接口，等待 GPU 资源可用、提交和退役，支持超时、取消和设备丢失。不要将可恢复的共享存储压力报告为资源下载失败。 · Provide an awaitable, cancellable off-screen texture warm-up, coordinated with normal frame reservations and retirement. Distinguish recoverable shared-storage pressure from a resource-load error.
 - 状态：Demo 修复后同一 Fold7 WebGPU 冷启动、标题与竖屏出海均通过；引擎未改动。 · Demo fix passes a cold start, title and portrait battle on the same Fold7. No engine change.
 
-### 15. 嵌入画布仅缩放时未触发 arrange · CSS-only canvas resize does not notify arrange — 已在游戏侧绕过 / worked around
-<!-- engine-note: {"id": "NezhaSea#15", "status": "worked-around", "topic": "play-css-scale-arrange", "workaround": ["src/main.mjs", "src/ui-hud.mjs"]} -->
+### 15. 嵌入画布仅缩放时未触发 arrange · CSS-only canvas resize does not notify arrange — 已解决 / resolved
+<!-- engine-note: {"id": "NezhaSea#15", "status": "resolved", "topic": "play-css-scale-arrange"} -->
 
 - 现象：将运行中的战斗从 540×960 浏览器视口改成 844×320，画布物理 CSS 尺寸变为 180×320，但舞台仍为 540×960。BrowserGame 的屏幕变化判断只比较设计宽高、安全区及逻辑方向，不比较 scale，造成 Play 的 arrange 未触发。暂停仍是 44 设计单位，相当于 14.7 CSS px。横屏上旧单行 HUD 的倒计时也可能盖住英文波次。 · Resize the active battle from 540×960 to 844×320. The canvas measures 180×320 CSS px while its stage stays 540×960. BrowserGame does not include scale in the screen-change condition, leaving the Pause button at about 14.7 CSS px. A narrow single-row HUD can also obscure English wave digits.
-- 绕过办法：`src/main.mjs` 观察实际画布 CSS 尺寸，变化才调用已有重排；引擎正常的 arrange 回调保留。 `src/ui-hud.mjs` 根据最长波次文字将狭窄布局的计时置于波次下方，并保留独立 44 CSS px 暂停目标。 · Observe physical CSS dimensions and reuse the existing arrangement, alongside normal Play callbacks. Stack the timer beneath the wave label when needed without shrinking the Pause target.
+- 绕过办法：旧版 `src/main.mjs` 额外观察实际画布 CSS 尺寸，触发重排。引擎 #503 已修复 scale 变化通知，删除该 ResizeObserver，仅保留原生 arrange。游戏自身的狭窄布局策略仍将计时置于波次下方，并维持独立 44 CSS px 暂停目标。 · The old game additionally observed physical canvas size. Engine #503 supplies scale-change notification directly, so only the native arrange hook remains. The game's narrow HUD still stacks the timer and keeps a separate 44-CSS-pixel Pause target.
 - 建议：当 `screen.scale` 或实际可见 CSS 尺寸发生变化但设计范围保持不变时，也发出屏幕变化事件；避免重复回调。用固定比例嵌入画布跑动态缩小、放大、旋转测试，确保 44 CSS px 控件尺寸、输入比例与焦点一致。 · Include scale or visible CSS size changes in screen notifications even when stage bounds stay fixed. Verify embed resizing, rotation, 44-CSS-pixel targets, input scaling and focus without redundant events.
-- 状态：浏览器回归通过；Fold7 运行中的战斗从 411×813 转到 873×325 再转回，暂停分别为 65×44、52×44 和 65×44 CSS px。暂停恢复、新触点、松手及不滚动均通过；横屏波次 1/20、10/20 完整显示。 · Browser regression passes. During a live Fold7 rotation, Pause retained 65×44, 52×44 and 65×44 CSS px. Pause/resume, new touch, release and no page scroll pass; both wave 1/20 and wave 10/20 are legible.
+- 状态：旧版绕过的历史 Fold7 战斗转屏中暂停为 65×44、52×44、65×44 CSS px。新主干删除观察器后 Chromium 实时缩放回归再次通过，完整两位数波次及独立 44 CSS px Pause 保留；Fold7 新版集市两种实机方向及下一波入口通过。 · The earlier workaround measured a live Fold7 Pause target of 65×44, 52×44, and 65×44 CSS px. With the observer removed, the new main passed the Chromium live-resize regression, including two-digit waves and independent 44 CSS px Pause; actual Fold7 market orientation and next-wave controls also pass.

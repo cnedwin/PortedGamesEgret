@@ -12,12 +12,12 @@
 
 - 实机复核 · Device follow-up: PC Edge 与 Fold7 Chrome 使用同一个旧档从首次原生行囊加载开始，分别完成八种 WebP 非缓存请求、可见图标与原资源的像素匹配、卸装再换装以及保存刷新。界面首次可操作的观测上限由旧 PC 的 585.7 ms 降至 149.3 ms，Fold7 为 135.5 ms；两台均无控制台错误、警告或失败请求。 · Physical Edge and Fold7 Chrome each loaded eight uncached image requests, verified matching icon pixels, switched equipment and saved/reloaded. First actionable upper-bound observations were 585.7 ms on the older PC build, 149.3 ms on the updated PC and 135.5 ms on the Fold7. No console errors, warnings or failed requests.
 
-### 2. 原生声明式视图的动态列表和焦点 · Keyed collections and focus in declarative views — 部分解决 / partly
-<!-- engine-note: {"id": "FengshenChronicle#2", "status": "partly", "topic": "play-view-keyed-collections", "workaround": ["src/native-rpg-ui.mjs"]} -->
+### 2. 原生声明式视图的动态列表和焦点 · Keyed collections and focus in declarative views — 已解决 / resolved
+<!-- engine-note: {"id": "FengshenChronicle#2", "status": "resolved", "topic": "play-view-keyed-collections"} -->
 
 - 现象 · What happens: `game.show` 支持滚动和裁剪语义，列表成员发生变化时需要按新的描述重建。 · Play views support scrolling and clipped semantics. A membership change requires a new view description.
-- 绕过 · Workaround: `src/native-rpg-ui.mjs` 按物品编号保存动作身份、滚动位置；本轮引擎 #488 已提供 view.focused 和 view.focus(name)，原语义树查找及人为聚焦改用引擎原生接口。物品消失时回落到有效页签或关闭按钮。 · Preserve stable action keys and scroll offsets. Engine #488 now supplies view.focused and view.focus(name), replacing semantic focus scanning and activation. If an item disappears, fall back to an eligible tab or Close.
-- 建议 · Suggestion: 给 Play 视图加按键保留节点的集合更新能力，与低层 UI Root 的虚拟列表衔接。验收从 30 件装备中部连续出售或合成，焦点和滚动位置稳定，图标与说明按行回收。 · Add keyed collections. Verify stable focus and scroll after a sale or craft in the middle of a 30-item bag, with row assets released. 此项仍为动态列表能力请求；不再需要语义焦点绕过。
+- 绕过（已移除） · Workaround removed: #488 提供命名焦点，#506 提供 `view.replaceChildren` 与图片地址绑定。行囊、商店和铁匠铺使用物品/材料稳定编号，更新列表成员时保留外围面板、滚动区和仍存在的行；普通绑定更新文字、颜色、图标和选中状态。跨页、尺寸或结构改变时才按新描述重建。 · #488 supplies named focus; #506 supplies keyed replacement and image source binding. Bags, stock and forge materials use stable item identities, retaining the surrounding view, scroll and surviving rows. Ordinary bindings change text, colour, icons and selection; changed layout structure still requires a new description.
+- 状态 · Status: 原生集合能力已接入，浏览器验收核对购买前后货品、货架语义身份不变，切到出售列表仍保留同一个外围滚动 panel。尚未把 30 件装备虚拟化，也不宣称每次不同布局均可保留全部节点。 · Native collections are integrated. Browser acceptance checks stable stock and list semantic identities across a purchase and keeps the list when changing to sale members. The game does not virtualize all thirty rows or promise retention across incompatible layouts.
 
 ### 3. RPG 面板接入现有浏览器场景 · Attaching RPG panels to an existing browser game — 未解决 / open
 <!-- engine-note: {"id": "FengshenChronicle#3", "status": "open", "topic": "play-existing-browser-game-views", "workaround": ["src/native-rpg-ui.mjs"]} -->
@@ -26,13 +26,13 @@
 - 绕过 · Workaround: `src/native-rpg-ui.mjs` 用单独的按需绘制层，关闭面板时暂停该层帧循环。页签使用引擎按钮和选中色，配方用原生滚动列表，材料用开关。 · A dedicated on-demand Play layer hosts the panels and stops its loop when they close. Buttons, a scroll panel and toggles represent tabs, recipes and materials.
 - 建议 · Suggestion: 支持在现有 `BrowserGame` 显示树上挂载声明式视图，并提供带选中语义的页签组与单选组件。 · Allow declarative views to attach to an existing browser game and add semantic tabs and single-choice controls.
 
-### 4. 声明式长段落固定 1× 栅格密度 · Declarative paragraphs use a fixed 1× raster density — 已在游戏侧绕过 / worked around
-<!-- engine-note: {"id": "FengshenChronicle#4", "status": "worked-around", "topic": "play-view-paragraph-density", "workaround": ["src/native-rpg-ui.mjs", "src/render-density.mjs"]} -->
+### 4. 声明式长段落固定 1× 栅格密度 · Declarative paragraphs use a fixed 1× raster density — 已解决 / resolved
+<!-- engine-note: {"id": "FengshenChronicle#4", "status": "resolved", "topic": "play-view-paragraph-density"} -->
 
 - 现象 · Observed: Fold7 Chrome 157 竖屏约 411×813 CSS px、DPR 2.625 的原生商店中，单行标题清晰，但装备说明的中文字边缘明显锯齿。引擎 playView 的 paintParagraph 在 setRequest 中固定 density: 1，普通原生标签则支持更高像素比。 · Small Chinese item descriptions are visibly softer than native one-line titles. Play's paragraph renderer requests density 1 regardless of the display scale.
-- 绕过 · Workaround: 游戏按实际显示密度采用有界的 1–2.5× Play 设计坐标密度，缩放描述尺寸、字号、段落行高及皮肤，保持原来的 CSS 布局、滚动、语义和动作。独立 UI 像素预算 4 MP，未修改引擎。 · Scale authored view dimensions and type together with a bounded density and pixel budget. CSS geometry, semantics, actions and scrolling stay unchanged.
+- 绕过（已移除） · Workaround removed: 引擎 #503 提供 `ViewParagraphStyle.density`。本作删除整个设计坐标树、字号及边框的比例缩放，段落直接指定 1–2.5× 密度，使用原来的逻辑尺寸和 4 MP 的物理 UI 背板预算。 · Engine #503 exposes paragraph density. The game removes coordinate-tree and font-size scaling, requests 1–2.5× native raster density and keeps the original logical geometry and physical canvas budget.
 - 建议 · Suggestion: 提供原生 view 的段落栅格密度参数或根据实际渲染目标自动选择密度，保持布局逻辑单位不变、复用相同缓存身份。验收在 DPR 1、2.625 和 3 下检查中英文长文、选中开关、滚动裁剪、冷缓存与清晰度。 · Expose paragraph raster density or derive it from the presentation target while preserving logical metrics and cache ownership. Verify long text, toggles, clipping and cold caches on multiple display densities.
-- 状态 · Status: Demo 高密度适配在 Fold7 竖屏商店的同构实拍中明显改善正文笔画；横竖屏列表滚动和配方选择保持可用。 · Hardware portrait comparison shows sharper body text; the native interaction remains intact.
+- 状态 · Status: 旧版高密度绕过曾改善正文笔画；新主干原生 density 版在 Fold7 实拍中保持原有竖屏段落清晰度、换行、滚动裁切及配方选择。没有为清晰度增加旧物理背板预算。 · The old workaround improved body text; the native density version retains the portrait legibility, line wrapping, scrolling and recipe selection on actual Fold7 captures without raising the previous physical backing budget.
 
 ### 5. 固定 DPR 与 CSS 放大后的画质 · Fixed DPR and CSS-upscaled field quality — 已在游戏侧绕过 / worked around
 <!-- engine-note: {"id": "FengshenChronicle#5", "status": "worked-around", "topic": "browser-game-css-fit-pixel-ratio", "workaround": ["src/main.mjs", "src/render-density.mjs"]} -->

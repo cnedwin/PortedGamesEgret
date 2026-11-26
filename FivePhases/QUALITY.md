@@ -64,3 +64,15 @@ this file; items by hand or on a device are marked not run until someone runs th
 - 最终统一品质测量：同一 Windows SwiftShader 环境下，隐藏战场的标题优化前后 F1 p95 325.1 → 112.5 ms（19 → 48 样本），仍不达 16.7 ms。E3 后台模拟由 fail 到 pass；T2、E1、E2 通过。不是物理设备性能。 · The software-title p95 fell from 325.1 to 112.5 ms after hiding the covered battlefield, still below the standard; visibility, touch targets and retry passed.
 - 最终完整浏览器验收 12/12 通过，标题和手牌详情的基线差异均 0.00%。模拟单个资源失败并延迟另一个资源，原生重试不消失，真实点击后返回标题。最后冻结源文件在 Fold7 又进行确切哈希 9/9 的冷启动、说明、手牌模态、声音及两点消除验证，0 错误。 · Final 12/12 browser acceptance; baseline differences 0.00%. Actual retry after an injected failure and delayed sibling works. Final exact-source Fold7 smoke (9 hashes) passed.
 - 发布前官方引擎副本更新至 f0dfde36（#497 仅迁移工具、文档与测试）；355 个文件仅 SOURCE.md 不同，原生运行时代码逐字节一致，本报告的 8e70dcb3 实测有效。 · Final official f0dfde36 pin has identical runtime bytes to 8e70dcb3, so previous measurements remain applicable.
+
+
+## 2026-11-27 官方主干同步 · Official main integration
+
+- 引擎 · Engine: 94bd70fb26b1f81794c9c6fbbb258c655fcd19df；预发布 CI 候选 b1f275d7 实测，正式副本的运行时代码逐文件哈希核对一致。 · Tested the complete CI candidate, then verified the official runtime payload byte for byte.
+- 自动 · Automated: Node 80/80; existing Chromium browser acceptance passed, reviewed screenshot baselines were not overwritten.
+- 实机 · Physical devices: Windows Edge 158 / RTX 5090 Laptop GPU; Samsung Fold7 Android 17 / Chrome 157 / Adreno 830, actual trusted mouse/keyboard and touch input through the respective browser control, isolated game saves.
+- 代表路线 · Representative route: 真机实际两点消除、不可用卡牌反馈、手牌详情；PC 实际出牌。奖励/结算在软件浏览器固定夹具验证。 · Device runs cover legal two-point swaps, insufficient-energy feedback and details; PC also casts a card. Reward and settlement run in the browser fixture.
+- PC: 180 rAF: p95 4.3 → 4.2 ms; max 4.3 → 4.5 ms.
+- Fold7: 120/121 rAF: p95 16.7 → 16.7 ms; max 33.1 → 16.7 ms.
+- 原生角色由 group 升为 button；固定种子浏览器回归验证出牌后手牌列表容器身份保留。实机盘面因自然 RNG 不同，不做像素级比较。 / Native card roles become buttons; the keyed hand container is retained on a real card cast in the seeded browser test. Natural RNG differs across device runs.
+- 限制 · Limits: 短前台 rAF 不是独立 GPU 时间，也不是整局、所有设备或中端手机验收。未跑真实读屏、物理手柄、Safari 或整局声学测试。 · Short foreground rAF samples are not isolated GPU time or a whole-game/device matrix. No physical screen reader, controller, Safari or speaker/acoustic certification.

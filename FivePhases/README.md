@@ -123,7 +123,7 @@ core/battle.mjs  ──事件表──▶  main.mjs  ──▶  sequence / fx / 
 |---|---|
 | 标题、加载、阵法说明、声音 | Play 原生视图、进度条、模态层与绑定；原封面绘卷在同一舞台内 |
 | 战况、回合、五行能量、羁绊 | 原生 panel / text / bar，状态只读绑定 |
-| 手牌及当前详情 | 有原生焦点和动作的复合卡片、元素图标、段落说明；仅卡片身份变化时重建 |
+| 手牌及当前详情 | 有原生焦点和动作的复合卡片、元素图标、段落说明；原生 UID 键控更新，仅重建内容或几何改变的行 |
 | 棋盘点选和拖格 | Egret 指针会话，首触点拥有手势；取消不交换 |
 | 敌招提示、连锁和伤害飘字 | 原生绑定视图和短生命周期的 Play 文本 |
 | 奖励三选一、跳过、胜负结算、重开 | 原生模态；原有三关规则和卡组承接不变 |
@@ -180,6 +180,6 @@ The playable UI is drawn through a single native Egret canvas. The original cove
 
 ## 引擎副本 · Engine copy
 
-引擎副本取自 [Egret_rebuild](https://github.com/cnedwin/Egret_rebuild) 提交 `f0dfde367431713578e23fb3931544177b443c3c`，由引擎仓库的 `tools/vendor-game.mjs` 复制（入口为 Play、原生 UI、语义树、段落及相关浏览器模块），见 [vendor/SOURCE.md](vendor/SOURCE.md)。2026-11-21 之前的副本没有记录提交号，早于引擎 `66f7c59`。
+引擎副本取自 [Egret_rebuild](https://github.com/cnedwin/Egret_rebuild) 提交 `94bd70fb26b1f81794c9c6fbbb258c655fcd19df`，由引擎仓库的 `tools/vendor-game.mjs` 复制（入口为 Play、原生 UI、语义树、段落及相关浏览器模块），见 [vendor/SOURCE.md](vendor/SOURCE.md)。2026-11-21 之前的副本没有记录提交号，早于引擎 `66f7c59`。
 
-The engine copy is from [Egret_rebuild](https://github.com/cnedwin/Egret_rebuild) commit `f0dfde367431713578e23fb3931544177b443c3c`, copied by the engine's `tools/vendor-game.mjs` (Play, UI, semantics, paragraph and related browser entries); see [vendor/SOURCE.md](vendor/SOURCE.md). The copy before 2026-11-21 had no recorded commit and predated engine `66f7c59`.
+The engine copy is from [Egret_rebuild](https://github.com/cnedwin/Egret_rebuild) commit `94bd70fb26b1f81794c9c6fbbb258c655fcd19df`, copied by the engine's `tools/vendor-game.mjs` (Play, UI, semantics, paragraph and related browser entries); see [vendor/SOURCE.md](vendor/SOURCE.md). The copy before 2026-11-21 had no recorded commit and predated engine `66f7c59`.

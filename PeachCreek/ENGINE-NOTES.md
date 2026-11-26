@@ -1,8 +1,12 @@
 # 引擎笔记 · Engine notes
 
-本轮适配使用白鹭主干 `95897d78095ae8fda9e34dbc13bbbd15db8eaa12`。复跑游戏全流程可用 `node test/accept.mjs`。副本和入口见 [vendor/SOURCE.md](vendor/SOURCE.md)。
+早期适配使用白鹭主干 `95897d78095ae8fda9e34dbc13bbbd15db8eaa12`。复跑游戏全流程可用 `node test/accept.mjs`。副本和入口见 [vendor/SOURCE.md](vendor/SOURCE.md)。
 
-This integration uses Egret main at `95897d78095ae8fda9e34dbc13bbbd15db8eaa12`. Run `node test/accept.mjs` for the full route. The [vendor record](vendor/SOURCE.md) lists the source and entries.
+The previous integration used Egret main at `95897d78095ae8fda9e34dbc13bbbd15db8eaa12`. Run `node test/accept.mjs` for the full route. The [vendor record](vendor/SOURCE.md) lists the source and entries.
+
+本轮引擎集成：主干 `94bd70fb26b1f81794c9c6fbbb258c655fcd19df`（#502–#506），按需采用原生能力；下列原先的版本号保留作为问题发生时的历史。
+
+This integration vendors official main `94bd70fb26b1f81794c9c6fbbb258c655fcd19df` (#502–#506), adopting native capabilities where equivalent; older revisions below are historical evidence.
 
 ### 1. 变换和裁剪后的语义区域 · Semantic bounds after transforms and clipping — 部分解决 / partly resolved
 <!-- engine-note: {"id": "PeachCreek#1", "status": "partly", "topic": "semantic-bounds-transform"} -->
@@ -27,6 +31,8 @@ This integration uses Egret main at `95897d78095ae8fda9e34dbc13bbbd15db8eaa12`. 
 - 绕过办法：应用换行以保持中英文可读，标题用 `game.browser.createLabel`，卡片用 `Graphics` 描边和渐变。建筑预览用引擎纹理和 Bitmap。按钮保留原生的点击与语义行为。 · The project wraps Chinese and English text locally, uses `game.browser.createLabel` for title typography, draws panel borders and gradients with `Graphics`, and displays building previews as engine bitmaps. Native buttons retain tap and semantic actions.
 - 建议：为文字开放字体回退、行距、宽度与截断；为按钮开放带焦点样式的内容节点；为视图增加 image/nine-slice 和逐项皮肤。 · Expose font fallback, leading, width and truncation on text, button content with focus styling, and image/nine-slice parts with per-item skins.
 - 状态：部分解决。 · Status: partly resolved.
+
+- 本轮实测 · Integration evidence：新版空文字语义处理会隐藏美术层单独绘字的离线收益和坏档提示；改用原生 bind.label 保留语义名称，保留美术画字与 tab/heading 角色扩展。完整浏览器验收复测通过。 · Native bound labels now retain the accessible names of artwork-rendered text; the original away report and corrupt-slot checks pass. Visual decoration and tab/heading semantics remain custom.
 
 ### 4. 等比留边的网页语义投影 · Browser semantic projection on a letterboxed canvas — 已在 95897d78 解决 / resolved in 95897d78
 <!-- engine-note: {"id": "PeachCreek#4", "status": "resolved", "topic": "semantic-letterbox"} -->

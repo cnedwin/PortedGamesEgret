@@ -145,7 +145,7 @@ export function createScreens(game, { words, app, act, semantics }) {
     const bind = {
       guide: { tap: () => act.openGuide() },
       options: { tap: () => act.openOptions('title') },
-      notice: { text: () => noticeLines(app.portrait() ? 500 : 300), visible: () => Boolean(app.notice) },
+      notice: { text: () => noticeLines(app.portrait() ? 500 : 300) },
       encore: { text: () => breakAtDot(encoreWords(app.save.data.best.encore?.normal), encoreWidth[shape()] - 16, encoreSize(shape()), { bold: true }), tap: () => act.openEncore() },
       about: { text: () => (words.language() === 'zh' ? app.chosenAct.noteZh : app.chosenAct.noteEn) },
       bpm: { text: () => t('bpm', { n: app.chosenAct.bpm }) },
@@ -268,7 +268,7 @@ export function createScreens(game, { words, app, act, semantics }) {
         text('heading', t('calTitle'), { height: 44, size: 32, bold: true }),
         how,
         text('count', '', { height: 52, size: 16, color: C.gold }),
-        { type: 'panel', name: 'tap', label: t('calTap'), height: 84, color: C.drum, alpha: 1, border: BRASS, children: [
+        { type: 'panel', name: 'tap', role: 'button', label: t('calTap'), height: 84, color: C.drum, alpha: 1, border: BRASS, children: [
           text('tap-word', t('calTap'), { anchor: 'center', width: 'fill', height: 40, size: 22, bold: true, align: 'center', color: C.cream })
         ] },
         ...(settings().sound ? [] : [wrapped('needs-sound', t('calNeedsSound'), width, { size: size - 1, color: C.rose })]),
@@ -281,10 +281,10 @@ export function createScreens(game, { words, app, act, semantics }) {
         height: rows.reduce((sum, row) => sum + row.height, 0) + (rows.length - 1) * 10 + 48, children: rows });
     };
     return modal(context, { label: t('calTitle'), root: describe(440, 50, 16), portrait: describe(444, 64, 18) }, { bind: {
-      // An empty text part stops the semantic tree from publishing (ENGINE-NOTES.md), so the line hides until it has words.
-      count: { text: () => app.cal.message, visible: () => Boolean(app.cal.message) },
+      // The engine omits empty optional text from semantic publication.
+      count: { text: () => app.cal.message },
       // The pad stands there from the start, dim until the clapper plays, so the dialog does not change its shape.
-      tap: { color: () => (!app.cal.running ? 0x3a2a22 : app.cal.beat ? C.drumLit : C.drum), tap: () => act.calKey() },
+      tap: { color: () => (!app.cal.running ? 0x3a2a22 : app.cal.beat ? C.drumLit : C.drum), tap: (_state, activation) => act.calKey(activation) },
       'cal-start': { visible: () => !app.cal.running, tap: () => act.calStart() },
       close: { tap: () => context.close() }
     }, built: (made) => act.calBuilt(made) });

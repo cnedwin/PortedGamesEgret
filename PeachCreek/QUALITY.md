@@ -96,3 +96,15 @@ The mixed entry point counts map interaction, visual feedback and UI actions, ex
 - 浏览器中的真实键盘与鼠标事件和模拟触屏覆盖设置开关、滚动、县城地块、迁移旧码头、布防、三个存档、离线上线和坏档提示。 · Real browser keyboard and mouse events and emulated touch covered settings, scrolling, parcels, legacy dock relocation, defence, all three saves, offline progress and corrupt-save notices.
 - 浏览器语义树和焦点通过自动检查。屏幕阅读器软件、手机真机、手机音频和性能未验证。 · Browser semantic roles and focus were checked automatically. Actual screen-reader software, phone hardware, audio and performance were outside the run.
 - `node tools/check-standard.mjs PeachCreek --strict`、全仓默认标准检查和 `npm run check:showcase` 通过。管理模板预览共用这个引擎副本，提交号与导入映射一并同步。 · The scoped and repository-wide standard checks and the showcase check passed. The management template shares this engine copy and its provenance and import map were updated together.
+
+
+## 2026-11-27 官方主干同步 · Official main integration
+
+- 引擎 · Engine: 94bd70fb26b1f81794c9c6fbbb258c655fcd19df；预发布 CI 候选 b1f275d7 实测，正式副本的运行时代码逐文件哈希核对一致。 · Tested the complete CI candidate, then verified the official runtime payload byte for byte.
+- 自动 · Automated: Node 41/41; existing Chromium browser acceptance passed, reviewed screenshot baselines were not overwritten.
+- 实机 · Physical devices: Windows Edge 158 / RTX 5090 Laptop GPU; Samsung Fold7 Android 17 / Chrome 157 / Adreno 830, actual trusted mouse/keyboard and touch input through the respective browser control, isolated game saves.
+- 代表路线 · Representative route: 选档、县城、建造、滚动、地图点选；离线收益和坏档语义另在软件浏览器验收。 · slot, county, build, scroll, and plot selection; away report and corrupt-slot semantics are separate browser checks.
+- PC: county 180 rAF p95 4.3 → 4.3 ms; still title submissions 0 → 0.
+- Fold7: 121/121 rAF: p95/max 16.7/16.7 → 16.7/16.7 ms; scroll offset 303.36 → 303.36.
+- 原生 bind.label 保留独立美术文字语义，原两个失败断言恢复。共享管理模板 4 个 Node 与浏览器验收也通过。 / Native label restores two previously failing semantic assertions. Shared management preview also passes four Node tests and browser acceptance.
+- 限制 · Limits: 短前台 rAF 不是独立 GPU 时间，也不是整局、所有设备或中端手机验收。未跑真实读屏、物理手柄、Safari 或整局声学测试。 · Short foreground rAF samples are not isolated GPU time or a whole-game/device matrix. No physical screen reader, controller, Safari or speaker/acoustic certification.
