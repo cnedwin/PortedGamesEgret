@@ -1,6 +1,6 @@
 // 由 tools/capability-matrix.mjs 生成，不要手改 · Made by tools/capability-matrix.mjs; do not edit by hand.
 export const MATRIX = {
- "commit": "a7be833b09ddad1936c79ff148c909cf452bea7f",
+ "commit": "8637ace9a40667714abd6d74157e8dcf4587232d",
  "games": [
   "CanalWatch",
   "FengshenChronicle",
