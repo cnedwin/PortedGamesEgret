@@ -191,7 +191,6 @@ The game's code and its generated art are released under Apache-2.0. The engine 
 - 2026-11-21 引擎副本升级到 `b5628eb`、重新打包后：85 项 Node 测试通过；无头 Chromium 下打包页面和 `?dev` 都能开始，第一幕和第三幕各打 20 秒无控制台错误（`?clones=200` 时的 Spine 实例上限报错升级前后都有，见已知问题）。 · After the engine update and a new pack: 85 tests pass, both the packed page and ?dev start, and acts one and three play clean.
 - 2026-11-21 在提交 `fc1dacb`、Node 22.23.4 下运行 `node --test test/*.test.mjs`：85 项全部通过（三幕的规则、Boss、分身、资源清单与校验和、打包文件不比源码旧）。 · `node --test` at commit `fc1dacb` with Node 22.23.4: all 85 tests pass, including the check that the packed file is not older than its sources.
 - 2026-11-20 `node tools/quality.mjs LanternShadows` 在无头 Chromium + SwiftShader 下测了 16 个自动项，结果见 [QUALITY.md](QUALITY.md)；软件渲染下桌面帧时间 p95 为 66.7 ms，不代表真显卡。 · The 16 automatic quality items in headless Chromium with software rendering; the frame time there says nothing of a real GPU.
-- 没有记录在案的真机整局验收。 · No recorded whole-game run on a real device.
 
 - 2026-11-26 PC 实机：Windows 11 / Edge 158.0.4370.33，WebGL2。用正常键鼠输入完整通过南天门、蟠桃园和兜率宫，评级 B/A/B，游戏内耗时 45.73/47.73/64.15 秒；暂停恢复、分身、落幕及成绩刷新续读正常。三幕普通战斗帧时间 p95 皆为 4.3 ms，百身术 p95 皆为 16.7 ms；第一幕百身术记录一次 54.3 ms 长帧。 · Physical Windows PC, Edge 158.0.4370.33, WebGL2: cleared all three acts through keyboard input (B/A/B), pause/resume, clones and saved records verified. Normal combat p95 4.3 ms and dense-clone p95 16.7 ms in every act; one 54.3 ms dense frame in act one.
 
@@ -199,17 +198,21 @@ The game's code and its generated art are released under Apache-2.0. The engine 
 
 - 2026-11-26：最终浏览器验收 10/10，包含英文标题横转竖、真实控件命中（浏览器模拟）、390×844 触控和横屏结算布局；标题和暂停战场基线差异 0.00% / 1.69%。T2 触控目标和 I1 双语语义检查通过。 · Final headless browser acceptance 10/10; image differences 0.00% / 1.69%. T2 and I1 now pass.
 
+- 2026-11-26 原生 UI：89 项 Node、12 项浏览器验收全部通过；PC 和 Fold7 真机按正常规则实打三幕，原生触控会话、结算、记录刷新、单棒试演通过。PC 分身独立短测 p95 16.8 ms；Fold7 普通战斗仍为 16.7 ms，密集分身 p95 49.7 ms。详见 [QUALITY.md](QUALITY.md)。 · Native UI migration: 89 Node and 12 browser checks pass; real PC and Fold7 clear all acts, with records and trial. Isolated desktop clone p95 16.8 ms; Fold7 ordinary 16.7 ms and dense 49.7 ms. See QUALITY.md.
+
 ## 已知问题 · Known issues
+
+- Fold7 原生 UI 密集百身术仍存在帧率差距，旧版 p95 33.2–33.3 ms、新版短测 49.7 ms；已验证 backing 和幕布裁切对照，保留全部分身，详见 ENGINE-NOTES 第 9 条。 · Native UI dense clone p95 remains higher on Fold7; the measured backing and clip comparison did not restore the old result. All clones are retained; see engine note 9.
 
 - `?clones` 设得太大（例如 200）时，同台的 Spine 实例超过引擎每个骨骼的 128 个上限，多出的分身建不出来，控制台报 `SPINE_INSTANCE_LIMIT_FAILED`（ENGINE-NOTES 第 3 条）；默认的一百个不会碰到。 · A large `?clones` (200, say) passes the engine's limit of 128 Spine instances; the default hundred does not.
 - 画面太慢时会自动收回一部分分身（写了 `?clones` 就不收），所以慢的设备上身外身的分身数会少于一百。 · On a slow device some clones are sent back, so fewer than a hundred appear unless `?clones` is given.
 - 第一次加载页面要先下载打包文件和第一幕的全部文件，改过 `src/`、`vendor/` 或 `assets/` 后必须重新运行 `tools/bundle.mjs`，否则页面跑的是旧代码（测试会指出来）。 · After a change under `src/`, `vendor/` or `assets/` the page runs old code until `tools/bundle.mjs` is run again (a test says so).
-- 新版统一品质检查：[QUALITY.md](QUALITY.md)，仅 F1 自动软件渲染未达标（Windows Chromium 157 + SwiftShader，p95 99.9 ms）；与真实 PC 帧时间分开记录。 · The quality tool still fails its headless SwiftShader F1 check, separately from physical-device performance.
+- 新版统一品质检查：[QUALITY.md](QUALITY.md)，F1 无头软件渲染 p95 16.7 ms 达标；L1 限速通用首屏由 4.9 s 改善为 3.1 s，仍未达 3 s 阈值，需区分引擎原生画布首屏和真正可开始状态。 · F1 passes in the generic software probe; L1 is above its 3 s threshold and the generic screen probe is not the same as actual game readiness.
 
 ## 已解决 · Solved
 
 - iPhone 上一直停在加载、开锣键没有反应：引擎自带的 PNG 读取要求 2D 画布报告 sRGB 色彩空间，iPhone 的浏览器不报告。改为用浏览器自带的图片元素解码，并按清单校验和核对（`src/pictures.mjs`，`e6dd7ac`，ENGINE-NOTES 第 1 条）。 · Stuck on loading on iPhone: pictures are now decoded by the browser's image element (item 1).
-- 页面逐个加载约 260 个模块才开始：`tools/bundle.mjs` 打成一个压缩文件，并在 `index.html` 里预先列出第一幕要读的文件（`7647b50`，ENGINE-NOTES 第 2 条）。 · About 260 module requests before the start; packed into one file (item 2).
+- 页面逐个加载约 260 个模块才开始：`tools/bundle.mjs` 打成一个压缩文件，并早期在 `index.html` 里预先列出第一幕要读的文件；原生 UI 后改为入口优先，全部资产仍在开锣前就绪（`7647b50`，ENGINE-NOTES 第 2 条）。 · About 260 module requests before the start; packed into one file (item 2).
 - 手机上快速点触屏按钮会缩放页面、戏台滑出屏幕：固定视口，戏台不响应双指、双击和拖动，长按不弹菜单，并在脚本里再拒绝一次（`52cf172`）。 · Quick taps zoomed the page on phones; the viewport and gestures are now held.
 - 触屏上分身计数挡住提示（`15621a1`）；丹房炉火特效分批绘制（`0cf5159`）。 · The clones' line covered the notice on touch screens; the furnace effects are batched.
 
@@ -225,7 +228,8 @@ The game's code and its generated art are released under Apache-2.0. The engine 
 ## 目录 · Layout
 
 ```
-index.html, style.css   页面、幕布前的字与触屏按钮 · the page, the words in front of the cloth, the touch buttons
+index.html, style.css   画布容器与启动失败兜底 · the canvas host and pre-engine error fallback
+src/native-ui.mjs      原生戏单、战斗 HUD、触控、暂停与结算 · native playbill, combat HUD, controls, pause and results
 src/main.mjs            搭台、加载、每一帧 · sets the stage, loads, runs each frame
 src/rules/act.mjs       一幕戏：地面、悟空、天兵、箭、桃子、拦路的哪吒与计数 · an act: the ground, the hero, the soldiers, arrows, peaches, whoever bars the gate, and the count
 src/rules/boss.mjs      哪吒：三段打法、乾坤圈与风火轮 · Nezha: his three phases, the ring and the wheels
@@ -250,6 +254,10 @@ test/                   规则与资源的检查 · checks of the rules and the 
 
 ## 引擎副本 · Engine copy
 
-引擎副本取自 [Egret_rebuild](https://github.com/cnedwin/Egret_rebuild) 提交 `8e70dcb3a8a0b40c9966483c92cb9f691a1cefd8`，由引擎仓库的 `tools/vendor-game.mjs` 复制，见 [vendor/SOURCE.md](vendor/SOURCE.md)。
+游戏的全部可互动界面由白鹭 Play 的原生视图绘制，使用语义树提供键盘焦点、无障碍名称及浏览器验收入口。扩展屏幕布局在竖屏上将 HUD 和按键安排在皮影幕布之外；原有规则、三幕场景、成绩键和音频混音不改变。横向模拟摇杆和长按跳跃由白鹭原生指针会话处理。只有引擎尚未运行时的可恢复启动提示留在网页中。
 
-The engine copy is from [Egret_rebuild](https://github.com/cnedwin/Egret_rebuild) commit `8e70dcb3a8a0b40c9966483c92cb9f691a1cefd8`, copied by the engine's `tools/vendor-game.mjs`; see [vendor/SOURCE.md](vendor/SOURCE.md).
+All playable screens use native Egret Play views, with a semantic tree for keyboard focus, accessibility names and browser acceptance. Expanded screen layout keeps the portrait HUD and controls outside the shadow cloth. The original rules, three stages, record keys and audio mix remain unchanged. Horizontal analog input and held jumping use native engine pointer sessions. Only the pre-engine recoverable boot notice remains in HTML.
+
+引擎副本取自 [Egret_rebuild](https://github.com/cnedwin/Egret_rebuild) 提交 `f0dfde367431713578e23fb3931544177b443c3c`，由引擎仓库的 `tools/vendor-game.mjs` 复制，见 [vendor/SOURCE.md](vendor/SOURCE.md)。
+
+The engine copy is from [Egret_rebuild](https://github.com/cnedwin/Egret_rebuild) commit `f0dfde367431713578e23fb3931544177b443c3c`, copied by the engine's `tools/vendor-game.mjs`; see [vendor/SOURCE.md](vendor/SOURCE.md).

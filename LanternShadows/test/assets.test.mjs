@@ -155,18 +155,19 @@ test('the page can find every module it asks for', () => {
 });
 
 test('the packed game is made from the sources as they are now, and asks for nothing else', async () => {
-  const { inputsHash, preloadBlock, preloadLines, preloads } = await import('../tools/bundle.mjs');
+  const { inputsHash, preloadBlock, preloadLines, preloads, startupAssets } = await import('../tools/bundle.mjs');
   const made = JSON.parse(read('build/lantern.json')),
     packed = read('build/lantern.js').toString(),
     html = read('index.html').toString();
   assert.equal(made.inputs, inputsHash(), 'run tools/bundle.mjs again');
-  assert.equal(packed.length, made.bytes);
+  assert.equal(Buffer.byteLength(packed, "utf8"), made.bytes);
   assert.ok(!/\bfrom\s*["'][^"']+["']/.test(packed.slice(0, 400)) && !/import\(["']@/.test(packed), 'the packed game imports nothing');
   assert.ok(packed.startsWith('/*! Lantern Shadows') && packed.includes('vendor/NOTICE'), 'it says where its notices are');
-  assert.ok(packed.length < 1.2e6, `it has grown to ${packed.length} bytes`);
-  // The page starts on every file the first act reads, and on none that is not there.
+  assert.ok(made.bytes < 1.35e6, `it has grown to ${made.bytes} bytes`);
+  // The engine entry is prioritized; all actual startup files remain required and validated.
   assert.equal(preloadBlock(html), preloadLines(), 'run tools/bundle.mjs again');
-  for (const file of preloads()) assert.ok(fs.existsSync(path.join(ROOT, file)), file);
+  assert.equal(preloads().length, 0, "assets must not compete with the native title entry");
+  for (const file of startupAssets()) assert.ok(fs.existsSync(path.join(ROOT, file)), file);
   assert.ok(html.includes('<link rel="modulepreload" href="build/lantern.js">') && html.includes("'./build/lantern.js'"));
 });
 

@@ -40,18 +40,20 @@ export function inputsHash() {
 }
 
 /**
- * What the page should begin to fetch while the game's code is still on its way: the manifest, the levels, and
- * every picture and skeleton the play shows, largest first.
+ * The manifest, maps and pictures read before Begin is enabled. The list stays validated even when the page
+ * does not request these ahead of the native engine entry.
  */
-export function preloads() {
+export function startupAssets() {
   const manifest = JSON.parse(read('assets/manifest.json'));
   const files = [...manifest.entries.map(entry => 'assets/' + entry.artifact.path), ...filesUnder('assets/scene', '').filter(file => /\.(png|jpg)$/.test(file))];
   const bySize = files.map(file => [file, fs.statSync(path.join(ROOT, file)).size]).sort((a, b) => b[1] - a[1] || (a[0] < b[0] ? -1 : 1));
   return ['assets/manifest.json', ...filesUnder('assets/levels', '.tmj'), ...bySize.map(([file]) => file)];
 }
-/** The lines of index.html that ask for them. */
+/** Native title should paint first: avoid competing with its modulepreload. All startup assets still load before Begin. */
+export const preloads = () => [];
+/** The generated asset preload block in index.html. */
 export const preloadLines = () => preloads().map(file => `  <link rel="preload" as="fetch" crossorigin href="${file}">`).join('\n');
-const MARKS = ['  <!-- Fetched at once. Written by tools/bundle.mjs. -->', '  <!-- End of what is fetched at once. -->'];
+const MARKS = ['  <!-- Asset preload policy: engine entry first. Written by tools/bundle.mjs. -->', '  <!-- End of asset preloads. -->'];
 export const preloadBlock = html => html.slice(html.indexOf(MARKS[0]) + MARKS[0].length + 1, html.indexOf(MARKS[1]) - 1);
 
 async function main() {
@@ -86,7 +88,7 @@ async function main() {
     to = html.indexOf(MARKS[1]);
   if (from < 0 || to < 0) throw Error('index.html has lost the marks around what is fetched at once.');
   fs.writeFileSync(PAGE, html.slice(0, from) + MARKS[0] + '\n' + preloadLines() + '\n' + html.slice(to));
-  console.log(`build/lantern.js: ${Object.keys(result.metafile.inputs).length} modules, ${Math.round(bytes / 1024)} KB; ${preloads().length} files fetched at once`);
+  console.log(`build/lantern.js: ${Object.keys(result.metafile.inputs).length} modules, ${Math.round(bytes / 1024)} KB; ${preloads().length} eager asset preloads`);
 }
 
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) await main();

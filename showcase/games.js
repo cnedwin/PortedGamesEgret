@@ -358,6 +358,11 @@ export const GAMES = [
         description: { zh: "粒子发射器表现命中与舞台演出。", en: "Particle emitters drive hits and stage effects." },
         source: 'src/main.mjs',
       },
+      {
+        title: { zh: "原生 UI 与触点会话", en: "Native UI and pointer sessions" },
+        description: { zh: "戏单、战斗 HUD、暂停结算与双指触控共用白鹭画布，支持扩展横竖屏与语义焦点。", en: "Playbill, combat HUD, results and multi-touch share the Egret canvas, with adaptive screens and semantic focus." },
+        source: 'src/native-ui.mjs',
+      },
     ],
   },
   {

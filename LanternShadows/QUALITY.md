@@ -17,30 +17,30 @@ this file; items by hand or on a device are marked not run until someone runs th
 
 | 编号 · Item | 标准 · Standard | 方式 · How | 结果 · Result | 测量 · Measured |
 |---|---|---|---|---|
-| T1 | 触屏走完主流程 · The whole game by touch | 真机 · device | 达标 · pass | Samsung Galaxy Z Fold7 (SM-F966U1, Android 17, Chrome 157); all three acts, C/B/B, records reload |
+| T1 | 触屏走完主流程 · The whole game by touch | 真机 · device | 达标 · pass | Fold7 / Chrome 157, three acts C/C/C, records and trial; see physical evidence |
 | T2 | 触控区 ≥ 44×44 CSS px · Touch targets ≥ 44 × 44 CSS px | 自动 · automatic | 达标 · pass | 8 controls, all at least 44×44 |
-| T3 | 不误触下拉刷新和双击缩放 · No pull-to-refresh or double-tap zoom | 自动 · automatic | 达标 · pass | overscroll held, touch-action pan-y, double-tap zoom off |
-| F1 | 桌面帧时间 p95 ≤ 16.7 ms · Desktop frame time p95 ≤ 16.7 ms | 自动 · automatic | 不达标 · fail | Headless SwiftShader p95 99.9 ms over 52 frames; physical PC results below |
+| T3 | 不误触下拉刷新和双击缩放 · No pull-to-refresh or double-tap zoom | 自动 · automatic | 达标 · pass | overscroll held, touch-action none, double-tap zoom off |
+| F1 | 桌面帧时间 p95 ≤ 16.7 ms · Desktop frame time p95 ≤ 16.7 ms | 自动 · automatic | 达标 · pass | p95 16.7 ms over 328 frames |
 | F2 | 中端手机帧时间 p95 ≤ 33 ms · Mid-range phone frame time p95 ≤ 33 ms | 真机 · device | 未运行 · not run | Fold7 flagship measured, not a mid-range device; see below |
-| L1 | 首屏 ≤ 3 s（10/5 Mbps、40 ms、CPU ×4） · Start-up ≤ 3 s (10/5 Mbps, 40 ms, CPU ×4) | 自动 · automatic | 达标 · pass | 1.5 s to the first playable screen, 1.5 MB |
+| L1 | 首屏 ≤ 3 s（10/5 Mbps、40 ms、CPU ×4） · Start-up ≤ 3 s (10/5 Mbps, 40 ms, CPU ×4) | 自动 · automatic | 不达标 · fail | 3.1 s to the first playable screen, 2.9 MB |
 | O1 | 横竖屏与窗口尺寸 · Orientation and window sizes | 自动 · automatic | 达标 · pass | 1280×800, 390×844, 844×390, 768×1024 and live resizing: fits, no errors |
-| I1 | 中英文全可切换，英文下无中文 · Both languages; no Chinese left in English | 自动 · automatic | 达标 · pass | html lang en, no Chinese in page text or names |
-| I2 | 画布上的字也随语言切换 · Words drawn on the canvas follow the language | 人工 · by hand | 未运行 · not run |  |
+| I1 | 中英文全可切换，英文下无中文 · Both languages; no Chinese left in English | 自动 · automatic | 达标 · pass | html lang "en", no Chinese in page text or names |
+| I2 | 画布上的字也随语言切换 · Words drawn on the canvas follow the language | 人工 · by hand | 达标 · pass | Native Chinese/English title, HUD and results reviewed; actual localized semantic names tested |
 | I3 | 长英文不溢出 · Long English does not overflow | 自动 · automatic | 达标 · pass | no page text cut off at 390 px in English |
 | A1 | 键盘可到达控件，焦点可见 · The keyboard reaches controls; focus shows | 自动 · automatic | 达标 · pass | Tab → "皮影戏台" (focus drawn by the game) |
 | A1m | 只用键盘走完主流程 · The whole game by keyboard alone | 人工 · by hand | 未运行 · not run |  |
-| A2 | 读屏读出主要按钮 · A screen reader names the main buttons | 自动 · automatic | 达标 · pass | 6 named controls including 开锣, 直接会哪吒, 从第二幕蟠桃园演起 |
+| A2 | 读屏读出主要按钮 · A screen reader names the main buttons | 自动 · automatic | 达标 · pass | 8 named controls, e.g. button "开锣", button "EN", button "直接会哪吒" |
 | A3 | 尊重 prefers-reduced-motion · prefers-reduced-motion is honoured | 自动 · automatic | 达标 · pass | the code reads prefers-reduced-motion or offers a setting |
 | S1 | 存档损坏不崩溃 · A broken save does not crash | 自动 · automatic | 达标 · pass | unreadable text; started without an uncaught error (keys: lantern-, lantern-screen-controls) |
 | S2 | 存档版本不匹配不崩溃 · A save of another version does not crash | 自动 · automatic | 达标 · pass | a save from a newer version; started without an uncaught error (keys: lantern-, lantern-screen-controls) |
 | S3 | 存储不可用不崩溃 · Refused storage does not crash | 自动 · automatic | 达标 · pass | storage refused: started without an uncaught error |
 | S4 | 存档出问题时提示并可重开 · A save problem is told and a fresh start offered | 人工 · by hand | 未运行 · not run |  |
 | E1 | 无控制台错误 · No console errors | 自动 · automatic | 达标 · pass | 0 errors |
-| E2 | 资源失败有错误界面和重试 · A failed file shows an error and a retry | 自动 · automatic | 未验证 · unverified | Tool returned n/a; asset detector missed manifest-based loading; explicit retry not tested |
+| E2 | 资源失败有错误界面和重试 · A failed file shows an error and a retry | 自动 · automatic | 达标 · pass | 27 files refused; no uncaught error; offers to try again |
 | E3 | 切到后台再回来不出错 · Hidden and shown again without errors | 自动 · automatic | 达标 · pass | no errors; the game or the engine loop watches visibility |
 | E4 | 切回后声音和计时正常 · Sound and timers right after coming back | 真机 · device | 未运行 · not run |  |
 
-自动项不达标 · Automatic items failing: F1 (SwiftShader)。T1 由 Fold7 真机补验；F2 中端机、E4 后台声音与计时、I2、A1m、S4 以及 E2 仍未完整验证。 · T1 was separately tested on the physical phone; the other listed manual/device items and E2 are not fully verified.
+自动项不达标 · Automatic items failing: L1（限速通用首屏 / generic throttled first-screen probe）。F1 软件渲染现达标；E2 通用故障重载与独立故障重载均通过。F2 中端机、E4 后台声音与计时、A1m 与 S4 未完整验证。 · F1 now passes in software; E2 passes both the generic probe and the independent failure/reload test. F2, E4, A1m and S4 remain unverified.
 
 ## 实机证据 · Physical device evidence (2026-11-26)
 
@@ -61,3 +61,37 @@ this file; items by hand or on a device are marked not run until someone runs th
 - 最终样式的完整浏览器验收 10/10 通过（含英文标题横转竖、390×844 触控、结算布局测试）；截图基线复跑差异 0.00% / 1.69%，控制台/页面/HTTP 错误 0。 · Final browser acceptance 10/10; physical rotation has a separate device test, while this test suite uses headless emulation; baseline differences 0.00% and 1.69%.
 - 真实旋转回归 · Physical rotation: Fold7 411×813 英文竖屏原开锣按钮中心超出视口；限制 grid 轨道和标题固有宽度后，实际开局、唯一跳键、摇杆及暂停恢复通过，html/booth/curtain/playbill scrollWidth=clientWidth=411。 · The English start button was off-screen on physical rotation; after the width constraints, actual start, one jump button, stick and pause/resume passed with no horizontal overflow.
 - 横屏结算回归 · Landscape result: Fold7 再从兜率宫开演、正常击败老君（145.47 s, C）。标题、等级、统计、三项挑战、试演、全剧终及再演/回戏单等 12/12 内容和入口完整位于 325 CSS px 高的结算区域，中心均能命中；有 2 CSS px 装饰性滚动余量，没有裁切。该定向回归未实际按再演；之前三幕流程和 PC 自动验收覆盖输入、成绩与重演选择。 · Cleared the third act on the physical phone; all 12 result elements are in bounds with hit-tested centers. A 2 CSS px scroll remainder remains; Again was not pressed in this focused run.
+
+### 2026-11-26 · 白鹭原生 UI 迁移 / Native UI migration (f0dfde36)
+
+- 规则与资源未改变：三幕、首领、默认 100 分身、独立试演、音频混音和原有成绩存档；89/89 Node 测试通过，最终 packed 浏览器验收 12/12（真实键盘事件、CDP 模拟触屏、语义树、失败重载、开局/暂停、试演/旧档和结算）。经新旧截图目视对照后更新两张基线，最终入口优先版复跑标题差异 0.00%、暂停 0.62%（阈值 4%）；无未预期浏览器错误。 · Original rules, art, audio and record keys unchanged; all 89 Node and 12 browser acceptance checks passed. Screenshots were reviewed before replacing the baselines; final differences 0.00% and 0.62%.
+- 从旧版起，相同真实硬件：Windows 11 / Edge 158 / RTX 5090 WebGL2；Samsung Galaxy Z Fold7 SM-F966U1 / Android 17 / Chrome 157 / Adreno 830 WebGL2。完整整章候选使用实际键盘/真实手机浏览器 CDP 触点（不是视口模拟）；通过游戏操作自然通关，不改血量、敌人、规则、关卡状态或分身数。后续仅微调视觉/语义与 backing，并做定向复测。 · Real PC keyboard and physical phone browser touch contacts; full three-act candidate, followed by targeted regressions of visual and density refinements.
+
+| 实机 / Hardware | 南天门 / Gate | 蟠桃园 / Orchard | 兜率宫 / Palace |
+|---|---:|---:|---:|
+| PC 完整三幕 / Full | B, 47.36 s | B, 55.47 s | B, 62.45 s |
+| PC normal rAF p95 | 4.3 ms | 4.7 ms | 4.7 ms |
+| PC dense rAF p95（并行负载 / concurrent load） | 24.9 ms | 16.9 ms | 20.8 ms |
+| Fold7 完整三幕 / Full | C, 190.66 s | C, 197.54 s | C, 105.20 s |
+| Fold7 normal rAF p95 | 16.7 ms | 16.7 ms | 16.7 ms |
+| Fold7 dense rAF p95 | 49.8 ms | 49.7 ms | 49.8 ms |
+
+- 完整路线：PC 每幕自然使用百身术两次，Fold7 3/3/2 次，逻辑和实际绘制峰值均为 100；击退 10/14/11 名天兵、三位 Boss 和炉内阶段、下一幕、最终结算、回戏单/再演、刷新续读三条成绩、单棒试演均通过。Fold7 QA 循环的输入等待较旧长，不把通关时间和倒地次数当作同条件难度对比。两设备游戏错误为 0（整章候选）。 · Full natural clears with the original enemies and 100-clone peak, records/replay/trial; the phone input cadence differed from the old route, so times/falls are not a controlled difficulty comparison.
+- 真实 Fold7：固定轨道死区、轻推/重推、越界、第二触点长按跳、释放/取消、持杆暂停清空再抓握；实际英文横转竖、完整标题、唯一 Jump、四个 44.525×44.525 CSS px 动作键及暂停续演通过。独立音效和配乐开关、实际音频播放主题及运行状态正常；未做扬声器声学实听。 · Physical touch session and rotation passed, including one Jump, independent effects/music toggles and playback state; no acoustic listening.
+- 实际 backing：PC 1440×900 CSS px 由 960×600 改为 1441×901，文字与 HUD 实拍更清晰。Fold7 横屏 872.68×325 CSS px / DPR 2.625 由 2855×1064 调整至 2291×854。真实 PC 无其他渲染验收并发时首个自然百身 normal p95 4.3 ms（4416 帧，最大 49.9），dense p95 16.8 ms（614 帧，最大 29.1），pose p95 4.75 ms，接近旧版 dense 16.7 ms；不能把前面的并发负载结果归因于 UI。 · The density correction sharpened desktop text and removed excess phone pixels; isolated PC performance is near baseline.
+- Fold7 单测首个自然百身：normal p95 16.7 ms（2213 帧，最大 66.2），dense p95 49.7 ms（227 帧，最大 67.8，4 帧 >50），pose p95 12.3 ms，LoAF 最大 71.2 ms。相同 backing 的幕布裁切 A/B（逐皮偶裁切 vs 原生遮板）B dense p95 49.7 ms（251 帧，最大 67.8，2 帧 >50），无足够收益，已回退 B。原版密集约 33.2–33.3 ms；本作保留 100 分身，差距记为引擎/应用联合待定位项，不能从 rAF 判断 GPU 或某一个引擎阶段的耗时。 · Mobile dense performance remains open; the matte A/B did not restore it. Natural routes are not identical deterministic traces; no causal claim.
+- 未覆盖：实体手柄、读屏软件/Safari、WebGPU、其他手机档位、扬声器声学实听；浏览器模拟与真机数据分别列出。 · No physical controller, actual screen reader/Safari, WebGPU, other handset class or speaker acoustic test.
+
+- 最后 HUD 定向实机：Fold7 自然触控攻击达到 2 连击时，计时 CSS 矩形 y74.03–90.28、连击 y95.69–125.79，分隔 5.42 CSS px；这来自实机状态与布局测量（截图未同时捕获短暂的连击文字），未把未出现的所有同时提示当作已目测。20 个文件哈希均通过。最终启动策略变更不改变 JS bundle（SHA256 `904d5728d41fb53e3c64f39cb6abc045dc9b98b1b989fdcfe5490affa625af65`）。 · Final real-phone layout probe measured a 5.42 CSS px gap; the transient combo was not simultaneously visible in the saved image. The final startup policy leaves the verified JS bundle unchanged.
+
+#### 限速启动对照 · Throttled cold start
+
+同一 390×844 Chromium/SwiftShader、冷缓存、下行 10 Mbps / 上行 5 Mbps / RTT 40 ms / CPU ×4，三种条件各一次。旧版为干净 `c971c0ff`（8e70dcb3）；第三项只在测试服务器移除 66 项资产 preload，之后将相同策略加入打包脚本，所有资源仍在 Begin 可用前加载。 · One cold sample per condition, same viewport and throttling; the third test removed only asset preloads and preserved modulepreload.
+
+| 阶段 / Phase | 旧版 / Old | 原生 UI 原候选 / Native before | 原生 UI 入口优先 / Entry first |
+|---|---:|---:|---:|
+| 初始标题或启动提示可见 / Boot visible | 315 ms | 192 ms | 176 ms |
+| 首次绘制提交 / First WebGL draw submission | 3,937 ms | 3,550 ms | 1,728 ms |
+| 开锣真正可用 / Begin genuinely enabled | 3,779 ms | 5,568 ms | 5,109 ms |
+
+- 入口优先使原生画布首次绘制在这一次对照中提前约 1.82 s，真正就绪也提前约 0.46 s；没有把加载挪到首次游戏操作。原生版实际可开锣仍比旧版慢约 1.33 s，未达到 3 s 完全就绪目标；首次绘制提交不是浏览器最终合成呈现时刻。原先通用 L1 1.5 s 是可见 HTML 元素的近似探测，不等于旧版实际就绪。 · The entry-first policy helps both first draw and actual readiness in this one comparison, not a controlled mean. Actual ready remains slower than the old page and above 3 seconds; no claim of compositor presentation.
