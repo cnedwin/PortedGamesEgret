@@ -53,6 +53,13 @@ export function registerUiEngine(engine, assembly) {
         isIdle() {
             return !assembly.isFrameBusy() && delivery.depth === 0;
         },
+        assertNotDrawing() {
+            assembly.assertOpen();
+            if (assembly.isFrameBusy())
+                throw new EgretError('UI_BUSY', {
+                    cause: new Error('a frame is being drawn: call this after the frame, not from inside it')
+                });
+        },
         isEngineScope(value) {
             return scopes.has(value);
         },
