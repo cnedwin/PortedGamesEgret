@@ -26,13 +26,13 @@ const HEIGHT = { title: 56, text: 30, note: 24, button: 60, buttons: 54, toggle:
  * Returns `{ close(), repaint(), open, kit }`.
  */
 export async function openCard(game, { width: stageWidth, semantics, sound, rows, cardWidth = 520, veil = 0.6, name = '', onClose, top, left }) {
-  // A root may not be made while the press that asked for it is still being delivered: leave that delivery first.
-  await Promise.resolve();
+  // A root may be made while the press that asked for it is being delivered (ENGINE-NOTES.md, item 20).
   const scope = game.engine.createScope(),
     keyboard = game.keyboard,
     id = `card-${++serial}`,
     parts = {};
-  // The card is modal: what had the focus behind it lets go first, or it would be focused and inert at once.
+  // The card is modal: what had the focus behind it lets go, and the focus moves into the card once it is laid out
+  // (ENGINE-NOTES.md, item 18).
   const before = keyboard?.getSnapshot().focusedId;
   keyboard?.focus(undefined);
   const shade = game.stage.addChild(scope.use(new Sprite()));

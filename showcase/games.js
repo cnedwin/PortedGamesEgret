@@ -668,4 +668,70 @@ export const GAMES = [
       },
     ],
   },
+  {
+    id: 'inquest', folder: 'InquestScrolls', kind: '2d',
+    scenes: [
+      { zh: "纸坊悬梁 · 定格在案发瞬间的现场长卷：工头、仵作、坊主和梁上的绳套，红圈是可查的证物", en: "The Beam at the Paper Mill · The scene frozen at the moment of the crime: the foreman, the coroner's aide, the owner and the noose; red rings mark the evidence" },
+      { zh: "尸身 · 白描正背人形图上标着伤痕，带下划线的词点一下收进词囊", en: "The body · Wounds marked on the front and back body chart; tap an underlined word to put it in the pouch" },
+      { zh: "卷宗 · 把词拖进同色的空位，一页全对，盖上朱印", en: "The dossier · Words dragged into blanks of their colour; a page all right is sealed in red" },
+    ],
+    zh: "洗冤笔录", en: "The Inquest Scrolls",
+    genre: { zh: "宋代刑侦推理", en: "Song-dynasty detective deduction" },
+    summary: { zh: "南宋提点刑狱官覆检白蘋县的五份“太干净”的检验格目：在定格的现场长卷里点人、点物、读文书，把人名、器物、痕迹、死因、处所和情由收进词囊，逐页填完卷宗；全对盖印，错两处以内只说“尚有两处以内不实”。六案连成一桩伪造会子的大案，最后亲手写判词。验尸手法依《洗冤集录》，人物与案情原创；网页之外还能导出为微信小游戏。", en: "A Southern Song judicial intendant reopens five inquest forms from Baipin County that are too clean: tap people, things and documents in a frozen handscroll of each scene, gather names, objects, marks, causes, places and motives, and fill the dossier page by page; all right and it is sealed, two or fewer wrong and it says only that. Six cases join into one of forged paper money, and the last verdict is written by hand. The inquest methods follow the Collected Cases of Injustice Rectified; the people and cases are original; it also exports as a WeChat mini game." },
+    features: [
+      {
+        title: { zh: "CanvasKit 段落与文字几何", en: "CanvasKit paragraphs and text geometry" },
+        description: { zh: "卷宗、证物、序言都由 createParagraph 排版，带颜色的词段；用文字几何的 getSelectionRects、clusters 和 hitTest 量出每个空位、找到手指下的词、画下划线；字体由资源清单载入。没有 CanvasKit 的小游戏里，同一套几何由画布文字标签拼出。", en: "The dossier, the evidence and the prologue are laid out by createParagraph with coloured runs; the text geometry (getSelectionRects, clusters, hitTest) measures every blank, finds the word under a finger and draws the underlines; fonts come from a resource manifest. In a mini game without CanvasKit the same geometry comes from canvas labels." },
+        source: 'src/view/type.mjs',
+      },
+      {
+        title: { zh: "拖词落位、拖动与双指缩放", en: "Dragging words, panning and pinching" },
+        description: { zh: "game.dragAndDrop 把词签拖进卷宗空位，空位只收同类的词；game.gestures 拖动平移现场长卷、双指缩放，词囊列表拖动滚动；鼠标悬停由 createBrowserHoverInput 点亮证物。", en: "game.dragAndDrop drags word slips into the dossier's blanks, each taking only its kind; game.gestures pans and pinches the handscroll and scrolls the pouch; createBrowserHoverInput lights the evidence under the mouse." },
+        source: 'src/view/dossier.mjs',
+      },
+      {
+        title: { zh: "判词与笔录的文字输入", en: "Text input for the verdict and the notes" },
+        description: { zh: "判词用 createBrowserTextInput 在框上放平台文本框，输入法照常可用；笔录是 createUiTextEditor 加 createBrowserTextEditor 的多行编辑器，平时由段落画出，随存档保留。小游戏里两者都改用字盘。", en: "The verdict uses createBrowserTextInput, a platform field over the box with input methods working; the notes are a createUiTextEditor with createBrowserTextEditor, drawn as a paragraph at rest and kept with the save. In a mini game both use a board." },
+        source: 'src/view/notes.mjs',
+      },
+      {
+        title: { zh: "按案成组载入与谜题审计", en: "Pictures loaded by case, and the puzzle audit" },
+        description: { zh: "每案的背景、人物和器物用 engine.createAssetGroup 一组载入、一并释放；案卷用数据写出“线索 → 结论”，Node 测试验证每案可解、每空唯一、没有能填两个空的词，中英两套案卷各验一遍。", en: "Each case's pictures load and go together as one engine asset group; the cases are written as clue → conclusion data, and Node tests hold that each case is solvable, every blank has one answer and no word fits two blanks, in both languages." },
+        source: 'src/sim/audit.mjs',
+      },
+    ],
+  },
+  {
+    id: 'luban', folder: 'LubanBridge', kind: '2d',
+    scenes: [
+      { zh: "马帮 · 两座桥楼之间挂着铁链，吊绳吊住木板桥面，马车和挑夫正在过峡", en: "The horse caravan · Iron chains hang between two gate towers and ropes hold the plank deck as a horse cart and a porter cross the gorge" },
+      { zh: "赵州桥 · 双层石拱托着石板桥面，牛车和运石车同时上桥，吃力的石块泛红", en: "Zhaozhou Bridge · A two-ring stone arch carries the slab deck as an ox cart and a stone wagon cross; the stones working hardest turn red" },
+      { zh: "嫁女 · 太浅的竹桁架撑不住花轿，竹竿折断，桥身从岸边滑落", en: "A bride crosses · A truss of bamboo too shallow for the sedan: the canes snap and the bridge slides off the bank" },
+    ],
+    zh: "鲁班造桥", en: "Luban's Bridges",
+    genre: { zh: "物理造桥解谜", en: "Physics bridge-building puzzle" },
+    summary: { zh: "鲁班门下的匠人走遍江南、赵州、蜀道、潮州和侗乡，在网格上搭木梁、竹架、石拱、悬索和浮桥，让挑夫、花轿、马车和运石车过河。点“试通”后桥身按真实受力弯曲变色，太吃力的杆件拉断、压坏、落水。五章二十五关，每章最后重建一座名桥，三枚印章，另有沙盒。画面和声音全部用代码画出、合成；网页之外还能导出为微信小游戏。", en: "One of Lu Ban's apprentices travels through Jiangnan, Zhaozhou, the Shu Road, Chaozhou and Dong country, laying timber beams, bamboo frames, stone arches, suspension cables and pontoon bridges on a grid so that porters, a bridal sedan, horse carts and a stone wagon can cross. On Test the bridge bends and colours with its real loads, and a member that works too hard tears, crushes and falls in the river. Five chapters of five levels, each ending with a famous bridge, three seals, and a sandbox. Every picture and sound is made in code; it also exports as a WeChat mini game." },
+    features: [
+      {
+        title: { zh: "2D 物理：车轮、牵引和落水的碎木", en: "2D physics: wheels, hitches and falling debris" },
+        description: { zh: "createPhysicsWorld 里车轮是圆形刚体，两轮之间一根 distance 关节，牲口和车之间一根 rope 关节；桥面是跟着桥身走的运动刚体，断下来的木石是动态刚体，落水后木浮石沉。桥身本身由小步长位置约束求解，每根杆件的力直接算出，按材料判断拉断或压坏。", en: "In createPhysicsWorld the wheels are circles joined by a distance joint, a beast and its cart by a rope joint; the deck is kinematic bodies following the frame, and broken timber and stone are dynamic bodies, wood floating and stone sinking. The frame itself is solved with small-step position constraints that give each member's force, judged against its material." },
+        source: 'src/sim/run.mjs',
+      },
+      {
+        title: { zh: "手势、悬停与键盘光标", en: "Gestures, hover and a keyboard cursor" },
+        description: { zh: "createGestures 拖动搭杆、长按拆、双指缩放平移、双击复位；createBrowserHoverInput 悬停显示杆长和造价、滚轮按指针缩放；键盘和手柄用网格光标搭桥。读屏软件能念出每个按钮。", en: "createGestures lays members by dragging, takes them down with a long press, zooms and pans with two fingers and fits with a double tap; createBrowserHoverInput shows a member's length and price and zooms at the pointer; keys and gamepads build with a grid cursor. A screen reader names every button." },
+        source: 'src/view/build.mjs',
+      },
+      {
+        title: { zh: "版面规划与安全区", en: "View planning and the safe area" },
+        description: { zh: "选关页由 web/view 的 planView 按描述排版，横屏竖屏各一套；小游戏里用 web/screen 的 planScreen 按手机的刘海和底部横条算出安全区；?check=1 时用 ui/testing 按语义树自检一遍。", en: "The level choice is laid out by web/view's planView from a description, wide and tall; in a mini game web/screen's planScreen works out the safe area from the phone's notch and home bar; ?check=1 runs a self check through the semantic tree with ui/testing." },
+        source: 'src/view/screens.mjs',
+      },
+      {
+        title: { zh: "每关都有一份在 Node 里试通过的参考解", en: "Every level has a reference sent across in Node" },
+        description: { zh: "参考解由桁架、石拱、悬索、浮桥、墩上桁架几种桥式拼出，测试在 Node 里让它们全部过河、一根不断，预算由参考解的造价定；只铺桥面不加支撑的桥在每一关都过不去。", en: "References are built from trusses, arches, suspension, pontoon and pier designs; the tests send each across in Node with nothing broken, and its cost sets the budget; a bare deck fails on every level." },
+        source: 'test/rules.test.mjs',
+      },
+    ],
+  },
 ];

@@ -1,0 +1,34 @@
+---
+id: bridge-frames
+title: Bridges and trusses that must report member forces
+applies: [engine, web]
+triggers: [addJoint, createPhysicsWorld, "distance joint", truss, bridge, "member force", "joint force", breakForce, "bridge builder", "桁架", "造桥", "杆件受力", "拉断", "压坏", "关节受力"]
+local: [truss, member, node]
+evidence:
+  - { repo: cnedwin/PortedGamesEgret, path: LubanBridge/src/sim/truss.mjs, line: 113, commit: d69caa88e6e17d6c3dff0de03db96d720ba81282, pin: a7be833b09ddad1936c79ff148c909cf452bea7f }
+  - { repo: cnedwin/PortedGamesEgret, path: LubanBridge/src/sim/run.mjs, line: 149, commit: d69caa88e6e17d6c3dff0de03db96d720ba81282, pin: a7be833b09ddad1936c79ff148c909cf452bea7f }
+  - { repo: cnedwin/PortedGamesEgret, path: LubanBridge/ENGINE-NOTES.md, line: 7, commit: d69caa88e6e17d6c3dff0de03db96d720ba81282, pin: a7be833b09ddad1936c79ff148c909cf452bea7f }
+engine: a7be833b09ddad1936c79ff148c909cf452bea7f
+---
+
+# Bridges and trusses that must report member forces
+
+Luban's Bridges first chained nodes with `addJoint({ kind: 'distance' })`. A 12 m truss with a 10 kN load sagged 1.89 m at a 1/60 step, kept swinging, and stretched unsymmetrically under a symmetric load (the joints are solved one after another, in one order). A joint also gives only `distance()`, not the force it carried, so a member cannot tear or crush by its load.
+
+What works today: solve the frame yourself with small-step position constraints, and keep the engine world for the bodies that collide.
+
+```js
+// One small step h of a member between nodes a and b (inverse masses wa, wb). compliance = length / (E·A).
+const C = dist - rest, alpha = compliance / (h * h);
+const dl = -C / (wa + wb + alpha);   // move a by -dl·wa·n and b by +dl·wb·n
+member.force = -dl / (h * h);        // newtons: pull positive, push negative
+```
+
+Rules:
+
+- Twelve steps of 1/720 s a frame with one round each, alternating the order every step, gave symmetric forces that match a hand-worked truss.
+- Smooth the force over about 0.04 s before comparing with the strength, or one jolt of a single step breaks a member.
+- Let the frame take its own weight over the first moments (ramp gravity), or it drops and breaks at once.
+- A rope member pulls only: skip it when it is shorter than its length.
+- Carts and debris stay in the engine world: wheels are circles held together by a `distance` joint, a beast and its cart by a `rope` joint; each deck member is a kinematic box set to follow its two nodes each step, and a wheel's weight goes onto those nodes.
+- A body's `angle` is in degrees (see body-angle-degrees).

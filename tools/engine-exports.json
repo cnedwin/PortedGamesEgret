@@ -1,5 +1,5 @@
 {
-  "commit": "b3b594351e8017ce43a7c3cb20c769403806553e",
+  "commit": "8637ace9a40667714abd6d74157e8dcf4587232d",
   "entries": [
     "@egret/engine",
     "@egret/engine/webgpu",
@@ -15,6 +15,8 @@
     "@egret/engine/resources",
     "@egret/engine/web/resources",
     "@egret/engine/input",
+    "@egret/engine/web/gestures",
+    "@egret/engine/web/view",
     "@egret/engine/web/pointer",
     "@egret/engine/ui",
     "@egret/engine/animation",
@@ -22,6 +24,7 @@
     "@egret/engine/web/paragraph",
     "@egret/engine/web/keyboard",
     "@egret/engine/web/text-input",
+    "@egret/engine/web/wechat-text-input",
     "@egret/engine/ui/editing",
     "@egret/engine/web/editing",
     "@egret/engine/input/hover",
@@ -36,6 +39,7 @@
     "@egret/engine/video",
     "@egret/engine/web/video",
     "@egret/engine/web/loop",
+    "@egret/engine/web/screen",
     "@egret/engine/kit",
     "@egret/engine/web/kit",
     "@egret/engine/web/game",
@@ -43,6 +47,7 @@
     "@egret/engine/audio",
     "@egret/engine/web/audio",
     "@egret/engine/ui/semantics",
+    "@egret/engine/ui/testing",
     "@egret/engine/web/semantics",
     "@egret/spine",
     "@egret/spine/web"

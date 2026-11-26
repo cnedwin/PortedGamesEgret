@@ -1,16 +1,18 @@
 // 由 tools/capability-matrix.mjs 生成，不要手改 · Made by tools/capability-matrix.mjs; do not edit by hand.
 export const MATRIX = {
- "commit": "b3b594351e8017ce43a7c3cb20c769403806553e",
+ "commit": "8637ace9a40667714abd6d74157e8dcf4587232d",
  "games": [
   "CanalWatch",
   "FengshenChronicle",
   "FivePhases",
   "FiveRegiments",
   "FPS",
+  "InquestScrolls",
   "jelly-pandas",
   "JY",
   "LanternShadows",
   "LoveElective",
+  "LubanBridge",
   "MechanismCity",
   "NezhaSea",
   "NightWardens",
@@ -44,6 +46,10 @@ export const MATRIX = {
      "file": "FPS/src/main.mjs"
     },
     {
+     "game": "InquestScrolls",
+     "file": "InquestScrolls/src/view/pictures.mjs"
+    },
+    {
      "game": "jelly-pandas",
      "file": "jelly-pandas/src/main.mjs"
     },
@@ -60,6 +66,10 @@ export const MATRIX = {
      "file": "LoveElective/src/engine/stage.mjs"
     },
     {
+     "game": "LubanBridge",
+     "file": "LubanBridge/src/view/paint.mjs"
+    },
+    {
      "game": "MechanismCity",
      "file": "MechanismCity/src/art/illustrations.mjs"
     },
@@ -73,7 +83,7 @@ export const MATRIX = {
     },
     {
      "game": "PeachCreek",
-     "file": "PeachCreek/src/view.mjs"
+     "file": "PeachCreek/src/inspector.mjs"
     },
     {
      "game": "Rally",
@@ -89,7 +99,7 @@ export const MATRIX = {
     },
     {
      "game": "TaiwanMahjong",
-     "file": "TaiwanMahjong/src/view.mjs"
+     "file": "TaiwanMahjong/src/round-ui.mjs"
     },
     {
      "game": "TeaHorseRoad",
@@ -128,6 +138,10 @@ export const MATRIX = {
    "kind": "entry",
    "label": "@egret/engine/layout",
    "games": [
+    {
+     "game": "InquestScrolls",
+     "file": "InquestScrolls/src/view/dossier.mjs"
+    },
     {
      "game": "NightWardens",
      "file": "NightWardens/src/screens.mjs"
@@ -299,13 +313,40 @@ export const MATRIX = {
    "id": "@egret/engine/web/resources",
    "kind": "entry",
    "label": "@egret/engine/web/resources",
-   "games": []
+   "games": [
+    {
+     "game": "InquestScrolls",
+     "file": "InquestScrolls/src/view/type.mjs"
+    }
+   ]
   },
   {
    "id": "@egret/engine/input",
    "kind": "entry",
    "label": "@egret/engine/input",
    "games": []
+  },
+  {
+   "id": "@egret/engine/web/gestures",
+   "kind": "entry",
+   "label": "@egret/engine/web/gestures",
+   "games": [
+    {
+     "game": "LubanBridge",
+     "file": "LubanBridge/src/view/build.mjs"
+    }
+   ]
+  },
+  {
+   "id": "@egret/engine/web/view",
+   "kind": "entry",
+   "label": "@egret/engine/web/view",
+   "games": [
+    {
+     "game": "LubanBridge",
+     "file": "LubanBridge/src/view/screens.mjs"
+    }
+   ]
   },
   {
    "id": "@egret/engine/web/pointer",
@@ -332,6 +373,10 @@ export const MATRIX = {
      "file": "NightWardens/src/screens.mjs"
     },
     {
+     "game": "PeachCreek",
+     "file": "PeachCreek/src/main.mjs"
+    },
+    {
      "game": "SandScroll",
      "file": "SandScroll/src/ui/kit.mjs"
     },
@@ -356,13 +401,23 @@ export const MATRIX = {
    "id": "@egret/engine/paragraph",
    "kind": "entry",
    "label": "@egret/engine/paragraph",
-   "games": []
+   "games": [
+    {
+     "game": "InquestScrolls",
+     "file": "InquestScrolls/src/view/type.mjs"
+    }
+   ]
   },
   {
    "id": "@egret/engine/web/paragraph",
    "kind": "entry",
    "label": "@egret/engine/web/paragraph",
-   "games": []
+   "games": [
+    {
+     "game": "InquestScrolls",
+     "file": "InquestScrolls/src/view/type.mjs"
+    }
+   ]
   },
   {
    "id": "@egret/engine/web/keyboard",
@@ -383,6 +438,17 @@ export const MATRIX = {
    "id": "@egret/engine/web/text-input",
    "kind": "entry",
    "label": "@egret/engine/web/text-input",
+   "games": [
+    {
+     "game": "InquestScrolls",
+     "file": "InquestScrolls/src/view/verdict.mjs"
+    }
+   ]
+  },
+  {
+   "id": "@egret/engine/web/wechat-text-input",
+   "kind": "entry",
+   "label": "@egret/engine/web/wechat-text-input",
    "games": []
   },
   {
@@ -395,7 +461,12 @@ export const MATRIX = {
    "id": "@egret/engine/web/editing",
    "kind": "entry",
    "label": "@egret/engine/web/editing",
-   "games": []
+   "games": [
+    {
+     "game": "InquestScrolls",
+     "file": "InquestScrolls/src/view/type.mjs"
+    }
+   ]
   },
   {
    "id": "@egret/engine/input/hover",
@@ -409,8 +480,16 @@ export const MATRIX = {
    "label": "@egret/engine/web/hover",
    "games": [
     {
+     "game": "InquestScrolls",
+     "file": "InquestScrolls/src/view/casebook.mjs"
+    },
+    {
      "game": "LoveElective",
      "file": "LoveElective/src/engine/stage.mjs"
+    },
+    {
+     "game": "LubanBridge",
+     "file": "LubanBridge/src/view/build.mjs"
     }
    ]
   },
@@ -515,6 +594,10 @@ export const MATRIX = {
    "label": "@egret/engine/physics2d",
    "games": [
     {
+     "game": "LubanBridge",
+     "file": "LubanBridge/src/sim/run.mjs"
+    },
+    {
      "game": "MechanismCity",
      "file": "MechanismCity/src/sim/sim.mjs"
     }
@@ -568,6 +651,17 @@ export const MATRIX = {
    ]
   },
   {
+   "id": "@egret/engine/web/screen",
+   "kind": "entry",
+   "label": "@egret/engine/web/screen",
+   "games": [
+    {
+     "game": "LubanBridge",
+     "file": "LubanBridge/src/main.mjs"
+    }
+   ]
+  },
+  {
    "id": "@egret/engine/kit",
    "kind": "entry",
    "label": "@egret/engine/kit",
@@ -579,6 +673,14 @@ export const MATRIX = {
     {
      "game": "FiveRegiments",
      "file": "FiveRegiments/src/audio.mjs"
+    },
+    {
+     "game": "InquestScrolls",
+     "file": "InquestScrolls/src/saves.mjs"
+    },
+    {
+     "game": "LubanBridge",
+     "file": "LubanBridge/src/saves.mjs"
     },
     {
      "game": "MechanismCity",
@@ -642,6 +744,14 @@ export const MATRIX = {
     {
      "game": "FPS",
      "file": "FPS/src/main.mjs"
+    },
+    {
+     "game": "InquestScrolls",
+     "file": "InquestScrolls/src/view/pictures.mjs"
+    },
+    {
+     "game": "LubanBridge",
+     "file": "LubanBridge/src/saves.mjs"
     },
     {
      "game": "MechanismCity",
@@ -738,6 +848,14 @@ export const MATRIX = {
      "file": "CanalWatch/src/main.mjs"
     },
     {
+     "game": "InquestScrolls",
+     "file": "InquestScrolls/src/main.mjs"
+    },
+    {
+     "game": "LubanBridge",
+     "file": "LubanBridge/src/main.mjs"
+    },
+    {
      "game": "NezhaSea",
      "file": "NezhaSea/src/main.mjs"
     },
@@ -761,6 +879,10 @@ export const MATRIX = {
    "label": "@egret/engine/audio",
    "games": [
     {
+     "game": "LubanBridge",
+     "file": "LubanBridge/src/audio/sound.mjs"
+    },
+    {
      "game": "NightWardens",
      "file": "NightWardens/src/audio/sound.mjs"
     }
@@ -776,6 +898,10 @@ export const MATRIX = {
      "file": "FiveRegiments/src/audio.mjs"
     },
     {
+     "game": "InquestScrolls",
+     "file": "InquestScrolls/src/audio/sound.mjs"
+    },
+    {
      "game": "JY",
      "file": "JY/web/wav-effects.mjs"
     },
@@ -786,6 +912,10 @@ export const MATRIX = {
     {
      "game": "LoveElective",
      "file": "LoveElective/src/audio.mjs"
+    },
+    {
+     "game": "LubanBridge",
+     "file": "LubanBridge/src/audio/sound.mjs"
     },
     {
      "game": "MechanismCity",
@@ -819,8 +949,16 @@ export const MATRIX = {
    "label": "@egret/engine/ui/semantics",
    "games": [
     {
+     "game": "InquestScrolls",
+     "file": "InquestScrolls/src/main.mjs"
+    },
+    {
      "game": "LoveElective",
      "file": "LoveElective/src/engine/ui-semantics.mjs"
+    },
+    {
+     "game": "LubanBridge",
+     "file": "LubanBridge/src/view/kit.mjs"
     },
     {
      "game": "MechanismCity",
@@ -831,12 +969,31 @@ export const MATRIX = {
      "file": "NightWardens/src/main.mjs"
     },
     {
+     "game": "PeachCreek",
+     "file": "PeachCreek/src/main.mjs"
+    },
+    {
      "game": "SandScroll",
      "file": "SandScroll/src/main.mjs"
     },
     {
+     "game": "TaiwanMahjong",
+     "file": "TaiwanMahjong/src/main.mjs"
+    },
+    {
      "game": "TeaHorseRoad",
      "file": "TeaHorseRoad/src/main.mjs"
+    }
+   ]
+  },
+  {
+   "id": "@egret/engine/ui/testing",
+   "kind": "entry",
+   "label": "@egret/engine/ui/testing",
+   "games": [
+    {
+     "game": "LubanBridge",
+     "file": "LubanBridge/src/check.mjs"
     }
    ]
   },
@@ -846,8 +1003,16 @@ export const MATRIX = {
    "label": "@egret/engine/web/semantics",
    "games": [
     {
+     "game": "InquestScrolls",
+     "file": "InquestScrolls/src/main.mjs"
+    },
+    {
      "game": "LoveElective",
      "file": "LoveElective/src/engine/ui-semantics.mjs"
+    },
+    {
+     "game": "LubanBridge",
+     "file": "LubanBridge/src/view/kit.mjs"
     },
     {
      "game": "MechanismCity",
@@ -858,8 +1023,16 @@ export const MATRIX = {
      "file": "NightWardens/src/main.mjs"
     },
     {
+     "game": "PeachCreek",
+     "file": "PeachCreek/src/main.mjs"
+    },
+    {
      "game": "SandScroll",
      "file": "SandScroll/src/main.mjs"
+    },
+    {
+     "game": "TaiwanMahjong",
+     "file": "TaiwanMahjong/src/main.mjs"
     },
     {
      "game": "TeaHorseRoad",
@@ -889,6 +1062,10 @@ export const MATRIX = {
    "kind": "other",
    "label": "@egret/contracts/resources",
    "games": [
+    {
+     "game": "InquestScrolls",
+     "file": "InquestScrolls/src/view/type.mjs"
+    },
     {
      "game": "LanternShadows",
      "file": "LanternShadows/src/puppets.mjs"
@@ -923,6 +1100,10 @@ export const MATRIX = {
    "kind": "api",
    "label": "2D 物理关节 · 2D physics joints (addJoint)",
    "games": [
+    {
+     "game": "LubanBridge",
+     "file": "LubanBridge/src/sim/run.mjs"
+    },
     {
      "game": "MechanismCity",
      "file": "MechanismCity/src/sim/sim.mjs"
@@ -963,7 +1144,12 @@ export const MATRIX = {
    "id": "createTextInput",
    "kind": "api",
    "label": "文字输入框 · Text input (createTextInput)",
-   "games": []
+   "games": [
+    {
+     "game": "InquestScrolls",
+     "file": "InquestScrolls/src/view/notes.mjs"
+    }
+   ]
   },
   {
    "id": "Spine",

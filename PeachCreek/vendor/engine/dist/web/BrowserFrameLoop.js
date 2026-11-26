@@ -13,7 +13,7 @@ const backpressure = (error) => {
 export function createBrowserFrameLoop(options) {
     if (options === null || typeof options !== 'object')
         throw invalid();
-    const { engine, frame, host, update, onError } = options, limit = options.maxPendingFrames ?? 2;
+    const { engine, frame, host, update, shouldRender, onError } = options, limit = options.maxPendingFrames ?? 2;
     const request = options.requestFrame ?? ((callback) => requestAnimationFrame(callback));
     const cancel = options.cancelFrame ?? ((handle) => cancelAnimationFrame(handle));
     if (engine === null ||
@@ -26,6 +26,7 @@ export function createBrowserFrameLoop(options) {
         !Number.isSafeInteger(limit) ||
         limit < 1 ||
         (update !== undefined && typeof update !== 'function') ||
+        (shouldRender !== undefined && typeof shouldRender !== 'function') ||
         (onError !== undefined && typeof onError !== 'function') ||
         typeof request !== 'function' ||
         typeof cancel !== 'function')
@@ -67,17 +68,22 @@ export function createBrowserFrameLoop(options) {
                 if (!(owed > 1e-9))
                     break;
             }
-            if (host !== undefined && host.getStatus().pendingFrames >= limit)
-                skipped++;
-            else {
-                try {
-                    engine.renderSharedFrame(typeof frame === 'function' ? frame() : frame);
-                    frames++;
-                }
-                catch (error) {
-                    if (host !== undefined || !backpressure(error))
-                        throw error;
+            const wantsFrame = shouldRender?.() ?? true;
+            if (state !== 'running')
+                return;
+            if (wantsFrame) {
+                if (host !== undefined && host.getStatus().pendingFrames >= limit)
                     skipped++;
+                else {
+                    try {
+                        engine.renderSharedFrame(typeof frame === 'function' ? frame() : frame);
+                        frames++;
+                    }
+                    catch (error) {
+                        if (host !== undefined || !backpressure(error))
+                            throw error;
+                        skipped++;
+                    }
                 }
             }
             handle = request(tick);

@@ -1,0 +1,31 @@
+/* 页面只是一块舞台：不滚动、不被下拉刷新或双击缩放打断。画布由 play 建，按舞台的比例放在页面中间。
+   The page is one stage: no scrolling, no pull-to-refresh, no double-tap zoom. play makes the canvas and keeps it
+   centred at the stage's proportions. */
+html,
+body {
+  margin: 0;
+  height: 100%;
+  overflow: hidden;
+  overscroll-behavior: none;
+  touch-action: none;
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+  background: #3b3329;
+}
+body {
+  background: radial-gradient(ellipse at center, #5a4e3c 0%, #2b241c 80%);
+}
+#loading {
+  position: fixed;
+  inset: 0;
+  margin: auto;
+  height: 1.5em;
+  color: #e6d8b8;
+  font: 20px/1.5 serif;
+  text-align: center;
+  letter-spacing: 0.3em;
+}
+canvas {
+  touch-action: none;
+}

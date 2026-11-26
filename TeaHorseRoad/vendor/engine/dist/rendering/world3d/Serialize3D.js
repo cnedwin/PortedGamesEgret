@@ -221,6 +221,12 @@ export function serializeScene3D(root, options = {}) {
         const known = geometryIds.get(value);
         if (known !== undefined)
             return known;
+        const key = options.geometryKey?.(value);
+        if (typeof key === 'string' && key.length > 0) {
+            geometryIds.set(value, geometries.length);
+            geometries.push({ key });
+            return geometries.length - 1;
+        }
         const attributes = {};
         for (const [name, attribute] of value.attributes)
             attributes[name] = {
@@ -438,6 +444,19 @@ export function deserializeScene3D(saved, options = {}) {
                     material[field] = textures[entry[field]];
         }
         for (const entry of doc['geometries']) {
+            if (typeof entry['key'] === 'string') {
+                const resolved = options.resolveGeometry?.(entry['key']);
+                if (resolved instanceof Geometry3D) {
+                    geometries.push(resolved);
+                    continue;
+                }
+                // A missing reference gives an empty geometry instead of failing the whole scene.
+                const empty = new Geometry3D();
+                empty.name = entry['key'];
+                created.push(empty);
+                geometries.push(empty);
+                continue;
+            }
             const geometry = new Geometry3D();
             created.push(geometry);
             geometries.push(geometry);

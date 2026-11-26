@@ -1,0 +1,92 @@
+// 界面上的字，中英两份。案卷正文在 sim/cases 里，这里只有按钮、提示和说明。
+// The words of the interface, in Chinese and English. The case texts live in sim/cases; these are the buttons,
+// prompts and help.
+
+export const WORDS = {
+  pageTitle: { zh: '洗冤笔录', en: 'The Inquest Scrolls' },
+  title: { zh: '洗冤笔录', en: 'The Inquest Scrolls' },
+  subtitle: { zh: '宋提刑覆检六案', en: 'Six second inquests in the Song' },
+  begin: { zh: '开卷', en: 'Begin' },
+  resume: { zh: '续读', en: 'Continue' },
+  caseList: { zh: '卷目', en: 'Cases' },
+  settings: { zh: '设置', en: 'Settings' },
+  help: { zh: '说明', en: 'How to play' },
+  back: { zh: '返回', en: 'Back' },
+  close: { zh: '合上', en: 'Close' },
+  next: { zh: '往下', en: 'Next' },
+  open: { zh: '展卷', en: 'Open' },
+  locked: { zh: '未启', en: 'Locked' },
+  solved: { zh: '已结', en: 'Closed' },
+  sealedOf: { zh: '已核 {n}/{m} 页', en: '{n} of {m} pages sealed' },
+  hintsUsed: { zh: '提示 {n} 次', en: '{n} hints' },
+  dossier: { zh: '卷宗', en: 'Dossier' },
+  notes: { zh: '笔录', en: 'Notes' },
+  hint: { zh: '提示', en: 'Hint' },
+  menu: { zh: '菜单', en: 'Menu' },
+  pouch: { zh: '词囊', en: 'Pouch' },
+  pouchCount: { zh: '词囊 {n}', en: 'Pouch {n}' },
+  pouchEmpty: { zh: '词囊是空的。去现场点带下划线的字。', en: 'Your pouch is empty. Tap underlined words in the scene.' },
+  tapWords: { zh: '点带下划线的字，收进词囊。', en: 'Tap an underlined word to collect it.' },
+  collected: { zh: '收进词囊：{w}', en: 'Collected: {w}' },
+  allCollected: { zh: '这里的词都已收齐。', en: 'Every word here is collected.' },
+  check: { zh: '核验', en: 'Check' },
+  checkFull: { zh: '填满这一页的空，才能核验。', en: 'Fill every blank on this page to check it.' },
+  sealed: { zh: '核实无误', en: 'True in every part' },
+  near: { zh: '尚有两处以内不实', en: 'Two or fewer are wrong' },
+  wrong: { zh: '尚有多处不实', en: 'Several are wrong' },
+  pageSealed: { zh: '已盖印', en: 'Sealed' },
+  clearBlank: { zh: '清空', en: 'Clear' },
+  pickWord: { zh: '选一个词放进这个空', en: 'Choose a word for this blank' },
+  noWordOfKind: { zh: '词囊里还没有这一类的词。', en: 'No word of this kind in your pouch yet.' },
+  hintArea: { zh: '看看现场里亮起来的这一带。', en: 'Look around the glowing part of the scene.' },
+  hintSpots: { zh: '仔细看看：{spots}', en: 'Look closely at: {spots}' },
+  hintWhy: { zh: '想一想：{why}', en: 'Think: {why}' },
+  hintFor: { zh: '「{page}」这一页', en: 'On "{page}"' },
+  hintNone: { zh: '各页都已核实。', en: 'Every page is sealed.' },
+  caseClosed: { zh: '结案', en: 'Case closed' },
+  nextCase: { zh: '下一案', en: 'Next case' },
+  toList: { zh: '回卷目', en: 'To the cases' },
+  verdict: { zh: '写判词', en: 'Write the verdict' },
+  submit: { zh: '呈上', en: 'Submit' },
+  board: { zh: '字盘', en: 'Word board' },
+  boardClear: { zh: '退一字', en: 'Delete' },
+  edit: { zh: '书写', en: 'Write' },
+  notesEmpty: { zh: '在这里记下你的推想。', en: 'Write down what you think here.' },
+  notesBoard: { zh: '点下面的词签和记号，把推想记下来。', en: 'Tap the slips and marks below to write down what you think.' },
+  boardNewline: { zh: '换行', en: 'New line' },
+  loadFailed: { zh: '案卷没能载入，可能是网络断了。', en: 'The case files could not be loaded. The network may be down.' },
+  notesMarks: { zh: ['？', '！', '、', '。', '可疑', '说谎', '不在场', '有据', '待查', '是', '不是', '→'], en: ['?', '!', ',', '.', 'suspect', 'lying', 'not there', 'proven', 'check', 'is', 'is not', '→'] },
+  language: { zh: '语言', en: 'Language' },
+  sound: { zh: '音效', en: 'Sound' },
+  music: { zh: '音乐', en: 'Music' },
+  textSize: { zh: '字号', en: 'Text size' },
+  reducedMotion: { zh: '减少动态', en: 'Reduce motion' },
+  on: { zh: '开', en: 'On' },
+  off: { zh: '关', en: 'Off' },
+  resetProgress: { zh: '重读全卷', en: 'Start over' },
+  resetAsk: { zh: '清掉六案的全部进度，从头读起？', en: 'Clear all progress on the six cases and start again?' },
+  yes: { zh: '是', en: 'Yes' },
+  no: { zh: '否', en: 'No' },
+  loading: { zh: '展卷中', en: 'Unrolling' },
+  loadError: { zh: '有些卷轴没能展开（{n} 个文件读取失败）。', en: 'Some scrolls would not unroll ({n} files failed to load).' },
+  retry: { zh: '重试', en: 'Try again' },
+  playAnyway: { zh: '先这样读', en: 'Read anyway' },
+  brokenSave: { zh: '存档读不懂，已另存一份，从头开始。', en: 'The save could not be read. It was kept aside and a new one begun.' },
+  end: { zh: '终', en: 'The end' },
+  prologueTitle: { zh: '序', en: 'Prologue' },
+  helpBody: {
+    zh: '每一案是一幅案发时的现场图。拖动看全图，双指或滚轮缩放。\n点人、点物、点文书，读它们写了什么；带下划线的字，点一下收进词囊。\n打开卷宗，把词拖进同色的空位。一页填满就能核验：全对盖朱印；错两处以内，只说“尚有两处以内不实”，不说哪里错。\n卡住了就点提示：第一次指出该看的地方，第二次说出该看的证物，第三次问一个让你想明白的问题。提示从不给答案。\n笔录里可以写下自己的推想，会随存档留着。',
+    en: 'Each case is a painting of the moment it happened. Drag to look around; pinch or use the wheel to zoom.\nTap people, things and documents to read them. Tap an underlined word to put it in your pouch.\nOpen the dossier and drag words into blanks of the same colour. When a page is full you can check it: all right and it is sealed; two or fewer wrong and you are told only that, not which.\nStuck? Ask for a hint. The first points to where to look, the second names the evidence, the third asks a question that leads you there. A hint never gives the answer.\nYour notes hold whatever you think worth writing, and are kept with the save.'
+  },
+  keysHint: {
+    zh: '方向键或 WASD 移动画面 · +/- 缩放 · Tab 切换证物 · 回车查看 · J 卷宗 · N 笔录 · H 提示 · Esc 返回',
+    en: 'Arrows or WASD pan · +/- zoom · Tab next evidence · Enter open · J dossier · N notes · H hint · Esc back'
+  }
+};
+
+/** A word in a language, with `{name}` filled from `values`. */
+export function say(lang, key, values = {}) {
+  const entry = WORDS[key];
+  const text = entry ? entry[lang] ?? entry.zh : key;
+  return text.replace(/\{(\w+)\}/g, (_, k) => String(values[k] ?? ''));
+}

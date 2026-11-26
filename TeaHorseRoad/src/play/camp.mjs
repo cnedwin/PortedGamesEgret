@@ -137,10 +137,31 @@ export const CAMP_PIECES = [
   { key: 'lantern', zh: '马灯', en: 'Lantern', make: lantern }
 ];
 
+// Each kind of piece has its geometries made once and shared by every piece of that kind. A saved camp names them
+// (`tent/0`) rather than holding their vertices, and they are found again by name on loading (ENGINE-NOTES.md, item 22).
+const madeParts = new Map(),
+  partNames = new Map();
+function partsOf(key) {
+  let parts = madeParts.get(key);
+  if (!parts) {
+    parts = CAMP_PIECES.find((p) => p.key === key).make();
+    for (let i = 0; i < parts.length; i += 2) partNames.set(parts[i], `${key}/${i / 2}`);
+    madeParts.set(key, parts);
+  }
+  return parts;
+}
+/** The options that write a camp's geometries by name, and read them back. */
+export const CAMP_DOCUMENT = {
+  geometryKey: (geometry) => partNames.get(geometry),
+  resolveGeometry(name) {
+    const [key, part] = name.split('/');
+    return CAMP_PIECES.some((p) => p.key === key) ? partsOf(key)[Number(part) * 2] : undefined;
+  }
+};
+
 /** A piece as a node: its meshes under one parent, named by its key so a saved camp knows what it holds. */
 export function makePiece(key) {
-  const piece = CAMP_PIECES.find((p) => p.key === key),
-    made = piece.make(),
+  const made = partsOf(key),
     node = new Object3D();
   node.name = key;
   node.userData = { piece: key };
@@ -163,7 +184,8 @@ export function createCamp(scene, camera, canvas, { station, heightAt, saved }) 
   group.name = 'camp';
   if (saved) {
     try {
-      loaded = deserializeScene3D(saved);
+      // A camp saved before its geometries had names still holds them whole, and loads as it is.
+      loaded = deserializeScene3D(saved, CAMP_DOCUMENT);
       group = loaded.root;
     } catch (cause) {
       console.warn('camp', cause);
@@ -202,8 +224,8 @@ export function createCamp(scene, camera, canvas, { station, heightAt, saved }) 
       controls = createTransformControls3D(camera, canvas, { size: 0.16 });
       controls.gizmo.translationSnap = 0.25;
       controls.gizmo.rotationSnap = Math.PI / 12;
+      // A handle takes its press before the orbit camera sees it (ENGINE-NOTES.md, item 21); a piece let go settles.
       controls.gizmo.onDraggingChanged = (dragging) => {
-        orbit.enabled = !dragging;
         if (!dragging && selected) settle(selected);
       };
       controls.gizmo.onChange = (node) => {
@@ -253,7 +275,7 @@ export function createCamp(scene, camera, canvas, { station, heightAt, saved }) 
     },
     /** The camp as a scene document, for the save. */
     serialize() {
-      return serializeScene3D(group);
+      return serializeScene3D(group, CAMP_DOCUMENT);
     },
     update() {
       orbit?.update();

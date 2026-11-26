@@ -272,25 +272,15 @@ export async function selectScreen(app, { focus } = {}) {
       viewportLength: VIEW.width,
       contentLength,
       thumb: { input: game.pointer, target: thumb, trackLength: VIEW.width },
-      // A wheel over the viewport or any card in it: sideways wheels and trackpads scroll the strip.
-      ...(app.hover ? { wheel: { hover: app.hover, target: viewport, lineLength: 120 } } : {}),
+      // A wheel over the viewport or any card in it scrolls the strip: sideways wheels and trackpads, and an ordinary
+      // up-and-down wheel too, through `crossAxis` (ENGINE-NOTES.md, item 20).
+      ...(app.hover ? { wheel: { hover: app.hover, target: viewport, lineLength: 120, crossAxis: true } } : {}),
       onScroll: (offset) => {
         strip.x = -offset;
         paintThumb();
       }
     })
   );
-  // An ordinary mouse wheel turns only up and down, which a sideways scroll control does not read; that turn
-  // scrolls the strip by the control's own `scrollBy` (ENGINE-NOTES.md, item 20).
-  if (app.hover)
-    kit.own({
-      dispose: viewport.on(app.hover.events.wheel, (event) => {
-        const { deltaX, deltaY, unit, zoom } = event.payload;
-        if (zoom || event.defaultPrevented || deltaX !== 0 || deltaY === 0) return;
-        const step = unit === 'pixel' ? deltaY : unit === 'line' ? deltaY * 120 : deltaY * VIEW.width;
-        if (scroll.scrollBy(step)) event.preventDefault();
-      })
-    });
   function paintThumb() {
     const { start, length } = scroll.thumb;
     thumb.graphics.clear();

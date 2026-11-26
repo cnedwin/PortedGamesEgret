@@ -27,7 +27,7 @@ export function createFlora(scene, physics, { quality = 'medium' } = {}) {
   const placed = new Map(), plantModels = new Map();
 
   function scatter(tile, plan) {
-    const meshes = [], near = new Map(), far = [], small = [], tea = [];
+    const meshes = [], near = new Map(), far = [], tea = [];
     const bodies = [], obstacles = [];
     for (const { kind, x, y, z, scale, radius } of plan.colliders) {
       bodies.push(physics.createBody({
@@ -57,7 +57,8 @@ export function createFlora(scene, physics, { quality = 'medium' } = {}) {
         replacement?.geometry ?? (TREE[kind] ? TREE[kind]() : kind === 'tuft' ? tuftGeometry(0x6f6a3a) : stoneGeometry(kind === 'boulder' ? 0 : kind === 'slab' ? 1 : 2));
       const material = kind === 'boulder' || kind === 'slab' || kind === 'scree' ? stone : foliage,
         mesh = instances(geometry, replacement?.material ?? material, batch, kind);
-      if (SMALL.has(kind)) small.push(mesh);
+      // Tufts and scree are gone past the detail distance, drawn and shadowed by none (ENGINE-NOTES.md, item 2).
+      if (SMALL.has(kind)) mesh.cullDistance = detail;
       else if (FAR[kind]) {
         near.set(kind, mesh);
         const copy = instances(FAR[kind](), material, batch, kind);
@@ -73,8 +74,8 @@ export function createFlora(scene, physics, { quality = 'medium' } = {}) {
       strips.visible = false;
       tea.push({ bushes, strips, x: cell.x, z: cell.z, distance: -1 });
     }
-    const cx = (tile.x + 0.5) * TILE, cz = (tile.z + 0.5) * TILE;
-    placed.set(tile, { meshes, near, far, small, tea, bodies, obstacles, cx, cz, distance: -1 });
+    const [cx, cz] = tile.center;
+    placed.set(tile, { meshes, near, far, tea, bodies, obstacles, cx, cz, distance: -1 });
   }
 
   function clear(tile) {
@@ -112,7 +113,11 @@ export function createFlora(scene, physics, { quality = 'medium' } = {}) {
       if (what === 'load') scatter(tile, plan);
       else clear(tile);
     },
-    /** Choose what each tile shows from the camera's place: the distance is to the nearest point of the tile. */
+    /**
+     * Choose what each tile shows from the camera's place: the distance is to the nearest point of the tile, on the
+     * ground. Not `Lod3D`, which measures in three dimensions from its own origin, nor `stream.distanceOf`, which
+     * measures from the convoy the stream follows rather than the camera (ENGINE-NOTES.md, items 2 and 5).
+     */
     update(x, z) {
       for (const entry of placed.values()) {
         const dx = Math.max(0, Math.abs(x - entry.cx) - TILE / 2),
@@ -127,7 +132,6 @@ export function createFlora(scene, physics, { quality = 'medium' } = {}) {
         }
         if (entry.distance >= 0 && Math.abs(d - entry.distance) < 4) continue;
         entry.distance = d;
-        for (const mesh of entry.small) mesh.visible = d < detail;
         for (const mesh of entry.near.values()) mesh.visible = d < nearTrees;
         for (const mesh of entry.far) mesh.visible = d >= nearTrees;
       }

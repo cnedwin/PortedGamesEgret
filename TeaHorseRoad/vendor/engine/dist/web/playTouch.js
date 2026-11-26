@@ -14,7 +14,7 @@ export function createPlayTouch(game, port) {
     };
     const touch = {
         stick(o = {}) {
-            const reach = finite(o?.radius) && o.radius > 0 ? o.radius : 48, x = finite(o?.x) ? o.x : reach + 28, y = finite(o?.y) ? o.y : game.height - reach - 28;
+            const reach = finite(o?.radius) && o.radius > 0 ? o.radius : 48, x = finite(o?.x) ? o.x : game.safe.x + reach + 28, y = finite(o?.y) ? o.y : game.safe.y + game.safe.height - reach - 28;
             const node = game.sprite(g => {
                 g.beginFill(0xffffff, 0.12).drawCircle(0, 0, reach).endFill();
                 g.lineStyle(2, 0xffffff, 0.3).drawCircle(0, 0, reach);
@@ -129,10 +129,18 @@ export function createPlayTouch(game, port) {
                 }
             return owned;
         },
-        reset() {
-            for (const control of controls)
-                if (control.owner !== undefined && !control.node.isDisposed)
+        cancel() {
+            // A window can lose focus before the browser sends the last pointer event.
+            for (const control of controls) {
+                if (control.owner === undefined)
+                    continue;
+                control.owner = undefined;
+                if (!control.node.isDisposed)
                     control.release();
+            }
+        },
+        reset() {
+            touch.cancel();
             controls = [];
         }
     };

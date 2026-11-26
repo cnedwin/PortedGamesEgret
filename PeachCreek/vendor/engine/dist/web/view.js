@@ -31,7 +31,7 @@ const ANCHORS = new Set([
     'bottom',
     'bottom-right'
 ]);
-const BASE_KEYS = ['type', 'name', 'anchor', 'x', 'y', 'width', 'height', 'visible'];
+const BASE_KEYS = ['type', 'name', 'anchor', 'x', 'y', 'width', 'height', 'visible', 'border'];
 const KEYS = {
     panel: new Set([
         ...BASE_KEYS,
@@ -44,13 +44,15 @@ const KEYS = {
         'color',
         'alpha',
         'label',
+        'scroll',
         'children'
     ]),
-    text: new Set([...BASE_KEYS, 'text', 'size', 'color', 'align', 'bold']),
-    button: new Set([...BASE_KEYS, 'text', 'size', 'color', 'textColor']),
+    text: new Set([...BASE_KEYS, 'text', 'size', 'color', 'align', 'bold', 'paragraph']),
+    button: new Set([...BASE_KEYS, 'text', 'size', 'color', 'textColor', 'description', 'paragraph']),
     bar: new Set([...BASE_KEYS, 'value', 'color', 'label']),
     toggle: new Set([...BASE_KEYS, 'text', 'checked', 'size']),
-    space: new Set(BASE_KEYS)
+    space: new Set(BASE_KEYS),
+    image: new Set([...BASE_KEYS, 'src', 'label'])
 };
 const SKIN_KEYS = Object.keys(DEFAULT_VIEW_SKIN);
 const invalid = (where, what) => new EgretError('UI_VIEW_INVALID', { cause: where + ': ' + what });
@@ -59,6 +61,31 @@ const colour = (value) => Number.isInteger(value) && value >= 0 && value <= 0xff
 const size = (value) => value === 'fill' ||
     (finite(value) && value >= 0) ||
     (typeof value === 'string' && /^\d+(?:\.\d+)?%$/.test(value) && Number.parseFloat(value) <= 100);
+function partOptions(value, keys, label, field) {
+    if (value === null ||
+        typeof value !== 'object' ||
+        Array.isArray(value) ||
+        Object.keys(value).some(key => !keys.includes(key)))
+        throw invalid(label, field);
+    return value;
+}
+function checkParagraph(value, label) {
+    const row = partOptions(value, ['fontFamilies', 'lineHeight', 'locale', 'direction', 'maxLines'], label, 'paragraph');
+    const families = row['fontFamilies'], lineHeight = row['lineHeight'], maxLines = row['maxLines'];
+    if (!Array.isArray(families) ||
+        families.length === 0 ||
+        families.length > 16 ||
+        families.some(family => typeof family !== 'string' || !family.trim() || family.length > 256))
+        throw invalid(label, 'paragraph fontFamilies');
+    if (lineHeight !== undefined && (!finite(lineHeight) || lineHeight < 1 || lineHeight > 1024))
+        throw invalid(label, 'paragraph lineHeight');
+    if (row['locale'] !== undefined && (typeof row['locale'] !== 'string' || !row['locale'].trim()))
+        throw invalid(label, 'paragraph locale');
+    if (row['direction'] !== undefined && row['direction'] !== 'ltr' && row['direction'] !== 'rtl')
+        throw invalid(label, 'paragraph direction');
+    if (maxLines !== undefined && (!finite(maxLines) || !Number.isInteger(maxLines) || maxLines < 1 || maxLines > 256))
+        throw invalid(label, 'paragraph maxLines');
+}
 /** Checks the parts of one tree and returns its named parts with their kinds. */
 function checkTree(root, where) {
     const names = new Map();
@@ -73,7 +100,7 @@ function checkTree(root, where) {
         const part = value;
         const type = part['type'];
         if (typeof type !== 'string' || !Object.hasOwn(KEYS, type))
-            throw invalid(at, 'type is panel, text, button, bar, toggle or space');
+            throw invalid(at, 'type is panel, text, button, bar, toggle, space or image');
         const keys = KEYS[type];
         for (const key of Object.keys(part))
             if (!keys.has(key))
@@ -95,6 +122,23 @@ function checkTree(root, where) {
         for (const key of ['width', 'height'])
             if (part[key] !== undefined && !size(part[key]))
                 throw invalid(label, key);
+        if (part['border'] !== undefined) {
+            const border = partOptions(part['border'], ['color', 'width'], label, 'border');
+            if (!colour(border['color']) || !finite(border['width']) || border['width'] <= 0)
+                throw invalid(label, 'border');
+        }
+        if (part['paragraph'] !== undefined) {
+            checkParagraph(part['paragraph'], label);
+            if (part['height'] === undefined || part['height'] === 0)
+                throw invalid(label, 'paragraph needs a height');
+        }
+        if (type === 'button' &&
+            ((part['description'] !== undefined && typeof part['description'] !== 'string') ||
+                (part['description'] === undefined) !== (part['paragraph'] === undefined)))
+            throw invalid(label, 'button description and paragraph are used together');
+        if (type === 'image' &&
+            (typeof part['src'] !== 'string' || !part['src'].trim() || part['width'] === 0 || part['height'] === 0))
+            throw invalid(label, 'image source and size');
         for (const key of ['size', 'gap', 'padding'])
             if (part[key] !== undefined && (!finite(part[key]) || part[key] < 0))
                 throw invalid(label, key);
@@ -119,7 +163,8 @@ function checkTree(root, where) {
         const choices = {
             layout: ['free', 'row', 'column'],
             align: type === 'text' ? ['left', 'center', 'right'] : ['start', 'center', 'end', 'stretch'],
-            justify: ['start', 'center', 'end', 'between']
+            justify: ['start', 'center', 'end', 'between'],
+            scroll: ['vertical']
         };
         for (const [key, allowed] of Object.entries(choices))
             if (part[key] !== undefined && !allowed.includes(part[key]))
@@ -200,6 +245,8 @@ function natural(part, axis, skin) {
             return axis === 'width' ? 220 : Math.ceil(Math.max(44, (part.size ?? skin.size) * 1.8));
         case 'space':
             return 0;
+        case 'image':
+            return 64;
     }
 }
 /** A size against the room it is in; `'fill'` is all of the room. */
