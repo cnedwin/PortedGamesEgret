@@ -24,6 +24,17 @@
     "@egret/engine/web/gamepad": "./vendor/engine/dist/web/gamepad.js",
     "@esotericsoftware/spine-core": "./vendor/@esotericsoftware__spine-core/dist/index.js",
     "@egret/engine/resources": "./vendor/engine/dist/resources.js",
-    "@egret/spine": "./vendor/spine/dist/index.js"
+    "@egret/spine": "./vendor/spine/dist/index.js",
+    "@egret/engine/kit": "./vendor/engine/dist/kit.js",
+    "@egret/runtime/ui": "./vendor/runtime/dist/ui/index.js",
+    "@egret/engine/ui": "./vendor/engine/dist/ui/index.js",
+    "@egret/runtime/paragraph": "./vendor/runtime/dist/paragraph/index.js",
+    "@egret/engine/paragraph": "./vendor/engine/dist/paragraph.js",
+    "@egret/engine/play": "./vendor/engine/dist/web/play.js",
+    "@egret/engine/ui/semantics": "./vendor/engine/dist/semantics.js",
+    "@egret/engine/ui/testing": "./vendor/engine/dist/ui/testing.js",
+    "@egret/engine/web/semantics": "./vendor/engine/dist/web/semantics.js",
+    "@egret/engine/web/paragraph": "./vendor/engine/dist/web/paragraph.js",
+    "@egret/engine/web/gestures": "./vendor/engine/dist/web/gestures.js"
   }
 }

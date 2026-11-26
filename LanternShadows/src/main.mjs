@@ -21,8 +21,12 @@ import { Bitmap, DisplayObjectContainer, Sprite } from '@egret/engine';
 import { createCamera2D } from '@egret/engine/camera';
 import { createParticleEmitter } from '@egret/engine/particles';
 import { createTileMap, importTiledMap } from '@egret/engine/tilemap';
-import { createBrowserGame } from '@egret/engine/web/game';
-import { bindPlayButton, createInput } from './input.mjs';
+import { play as enginePlay } from '@egret/engine/play';
+import { createUiSemantics } from '@egret/engine/ui/semantics';
+import { createUiTester } from '@egret/engine/ui/testing';
+import { createBrowserSemantics } from '@egret/engine/web/semantics';
+import { createLanternUi } from './native-ui.mjs';
+import { createInput } from './input.mjs';
 import { createPictures, readJson, watchReading } from './pictures.mjs';
 import { createPuppet, loadPuppets } from './puppets.mjs';
 import { FURNACE, VENT, createAct, remaining, stepAct, tuftReady } from './rules/act.mjs';
@@ -37,34 +41,31 @@ import { createSound } from './sound.mjs';
 import { ACT_GOALS, TRIAL_GOALS, createRecordBook, createTrialBook } from './records.mjs';
 
 const STAGE = { width: 960, height: 540 };
-const query = new URLSearchParams(location.search),
-  $ = id => document.getElementById(id);
-const canvas = $('stage'),
-  booth = $('booth'),
-  status = $('status');
-
+const query = new URLSearchParams(location.search);
+const booth = document.getElementById('booth'), boot = document.getElementById('boot');
+const semantics = createUiSemantics({maxNodes:1024}), tester = createUiTester({semantics});
+let canvas, play, ui, projection, projectionSize;
 // ---- Words -----------------------------------------------------------------------------------------------------
 let lang = query.get('lang') === 'en' || (!query.has('lang') && !navigator.language.startsWith('zh')) ? 'en' : 'zh';
-const KEY_HINTS = {
-  zh: [['A', 'D', '走'], ['空格', '跳'], ['J', '棍，连按三下'], ['L', '闪避'], ['I', '身外身'], ['P', '暂停']],
-  en: [['A', 'D', 'move'], ['Space', 'jump'], ['J', 'staff, three in a row'], ['L', 'dodge'], ['I', 'clones'], ['P', 'pause']]
-};
+
 const WORDS = {
   zh: { titles: { act1: '第一幕　南天门', act2: '第二幕　蟠桃园', act3: '第三幕　兜率宫' }, curtain: title => `${title}　落幕`, tuft: '毫毛攒足了，可以使身外身', blown: '身外身！', crowd: (n, bones, rate) => `身外身 ${n}　骨骼 ${bones}　每秒 ${rate} 帧`, bosses: { nezha: { name: '哪吒', enter: '哪吒三太子踏风火轮到', phases: ['', '乾坤圈！一棍打回去', '三头六臂，风火轮！上云躲火'], opened: '哪吒败走，南天门开了' }, erlang: { name: '二郎神', enter: '二郎真君提三尖两刃刀到，哮天犬随后', phases: ['', '他要变化了：变成鹰时把他打下来', '法天象地！他落地的震波要跳过去'], opened: '二郎神收兵，月洞门开了' }, laozi: { name: '太上老君', enter: '太上老君拂尘一摆，金刚琢在手', phases: ['', '他取出扇子：三道火舌，一道一道跳过去'], opened: '老君罢手，兜率宫的门开了' } }, taken: '金刚琢套走了金箍棒！别打那个圈，去另一头把棒捡回来', regained: '金箍棒回来了', shut: n => `八卦炉合上了：撑过 ${n} 秒`, broken: '破炉而出，炼成火眼金睛！出手加倍', finale: '全剧终', unplayed: '未演', places: { act1: '南天门', act2: '蟠桃园', act3: '兜率宫' }, soldiers: n => `天兵 ${n}`, barred: n => `南天门不开：还有 ${n} 名天兵`, rested: '歇脚处已记下', best: n => `最高连击 ${n}`, count: '最高连击', time: '用时', falls: '倒地', wounds: '受伤', felled: '击退天兵', times: n => `${n} 次`, none: '无', seconds: n => `${n} 秒` },
   en: { titles: { act1: 'Act one: the Southern Gate', act2: 'Act two: the Peach Orchard', act3: 'Act three: the Tushita Palace' }, curtain: title => `${title}. Curtain`, tuft: 'Hairs enough for the body beyond the body', blown: 'The body beyond the body!', crowd: (n, bones, rate) => `${n} clones, ${bones} bones moving, ${rate} frames a second`, bosses: { nezha: { name: 'Nezha', enter: 'Prince Nezha comes down on his wheels of wind and fire', phases: ['', 'The Universe Ring! Knock it back with the staff', 'Three heads, six arms, wheels ablaze! Take to a cloud'], opened: 'Nezha is driven off, and the gate stands open' }, erlang: { name: 'Erlang', enter: 'Erlang comes with his three-pointed glaive, and his hound behind him', phases: ['', 'He changes his shape: strike the hawk out of the air', 'He grows to the size of the sky! Jump the wave when he lands'], opened: 'Erlang calls off the fight, and the moon gate stands open' }, laozi: { name: 'Laozi', enter: 'Laozi comes with his whisk, and the Diamond Snare in his hand', phases: ['', 'He takes out his fan: three flames, to be jumped one by one'], opened: 'Laozi stays his hand, and the door of the palace stands open' } }, taken: 'The Snare has taken the staff! Do not strike the ring; fetch the staff from the far end', regained: 'The staff is his again', shut: n => `The furnace is shut: last ${n} seconds`, broken: 'Out of the furnace with eyes of fire! Every blow counts double', finale: 'The play is done', unplayed: 'not played', places: { act1: 'The Gate', act2: 'The Orchard', act3: 'The Palace' }, soldiers: n => `Soldiers ${n}`, barred: n => `The gate is shut: ${n} soldier${n === 1 ? '' : 's'} still standing`, rested: 'Resting place marked', best: n => `Best ${n}`, count: 'Best count', time: 'Time', falls: 'Falls', wounds: 'Wounds', felled: 'Soldiers felled', times: n => String(n), none: 'none', seconds: n => `${n} s` }
 };
-function speak() {
-  document.documentElement.lang = lang === 'zh' ? 'zh-CN' : 'en';
-  for (const element of document.querySelectorAll('[data-zh]')) element.textContent = element.dataset[lang];
-  for (const element of document.querySelectorAll('[data-label-zh]')) element.setAttribute('aria-label', element.getAttribute('data-label-' + lang));
-  $('lang').textContent = lang === 'zh' ? 'EN' : '中文';
-  $('keys').innerHTML = KEY_HINTS[lang].map(hint => hint.slice(0, -1).map(key => `<kbd>${key}</kbd>`).join('') + hint.at(-1)).join('');
-  if (staged) (showCount(), showRecords(), showResult());
-}
-// The playbill is in the right language while the stage is still being set.
+const state = { lang, ready:false, progress:0, error:'', screen:'title', paused:false, controls:false,
+  muted:false, musicMuted:false, fullAvailable:!!document.fullscreenEnabled, full:false,
+  actTitle:'', health:TUNE.health, maxHealth:TUNE.health, hairs:0, tuftReady:false, solo:false,
+  soldiers:'', clock:'0:00', bossName:'', bossRatio:0, notice:'', combo:0, best:'', crowd:'', stats:'',
+  records:[], trialRecords:[], result:null, stickAxis:0, heldActions:{},
+  recordsEnabled:!query.has('slow') && !query.has('clones'), openingAct:'act1', openingFrom:undefined };
 let staged = false;
+function speak() {
+  state.lang = lang; document.documentElement.lang = lang==='zh'?'zh-CN':'en';
+  canvas?.setAttribute('aria-label', lang==='zh'?'皮影戏台':'Shadow-puppet stage');
+  if (staged) { showCount(); showRecords(); showResult(); }
+  ui?.refresh();
+}
 speak();
-
 // ---- The engine ------------------------------------------------------------------------------------------------
 /** An error and what caused it, each by its code where it has one. */
 const describe = cause => {
@@ -90,58 +91,72 @@ const fail = cause => {
       return;
     }
   }
-  status.textContent = (lang === 'zh' ? '戏台没搭起来：' : 'The booth could not be set up: ') + reason;
-  status.classList.add('is-error');
-  // Once the curtain is up the playbill cannot be seen, so trouble during the play is told over the stage.
-  $('trouble').textContent = (lang === 'zh' ? '戏演不下去了：' : 'The play cannot go on: ') + reason;
-  $('trouble').hidden = !$('curtain').classList.contains('is-up');
+  state.error = (lang === 'zh' ? '戏台没搭起来：' : 'The booth could not be set up: ') + reason;
+  ui?.refresh();
+  if (!ui || game?.loop.state === 'failed') {
+    boot.hidden = false; boot.querySelector('p').textContent = state.error;
+    boot.querySelector('button').hidden = false;
+  }
   console.error(cause);
 };
-
-const sound = createSound(),
-  input = createInput();
+const sound = createSound(), input = createInput({ active:() => staged && playing && !paused && act.state === 'play' });
+state.muted = sound.muted; state.musicMuted = sound.musicMuted;
 const mobilePointer = matchMedia('(pointer: coarse)');
-const screenControls = $('screen-controls');
 let showDesktopControls = matchMedia('(any-pointer: coarse)').matches;
-try {
-  const saved = localStorage.getItem('lantern-screen-controls');
-  if (saved !== null) showDesktopControls = saved === 'on';
-} catch { /* The setting can still be used for this visit. */ }
-function showControls() {
-  const visible = mobilePointer.matches || showDesktopControls;
-  input.clear();
-  $('hud').classList.toggle('screen-input', visible);
-  screenControls.setAttribute('aria-pressed', String(visible));
-}
-mobilePointer.addEventListener('change', showControls);
-screenControls.addEventListener('click', () => {
+try { const saved = localStorage.getItem('lantern-screen-controls'); if (saved !== null) showDesktopControls = saved === 'on'; } catch { /* Session only. */ }
+function showControls() { input.clear(); state.controls = mobilePointer.matches || showDesktopControls; ui?.refresh(); }
+function toggleControls() {
   showDesktopControls = !showDesktopControls;
-  try { localStorage.setItem('lantern-screen-controls', showDesktopControls ? 'on' : 'off'); } catch { /* Session only. */ }
-  showControls();
-  canvas.focus();
-});
-showControls();
-try {
-  game = await createBrowserGame({
-    canvas,
-    width: STAGE.width,
-    height: STAGE.height,
-    clearColor: 0x2a1208,
-    pixelRatio: Math.min(2, Math.max(1, (devicePixelRatio || 1) * 0.75)),
-    // WebGL2 unless WebGPU is asked for, as in the other demos of this collection.
-    backend: query.get('backend') === 'webgpu' && navigator.gpu ? 'webgpu' : 'webgl2',
-    fit: 'contain',
-    fitTo: booth,
-    pointer: false,
-    keyboard: false,
-    autoStart: false,
-    update,
-    onError: fail
-  });
-} catch (cause) {
-  fail(cause);
-  throw cause;
+  try { localStorage.setItem('lantern-screen-controls',showDesktopControls?'on':'off'); } catch { /* Session only. */ }
+  showControls(); canvas?.focus({preventScroll:true});
 }
+mobilePointer.addEventListener('change',showControls); showControls();
+function arrange(made) {
+  input.clear();
+  const {width,height}=made.screen, key=width+':'+height;
+  // Keep the original cloth framing when the stage expands into a portrait HUD.
+  made.world.clipRect = width!==STAGE.width || height!==STAGE.height ? {x:0,y:0,width:STAGE.width,height:STAGE.height} : undefined;
+  if(key!==projectionSize){ projection?.dispose(); projection=createBrowserSemantics({semantics,canvas:made.canvas,width,height,label:lang==='zh'?'皮影戏台':'Shadow-puppet stage',onError:fail}); projectionSize=key; }
+  else projection?.sync();
+  ui?.refresh();
+}
+const callbacks = {
+  start(name,where) { if(staged)raise(name,where); }, trial(name) { if(staged)startTrial(name); },
+  again() { if(staged)replay(); }, next() { if(staged)nextAct(); },
+  playbill() { if(staged)playbill(); }, pause() { if(staged)playPauseCue(); },
+  lang() { lang=lang==='zh'?'en':'zh'; speak(); },
+  mute() { sound.muted=!sound.muted; state.muted=sound.muted; if(!sound.muted)sound.play('confirm',{volume:0.57}); ui?.refresh(); },
+  music() { sound.musicMuted=!sound.musicMuted; state.musicMuted=sound.musicMuted; sound.play(sound.musicMuted?'cancel':'confirm',{volume:0.48}); ui?.refresh(); },
+  controls:toggleControls,
+  full() { if(document.fullscreenElement)document.exitFullscreen?.().catch(()=>{}); else booth.requestFullscreen?.().catch(()=>{}); },
+  showcase() { location.href='../'; }, reload() { location.reload(); }
+};
+document.addEventListener('fullscreenchange',()=>{state.full=!!document.fullscreenElement; ui?.refresh();});
+booth.addEventListener('contextmenu',event=>event.preventDefault());
+/** Keep the expanded canvas near the physical display density, not the old
+ * fixed 960×540 backing. Reserve modest density on portrait-first phones so
+ * rotating during play does not immediately pixelate the text. */
+const initialPixelRatio = () => {
+  const w = booth.clientWidth, h = booth.clientHeight, dpr = devicePixelRatio || 1;
+  const current = dpr * Math.min(w/STAGE.width, h/STAGE.height);
+  const rotation = h > w && mobilePointer.matches ?
+    Math.min(1.6, dpr * Math.min(h/STAGE.width, w/STAGE.height)) : current;
+  return Math.min(2, Math.max(1, current, rotation));
+};
+try {
+  play=await enginePlay({
+    parent:booth,width:STAGE.width,height:STAGE.height,background:0x2a1208,fit:'expand',audio:false,semantics,
+    pixelRatio:initialPixelRatio(),
+    backend:query.get('backend')==='webgpu' && navigator.gpu?'webgpu':'webgl2',
+    setup(made) {
+      play=made; game=made.browser; canvas=made.canvas; canvas.id='stage'; canvas.tabIndex=0; made.world.visible=false;
+      ui=createLanternUi(made,state,callbacks);
+      made.scope.use({dispose:()=>projection?.dispose()});
+      made.scope.use({dispose:made.browser.pointer.observe(note=>input.contact(note,ui,staged && playing && !paused && state.screen==='play' && state.controls))});
+      arrange(made); boot.hidden=true;
+    },arrange,update,onError:fail
+  });
+} catch(cause) { fail(cause); throw cause; }
 const { engine, scope } = game;
 
 // ---- What is loaded --------------------------------------------------------------------------------------------
@@ -154,7 +169,7 @@ const PICTURES = ['screen', 'frame', 'far', 'gate', 'wisp', 'spark', 'chaff', 't
 // The line under the gong fills as the files come in: the pictures, three files for each puppet, the list of
 // them, and the levels.
 const awaited = PICTURES.length + PUPPETS.length * 3 + 1 + ACTS.length,
-  filled = watchReading(count => ($('filling').firstElementChild.style.width = `${Math.min(100, (count / awaited) * 100)}%`));
+  filled=watchReading(count=>{state.progress=Math.min(1,count/awaited); ui.refresh();});
 let art, puppetOf, maps;
 try {
   const [pictures, puppets, levelMaps] = await Promise.all([
@@ -194,10 +209,10 @@ function picture(parent, lease, x, y, width) {
 const layer = parent => parent.addChild(scope.use(new DisplayObjectContainer()));
 
 // From the lamp outward: the cloth, what hangs far behind it, the level and its puppets, and the front of the booth.
-picture(engine.stage, art.screen, 0, 0, STAGE.width);
-const far = layer(engine.stage),
-  drift = layer(engine.stage),
-  world = layer(engine.stage);
+picture(play.world, art.screen, 0, 0, STAGE.width);
+const far = layer(play.world),
+  drift = layer(play.world),
+  world = layer(play.world);
 // Leather only darkens the light that comes through it.
 const shadowBlend = query.get('blend') ?? 'multiply';
 far.blendMode = drift.blendMode = shadowBlend;
@@ -274,15 +289,15 @@ const dropLights = Array.from({ length: 5 }, () => {
 });
 
 // The lamp is a flame: a wash over the cloth that is never quite steady.
-const flicker = engine.stage.addChild(scope.use(new Sprite()));
+const flicker = play.world.addChild(scope.use(new Sprite()));
 flicker.graphics.beginFill(0x2a1208).drawRect(0, 0, STAGE.width, STAGE.height).endFill();
 flicker.alpha = 0;
 // And a white one, for the moment he breaks out of the furnace.
-const glare = engine.stage.addChild(scope.use(new Sprite()));
+const glare = play.world.addChild(scope.use(new Sprite()));
 glare.graphics.beginFill(0xfff6d2).drawRect(0, 0, STAGE.width, STAGE.height).endFill();
 glare.alpha = 0;
 let flash = 0;
-picture(engine.stage, art.frame, 0, 0, STAGE.width);
+picture(play.world, art.frame, 0, 0, STAGE.width);
 
 // ---- The cast --------------------------------------------------------------------------------------------------
 const troupe = layer(cast);
@@ -476,42 +491,17 @@ function aim() {
 camera.follow(aim, { smoothing: 0.1 });
 
 // ---- What is told in front of the cloth ------------------------------------------------------------------------
-const combo = $('combo'),
-  peaches = [...$('peaches').children];
-let comboPulse;
-function showCombo(struck) {
-  combo.hidden = act.combo < 2;
-  const count = $('combo-count'), value = String(act.combo);
-  if (count.textContent !== value) count.textContent = value;
-  if (struck && !combo.hidden && comboPulse?.playState !== 'running' && !matchMedia('(prefers-reduced-motion: reduce)').matches) {
-    comboPulse = count.animate([{ transform: 'scale(1.34) rotate(-5deg)' }, { transform: 'none' }], { duration: 155, easing: 'ease-out' });
-  }
-}
+function showCombo(struck) { state.combo=act.combo>=2?act.combo:0; if(struck && state.combo)ui.pulseCombo?.(); }
 function showCount() {
-  const words = WORDS[lang];
-  $('act-banner').textContent = act.solo ? trialWords[lang].name : words.titles[onStage];
-  $('best').hidden = act.best < 3;
-  $('best').textContent = words.best(act.best);
-  $('soldiers').textContent = words.soldiers(remaining(act));
-  peaches.forEach((peach, index) => peach.classList.toggle('is-eaten', index >= act.hero.health));
-  const hairs = $('hairs'), ready = tuftReady(act);
-  hairs.hidden = act.solo;
-  $('hairs-fill').style.width = `${(act.hairs / HAIRS.need) * 100}%`;
-  hairs.classList.toggle('is-ready', ready);
-  document.querySelector('.pads').classList.toggle('has-tuft', ready);
-  document.querySelector('[data-hold="special"]').disabled = act.solo;
-  $('boss').hidden = !(act.boss && present(act.boss));
-  if (act.boss) {
-    $('boss-name').textContent = words.bosses[act.boss.kind].name;
-    $('boss-health').style.width = `${(act.boss.health / ({ erlang: ERLANG, laozi: LAOZI }[act.boss.kind] ?? BOSS).health) * 100}%`;
-  }
+  const words=WORDS[lang];
+  state.actTitle=act.solo?trialWords[lang].name:words.titles[onStage];
+  state.best=act.best>=3?words.best(act.best):''; state.soldiers=words.soldiers(remaining(act)); state.health=act.hero.health;
+  state.hairs=Math.max(0,Math.min(1,act.hairs/HAIRS.need)); state.tuftReady=tuftReady(act); state.solo=!!act.solo;
+  state.bossName=act.boss && present(act.boss)?words.bosses[act.boss.kind].name:'';
+  state.bossRatio=state.bossName?Math.max(0,act.boss.health/({erlang:ERLANG,laozi:LAOZI}[act.boss.kind]??BOSS).health):0;
 }
-let noticeUntil = 0;
-function notice(text) {
-  $('notice').textContent = text;
-  $('notice').hidden = false;
-  noticeUntil = clock + 2.6;
-}
+let noticeUntil=0;
+function notice(text) { state.notice=text; noticeUntil=clock+2.6; }
 let store;
 try { store = globalThis.localStorage; } catch { /* The book can live in memory. */ }
 const recordBook = createRecordBook(store);
@@ -525,98 +515,24 @@ const trialWords = {
   en: { name: 'Staff Trial', description: 'Clear the act with your staff and no clones. Trials keep their own records.', enter: 'Play the Staff Trial',
     start: goal => `Staff Trial · No clones · Aim for ${goal.time} s` },
 };
-const trialPicker = document.createElement('details');
-trialPicker.className = 'replay';
-trialPicker.id = 'trial-picker';
-trialPicker.hidden = !recordsEnabled;
-const trialSummary = document.createElement('summary');
-trialSummary.className = 'aside';
-const trialDescription = document.createElement('p');
-const trialChoices = document.createElement('div');
-trialChoices.className = 'asides';
-const trialButtons = Object.fromEntries(ACTS.map(actName => {
-  const button = document.createElement('button');
-  button.type = 'button';
-  button.id = `trial-${actName}`;
-  button.className = 'aside';
-  button.addEventListener('click', () => startTrial(actName));
-  trialChoices.append(button);
-  return [actName, button];
-}));
-trialPicker.append(trialSummary, trialDescription, trialChoices);
-$('show-records').after(trialPicker);
-const trialEntry = document.createElement('button');
-trialEntry.type = 'button';
-trialEntry.id = 'try-trial';
-trialEntry.className = 'aside';
-trialEntry.addEventListener('click', () => startTrial(onStage));
-
-function startTrial(actName) {
-  raise(actName, undefined, true);
-  notice(trialWords[lang].start(TRIAL_GOALS[actName]));
-}
-
+function startTrial(actName) { raise(actName,undefined,true); notice(trialWords[lang].start(TRIAL_GOALS[actName])); }
 function showRecords() {
-  const slot = $('show-records'), words = WORDS[lang];
-  slot.replaceChildren();
-  for (const actName of ACTS) {
-    const saved = recordBook.get(actName);
-    if (!saved) continue;
-    const mark = document.createElement('span');
-    mark.textContent = `${words.places[actName]} ${saved.rank} · ${saved.goals.filter(Boolean).length}/3`;
-    slot.append(mark);
-  }
-  slot.hidden = !slot.childElementCount;
-  trialSummary.textContent = trialWords[lang].name;
-  trialDescription.textContent = trialWords[lang].description;
-  for (const actName of ACTS) {
-    const test = trialBook.get(actName);
-    trialButtons[actName].textContent = words.places[actName] + (test ? ` · ${test.rank} · ${test.goals.filter(Boolean).length}/3` : '');
-  }
-}
-
-function showReplay() {
-  const panel = $('replay'), saved = scoredRun() && currentBook().get(onStage), words = WORDS[lang];
-  panel.hidden = !saved;
-  if (!saved) return;
-  const headline = document.createElement('p'), items = document.createElement('ul'), goal = (act.solo ? TRIAL_GOALS : ACT_GOALS)[onStage];
-  headline.textContent = `${lang === 'zh' ? '个人最好' : 'Personal best'}　${saved.rank} · ${words.seconds(Math.round(saved.time))} · ${words.best(saved.combo)}`;
-  const labels = lang === 'zh' ? [`${goal.time} 秒内落幕`, `${goal.combo} 连击`, '全程不倒地'] :
-    [`Finish in ${goal.time} s`, `${goal.combo} hits`, 'No falls'];
-  labels.forEach((label, index) => {
-    const item = document.createElement('li');
-    item.dataset.earned = String(saved.goals[index]);
-    item.textContent = `${saved.goals[index] ? '✓' : '○'} ${label}`;
-    items.append(item);
-  });
-  panel.replaceChildren(headline, items);
-  if (!act.solo) {
-    trialEntry.textContent = trialWords[lang].enter;
-    panel.append(trialEntry);
-  }
+  const words=WORDS[lang];
+  state.records=ACTS.flatMap(name=>{const saved=recordBook.get(name); return saved?[words.places[name]+' '+saved.rank+' · '+saved.goals.filter(Boolean).length+'/3']:[];});
+  state.trialRecords=ACTS.map(name=>{const saved=trialBook.get(name); return words.places[name]+(saved?' · '+saved.rank+' · '+saved.goals.filter(Boolean).length+'/3':'');});
 }
 function showResult() {
-  const result = act.result,
-    words = WORDS[lang];
-  $('result').hidden = !result;
-  if (!result) return;
-  $('result-title').textContent = act.solo ? `${words.places[onStage]} · ${trialWords[lang].name}` : words.curtain(words.titles[onStage]);
-  $('next').hidden = act.solo || !ACTS[ACTS.indexOf(onStage) + 1];
-  $('finale').hidden = act.solo || !$('next').hidden;
-  $('finale').textContent = `${words.finale}　${ACTS.map(name => `${words.places[name]} ${recordBook.get(name)?.rank ?? words.unplayed}`).join('　')}`;
-  $('rank').textContent = result.rank;
-  $('tally').innerHTML = [
-    [words.time, words.seconds(Math.round(result.time))],
-    [words.felled, String(result.felled)],
-    [words.count, String(result.best)],
-    [words.wounds, result.wounds ? words.times(result.wounds) : words.none],
-    [words.falls, result.falls ? words.times(result.falls) : words.none]
-  ]
-    .map(([name, value]) => `<dt>${name}</dt><dd>${value}</dd>`)
-    .join('');
-  showReplay();
+  const result=act.result, words=WORDS[lang];
+  state.screen=playing?result?'result':'play':'title'; state.result=null; if(!result)return;
+  const hasNext=!act.solo && !!ACTS[ACTS.indexOf(onStage)+1], saved=scoredRun() && currentBook().get(onStage), goal=(act.solo?TRIAL_GOALS:ACT_GOALS)[onStage];
+  const labels=lang==='zh'?[goal.time+' 秒内落幕',goal.combo+' 连击','全程不倒地']:['Finish in '+goal.time+' s',goal.combo+' hits','No falls'];
+  state.result={act:onStage,title:act.solo?words.places[onStage]+' · '+trialWords[lang].name:words.curtain(words.titles[onStage]),rank:result.rank,hasNext,
+    finale:!act.solo && !hasNext?words.finale+'　'+ACTS.map(name=>words.places[name]+' '+(recordBook.get(name)?.rank??words.unplayed)).join('　'):'',
+    tally:[[words.time,words.seconds(Math.round(result.time))],[words.felled,String(result.felled)],[words.count,String(result.best)],[words.wounds,result.wounds?words.times(result.wounds):words.none],[words.falls,result.falls?words.times(result.falls):words.none]].map(([name,value])=>name+'　'+value),
+    personalBest:saved?(lang==='zh'?'个人最好':'Personal best')+'　'+saved.rank+' · '+words.seconds(Math.round(saved.time))+' · '+words.best(saved.combo):'',
+    goals:saved?labels.map((label,index)=>(saved.goals[index]?'✓':'○')+' '+label):[],trialEntry:saved && !act.solo?trialWords[lang].enter:''};
+  input.clear(); showRecords();
 }
-
 // ---- One frame -------------------------------------------------------------------------------------------------
 const STEP = 1 / 120,
   PACE = Math.min(1, Math.max(0.02, Number(query.get('slow')) || 1));
@@ -827,6 +743,7 @@ function told(event) {
 const inView = (x, centre) => Math.abs(x - centre) < STAGE.width * 0.75;
 
 function update(seconds) {
+  if(!staged || !playing){ui?.refresh(); return;}
   // The rules and the puppets keep the same time: the engine's tick, slowed if the address asks for it.
   const dt = Math.min(tick?.deltaSeconds ?? seconds, 0.1) * PACE;
   clock += dt;
@@ -1145,13 +1062,14 @@ function update(seconds) {
   flicker.alpha = 0.05 + 0.02 * Math.sin(clock * 2.3) + 0.012 * Math.sin(clock * 7.9 + 1) + 0.01 * Math.sin(clock * 23.7) + shutIn;
   glare.alpha = flash * 0.85;
 
-  if (!$('notice').hidden && clock > noticeUntil) $('notice').hidden = true;
+  if(state.notice && clock>noticeUntil)state.notice='';
   if (playing && act.state === 'play') {
     const total = Math.floor(act.time);
     const shown = `${Math.floor(total / 60)}:${String(total % 60).padStart(2, '0')}`;
-    if ($('clock').textContent !== shown) $('clock').textContent = shown;
+    state.clock=shown;
   }
-  if (stats) showStats(moving.length);
+  if(stats)showStats(moving.length);
+  state.stickAxis=input.stickState().shift; state.heldActions=input.heldActions(); ui.refresh();
 }
 
 // How fast the stage is being drawn, by the clock on the wall; and, while the clones are out, the line that
@@ -1168,18 +1086,17 @@ function measure(shown, moving, posing) {
   lastFrame = now;
   frameMs += (took - frameMs) * 0.1;
   poseMs += (posing - poseMs) * 0.1;
-  $('crowd').hidden = shown === 0;
-  if (shown === 0) return void (slowFor = 0);
+  if(shown===0){state.crowd=''; return void(slowFor=0);}
   // A stage that cannot carry them all sends some of the hairs back, unless the address asked for every one.
   slowFor = frameMs > 45 && !paused ? slowFor + took : 0;
   if (!keepAll && slowFor > 700 && carried > 20) ((carried = Math.max(20, Math.floor(carried * 0.7))), (slowFor = 0));
   if (now - toldAt < 200) return;
   toldAt = now;
-  $('crowd').textContent = WORDS[lang].crowd(shown, moving.reduce((sum, puppet) => sum + puppet.bones, 0), Math.round(1000 / frameMs));
+  state.crowd = WORDS[lang].crowd(shown, moving.reduce((sum, puppet) => sum + puppet.bones, 0), Math.round(1000 / frameMs));
 }
 
 // ---- Around the play -------------------------------------------------------------------------------------------
-const stats = query.has('stats') ? $('stats') : undefined;
+const stats=query.has('stats');
 let frames = 0,
   since = performance.now(),
   rate = 0;
@@ -1187,17 +1104,15 @@ function showStats(moved) {
   frames++;
   const now = performance.now();
   if (now - since >= 500) (rate = (frames * 1000) / (now - since)), (frames = 0), (since = now);
-  stats.textContent = `${game.backend}  ${rate.toFixed(0)} fps\npuppets moving ${moved} of ${posts.length + soldiers.length + 2 + crowd.length}, posed in ${poseMs.toFixed(1)} ms\n${animationOf(act.hero).name}  x ${act.hero.x.toFixed(0)}  y ${act.hero.y.toFixed(0)}`;
+  state.stats = `${game.backend}  ${rate.toFixed(0)} fps\npuppets moving ${moved} of ${posts.length + soldiers.length + 2 + crowd.length}, posed in ${poseMs.toFixed(1)} ms\n${animationOf(act.hero).name}  x ${act.hero.x.toFixed(0)}  y ${act.hero.y.toFixed(0)}`;
 }
-if (stats) stats.hidden = false;
 
 function pause(value = !paused) {
   if (!playing || act.state !== 'play') return;
   paused = value;
   input.clear();
   sound.dim(paused);
-  $('paused').hidden = !paused;
-  $('pause-play').hidden = paused;
+  state.paused=paused; state.stickAxis=0; state.heldActions={}; ui.refresh();
   if (!paused) canvas.focus();
 }
 function playPauseCue() {
@@ -1205,17 +1120,15 @@ function playPauseCue() {
   pause();
   if (paused !== wasPaused) sound.play(paused ? 'cancel' : 'confirm', { volume: 0.57 });
 }
-addEventListener('keydown', event => (event.code === 'KeyP' || event.code === 'Escape') && !event.repeat && playPauseCue());
+addEventListener('keydown',event=>{if(staged && playing && act.state==='play' && !event.repeat && (event.code==='KeyP'||event.code==='Escape')){event.preventDefault(); playPauseCue();}},true);
 addEventListener('blur', () => pause(true));
-bindPlayButton($('pause-play'), playPauseCue);
-bindPlayButton($('paused'), playPauseCue);
+
 
 /** Puts the act back to its beginning. */
 function again(solo = act.solo) {
   input.clear();
   paused = false;
-  $('paused').hidden = true;
-  $('pause-play').hidden = false;
+  state.paused=false; state.notice=''; state.clock='0:00'; state.crowd=''; state.stickAxis=0; state.heldActions={};
   sound.court(false);
   sound.dim(false);
   if (playing) sound.score(onStage);
@@ -1237,11 +1150,11 @@ function again(solo = act.solo) {
   showCount();
   canvas.focus();
 }
-$('again').addEventListener('click', () => {
+function replay() {
   again();
   if (act.solo) notice(trialWords[lang].start(TRIAL_GOALS[onStage]));
-  sound.play('confirm', { volume: 0.69 });
-});
+  sound.play('confirm',{volume:0.69}); ui.refresh();
+}
 
 /** Sets the stage for an act: from its beginning, or (the first act) from the court before the gate. */
 function setAct(name, where, solo = false) {
@@ -1257,76 +1170,32 @@ function setAct(name, where, solo = false) {
   }
   again(solo);
 }
-$('next').addEventListener('click', () => {
-  setAct(ACTS[ACTS.indexOf(onStage) + 1]);
-  notice(WORDS[lang].titles[onStage]);
-  sound.play('confirm', { volume: 0.75 });
-});
-
-$('lang').addEventListener('click', () => ((lang = lang === 'zh' ? 'en' : 'zh'), speak()));
-$('mute').setAttribute('aria-pressed', String(sound.muted));
-$('music').setAttribute('aria-pressed', String(sound.musicMuted));
-$('mute').addEventListener('click', event => {
-  sound.muted = !sound.muted;
-  event.currentTarget.setAttribute('aria-pressed', String(sound.muted));
-  if (!sound.muted) sound.play('confirm', { volume: 0.57 });
-});
-$('music').addEventListener('click', event => {
-  sound.musicMuted = !sound.musicMuted;
-  event.currentTarget.setAttribute('aria-pressed', String(sound.musicMuted));
-  sound.play(sound.musicMuted ? 'cancel' : 'confirm', { volume: 0.48 });
-});
-document.querySelector('.tools').addEventListener('click', event => {
-  // Mouse and touch users should be able to jump as soon as they close a setting.
-  if (event.detail && !paused && event.target.closest('button')) canvas.focus();
-});
-// An iPhone's browsers cannot make a page fill the screen, and there the button would do nothing.
-$('full').hidden = !document.fullscreenEnabled || !booth.requestFullscreen;
-$('full').addEventListener('click', () => (document.fullscreenElement ? document.exitFullscreen() : booth.requestFullscreen?.().catch(() => {})));
-
-staged = true;
-speak();
-game.loop.start();
-const start = $('start'),
-  startBoss = $('start-boss');
-start.disabled = startBoss.disabled = false;
-filled();
-$('filling').hidden = true;
-status.textContent = '';
-status.removeAttribute('data-zh');
-/** Raises the curtain on an act, from its beginning or (the first act) from the court before the gate. */
-function raise(name, where, solo = false) {
-  if (name !== onStage || where !== from || solo !== act.solo || act.result) setAct(name, where, solo);
-  playing = true;
-  $('curtain').classList.add('is-up');
-  $('hud').hidden = false;
-  showCount();
-  sound.score(onStage);
-  sound.begin().then(() => {
-    if (playing && onStage === name) sound.play('gong', { volume: 0.83 });
-  });
-  canvas.focus();
+function nextAct() { const name=ACTS[ACTS.indexOf(onStage)+1]; if(!name)return; setAct(name); notice(WORDS[lang].titles[onStage]); sound.play('confirm',{volume:0.75}); ui.refresh(); }
+const [openingAct,openingFrom]=[onStage,from]; state.openingAct=openingAct; state.openingFrom=openingFrom;
+filled(); state.progress=1;
+// Present the loaded cloth behind the opaque playbill before enabling Begin.
+// Render initialization therefore stays in loading, not on the player's first tap.
+play.world.visible=true;
+await new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)));
+play.world.visible=false;
+staged=true; state.ready=true; speak();
+/** Raises the curtain while retaining the rules and original sound cues. */
+function raise(name=openingAct,where,solo=false) {
+  if(name!==onStage||where!==from||solo!==act.solo||act.result)setAct(name,where,solo);
+  playing=true; play.world.visible=true; state.screen='play'; state.result=null; state.paused=false;
+  lastFrame=performance.now();
+  input.clear(); showCount(); ui.refresh(); sound.score(onStage);
+  sound.begin().then(()=>{if(playing&&onStage===name)sound.play('gong',{volume:0.83});}); canvas.focus({preventScroll:true});
 }
-// The gong begins wherever the address says, the first act if it says nothing; the lines under it choose for themselves.
-const [openingAct, openingFrom] = [onStage, from];
-start.addEventListener('click', () => raise(openingAct, openingFrom));
-startBoss.addEventListener('click', () => raise('act1', 'boss'));
-$('start-act2').disabled = $('start-erlang').disabled = false;
-$('start-act2').addEventListener('click', () => raise('act2'));
-$('start-erlang').addEventListener('click', () => raise('act2', 'boss'));
-$('start-act3').disabled = $('start-laozi').disabled = false;
-$('start-laozi').addEventListener('click', () => raise('act3', 'boss'));
-$('playbill-back').addEventListener('click', () => {
-  playing = false;
-  sound.play('cancel', { volume: 0.64 });
-  sound.score();
-  setAct(openingAct, openingFrom);
-  $('hud').hidden = true;
-  $('curtain').classList.remove('is-up');
-  $('start').focus();
-});
-$('start-act3').addEventListener('click', () => raise('act3'));
-
+function playbill() {
+  playing=false; play.world.visible=false; sound.play('cancel',{volume:0.64}); sound.score();
+  setAct(openingAct,openingFrom); state.screen='title'; ui.refresh(); canvas.focus({preventScroll:true});
+}
+const clientRect=name=>{
+  const r=ui.rect(name==='move-stick'?'stick':name==='dash'?'dodge':name); if(!r)return null;
+  const b=canvas.getBoundingClientRect(), screen=play.screen;
+  return {x:b.x+r.x*b.width/screen.width,y:b.y+r.y*b.height/screen.height,width:r.width*b.width/screen.width,height:r.height*b.height/screen.height};
+};
 // What a check reads; the play does not need it.
 globalThis.__lantern = {
   get act() {
@@ -1340,11 +1209,13 @@ globalThis.__lantern = {
   },
   backend: game.backend,
   camera: () => camera.snapshot(),
-  begin: where => (where === 'nezha' ? startBoss : where === 'act2' ? $('start-act2') : where === 'erlang' ? $('start-erlang') : where === 'act3' ? $('start-act3') : where === 'laozi' ? $('start-laozi') : start).click(),
+  begin:where=>where==='nezha'?raise('act1','boss'):where==='act2'?raise('act2'):where==='erlang'?raise('act2','boss'):where==='act3'?raise('act3'):where==='laozi'?raise('act3','boss'):raise(openingAct,openingFrom),
+  get ready(){return state.ready;}, get paused(){return paused;},
+  ui:{tester,rect:clientRect,clientRect,buttons:()=>ui.buttons?.()??[],snapshot:()=>structuredClone(state),stickState:()=>input.stickState()},
   get stage() {
     return onStage;
   },
-  next: () => $('next').click(),
+  next:nextAct,
   get boss() {
     return act.boss;
   },

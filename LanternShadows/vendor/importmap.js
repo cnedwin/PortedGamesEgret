@@ -24,7 +24,18 @@ const imports = {
   "@egret/engine/web/gamepad": "./engine/dist/web/gamepad.js",
   "@esotericsoftware/spine-core": "./@esotericsoftware__spine-core/dist/index.js",
   "@egret/engine/resources": "./engine/dist/resources.js",
-  "@egret/spine": "./spine/dist/index.js"
+  "@egret/spine": "./spine/dist/index.js",
+  "@egret/engine/kit": "./engine/dist/kit.js",
+  "@egret/runtime/ui": "./runtime/dist/ui/index.js",
+  "@egret/engine/ui": "./engine/dist/ui/index.js",
+  "@egret/runtime/paragraph": "./runtime/dist/paragraph/index.js",
+  "@egret/engine/paragraph": "./engine/dist/paragraph.js",
+  "@egret/engine/play": "./engine/dist/web/play.js",
+  "@egret/engine/ui/semantics": "./engine/dist/semantics.js",
+  "@egret/engine/ui/testing": "./engine/dist/ui/testing.js",
+  "@egret/engine/web/semantics": "./engine/dist/web/semantics.js",
+  "@egret/engine/web/paragraph": "./engine/dist/web/paragraph.js",
+  "@egret/engine/web/gestures": "./engine/dist/web/gestures.js"
 };
 const base = document.currentScript.src;
 for (const name of Object.keys(imports)) imports[name] = new URL(imports[name], base).href;
