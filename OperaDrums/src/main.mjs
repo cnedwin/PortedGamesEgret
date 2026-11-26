@@ -1,11 +1,17 @@
-// 页面入口：存档、语言、引擎的 play（画布和每帧）、引擎的混音器（伴奏和击打声）、曲目、设置、延迟校准、暂停和
-// 结算。按钮都是页面自己的按钮；敲击来自键盘、四块敲击区和手柄。一下敲击的时刻取页面事件的时间戳，换成那一刻耳朵
-// 听到的曲子秒数，再交给 src/sim/judge.mjs 判定。
-// The page's entry: the save, the language, the engine's play (the canvas and each frame), the engine's mixer (the
-// backing and the strokes), the songs, the settings, the delay, the pause and the result. Every control is a page
-// button; strokes come from the keys, the four pads and a gamepad. A stroke's moment is its page event's time stamp,
-// turned into the second of the song heard at that moment, then judged by src/sim/judge.mjs.
+// 页面入口：存档、语言、引擎的 play（画布、每帧、屏幕的形状）、引擎的混音器（伴奏和击打声）、曲目、设置、延迟
+// 校准、暂停和结算。所有界面都是引擎的数据界面，写在 src/ui/：画面由引擎的屏幕栈管，演出页的四块敲击区也是界面的
+// 部件。敲击来自键盘、敲击区和手柄；一下敲击的时刻取输入事件的时间戳，换成那一刻耳朵听到的曲子秒数，再交给
+// src/sim/judge.mjs 判定。
+//
+// The page's entry: the save, the language, the engine's play (the canvas, each frame, the screen's shape), the
+// engine's mixer (the backing and the strokes), the songs, the settings, the delay, the pause and the result. Every
+// interface is one of the engine's views described as data, in src/ui/: the engine's screen stack holds the screens,
+// and the four pads of the performance are parts of a view too. Strokes come from the keys, the pads and a gamepad; a
+// stroke's moment is its input event's time stamp, turned into the second of the song heard at that moment, then
+// judged by src/sim/judge.mjs.
 import { play } from '@egret/engine/play';
+import { createUiSemantics } from '@egret/engine/ui/semantics';
+import { createBrowserSemantics } from '@egret/engine/web/semantics';
 import { browserLanguages, browserSaveStorage, prefersReducedMotion } from '@egret/engine/web/kit';
 import { STROKE_SOUND, createSound } from './audio/sound.mjs';
 import { getLanguage, onLanguage, setLanguage, startLanguage, t } from './i18n.mjs';
@@ -16,23 +22,14 @@ import { explainStrike } from './sim/feedback.mjs';
 import { LESSON_SONG, LESSON_STEPS, buildLesson, lessonStepAt } from './sim/lesson.mjs';
 import { advance, createRun, resultOf, strike } from './sim/judge.mjs';
 import { DIFFICULTIES, SONGS } from './sim/songs.mjs';
-import { createView } from './view.mjs';
+import { createScreens } from './ui/screens.mjs';
+import { SKIN } from './ui/skin.mjs';
+import { PADS, drawStageFrame, openPlayPage } from './ui/stage-ui.mjs';
+import { INSTRUMENTS, createView } from './view.mjs';
 
-const params = new URLSearchParams(location.search),
-  $ = (selector) => document.querySelector(selector),
-  field = $('#field'),
-  pads = $('#pads'),
-  panels = { title: $('#title'), options: $('#options'), guide: $('#guide'), menu: $('#menu'), end: $('#end'), cal: $('#cal') };
-const progress = $('#songProgress');
-const frameRoot = $('#frame');
-const lessonFeedback = $('#lessonFeedback');
-const coach = $('#sessionCoach');
-const coachLabel = coach.querySelector('strong');
-const coachText = coach.querySelector('span');
-const coachRibbon = coach.querySelector('progress');
+const params = new URLSearchParams(location.search);
 const lessonCues = ['practiceDrum', 'practiceGong', 'practiceDouble', 'practiceRoll'];
 const lessonSkills = ['Drum', 'Gong', 'Double', 'Roll'];
-let lastCoachLabel = '';
 let lastMissed = null;
 let lastLessonFeedback = { key: 'timingReady' };
 let lessonCounts = null;
@@ -40,8 +37,6 @@ let encoreFeedback = null;
 const READY_CUE_DELAY = 0.075;
 const ENCORE_CUES = { start: 'rally', end: 'rally-end', break: 'rally-break' };
 const ENCORE_WORDS = { ready: 'encoreFull', start: 'encoreTrigger', end: 'encoreEnded', break: 'encoreBroken' };
-let chosenAct = SONGS[0];
-let chosenLevel = DIFFICULTIES[0];
 
 // The save, and what went wrong with it, said on the title.
 let notice = null;
@@ -54,9 +49,20 @@ function setSetting(key, value) {
   if (!save.update((data) => void (data.settings[key] = value))) notice = 'saveRefused';
 }
 
+const songName = (id) => (id === LESSON_SONG.id ? t('practiceName') : id === ENCORE_SONG.id ? t('encore') : getLanguage() === 'zh' ? songOf(id).zh : songOf(id).en);
+const levelName = (difficulty) => t(difficulty);
+const freshHud = () => ({
+  songLine: '', scoreLine: '', progress: 0, encorePhase: null,
+  coach: { shown: false, label: '', hint: '', phase: 'lesson', bar: 0, barShown: false },
+  readout: { text: '', warn: false },
+  padsDown: { d: 0, f: 0, j: 0, k: 0 }
+});
+
 const app = {
   save,
   screen: 'title',
+  chosenAct: SONGS[0],
+  chosenLevel: DIFFICULTIES[0],
   song: null,
   mode: 'song',
   lessonSkills: null,
@@ -68,41 +74,154 @@ const app = {
   run: null,
   result: null,
   time: 0,
+  hud: freshHud(),
+  /** How many strokes the pads have taken by finger or mouse. */
+  padPresses: 0,
+  cal: { running: false, message: '', beat: false },
   /** The judged strokes of the current run, with how far off each was: for tests and for the curious. */
   strokes: [],
+  portrait: () => game?.orientation === 'portrait',
   get notice() {
     return notice;
   }
 };
 
-// ---- The engine: play makes the canvas in the stage's box and runs the frames; the mixer plays the sound. ----
-// Frames begin as soon as play is set up; they do nothing until the rest of this page is ready.
-let game,
-  view,
-  ready = false;
+// ---- The engine: play makes the canvas, fits it to any screen, runs the frames, and draws the views. ----
+const semantics = createUiSemantics();
+let game, view, sound, screens, playPage = null, stageRoot, projection, projected = '';
+let ready = false;
+// Every picture the views and the stage show, loaded two at a time before the first screen and kept: the engine
+// refuses a fifth image while four are loading (ENGINE-NOTES.md), and the title alone shows three. The views ask for
+// the same addresses and share them.
+const PICTURES = ['assets/qiba.webp', 'assets/tangma.webp', 'assets/jijifeng.webp', INSTRUMENTS];
+// The illustrated stage never moves, so the page paints it once under the clear canvas, as the engine's guide advises
+// for a still background (ENGINE-NOTES.md): behind the menus it fills the window, and in a performance it sits under
+// the part of the view named `stage`.
+const backdrop = document.querySelector('#backdrop'),
+  ground = document.querySelector('#ground');
+
+/** The stage of the performance: its frame, then the lane, notes and instruments of src/view.mjs, in stage units. */
+function buildWorld() {
+  stageRoot = game.sprite();
+  game.sprite(drawStageFrame, stageRoot);
+  view = createView(game, {
+    words: t,
+    roman: () => getLanguage() === 'en',
+    parent: stageRoot,
+    place: (x, y) => ({ x: stageRoot.x + x * stageRoot.scaleX, y: stageRoot.y + y * stageRoot.scaleY, scale: stageRoot.scaleX })
+  });
+  stageRoot.visible = false;
+}
+
+/** Places what depends on the screen: the stage under its part, the page's picture under it, and the projection. */
+function arrange() {
+  const screen = game.screen,
+    performing = Boolean(stageRoot?.visible);
+  document.documentElement.dataset.mode = performing ? 'play' : 'menu';
+  ground.hidden = !performing || !playPage;
+  if (playPage) {
+    const r = playPage.rect('stage');
+    stageRoot.x = r.x;
+    stageRoot.y = r.y;
+    stageRoot.scaleX = stageRoot.scaleY = r.width / 960;
+    // The same place in the page's pixels: the canvas spans the screen.
+    const box = game.canvas.getBoundingClientRect(),
+      unit = box.width / screen.width;
+    Object.assign(ground.style, {
+      left: `${box.left + (r.x - screen.x) * unit}px`,
+      top: `${box.top + (r.y - screen.y) * unit}px`,
+      width: `${r.width * unit}px`,
+      height: `${r.height * unit}px`
+    });
+  }
+  // The projection for assistive technology maps the canvas to the stage, whose size follows the screen.
+  const size = `${Math.round(screen.width)}x${Math.round(screen.height)}`;
+  if (size !== projected) {
+    projected = size;
+    projection?.dispose();
+    try {
+      projection = createBrowserSemantics({ semantics, canvas: game.canvas, width: screen.width, height: screen.height, label: t('stage'), onError: (cause) => console.warn('semantics', cause) });
+    } catch (cause) {
+      projection = null;
+      console.warn('semantics', cause);
+    }
+  }
+}
+
+/**
+ * Whether the page draws with a software renderer (SwiftShader, llvmpipe): every pixel costs there, so the canvas is
+ * drawn at three quarters of its size and scaled up (ENGINE-NOTES.md).
+ */
+function softwareRendering() {
+  try {
+    const gl = document.createElement('canvas').getContext('webgl2');
+    const info = gl?.getExtension('WEBGL_debug_renderer_info');
+    const name = info ? gl.getParameter(info.UNMASKED_RENDERER_WEBGL) : gl?.getParameter(gl.RENDERER);
+    gl?.getExtension('WEBGL_lose_context')?.loseContext();
+    return /swiftshader|llvmpipe|software/i.test(String(name ?? ''));
+  } catch {
+    return false;
+  }
+}
+
+/** What shows when a file did not load: the words and a button that loads the page again. */
+function showLoadFailed() {
+  game.show({ label: t('loadFailed'), skin: SKIN, modal: true, root: {
+    type: 'panel', card: true, color: 0x231b14, anchor: 'center', width: 420, height: 170, padding: 24, layout: 'column', gap: 16, children: [
+      { type: 'text', name: 'load-failed', text: t('loadFailed'), height: 40, size: 22, bold: true },
+      { type: 'button', name: 'retry', text: t('retry'), height: 60, color: 0x9b352a, textColor: 0xfff0d6 }
+    ]
+  } }, { bind: { retry: { tap: () => location.reload() } } });
+  // The tree needs a projection to be read: there is no other screen to make one.
+  arrange();
+}
+
 await play({
   width: 960,
-  height: 540,
-  parent: field,
+  height: 680,
+  portrait: { width: 540, height: 960 },
+  fit: 'expand',
   transparent: true,
+  ...(softwareRendering() ? { pixelRatio: 0.75 } : {}),
+  // Menus stand still most of the time: a frame is drawn only when something on the screen changed.
+  renderMode: 'on-demand',
+  audio: false,
+  semantics,
   setup(made) {
     game = made;
-    view = createView(game, { words: t, roman: () => getLanguage() === 'en' });
   },
   update: (seconds) => frame(seconds),
+  arrange: () => arrange(),
   onError: (cause) => console.error(cause)
 });
-// The illustrated backdrop is a static CSS layer under the engine canvas.
-Object.assign(game.canvas.parentElement.style, { background: 'transparent', zIndex: '1', position: 'absolute', inset: '0' });
-game.canvas.setAttribute('role', 'img');
-game.canvas.setAttribute('aria-label', t('stage'));
-game.sfx.muted = true;
+// The sound and the pictures load behind the engine's loading bar. The bar is shown once play has started its frames:
+// a view that `setup` awaits is not drawn (ENGINE-NOTES.md).
+document.querySelector('#boot')?.remove();
+const loaded = await game.loading([
+  createSound(game.scope, { on: settings().sound, music: settings().music }),
+  ...PICTURES.map((url) => () => game.browser.loadTexture(url))
+], { label: t('loading'), atOnce: 2 }).catch((cause) => {
+  console.warn('Opera Drums could not load', cause);
+  return null;
+});
+if (!loaded) {
+  // A file did not arrive: say so and offer to load the page again; the game goes no further.
+  showLoadFailed();
+  await new Promise(() => {});
+}
+sound = loaded[0];
+buildWorld();
 function syncMotion() {
   game.reducedMotion = settings().reducedMotion || prefersReducedMotion();
-  document.documentElement.dataset.reduced = game.reducedMotion;
 }
 syncMotion();
-const sound = await createSound(game.scope, { on: settings().sound, music: settings().music });
+
+// A status line for assistive technology: what a sighted player sees at a glance, said once.
+let lastSaid = '';
+semantics.add({ id: 'say', role: 'status', describe: () => ({ name: lastSaid, bounds: { x: 0, y: 0, width: 1, height: 1 } }) });
+function say(words) {
+  lastSaid = words === lastSaid ? `${words} ` : words;
+}
 
 // ---- Strokes. ----
 const KEYS = { KeyD: ['gong', 'd'], KeyF: ['drum', 'f'], KeyJ: ['drum', 'j'], KeyK: ['gong', 'k'] };
@@ -132,63 +251,59 @@ function strikeAt(kind, hand, ms) {
   updateRally(result, time);
 }
 
-const padContacts = new Map();
-function releasePads() {
-  for (const [pad, contacts] of padContacts) {
-    contacts.clear();
-    pad.classList.remove('down');
+// The pads: a finger or the mouse strikes as it goes down, at the time stamp of its event; each pad lights while a
+// contact holds it. A tap that follows such a press is the same stroke; one with no press before it is a key or
+// assistive technology, and strikes then.
+const contacts = new Map(PADS.map((p) => [p.hand, new Set()]));
+const lastPress = new Map();
+function padBuilt(made) {
+  // Told while the view is being made, before `openPlayPage` has given it back.
+  playPage = made;
+  for (const p of PADS) {
+    const node = made.get(p.name),
+      held = contacts.get(p.hand),
+      input = game.browser.pointer;
+    held.clear();
+    app.hud.padsDown[p.hand] = 0;
+    node.on(input.events.begin, (event) => {
+      const contact = event.payload;
+      if (app.screen !== 'play') return;
+      held.add(contact.session.pointerId);
+      app.hud.padsDown[p.hand] = held.size;
+      lastPress.set(p.hand, performance.now());
+      app.padPresses++;
+      strikeAt(p.kind, `${p.hand}${contact.session.pointerId}`, contact.timestamp);
+    });
+    const release = (event) => {
+      held.delete(event.payload.session.pointerId);
+      app.hud.padsDown[p.hand] = held.size;
+    };
+    node.on(input.events.end, release);
+    node.on(input.events.cancel, release);
   }
+  arrange();
 }
-for (const pad of pads.querySelectorAll('.pad')) {
-  const { kind, hand } = pad.dataset;
-  const contacts = new Set();
-  padContacts.set(pad, contacts);
-  pad.addEventListener('pointerdown', (event) => {
-    if (event.button !== 0 || app.screen !== 'play') return;
-    event.preventDefault();
-    pad.setPointerCapture(event.pointerId);
-    contacts.add(event.pointerId);
-    pad.classList.add('down');
-    strikeAt(kind, `${hand}${event.pointerId}`, event.timeStamp);
-  });
-  const release = (event) => {
-    contacts.delete(event.pointerId);
-    pad.classList.toggle('down', contacts.size > 0);
-  };
-  for (const type of ['pointerup', 'pointercancel', 'lostpointercapture']) pad.addEventListener(type, release);
-  pad.addEventListener('contextmenu', (event) => event.preventDefault());
-  // Keyboard and assistive-technology activation have not fired pointerdown.
-  pad.addEventListener('click', (event) => event.detail === 0 && strikeAt(kind, hand, event.timeStamp));
+function padActivated(p) {
+  if (performance.now() - (lastPress.get(p.hand) ?? -Infinity) < 1500) return;
+  strikeAt(p.kind, p.hand, performance.now());
+}
+function releasePads() {
+  for (const [hand, held] of contacts) {
+    held.clear();
+    app.hud.padsDown[hand] = 0;
+  }
 }
 window.addEventListener('blur', releasePads);
 
-// Keys are caught first, in the capture phase: play keeps Tab and Space from the page's buttons otherwise.
+// The strike keys are read from the page's events for their time stamps; every other key is the views' and play's.
 window.addEventListener(
   'keydown',
   (event) => {
-    event.stopPropagation();
     if (event.ctrlKey || event.metaKey || event.altKey) return;
     const stroke = KEYS[event.code];
     if (stroke && (app.screen === 'play' || app.screen === 'cal')) {
       event.preventDefault();
       if (!event.repeat) strikeAt(stroke[0], stroke[1], event.timeStamp);
-      return;
-    }
-    if (app.screen === 'play' && (event.key === 'Escape' || event.key.toLowerCase() === 'p')) {
-      event.preventDefault();
-      openMenu();
-    } else if (app.screen === 'menu' && event.key === 'Escape') {
-      event.preventDefault();
-      closeMenu();
-    } else if (app.screen === 'encoreGuide' && event.key === 'Escape') {
-      event.preventDefault();
-      showTitle('[data-encore]');
-    } else if ((app.screen === 'options' || app.screen === 'guide') && event.key === 'Escape') {
-      event.preventDefault();
-      showTitle(`[data-open="${app.screen}"]`);
-    } else if ((app.screen === 'cal' || app.screen === 'calIdle') && event.key === 'Escape') {
-      event.preventDefault();
-      endCalibration(true);
     }
   },
   true
@@ -199,12 +314,11 @@ document.addEventListener('visibilitychange', () => {
   if (app.screen === 'play') openMenu();
 });
 
-// ---- Each frame: the song's time from the sound, the notes missed, the view and the bar. ----
-let shownScore = -1;
-let shownProgress = -1;
+// ---- Each frame: the song's time from the sound, the notes missed, the stage and the page's numbers. ----
 function frame(seconds) {
   if (!ready) return;
   for (const [key, [kind, hand]] of Object.entries(PAD_KEYS)) if (game.keys.pressed(key)) strikeAt(kind, hand, performance.now());
+  if (app.screen === 'play' && game.keys.pressed('escape', 'p', 'pad:start')) return openMenu();
   if (app.screen === 'cal') return calFrame();
   if (app.screen !== 'play' || !app.run) return;
   const time = sound.heardAt() - settings().offset / 1000;
@@ -216,20 +330,13 @@ function frame(seconds) {
     if (app.lessonSkills) setLessonFeedback({ key: 'timingMissedHint' });
   }
   view.show(app.run, time, speedOf(), seconds);
-  if (app.run.score !== shownScore) {
-    shownScore = app.run.score;
-    $('#score').textContent = t('score', { n: app.run.score });
-  }
-  const progressPercent = Math.round(100 * Math.max(0, Math.min(1, time / app.chart.end)));
-  if (shownProgress !== progressPercent) {
-    shownProgress = progressPercent;
-    progress.value = progressPercent;
-  }
+  app.hud.scoreLine = t('score', { n: app.run.score });
+  app.hud.progress = Math.max(0, Math.min(1, time / app.chart.end));
   if (app.encore) updateRally(null, time);
   if (app.mode !== 'song') paintCoach(time);
   if (app.run.done) finish();
 }
-const speedOf = () => app.mode === 'lesson' ? 275 : 260 * settings().speed;
+const speedOf = () => (app.mode === 'lesson' ? 275 : 260 * settings().speed);
 
 function updateRally(result, time) {
   if (!app.encore) return;
@@ -270,285 +377,121 @@ function updateRally(result, time) {
 }
 
 function setLessonFeedback(feedback) {
-  const text = t(feedback.key, feedback);
-  if (lessonFeedback.textContent !== text) lessonFeedback.textContent = text;
-  lessonFeedback.dataset.feedback = feedback.key;
+  const warn = ['timingEarly', 'timingLate', 'timingMissedHint'].includes(feedback.key);
+  app.hud.readout = { text: t(feedback.key, feedback), warn };
   lastLessonFeedback = feedback;
 }
-
-function toggleLessonFeedback(visible) {
-  lessonFeedback.hidden = !visible;
-  frameRoot.toggleAttribute('data-lesson', visible);
+/** The line under the stage: the lesson's feedback, or the keys and pads of a song. */
+function paintReadout() {
+  if (app.mode === 'lesson') return setLessonFeedback(lastLessonFeedback);
+  app.hud.readout = { text: t(game.device === 'touch' ? 'touchHint' : 'keysHint'), warn: false };
 }
 
 function paintCoach(time) {
-  const lesson = app.mode === 'lesson';
-  let label, hint, displayPhase = 'lesson';
-  if (lesson) {
-    const step = app.lessonStep ?
-      LESSON_STEPS.findIndex(({ skill }) => skill === app.lessonStep) : lessonStepAt(time);
-    label = app.lessonStep ?
-      t('practiceSkill' + lessonSkills[step]) : t('practiceCount', { n: step + 1 });
-    hint = t(lessonCues[step]);
-    coachRibbon.hidden = true;
+  const coach = app.hud.coach;
+  coach.shown = true;
+  if (app.mode === 'lesson') {
+    const step = app.lessonStep ? LESSON_STEPS.findIndex(({ skill }) => skill === app.lessonStep) : lessonStepAt(time);
+    coach.label = app.lessonStep ? t('practiceSkill' + lessonSkills[step]) : t('practiceCount', { n: step + 1 });
+    coach.hint = t(lessonCues[step]);
+    coach.phase = 'lesson';
+    coach.barShown = false;
+    return;
+  }
+  const { charge, activeUntil, bonus } = app.encore;
+  const { phase, notice: last, bonusStart } = encoreFeedback;
+  const age = last ? time - last.time : Infinity;
+  const roundBonus = () => t('encoreRoundBonus', { score: bonus - bonusStart });
+  coach.phase = phase;
+  if (phase === 'active') {
+    coach.label = t('encoreActive', { n: Math.ceil(activeUntil - time) });
+    coach.hint = age < 0.9 ? t('encoreTrigger') : roundBonus();
+  } else if (phase === 'ready') {
+    coach.label = t('encoreFull');
+    coach.hint = t('encoreReady');
+  } else if ((last?.cue === 'end' || last?.cue === 'break') && age < 1.15) {
+    coach.phase = last.cue;
+    coach.label = t(ENCORE_WORDS[last.cue]);
+    coach.hint = roundBonus();
   } else {
-    const { charge, activeUntil, bonus } = app.encore;
-    const { phase, notice, bonusStart } = encoreFeedback;
-    const age = notice ? time - notice.time : Infinity;
-    const roundBonus = () => t('encoreRoundBonus', { score: bonus - bonusStart });
-    displayPhase = phase;
-    if (phase === 'active') {
-      label = t('encoreActive', { n: Math.ceil(activeUntil - time) });
-      hint = age < 0.9 ? t('encoreTrigger') : roundBonus();
-    } else if (phase === 'ready') {
-      label = t('encoreFull');
-      hint = t('encoreReady');
-    } else if ((notice?.cue === 'end' || notice?.cue === 'break') && age < 1.15) {
-      displayPhase = notice.cue;
-      label = t(ENCORE_WORDS[notice.cue]);
-      hint = roundBonus();
-    } else {
-      label = t('encoreCharge', { n: charge, max: ENCORE_POWER.capacity });
-      hint = t('encoreHint');
-    }
-    coachRibbon.hidden = false;
-    const value = phase === 'active' ? (activeUntil - time) / ENCORE_POWER.seconds * ENCORE_POWER.capacity : charge;
-    const rounded = Math.round(value * 10) / 10;
-    if (coachRibbon.value !== rounded) coachRibbon.value = rounded;
+    coach.label = t('encoreCharge', { n: charge, max: ENCORE_POWER.capacity });
+    coach.hint = t('encoreHint');
   }
-  if (label + hint !== lastCoachLabel) {
-    coachLabel.textContent = label;
-    coachText.textContent = hint;
-    coachRibbon.setAttribute('aria-label', t('encore'));
-    lastCoachLabel = label + hint;
-  }
-  if (coach.dataset.phase !== displayPhase) {
-    coach.dataset.phase = displayPhase;
-    pads.dataset.encorePhase = displayPhase;
-  }
+  coach.barShown = true;
+  coach.bar = phase === 'active' ? (activeUntil - time) / ENCORE_POWER.seconds : charge / ENCORE_POWER.capacity;
+  app.hud.encorePhase = coach.phase;
 }
 
 // ---- Screens. ----
-function openPanel(name) {
-  for (const [key, panel] of Object.entries(panels)) panel.hidden = key !== name;
-  const covered = name !== null;
-  field.inert = covered;
-  pads.inert = covered || app.screen === 'loading';
-  if (covered) releasePads();
-  if (name) (panels[name].querySelector('[data-focus]:not([hidden])') ?? panels[name].querySelector('button:not([hidden])'))?.focus({ preventScroll: true });
-}
-const sheet = (panel, html) => {
-  panel.innerHTML = `<div class="sheet">${html}</div>`;
-  return panel.firstElementChild;
-};
-const levelName = (difficulty) => t(difficulty);
-const songName = (song) => {
-  if (song.id === LESSON_SONG.id) return t('practiceName');
-  if (song.id === ENCORE_SONG.id) return t('encore');
-  return (getLanguage() === 'zh' ? song.zh : song.en);
-};
-let lastSaid = '';
-function say(words) {
-  const live = $('#say');
-  live.textContent = words === lastSaid ? `${words} ` : words;
-  lastSaid = live.textContent;
+const soon = (callback) => requestAnimationFrame(() => requestAnimationFrame(callback));
+const focusSoon = (name) => soon(() => screens.focus(name));
+
+function showMenus() {
+  stageRoot.visible = false;
+  view.clear();
+  arrange();
 }
 
-function settingsHtml({ calibrate = true } = {}) {
-  const s = settings();
-  const toggle = (key, on) => `<button type="button" data-toggle="${key}" aria-pressed="${on}">${t('switchState', { name: t(key), state: t(on ? 'on' : 'off') })}</button>`;
-  const stepper = (key, label, value, atMin, atMax) => `<div class="row step-field"><span class="label">${t(label)}</span>
-    <button type="button" data-step="${key}:-1" aria-label="${t(label)} −" aria-disabled="${atMin}">−</button>
-    <output>${value}</output>
-    <button type="button" data-step="${key}:1" aria-label="${t(label)} +" aria-disabled="${atMax}">+</button></div>`;
-  return `<div class="prefs">
-    <div class="row">${toggle('sound', s.sound)}${toggle('reducedMotion', s.reducedMotion)}<button type="button" data-language aria-label="${t('languageName')}" lang="${getLanguage() === 'zh' ? 'en' : 'zh-CN'}">${t('language')}</button></div>
-    ${stepper('music', 'musicVolume', Math.round(s.music * 100) + '%', s.music <= 0, s.music >= 1)}
-    ${stepper('speed', 'speed', '×' + s.speed, s.speed === SPEEDS[0], s.speed === SPEEDS.at(-1))}
-    ${stepper('offset', 'offset', t('offsetValue', { n: s.offset }), s.offset <= -300, s.offset >= 300)}
-    ${calibrate ? `<button class="opt-calibrate" type="button" data-calibrate>${t('calibrate')}</button>` : ''}
-    </div>`;
-}
-
-function wireSettings(root, redraw) {
-  for (const button of root.querySelectorAll('[data-toggle]'))
-    button.addEventListener('click', () => {
-      const key = button.dataset.toggle,
-        value = !settings()[key];
-      setSetting(key, value);
-      if (key === 'sound') sound.setOn(value);
-      if (key === 'reducedMotion') syncMotion();
-      redraw(`[data-toggle="${key}"]`);
-    });
-  for (const button of root.querySelectorAll('[data-step]'))
-    button.addEventListener('click', () => {
-      if (button.getAttribute('aria-disabled') === 'true') return;
-      const [key, way] = button.dataset.step.split(':'),
-        step = Number(way),
-        s = settings();
-      if (key === 'music') {
-        const value = Math.round(Math.max(0, Math.min(1, s.music + step * 0.1)) * 10) / 10;
-        setSetting('music', value);
-        sound.setMusic(value);
-      } else if (key === 'speed') setSetting('speed', SPEEDS[Math.max(0, Math.min(SPEEDS.length - 1, SPEEDS.indexOf(s.speed) + step))]);
-      else setSetting('offset', Math.max(-300, Math.min(300, s.offset + step * 10)));
-      redraw(`[data-step="${button.dataset.step}"]`);
-    });
-  root.querySelector('[data-calibrate]')?.addEventListener('click', () => openCalibration());
-  root.querySelector('[data-language]')?.addEventListener('click', () => {
-    const next = getLanguage() === 'zh' ? 'en' : 'zh';
-    setSetting('language', next);
-    setLanguage(next);
-  });
-}
-
-function showTitle(focus) {
+function showTitle(focusName) {
   app.screen = 'title';
   app.run = null;
   sound.stop();
   if (game.paused) game.resume();
-  view.clear();
-  $('#hud').hidden = true;
-  $('#prompt').hidden = true;
-  coach.hidden = true;
-  toggleLessonFeedback(false);
-  pads.hidden = true;
-  const encoreBest = bestEncoreLabel();
-  const acts = SONGS.map((song) => `<button type="button" class="act" data-act="${song.id}" aria-pressed="false">
-      <img src="assets/${song.id}.webp" width="520" height="693" alt=""><span>${songName(song)}</span></button>`).join('');
-  const levels = DIFFICULTIES.map((level) => `<button type="button" class="level" data-level="${level}" aria-pressed="false">
-      <span>${levelName(level)}</span><small></small></button>`).join('');
-  const root = sheet(panels.title, `
-    <header class="brand">
-      <div class="brand-rule"></div><h1>${t('title')}</h1><p class="tagline">${t('tagline')}</p>
-      <div class="title-tools">
-        <button type="button" data-open="guide">${t('howTitle')}</button>
-        <button type="button" data-open="options">${t('settings')}</button>
-      </div>
-      ${notice ? `<p class="notice" role="status">${t(notice)}</p>` : ''}
-    </header>
-    <div class="program">
-      <div class="program-head"><h2>${t('songs')}</h2>
-        <button class="encore-button" type="button" data-encore>
-          <span>${t('encore')}</span>${encoreBest ? `<small>${encoreBest}</small>` : ''}
-        </button>
-      </div>
-      <div class="acts">${acts}</div>
-      <div class="playbill">
-        <div class="act-meta"><span class="about"></span><output></output></div>
-        <div class="levels" role="group" aria-label="${t('chooseLevel')}">${levels}</div>
-        <div class="launch">
-          <button type="button" data-practice>${t('practice')}</button>
-          <button type="button" class="strong" data-start>${t('play')}</button>
-        </div>
-      </div>
-    </div>`);
-  const paintSelection = () => {
-    for (const button of root.querySelectorAll('[data-act]')) button.setAttribute('aria-pressed', button.dataset.act === chosenAct.id);
-    root.querySelector('.act-meta .about').textContent = getLanguage() === 'zh' ? chosenAct.noteZh : chosenAct.noteEn;
-    root.querySelector('.act-meta output').textContent = t('bpm', { n: chosenAct.bpm });
-    for (const button of root.querySelectorAll('[data-level]')) {
-      const level = button.dataset.level;
-      const kept = save.data.best[chosenAct.id]?.[level];
-      button.setAttribute('aria-pressed', level === chosenLevel);
-      button.querySelector('small').textContent = kept ? t('bestOf', { rank: t(kept.rank), score: kept.score }) : t('bestNone');
-    }
-    root.querySelector('[data-start]').setAttribute('aria-label', t('startChart', { song: songName(chosenAct), level: levelName(chosenLevel) }));
-  };
-  for (const button of root.querySelectorAll('[data-act]')) {
-    button.addEventListener('click', () => {
-      chosenAct = songOf(button.dataset.act);
-      sound.cue?.('select');
-      paintSelection();
-    });
-  }
-  for (const button of root.querySelectorAll('[data-level]')) {
-    button.addEventListener('click', () => {
-      chosenLevel = button.dataset.level;
-      sound.cue?.('select');
-      paintSelection();
-    });
-  }
-  root.querySelector('[data-practice]').addEventListener('click', () => startSong(LESSON_SONG.id, 'easy'));
-  root.querySelector('[data-encore]').addEventListener('click', () => showEncore());
-  root.querySelector('[data-start]').addEventListener('click', () => startSong(chosenAct.id, chosenLevel));
-  root.querySelector('[data-open="guide"]').addEventListener('click', showGuide);
-  root.querySelector('[data-open="options"]').addEventListener('click', () => showOptions());
-  paintSelection();
-  openPanel('title');
-  (root.querySelector(focus || `[data-act="${chosenAct.id}"]`))?.focus({ preventScroll: true });
+  playPage = null;
+  openDialog = null;
+  showMenus();
+  screens.stack.closeAll();
+  screens.stack.open(screens.SCREENS.title);
+  focusSoon(focusName ?? 'act-' + app.chosenAct.id);
 }
 
-function bestEncoreLabel() {
-  const best = save.data.best[ENCORE_SONG.id]?.normal;
-  return best ? t('bestOf', { rank: t(best.rank), score: best.score }) : '';
+/** The dialog open now, as it was opened: a change of language opens it again the same way. */
+let openDialog = null;
+function openModal(name, screenName, params, onClose) {
+  // What shows when it closes: the screen under the dialogs, also when one dialog gives way to another.
+  const before = openDialog && !openDialog.relabeled ? openDialog.before : app.screen;
+  // The part that opened it gets the focus back: the page under a dialog is not active yet when the dialog closes, so
+  // the engine's own return of the focus finds nothing to give it to (ENGINE-NOTES.md).
+  const opener = openDialog?.opener ?? semantics.publish().nodes.find((node) => node.focused)?.id.split(':').slice(1).join(':');
+  const record = { name, screenName, params, onClose, before, opener, relabeled: false };
+  openDialog = record;
+  app.screen = screenName;
+  screens.stack.open(screens.SCREENS[name], params).then(() => {
+    if (record.relabeled) return;
+    if (openDialog === record) openDialog = null;
+    if (app.screen === screenName || (name === 'calibration' && app.screen === 'cal')) app.screen = record.before;
+    if (onClose) onClose();
+    else if (opener) focusSoon(opener);
+  });
 }
-
-function showEncore() {
-  app.screen = 'encoreGuide';
+function openGuide() {
   sound.cue?.('open');
-  panels.guide.setAttribute('aria-labelledby', 'guideHeading');
-  const root = sheet(panels.guide, `<h2 id="guideHeading">${t('encore')}</h2>
-    <p>${t('encoreBrief')}</p>
-    <div class="row sheet-actions">
-      <button type="button" class="strong" data-do="encore">${t('play')}</button>
-      <button type="button" data-do="close">${t('close')}</button>
-    </div>`);
-  root.querySelector('[data-do="encore"]').addEventListener('click', () => startSong(ENCORE_SONG.id, 'normal'));
-  root.querySelector('[data-do="close"]').addEventListener('click', () => showTitle('[data-encore]'));
-  openPanel('guide');
+  openModal('guide', 'guide');
 }
-
-function showGuide() {
-  app.screen = 'guide';
+function openEncoreGuide() {
   sound.cue?.('open');
-  panels.guide.setAttribute('aria-labelledby', 'guideHeading');
-  const root = sheet(panels.guide, `<h2 id="guideHeading">${t('howTitle')}</h2>
-    <ol><li>${t('how1')}</li><li>${t('how2')}</li><li>${t('how3')}</li></ol>
-    <p class="quietText">${t('keysLine')}</p>
-    <div class="row">
-      <button type="button" data-sample="drum"><i class="note-mark drum" aria-hidden="true"></i> ${t('sampleDrum')}</button>
-      <button type="button" data-sample="tai"><i class="note-mark gong" aria-hidden="true"></i> ${t('sampleGong')}</button>
-    </div>
-    <div class="row sheet-actions">
-      <button type="button" class="strong" data-do="practice" data-focus>${t('practice')}</button>
-      <button type="button" data-do="close">${t('close')}</button>
-    </div>`);
-  root.querySelector('[data-do="practice"]').addEventListener('click', () => startSong(LESSON_SONG.id, 'easy'));
-  for (const button of root.querySelectorAll('[data-sample]')) button.addEventListener('click', () => sound.strike(button.dataset.sample));
-  root.querySelector('[data-do="close"]').addEventListener('click', () => showTitle('[data-open="guide"]'));
-  openPanel('guide');
+  openModal('encore', 'encoreGuide');
 }
-
-function showOptions(focus) {
-  if (app.screen === 'title') sound.cue?.('open');
-  app.screen = 'options';
-  panels.options.setAttribute('aria-labelledby', 'optionsHeading');
-  const root = sheet(panels.options, `<h2 id="optionsHeading">${t('settings')}</h2>
-    ${settingsHtml()}
-    <div class="row sheet-actions"><button type="button" class="strong" data-do="close">${t('close')}</button></div>`);
-  root.querySelector('[data-do="close"]').addEventListener('click', () => showTitle('[data-open="options"]'));
-  wireSettings(root, showOptions);
-  openPanel('options');
-  if (focus) root.querySelector(focus)?.focus({ preventScroll: true });
-}
-
-function labelPads() {
-  for (const pad of pads.querySelectorAll('.pad')) {
-    const kind = pad.dataset.kind,
-      key = pad.dataset.hand.toUpperCase();
-    pad.innerHTML = `<i class="pad-mark" aria-hidden="true"></i><span>${t(`${kind}Pad`)}</span><kbd>${key}</kbd>`;
-    pad.setAttribute('aria-label', t(`${kind}PadName`, { key }));
+function openOptions(from) {
+  if (from === 'pause') {
+    screens.stack.close(screens.SCREENS.pause);
+    openModal('options', 'options', { from }, () => {
+      app.screen = 'play';
+      openMenu(true);
+    });
+  } else {
+    sound.cue?.('open');
+    openModal('options', 'options', { from });
   }
 }
 
-function updatePlayLabels() {
-  $('#songName').textContent = app.mode === 'song' ?
-    `${songName(app.song)} · ${levelName(app.difficulty)}` : songName(app.song);
-  $('#score').textContent = t('score', { n: app.run?.score ?? 0 });
-  progress.setAttribute('aria-label', t('scoreProgress'));
-  $('#pauseButton').textContent = t('pause');
-  labelPads();
+/** The tray of the play page: what it says before the first note. */
+function resetHud() {
+  const hud = freshHud();
+  hud.songLine = app.mode === 'song' ? `${songName(app.song.id)} · ${levelName(app.difficulty)}` : songName(app.song.id);
+  hud.scoreLine = t('score', { n: 0 });
+  app.hud = hud;
+  paintReadout();
 }
 
 async function startSong(id, difficulty, { step = null, completed = [] } = {}) {
@@ -558,11 +501,12 @@ async function startSong(id, difficulty, { step = null, completed = [] } = {}) {
   const song = lesson ? LESSON_SONG : encore ? ENCORE_SONG : songOf(id);
   app.mode = lesson ? 'lesson' : encore ? 'encore' : 'song';
   if (app.mode === 'song') {
-    chosenAct = song;
-    chosenLevel = difficulty;
+    app.chosenAct = song;
+    app.chosenLevel = difficulty;
   }
   if (notice === 'audioError') notice = null;
-  field.dataset.act = encore ? 'jijifeng' : song.id;
+  if (game.paused) game.resume();
+  ground.dataset.act = encore ? 'jijifeng' : song.id;
   app.song = song;
   app.difficulty = difficulty;
   app.lessonStep = lesson ? step : null;
@@ -570,90 +514,55 @@ async function startSong(id, difficulty, { step = null, completed = [] } = {}) {
   app.lessonSkills = lesson ? new Set(completed) : null;
   lessonCounts = lesson ? { drum: 0, gong: 0, roll: 0 } : null;
   lastMissed = null;
-  delete pads.dataset.encorePhase;
+  lastLessonFeedback = { key: 'timingReady' };
   app.encore = encore ? createEncore() : null;
   encoreFeedback = encore ? { phase: 'charge', notice: null, readyAt: null, bonusStart: 0 } : null;
   app.chart = lesson ? buildLesson(step) : buildChart(song, difficulty);
-  toggleLessonFeedback(lesson);
-  if (lesson) setLessonFeedback({ key: 'timingReady' });
   app.time = 0;
   app.run = null;
   app.result = null;
   app.screen = 'loading';
-  openPanel(null);
+  resetHud();
   view.reset(app.chart, speedOf());
-  $('#hud').hidden = false;
-  updatePlayLabels();
-  progress.value = 0;
-  $('#pauseButton').disabled = true;
-  pads.hidden = false;
-  const prompt = $('#prompt');
-  prompt.textContent = t('loading');
-  prompt.hidden = false;
+  stageRoot.visible = true;
+  screens.stack.closeAll();
+  screens.stack.open(screens.SCREENS.play);
+  arrange();
   try {
-    const voice = lesson ? await sound.clicks(app.chart.beats + 2, 60 / song.bpm, LEAD.seconds) : await sound.start(song);
+    const [voice] = await game.loading([lesson ? sound.clicks(app.chart.beats + 2, 60 / song.bpm, LEAD.seconds) : sound.start(song)], { label: t('loading') });
     if (!voice) throw new Error('The backing voice did not start.');
   } catch (cause) {
     console.warn('Opera Drums score could not start', cause);
     notice = 'audioError';
-    return showTitle('[data-start]');
+    return showTitle('start');
   }
-  prompt.hidden = true;
   app.run = createRun(app.chart);
   app.strokes = [];
-  shownScore = -1;
-  shownProgress = -1;
   app.screen = 'play';
-  coach.hidden = app.mode === 'song';
-  if (!coach.hidden) {
-    coachText.setAttribute('aria-live', lesson ? 'polite' : 'off');
-    coachRibbon.max = ENCORE_POWER.capacity;
-    paintCoach(0);
-  }
-  $('#pauseButton').disabled = false;
-  openPanel(null);
-  if (game.paused) game.resume();
-  say(`${songName(song)} · ${levelName(difficulty)}`);
+  if (app.mode !== 'song') paintCoach(0);
+  say(`${songName(song.id)} · ${levelName(difficulty)}`);
   if (document.hidden) openMenu();
-  else pads.querySelector('.drum')?.focus({ preventScroll: true });
+  else focusSoon('pad-f');
 }
-$('#pauseButton').addEventListener('click', () => openMenu());
 
-function openMenu(focus) {
+function openMenu(again = false) {
   if (app.screen !== 'play') return;
-  sound.pause();
-  game.pause();
+  if (!again) {
+    sound.pause();
+    game.pause();
+  }
+  releasePads();
   app.screen = 'menu';
-  const root = sheet(
-    panels.menu,
-    `<h2 id="menuHeading">${t('paused')}</h2>
-     <div class="row"><button type="button" class="strong" data-do="resume">${t('resume')}</button><button type="button" data-do="restart">${t('restart')}</button><button type="button" data-do="quit">${t('quit')}</button></div>
-     <details class="pause-settings"${focus ? ' open' : ''}><summary>${t('settings')}</summary>${settingsHtml({ calibrate: false })}</details>`
-  );
-  panels.menu.setAttribute('aria-labelledby', 'menuHeading');
-  root.querySelector('[data-do=resume]').addEventListener('click', closeMenu);
-  root.querySelector('[data-do=restart]').addEventListener('click', () => {
-    sound.resume();
-    startSong(app.song.id, app.difficulty, { step: app.lessonStep, completed: app.lessonCompletedBefore });
-  });
-  root.querySelector('[data-do=quit]').addEventListener('click', () => {
-    sound.resume();
-    showTitle();
-  });
-  wireSettings(root, (selector) => {
-    app.screen = 'play';
-    openMenu(selector);
-  });
-  openPanel('menu');
-  if (focus) root.querySelector(focus)?.focus();
+  screens.stack.open(screens.SCREENS.pause);
 }
 
 function closeMenu() {
+  if (app.screen !== 'menu') return;
+  screens.stack.close(screens.SCREENS.pause);
   app.screen = 'play';
-  openPanel(null);
   sound.resume();
   game.resume();
-  pads.querySelector('.drum')?.focus({ preventScroll: true });
+  focusSoon('pad-f');
 }
 
 function finish() {
@@ -668,133 +577,65 @@ function finish() {
   app.screen = 'end';
   sound.stop();
   sound.cue?.(isLesson || result.cleared ? 'clear' : 'retry');
-  showEnd();
-}
-
-function showEnd() {
-  const r = app.result;
-  pads.hidden = true;
-  $('#hud').hidden = true;
-  coach.hidden = true;
-  toggleLessonFeedback(false);
-  view.clear();
-  if (r.mode === 'lesson') return showLessonEnd(r.skills);
-  const nextEncore = r.cleared && r.mode === 'song' && app.song.id === 'qiba' && app.difficulty === 'easy';
-  const root = sheet(
-    panels.end,
-    `<div class="end-head"><h2 id="endHeading">${t('curtainCall')}</h2><small>${r.mode === 'encore' ? songName(app.song) : t('resultTitle', { song: songName(app.song), level: levelName(app.difficulty) })}</small></div>
-     <div class="end-lead">
-       <img src="assets/${r.mode === 'encore' ? 'jijifeng' : app.song.id}.webp" alt="">
-       <div><p class="rank" data-rank="${r.rank}">${t(r.rank)}</p>
-       <p class="end-score">${t('score', { n: r.score })}</p>
-       ${r.best ? `<p class="new-best">${t('newBest')}</p>` : ''}
-       ${app.encore ? `<p class="encore-bonus">${t('encoreBonus', { n: app.encore.rallies, score: app.encore.bonus })}</p>` : ''}</div>
-     </div>
-     <dl class="stats">${[
-       ['great', r.counts.great], ['ok', r.counts.ok], ['miss', r.counts.miss],
-       ['maxCombo', r.maxCombo], ['rollCount', r.rolls], ['doubleCount', r.doubles]
-     ].map(([label, count]) => `<div><dt>${t(label)}</dt><dd>${count}</dd></div>`).join('')}</dl>
-     ${r.kept ? '' : `<p class="notice" role="status">${t('saveRefused')}</p>`}
-     ${nextEncore ? `<p class="encore-next-hint" id="encoreNextHint">${t('encoreNextHint')}</p>` : ''}
-     <div class="row sheet-actions">
-       ${nextEncore ? `<button type="button" class="strong" data-do="encore-next" aria-describedby="encoreNextHint">${t('encoreNext')}</button>` : ''}
-       <button type="button" class="${nextEncore ? '' : 'strong'}" data-do="again">${t('again')}</button>
-       <button type="button" data-do="quit">${t('quit')}</button>
-     </div>`
-  );
-  panels.end.setAttribute('aria-labelledby', 'endHeading');
-  root.querySelector('[data-do=encore-next]')?.addEventListener('click', () => startSong(ENCORE_SONG.id, 'normal'));
-  root.querySelector('[data-do=again]').addEventListener('click', () => startSong(app.song.id, app.difficulty));
-  root.querySelector('[data-do=quit]').addEventListener('click', () => showTitle());
-  say(`${t(r.rank)}, ${t('score', { n: r.score })}`);
-  openPanel('end');
-}
-
-function showLessonEnd(skills) {
-  const finished = new Set(skills);
-  panels.end.setAttribute('aria-labelledby', 'endHeading');
-  const root = sheet(panels.end, `<div class="end-head"><h2 id="endHeading">${t('practiceDone')}</h2><small>${t('practiceLearned', { n: finished.size })}</small></div>
-    <ul class="skill-list">${lessonSkills.map((skill) => {
-      const id = skill.toLowerCase();
-      const done = finished.has(id);
-      const title = t('practiceSkill' + skill);
-      return `<li data-done="${done}"><span>${title}</span>
-        ${done ? `<strong>${t('practicePassed')}</strong>` :
-          `<button type="button" data-retry-step="${id}" aria-label="${t('practiceRetryTitle', { skill: title })}">${t('practiceAgain')}</button>`}</li>`;
-    }).join('')}</ul>
-    <div class="row sheet-actions">
-      <button type="button" class="strong" data-do="play-song">${t('play')}</button>
-      <button type="button" data-do="again">${t('practiceRetry')}</button>
-      <button type="button" data-do="quit">${t('quit')}</button>
-    </div>`);
-  for (const button of root.querySelectorAll('[data-retry-step]')) {
-    button.addEventListener('click', () => startSong(LESSON_SONG.id, 'easy', { step: button.dataset.retryStep, completed: skills }));
-  }
-  root.querySelector('[data-do="play-song"]').addEventListener('click', () => startSong(chosenAct.id, chosenLevel));
-  root.querySelector('[data-do="again"]').addEventListener('click', () => startSong(LESSON_SONG.id, 'easy'));
-  root.querySelector('[data-do="quit"]').addEventListener('click', () => showTitle('[data-practice]'));
-  say(t('practiceLearned', { n: finished.size }));
-  openPanel('end');
+  playPage = null;
+  showMenus();
+  screens.stack.closeAll();
+  screens.stack.open(screens.SCREENS.end);
+  say(isLesson ? t('practiceLearned', { n: app.result.skills.length }) : `${t(result.rank)}, ${t('score', { n: result.score })}`);
+  focusSoon(app.result.mode === 'lesson' ? 'play-song' : app.result.cleared && app.result.mode === 'song' && app.song.id === 'qiba' && app.difficulty === 'easy' ? 'encore-next' : 'again');
 }
 
 // ---- The delay: strokes with the clapper's clicks show how late a player's strokes come after the sound. ----
 const CAL = { beats: 16, gap: 0.6, lead: 1, needed: 8 };
 const cal = { taps: new Map(), voice: null, done: false };
-function calSheet(message) {
-  const root = sheet(
-    panels.cal,
-    `<h2 id="calHeading">${t('calTitle')}</h2>
-     <p>${t('calHow', { n: CAL.needed })}</p>
-     <p id="calCount" role="status">${message ?? ''}</p>
-     <button type="button" data-cal-tap hidden>${t('calTap')}</button>
-     ${settings().sound ? '' : `<p>${t('calNeedsSound')}</p>`}
-     <div class="row sheet-actions"><button type="button" class="strong" data-do="${settings().sound ? 'start' : 'sound'}">${t(settings().sound ? 'calStart' : 'enableSound')}</button><button type="button" data-do="close">${t('close')}</button></div>`
-  );
-  panels.cal.setAttribute('aria-labelledby', 'calHeading');
-  root.querySelector('[data-do=start]')?.addEventListener('click', startCalibration);
-  root.querySelector('[data-do=sound]')?.addEventListener('click', () => {
+function openCalibration() {
+  screens.stack.close(screens.SCREENS.options);
+  Object.assign(app.cal, { running: false, message: '', beat: false });
+  openModal('calibration', 'calIdle', undefined, () => {
+    cal.done = true;
+    app.cal.running = false;
+    sound.stop();
+    openOptions('title');
+    focusSoon('calibrate');
+  });
+  focusSoon('cal-start');
+}
+function calBuilt(made) {
+  const node = made.get('tap');
+  node.on(game.browser.pointer.events.begin, (event) => {
+    lastPress.set('cal', performance.now());
+    calTap(event.payload.timestamp, 'drum');
+  });
+}
+function calKey() {
+  if (performance.now() - (lastPress.get('cal') ?? -Infinity) < 1500) return;
+  calTap(performance.now(), 'drum');
+}
+async function startCalibration() {
+  if (!settings().sound) {
     setSetting('sound', true);
     sound.setOn(true);
-    openCalibration();
-  });
-  root.querySelector('[data-do=close]').addEventListener('click', () => endCalibration(true));
-  const tap = root.querySelector('[data-cal-tap]');
-  tap.addEventListener('pointerdown', (event) => {
-    if (event.button === 0) calTap(event.timeStamp, 'drum');
-  });
-  tap.addEventListener('click', (event) => {
-    if (event.detail === 0) calTap(event.timeStamp, 'drum');
-  });
-}
-
-function openCalibration() {
-  app.screen = 'calIdle';
-  calSheet();
-  openPanel('cal');
-}
-
-async function startCalibration() {
+    relabel();
+    return;
+  }
   if (app.screen !== 'calIdle') return;
   cal.taps.clear();
   cal.done = false;
   cal.voice = null;
   app.screen = 'cal';
-  const tap = $('[data-cal-tap]');
-  tap.hidden = false;
-  tap.focus({ preventScroll: true });
-  $('#cal [data-do=start]').hidden = true;
-  $('#calCount').textContent = t('calCount', { n: 0, total: CAL.beats });
+  app.cal.running = true;
+  app.cal.message = t('calCount', { n: 0, total: CAL.beats });
+  focusSoon('tap');
   try {
     cal.voice = await sound.clicks(CAL.beats, CAL.gap, CAL.lead);
   } catch {
     if (app.screen !== 'cal') return;
     sound.stop();
     app.screen = 'calIdle';
-    calSheet(t('audioError'));
-    openPanel('cal');
+    app.cal.running = false;
+    app.cal.message = t('audioError');
   }
 }
-
 function calTap(ms, kind) {
   if (app.screen !== 'cal' || !cal.voice) return;
   sound.strike(kind === 'drum' ? 'drum' : 'tai');
@@ -804,20 +645,17 @@ function calTap(ms, kind) {
   const late = heard - (CAL.lead + beat * CAL.gap);
   if (Math.abs(late) > 0.25 || cal.taps.has(beat)) return;
   cal.taps.set(beat, late);
-  $('#calCount').textContent = t('calCount', { n: cal.taps.size, total: CAL.beats });
+  app.cal.message = t('calCount', { n: cal.taps.size, total: CAL.beats });
 }
-
 function calFrame() {
   if (cal.done || !cal.voice) return;
-  if (cal.voice.state === 'ended') return endCalibration(false);
+  if (cal.voice.state === 'ended') return endCalibration();
   const elapsed = sound.heardAt() - CAL.lead;
-  $('[data-cal-tap]').classList.toggle('beat', elapsed >= 0 && elapsed % CAL.gap < 0.10);
+  app.cal.beat = elapsed >= 0 && elapsed % CAL.gap < 0.1;
 }
-
-function endCalibration(closing) {
+function endCalibration() {
   cal.done = true;
   sound.stop();
-  if (closing) return showOptions('[data-calibrate]');
   let message = t('calFew');
   if (cal.taps.size >= CAL.needed) {
     const sorted = [...cal.taps.values()].sort((a, b) => a - b);
@@ -827,9 +665,99 @@ function endCalibration(closing) {
     message = t('calDone', { n: ms });
   }
   app.screen = 'calIdle';
-  calSheet(message);
-  openPanel('cal');
+  app.cal.running = false;
+  app.cal.beat = false;
+  app.cal.message = message;
   say(message);
+  focusSoon('cal-start');
+}
+
+// ---- What the screens' buttons do. ----
+const act = {
+  openGuide,
+  openEncore: openEncoreGuide,
+  openOptions,
+  chooseAct(id) {
+    app.chosenAct = songOf(id);
+    sound.cue?.('select');
+  },
+  chooseLevel(level) {
+    app.chosenLevel = level;
+    sound.cue?.('select');
+  },
+  startChosen: () => startSong(app.chosenAct.id, app.chosenLevel),
+  startLesson: () => startSong(LESSON_SONG.id, 'easy'),
+  startEncore: () => startSong(ENCORE_SONG.id, 'normal'),
+  retryStep: (id) => startSong(LESSON_SONG.id, 'easy', { step: id, completed: app.result?.skills ?? [] }),
+  sample: (name) => sound.strike(name),
+  toggle(key) {
+    const value = !settings()[key];
+    setSetting(key, value);
+    if (key === 'sound') sound.setOn(value);
+    if (key === 'reducedMotion') syncMotion();
+  },
+  step(key, way) {
+    const s = settings();
+    if (key === 'music') {
+      const value = Math.round(Math.max(0, Math.min(1, s.music + way * 0.1)) * 10) / 10;
+      setSetting('music', value);
+      sound.setMusic(value);
+    } else if (key === 'speed') setSetting('speed', SPEEDS[Math.max(0, Math.min(SPEEDS.length - 1, SPEEDS.indexOf(s.speed) + way))]);
+    else setSetting('offset', Math.max(-300, Math.min(300, s.offset + way * 10)));
+  },
+  speedAt: (way) => (way < 0 ? settings().speed === SPEEDS[0] : settings().speed === SPEEDS.at(-1)),
+  switchLanguage() {
+    const next = getLanguage() === 'zh' ? 'en' : 'zh';
+    setSetting('language', next);
+    setLanguage(next);
+  },
+  openCalibration,
+  calStart: () => startCalibration(),
+  calKey,
+  calBuilt,
+  pause: () => openMenu(),
+  resume: () => closeMenu(),
+  restart() {
+    sound.resume();
+    startSong(app.song.id, app.difficulty, { step: app.lessonStep, completed: app.lessonCompletedBefore });
+  },
+  again: () => startSong(app.song.id, app.difficulty),
+  quit(focusName) {
+    sound.resume();
+    showTitle(focusName);
+  },
+  padActivated
+};
+
+screens = createScreens(game, {
+  words: { t, language: getLanguage, songName, levelName },
+  app,
+  act,
+  semantics
+});
+screens.SCREENS.play = {
+  id: 'play',
+  layer: 'page',
+  back: 'none',
+  open() {
+    playPage = openPlayPage(game, { t, app, act, onBuilt: padBuilt });
+    return playPage;
+  }
+};
+
+/** A change of language writes every screen again: the open ones are made anew in the new words. */
+function relabel() {
+  const page = screens.stack.snapshot().pages.at(-1),
+    dialog = openDialog;
+  if (dialog) dialog.relabeled = true;
+  screens.stack.closeAll().then(() => {
+    if (page) screens.stack.open(screens.SCREENS[page]);
+    if (dialog) {
+      app.screen = dialog.before;
+      openModal(dialog.name, dialog.screenName, dialog.params, dialog.onClose);
+    }
+    focusSoon(dialog?.name === 'options' ? 'language' : dialog?.name === 'calibration' ? 'cal-start' : page === 'title' ? 'act-' + app.chosenAct.id : 'again');
+  });
 }
 
 // A change of language writes every word again, on whichever screen is shown.
@@ -837,18 +765,16 @@ onLanguage(() => {
   document.documentElement.lang = getLanguage() === 'zh' ? 'zh-CN' : 'en';
   document.title = t('pageTitle');
   game.canvas.setAttribute('aria-label', t('stage'));
-  if (app.screen === 'options') showOptions('[data-language]');
-  else if (app.screen === 'title') showTitle();
-  else if (app.screen === 'menu') {
-    updatePlayLabels();
-    if (app.lessonSkills) setLessonFeedback(lastLessonFeedback);
-    app.screen = 'play';
-    openMenu('[data-language]');
-  }
+  if (app.mode === 'lesson' && app.run) setLessonFeedback(lastLessonFeedback);
+  else if (app.run) paintReadout();
+  if (app.song) app.hud.songLine = app.mode === 'song' ? `${songName(app.song.id)} · ${levelName(app.difficulty)}` : songName(app.song.id);
+  relabel();
 });
 document.documentElement.lang = getLanguage() === 'zh' ? 'zh-CN' : 'en';
 document.title = t('pageTitle');
-$('#loading').remove();
+// The canvas holds the page's keyboard focus; the projection names the part the views have focused.
+game.canvas.tabIndex = 0;
+game.canvas.focus({ preventScroll: true });
 showTitle();
 ready = true;
 
@@ -857,7 +783,12 @@ window.operaDrums = {
   app,
   game,
   sound,
+  semantics,
+  screens: screens.stack,
   start: startSong,
+  playPage: () => playPage,
+  /** The name of the part with the keyboard focus, as the semantic tree has it. */
+  focused: () => semantics.publish().nodes.find((node) => node.focused)?.name ?? '',
   get screen() {
     return app.screen;
   },

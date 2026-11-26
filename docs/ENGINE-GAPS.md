@@ -4,9 +4,9 @@
 
 Made by `node tools/engine-notes.mjs --write` from the ENGINE-NOTES of the games; do not edit by hand, and `--check` says whether it is out of date. What the engine resolved is copied from the engine's `guide/resolved.json` into [engine-resolved.json](engine-resolved.json) (15 entries). The form of a note is in part 3 of [GAME-STANDARD.md](GAME-STANDARD.md).
 
-24 个游戏、146 条笔记：未解决 30，部分解决 13，游戏侧绕过 2，已写入文档 39，已解决 62。
+24 个游戏、161 条笔记：未解决 44，部分解决 13，游戏侧绕过 2，已写入文档 40，已解决 62。
 
-146 notes from 24 games: 30 open, 13 partly resolved, 2 worked around in the game, 39 documented, 62 resolved.
+161 notes from 24 games: 44 open, 13 partly resolved, 2 worked around in the game, 40 documented, 62 resolved.
 
 ## 1. 引擎已经解决、游戏还标着未解决 · Resolved by the engine, still open in a game
 
@@ -25,6 +25,7 @@ The same workaround in two or more games means the fault is in the engine's inte
 | Topic | 游戏数 · Games | 笔记 · Notes |
 |---|:-:|---|
 | `first-draw-program-link` | 2 | FPS#4 材质变体第一次绘制时链接着色器造成停顿 · The first draw of a material variant stalls while its program links (partly)<br>jelly-pandas#2 倒影通道和第一次出现的特效在第一次绘制时编译 · The mirror pass and first-use effects compile on first draw (partly) |
+| `ui-typography-styling` | 2 | OperaDrums#7 界面文字不能选字体 · View text has no typeface (open)<br>PeachCreek#3 文字和按钮样式需要显示对象补充 · Typography and button styling need display-object extensions (partly) |
 | `vertex-layout-program` | 2 | jelly-pandas#1 顶点布局不同就要另编一条管线 · A different vertex layout needs a pipeline of its own (open)<br>Rally#2 少一个顶点色属性就是另一个着色器 · A missing vertex-colour attribute makes another program (open) |
 
 ## 3. 只有一个游戏遇到的未解决缺口 · Open faults one game met
@@ -37,11 +38,13 @@ Write the lesson as a card of the engine's guide (`guide/cards` in the engine re
 |---|---|---|
 | `animation-retarget-rigs` | FiveRegiments#4 `retargetAnimationClip3D` 不处理朝向不同的骨架，也不能截段、去根转、镜像 · `retargetAnimationClip3D` takes no account of rigs facing different ways, and cannot cut, still the root or mirror | 未解决 · open |
 | `body-angle-degrees` | LubanBridge#2 刚体的 `angle` 是角度，文档和类型都没说 · A body's `angle` is in degrees, which neither the documents nor the types say | 未解决 · open |
+| `burst-layer` | OperaDrums#20 `game.burst` 没有图层 · `game.burst` has no layer | 未解决 · open |
 | `camera-zoom-clamp` | NineProvinces#4 相机缩放超出范围时抛错而不是夹住 · The camera throws instead of clamping a zoom out of range | 未解决 · open |
 | `decal-changes-material` | TeaHorseRoad#8 `createDecal3D` 改写传入的材质 · `createDecal3D` changes the material it is given | 未解决 · open |
 | `frame-loop-failed-freeze` | FivePhases#3 帧循环出错后停在 `failed`，画面冻住 · After an error the frame loop stays `failed` and the picture freezes | 未解决 · open |
 | `geometry-budget-reuse` | FivePhases#1 每帧的几何预算连复用的几何也一起算 · The per-frame geometry budget also counts reused geometry | 部分解决 · partly |
 | `gltf-webp-texture` | FiveRegiments#1 `loadGltf3D` 不认 `EXT_texture_webp` · `loadGltf3D` does not take `EXT_texture_webp` | 未解决 · open |
+| `image-job-limit` | OperaDrums#9 同时载入第五张图片时直接拒绝，不排队 · A fifth image loading at once is refused, not queued | 未解决 · open |
 | `instanced-lod` | TeaHorseRoad#2 实例网格没有距离剔除和 LOD · No distance culling or LOD for instanced meshes | 部分解决 · partly |
 | `managed-editor-focus` | InquestScrolls#12 笔录托管编辑器创建和失焦 · Managed editor creation and blur | 已在游戏侧绕过 · worked around |
 | `mesh-shape-worker-transfer` | TeaHorseRoad#26 三角网碰撞形状不能在 Worker 里建好再交回 · A triangle mesh shape cannot be built in a worker and handed back | 未解决 · open |
@@ -61,17 +64,27 @@ Write the lesson as a card of the engine's guide (`guide/cards` in the engine re
 | `rotated-view-scrolling` | TaiwanMahjong#7 旋转界面上的纵向列表无法顺着内容拖动 · Vertical scrolling inside a rotated view | 未解决 · open |
 | `save-update-return` | PeachCreek#6 存档更新与预制绘图对象 · Save updates and convenience drawing objects | 部分解决 · partly |
 | `semantic-bounds-transform` | PeachCreek#1 变换和裁剪后的语义区域 · Semantic bounds after transforms and clipping | 部分解决 · partly |
+| `semantics-projection-resize` | OperaDrums#16 页面投影的逻辑尺寸是固定的 · The page projection's logical size is fixed | 未解决 · open |
 | `shape-mask-cost` | MechanismCity#3 形状遮罩的代价 · The cost of a shape mask | 部分解决 · partly |
 | `skybox-black-software` | TeaHorseRoad#4 软件渲染下天空盒是黑的 · The skybox is black under software rendering | 未解决 · open |
 | `spine-instance-limit` | LanternShadows#3 同一份骨骼数据最多 128 个 Spine 实例 · At most 128 Spine instances of one skeleton | 未解决 · open |
+| `stack-modal-focus-return` | OperaDrums#15 屏幕栈关掉对话框后焦点落空 · The focus is lost when a dialog of the screen stack closes | 未解决 · open |
 | `terrain-color-tile` | NineProvinces#6 地形流的 `colorAt` 只给地块内的坐标，不知道是哪一块 · The terrain stream's `colorAt` is given coordinates within a tile, and no way to tell which tile | 未解决 · open |
 | `terrain-view-distance-budget` | NineProvinces#8 地形流视距稍大就抛 `WORLD3D_BUDGET` · The terrain stream throws `WORLD3D_BUDGET` for a view distance a little too large | 未解决 · open |
 | `text-cache-budget-batch` | JY#1 同时准备很多文字时超出文字缓存的预算 · Preparing many texts at once passes the text cache's budget | 部分解决 · partly |
 | `texture-from-canvas-scope` | NineProvinces#3 `textureFromCanvas` 的纹理只能归游戏本身的作用域 · Textures from `textureFromCanvas` belong to the game's own scope only | 未解决 · open |
 | `two-bone-ik` | FiveRegiments#5 引擎没有现成的两骨反向动力学 · No two-bone IK in the engine | 未解决 · open |
-| `ui-typography-styling` | PeachCreek#3 文字和按钮样式需要显示对象补充 · Typography and button styling need display-object extensions | 部分解决 · partly |
 | `vertex-hook-error` | StarBanner#2 只有顶点钩子的着色器写进 `glsl` 时报错不直观 · A vertex-only hook given as `glsl` fails with an unhelpful error | 未解决 · open |
 | `vertical-text` | InquestScrolls#1 段落不支持竖排 · Paragraphs cannot set text vertically | 部分解决 · partly |
+| `view-accessible-label` | OperaDrums#13 按钮的读屏名字只能是它的字 · A button's accessible name is only its words | 未解决 · open |
+| `view-during-setup` | OperaDrums#10 `setup` 等着的界面不画 · A view that `setup` awaits is not drawn | 未解决 · open |
+| `view-empty-text-semantics` | OperaDrums#8 空字的文字部件让语义树发布失败 · An empty text part makes the semantic tree refuse to publish | 未解决 · open |
+| `view-focus-call` | OperaDrums#14 没有把焦点放到某个部件上的调用 · No call to put the focus on a named part | 未解决 · open |
+| `view-label-binding` | OperaDrums#17 组的读屏名字不能绑定，隐藏的部件仍占位置 · Group names cannot be bound, and hidden parts keep their room | 未解决 · open |
+| `view-press-down` | OperaDrums#11 界面的点按在抬起时才算 · A view's tap counts when the finger lifts | 未解决 · open |
+| `view-selected-state` | OperaDrums#12 选中状态进不了语义树 · A chosen part cannot say it is chosen | 未解决 · open |
+| `view-size-classes` | OperaDrums#18 只有横屏和竖屏两套部件 · Only a wide and a tall set of parts | 未解决 · open |
+| `view-text-wrap` | OperaDrums#6 文字部件不按宽度折行 · A text part is not wrapped to its width | 未解决 · open |
 | `webgl2-2d-program-link-startup` | TeaHorseRoad#25 2D 宿主创建时同步链接全部着色器 · The 2D host links all its programs synchronously when made | 未解决 · open |
 | `webgpu-cold-atlas-upload` | NezhaSea#5 WebGPU 首次可见的图集可能在连续帧重复上传 · Two consecutive WebGPU frames can upload a cold atlas twice | 未解决 · open |
 | `webgpu-compute` | SandScroll#5 WebGPU 没有开放计算通道 · No compute pass on WebGPU | 未解决 · open |
@@ -96,7 +109,7 @@ Write the lesson as a card of the engine's guide (`guide/cards` in the engine re
 | [NezhaSea](../NezhaSea/ENGINE-NOTES.md) | 5 | 1 | 0 | 0 | 1 | 3 | 0 | `b5628eb` |
 | [NightWardens](../NightWardens/ENGINE-NOTES.md) | 3 | 0 | 0 | 0 | 3 | 0 | 0 | `a778bed` |
 | [NineProvinces](../NineProvinces/ENGINE-NOTES.md) | 8 | 4 | 1 | 0 | 1 | 2 | 0 | `9d801be` |
-| [OperaDrums](../OperaDrums/ENGINE-NOTES.md) | 5 | 0 | 0 | 0 | 2 | 3 | 0 | `b5628eb` |
+| [OperaDrums](../OperaDrums/ENGINE-NOTES.md) | 20 | 14 | 0 | 0 | 3 | 3 | 0 | `aab331d` |
 | [PeachCreek](../PeachCreek/ENGINE-NOTES.md) | 9 | 0 | 4 | 0 | 0 | 5 | 0 | `95897d7` |
 | [Rally](../Rally/ENGINE-NOTES.md) | 4 | 1 | 0 | 0 | 2 | 1 | 0 | `b5628eb` |
 | [SandScroll](../SandScroll/ENGINE-NOTES.md) | 7 | 2 | 0 | 0 | 5 | 0 | 0 | `450bb9e` |

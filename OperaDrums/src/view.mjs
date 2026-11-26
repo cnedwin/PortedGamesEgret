@@ -8,6 +8,8 @@ import {
   drawImpact, drawLane, drawReceiver, drawSeal, drawStick, drawStrip, rect
 } from './stage-drawing.mjs';
 
+/** The instruments' picture, by the address the page loads it at. */
+export const INSTRUMENTS = 'assets/instruments.png';
 export const LAYOUT = Object.freeze({
   laneY: 203, laneTop: 146, laneBottom: 262, hitX: 168, gaugeY: 298, gaugeLeft: 395, gaugeRight: 755, spawnX: 1008
 });
@@ -15,12 +17,14 @@ const JUDGEMENT_Y = 296;
 const KINDS = ['drum', 'gong'];
 const clamp = (value) => Math.max(0, Math.min(1, value));
 
-export function createView(game, { words, roman }) {
+export function createView(game, { words, roman, parent, place }) {
   // Keep the moving rectangles and their glyphs in separate passes so the engine can batch each together.
+  // All of it is drawn in the stage's own 960 × 540 units, under `parent`, which the page places and scales.
+  const layer = () => game.sprite(undefined, parent);
   const layers = {
-    lane: game.sprite(), guides: game.sprite(), receiver: game.sprite(), rolls: game.sprite(),
-    notes: game.sprite(), labels: game.sprite(), furnishings: game.sprite(), stage: game.sprite(),
-    effects: game.sprite(), words: game.sprite()
+    lane: layer(), guides: layer(), receiver: layer(), rolls: layer(),
+    notes: layer(), labels: layer(), furnishings: layer(), stage: layer(),
+    effects: layer(), words: layer()
   };
   function sprite(draw, layer, x = 0, y = 0) {
     const node = game.sprite(draw, layer);
@@ -69,8 +73,7 @@ export function createView(game, { words, roman }) {
 
   // The lacquer and engraved metal are baked into a small transparent layer.
   // Only the sticks and brief highlights move, avoiding per-frame path packing for the instrument bodies.
-  const instrumentArt = new URL('../assets/instruments.png', import.meta.url).href;
-  game.image(instrumentArt, { x: 177, y: 399, width: 218, height: 112, layer: layers.furnishings })
+  game.image(INSTRUMENTS, { x: 177, y: 399, width: 218, height: 112, layer: layers.furnishings })
     .catch((cause) => console.warn('Instrument artwork was unavailable.', cause));
   const sticks = {
     drum: sprite((g) => drawStick(g, false), layers.stage, 91, 363),
@@ -264,7 +267,9 @@ export function createView(game, { words, roman }) {
   }
   function spark(kind, count) {
     if (game.reducedMotion) return;
-    game.burst(hitX, laneY, { color: kind === 'drum' ? CORAL : GOLD, count, speed: 125, life: 0.24, size: 3 });
+    // Bursts fly in the world's units: the stage's point and sizes are carried over by `place`.
+    const at = place(hitX, laneY);
+    game.burst(at.x, at.y, { color: kind === 'drum' ? CORAL : GOLD, count, speed: 125 * at.scale, life: 0.24, size: 3 * at.scale });
   }
 
   return {

@@ -135,6 +135,10 @@ export const WORDS = {
     saveRefused: '浏览器没有让游戏存档（可能是隐私模式），这次的成绩不会留下。',
     saveReset: '存档读不懂，已经重新开始；旧存档另存了一份。',
     stage: '戏台',
+    chosen: '已选',
+    loadFailed: '有的文件没能载入。',
+    retry: '再试一次',
+    languageLabel: '语言 · Language',
     noSound: '声音还没有准备好；请点一下页面再开始。'
   },
   en: {
@@ -266,6 +270,10 @@ export const WORDS = {
     saveRefused: 'The browser did not let the game save (perhaps a private window); this result will not be kept.',
     saveReset: 'The save could not be read and was started again; the old one was kept aside.',
     stage: 'The stage',
+    chosen: 'Chosen',
+    loadFailed: 'Some files did not load.',
+    retry: 'Try again',
+    languageLabel: 'Language',
     noSound: 'The sound is not ready yet; tap the page, then start.'
   }
 };
