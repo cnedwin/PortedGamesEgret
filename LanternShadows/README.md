@@ -10,10 +10,10 @@ Lantern Shadows is an independently developed 2D side-scrolling action demo buil
 
 | | 键盘 · Keyboard | 手柄 · Gamepad | 触屏 · Touch |
 |---|---|---|---|
-| 走 · Move | A D，或方向键 · A D or the arrow keys | 左摇杆、十字键 · left stick, D-pad | ◀ ▶ |
-| 跳 · Jump | K，或空格 · K or Space | A | 跳 · Jump |
+| 走 · Move | A D，或左右方向键 · A D or Left/Right | 左摇杆、十字键 · left stick, D-pad | 横向摇杆 · horizontal stick |
+| 跳 · Jump | 空格 · Space | A | 跳 · Jump |
 | 棍 · Staff | J | X | 棍 · Staff |
-| 筋斗云 · Cloud roll | L，或 Shift · L or Shift | B | 云 · Roll |
+| 筋斗云 · Cloud roll | L，或 Shift · L or Shift | B | 闪 · Roll |
 | 身外身 · Clones | I，或 C · I or C | Y | 变 · Hairs |
 
 - 连按三下棍是一套连击：平扫、上挑、劈砸，一下比一下重。击中时分别是竹木、上挑的短响和鼓皮般的重击，格挡和卸开飞来的兵器另有不同的声音。
@@ -25,8 +25,10 @@ Lantern Shadows is an independently developed 2D side-scrolling action demo buil
 - 五个桃是他的体力，挨一下少一个；吃完就倒，随后在上一面红旗（歇脚处）重新站起来。
 - 把十名天兵全部击退再走进门前的院子，哪吒就到了；打退他，南天门才开。落幕时按用时、受伤和倒地次数盖一枚印：S、A、B、C。
 - P、Esc 或戏台上的「暂停」按钮可暂停。手机竖屏也能从戏单开锣，触控键排在幕布下方。
+- 手机默认显示横向摇杆，越往边缘推，移动越快。电脑可用「屏幕按键」打开同一套控制，也可用键盘。
 - 戏单可选从第二、三幕起演，或直接到三位首领的院子。一幕落幕后可以接着演、重演本幕或返回戏单。
 - 完整演完一幕会记下最好评级、最快时间和最高连击，并可拿下限时、连击和不倒地三枚印。直接进首领院子是独立练习。
+- 三幕都有「单棒试演」。整幕禁用百身术，限时、连击和不倒地目标独立计分，从戏单或通关结算页进入。
 - 三幕各有一首两分钟以上的原创配乐，进场按需加载。换幕时配乐交接，同幕重演接着播放。戏台上可以分别开关配乐和音效。
 
 **第二幕**新添的：
@@ -184,17 +186,25 @@ The game's code and its generated art are released under Apache-2.0. The engine 
 
 ## 已验证 · Verified
 
+- 2026-11-26：使用引擎主干 8e70dcb3 的官方生成副本，重建轻量单文件及开发模式的入口映射。89 项游戏 Node 测试全部通过，保持三幕规则、资源校验、历史通关记录和独立单棒试演。 · Official engine copy 8e70dcb3; rebuilt the compact package and development import map. All 89 Node tests passed, including three-act rules, resource integrity, campaign records and separate staff trials.
+
 - 2026-11-21 引擎副本升级到 `b5628eb`、重新打包后：85 项 Node 测试通过；无头 Chromium 下打包页面和 `?dev` 都能开始，第一幕和第三幕各打 20 秒无控制台错误（`?clones=200` 时的 Spine 实例上限报错升级前后都有，见已知问题）。 · After the engine update and a new pack: 85 tests pass, both the packed page and ?dev start, and acts one and three play clean.
 - 2026-11-21 在提交 `fc1dacb`、Node 22.23.4 下运行 `node --test test/*.test.mjs`：85 项全部通过（三幕的规则、Boss、分身、资源清单与校验和、打包文件不比源码旧）。 · `node --test` at commit `fc1dacb` with Node 22.23.4: all 85 tests pass, including the check that the packed file is not older than its sources.
 - 2026-11-20 `node tools/quality.mjs LanternShadows` 在无头 Chromium + SwiftShader 下测了 16 个自动项，结果见 [QUALITY.md](QUALITY.md)；软件渲染下桌面帧时间 p95 为 66.7 ms，不代表真显卡。 · The 16 automatic quality items in headless Chromium with software rendering; the frame time there says nothing of a real GPU.
 - 没有记录在案的真机整局验收。 · No recorded whole-game run on a real device.
+
+- 2026-11-26 PC 实机：Windows 11 / Edge 158.0.4370.33，WebGL2。用正常键鼠输入完整通过南天门、蟠桃园和兜率宫，评级 B/A/B，游戏内耗时 45.73/47.73/64.15 秒；暂停恢复、分身、落幕及成绩刷新续读正常。三幕普通战斗帧时间 p95 皆为 4.3 ms，百身术 p95 皆为 16.7 ms；第一幕百身术记录一次 54.3 ms 长帧。 · Physical Windows PC, Edge 158.0.4370.33, WebGL2: cleared all three acts through keyboard input (B/A/B), pause/resume, clones and saved records verified. Normal combat p95 4.3 ms and dense-clone p95 16.7 ms in every act; one 54.3 ms dense frame in act one.
+
+- 2026-11-26 三星 Galaxy Z Fold7（SM-F966U1，Android 17，Chrome 157.0.8103.78）横屏真机 WebGL2：仅用触控输入连续通过三幕（C/B/B，游戏内 89.08/75.63/91.07 秒），每幕两次百身术、峰值 100 个分身；老君炉内阶段、落幕、成绩刷新续读正常。移动摇杆越界跟踪、释放/取消、多点操作、暂停恢复及唯一跳键通过。普通战斗 p95 16.7 ms，百身术约 33.2–33.3 ms；普通战斗出现三次 >50 ms（最大 116 ms），第一幕分身三次 >50 ms（最大 66.7 ms）。音乐切换和运行状态通过，扬声器音色未人工实听。 · Physical Fold7 (SM-F966U1, Android 17, Chrome 157), landscape WebGL2: all acts completed through touch (C/B/B), each with two natural clone casts and a peak of 100 clones. Furnace, results, record reload, drag-out, release/cancel, multitouch, pause/resume and a single Jump control verified. Normal p95 16.7 ms; dense p95 33.2–33.3 ms, with occasional long frames (max 116 ms normal, 66.7 ms dense). Music playback state, not acoustic quality, was checked.
+
+- 2026-11-26：最终浏览器验收 10/10，包含英文标题横转竖、真实控件命中（浏览器模拟）、390×844 触控和横屏结算布局；标题和暂停战场基线差异 0.00% / 1.69%。T2 触控目标和 I1 双语语义检查通过。 · Final headless browser acceptance 10/10; image differences 0.00% / 1.69%. T2 and I1 now pass.
 
 ## 已知问题 · Known issues
 
 - `?clones` 设得太大（例如 200）时，同台的 Spine 实例超过引擎每个骨骼的 128 个上限，多出的分身建不出来，控制台报 `SPINE_INSTANCE_LIMIT_FAILED`（ENGINE-NOTES 第 3 条）；默认的一百个不会碰到。 · A large `?clones` (200, say) passes the engine's limit of 128 Spine instances; the default hundred does not.
 - 画面太慢时会自动收回一部分分身（写了 `?clones` 就不收），所以慢的设备上身外身的分身数会少于一百。 · On a slow device some clones are sent back, so fewer than a hundred appear unless `?clones` is given.
 - 第一次加载页面要先下载打包文件和第一幕的全部文件，改过 `src/`、`vendor/` 或 `assets/` 后必须重新运行 `tools/bundle.mjs`，否则页面跑的是旧代码（测试会指出来）。 · After a change under `src/`, `vendor/` or `assets/` the page runs old code until `tools/bundle.mjs` is run again (a test says so).
-- 品质验收未达标 · Quality items failing（[QUALITY.md](QUALITY.md)，2026-11-20，无头 Chromium + SwiftShader · headless, software rendering）：T2 触控区 ≥ 44×44 CSS px（5 of 6 under 44×44: Straight to Nezh 325×36; Begin with act t 325×36; Straight to Erla 325）；F1 桌面帧时间 p95 ≤ 16.7 ms（p95 66.7 ms over 73 frames）；I1 中英文全可切换，英文下无中文（html lang "en", Chinese left: 皮影戏台 桃 触屏操作）。
+- 新版统一品质检查：[QUALITY.md](QUALITY.md)，仅 F1 自动软件渲染未达标（Windows Chromium 157 + SwiftShader，p95 99.9 ms）；与真实 PC 帧时间分开记录。 · The quality tool still fails its headless SwiftShader F1 check, separately from physical-device performance.
 
 ## 已解决 · Solved
 
@@ -203,10 +213,14 @@ The game's code and its generated art are released under Apache-2.0. The engine 
 - 手机上快速点触屏按钮会缩放页面、戏台滑出屏幕：固定视口，戏台不响应双指、双击和拖动，长按不弹菜单，并在脚本里再拒绝一次（`52cf172`）。 · Quick taps zoomed the page on phones; the viewport and gestures are now held.
 - 触屏上分身计数挡住提示（`15621a1`）；丹房炉火特效分批绘制（`0cf5159`）。 · The clones' line covered the notice on touch screens; the furnace effects are batched.
 
+- Fold7 真实竖屏旋转时英文标题撑大布局而无法开锣：限制网格内在尺寸和字体，英文允许换行。实际 411×813 屏幕开锣、摇杆、单跳及暂停恢复通过。 · Rotating a physical Fold7 had pushed the English Start button off-screen; bounded grid tracks and wrapping fix it, verified on the real portrait phone.
+
+- 短横屏落幕上下裁切：印章与统计并排，操作区和挑战完整显示；Fold7 实打第三幕落幕验证 12/12 内容及入口可见/命中。仍有 2 CSS px 装饰性滚动余量。 · Short landscape result clipping fixed; 12/12 result items and control centers were in bounds in a physical-device win, with a 2 px scroll remainder.
+
 ## 未完成 · Unfinished
 
-- 真机（手机、真显卡）上的帧时间和触屏整局验收。 · Frame times and a whole run by touch on real devices.
-- 英文模式下页面上仍有几处中文（品质 I1），见下方已知问题。 · A few Chinese words remain in English mode.
+- iPhone Safari、实体手柄、真实扬声器音质，以及偶发长帧的归因尚未验证。 · iPhone Safari, a physical gamepad, acoustic speaker quality and long-frame attribution remain unverified.
+- 中端设备、独立扬声器试听和失效资源重试仍需独立验收。 · Mid-range phones, acoustic listening and failed-resource retry need separate acceptance.
 
 ## 目录 · Layout
 
@@ -224,6 +238,7 @@ src/rules/level.mjs     地面与碰撞，读自关卡地图 · the ground and w
 src/puppets.mjs         加载并操纵皮偶 · loads and plays the puppets
 src/pictures.mjs        读入图片 · reads pictures in
 src/input.mjs           键盘、手柄、触屏 · keyboard, gamepad, touch
+src/joystick.mjs        横向屏幕摇杆 · horizontal on-screen stick
 src/sound.mjs           配乐和音效混音 · score and effects mix
 src/foley.mjs           按动作合成音效 · synthesizes foley for each action
 tools/                  画皮、绑骨、出图集、布景与关卡，以及打包 · drawing, rigging, atlases, scenery and levels, and the packing
@@ -235,6 +250,6 @@ test/                   规则与资源的检查 · checks of the rules and the 
 
 ## 引擎副本 · Engine copy
 
-引擎副本取自 [Egret_rebuild](https://github.com/cnedwin/Egret_rebuild) 提交 `b5628eb9997b67cf6163a388f5aa06f321f3833a`，由引擎仓库的 `tools/vendor-game.mjs` 复制，见 [vendor/SOURCE.md](vendor/SOURCE.md)。
+引擎副本取自 [Egret_rebuild](https://github.com/cnedwin/Egret_rebuild) 提交 `8e70dcb3a8a0b40c9966483c92cb9f691a1cefd8`，由引擎仓库的 `tools/vendor-game.mjs` 复制，见 [vendor/SOURCE.md](vendor/SOURCE.md)。
 
-The engine copy is from [Egret_rebuild](https://github.com/cnedwin/Egret_rebuild) commit `b5628eb9997b67cf6163a388f5aa06f321f3833a`, copied by the engine's `tools/vendor-game.mjs`; see [vendor/SOURCE.md](vendor/SOURCE.md).
+The engine copy is from [Egret_rebuild](https://github.com/cnedwin/Egret_rebuild) commit `8e70dcb3a8a0b40c9966483c92cb9f691a1cefd8`, copied by the engine's `tools/vendor-game.mjs`; see [vendor/SOURCE.md](vendor/SOURCE.md).

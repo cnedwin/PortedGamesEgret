@@ -1,11 +1,12 @@
 // What the player asks for, from the keyboard, a gamepad and the buttons on a touch screen, as one answer a step:
 // `{ move, jump, jumpHeld, attack, dash, special }`. A press is reported on one step only, however long it is held.
 import { createBrowserGamepadInput } from '@egret/engine/web/gamepad';
+import { bindJoystick } from './joystick.mjs';
 
 const KEYS = {
   left: ['ArrowLeft', 'KeyA'],
   right: ['ArrowRight', 'KeyD'],
-  jump: ['Space', 'KeyK', 'ArrowUp', 'KeyW'],
+  jump: ['Space'],
   attack: ['KeyJ', 'KeyZ'],
   dash: ['KeyL', 'ShiftLeft', 'ShiftRight', 'KeyX'],
   special: ['KeyI', 'KeyC']
@@ -18,6 +19,7 @@ export function createInput(target = window) {
   const pressed = { jump: false, attack: false, dash: false, special: false };
   const pad = { jump: false, attack: false, dash: false, special: false };
   const contacts = new Map();
+  const joystick = bindJoystick(document.getElementById('move-stick'), target);
   const held = action => owners[action].size > 0;
   const set = (action, source, down) => {
     if (down) {
@@ -26,9 +28,13 @@ export function createInput(target = window) {
     } else owners[action].delete(source);
   };
   const clear = () => {
+    joystick.clear();
     for (const sources of Object.values(owners)) sources.clear();
-    for (const { button } of contacts.values()) button.classList.remove('is-held');
-    contacts.clear();
+    for (const [id, { button }] of contacts) {
+      contacts.delete(id);
+      button.classList.remove('is-held');
+      if (button.hasPointerCapture(id)) button.releasePointerCapture(id);
+    }
     for (const action in pressed) pressed[action] = false;
   };
   const key = down => event => {
@@ -81,7 +87,7 @@ export function createInput(target = window) {
     },
     /** Reads this step's input. Call once a step: it uses up the presses. */
     read() {
-      let move = Number(held('right')) - Number(held('left')),
+      let move = held('right') || held('left') ? Number(held('right')) - Number(held('left')) : joystick.move,
         jumpHeld = held('jump');
       const first = gamepads?.input.pads[0];
       if (first) {

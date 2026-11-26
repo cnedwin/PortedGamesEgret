@@ -1,1 +1,4 @@
 tools/out/
+
+# Generated screenshot comparison artifacts
+test/baseline/diff/

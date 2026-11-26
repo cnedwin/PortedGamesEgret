@@ -55,9 +55,10 @@ export const GATE_SECONDS = 1.2;
 
 /**
  * An act on a level. `from: 'boss'` begins it at the court before the gate with the soldiers already cleared
- * away, for whoever only wants to meet the one who bars it. `clones` is how many a tuft of hair makes.
+ * away, for whoever only wants to meet the one who bars it. `clones` is how many a tuft makes;
+ * `solo` disables the special for the optional staff trial.
  */
-export function createAct(level, { from, clones = HAIRS.count } = {}) {
+export function createAct(level, { from, clones = HAIRS.count, solo = false } = {}) {
   const of = type => level.things.filter(thing => thing.type === type);
   const [spawn] = of('spawn'),
     [gate] = of('gate'),
@@ -87,6 +88,7 @@ export function createAct(level, { from, clones = HAIRS.count } = {}) {
     gate: gate ? { x: gate.x, y: gate.y, barred: false } : null,
     boss,
     from: skip ? 'boss' : undefined,
+    solo,
     arrows: [],
     // The hairs: how many blows toward a tuft, the clones that are out, and what is left of their time.
     hairs: 0,
@@ -132,7 +134,7 @@ export function rankOf({ time, falls, wounds, boss }) {
 export const remaining = act => act.foes.filter(standing).length;
 
 /** Whether he has landed blows enough to pluck a tuft. */
-export const tuftReady = act => act.hairs >= HAIRS.need && !act.clones.length && !act.crowd.casting;
+export const tuftReady = act => !act.solo && act.hairs >= HAIRS.need && !act.clones.length && !act.crowd.casting;
 
 /** Who the clones may go for, nearest to him first: soldiers, whoever bars the gate, and failing those a post. */
 function quarry(act) {
@@ -258,7 +260,7 @@ export function stepAct(act, input, dt) {
       act.best = Math.max(act.best, act.combo);
       act.timer = COMBO_SECONDS;
       // Every blow of his own that lands is a hair toward the next tuft; the clones' blows are not.
-      if (!act.clones.length && act.hairs < HAIRS.need && (act.hairs = Math.min(HAIRS.need, act.hairs + landed)) === HAIRS.need) events.push({ type: 'hairs-full' });
+      if (!act.solo && !act.clones.length && act.hairs < HAIRS.need && (act.hairs = Math.min(HAIRS.need, act.hairs + landed)) === HAIRS.need) events.push({ type: 'hairs-full' });
     }
   }
 

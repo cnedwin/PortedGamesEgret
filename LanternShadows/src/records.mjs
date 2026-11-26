@@ -4,9 +4,15 @@ export const ACT_GOALS = {
   act2: { time: 165, combo: 20 },
   act3: { time: 180, combo: 22 },
 };
+export const TRIAL_GOALS = {
+  act1: { time: 145, combo: 12 },
+  act2: { time: 165, combo: 14 },
+  act3: { time: 185, combo: 16 },
+};
 
 const RECORDS = 'lantern-shadows-records';
 const LEGACY = 'lantern-shadows-ranks';
+const TRIALS = 'lantern-shadows-trials';
 const RANKS = ['C', 'B', 'A', 'S'];
 const bestRank = (a, b) => RANKS[Math.max(RANKS.indexOf(a), RANKS.indexOf(b))];
 const runTime = value => Number.isFinite(value) && value >= 0 ? value : undefined;
@@ -22,22 +28,22 @@ function read(storage, key) {
   return {};
 }
 
-export function createRecordBook(storage) {
-  const saved = read(storage, RECORDS), legacy = read(storage, LEGACY);
+function createBook(storage, key, targets, legacyKey) {
+  const saved = read(storage, key), legacy = legacyKey ? read(storage, legacyKey) : {};
   const entries = {};
-  for (const act of Object.keys(ACT_GOALS)) {
+  for (const act of Object.keys(targets)) {
     const row = saved[act], rank = bestRank(row?.rank, legacy[act]);
     if (rank) entries[act] = { rank, time: runTime(row?.time), combo: hitCount(row?.combo), noFalls: row?.noFalls === true };
   }
 
   function get(act) {
     if (!Object.hasOwn(entries, act)) return undefined;
-    const row = entries[act], target = ACT_GOALS[act];
+    const row = entries[act], target = targets[act];
     return { ...row, goals: [row.time <= target.time, row.combo >= target.combo, row.noFalls] };
   }
 
   function record(act, result) {
-    if (!Object.hasOwn(ACT_GOALS, act) || !RANKS.includes(result?.rank)) return undefined;
+    if (!Object.hasOwn(targets, act) || !RANKS.includes(result?.rank)) return undefined;
     const old = entries[act];
     const time = runTime(result.time), combo = hitCount(result.best);
     entries[act] = {
@@ -47,7 +53,7 @@ export function createRecordBook(storage) {
       noFalls: old?.noFalls === true || result.falls === 0,
     };
     try {
-      storage?.setItem(RECORDS, JSON.stringify(entries));
+      storage?.setItem(key, JSON.stringify(entries));
     } catch {
       // Keep the entry in memory when there is nowhere to save.
     }
@@ -56,3 +62,6 @@ export function createRecordBook(storage) {
 
   return { get, record };
 }
+
+export const createRecordBook = storage => createBook(storage, RECORDS, ACT_GOALS, LEGACY);
+export const createTrialBook = storage => createBook(storage, TRIALS, TRIAL_GOALS);
