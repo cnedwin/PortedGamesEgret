@@ -91,7 +91,15 @@ await edit('README.md', (s) => {
     .replaceAll(oldEn, () => en)
     .replaceAll(templatePath + '/', `${folder}/`);
 });
-for (const name of ['ENGINE-NOTES.md', 'QUALITY.md']) await edit(name, (s) => s.replaceAll(oldZh, () => zh).replaceAll(oldEn, () => en).replaceAll(templatePath, folder));
+for (const name of ['ENGINE-NOTES.md', 'QUALITY.md'])
+  await edit(name, (s) =>
+    s
+      .replaceAll(oldZh, () => zh)
+      .replaceAll(oldEn, () => en)
+      .replaceAll(templatePath, folder)
+      // An engine note's id is the game's folder and its number.
+      .replace(/("id": ")[A-Za-z0-9_-]+(#\d+")/g, (_, a, b) => a + folder + b)
+  );
 
 // 引擎副本 · The engine copy.
 let vendored = 'kept';

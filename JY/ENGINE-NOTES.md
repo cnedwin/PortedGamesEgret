@@ -21,6 +21,7 @@ This game uses Egret Rebuild `c1570b0`. The integration notes and remaining game
 | 阴影兼容 · Shadow compatibility | 仍对 RTX 5090 Laptop 的指定 ANGLE D3D11 路径关闭阴影。需在原硬件上开启阴影复跑骨骼人物，确认上下文稳定后才移除。 · The driver-specific shadow guard stays until a hardware run with shadowed skinned actors confirms context stability. |
 
 ### 1. 同时准备很多文字时超出文字缓存的预算 · Preparing many texts at once passes the text cache's budget — 部分解决 / partly resolved
+<!-- engine-note: {"id": "JY#1", "status": "partly", "topic": "text-cache-budget-batch", "workaround": ["web/battle-view.mjs"]} -->
 
 - 现象 · What happens：范围攻击一次打中多人，同一帧出现十几个不同的伤害数字，各自调用 `node.prepare()`，部分失败并报 `TEXT_CACHE_BUDGET`，数字不显示。 · An area attack put a dozen distinct damage numbers on screen in one frame; some `prepare()` calls failed with `TEXT_CACHE_BUDGET` and those numbers never showed.
 - 游戏里 · In the game：`web/battle-view.mjs` 的 `prepareNumbers` 把数字排队逐个准备，遇到 `TEXT_CACHE_BUDGET` 停下，下一帧再继续（`04313eb`）。 · Numbers are prepared one after another; on `TEXT_CACHE_BUDGET` the queue stops and resumes next frame.
@@ -28,6 +29,7 @@ This game uses Egret Rebuild `c1570b0`. The integration notes and remaining game
 - 状态 · Status：`c1570b0` 的自动重试在 `createBrowserGame` 的标签封装中。JY 战斗直接使用低层 `TextField.prepare()` 配合 WebGL2 共享帧，仍由游戏排队。固定字符的位图字体可进一步避免逐字栅格化。 · Automatic retry in `c1570b0` belongs to `createBrowserGame` labels. JY prepares low-level text in a shared-frame battle path and still queues the work. A bitmap font could remove runtime rasterization for fixed damage glyphs.
 
 ### 2. 预编译着色器要求给出已经存在的网格 · Preparing programs needs meshes that already exist — 未解决 / open
+<!-- engine-note: {"id": "JY#2", "status": "open", "topic": "prepare-programs-meshes", "workaround": ["web/jyx2/scene/native-battle-view.mjs"]} -->
 
 - 现象 · What happens：第一次进入战斗时，战场网格和人物材质的着色器在第一帧才链接，出现卡顿。纸片人（没有 3D 模型的角色）在第一次绘制前没有任何网格，`renderer.preparePrograms` 找不到可以描述的对象。 · The first battle stalled while its programs linked on the first frame. Billboard actors have no mesh before their first draw, so there is nothing to hand to `preparePrograms`.
 - 游戏里 · In the game：`web/jyx2/scene/native-battle-view.mjs` 在加载画面里先建好所有角色，遍历场景对每个网格和材质（含阴影通道）调用 `renderer.preparePrograms`；纸片人用接触阴影的平面和贴图做替身材质预编译，然后丢掉（`58783c3`、`e8db2ea`）。 · Under the loading screen every actor is made, every mesh and material (and shadow pass) is prepared, and the billboard actors are prepared with a stand-in material that is then disposed.

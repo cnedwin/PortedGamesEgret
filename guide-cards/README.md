@@ -10,8 +10,8 @@ table proposes evidence for that card instead.
 
 去向 · Where they went: 新卡和证据都已提交到引擎仓库 [cnedwin/Egret_rebuild](https://github.com/cnedwin/Egret_rebuild)
 的 [PR #423](https://github.com/cnedwin/Egret_rebuild/pull/423)（分支 `claude/guide-cards-from-games`，已合并），通过了 `node tools/egret-guide.mjs` 的检索和 `tests/guide.test.mjs`
-的名字、大小、索引、证据检查。下表「状态」一栏写明每条是否已进引擎。 · Both the new cards and the evidence went to an
-engine pull request ([#423](https://github.com/cnedwin/Egret_rebuild/pull/423), merged there) and passed its guide checks; the status column says which.
+的名字、大小、索引、证据检查。其中 16 张在 [PR #485](https://github.com/cnedwin/Egret_rebuild/pull/485) 里对照当时的引擎逐张核对后进了引擎，引擎已经改过的 5 张按新行为重写。下表「状态」一栏写明每条的去向。今后新的教训直接写进引擎的 `guide/cards`。 · Both the new cards and the evidence went to an
+engine pull request ([#423](https://github.com/cnedwin/Egret_rebuild/pull/423), merged there) and passed its guide checks; the status column says which. Sixteen went in with [#485](https://github.com/cnedwin/Egret_rebuild/pull/485), each checked against the engine of the day; the five the engine had changed were rewritten. New lessons go straight to the engine's `guide/cards`.
 
 检查一张草稿 · To check a draft: copy it into the engine's `guide/cards/<area>/`, add its line to `guide/index.txt`,
 then run `node --test tests/guide.test.mjs` and `node tools/egret-guide.mjs "<question>"` there.
@@ -25,24 +25,24 @@ then run `node --test tests/guide.test.mjs` and `node tools/egret-guide.mjs "<qu
 | [ui-callbacks](input/ui-callbacks.txt) | MechanismCity、TeaHorseRoad | 千机巧匠 19；茶马古道 19、20（回调不能返回 Promise、输入分发中不能建 UI 根） | 已提交引擎 PR · in the engine PR |
 | [cloth-and-rope](world3d/cloth-and-rope.txt) | TeaHorseRoad | ENGINE-NOTES 1、9、10、11（布绳被剔除、整条边、`slack`、单向钉住） | 已提交引擎 PR · in the engine PR |
 | [terrain-stream-tiles](world3d/terrain-stream-tiles.txt) | TeaHorseRoad | ENGINE-NOTES 2、5、6、14（实例 LOD、地块距离、高度场原点、导航网格） | 已提交引擎 PR · in the engine PR |
-| [play-page-controls](input/play-page-controls.txt) | CanalWatch | ENGINE-NOTES 1、2、4（`play` 拦下 Tab 和 Space、透明画布的黑底盒子、画布在 `game.canvas`）；提交 `13dcd4b` | 草稿，未提交引擎；在引擎 `b5628eb` 的临时副本里过了 `tests/guide.test.mjs` · draft, not sent; passed the engine's guide tests in a scratch copy |
-| [rhythm-clock](audio/rhythm-clock.txt) | OperaDrums | ENGINE-NOTES 4（声部位置比听到的早、换算到页面时间、事件时间戳、延迟校准）；提交 `6e7d5bb` | 草稿，未提交引擎；在引擎 `b5628eb` 的临时副本里过了 `tests/guide.test.mjs` · draft, not sent; passed the engine's guide tests in a scratch copy |
-| [moving-shapes](perf/moving-shapes.txt) | OperaDrums | ENGINE-NOTES 3（每帧移动的圆和路径比矩形贵，文字打断合批）；提交 `6e7d5bb` | 同上 · the same |
-| [still-background](perf/still-background.txt) | CanalWatch | ENGINE-NOTES 3（静止地图每帧重画让软件渲染帧时间翻倍，改由页面画一次）；提交 `13dcd4b` | 同上 · the same |
+| [play-page-controls](input/play-page-controls.txt) | CanalWatch | ENGINE-NOTES 1、2、4（`play` 拦下 Tab 和 Space、透明画布的黑底盒子、画布在 `game.canvas`）；提交 `13dcd4b` | 已进引擎（[#485](https://github.com/cnedwin/Egret_rebuild/pull/485)，按当前引擎重写）· in the engine (#485, rewritten against the current engine) |
+| [rhythm-clock](audio/rhythm-clock.txt) | OperaDrums | ENGINE-NOTES 4（声部位置比听到的早、换算到页面时间、事件时间戳、延迟校准）；提交 `6e7d5bb` | 已进引擎（[#485](https://github.com/cnedwin/Egret_rebuild/pull/485)，按当前引擎核对）· in the engine (#485, checked against the current engine) |
+| [moving-shapes](perf/moving-shapes.txt) | OperaDrums | ENGINE-NOTES 3（每帧移动的圆和路径比矩形贵，文字打断合批）；提交 `6e7d5bb` | 已进引擎（[#485](https://github.com/cnedwin/Egret_rebuild/pull/485)，按当前引擎核对）· in the engine (#485, checked against the current engine) |
+| [still-background](perf/still-background.txt) | CanalWatch | ENGINE-NOTES 3（静止地图每帧重画让软件渲染帧时间翻倍，改由页面画一次）；提交 `13dcd4b` | 已进引擎（[#485](https://github.com/cnedwin/Egret_rebuild/pull/485)，按当前引擎核对）· in the engine (#485, checked against the current engine) |
 | [bridge-frames](physics/bridge-frames.txt) | LubanBridge | ENGINE-NOTES 1（距离关节连成桁架太软、受力不对称、读不到杆件的力）· item 1 | 草稿 · draft |
 | [body-angle-degrees](physics/body-angle-degrees.txt) | LubanBridge | ENGINE-NOTES 2（刚体的 `angle` 是角度）· item 2 | 草稿 · draft |
-| [sprite-swarm](perf/sprite-swarm.txt) | NezhaSea | ENGINE-NOTES 3（共用贴图的 Bitmap 比矩形精灵贵得多，改用矩形加精灵池）；提交 `9b3d926` | 同上 · the same |
-| [play-resolution](perf/play-resolution.txt) | TaiwanMahjong | ENGINE-NOTES 3（play 没有分辨率选项，1280×720 空画布 p95 33 ms；开 960×540 加根节点缩放）；提交 `936d1e6` | 同上 · the same |
-| [play-turned-table](input/play-turned-table.txt) | TaiwanMahjong | ENGINE-NOTES 4（外层旋转时 play 拒绝启动；分三层、引擎竖着开）；提交 `936d1e6` | 同上 · the same |
-| [sequence-markers](animation/sequence-markers.txt) | NightWardens | ENGINE-NOTES 1（动画控制器的标记名重复时报错不说是哪一条）；帧走路、标记扬尘、随弹层暂停、影子画进帧里；提交 `886c81c` | 草稿，未提交引擎；在引擎 `a778bed` 的临时副本里过了 `tests/guide.test.mjs`（索引放在 World3D 一节末尾，因为索引已贴着 1500 token 的上限）· draft, not sent; passed the engine's guide tests in a scratch copy (indexed at the end of the World3D section, as the index sits at its 1,500-token budget) |
-| [two-colour-tints](render/two-colour-tints.txt) | NightWardens | 命中闪白、冰冻、灼烧、雷击定身都用材质的 `light` 和 `dark`，不另做帧；提交 `886c81c` | 同上 · the same |
-| [play-shape-nodes](render/play-shape-nodes.txt) | PeachCreek | ENGINE-NOTES 5（`game.rect` 和 `game.circle` 以中心定位、颜色画死，会变的形状用 sprite 重画 graphics）；提交 `3c3a780` | 草稿，未提交引擎；在引擎 `b5628eb` 的临时副本里过了 `tests/guide.test.mjs`，中英文检索都能找到 · draft, not sent; passed the engine's guide tests in a scratch copy and is found by English and Chinese questions |
-| [label-pages](render/label-pages.txt) | NineProvinces | ENGINE-NOTES 1、3（每个文字标签一页、一帧最多 64 页；`textureFromCanvas` 没有 `scope`，开局做一张共用的字符图集）；提交 `de9e10b` | 草稿，未提交引擎；在引擎 `9d801be` 的临时副本里过了 `tests/guide.test.mjs`（索引放在 Performance 一节末尾，索引已贴着 1500 token 的上限），中英文检索都能找到 · draft, not sent; passed the engine's guide tests in a scratch copy (indexed at the end of Performance, the index being at its budget) and is found by English and Chinese questions |
-| [camera-page-layer](render/camera-page-layer.txt) | NineProvinces | ENGINE-NOTES 2、4（网页画布上的地图跟着 2D 相机：保留画布、`screenToWorld` 换算、远景半尺寸底图；缩放越界会抛错，要自己夹住）；提交 `de9e10b` | 同上 · the same |
-| [pixel-strips](render/pixel-strips.txt) | SandScroll | ENGINE-NOTES 3、4（2D 贴图不能局部更新，沙盘切成条只重传变了的；换上新租约后再放旧的，仍挂着的贴图被放掉会让下一帧报 `ASSET_LEASE_RELEASED`）；提交 `b218a4b` | 草稿，未提交引擎 · draft, not sent |
-| [label-wrap](render/label-wrap.txt) | SandScroll | ENGINE-NOTES 6（`createLabel` 没有宽度选项，按字号估算插入换行）；提交 `b218a4b` | 同上 · the same |
-| [toon-figure-hooks](world3d/toon-figure-hooks.txt) | StarBanner | ENGINE-NOTES 1、2、3（克隆材质共用着色器参数、只有顶点钩子误放 `glsl`、卡通材质没有边缘光和描边）；`src/view/toon.mjs` | 草稿，未提交引擎 · draft, not sent |
-| [tile-board-camera](world3d/tile-board-camera.txt) | StarBanner | ENGINE-NOTES 4（软件渲染下镜头插值跟不上）；斜 45 度棋盘的点选、方向键随视角、头顶生命数字；`src/view/stage.mjs` | 同上 · the same |
+| [sprite-swarm](perf/sprite-swarm.txt) | NezhaSea | ENGINE-NOTES 3（共用贴图的 Bitmap 比矩形精灵贵得多，改用矩形加精灵池）；提交 `9b3d926` | 已进引擎（[#485](https://github.com/cnedwin/Egret_rebuild/pull/485)，按当前引擎核对）· in the engine (#485, checked against the current engine) |
+| [play-resolution](perf/play-resolution.txt) | TaiwanMahjong | ENGINE-NOTES 3（play 没有分辨率选项，1280×720 空画布 p95 33 ms；开 960×540 加根节点缩放）；提交 `936d1e6` | 已进引擎（[#485](https://github.com/cnedwin/Egret_rebuild/pull/485)，按当前引擎重写）· in the engine (#485, rewritten against the current engine) |
+| [play-turned-table](input/play-turned-table.txt) | TaiwanMahjong | ENGINE-NOTES 4（外层旋转时 play 拒绝启动；分三层、引擎竖着开）；提交 `936d1e6` | 已进引擎（[#485](https://github.com/cnedwin/Egret_rebuild/pull/485)，按当前引擎核对）· in the engine (#485, checked against the current engine) |
+| [sequence-markers](animation/sequence-markers.txt) | NightWardens | ENGINE-NOTES 1（动画控制器的标记名重复时报错不说是哪一条）；帧走路、标记扬尘、随弹层暂停、影子画进帧里；提交 `886c81c` | 已进引擎（[#485](https://github.com/cnedwin/Egret_rebuild/pull/485)，按当前引擎核对）· in the engine (#485, checked against the current engine) |
+| [two-colour-tints](render/two-colour-tints.txt) | NightWardens | 命中闪白、冰冻、灼烧、雷击定身都用材质的 `light` 和 `dark`，不另做帧；提交 `886c81c` | 已进引擎（[#485](https://github.com/cnedwin/Egret_rebuild/pull/485)，按当前引擎核对）· in the engine (#485, checked against the current engine) |
+| [play-shape-nodes](render/play-shape-nodes.txt) | PeachCreek | ENGINE-NOTES 5（`game.rect` 和 `game.circle` 以中心定位、颜色画死，会变的形状用 sprite 重画 graphics）；提交 `3c3a780` | 已进引擎（[#485](https://github.com/cnedwin/Egret_rebuild/pull/485)，按当前引擎核对）· in the engine (#485, checked against the current engine) |
+| [label-pages](render/label-pages.txt) | NineProvinces | ENGINE-NOTES 1、3（每个文字标签一页、一帧最多 64 页；`textureFromCanvas` 没有 `scope`，开局做一张共用的字符图集）；提交 `de9e10b` | 已进引擎（[#485](https://github.com/cnedwin/Egret_rebuild/pull/485)，按当前引擎重写）· in the engine (#485, rewritten against the current engine) |
+| [camera-page-layer](render/camera-page-layer.txt) | NineProvinces | ENGINE-NOTES 2、4（网页画布上的地图跟着 2D 相机：保留画布、`screenToWorld` 换算、远景半尺寸底图；缩放越界会抛错，要自己夹住）；提交 `de9e10b` | 已进引擎（[#485](https://github.com/cnedwin/Egret_rebuild/pull/485)，按当前引擎重写）· in the engine (#485, rewritten against the current engine) |
+| [pixel-strips](render/pixel-strips.txt) | SandScroll | ENGINE-NOTES 3、4（2D 贴图不能局部更新，沙盘切成条只重传变了的；换上新租约后再放旧的，仍挂着的贴图被放掉会让下一帧报 `ASSET_LEASE_RELEASED`）；提交 `b218a4b` | 已进引擎（[#485](https://github.com/cnedwin/Egret_rebuild/pull/485)，按当前引擎核对）· in the engine (#485, checked against the current engine) |
+| [label-wrap](render/label-wrap.txt) | SandScroll | ENGINE-NOTES 6（`createLabel` 没有宽度选项，按字号估算插入换行）；提交 `b218a4b` | 已进引擎（[#485](https://github.com/cnedwin/Egret_rebuild/pull/485)，按当前引擎重写）· in the engine (#485, rewritten against the current engine) |
+| [toon-figure-hooks](world3d/toon-figure-hooks.txt) | StarBanner | ENGINE-NOTES 1、2、3（克隆材质共用着色器参数、只有顶点钩子误放 `glsl`、卡通材质没有边缘光和描边）；`src/view/toon.mjs` | 已进引擎（[#485](https://github.com/cnedwin/Egret_rebuild/pull/485)，按当前引擎核对）· in the engine (#485, checked against the current engine) |
+| [tile-board-camera](world3d/tile-board-camera.txt) | StarBanner | ENGINE-NOTES 4（软件渲染下镜头插值跟不上）；斜 45 度棋盘的点选、方向键随视角、头顶生命数字；`src/view/stage.mjs` | 已进引擎（[#485](https://github.com/cnedwin/Egret_rebuild/pull/485)，按当前引擎核对）· in the engine (#485, checked against the current engine) |
 
 ## 给已有卡片加证据 · Evidence for existing cards
 
