@@ -117,3 +117,25 @@ this file; items by hand or on a device are marked not run until someone runs th
 最终未插桩 packed 文件真机网络内容 5/5 hashes 匹配（包括新增图集），真实触控 Start、摇杆拖出轴 1、松手轴 0、暂停时间冻结/恢复通过，0 errors。该短测只覆盖第一幕，并未重新跑完整三幕。Node 90/90、packed browser acceptance 12/12，标题差 0.00%、暂停画面差 0.52%，原基线保持。 · Exact release package and real physical touch smoke passed; prior all-act acceptance remains history, not repeated here.
 
 本批通用自动品质复测 14/16 通过：F1 无头 SwiftShader p95 17.5 ms（上一版 16.7），L1 通用限速首屏 3.3 s（上一版 3.1），均略超阈值；E2 通过（28 项拒绝请求仍可恢复）。这两次单次软件/启动测量不等于真机帧率，不能由此断言相同场景的稳定回退；真实 Fold7 的同条件 A/B 数据单列。 · Generic quality: 14/16 pass; software F1 and approximate L1 exceed thresholds. Do not conflate these with physical-device performance.
+
+### 2026-11-26 · Fold7 Spine 语义/网格拆分与 Host 背压 / Spine semantics versus display under host backpressure
+
+同一 Fold7（Android 17 / Chrome 157 / Adreno 830 / WebGL2）USB 供电，温度 30.1–30.4°C，thermal status 0，backing 2291×854；正式 Atlas 版本 5188e53c / 引擎 f0dfde36。固定 1/60 逻辑时步，诊断夹具临时提供百身术毫毛与保护，正常执行原规则但不写成绩。三次 fresh reload A/B/A，每段完整 548 行、分身年龄 1–6.5 s 的密集区 330 行，100 分身均逻辑存在、显示并更新姿势。 · Matched instrumented physical-device fixture, not a natural playthrough.
+
+| 密集区指标 / Dense block | A 同步 / sync | B 延期 / deferred | A′ 同步复测 / sync repeat |
+|---|---:|---:|---:|
+| 实际提交 / submitted (of 330) | 296 | 271 | 303 |
+| Host pending=2 跳过 / skipped | 34 | 59 | 27 |
+| 提交间隔 p50/p95 ms / submit cadence | 16.7 / 49.7 | 33.1 / 49.8 | 16.7 / 49.7 |
+| rAF p50/p95 ms | 16.6 / 33.2 | 16.6 / 49.7 | 16.6 / 49.6 |
+| 跳过帧 CPU p50/p95 ms / skipped CPU | 11.3 / 22.2 | 4.7 / 9.9 | 13.3 / 24.2 |
+| 跳过帧网格准备 / skipped display.prepare p50/p95 ms | 6.5 / 13.9 | 未执行 / none | 7.6 / 16.1 |
+| 实际提交整帧 CPU p50/p95 ms / submitted CPU (steady) | 21.5 / 38.4 | 25.3 / 40.1 | 21.5 / 39.6 |
+| 语义推进 / semantic deliveries | 34,229 | 34,229 | 34,229 |
+| 网格发布 / display publications | 34,229 | 28,115 | 34,229 |
+
+A 实际提交的稳态 CPU p50/p95：动画 update 0.1/0.3 ms、apply 0.4/1.0、骨骼与物理求解 0.1/0.5、语义快照 0.5/1.3；网格 extract 1.4/5.5、copy 2.8/9.8、包含上述两者的 prepare 4.4/12.8。B 的 display flush（含 prepare/commit/retire）在实际提交帧 p50/p95 7.6/16.4 ms（稳态样本）。稳态分组排除三次额外姿势摘要测量；原始密集数据及含检查点数据也保留。阶段有包含关系，不加总各 p95。 · Extract/copy are larger than animation update/apply/solve in the measured baseline. These are CPU spans, not GPU or display presentation.
+
+严格查验：三组逐帧 548/548 对齐，相同逻辑状态、随机数、动画事件摘要及累计 6,421 次事件，三个骨骼/槽/轨道语义检查点完全一致；全段实际提交版本正确 501/501、472/472、510/510。初次诊断因两个独立页面时钟导致时步误差，有 45 行无法对齐，未认定等价；改为精确固定规则与 Spine delta 输入后重新实测，保留绝对 tick ID 作单列诊断。 · The initial clock-v1 run was rejected; exact clock-v2 A/B/A passed. This is fixture-specific proof, not an arbitrary-listener/lifecycle contract.
+
+**结论：不采用延期作为正式版优化。** 它消除了被 Host 拒绝的帧的重复绘制工作，但成本移至真实提交帧，吞吐未改善。公开 API 目前不支持独立延期。保留上一批共享 UI 图集、100 分身及原有判定；生产源码、引擎副本、正式包均未改变。诊断脚本、[汇总 JSON](test/perf/reference-spine-fold7.json)、[990 行 CSV](test/perf/reference-spine-fold7.csv) 与引擎反馈 [#10](ENGINE-NOTES.md) 已保存。没有重新做三幕自然通关或 GPU 执行/屏幕呈现测试。 · The diagnostic is not a release optimization; it moved work to admitted frames and did not improve overall cadence. No new natural-play or GPU/presentation claim.

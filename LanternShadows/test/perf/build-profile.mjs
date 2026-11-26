@@ -53,7 +53,7 @@ function testPage(html){
     .replace('<script type="module">','<script src="./profile-client.js"></script>\n  <script type="module">')
     .replace('<head>','<head>\n  <!-- Diagnostic profile only; not for publication. -->');
 }
-export async function buildProfile({root=DEFAULT_ROOT,out,compact=false,backpressure=false}={}){
+export async function buildProfile({root=DEFAULT_ROOT,out,compact=false,backpressure=false,spineDetail=false}={}){
   root=await fs.realpath(path.resolve(root));
   const {html,map}=await readMap(root);
   if(!(await exists(path.join(root,'src/main.mjs'))) || !(await exists(path.join(root,'vendor/SOURCE.md'))))throw Error('Expected a LanternShadows game source checkout');
@@ -69,6 +69,9 @@ export async function buildProfile({root=DEFAULT_ROOT,out,compact=false,backpres
   const esbuildRef=process.env.ESBUILD??'esbuild';
   const esbuild=await import(await exists(esbuildRef)?pathToFileURL(path.resolve(esbuildRef)).href:esbuildRef);
   await fs.mkdir(path.join(out,'build'));
+  const clientSource=spineDetail?(await import("./dense-spine-harness.mjs")).denseClientSource:denseClientSource;
+  const instrument=spineDetail?(await import("./spine-instrument.mjs")).instrumentEnginePlugin:instrumentEnginePlugin;
+  if(spineDetail)backpressure=true;
   const result=await esbuild.build({
     entryPoints:[path.join(root,'src/main.mjs')],outfile:path.join(out,'build/lantern.js'),
     bundle:true,format:'esm',target:'es2022',minify:true,keepNames:true,legalComments:'none',metafile:true,
@@ -78,14 +81,14 @@ export async function buildProfile({root=DEFAULT_ROOT,out,compact=false,backpres
         if(a.kind==='entry-point')return;
         return map[a.path]?{path:path.join(root,map[a.path])}:{errors:[{text:'Unmapped import '+a.path}]};
       });}
-    },instrumentEnginePlugin({root,compact,backpressure})]
+    },instrument({root,compact,backpressure})]
   });
   // Assets and CSS keep their ordinary relative paths. The source and vendor trees are not modified/copied.
   await fs.cp(path.join(root,'assets'),path.join(out,'assets'),{recursive:true,errorOnExist:true});
   const css=await fs.readFile(path.join(root,'style.css'),'utf8');
   await fs.writeFile(path.join(out,'style.css'),css+(compact?'\n/* QA only: both variants use one compact logical stage and identical CSS booth. */\n.booth { width:min(100vw,calc(100dvh * 16 / 9)); height:min(100dvh,calc(100vw * 9 / 16)); aspect-ratio:16 / 9; }\n':''));
   await fs.writeFile(path.join(out,'index.html'),testPage(html));
-  await fs.writeFile(path.join(out,'profile-client.js'),denseClientSource+'\n');
+  await fs.writeFile(path.join(out,'profile-client.js'),clientSource+'\n');
   await fs.mkdir(path.join(out,'vendor'));
   // Preserve the bundled dependencies' notices and individual third-party license files.
   for(const name of ['SOURCE.md','NOTICE','LICENSE']){
@@ -101,7 +104,7 @@ export async function buildProfile({root=DEFAULT_ROOT,out,compact=false,backpres
   const sourceMd=await fs.readFile(path.join(root,'vendor/SOURCE.md'),'utf8');
   const packed=await fs.readFile(path.join(out,'build/lantern.js'));
   if(startHash!==await fingerprint(root,map))throw Error('Input changed during the diagnostic build');
-  const record={diagnostic:true,compact,backpressure,engineCommit:sourceMd.match(/commit `([0-9a-f]{40})`/)?.[1]??null,gameInputs:startHash,esbuild:esbuild.version,modules:Object.keys(result.metafile.inputs).length,bytes:packed.length,bundleSha256:sha(packed),profileSha256:sha(denseClientSource)};
+  const record={diagnostic:true,compact,backpressure,engineCommit:sourceMd.match(/commit `([0-9a-f]{40})`/)?.[1]??null,gameInputs:startHash,esbuild:esbuild.version,modules:Object.keys(result.metafile.inputs).length,bytes:packed.length,bundleSha256:sha(packed),profileSha256:sha(clientSource),...(spineDetail?{spineDetail:true,protocol:"lantern-dense-fixed-step/2"}:{})};
   await fs.writeFile(path.join(out,'build/profile.json'),JSON.stringify(record,null,2)+'\n');
   return {out,record};
 }
@@ -123,9 +126,9 @@ export async function serveProfile(root,{host='127.0.0.1',port=0}={}){
   return {server,url:'http://'+host+':'+server.address().port+'/?clones=100&lang=en&seed=734'};
 }
 if(process.argv[1]&&import.meta.url===pathToFileURL(path.resolve(process.argv[1])).href){
-  if(args.includes('--help')){console.log('node build-profile.mjs [--root GAME] [--out NEW_DIRECTORY] [--serve] [--host 127.0.0.1] [--port 0] [--compact] [--backpressure]');}
+  if(args.includes('--help')){console.log('node build-profile.mjs [--root GAME] [--out NEW_DIRECTORY] [--serve] [--host 127.0.0.1] [--port 0] [--compact] [--backpressure] [--spine-detail]');}
   else{
-    const built=await buildProfile({root:option('--root',DEFAULT_ROOT),out:option('--out'),compact:args.includes('--compact'),backpressure:args.includes('--backpressure')});
+    const built=await buildProfile({root:option('--root',DEFAULT_ROOT),out:option('--out'),compact:args.includes('--compact'),backpressure:args.includes('--backpressure'),spineDetail:args.includes('--spine-detail')});
     console.log(JSON.stringify(built,null,2));
     if(args.includes('--serve')){
       const {url}=await serveProfile(built.out,{host:option('--host','127.0.0.1'),port:Number(option('--port','0'))});
