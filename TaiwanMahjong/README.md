@@ -91,32 +91,33 @@ quarter of their discards are not the best) and hardly defend; experts defend ha
 | `game.rect`、`game.sprite` | 听牌提示的金点；分层的容器 · the gold ready dots; the layers | `src/view.mjs` |
 | `game.sfx.define` / `play` | 合成落牌、摸牌、吃、碰、槓、胡及補花等音效，依座位區分左右聲道 · synthesized table sounds with seat-based stereo placement | `src/sound.mjs` |
 | `game.pause`、`resume`、`reducedMotion` | 暂停菜单；减弱动画 · the pause menu; reduced motion | `src/main.mjs` |
+| `game.show`、面板滚动与绑定 · Declarative views, panel scrolling and bindings | 标题、规则、设置、战绩、暂停、牌局按钮、吃牌组合与结算 · title, rules, settings, records, pause, calls, chow choices and settlements | `src/screens.mjs`, `src/round-ui.mjs` |
+| `createUiSemantics` + `createBrowserSemantics` | 画布控件的名称、选中状态、模态焦点与键盘定位 · names, selected states, modal focus and keyboard navigation for canvas controls | `src/ui.mjs`, `src/main.mjs` |
 | `createTextTable` + `pickLanguage` | 繁体中文和英文文字表，开局按浏览器语言 · the words, by the browser's language | `src/i18n.mjs` |
 | `createSaveStore` + `browserSaveStorage` | 设置、上次的选择和战绩；坏档另存后重开 · settings, the last setup and the record; a broken save set aside | `src/saves.mjs` |
 
 ## 已验证 · Verified
 
-- `node --test test/*.test.mjs`（Node 22，29 项全部通过）：向听数、听牌和拆牌；台数表的每一类（平胡、门清一摸三、独听、暗刻是否算、碰碰胡、清混字一色、大小三元和四喜、全求半求、正花和花槓、海底河底槓上开花抢槓、天地人胡）；只有下家能吃、碰优先于吃、截胡、抢槓、补花从牌尾、流局连庄、换庄、一将打满四圈；每把收支和为零；存档（新档、写入再读、坏档、版本过新、不合法的设置、存储拒绝写入、战绩怎么记）；文字（两种语言齐全、占位符一致、42 种牌和每类台都有名字、英文里没有中文、界面代码不写死中文）；引擎副本的 import map 和规则不碰页面。 · All 29 Node tests pass.
-- `node test/accept.mjs`（无头 Chromium 153，SwiftShader，1280×720）：标题第一个按钮有焦点；Tab 和 Enter、Space 选一将、高手再改回东风圈并存档；设置里关音效存档、Esc 关闭后焦点回去；规则面板列出台数和截胡；切英文后标题按钮全是英文、再切回；Enter 开局后用真按键 Enter 选中一张牌（它被抬起）、再按 Enter 打进牌河，轮到吃碰时按 Esc 过；暂停后 1.5 秒内牌局没有任何事件、Esc 继续；托管打到一局结算（收支和为零、有台数或流局）、战绩记下一局；托管打完一圈看到四家排名、战绩记下一将；回首页；坏档提示。标题和规则两张截图基线一致，控制台没有错误。 · The whole walk in headless Chromium, two baselines matching and a clean console.
-- `node ../tools/quality.mjs TaiwanMahjong`：自动项全部达标，见 [QUALITY.md](QUALITY.md)。另外量了牌局中：轮到玩家时和托管打到一局中段，帧时间 p95 都是 16.8 ms（无头、软件渲染）。 · Every automatic item passes; in play, 16.8 ms p95 both waiting on the player and mid-hand.
-- 本版以 Windows Chrome 與 Galaxy Z Fold7 上的 Chrome 驗證開局、選牌、出牌、吃牌、暫停續玩和單局結算。Fold7 另測橫向畫面及配樂與音效的獨立開關。 · The current version was tested on Windows and a Galaxy Z Fold7 through a hand, including a chow, pause and settlement. The Fold7 landscape run also covered the independent audio switches.
+- `node --test test/*.test.mjs` 通过 30 项，覆盖十六张规则、台数、庄家轮换、四圈结束、收支守恒、旧档和坏档，以及中英文词表和引擎副本。 · 30 Node tests cover rules, tai, the dealer and four winds, zero-sum results, saves, localization, and the engine copy.
+- `node test/accept.mjs` 覆盖原生控件的键盘和语义树、横竖屏触控、吃牌有多个组合、碰、槓、荣和、自摸、暂停、四家结算和战绩。标题和规则有截图基线。 · Browser acceptance covers native keyboard controls and semantics, touch in both orientations, multiple chow options, pong, kong, discard win, self-draw, pause, settlement, and records, with title and rules screenshot baselines.
+- 真机对局、帧时间、断网插画恢复及自动检查的限制见 [QUALITY.md](QUALITY.md)。 · See [QUALITY.md](QUALITY.md) for device play, frame timings, recovery from missing title art, and automated check limits.
 
 ## 已知问题 · Known issues
 
 - 裝置上的音效驗證涵蓋播放事件、聲音訊號和設定。仍待使用手機喇叭實聽整局的混音。 · Device checks covered playback, signal and settings. The complete mix through phone speakers still needs a listening pass.
 - 手机横屏（高 390 像素）时一张手牌约 35×52 CSS 像素，比 44 像素的触控建议窄；十七张牌要排在一行里，宽不了更多。 · On a phone held sideways (390 px tall) a hand tile is about 35 × 52 CSS px, narrower than the 44 px advice; seventeen tiles must fit one row.
-- 像素比 1 的屏幕上，手牌（引擎画，四分之三分辨率）比桌上静止的牌（页面画，全分辨率）稍软（ENGINE-NOTES 3）。 · On a ratio-1 screen the hand, drawn by the engine at three-quarter resolution, is slightly softer than the still tiles (item 3).
+- 像素比 1 的屏幕上，手牌（引擎画，四分之三分辨率）比桌上静止的牌（页面画，全分辨率）稍软（引擎笔记第 3 条）。 · On a ratio-1 screen the hand, drawn by the engine at three-quarter resolution, is slightly softer than the still tiles (item 3).
 - 螢幕轉向時會重建牌桌畫布，飛行中的牌會直接落到位。配樂維持原本的播放進度。 · Turning the screen recreates the table renderer. Tiles in flight land at once, and music keeps its position.
 - 台数表是台湾常见的一种，各地牌桌的规矩不尽相同（例如天地人胡的台数、花槓算法）；没有天听、地听、嚦咕嚦咕和过水。 · The tai table is one common Taiwanese table; tables differ, and some hands are left out.
 - 电脑牌友不读别家的牌河推理听什么，防守只看危险程度的粗略估计；老陈为做大牌放槍偏多。 · The computer players do not read rivers for waits; defence is a rough danger estimate, and Old Chen deals in more for his big hands.
-- 读屏只在无头 Chromium 的无障碍树里查过名字。 · Screen-reader names were checked only in headless Chromium's accessibility tree.
+- 已在 Chromium 中检查语义树。真实读屏播报仍待验证。 · The semantic tree was checked in Chromium. Actual screen-reader speech is pending.
 
 ## 已解决 · Solved
 
-- 页面按钮上的 Tab 和 Space 失灵（ENGINE-NOTES 1）：捕获阶段接住所有按键、自己处理。 · Tab and Space on the page's buttons (item 1): every key caught first.
-- 透明画布下面是黑的（ENGINE-NOTES 2）：开局后把 `play` 的盒子改成透明。 · The black holder (item 2), made clear.
-- 1280×720 的引擎画布帧时间 p95 33 ms（ENGINE-NOTES 3）：引擎开成 960×540、根节点缩放 0.75，标题和牌局都回到 16.8 ms。 · 33 ms p95 from a 1280 × 720 engine canvas (item 3): the engine at 960 × 540 with its root scaled, 16.8 ms.
-- 竖屏转牌桌时引擎拒绝启动（ENGINE-NOTES 4）：拆成三层，引擎竖着开、自己转。 · The engine refusing a turned table (item 4): three layers, the engine made tall and turning itself.
+- 牌局按钮改用白鹭原生视图并加入键盘焦点和语义树。Tab、Enter 和 Space 可操作标题和牌局。 · Native views expose control names, keyboard focus and activation on the title and at the table.
+- 透明画布与静止牌桌分层合成。暂停、规则与结算在引擎中统一处理前景遮罩。 · The clear canvas combines with the static table, while the engine draws the pause, rules and result scrims.
+- 牌桌使用 1280×720 设计坐标，在 960×540 的引擎画布上按需渲染。 · The 1280 × 720 table is drawn on a 960 × 540 engine canvas using on-demand rendering.
+- 竖屏旋转在引擎内部完成。台数表的拖动方向按面板本地坐标换算（引擎笔记第 7 条）。 · The canvas remains upright in portrait, and tai lists use viewport-local gesture axes (engine note 7).
 - 两百多张静止的牌做成 Bitmap 太慢（ENGINE-NOTES 5）：静止的牌画在页面 canvas 上，只在变化时重画。 · Two hundred still Bitmaps too slow (item 5): still tiles painted on a page canvas when they change.
 - 选圈数和难度没存上（ENGINE-NOTES 6）：`update` 的回调返回了赋值的结果，被当成新存档；改成不返回值。 · The setup not saved (item 6): the update callback returned its assignment; now it returns nothing.
 - 结算时牌桌上已经显示下一局的庄家和门风：每局开始时把庄家、圈风、连庄记在这一局里，显示都读这一局的。 · The result showed the next hand's dealer: each hand now keeps its own dealer, wind and streak for display.
@@ -133,8 +134,10 @@ quarter of their discards are not the best) and hardly defend; experts defend ha
 
 | 路径 · Path | 内容 · Contents |
 |---|---|
-| `index.html`, `style.css` | 页面、import map、三层牌桌、名牌、按钮和各面板 · the page, the three layers, plates, buttons and panels |
-| `src/main.mjs` | 入口：存档、语言、引擎（宽或竖）、牌局流程、玩家操作、面板 · the entry |
+| `index.html`, `style.css` | 页面、import map、牌桌底图、名牌、听牌提示和加载状态 · page shell, import map, table backing, plates, ready hints and loading state |
+| `src/main.mjs` | 引擎启动、牌局流程、输入和存档 · engine startup, round flow, input and saves |
+| `src/screens.mjs`, `src/round-ui.mjs` | 大厅与牌局的白鹭原生界面 · native Egret lobby and game views |
+| `src/ui.mjs` | 界面坐标、焦点、语义和旋转滚动 · UI coordinates, focus, semantics and rotated scrolling |
 | `src/tiles.mjs` | 牌面图集（2D canvas 画） · the tile atlas |
 | `src/layout.mjs` | 桌上每张牌的位置和方向 · where each tile sits |
 | `src/felt.mjs` | 静止的牌桌（页面 canvas） · the still table |
@@ -148,13 +151,12 @@ quarter of their discards are not the best) and hardly defend; experts defend ha
 
 ## 引擎副本 · Engine copy
 
-引擎副本取自 [Egret_rebuild](https://github.com/cnedwin/Egret_rebuild) 提交 `b5628eb9997b67cf6163a388f5aa06f321f3833a`，由引擎仓库的 `tools/vendor-game.mjs` 复制，见 [vendor/SOURCE.md](vendor/SOURCE.md)。用到的入口：`@egret/engine`、`@egret/engine/play`、`@egret/engine/kit`、`@egret/engine/web/kit`。
+引擎副本取自 [Egret_rebuild](https://github.com/cnedwin/Egret_rebuild) 提交 `2e53f45fdd7b487ec68110a6f0f9cbc683a73cd5`，由引擎仓库的 `tools/vendor-game.mjs` 复制，见 [vendor/SOURCE.md](vendor/SOURCE.md)。用到的入口见下方命令。
 
 The engine copy is from [Egret_rebuild](https://github.com/cnedwin/Egret_rebuild) commit
-`b5628eb9997b67cf6163a388f5aa06f321f3833a`, copied by the engine's `tools/vendor-game.mjs`; see
-[vendor/SOURCE.md](vendor/SOURCE.md). Entries used: `@egret/engine`, `@egret/engine/play`, `@egret/engine/kit` and
-`@egret/engine/web/kit`.
+`2e53f45fdd7b487ec68110a6f0f9cbc683a73cd5`, copied by the engine's `tools/vendor-game.mjs`; see
+[vendor/SOURCE.md](vendor/SOURCE.md) and the entries below.
 
 ```sh
-node tools/vendor-game.mjs <this folder> @egret/engine @egret/engine/play @egret/engine/kit @egret/engine/web/kit
+node tools/vendor-game.mjs <this folder> @egret/engine @egret/engine/play @egret/engine/kit @egret/engine/web/kit @egret/engine/ui @egret/engine/ui/semantics @egret/engine/ui/testing @egret/engine/web/semantics
 ```

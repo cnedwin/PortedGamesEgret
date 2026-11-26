@@ -1,12 +1,11 @@
-// 页面入口：建好图集、引擎（play）、静态牌桌和声音，然后跑牌局：轮到电脑就想一下再出手，轮到玩家就等按键或点击，
-// 每一步的事件（摸、打、吃碰槓、补花、胡）播成动画，再把牌桌重画。标题、规则、设置、战绩、暂停、每局结算和终局
-// 排名都是页面上的面板。
-// The page's entry: makes the atlas, the engine (play), the still table and the sound, then runs the game: a computer
-// seat thinks a moment and acts, the player's seat waits for a key or a tap, each step's events (draw, discard,
-// calls, flowers, a win) are played as motion and the table painted again. The title, rules, settings, record, pause,
-// each hand's result and the final ranking are page panels.
+// Gameplay orchestration, the unrotated canvas host and table state.
 import { play } from '@egret/engine/play';
 import { browserSaveStorage } from '@egret/engine/web/kit';
+import { createUiSemantics } from '@egret/engine/ui/semantics';
+import { createBrowserSemantics } from '@egret/engine/web/semantics';
+import { bridgeUiSemantics, createUi } from './ui.mjs';
+import { createScreens } from './screens.mjs';
+import { createRoundUi } from './round-ui.mjs';
 import { createFelt } from './felt.mjs';
 import { getLanguage, onLanguage, setLanguage, startLanguage, t, tileName } from './i18n.mjs';
 import { handCentre, handSlots, riverSlot, STAGE } from './layout.mjs';
@@ -70,47 +69,95 @@ const app = {
   quitting: false
 };
 
-// ——— Sizing ———
+// Board art keeps its table coordinates. The browser canvas itself stays unrotated.
+let desiredTall;
+let building = Promise.resolve();
+let engineGate = null;
 function fit() {
-  // On a tall screen the table turns a quarter so it is as large as on a wide one; turning the phone sets it upright.
-  // The page layers turn with CSS; the engine's canvas may not sit under a turned element, so on a tall screen the
-  // engine is made tall and turns its own world instead (ENGINE-NOTES 4).
-  const tall = innerHeight > innerWidth,
-    w = tall ? STAGE.height : STAGE.width,
-    h = tall ? STAGE.width : STAGE.height,
-    s = Math.min(innerWidth / w, innerHeight / h),
-    left = (innerWidth - w * s) / 2,
-    top = (innerHeight - h * s) / 2;
+  const tall = innerHeight > innerWidth;
+  const w = tall ? STAGE.height : STAGE.width, h = tall ? STAGE.width : STAGE.height;
+  const s = Math.min(innerWidth / w, innerHeight / h);
+  const left = (innerWidth - w * s) / 2, top = (innerHeight - h * s) / 2;
   const turn = tall ? `translate(${left + w * s}px, ${top}px) rotate(90deg) scale(${s})` : `translate(${left}px, ${top}px) scale(${s})`;
   for (const layer of [$('#back'), table]) layer.style.transform = turn;
-  $('#stage').style.transform = `translate(${left}px, ${top}px) scale(${(s * 4) / 3})`;
-  if (app.atlas && tall !== app.tall) building = building.then(() => buildEngine(tall)).catch((error) => console.error(error));
+  Object.assign($('#stage').style, {
+    left: left + 'px', top: top + 'px', width: w * s + 'px', height: h * s + 'px'
+  });
+  app.projection?.sync();
+  if (!app.atlas || desiredTall === tall) return;
+  desiredTall = tall;
+  building = building.then(async () => {
+    if (desiredTall !== app.tall || !app.game) await buildEngine(desiredTall);
+  }).catch(error => console.error(error));
 }
-let building = Promise.resolve();
 addEventListener('resize', fit);
 
-/** Make (or make again) the engine, wide or tall. */
+function placeUi(game, tall) {
+  game.ui.rotation = tall ? 90 : 0;
+  game.ui.x = tall ? STAGE.height * .75 : 0;
+  game.ui.y = 0;
+}
+
 async function buildEngine(tall) {
   const old = app.game;
+  const priorPanels = app.screens?.panels ?? [];
+  const priorFocus = app.ui?.focused;
+  let done;
+  engineGate = new Promise(resolve => { done = resolve; });
   app.tall = tall;
   app.game = null;
-  // While the engine is made again, the hand and the motion wait quietly.
+  app.projection?.dispose();
+  app.projection = null;
+  app.ui?.dispose();
+  app.ui = null;
   app.view = { showHand() {}, fly: async () => {}, call() {}, clear() {} };
-  if (old) await old.dispose();
-  const host = $('#stage');
-  host.replaceChildren();
-  host.classList.toggle('tall', tall);
-  // The engine draws at three quarters of the stage; play's canvas has as many pixels as its width (ENGINE-NOTES 3).
-  const game = await play({ width: ((tall ? STAGE.height : STAGE.width) * 3) / 4, height: ((tall ? STAGE.width : STAGE.height) * 3) / 4, parent: host, transparent: true, seed: app.seed, onError: (error) => console.error(error) });
-  // The holder play makes under a clear canvas is black; the table shows through it (ENGINE-NOTES 2).
-  if (game.canvas.parentElement) game.canvas.parentElement.style.background = 'transparent';
-  game.reducedMotion = save.data.settings.reducedMotion || matchMedia('(prefers-reduced-motion: reduce)').matches;
-  const lease = await game.browser.textureFromCanvas(app.atlas);
-  app.view = createView(game, lease, { tall });
-  app.sound.attach(game);
-  app.game = game;
-  if (pauseGate) game.pause();
-  if (app.match?.hand && app.screen !== 'title' && app.felt) paintTable();
+  try {
+    if (old) await old.dispose();
+    const host = $('#stage');
+    host.replaceChildren();
+    const semantics = createUiSemantics({ maxNodes: 1024 });
+    const bridge = bridgeUiSemantics(semantics);
+    const game = await play({
+      width: (tall ? STAGE.height : STAGE.width) * .75,
+      height: (tall ? STAGE.width : STAGE.height) * .75,
+      parent: host, transparent: true, seed: app.seed, semantics: bridge,
+      renderMode: 'on-demand',
+      arrange(next) {
+        placeUi(next, tall);
+        app.ui?.arrange();
+      },
+      onError: console.error
+    });
+    placeUi(game, tall);
+    game.reducedMotion = save.data.settings.reducedMotion || matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const lease = await game.browser.textureFromCanvas(app.atlas);
+    app.view = createView(game, lease, { tall });
+    app.sound.attach(game);
+    app.game = game;
+    app.semantics = semantics;
+    app.ui = createUi(game, bridge);
+    app.projection = createBrowserSemantics({ semantics, canvas: game.canvas, width: game.width, height: game.height, label: t('title') });
+    app.round = createRoundUi(game, app.ui, lease, { nameOf, signed, sealOf: seat => t(SEATS[seat].seal) });
+    app.screens = createScreens(game, app.ui, {
+      save, problems, nameOf, seats: SEATS, levelNames: LEVEL_NAMES, rules: RULES, tai: TAI,
+      start: () => beginGame(), setSetting, switchLanguage, resume, quit,
+      playUi: () => app.sound.play('ui')
+    });
+    if (pauseGate) game.pause();
+    if (app.screen === 'title') app.screens.showTitle();
+    if (app.match?.hand && app.screen !== 'title') paintTable();
+    if (app.screen === 'play') {
+      paintTools();
+      if (app.chow) displayChow(false);
+    }
+    if (app.screen === 'result') renderResult(false);
+    if (app.screen === 'final') renderFinal(false);
+    for (const panel of priorPanels) app.screens.open(panel);
+    if (priorFocus) app.ui.focus(priorFocus);
+  } finally {
+    engineGate = null;
+    done();
+  }
 }
 
 // ——— Tile pictures for the page ———
@@ -143,19 +190,19 @@ async function wait(seconds) {
   let left = seconds * pace() * 1000;
   while (left > 0) {
     await new Promise((resolve) => setTimeout(resolve, Math.min(40, left)));
-    if (!pauseGate) left -= 40 * (app.speed ?? 1);
+    if (!pauseGate && !engineGate) left -= 40 * (app.speed ?? 1);
   }
 }
 let pauseGate = null;
 async function gate() {
-  while (pauseGate) await pauseGate.promise;
+  while (engineGate || pauseGate) await (engineGate ?? pauseGate.promise);
 }
 
 // ——— Painting the table ———
 function paintTable() {
   const match = app.match,
     hand = match?.hand;
-  app.felt.paint({ hand, turn: hand && !hand.result ? hand.turn : -1, reveal: app.reveal, hidden: app.hidden, last: app.last, winner: hand?.result?.seat ?? -1 });
+  app.felt?.paint({ hand, turn: hand && !hand.result ? hand.turn : -1, reveal: app.reveal, hidden: app.hidden, last: app.last, winner: hand?.result?.seat ?? -1 });
   if (!hand) return;
   const windOf = (seat) => (seat - hand.dealer + 4) % 4;
   $('#roundLine').textContent = t('roundLine', { wind: t('wind' + hand.wind), seat: t('wind' + hand.passes) });
@@ -229,28 +276,7 @@ function paintHand() {
     ids.map((id) => ({ id, kind: kindOf(id) })),
     { drawnApart: apart, selected: app.selected, ready }
   );
-  // Keys over the tiles.
-  const keys = $('#handKeys'),
-    slots = handSlots(ids.length, apart),
-    focusedId = Number(document.activeElement?.dataset?.id ?? -1);
-  keys.setAttribute('aria-label', t('handTile', { tile: '' }).trim());
-  keys.replaceChildren(
-    ...ids.map((id, i) => {
-      const button = document.createElement('button'),
-        kind = kindOf(id);
-      button.type = 'button';
-      button.dataset.id = id;
-      button.style.left = `${slots[i].x - 32}px`;
-      const label = (apart && i === ids.length - 1 ? t('drawnTile', { tile: tileName(kind) }) : t('handTile', { tile: tileName(kind) })) + (ready.has(id) ? ' · ' + t('readyMark') : '');
-      button.setAttribute('aria-label', label);
-      button.setAttribute('aria-pressed', String(app.selected === id));
-      if (!acting) button.setAttribute('aria-disabled', 'true');
-      button.addEventListener('click', () => tapTile(id));
-      return button;
-    })
-  );
-  const again = $$('#handKeys button').find((b) => Number(b.dataset.id) === focusedId);
-  if (again) again.focus();
+  app.round?.showHand(ids, handSlots(ids.length, apart), apart, ready, acting, tapTile);
   paintHint(hints);
   paintActions();
   void hand;
@@ -290,68 +316,42 @@ function paintHint(hints) {
   }
 }
 
-function button(words, className, onClick, tile) {
-  const b = document.createElement('button');
-  b.type = 'button';
-  b.className = className;
-  b.append(words);
-  if (tile !== undefined) b.append(img(tile));
-  b.addEventListener('click', onClick);
-  return b;
-}
-
 function paintActions() {
-  const bar = $('#actions'),
-    human = app.human;
-  bar.replaceChildren();
-  if (!human) return;
-  const o = human.options;
-  if (o.type === 'act') {
-    if (o.win) bar.append(button(t('selfDraw'), 'win', () => answer({ type: 'win' })));
-    for (const kong of o.kongs) bar.append(button(t('kong'), '', () => answer({ type: 'kong', kind: kong.kind }), kong.kind));
-    if (app.selected !== null) bar.append(button(t('discard'), 'discard', () => answer({ type: 'discard', id: app.selected })));
-    return;
+  if (!app.round || !app.ui) return;
+  const actions = [], option = app.human?.options;
+  if (!option || app.screen !== 'play') return app.ui.hide('actions');
+  const action = (id, key, run, tone, tile) => actions.push({ id, words: t(key), action: run, tone, tile });
+  if (option.type === 'act') {
+    if (option.win) action('action-win', 'selfDraw', () => answer({ type: 'win' }), 'win');
+    option.kongs.forEach((kong, index) => action(index === 0 ? 'action-kong' : 'action-kong-' + kong.kind, 'kong', () => answer({ type: 'kong', kind: kong.kind }), 'call', kong.kind));
+    if (app.selected !== null) action('action-discard', 'discard', () => answer({ type: 'discard', id: app.selected }), 'discard');
+  } else {
+    const hand = app.match.hand;
+    const kind = kindOf(option.type === 'rob' ? hand.rob.id : hand.discard.id);
+    if (option.win) action('action-win', 'win', () => answer({ type: 'win' }), 'win', kind);
+    if (option.kong) action('action-kong', 'kong', () => answer({ type: 'kong' }), 'call', kind);
+    if (option.pong) action('action-pong', 'pong', () => answer({ type: 'pong' }), 'call', kind);
+    if (option.chows) action('action-chow', 'chow', () => chooseChow(option.chows, kind), 'call', kind);
+    action('action-pass', 'pass', () => answer({ type: 'pass' }), 'pass');
   }
-  const kind = kindOf(o.type === 'rob' ? app.match.hand.rob.id : app.match.hand.discard.id);
-  if (o.win) bar.append(button(t('win'), 'win', () => answer({ type: 'win' }), kind));
-  if (o.kong) bar.append(button(t('kong'), '', () => answer({ type: 'kong' }), kind));
-  if (o.pong) bar.append(button(t('pong'), '', () => answer({ type: 'pong' }), kind));
-  if (o.chows) bar.append(button(t('chow'), '', () => chooseChow(o.chows, kind), kind));
-  bar.append(button(t('pass'), 'pass', () => answer({ type: 'pass' })));
-  bar.setAttribute('aria-label', t('canCall'));
+  app.round.showActions(actions);
 }
-
 function chooseChow(chows, kind) {
   if (chows.length === 1) return answer({ type: 'chow', ids: chows[0] });
-  const pick = $('#chowPick'),
-    list = $('#chowChoices');
-  $('#chowTitle').textContent = t('chooseChow');
-  list.replaceChildren(
-    ...chows.map((ids) => {
-      const kinds = [...ids.map(kindOf), kind].sort((a, b) => a - b);
-      const b = document.createElement('button');
-      b.type = 'button';
-      b.className = 'chowChoice';
-      b.setAttribute('aria-label', kinds.map(tileName).join(' '));
-      for (const k of kinds) b.append(img(k));
-      b.addEventListener('click', () => {
-        pick.hidden = true;
-        answer({ type: 'chow', ids });
-      });
-      return b;
-    }),
-    button(t('back'), '', () => {
-      pick.hidden = true;
-      $('#actions button')?.focus();
-    })
-  );
-  pick.hidden = false;
-  $('button', list).focus();
+  app.chow = { chows, kind };
+  displayChow();
+}
+function displayChow(focus) {
+  app.round?.showChow(app.chow.chows, app.chow.kind, ids => answer({ type: 'chow', ids }), closeChow, focus);
+}
+function closeChow() {
+  app.chow = null;
+  app.ui?.hide('chow');
 }
 
 function tapTile(id) {
   const human = app.human;
-  if (!human || human.options.type !== 'act') return;
+  if (!human || human.options.type !== 'act' || app.ui?.modal || pauseGate || engineGate) return;
   if (app.selected === id) return answer({ type: 'discard', id });
   app.selected = id;
   app.sound.play('select');
@@ -363,7 +363,8 @@ function answer(action) {
   if (!human) return;
   app.human = null;
   app.selected = null;
-  $('#chowPick').hidden = true;
+  closeChow();
+  paintActions();
   human.resolve(action);
 }
 
@@ -374,8 +375,10 @@ function askHuman(options) {
     app.selected = null;
     paintTable();
     announce(options.type === 'act' ? t('yourTurn') : t('canCall'));
-    const first = $('#actions button.win') ?? (options.type === 'act' ? $$('#handKeys button').at(-1) : $('#actions button'));
-    if (!document.activeElement || document.activeElement === document.body || document.activeElement.closest('#handKeys, #actions')) first?.focus({ preventScroll: true });
+    const first = options.win ? 'action-win' : options.type === 'act' ? 'tile-' + myTiles().ids.at(-1)
+      : options.kong ? 'action-kong' : options.pong ? 'action-pong' : options.chows ? 'action-chow' : 'action-pass';
+    const previous = app.ui?.focused;
+    if (!previous || /^(tile-|action-)/.test(previous)) app.ui?.focus(first);
   });
 }
 
@@ -395,8 +398,9 @@ async function playHand() {
   app.sound.music('table');
   paintTable();
   seen = await present(seen);
-  while (!match.hand.result && !app.quitting) {
+  while (!match.hand.result && !app.quitting && app.match === match) {
     await gate();
+    if (app.quitting || app.match !== match) return;
     const hand = match.hand,
       seats = waiting(match);
     // Computer seats answer first; the player last.
@@ -405,14 +409,14 @@ async function playHand() {
     if (seat !== 0 || app.autoplay) {
       const brain = { ...BRAINS[seat], level: seat === 0 ? 'normal' : save.data.setup.level, random: match.random };
       await wait(hand.phase === 'act' ? 0.55 + match.random() * 0.35 : 0.05);
-      if (app.quitting) return;
+      if (app.quitting || app.match !== match) return;
       action = decide(match, seat, brain);
     } else {
       // A nearer seat has already taken the discard with a win: the player has nothing to answer.
       const from = hand.phase === 'rob' ? hand.rob.seat : hand.discard?.seat;
       const nearerWin = hand.phase !== 'act' && Object.entries(hand.answers ?? {}).some(([s, a]) => a.type === 'win' && (Number(s) - from + 4) % 4 < (0 - from + 4) % 4);
       action = nearerWin ? { type: 'pass' } : await askHuman(optionsFor(match, 0));
-      if (app.quitting) return;
+      if (app.quitting || app.match !== match) return;
     }
     act(match, seat, action);
     seen = await present(seen);
@@ -521,289 +525,77 @@ const CENTRE_FROM = { x: 640, y: 360 };
 async function playGame() {
   const setup = save.data.setup;
   app.quitting = false;
-  app.match = createMatch({ seed: app.seed, rounds: setup.rounds });
+  const match = app.match = createMatch({ seed: app.seed, rounds: setup.rounds });
   app.match.dealer = Math.floor(app.match.random() * 4);
   app.match.firstDealer = app.match.dealer;
   show('play');
-  while (!app.match.over && !app.quitting) {
+  while (!match.over && !app.quitting && app.match === match) {
     await playHand();
-    if (app.quitting) return;
-    const last = app.match.history.at(-1);
+    if (app.quitting || app.match !== match) return;
+    const last = match.history.at(-1);
     save.update((data) => recordHand(data, { ...last.result, dealer: last.dealer }));
     await showResult(last);
-    if (app.quitting) return;
+    if (app.quitting || app.match !== match) return;
   }
-  showFinal();
+  if (!app.quitting && app.match === match) showFinal();
 }
 
 function showResult(entry) {
-  const result = entry.result,
-    match = app.match;
-  return new Promise((resolve) => {
-    const panel = $('#result');
-    const hand = match.hand, portrait = $('#resultPortrait');
-    portrait.hidden = result.kind === 'draw';
-    if (result.kind === 'draw') {
-      $('#resultTitle').textContent = t('resultDraw');
-      $('#resultNote').textContent = t('resultDrawNote');
-      $('#resultHand').replaceChildren();
-      $('#resultTai').replaceChildren();
-      $('#resultTotal').textContent = '';
-    } else {
-      const seat = result.seat;
-      portrait.dataset.seat = seat;
-      portrait.textContent = t(SEATS[seat].seal);
-      $('#resultTitle').textContent = result.from === null ? t('resultSelf', { name: nameOf(seat) }) : t('resultWin', { name: nameOf(seat) });
-      $('#resultNote').textContent = result.from === null ? t('paidByAll') : t('dealIn', { name: nameOf(result.from) });
-      const player = hand.players[seat],
-        row = $('#resultHand');
-      row.replaceChildren();
-      const concealed = player.hand.filter((id) => id !== result.winTile).sort((a, b) => kindOf(a) - kindOf(b));
-      for (const id of concealed) row.append(img(kindOf(id)));
-      if (result.winTile !== null && result.winTile !== undefined) {
-        row.append(Object.assign(document.createElement('span'), { className: 'gap' }), img(kindOf(result.winTile), 'won'));
-      }
-      for (const meld of player.melds) {
-        row.append(Object.assign(document.createElement('span'), { className: 'gap' }));
-        meld.tiles.forEach((id, i) => row.append(img(meld.how === 'closed' && (i === 0 || i === 3) ? null : kindOf(id))));
-      }
-      if (player.flowers.length) {
-        row.append(Object.assign(document.createElement('span'), { className: 'gap' }));
-        for (const id of player.flowers) row.append(img(kindOf(id)));
-      }
-      const list = $('#resultTai');
-      list.replaceChildren(
-        ...result.score.items.map((item) => li(t('tai_' + item.key) + (item.kind !== undefined ? ` (${tileName(item.kind)})` : ''), t('taiUnit', { n: item.tai }))),
-        ...(entry.dealer === seat || result.from === entry.dealer || (result.from === null && seat !== entry.dealer)
-          ? [li(entry.streak ? t('dealerStreakNote', { s: entry.streak }) : t('dealerTaiNote'), t('taiUnit', { n: result.dealerTai }))]
-          : [])
-      );
-      const dealerAdds = entry.dealer === seat || result.from === entry.dealer;
-      $('#resultTotal').textContent = t('taiTotal', { n: result.score.total + (dealerAdds ? result.dealerTai : 0) });
-    }
-    const pay = $('#resultPay');
-    pay.replaceChildren(
-      ...[0, 1, 2, 3].map((seat) => {
-        const tr = document.createElement('tr'),
-          amount = result.payments?.[seat] ?? 0;
-        tr.innerHTML = '<td></td><td class="num"></td><td class="num"></td>';
-        tr.children[0].textContent = nameOf(seat) + (seat === entry.dealer ? ` · ${t('dealer')}` : '');
-        tr.children[1].textContent = amount ? signed(amount) : '0';
-        tr.children[1].className = 'num ' + (amount > 0 ? 'plus' : amount < 0 ? 'minus' : '');
-        tr.children[2].textContent = signed(match.scores[seat]);
-        return tr;
-      })
-    );
-    const next = $('#nextButton');
-    next.textContent = match.over ? t('finalScores') : t('nextHand');
-    next.onclick = () => {
-      panel.hidden = true;
+  return new Promise(resolve => {
+    app.resultEntry = entry;
+    app.screen = 'result';
+    paintTools();
+    app.ui?.hide('actions');
+    app.sound.music('result');
+    app.resolveResult = () => {
+      if (app.screen !== 'result') return;
+      app.round?.closeResult();
+      app.resultEntry = null;
+      app.resolveResult = null;
       app.screen = 'play';
+      paintTools();
       resolve();
     };
-    app.resolveResult = next.onclick;
-    panel.hidden = false;
-    app.screen = 'result';
-    app.sound.music('result');
-    next.focus();
+    renderResult();
   });
 }
-
-function li(name, value, className = '') {
-  const item = document.createElement('li');
-  item.className = className;
-  const a = document.createElement('span'),
-    b = document.createElement('span');
-  a.textContent = name;
-  b.textContent = value;
-  item.append(a, b);
-  return item;
+function renderResult(focus) {
+  if (app.resultEntry && app.match) app.round?.showResult(app.resultEntry, app.match, app.resolveResult, focus);
 }
-
 function showFinal() {
-  const match = app.match,
-    order = [0, 1, 2, 3].sort((a, b) => match.scores[b] - match.scores[a] || a - b),
-    place = order.indexOf(0) + 1;
-  let best = false;
-  save.update((data) => {
-    best = recordGame(data, match.scores[0], place);
-  });
-  $('#finalTitle').textContent = t('gameOver');
-  $('#againButton').textContent = t('again');
-  $('#homeButton').textContent = t('toTitle');
-  $('#finalRanks').replaceChildren(
-    ...order.map((seat, i) => {
-      const item = document.createElement('li');
-      item.className = seat === 0 ? 'me' : '';
-      item.innerHTML = '<span class="place"></span><span></span><b></b>';
-      item.children[0].textContent = t('place' + (i + 1));
-      item.children[1].textContent = nameOf(seat);
-      item.children[2].textContent = t('points', { n: signed(match.scores[seat]) });
-      return item;
-    })
-  );
-  $('#finalNote').textContent = best ? t('bestGame') : '';
+  const match = app.match;
+  const order = [0, 1, 2, 3].sort((a, b) => match.scores[b] - match.scores[a] || a - b);
+  save.update(data => { app.best = recordGame(data, match.scores[0], order.indexOf(0) + 1); });
   show('final');
   app.sound.music('result');
-  $('#againButton').focus();
+  renderFinal();
 }
-
-// ——— Screens and panels ———
-const PANELS = ['title', 'result', 'final', 'rules', 'settings', 'record', 'menu'];
+function renderFinal(focus) {
+  if (!app.match) return;
+  app.round?.showFinal(app.match, app.best, () => {
+    app.seed = (app.seed * 48271) % 2147483647;
+    beginGame();
+  }, () => show('title'), focus);
+}
 function show(name) {
-  for (const id of ['title', 'final']) $('#' + id).hidden = id !== name;
-  table.classList.toggle('atTitle', name === 'title');
   app.screen = name;
+  table.classList.toggle('atTitle', name === 'title');
   if (name === 'title') {
+    app.ui?.hide('actions');
+    app.ui?.hide('hand');
+    app.round?.closeResult();
     app.sound.music('title');
     app.view?.clear();
     app.felt?.paint({});
-    paintTitle();
-  }
+    app.screens?.showTitle();
+  } else app.screens?.hideTitle();
+  if (name !== 'final') app.ui?.hide('final');
+  paintTools();
 }
-
-function openPanel(id, returnTo) {
+function beginGame() {
+  if (app.screen !== 'title' && app.screen !== 'final') return;
   app.sound.play('ui');
-  const panel = $('#' + id);
-  panel.hidden = false;
-  panel.returnTo = returnTo;
-  ($('.closeButton', panel) ?? $('button', panel))?.focus();
-}
-function closePanel(id) {
-  const panel = $('#' + id);
-  panel.hidden = true;
-  panel.returnTo?.focus?.();
-}
-for (const id of ['rules', 'settings', 'record']) $(`#${id} .closeButton`).addEventListener('click', () => closePanel(id));
-
-function paintTitle() {
-  document.title = t('pageTitle');
-  $('#titleType').textContent = t('titleType');
-  $('#titleName').textContent = t('title');
-  $('#tagline').textContent = t('tagline');
-  const notice = $('#title .notice');
-  const words = [problems.includes('corrupt') || problems.includes('unreadable') || problems.includes('invalid') ? t('saveBroken') : '', problems.includes('write') || problems.includes('refused') ? t('saveRefused') : ''].filter(Boolean);
-  notice.hidden = words.length === 0;
-  notice.textContent = words.join(' ');
-  $('#lengthLegend').textContent = t('length');
-  $('#levelLegend').textContent = t('level');
-  const setup = save.data.setup;
-  $('#lengthChoices').replaceChildren(
-    ...[
-      [1, 'oneRound', 'oneRoundNote'],
-      [4, 'fullGame', 'fullGameNote']
-    ].map(([value, name, note]) =>
-      choice(t(name), t(note), setup.rounds === value, () => {
-        save.update((data) => {
-    data.setup.rounds = value;
-  });
-        paintTitle();
-        $$('#lengthChoices button')[value === 1 ? 0 : 1].focus();
-      })
-    )
-  );
-  $('#levelChoices').replaceChildren(
-    ...LEVEL_NAMES.map((level, i) =>
-      choice(t(level), t(level + 'Note'), setup.level === level, () => {
-        save.update((data) => {
-    data.setup.level = level;
-  });
-        paintTitle();
-        $$('#levelChoices button')[i].focus();
-      })
-    )
-  );
-  $('#people').replaceChildren(
-    ...[1, 3, 2].map((seat) => {
-      const person = document.createElement('div');
-      person.className = 'person';
-      person.dataset.seat = seat;
-      person.innerHTML = '<i class="seal" aria-hidden="true"></i><span><b></b><span></span></span>';
-      $('.seal', person).textContent = t(SEATS[seat].seal);
-      $('b', person).textContent = nameOf(seat);
-      $('span span', person).textContent = t(SEATS[seat].key + 'Note');
-      return person;
-    })
-  );
-  $('#startButton').textContent = t('play');
-  $('#rulesButton').textContent = t('rules');
-  $('#recordButton').textContent = t('record');
-  $('#settingsButton').textContent = t('settings');
-  const language = $('#languageButton');
-  language.textContent = getLanguage() === 'zh' ? t('english') : t('chinese');
-  language.setAttribute('aria-label', t('switchLanguage'));
-  language.lang = getLanguage() === 'zh' ? 'en' : 'zh-Hant';
-}
-
-function choice(name, note, pressed, onClick) {
-  const b = document.createElement('button');
-  b.type = 'button';
-  b.className = 'choice';
-  b.setAttribute('aria-pressed', String(pressed));
-  b.innerHTML = '<b></b><small></small>';
-  b.firstChild.textContent = name;
-  b.lastChild.textContent = note;
-  b.addEventListener('click', onClick);
-  return b;
-}
-
-function paintRules() {
-  const panel = $('#rules');
-  $('#rulesTitle').textContent = t('rules');
-  const text = $('.rulesText', panel);
-  text.replaceChildren(
-    ...['rulesIntro', 'rulesFlow', 'rulesPay', 'rulesNotIncluded'].map((key) => {
-      const p = document.createElement('p');
-      p.textContent = t(key, { base: RULES.base, per: RULES.perTai });
-      return p;
-    })
-  );
-  const rows = Object.entries(TAI).map(([key, tai]) => `<tr><td></td><td class="note"></td><td class="num">${tai}</td></tr>`);
-  const tableBox = $('.taiTable', panel);
-  tableBox.innerHTML = `<table><caption class="sr"></caption><tbody>${rows.join('')}</tbody></table>`;
-  $('caption', tableBox).textContent = t('taiTable');
-  $$('tr', tableBox).forEach((tr, i) => {
-    const key = Object.keys(TAI)[i];
-    tr.children[0].textContent = t('tai_' + key);
-    tr.children[1].textContent = t('note_' + key);
-  });
-  $('.closeButton', panel).textContent = t('close');
-}
-
-function paintSettings() {
-  const panel = $('#settings'),
-    s = save.data.settings,
-    list = $('.settingsList', panel);
-  $('#settingsTitle').textContent = t('settings');
-  const toggle = (key, label) => [label, `${t(s[key] ? 'on' : 'off')}`, () => setSetting(key, !s[key])];
-  const rows = [
-    toggle('sound', t('sound')),
-    toggle('music', t('music')),
-    toggle('voice', t('voice')),
-    [t('pace'), t(s.pace), () => setSetting('pace', s.pace === 'calm' ? 'brisk' : 'calm')],
-    toggle('hints', t('hints')),
-    toggle('reducedMotion', t('reducedMotion')),
-    [t('switchLanguage'), getLanguage() === 'zh' ? t('english') : t('chinese'), () => switchLanguage()]
-  ];
-  list.replaceChildren(
-    ...rows.flatMap(([label, value, onClick], i) => {
-      const name = document.createElement('span');
-      name.textContent = label;
-      name.id = 'setting' + i;
-      const b = document.createElement('button');
-      b.type = 'button';
-      b.textContent = value;
-      b.setAttribute('aria-labelledby', `setting${i} setting${i}v`);
-      b.id = `setting${i}v`;
-      b.addEventListener('click', () => {
-        onClick();
-        paintSettings();
-        $(`#setting${i}v`).focus();
-      });
-      return [name, b];
-    })
-  );
-  $('.closeButton', panel).textContent = t('close');
+  playGame().catch(console.error);
 }
 
 function setSetting(key, value) {
@@ -818,72 +610,55 @@ function setSetting(key, value) {
   if (key === 'hints' && app.match?.hand) paintHand();
 }
 
-function paintRecord() {
-  const r = save.data.record;
-  $('#recordTitle').textContent = t('record');
-  const rows = [
-    ['recordGames', r.games],
-    ['recordFirsts', r.firsts],
-    ['recordHands', r.hands],
-    ['recordWins', r.wins],
-    ['recordSelf', r.selfDraws],
-    ['recordDealIn', r.dealIns],
-    ['recordBestTai', r.bestTai ? t('taiUnit', { n: r.bestTai }) : t('none')],
-    ['recordBestGame', r.bestGame === null ? t('none') : t('points', { n: signed(r.bestGame) })]
-  ];
-  $('#record .recordList').replaceChildren(
-    ...rows.flatMap(([key, value]) => {
-      const dt = document.createElement('dt'),
-        dd = document.createElement('dd');
-      dt.textContent = t(key);
-      dd.textContent = String(value);
-      return [dt, dd];
-    })
-  );
-  $('#record .closeButton').textContent = t('close');
-}
-
-function paintMenu() {
-  $('#menuTitle').textContent = t('pauseTitle');
-  $('#resumeButton').textContent = t('resume');
-  $('#menuRules').textContent = t('rules');
-  $('#menuSettings').textContent = t('settings');
-  $('#quitButton').textContent = t('quit');
-}
-
 function paintTools() {
-  const auto = $('#autoButton');
-  auto.textContent = app.autoplay ? t('autoplayOn') : t('autoplay');
-  auto.setAttribute('aria-pressed', String(app.autoplay));
-  $('#pauseButton').textContent = t('pause');
+  if (!app.round || !app.ui) return;
+  if (app.screen !== 'play') return app.ui.hide('tools');
+  app.round.showTools(app.autoplay, toggleAuto, openMenu);
 }
-
+function toggleAuto() {
+  app.autoplay = !app.autoplay;
+  paintTools();
+  if (!app.autoplay || !app.human) return;
+  const options = app.human.options;
+  answer(decide(app.match, 0, { character: 'steady', level: 'normal', random: app.match.random }) ??
+    (options.type === 'act' ? { type: 'discard', id: options.discard.at(-1) } : { type: 'pass' }));
+}
 function switchLanguage(language = getLanguage() === 'zh' ? 'en' : 'zh') {
+  save.update(data => { data.settings.language = language; });
   setLanguage(language);
-  save.update((data) => {
-    data.settings.language = language;
-  });
 }
-
-onLanguage(() => {
+function updateLanguage() {
   document.documentElement.lang = getLanguage() === 'zh' ? 'zh-Hant' : 'en';
   document.title = t('pageTitle');
-  paintTitle();
-  paintRules();
-  paintSettings();
-  paintRecord();
-  paintMenu();
+  app.game?.canvas.setAttribute('aria-label', t('title'));
+  app.screens?.refresh();
   paintTools();
   if (app.match?.hand && app.screen !== 'title') paintTable();
-});
+  if (app.screen === 'result') renderResult(false);
+  if (app.screen === 'final') renderFinal(false);
+  if (app.chow) displayChow(false);
+}
+onLanguage(updateLanguage);
 
 function openMenu() {
-  if (app.screen !== 'play' || !$('#menu').hidden) return;
+  if (app.screen !== 'play' || !app.screens || app.screens.modal || engineGate) return;
   pause(true);
-  paintMenu();
-  openPanel('menu', document.activeElement);
-  $('#resumeButton').focus();
+  app.screens.open('menu');
 }
+function resume() {
+  app.screens?.close('menu');
+  pause(false);
+  if (app.match?.hand) paintTable();
+}
+function quit() {
+  app.screens?.closeAll();
+  app.quitting = true;
+  if (app.human) answer({ type: 'pass' });
+  pause(false);
+  app.match = null;
+  show('title');
+}
+
 function pause(on) {
   if (on && !pauseGate) {
     let resolve;
@@ -899,108 +674,47 @@ function pause(on) {
     gateNow.resolve();
   }
 }
-$('#resumeButton').addEventListener('click', () => {
-  closePanel('menu');
-  pause(false);
-  paintTable();
-});
-$('#menuRules').addEventListener('click', () => {
-  paintRules();
-  openPanel('rules', $('#menuRules'));
-});
-$('#menuSettings').addEventListener('click', () => {
-  paintSettings();
-  openPanel('settings', $('#menuSettings'));
-});
-$('#quitButton').addEventListener('click', () => {
-  $('#menu').hidden = true;
-  app.quitting = true;
-  if (app.human) answer({ type: 'pass' });
-  pause(false);
-  app.match = null;
-  show('title');
-  $('#startButton').focus();
-});
-$('#pauseButton').addEventListener('click', openMenu);
-$('#autoButton').addEventListener('click', () => {
-  app.autoplay = !app.autoplay;
-  paintTools();
-  if (app.autoplay && app.human) {
-    const options = app.human.options;
-    answer(decide(app.match, 0, { character: 'steady', level: 'normal', random: app.match.random }) ?? (options.type === 'act' ? { type: 'discard', id: options.discard.at(-1) } : { type: 'pass' }));
+// Gameplay shortcuts yield to an open engine modal.
+document.addEventListener('keydown', event => {
+  if (event.altKey || event.ctrlKey || event.metaKey || !app.ui) return;
+  if (event.key === 'Escape') {
+    if (app.screens.modal === 'menu') resume();
+    else if (app.screens.modal) app.screens.close();
+    else if (app.chow) closeChow();
+    else if (app.human && app.human.options.type !== 'act') answer({ type: 'pass' });
+    else if (app.screen === 'play') openMenu();
+    else return;
+    event.preventDefault();
+    return;
   }
-});
-
-$('#startButton').addEventListener('click', () => {
-  app.sound.play('ui');
-  playGame().catch((error) => console.error(error));
-});
-$('#rulesButton').addEventListener('click', () => {
-  paintRules();
-  openPanel('rules', $('#rulesButton'));
-});
-$('#recordButton').addEventListener('click', () => {
-  paintRecord();
-  openPanel('record', $('#recordButton'));
-});
-$('#settingsButton').addEventListener('click', () => {
-  paintSettings();
-  openPanel('settings', $('#settingsButton'));
-});
-$('#languageButton').addEventListener('click', () => {
-  switchLanguage();
-  $('#languageButton').focus();
-});
-$('#againButton').addEventListener('click', () => {
-  app.seed = (app.seed * 48271) % 2147483647;
-  playGame().catch((error) => console.error(error));
-});
-$('#homeButton').addEventListener('click', () => {
-  show('title');
-  $('#startButton').focus();
-});
-
-// ——— Keys ———
-// play takes Tab, Space and the arrows on the window for its own keys; this game reads none of play's keys, so every
-// key is caught first, handled here, and kept from play (ENGINE-NOTES 1).
-addEventListener(
-  'keydown',
-  (event) => {
-    event.stopPropagation();
-    if (event.altKey || event.ctrlKey || event.metaKey) return;
-    const open = PANELS.find((id) => id !== 'title' && id !== 'final' && !$('#' + id).hidden);
-    if (event.key === 'Escape') {
-      if (!$('#chowPick').hidden) {
-        $('#chowPick').hidden = true;
-        $('#actions button')?.focus();
-      } else if (open === 'rules' || open === 'settings' || open === 'record') closePanel(open);
-      else if (open === 'menu') $('#resumeButton').click();
-      else if (app.human && app.human.options.type !== 'act') answer({ type: 'pass' });
-      else if (app.screen === 'play') openMenu();
-      event.preventDefault();
-      return;
-    }
-    if (app.screen !== 'play' || open || !$('#chowPick').hidden) return;
-    const key = event.key.toLowerCase();
-    if (key === 'p' && !app.human?.options.pong) return openMenu();
-    if (!app.human) return;
-    const o = app.human.options,
-      click = (selector) => $(selector)?.click();
-    if ((key === 'h' || key === 'w') && o.win) return click('#actions button.win');
-    if (key === 'p' && o.pong) return answer({ type: 'pong' });
-    if (key === 'k' && (o.kong || o.kongs?.length)) return o.kong ? answer({ type: 'kong' }) : answer({ type: 'kong', kind: o.kongs[0].kind });
-    if (key === 'c' && o.chows) return chooseChow(o.chows, kindOf(app.match.hand.discard.id));
-    if (key === 'x' && o.type !== 'act') return answer({ type: 'pass' });
-    if ((event.key === 'ArrowLeft' || event.key === 'ArrowRight') && document.activeElement?.closest('#handKeys')) {
-      const keys = $$('#handKeys button'),
-        at = keys.indexOf(document.activeElement),
-        next = keys[Math.max(0, Math.min(keys.length - 1, at + (event.key === 'ArrowLeft' ? -1 : 1)))];
-      next?.focus();
-      event.preventDefault();
-    }
-  },
-  true
-);
+  if (app.screen !== 'play' || app.ui.modal || engineGate) return;
+  const key = event.key.toLowerCase(), options = app.human?.options;
+  if (key === 'p' && !options?.pong) {
+    event.preventDefault();
+    return openMenu();
+  }
+  if (!options) return;
+  let command;
+  if ((key === 'h' || key === 'w') && options.win) command = { type: 'win' };
+  if (key === 'p' && options.pong) command = { type: 'pong' };
+  if (key === 'k' && (options.kong || options.kongs?.length)) command = options.kong ? { type: 'kong' } : { type: 'kong', kind: options.kongs[0].kind };
+  if (key === 'x' && options.type !== 'act') command = { type: 'pass' };
+  if (command) {
+    event.preventDefault();
+    return answer(command);
+  }
+  if (key === 'c' && options.chows) {
+    event.preventDefault();
+    return chooseChow(options.chows, kindOf(app.match.hand.discard.id));
+  }
+  if (options.type === 'act' && ['ArrowLeft', 'ArrowRight'].includes(event.key) && app.ui.focused?.startsWith('tile-')) {
+    const tiles = myTiles().ids;
+    const id = Number(app.ui.focused.slice(5)), at = tiles.indexOf(id);
+    const index = Math.max(0, Math.min(tiles.length - 1, at + (event.key === 'ArrowLeft' ? -1 : 1)));
+    if (tiles[index] !== undefined) app.ui.focus('tile-' + tiles[index], { via: 'keyboard' });
+    event.preventDefault();
+  }
+}, true);
 document.addEventListener('visibilitychange', () => {
   if (document.hidden && app.screen === 'play') openMenu();
 });
@@ -1008,28 +722,26 @@ document.addEventListener('visibilitychange', () => {
 // ——— Start ———
 async function boot() {
   fit();
-  if (document.fonts?.ready) await Promise.race([document.fonts.ready, new Promise((r) => setTimeout(r, 1500))]);
+  if (document.fonts?.ready) await Promise.race([document.fonts.ready, new Promise(resolve => setTimeout(resolve, 1500))]);
   atlas = paintAtlas();
   app.atlas = atlas;
-  await buildEngine(innerHeight > innerWidth);
-  fit();
   app.felt = createFelt($('#felt'), atlas, kindOf);
-  onLanguage(() => {});
-  document.documentElement.lang = getLanguage() === 'zh' ? 'zh-Hant' : 'en';
-  paintRules();
-  paintSettings();
-  paintRecord();
-  paintMenu();
-  paintTools();
-  $('#loading').hidden = true;
+  desiredTall = innerHeight > innerWidth;
+  building = buildEngine(desiredTall);
+  await building;
+  await app.screens.ready;
+  fit();
+  updateLanguage();
   show('title');
-  $('#startButton').focus();
+  $('#loading').hidden = true;
   app.ready = true;
 }
 
 /** For tests: the app, the rules and a way to start. */
 window.mahjong = {
   app,
+  get ui() { return app.ui; },
+  get semantics() { return app.semantics; },
   rules: { act, chowsFor, createMatch, kindOf, liveLeft, optionsFor, startHand, waiting, CHARACTERS },
   get game() {
     return app.game;

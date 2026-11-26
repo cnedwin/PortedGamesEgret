@@ -1,10 +1,8 @@
 # 引擎笔记 · Engine notes
 
-做这款游戏时发现的新白鹭引擎（提交 `b5628eb`）的缺陷与建议，格式见 [docs/GAME-STANDARD.md](../docs/GAME-STANDARD.md) 第 3 节。数字都在无头 Chromium 153 + SwiftShader（没有显卡）下量得，不代表真机。
+当前引擎副本为 `2e53f45f`，见 [vendor/SOURCE.md](vendor/SOURCE.md)。第 1 至 6 条保留初版 `b5628eb` 的验证记录，所列帧时间来自无头 Chromium 153 和 SwiftShader。第 7 条记录现版原生界面发现的问题。
 
-The faults found in the new Egret engine (commit `b5628eb`) while making this game, and suggestions, written as in
-part 3 of [docs/GAME-STANDARD.md](../docs/GAME-STANDARD.md). Every number was measured in headless Chromium 153 with
-SwiftShader (no GPU), and says nothing of real devices.
+The current engine copy is `2e53f45f`. Items 1–6 retain findings from `b5628eb`, with frame timings from headless Chromium 153 and SwiftShader. Item 7 concerns the current native UI.
 
 ### 1. `play` 让页面按钮上的 Tab 和 Space 失灵 · `play` takes Tab and Space from the page's buttons — 未解决 / open
 
@@ -47,3 +45,12 @@ SwiftShader (no GPU), and says nothing of real devices.
 - 绕过办法：所有 `update` 的回调都写成花括号函数体，不返回值（`src/main.mjs`）。 · Workaround: every update callback has a block body and returns nothing.
 - 建议：返回值不是对象时在开发模式里警告，或者在文档的例子里提醒。 · Suggestion: a development warning when the result is not an object, or a note in the docs' example.
 - 状态：未解决（类型里写明了，但没有提醒）。 · Status: open (the type says so, but nothing warns).
+
+
+### 7. 旋转界面上的纵向列表无法顺着内容拖动 · Vertical scrolling inside a rotated view — 未解决 / open
+
+- 现象：把 `game.ui` 转 90°，在其下用 `game.show` 创建 `scroll: 'vertical'` 的可滚动面板。从列表中央沿屏幕水平方向拖约 78 CSS 像素，滚动偏移不变。未旋转时沿屏幕纵轴拖动能滚动。 · With a 90-degree rotation on `game.ui`, a vertical scroll panel does not acquire a drag along its own vertical axis, now horizontal on screen. The same drag on the unrotated viewport scrolls normally.
+- 最小复现：在 540×960 的画布上旋转 `game.ui` 90°，创建 300×200 的纵向面板并放入足够多的行。以触控顺着旋转后列表的纵轴拖动，比较 `view.scroll(name).offset`。`playViewScroll.js` 用舞台轴 `dx/dy` 决定是否接管，随后却按列表本地 Y 计算滚动位移。 · In a 540×960 stage, rotate the UI root, show a 300×200 vertical panel with content beyond its viewport and compare the scroll offset before and after a touch drag along its local Y. The drag threshold uses stage coordinates while the offset uses local Y.
+- 绕过办法：在 `src/ui.mjs` 里由公开指针接口按面板本地坐标接管旋转后的触控，再写入白鹭的滚动偏移。 · The Demo observes and captures touch via the public pointer API in viewport coordinates, then updates the native scroll offset.
+- 建议：统一在视口本地坐标中判断拖拽阈值、方向和位移。回归验证 0°、90°、反向拖动、横向滚动、越界释放。 · Use viewport-local coordinates for slop, direction and movement. Cover unrotated and rotated views, opposite-axis rejection, horizontal panels and release outside the viewport.
+- 状态：Demo 已绕过，引擎仍待修复。 · The Demo has a workaround. The engine issue is open.
