@@ -1,6 +1,6 @@
 import { CAMPAIGN_CHAPTERS, CHAPTER, ITEMS, MAPS, QUEST, SIDE_QUESTS } from './sim/data.mjs';
-import { AFFIX_LABELS, PROFESSIONS, equipmentStats, forgeResult, isForgeIngredient } from './sim/arsenal.mjs';
-import { bagSize, sideQuestUnlocked } from './sim/progression.mjs';
+import { AFFIX_LABELS, PROFESSIONS, equipmentStats } from './sim/arsenal.mjs';
+import { sideQuestUnlocked } from './sim/progression.mjs';
 
 export const gearArtFiles = [
   'bronze-sword','iron-sword','linen-armor','scale-armor','jade-seal','potion','gold','ring',
@@ -39,11 +39,6 @@ export function affixText(instance) {
     const bonus = stats[key] - (item?.[key] ?? 0);
     return bonus > 0 ? [label + ' +' + bonus] : [];
   }).join(' · ');
-}
-
-function shopStats(item, affixes) {
-  return Object.entries(equipmentStats(item, affixes)).filter(([, value]) => value > 0)
-    .map(([key, value]) => AFFIX_LABELS[key] + ' +' + value).join(' · ');
 }
 
 const replies = {
@@ -122,9 +117,7 @@ export function campaignObjective(state) {
 }
 
 export function createRpgPanels({ command, current, track, tracked }) {
-  let speech = null, line = 0, shopTab = 'buy', tradeNotice = '';
-  let recipeId = null, forgeNotice = '';
-  const materials = new Set();
+  let speech = null, line = 0;
 
   function script(dialogue) {
     if (Array.isArray(dialogue.lines) && dialogue.lines.length) return dialogue.lines;
@@ -182,109 +175,6 @@ export function createRpgPanels({ command, current, track, tracked }) {
     if ($('dialogue-next').hidden) $('dialogue-options').querySelector('button:not(:disabled)')?.focus({preventScroll:true});
   }
 
-  function renderShop() {
-    const state = current(), shop = state.shop;
-    if (!shop) return;
-    $('shop-title').textContent = shop.name;
-    $('shop-coins').textContent = state.hero.gold + ' 文';
-    $('shop-buy-tab').setAttribute('aria-pressed',String(shopTab === 'buy'));
-    $('shop-sell-tab').setAttribute('aria-pressed',String(shopTab === 'sell'));
-    $('shop-status').textContent = tradeNotice || (shopTab === 'buy' ? '基础货品随等级开放' : '已穿戴的装备会保留');
-    const offers = shopTab === 'buy' ? shop.offers : state.inventory.map(item => ({
-      id:item.uid, itemId:item.itemId, price:ITEMS[item.itemId]?.sellPrice ?? 0,
-      equipped:Object.values(state.equipment).includes(item.uid), affixes:item.affixes
-    }));
-    const bagFull = bagSize(state) >= 30;
-    const rows = offers.filter(offer => ITEMS[offer.itemId]).map(offer => {
-      const item = ITEMS[offer.itemId];
-      const row = document.createElement('li');
-      const image = document.createElement('img');
-      image.className = 'gear-mark';
-      image.src = gearUrl(item.id);
-      image.alt = '';
-      const summary = document.createElement('div');
-      summary.append(textBlock('b',item.name + (offer.quantity > 1 ? ' ×' + offer.quantity : '')),
-        textBlock('small', [item.description, shopStats(item, offer.affixes)].filter(Boolean).join(' · ')));
-      const locked = shopTab === 'buy' && state.hero.level < offer.unlockLevel;
-      const full = shopTab === 'buy' && item.slot && item.slot !== 'skill' && bagFull;
-      const supply = item.id === 'potion' ? state.hero.potions : item.id === 'recovery-pill' ? state.hero.tonics : 0;
-      const supplyFull = supply + (offer.quantity ?? 0) > 99;
-      const disabled = shopTab === 'buy' ? locked || full || supplyFull || state.hero.gold < offer.price || offer.stock === 0 :
-        offer.equipped || item.sellable === false || !offer.price;
-      const label = shopTab === 'buy' ? (locked ? 'Lv.' + offer.unlockLevel + ' 解锁' : full ? '行囊已满' :
-        supplyFull ? '补给已满' : '买入 · ' + offer.price) :
-        offer.equipped ? '已装备' : '出售 · ' + offer.price;
-      const button = control(label, () => command(shopTab === 'buy' ?
-        {type:'buy',offerId:offer.id} : {type:'sell',uid:offer.id}), disabled);
-      button.dataset.offer = offer.id;
-      if (shopTab === 'buy' && !locked && state.hero.gold < offer.price) button.title = '铜钱不足';
-      row.dataset.tier = item.tier;
-      if (locked) row.classList.add('locked-offer');
-      row.append(image,summary,button);
-      return row;
-    });
-    $('shop-list').replaceChildren(...(rows.length ? rows : [textBlock('li','行囊里暂时没有可交易的物品。')]));
-  }
-
-  function renderForge() {
-    const state = current(), forge = state.forge;
-    if (!forge) return;
-    const picker = $('forge-recipe');
-    if (!forge.recipes.some(recipe => recipe.id === recipeId)) recipeId = forge.recipes[0].id;
-    if (picker.value !== recipeId || !picker.options.length) {
-      picker.replaceChildren(...forge.recipes.map(recipe => {
-        const option = textBlock('option', recipe.name + ' · Lv.' + recipe.unlockLevel);
-        option.value = recipe.id;
-        return option;
-      }));
-      picker.value = recipeId;
-    }
-    const recipe = forge.recipes.find(item => item.id === recipeId);
-    const output = ITEMS[forgeResult(recipe, state.profession)];
-    const equipped = new Set(Object.values(state.equipment));
-    const candidates = state.inventory.filter(instance =>
-      !equipped.has(instance.uid) && isForgeIngredient(ITEMS[instance.itemId], recipe, state.profession));
-    const candidateIds = new Set(candidates.map(instance => instance.uid));
-    for (const id of materials) if (!candidateIds.has(id)) materials.delete(id);
-    const locked = state.hero.level < recipe.unlockLevel;
-    const paid = state.hero.gold >= recipe.gold && (state.resources?.parts ?? 0) >= recipe.parts;
-    $('forge-wallet').textContent = state.hero.gold + ' 文 · 甲片 ' + (state.resources?.parts ?? 0);
-    $('forge-feedback').textContent = forgeNotice;
-    const requirements = $('forge-requirements');
-    const submit = $('forge-submit');
-    function updateSelection() {
-      requirements.textContent = '可炼成' + output.name + '，附随机词条。需要 ' + recipe.gold + ' 文、' +
-        recipe.parts + ' 甲片及 ' + recipe.count + ' 件 Lv.' + recipe.minInputLevel + ' 起的同部位基础装备' +
-        '（已选 ' + materials.size + '/' + recipe.count + '）' + (locked ? '。Lv.' + recipe.unlockLevel + ' 开炉。' : '。');
-      submit.disabled = locked || !paid || materials.size !== recipe.count;
-      for (const input of $('forge-materials').querySelectorAll('input')) {
-        input.disabled = locked || (!input.checked && materials.size >= recipe.count);
-      }
-    }
-    const rows = candidates.map(instance => {
-      const item = ITEMS[instance.itemId], row = document.createElement('li');
-      const image = document.createElement('img'), label = document.createElement('label'), checkbox = document.createElement('input');
-      image.className = 'gear-mark';
-      image.src = gearUrl(item.id);
-      image.alt = '';
-      checkbox.type = 'checkbox';
-      checkbox.value = instance.uid;
-      checkbox.checked = materials.has(instance.uid);
-      checkbox.setAttribute('aria-label', '使用' + item.name + '作为材料');
-      checkbox.addEventListener('change', () => {
-        if (checkbox.checked) materials.add(instance.uid);
-        else materials.delete(instance.uid);
-        updateSelection();
-      });
-      label.append(image,textBlock('b',item.name),checkbox);
-      row.append(label);
-      return row;
-    });
-    if (!rows.length) rows.push(textBlock('li','行囊里没有可用材料。身上已穿戴的装备会保留。'));
-    $('forge-materials').replaceChildren(...rows);
-    updateSelection();
-  }
-
   function renderJournal() {
     const state = current();
     const entries = [
@@ -324,24 +214,7 @@ export function createRpgPanels({ command, current, track, tracked }) {
 
   $('dialogue-next').addEventListener('click', nextLine);
   $('dialogue-close').addEventListener('click', () => command({type:'closeDialogue'}));
-  $('shop-close').addEventListener('click', () => command({type:'closeShop'}));
-  $('shop-buy-tab').addEventListener('click', () => { shopTab = 'buy'; renderShop(); });
-  $('shop-sell-tab').addEventListener('click', () => { shopTab = 'sell'; renderShop(); });
-  $('forge-close').addEventListener('click', () => command({type:'closeForge'}));
-  $('forge-recipe').addEventListener('change', event => {
-    recipeId = event.target.value;
-    materials.clear();
-    renderForge();
-  });
-  $('forge-submit').addEventListener('click', () => command({type:'forge',recipeId,uids:[...materials]}));
-
-  return {
-    renderDialogue, nextLine, renderShop, renderJournal, renderForge,
-    resetShop() { shopTab = 'buy'; tradeNotice = ''; },
-    tradeFeedback(text) { tradeNotice = text; },
-    resetForge() { recipeId = null; forgeNotice = ''; materials.clear(); },
-    forgeFeedback(text) { forgeNotice = text; }
-  };
+  return { renderDialogue, nextLine, renderJournal };
 }
 
 export function destinations(state) {

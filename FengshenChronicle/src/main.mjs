@@ -7,8 +7,10 @@ import { createSession, dispatch, nextRecovery, update } from './sim/world.mjs';
 import { tideEscapeGuide } from './sim/tide-guide.mjs';
 import { isMuted, readSlot, setMuted, writeSlot } from './saves.mjs';
 import { createSound } from './audio.mjs';
-import { affixText, campaignObjective, createProfessionPicker, createRpgPanels, destinations, gearUrl } from './rpg-ui.mjs';
+import { campaignObjective, createProfessionPicker, createRpgPanels, destinations, gearUrl } from './rpg-ui.mjs';
 import { createInventoryPanel } from './inventory-ui.mjs';
+import { createCommercePanels } from './commerce-ui.mjs';
+import { createNativeRpgUi } from './native-rpg-ui.mjs';
 
 const $ = id => document.getElementById(id);
 const canvas = $('stage'), field = $('field'), joystick = $('joystick');
@@ -34,9 +36,10 @@ const range = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
 const isGatherable = target => target.kind === 'herb' || Boolean(target.questId);
 const targetName = target => target.name ?? ITEMS[target.itemId]?.name ?? '目标';
 const panelIds = {
-  title:'title', inventory:'inventory-panel', pause:'pause-panel', dead:'death-panel', won:'victory-panel',
-  dialogue:'dialogue-panel', shop:'shop-panel', forge:'forge-panel', journal:'journal-panel'
+  title:'title', pause:'pause-panel', dead:'death-panel', won:'victory-panel',
+  dialogue:'dialogue-panel', journal:'journal-panel'
 };
+const nativePhases = new Set(['inventory', 'shop', 'forge']);
 
 let game, view, size = sizeFor(), stageCanvas = canvas, state = createSession(), phase = 'title';
 let ready = false, slot = 1, muted = isMuted(storage);
@@ -44,7 +47,29 @@ let pauseOnBlur = false, saveAge = 0, hudAge = 0, noticeFor = 0, savedAt = 0;
 let activePointer = null, stickX = 0, stickY = 0, holdingAttack = false, pendingAction = null;
 let contextPerson, contextDrop, route, tideGuide, orientationTimer, rebuilding = false;
 let questFocus = 'main';
-const bag = createInventoryPanel({current:() => state, command:panelCommand});
+const nativeRpg = createNativeRpgUi({
+  host: $('native-rpg'),
+  build: (kind, layout) => kind === 'inventory' ? bag.build(layout) : commerce.build(kind, layout),
+  backend: () => game.backend,
+  onAction: () => { sound.unlock(); sound.play('ui'); },
+  onFailure(error) {
+    console.error('RPG interface', error);
+    if (!nativePhases.has(phase)) return;
+    closeNativePhase();
+    notify('界面加载失败，请重试。', 3);
+  }
+});
+const bag = createInventoryPanel({ current: () => state, command: panelCommand, repaint: repaintNative, close: closeNativePhase });
+const commerce = createCommercePanels({ current: () => state, command: panelCommand, repaint: repaintNative });
+
+function repaintNative(options) {
+  if (nativePhases.has(phase)) nativeRpg.refresh(phase, options);
+}
+function closeNativePhase() {
+  if (phase === 'inventory') showPhase('play');
+  else if (phase === 'shop') panelCommand({type:'closeShop'});
+  else if (phase === 'forge') panelCommand({type:'closeForge'});
+}
 const rpg = createRpgPanels({
   command: panelCommand, current: () => state, tracked: () => questFocus,
   track(id) { questFocus = id; showPhase('play'); }
@@ -75,15 +100,13 @@ function showPhase(nextPhase) {
   $('hud').inert = phase !== 'play';
   if (phase === 'play') renderHud();
   if (phase === 'title') refreshTitle();
-  if (phase === 'inventory') bag.open();
+  nativeRpg.refresh(nativePhases.has(phase) ? phase : null);
   if (phase === 'pause') saveStatus();
   if (phase === 'dialogue') rpg.renderDialogue();
-  if (phase === 'shop') rpg.renderShop();
-  if (phase === 'forge') rpg.renderForge();
   if (phase === 'journal') rpg.renderJournal();
   const focus = {
-    title:'new-game', play:'stage', inventory:'close-inventory', pause:'resume', dead:'retry', won:'victory-continue',
-    dialogue:'dialogue-next', shop:'shop-close', forge:'forge-recipe', journal:'journal-close'
+    title:'new-game', play:'stage', pause:'resume', dead:'retry', won:'victory-continue',
+    dialogue:'dialogue-next', journal:'journal-close'
   }[phase];
   $(focus)?.focus({ preventScroll: true });
 }
@@ -311,13 +334,6 @@ function consumeEvents(events) {
       case 'level': notify((PROFESSIONS[state.profession] ?? PROFESSIONS.guard).name + '晋升至 ' + event.level + ' 级'); break;
       case 'portal': notify('进入 · ' + MAPS[state.mapId].name); break;
       case 'gather': notify('已完成 · ' + (event.name ?? ITEMS[event.itemId]?.name ?? '调查目标')); break;
-      case 'buy': rpg.tradeFeedback('购得' + ITEMS[event.itemId].name + '，支出 ' + event.price + ' 文。'); break;
-      case 'sell': rpg.tradeFeedback('卖出' + ITEMS[event.itemId].name + '，收入 ' + event.gold + ' 文。'); break;
-      case 'forge': {
-        const roll = affixText(event);
-        rpg.forgeFeedback('炼成' + ITEMS[event.itemId].name + (roll ? ' · ' + roll : ''));
-        break;
-      }
       case 'bossSpawn': notify('敌军主将已现身'); break;
       case 'bossPhase': notify('首领进入第二阶段，招式间隔缩短'); break;
       case 'interrupt': notify('已打断首领蓄力', 1.8); break;
@@ -366,12 +382,11 @@ function syncPanels() {
   const next = state.forge ? 'forge' : state.shop ? 'shop' : state.dialogue ? 'dialogue' : 'play';
   if (next !== phase) {
     pendingAction = null;
-    if (next === 'shop') rpg.resetShop();
-    if (next === 'forge') rpg.resetForge();
+    if (next === 'shop') commerce.resetShop();
+    if (next === 'forge') commerce.resetForge();
     showPhase(next);
-  } else if (next === 'shop') rpg.renderShop();
-  else if (next === 'dialogue') rpg.renderDialogue();
-  else if (next === 'forge') rpg.renderForge();
+  } else if (next === 'dialogue') rpg.renderDialogue();
+  else repaintNative();
 }
 
 function panelCommand(action) {
@@ -381,7 +396,9 @@ function panelCommand(action) {
   consumeEvents(events);
   if (changed) saveGame();
   syncPanels();
-  if (phase === 'inventory') bag.render(events);
+  if (phase === 'inventory') bag.notify(events);
+  else if (phase === 'shop' || phase === 'forge') commerce.notify(events);
+  repaintNative();
 }
 
 function fieldPress(event) {
@@ -517,7 +534,6 @@ $('pickup').addEventListener('click', pickUp);
 $('inventory').addEventListener('click', () => showPhase('inventory'));
 $('journal').addEventListener('click', () => showPhase('journal'));
 $('journal-close').addEventListener('click', () => showPhase('play'));
-$('close-inventory').addEventListener('click', () => showPhase('play'));
 $('pause').addEventListener('click', () => showPhase('pause'));
 $('resume').addEventListener('click', () => showPhase('play'));
 $('save').addEventListener('click', () => saveGame(true));
@@ -579,13 +595,22 @@ document.addEventListener('keydown', event => {
   if (event.altKey || event.metaKey || event.ctrlKey) return;
   const code = event.code;
   if (code === 'Escape') {
+    if (nativePhases.has(phase)) {
+      event.preventDefault();
+      event.stopPropagation();
+      closeNativePhase();
+      return;
+    }
     if (phase === 'title' && !$('new-confirm').hidden) $('new-cancel').click();
     else if (phase === 'title' && !$('profession-panel').hidden) professions.close();
     else if (phase === 'dialogue') panelCommand({type:'closeDialogue'});
-    else if (phase === 'shop') panelCommand({type:'closeShop'});
-    else if (phase === 'forge') panelCommand({type:'closeForge'});
     else if (phase === 'play') showPhase('pause');
-    else if (phase === 'pause' || phase === 'inventory' || phase === 'journal') showPhase('play');
+    else if (phase === 'pause' || phase === 'journal') showPhase('play');
+    return;
+  }
+  if (phase === 'inventory' && nativeRpg.focusName()?.startsWith('bag-tab-') && bag.stepTab(code)) {
+    event.preventDefault();
+    event.stopPropagation();
     return;
   }
   if (event.target.tagName === 'SELECT') return;
@@ -625,6 +650,7 @@ const diagnostics = Object.freeze({
       notice: $('notice').hidden ? '' : $('notice').textContent },
     audio: sound.inspect()
   }),
+  ui: () => nativeRpg.snapshot(),
   point: worldPoint,
   target: id => {
     const target = entity(id);
