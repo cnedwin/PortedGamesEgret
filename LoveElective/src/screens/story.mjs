@@ -62,16 +62,9 @@ export async function playScript(game, script, { girl = null, keepActor = false,
   // The box itself, repainted when the speaker changes.
   const box = ui.panel({ ...BOX, res: 1.25 });
   box.solid = true;
-  // Two copies of the text picture: one clipped to the lines already shown,
-  // one clipped to the growing part of the line being written.
-  const done = stage.group(box.node),
-    doing = stage.group(box.node);
-  const textA = stage.pic(done),
-    textB = stage.pic(doing);
-  for (const group of [done, doing]) {
-    group.x = TEXT.x;
-    group.y = TEXT.y;
-  }
+  // The engine's own text nodes retain the dialogue; clipping the active line reveals it smoothly
+  // without making and uploading a new whole-line bitmap for every speaker.
+  let textLines = null;
   let advance = null,
     shownActor = null;
   box.blank = () => advance?.();
@@ -123,6 +116,7 @@ export async function playScript(game, script, { girl = null, keepActor = false,
     const voiced = Boolean(nextVoice && !skipping);
     if (voiced) Promise.resolve(game.audio.voice?.(nextVoice)).catch(()=>{});
     nextVoice=null;
+    textLines?.close();
     paintBox(name, color, voiced);
     const measure = document.createElement('canvas').getContext('2d');
     measure.font = `${style.weight ?? 500} ${TEXT.size}px ${FONT}`;
@@ -136,21 +130,16 @@ export async function playScript(game, script, { girl = null, keepActor = false,
       lines = wrapText(measure, text, TEXT.w);
     }
     const widths = lines.map(l => measure.measureText(l).width + 8);
-    const canvas = stage.canvas(TEXT.w + 20, lines.length * lineH + 8, 1.5, g => {
-      g.font = `${style.weight ?? 500} ${size}px ${FONT}`;
-      g.textBaseline = 'top';
-      g.fillStyle = style.color ?? THEME.ink;
-      if (style.italic) g.font = `italic ${g.font}`;
-      lines.forEach((line, i) => g.fillText(line, 0, i * lineH + 4));
-    });
-    const key = 'line' + Math.random().toString(36).slice(2);
-    done.clipRect = { x: 0, y: 0, width: 1, height: 1 };
-    doing.clipRect = { x: 0, y: 0, width: 1, height: 1 };
-    await Promise.all([textA.show(canvas, canvas.res, key), textB.show(canvas, canvas.res, key)]);
+    textLines = box.nativeLines(lines, { x: TEXT.x, y: TEXT.y + 4, width: TEXT.w + 20, size, lineH,
+      color: style.color ?? THEME.ink, weight: style.weight ?? 500, italic: Boolean(style.italic), family: FONT });
+    textLines.reveal(0, 0);
+    // A backend may defer native text preparation. A cancelled or hidden line must not count as read
+    // merely because its text was already assigned to the presentation state.
+    await textLines.ready;
     if (cancelled) return;
     let revealed = false;
     if (skipping) {
-      done.clipRect = { x: 0, y: 0, width: TEXT.w + 20, height: lines.length * lineH + 8 };
+      textLines.showAll();
       markRead();
       await stage.wait(0.03);
       if (!reader || skipping || cancelled) return;
@@ -182,13 +171,11 @@ export async function playScript(game, script, { girl = null, keepActor = false,
           x -= widths[line];
           line++;
         }
-        done.clipRect = { x: 0, y: 0, width: TEXT.w + 20, height: Math.max(1, line * lineH + (line ? 4 : 0)) };
         if (line >= lines.length) {
           finished = true;
-          doing.clipRect = { x: 0, y: 0, width: 1, height: 1 };
-          done.clipRect = { x: 0, y: 0, width: TEXT.w + 20, height: lines.length * lineH + 8 };
+          textLines.showAll();
           markRead();
-        } else doing.clipRect = { x: 0, y: line * lineH + 4, width: Math.max(1, x), height: lineH };
+        } else textLines.reveal(line, x);
       });
       // The first tap finishes writing the line; the next one moves on.
       advance = () => {
@@ -380,8 +367,7 @@ export async function playScript(game, script, { girl = null, keepActor = false,
   ui.background = null;
   ui.keys = null;
   await stage.tween(box.node, { alpha: 0 }, 0.2);
-  textA.destroy();
-  textB.destroy();
+  textLines?.close();
   box.close();
   if (!keepActor) await world.hideActor();
   return {completed:!cancelled};

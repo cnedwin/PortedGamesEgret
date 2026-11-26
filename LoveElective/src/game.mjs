@@ -41,7 +41,7 @@ export async function createGame(canvas, options) {
   const world = createWorld(stage);
   const uiLayer = stage.group();
   const ui = createUI(stage, uiLayer);
-  const curtain = stage.rect(stage.root, 0x1d192a);
+  const curtain = stage.rect(stage.overlay, 0x1d192a);
   curtain.alpha = 1;
   const audio = createAudio();
   ui.onTap = () => audio.play('tap');
@@ -155,7 +155,7 @@ export async function createGame(canvas, options) {
 
   // ---- fades
   game.fadeOut = (seconds = 0.35) => {
-    stage.root.setChildIndex(curtain, stage.root.numChildren - 1);
+    stage.overlay.setChildIndex(curtain, stage.overlay.numChildren - 1);
     return stage.tween(curtain, { alpha: 1 }, seconds, { ease: 'in' });
   };
   game.fadeIn = (seconds = 0.45) => stage.tween(curtain, { alpha: 0 }, seconds, { ease: 'out' });

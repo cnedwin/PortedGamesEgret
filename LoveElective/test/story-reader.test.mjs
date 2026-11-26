@@ -16,14 +16,14 @@ const runner = loadRunner(1280, { violet: '#000', soft: '#000', sky: '#000', ink
     pieces: wear => Object.values(wear).filter(Boolean), applyEffect: () => 0 }, async () => {});
 const flush = () => new Promise(resolve => setImmediate(resolve));
 
-function harness(t, script, reader, { language = 'zh', deferPictures = false, holdFastWait = false } = {}) {
+function harness(t, script, reader, { language = 'zh', deferLines = false, holdFastWait = false } = {}) {
   const original = { document: globalThis.document, add: globalThis.addEventListener, remove: globalThis.removeEventListener };
-  const listeners = new Map(), ticks = new Set(), panels = [], heldWaits = [];
+  const listeners = new Map(), ticks = new Set(), panels = [], nativeHandles = [], heldWaits = [];
   const listen = (type, fn) => { if (!listeners.has(type)) listeners.set(type, new Set()); listeners.get(type).add(fn); };
   const unlisten = (type, fn) => listeners.get(type)?.delete(fn);
-  const g = { measureText: text => ({ width: String(text).length * 12 }), stroke() {}, fill() {}, fillText() {} };
-  let releasePictures;
-  const pictures = deferPictures ? new Promise(resolve => { releasePictures = resolve; }) : Promise.resolve();
+  const g = { measureText: text => ({ width: String(text).length * 12 }), stroke() {}, fill() {} };
+  let releaseLines;
+  const linesReady = deferLines ? new Promise(resolve => { releaseLines = resolve; }) : Promise.resolve();
   globalThis.document = { hidden: false, createElement: () => ({ getContext: () => g }),
     addEventListener: (type, fn) => listen('document:' + type, fn), removeEventListener: (type, fn) => unlisten('document:' + type, fn) };
   globalThis.addEventListener = listen;
@@ -31,6 +31,13 @@ function harness(t, script, reader, { language = 'zh', deferPictures = false, ho
   const ui = {
     panel() {
       const panel = { node: { visible: true }, buttons: [], closed: false, close() { this.closed = true; },
+        nativeLines(lines, style) {
+          const handle = { lines, style, ready: linesReady, reveals: [], all: 0, closed: false,
+            reveal(line, pixels) { this.reveals.push([line, pixels]); },
+            showAll() { this.all++; }, close() { this.closed = true; } };
+          nativeHandles.push(handle);
+          return handle;
+        },
         paint(fn) {
           this.buttons = [];
           const record = (x, y, w, h, label, tap, options = {}) => this.buttons.push({ label, tap, options });
@@ -46,8 +53,7 @@ function harness(t, script, reader, { language = 'zh', deferPictures = false, ho
     ui, lang: language, state: { slot: 0, flags: { branch: true }, hero: { wear: { bottom: { id: 'trousers' } } },
       girls: { linxia: { wear: { top: { id: 'shirt' } } } } },
     L: pair => Array.isArray(pair) ? pair[language === 'zh' ? 0 : 1] : pair,
-    stage: { group: () => ({}), pic: () => ({ show: () => pictures, destroy() {} }),
-      canvas: (w, h, res, paint) => { paint(g); return { res }; },
+    stage: {
       tween: async (target, values) => { Object.assign(target, values); },
       wait: seconds => holdFastWait && seconds === .03 ? new Promise(resolve => heldWaits.push(resolve)) : Promise.resolve(),
       onTick(fn) { ticks.add(fn); return () => ticks.delete(fn); } },
@@ -59,7 +65,7 @@ function harness(t, script, reader, { language = 'zh', deferPictures = false, ho
   let done = false, result;
   const playing = runner(game, script, { reader, exitLabel: ['退出', 'Exit'] }).then(value => { done = true; result = value; });
   const h = {
-    game, panels, listeners, voiceCalls, heldWaits,
+    game, panels, nativeHandles, listeners, voiceCalls, heldWaits,
     get done() { return done; }, get result() { return result; },
     key(key, e) { ui.keys?.(key, e); },
     emit(type, event = {}) { for (const fn of [...listeners.get(type) ?? []]) fn(event); },
@@ -67,7 +73,7 @@ function harness(t, script, reader, { language = 'zh', deferPictures = false, ho
     async until(predicate) { for (let i = 0; i < 60 && !predicate(); i++) await flush(); assert.ok(predicate(), 'Runner reached the expected state'); },
     button(label) { return panels.filter(p => !p.closed).flatMap(p => p.buttons).find(b => b.label === label); },
     click(label) { const b = this.button(label); assert.ok(b, 'Visible button: ' + label); if (!b.options.disabled) b.tap(); },
-    releasePictures: () => releasePictures?.(),
+    releaseLines: () => releaseLines?.(),
     async finishByHand() {
       for (let i = 0; i < 80 && !done; i++) {
         await this.tick();
@@ -79,7 +85,7 @@ function harness(t, script, reader, { language = 'zh', deferPictures = false, ho
     },
   };
   t.after(async () => {
-    releasePictures?.();
+    releaseLines?.();
     for (const resolve of heldWaits.splice(0)) resolve();
     if (!done) { h.key('Escape'); await flush(); }
     globalThis.document = original.document;
@@ -114,7 +120,9 @@ test('enabled skip crosses read text and stops before an unread voiced line', as
     { has: key => key === '0', mark() {} });
   await h.until(() => h.game.storyStatus?.text === '已讀');
   h.click('快进已读');
-  await h.tick();
+  // The retained text may become ready before this input. A clock tick then finishes its reveal,
+  // and the following tick consumes the skip; either scheduling path must stop on the unread line.
+  for (let i = 0; i < 3 && h.game.storyStatus?.text === '已讀'; i++) await h.tick();
   await h.until(() => h.game.storyStatus?.text === '新句');
   assert.deepEqual(h.voiceCalls, ['social-pool-01']);
   await h.tick();
@@ -175,15 +183,36 @@ test('reader identity keeps nested branches and both dynamic outfit lines separa
   assert.deepEqual(JSON.parse(has[4][1]), ['你選的穿搭：長褲。', 'Your chosen outfit: Trousers.']);
 });
 
-test('cancellation during picture preparation never marks undisplayed text', async t => {
+test('cancellation during native line preparation never marks undisplayed text', async t => {
   const marks = [];
-  const h = harness(t, [['n', '尚未顯示', 'Not displayed']], { has: () => false, mark: (...args) => marks.push(args) }, { deferPictures: true });
+  const h = harness(t, [['n', '尚未顯示', 'Not displayed']], { has: () => false, mark: (...args) => marks.push(args) }, { deferLines: true });
   await h.until(() => h.game.storyStatus?.text === '尚未顯示');
   h.key('Escape');
-  h.releasePictures();
+  h.releaseLines();
   await h.until(() => h.done);
   assert.deepEqual(marks, []);
   assert.deepEqual(h.result, { completed: false });
+  assert.ok(h.nativeHandles.every(handle => handle.closed), 'native text is released after cancellation');
+});
+
+test('native dialogue reveals in the original two-tap sequence and retires each line', async t => {
+  const h = harness(t, [['n', '第一句尚未完全顯示', 'First line'], ['n', '第二句', 'Second line']], undefined);
+  await h.until(() => h.nativeHandles.length === 1);
+  const first = h.nativeHandles[0];
+  assert.deepEqual(first.lines, ['第一句尚未完全顯示']);
+  assert.deepEqual(first.reveals[0], [0, 0]);
+  await h.tick(.001);
+  assert.ok(first.reveals.some(([line, pixels]) => line === 0 && pixels > 0));
+  assert.equal(first.all, 0);
+  h.game.ui.background();
+  await h.tick(.01);
+  assert.equal(first.all, 1, 'first tap finishes the current line');
+  assert.equal(h.game.storyStatus.text, '第一句尚未完全顯示');
+  h.game.ui.background();
+  await h.until(() => h.nativeHandles.length === 2);
+  assert.equal(first.closed, true, 'the previous native lines are retired');
+  await h.finishByHand();
+  assert.ok(h.nativeHandles.every(handle => handle.closed), 'all native lines are released on exit');
 });
 
 test('Control release during the skip delay leaves the current read line visible', async t => {
