@@ -187,7 +187,6 @@ function layout(parts, width, compact, imageFor, allowPointer) {
 /** An Egret scroll panel owns clipping and input. The county supplies the parchment thumb. */
 export function createInspector(game, ui, { close, compact, allowPointer }) {
   let model = null, geometry, scroll, scrollbar, paintedOffset, paintedMaximum;
-  let rows = [];
   const previews = new Map();
   const bitmaps = new WeakMap();
   const offset = () => (scroll?.offset ?? 0) / SCALE;
@@ -267,10 +266,6 @@ export function createInspector(game, ui, { close, compact, allowPointer }) {
     scroll = view.scroll('sheet-content');
     scroll.scrollTo(previous);
     scrollbar = view.get('sheet-scrollbar');
-    rows = content.map(({ name, y, h }) => {
-      const node = view.get(name);
-      return { node, top: y * SCALE, bottom: (y + h) * SCALE, alpha: node.alpha };
-    });
     paintedOffset = paintedMaximum = undefined;
     syncScroll();
   }
@@ -280,12 +275,7 @@ export function createInspector(game, ui, { close, compact, allowPointer }) {
     if (offset === paintedOffset && maximum === paintedMaximum) return;
     paintedOffset = offset;
     paintedMaximum = maximum;
-    // Shared-frame capture visits clipped text before it can discard it. Skip offscreen ink,
-    // while leaving every row in Egret's layout, input and accessibility geometry.
-    for (const row of rows) {
-      const alpha = row.bottom > offset && row.top < offset + height ? row.alpha : 0;
-      if (row.node.alpha !== alpha) row.node.alpha = alpha;
-    }
+    // Native frame capture culls fully clipped descendants; keep rows available to native text.
     const graphics = scrollbar.graphics.clear();
     if (maximum > 0) {
       const barHeight = Math.max(22 * SCALE, height * height / (height + maximum));
@@ -323,7 +313,6 @@ export function createInspector(game, ui, { close, compact, allowPointer }) {
     hide() {
       model = null;
       scroll = scrollbar = undefined;
-      rows = [];
       ui.hide('inspector');
     },
     focusFirst() {
@@ -342,7 +331,6 @@ export function createInspector(game, ui, { close, compact, allowPointer }) {
     },
     dispose() {
       scroll = scrollbar = undefined;
-      rows = [];
       for (const entry of previews.values()) {
         entry.active = false;
         entry.lease?.release();

@@ -1,5 +1,6 @@
 import { Bitmap, createSharedMaterial2D } from '@egret/engine';
 import { createUiScreenStack } from '@egret/engine/ui';
+import { alignLabelPixels } from './display-density.mjs';
 import { amount, getLanguage, t } from './i18n.mjs';
 
 const SCALE = 0.75;
@@ -71,7 +72,7 @@ async function loadIllustration(game, layer) {
 }
 
 /** Title, save slots, settings and offline harvest, using the engine's screen stack. */
-export function createScreens(game, ui, { slots, problems, preferences, isPlaying, isCompact, onEnter, onSetting, onReturnTitle, onAwayClose }) {
+export function createScreens(game, ui, { slots, problems, preferences, uiDensity, isPlaying, isCompact, onEnter, onSetting, onReturnTitle, onAwayClose }) {
   const screens = createUiScreenStack({ onError: console.error });
   const measure = document.createElement('canvas').getContext('2d');
   const art = game.sprite(undefined, game.ui);
@@ -155,6 +156,7 @@ export function createScreens(game, ui, { slots, problems, preferences, isPlayin
         const { display } = entry.label;
         display.x = align === 'center' ? (entry.rect.w - display.width) / 2 : 0;
         display.y = (entry.rect.h - display.height) / 2;
+        alignLabelPixels(display, node, game.browser.frame, uiDensity);
       };
       const previous = labels.get(node);
       if (previous?.key === key) {

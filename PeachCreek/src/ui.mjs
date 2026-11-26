@@ -40,6 +40,7 @@ function plan({ label, modal = false, items, skin }) {
       item.intercept || item.invisible || item.hideText || item.visible !== undefined || item.alpha !== undefined ? '_item' + index : undefined);
     const part = { type, x: x * UNIT, y: y * UNIT, width: w * UNIT, height: h * UNIT };
     if (name !== undefined) part.name = name;
+    if (item.decorative === true) part.semantic = false;
     if (type === 'panel') {
       part.children = [];
       if (item.card === true) part.card = true;
@@ -87,13 +88,13 @@ export function createUi(game, semantics, onVisualChange = () => {}) {
   const canvas = game.canvas;
   const outline = game.sprite(undefined, game.ui);
   const buildWithSemantics = bridges.get(semantics) ?? ((_describe, build) => build());
-  let nextOrder = 0, selected = null, modal = null, origin = 'pointer', keyboard = true;
+  let nextOrder = 0, selected = null, modal = null, keyboard = true;
   outline.touchEnabled = false;
   outline.visible = false;
   if (!canvas.hasAttribute('tabindex')) canvas.tabIndex = 0;
 
   function bounds(record, entry) {
-    const native = record.describe.get(entry.name)?.().bounds;
+    const native = record.view.visibleRect(entry.name);
     if (!native) return rectangle(0, 0, 0, 0);
     return rectangle((native.x - game.ui.x) / UNIT, (native.y - game.ui.y) / UNIT,
       native.width / UNIT, native.height / UNIT);
@@ -157,7 +158,6 @@ export function createUi(game, semantics, onVisualChange = () => {}) {
     const name = definition.id.slice(definition.id.indexOf(':') + 1);
     const entry = record.entries.get(name);
     if (!entry) return definition;
-    record.describe.set(name, definition.describe);
     const role = entry.item.role ?? definition.role;
     const config = {
       ...definition,
@@ -166,7 +166,7 @@ export function createUi(game, semantics, onVisualChange = () => {}) {
         const current = record.entries.get(name);
         const initial = definition.describe();
         const item = current.item, rect = initial.bounds;
-        const label = String(read(item.label) ?? (words.has(item.type) ? read(item.text) : initial.name) ?? '');
+        const label = String(initial.name ?? '');
         return {
           ...(role === definition.role ? initial : {}),
           ...(role === 'tab' ? { selected: read(item.selected) === true } : {}),
@@ -181,15 +181,6 @@ export function createUi(game, semantics, onVisualChange = () => {}) {
       }
     };
     if (control(entry)) config.onFocus = () => { focus(name, { via: 'semantics' }); };
-    if (definition.onActivate !== undefined) config.onActivate = () => {
-      const previous = origin;
-      origin = 'semantics';
-      try {
-        definition.onActivate();
-      } finally {
-        origin = previous;
-      }
-    };
     return config;
   }
 
@@ -198,18 +189,17 @@ export function createUi(game, semantics, onVisualChange = () => {}) {
     for (const [name, { item }] of record.entries) {
       const type = item.type, current = () => record.entries.get(name).item;
       const binding = { visible: () => read(current().visible) !== false };
-      if (words.has(type)) {
-        binding.text = () => {
-          const part = current();
-          return part.invisible || part.hideText ? '' : read(part.text) ?? '';
-        };
-        // The artwork may draw its own lettering. A blank engine raster is not
-        // an empty accessible name when those words are present in the artwork.
-        binding.label = () => {
-          const part = current();
-          return String(read(part.label) ?? read(part.text) ?? '');
-        };
-      }
+      if (words.has(type)) binding.text = () => {
+        const part = current();
+        return part.invisible || part.hideText ? '' : read(part.text) ?? '';
+      };
+      // The artwork may draw its own lettering. A blank engine raster is not
+      // an empty accessible name when those words are present in the artwork.
+      if (type !== 'space') binding.label = () => {
+        const part = current();
+        const label = read(part.label) ?? (words.has(type) ? read(part.text) : undefined);
+        return label === undefined ? '' : String(label);
+      };
       if (colored.has(type)) binding.color = () => {
         const part = current();
         if (styleOf(part)) return undefined;
@@ -220,10 +210,16 @@ export function createUi(game, semantics, onVisualChange = () => {}) {
       if (type === 'toggle') binding.checked = () => read(current().checked) === true;
       if (type === 'bar') binding.value = () => read(current().value);
       if (badged.has(type) && item.badge !== undefined) binding.badge = () => read(current().badge);
-      if (item.action || item.intercept || item.onDisabledTap) binding.tap = () => {
+      if (type === 'panel' && item.intercept && !item.action && !item.onDisabledTap) {
+        binding.pointerOnly = true;
+        binding.tapTargetOnly = true;
+      }
+      if (item.action || item.intercept || item.onDisabledTap) binding.tap = (_state, activation) => {
         const part = current();
-        if (read(part.disabled) !== true) part.action?.({ via: origin });
-        else if (origin === 'pointer') part.onDisabledTap?.({ via: origin });
+        const { source } = activation;
+        const via = source === 'semantic' ? 'semantics' : source === 'keyboard' || source === 'gamepad' ? 'keyboard' : 'pointer';
+        if (read(part.disabled) !== true) part.action?.({ via });
+        else if (via === 'pointer') part.onDisabledTap?.({ via });
       };
       bindings[name] = binding;
     }
@@ -314,7 +310,7 @@ export function createUi(game, semantics, onVisualChange = () => {}) {
     const record = {
       key, signature, entries, modal: description.modal, order: previous?.order ?? ++nextOrder,
       disabledColor: description.skin?.disabled ?? 0x64748b,
-      transforms: previous?.transforms ?? new Map(), decorations: new Map(), describe: new Map(),
+      transforms: previous?.transforms ?? new Map(), decorations: new Map(),
       returnFocus: previous?.returnFocus ?? selected
     };
     for (const name of record.transforms.keys()) {
@@ -387,6 +383,10 @@ export function createUi(game, semantics, onVisualChange = () => {}) {
     rect(name) {
       const found = find(name);
       return found ? bounds(found.record, found.entry) : undefined;
+    },
+    textReady(name) {
+      const found = find(name);
+      return found?.record.view.textReady(name);
     },
     transform(name, transform) {
       const found = find(name);
