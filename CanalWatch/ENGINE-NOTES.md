@@ -37,3 +37,22 @@ and two page buttons) in headless Chromium.
 - 绕过办法：用 `game.canvas`（`src/main.mjs`），设置无障碍名、监听点按、找到外面的盒子都靠它。 · Workaround: use `game.canvas`, for its accessible name, its taps and its holder.
 - 建议：在 play 文档里列出 `game.canvas`，并说明 `game.browser` 上没有画布。 · Suggestion: list `game.canvas` in the play docs, and say `game.browser` has no canvas.
 - 状态：已写入文档（引擎 #471，`95897d7`）：play 文档的语义投影一节用 `game.canvas`，并说明了画布与 `parent` / `canvas` 选项。 · Documented (engine #471, `95897d7`): the play document uses `game.canvas` in its semantics section and explains the canvas and the `parent` / `canvas` options.
+
+## 原生 UI 迁移 · Native UI migration — 8e70dcb3
+
+### 5. 原生 tap 的输入来源和语义角色 · Native tap origin and semantic role — 未解决 / open
+<!-- engine-note: {"id": "CanalWatch#5", "status": "open", "topic": "native-ui-activation-source", "workaround": ["src/main.mjs", "src/native-ui.mjs"]} -->
+
+- 现象：同一个建塔按钮，鼠标/键盘直接建造，触屏先预览再确认。原生 tap 回调没有公开本次激活的来源参数，游戏短时记录原始指针类型，键盘输入清除前次指针标记；地图点船直接以成对指针事件处理，避免同帧按下和放开被帧状态采样遗漏。· The same tower control builds immediately with mouse/key input but previews first on touch. Native tap bindings do not expose the activation source, so the game briefly records the pointer type and clears it on keyboard input; paired pointer events keep fast carrier taps from being lost to frame sampling.
+- 建议：在保持现有零参数绑定兼容的同时，提供可选的激活来源（mouse/touch/pen/keyboard/semantic）及坐标，便于实现差异化交互。· Optionally supply activation source and coordinates to tap handlers without breaking existing zero-argument bindings.
+- 绕过办法：12 个透明塔位需要按钮语义、动态名称、较小的独立装饰。原生可点击 panel 默认语义为 group；游戏语义桥将父控件声明为 button 并把装饰项标记为隐藏（按钮语义是叶节点）。建议支持声明式的 semantic role、动态 accessible name、装饰性子节点排除，避免额外桥接。· The clickable panel is a group by default; the game provides dynamic button semantics and hides decorative descendants from the semantic tree. Declarative role, dynamic accessible name and decorative exclusion would remove this bridge.
+
+- 状态：待改进；现有原生控件通过游戏侧兼容绑定工作。· Open; the native controls work through compatible game-side bindings.
+
+### 6. 扩展屏幕、滚动与坐标 · Expanded screen and scroll geometry — documented integration
+<!-- engine-note: {"id": "CanalWatch#6", "status": "documented", "topic": "native-ui-geometry", "workaround": ["src/native-layout.mjs", "src/native-ui.mjs", "src/main.mjs"]} -->
+
+- 现象：`fit: 'expand'` 的 screen.x/y 可能为负，布局以屏幕本地坐标计算，地图在独立精灵中变换，不直接写每帧被镜头更新的 world 根。原生 `view.rect` 是未滚动布局矩形；实际点位使用已裁剪的语义 bounds。四种视口实测塔位与底图对齐误差 <0.02 CSS px。· Expanded screens can have negative origins; the map uses an independent sprite beneath the camera-controlled root. Native view.rect is an authored box, while clipped semantic bounds provide actual positions. Four browser viewports aligned at <0.02 CSS px.
+- 绕过办法：使用已裁剪的语义边界和独立地图精灵。滚动复现：偏移 0→210 时 row-5 的 layout rect 未变但实际语义 y420→210，完全裁离视图时不公布，部分裁剪高度从 60 变为 54。此行为符合文档，不是引擎缺陷；建议测试指南同时给出屏幕扩展、滚动和语义坐标示例。· The scroll geometry behaves as documented: authored rect does not move; the clipped semantic bounds do. A testing guide example combining expanding screens and scrolling would help.
+- 建议：测试指南包含上述坐标例子；目前无需更改引擎行为。· Include the coordinate example in the testing guide.
+- 状态：已记录，原生 API 按文档工作。· Documented; the native API works as specified.

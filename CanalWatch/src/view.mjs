@@ -308,11 +308,11 @@ const MECHANISM_ART = {
  * Place stable anchors from simulation state. Legs, oars, machinery and transient reactions
  * move in the visual layers only.
  */
-export function createView(game, { sound }) {
+export function createView(game, { sound, parent = game.world }) {
   // Layers, back to front, so a tower built late is still behind the raiders and the shots.
-  const reach = game.sprite(), landing = game.sprite(),
-    layers = { gates: game.sprite(), towers: game.sprite(), status: game.sprite(), raiders: game.sprite(),
-      bars: game.sprite(), shots: game.sprite(), accents: game.sprite(), words: game.sprite() };
+  const reach = game.sprite(undefined, parent), landing = game.sprite(undefined, parent),
+    layers = { gates: game.sprite(undefined, parent), towers: game.sprite(undefined, parent), status: game.sprite(undefined, parent), raiders: game.sprite(undefined, parent),
+      bars: game.sprite(undefined, parent), shots: game.sprite(undefined, parent), accents: game.sprite(undefined, parent), words: game.sprite(undefined, parent) };
   reach.visible = landing.visible = false;
   let reachKey = '', landingKey = '';
   const towers = new Map(), raiders = new Map(), shots = new Map();
