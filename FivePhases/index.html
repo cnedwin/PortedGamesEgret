@@ -9,138 +9,57 @@
   <link rel="icon" href="data:,">
   <link rel="stylesheet" href="style.css">
   <script type="importmap">
-    {
-      "imports": {
-        "@egret/contracts": "./vendor/contracts/dist/index.js",
-        "@egret/runtime": "./vendor/runtime/dist/index.js",
-        "@egret/contracts/resources": "./vendor/contracts/dist/resources/index.js",
-        "@egret/engine": "./vendor/engine/dist/index.js",
-        "@egret/runtime/text": "./vendor/runtime/dist/text/index.js",
-        "@egret/engine/text": "./vendor/engine/dist/text.js",
-        "@egret/runtime/input": "./vendor/runtime/dist/input/index.js",
-        "#egret-pointer-input": "./vendor/engine/dist/pointerInput.js",
-        "#egret-keyboard-input": "./vendor/engine/dist/keyboardInput.js",
-        "robust-predicates": "./vendor/robust-predicates/index.js",
-        "#egret-textured-frame-state": "./vendor/engine/dist/internal/texturedFrameState.js",
-        "@egret/engine/input/hover": "./vendor/engine/dist/hover.js",
-        "@egret/engine/web/game": "./vendor/engine/dist/web/game.js"
-      }
-    }
+{
+  "imports": {
+    "@egret/contracts": "./vendor/contracts/dist/index.js",
+    "@egret/runtime": "./vendor/runtime/dist/index.js",
+    "@egret/contracts/resources": "./vendor/contracts/dist/resources/index.js",
+    "@egret/engine": "./vendor/engine/dist/index.js",
+    "@egret/runtime/text": "./vendor/runtime/dist/text/index.js",
+    "@egret/engine/text": "./vendor/engine/dist/text.js",
+    "@egret/runtime/input": "./vendor/runtime/dist/input/index.js",
+    "#egret-pointer-input": "./vendor/engine/dist/pointerInput.js",
+    "#egret-keyboard-input": "./vendor/engine/dist/keyboardInput.js",
+    "robust-predicates": "./vendor/robust-predicates/index.js",
+    "#egret-textured-frame-state": "./vendor/engine/dist/internal/texturedFrameState.js",
+    "@egret/engine/input/hover": "./vendor/engine/dist/hover.js",
+    "@egret/engine/web/game": "./vendor/engine/dist/web/game.js",
+    "@egret/engine/kit": "./vendor/engine/dist/kit.js",
+    "@egret/engine/audio": "./vendor/engine/dist/audio.js",
+    "@egret/engine/input/gamepad": "./vendor/engine/dist/gamepad.js",
+    "@egret/runtime/ui": "./vendor/runtime/dist/ui/index.js",
+    "@egret/engine/ui": "./vendor/engine/dist/ui/index.js",
+    "@egret/runtime/paragraph": "./vendor/runtime/dist/paragraph/index.js",
+    "@egret/engine/paragraph": "./vendor/engine/dist/paragraph.js",
+    "@egret/engine/play": "./vendor/engine/dist/web/play.js",
+    "@egret/engine/ui/semantics": "./vendor/engine/dist/semantics.js",
+    "@egret/engine/ui/testing": "./vendor/engine/dist/ui/testing.js",
+    "@egret/engine/web/semantics": "./vendor/engine/dist/web/semantics.js",
+    "@egret/engine/web/gestures": "./vendor/engine/dist/web/gestures.js",
+    "@egret/engine/web/paragraph": "./vendor/engine/dist/web/paragraph.js"
+  }
+}
   </script>
 </head>
 <body>
-  <svg class="icon-library" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-    <symbol id="sigil-fire" viewBox="0 0 32 32"><path d="M16 2C19 9 25 9 25 16a9 9 0 1 1-18 1c0-4 2-7 5-9-1 4 0 5 2 6 2-4 2-8 2-12Zm0 16c-4 3-4 7 0 10m0-10c4 3 4 7 0 10"/></symbol>
-    <symbol id="sigil-earth" viewBox="0 0 32 32"><path d="M3 24 16 7l13 17H3Zm7 0 6-8 6 8M7 28h18M13 11l3 2 3-2"/></symbol>
-    <symbol id="sigil-metal" viewBox="0 0 32 32"><path d="M26 5 23 13 12 24l-4-4L19 9l7-4ZM6 16l10 10m-5-5-7 7m16-17L10 21m14 0h5m-2.5-2.5v5"/></symbol>
-    <symbol id="sigil-water" viewBox="0 0 32 32"><path d="M3 22c5 2 8-7 14-6 4 0 5 5 12 3M3 27c5 1 8-4 12-4s7 4 14 2M16 4c-3 4-7 7-7 11m7-11c3 4 6 6 6 9"/></symbol>
-    <symbol id="sigil-wood" viewBox="0 0 32 32"><path d="M8 27c2-4 6-9 15-15m-10 9C8 20 6 15 7 8c5 2 7 4 7 8m0 4c0-6 3-11 12-14 0 9-4 14-12 14Zm2 7h6"/></symbol>
-  </svg>
-  <div id="app">
+  <main id="app">
     <div id="stage-box">
       <canvas id="stage" aria-label="五行牌阵"></canvas>
-
-      <div id="hud">
-        <div class="topbar">
-          <div class="enemy-block">
-            <div class="combat-label">
-              <span class="encounter" id="encounter">壹 · 守林</span>
-              <p class="enemy-name" id="enemy-name">山魈</p>
-            </div>
-            <div class="bar bar-enemy"><i id="enemy-hp"></i></div>
-            <p class="bar-text"><span id="enemy-hp-text"></span><em id="enemy-shield"></em></p>
-            <p class="intent" id="enemy-intent"></p>
-          </div>
-          <p class="turn" id="turn">第 1 回合</p>
-        </div>
-
-        <div class="hero-block">
-          <div class="combat-label">
-            <span class="hero-label">气血</span>
-            <p class="bar-text"><span id="hero-hp-text"></span><em id="hero-shield"></em></p>
-          </div>
-          <div class="bar bar-hero"><i id="hero-hp"></i></div>
-        </div>
-
-        <div class="energy" id="energy" aria-label="能量">
-          <p class="energy-label">五行能量</p>
-        </div>
-        <div class="bonds" id="bonds" aria-label="羁绊"></div>
-
-        <button type="button" id="show-hand-details" class="hand-reference" aria-haspopup="dialog">查看手牌</button>
-        <div class="hand" id="hand" aria-label="手牌"></div>
-
-        <div class="board-touch" id="board-touch"></div>
-
-        <div class="footer">
-          <div class="step-count">
-            <span>剩余步数</span>
-            <div class="steps" id="steps" aria-label="剩余步数"></div>
-          </div>
-          <button id="end-turn" type="button">结束回合</button>
-        </div>
-
-        <div class="chain" id="chain" aria-live="polite"></div>
-        <div class="banner" id="banner" aria-live="polite"></div>
-        <p class="attack-cue" id="attack-cue" role="status"></p>
-        <div class="floaters" id="floaters" aria-hidden="true"></div>
-      </div>
-
-      <div class="overlay is-on" id="overlay-title" role="dialog" aria-labelledby="title-heading">
-        <div class="sheet">
-          <div class="element-line" aria-hidden="true">
-            <svg><use href="#sigil-fire"></use></svg><svg><use href="#sigil-earth"></use></svg>
-            <svg><use href="#sigil-metal"></use></svg><svg><use href="#sigil-water"></use></svg><svg><use href="#sigil-wood"></use></svg>
-          </div>
-          <h1 id="title-heading">五行牌阵</h1>
-          <p class="title-en" lang="en">Five Phases</p>
-          <p class="lede">消除聚灵，出牌破阵。</p>
-          <div class="title-actions">
-            <button id="start" type="button" class="big">开阵</button>
-            <details class="howto-panel">
-              <summary>阵法说明</summary>
-              <ul class="howto">
-                <li><b>消除</b>　拖动或点选相邻两格。三个同色即可消除，四连出消行块，五连出彩虹块，L 形出炸弹。</li>
-                <li><b>出牌</b>　消除积攒对应元素的能量。能量足够时，点牌施放。</li>
-                <li><b>步数</b>　每次有效交换消耗一步。敌人倒计时归零时出手。</li>
-                <li><b>相生</b>　连续打出相生元素的牌，后一张牌的伤害增加 50%。</li>
-              </ul>
-            </details>
-          </div>
-        </div>
-      </div>
-
-      <div class="overlay" id="overlay-reward" role="dialog" aria-labelledby="reward-heading" inert>
-        <div class="sheet">
-          <span class="sheet-seal" aria-hidden="true">✧</span>
-          <p class="kicker" id="reward-kicker">战罢</p>
-          <h2 id="reward-heading">择一张牌</h2>
-          <p class="lede">所选牌将加入下一阵的牌组。</p>
-          <div class="rewards" id="rewards"></div>
-          <button id="skip-reward" type="button" class="ghost">不拿了，继续</button>
-        </div>
-      </div>
-
-      <div class="overlay" id="overlay-over" role="dialog" aria-labelledby="over-title" inert>
-        <div class="sheet">
-          <span class="sheet-seal" aria-hidden="true">✦</span>
-          <p class="kicker" id="over-kicker">阵破</p>
-          <h2 id="over-title">败了</h2>
-          <p class="lede" id="over-text"></p>
-          <button id="restart" type="button" class="big">再来一局</button>
-        </div>
-      </div>
-
-      <dialog id="hand-details" class="hand-details" aria-labelledby="hand-details-heading">
-        <header>
-          <h2 id="hand-details-heading">当前手牌</h2>
-          <form method="dialog"><button type="submit" class="dialog-close" aria-label="关闭手牌详情">×</button></form>
-        </header>
-        <ul id="hand-detail-list"></ul>
-      </dialog>
-      <button id="mute" type="button" class="mute" aria-label="静音" aria-pressed="false">音</button>
+      <div id="boot" role="status">正在备阵…</div>
     </div>
-  </div>
-  <script type="module" src="src/main.mjs"></script>
+  </main>
+  <!-- Only the pre-engine boot fallback is HTML. All active game interfaces are Egret views. -->
+  <script type="module">
+    import('./src/main.mjs').catch(cause => {
+      console.error(cause);
+      const status = document.querySelector('#boot');
+      if (!status) return;
+      status.textContent = '引擎未能启动，请重试。';
+      const retry = document.createElement('button');
+      retry.textContent = '重新加载';
+      retry.addEventListener('click', () => location.reload(), { once: true });
+      status.append(retry);
+    });
+  </script>
 </body>
 </html>

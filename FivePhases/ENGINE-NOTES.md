@@ -1,8 +1,8 @@
 # 引擎笔记 · Engine notes
 
-本游戏发现的新白鹭引擎（提交 `unknown`）的缺陷与建议，格式见 [docs/GAME-STANDARD.md](../docs/GAME-STANDARD.md) 第 3 节。
+本游戏发现的新白鹭引擎（早期提交 unknown，当前为 8e70dcb3）的缺陷与建议，格式见 [docs/GAME-STANDARD.md](../docs/GAME-STANDARD.md) 第 3 节。
 
-The faults found in the new Egret engine (commit `unknown`) while making this game, and suggestions,
+The faults found in the new Egret engine (early commit unknown; current copy 8e70dcb3) while making this game, and suggestions,
 written as in part 3 of [docs/GAME-STANDARD.md](../docs/GAME-STANDARD.md).
 
 ### 1. 每帧的几何预算连复用的几何也一起算 · The per-frame geometry budget also counts reused geometry — 部分解决 / partly resolved
@@ -28,3 +28,29 @@ written as in part 3 of [docs/GAME-STANDARD.md](../docs/GAME-STANDARD.md).
 - 游戏里 · In the game：`src/main.mjs` 接 `onError`，把完整的 `cause` 链打出来，`runtime.loop.state === 'failed'` 时最多重启五次。 · `onError` prints the whole cause chain and restarts the loop up to five times.
 - 建议 · Suggestion：给 `createBrowserGame` 一个"渲染失败后重试"的选项，每个游戏就不用各写一遍。 · Give `createBrowserGame` a retry-after-failure option.
 - 状态 · Status：引擎还没有这个选项 · no such option yet.
+
+### 4. Play 手势入口未覆盖棋盘按下即预览的完整会话 · High-level Play gestures omit the whole press-to-preview session — 未解决 / open
+<!-- engine-note: {"id":"FivePhases#4","status":"open","topic":"play-gesture-session","workaround":["src/view/board-input.mjs","src/main.mjs"]} -->
+
+- 现象 · What happens：本作需要从触点按下时获得原格，拖动不足 0.4 格时预览，超过阈值只交换一次，取消不选择，第二根手指不抢占。新版 game.gestures 的公开配置提供 drag/hold/doubleTap/swipe/pinch，但不开放 onTap、slop 或原始 begin/session。 · The board needs the initial cell, a preview below 0.4 cell, exactly one swap and per-contact cancellation. Play's convenience gesture API does not expose the tap/slop or raw begin/session contract.
+- 绕过办法 · Workaround：使用引擎自己的 game.browser.pointer.observe 原生 PointerNotification 及 session.pointerId，无 HTML 触控覆盖层。输入控制器由 Node 测试覆盖。 · The native lower-level pointer observer, not DOM, owns the contact and drives the existing rules.
+- 建议 · Suggestion：在 Play 高层增加可选 tap/slop 及 begin/end/cancel 会话接口，或在指南中明确此类棋盘应使用 pointer.observe。 · Expose the complete contact lifecycle in Play, or document the lower-level route.
+- 状态 · Status：高层接口缺口，底层可以实现；非规则缺陷 · open capability gap, with a native lower-level route.
+
+### 5. 可选文本成为空字符串时语义发布中断帧循环 · Empty optional text stops the semantic frame — 未解决 / open
+<!-- engine-note: {"id":"FivePhases#5","status":"open","topic":"ui-empty-bound-text","workaround":["src/ui/hud.mjs"]} -->
+
+- 现象 · What happens：新版 8e70dcb3 的 game.show 命名文本绑定从非空敌招变为 ""（Boss 被击败）时，PC Edge 与三星 Fold7 上均出现 UI_SEMANTICS_DESCRIPTION ← view1:enemy-intent: name，BrowserPlay.endFrame 失败并阻塞战斗结算。 · A named text part bound to the upcoming attack changes from non-empty text to an empty string when the boss dies. On physical Edge and Fold7, semantic publication throws and the frame stops before settlement.
+- 最小复现 · Minimal reproduction：声明命名 text 部件，通过 bind.text 读 state.intent；state.intent 初始为 "4 步后 扑击"，运行后赋值 ""，不重建 view。 · Bind a named text to a state string, show it non-empty, then set it to an empty string while the view remains mounted.
+- 绕过办法 · Workaround：可空文本统一提供非空兜底名称并在内容为空时通过 visible 隐藏，保持原视觉意图。 · Supply a nonempty fallback for optional text and hide the part when it has no content.
+- 建议 · Suggestion：声明式 UI 对合法的空字符串应将语义节点隐藏或省略，而不是令渲染帧失败；保留严谨校验但让可选文本/动态提示自然工作。加 visible/empty 过渡的无头回归。 · Omit/hide the semantic node for empty optional bound text without failing the render loop. Add a transition regression.
+- 状态 · Status：本作适配，待引擎改进 · worked around in the game, engine change not made.
+
+### 6. 卡牌需要富内容操作容器与动态列表复用 · Rich actionable cards and keyed list reuse — 未解决 / open
+<!-- engine-note: {"id":"FivePhases#6","status":"open","topic":"ui-rich-action-content","workaround":["src/ui/hud.mjs"]} -->
+
+- 现象 · What happens：原生 button 仅支持标题、描述与段落，不允许图标/费用徽章/子部件。复合卡牌需要带 tap 的 panel；panel 原生可激活与焦点，但语义角色为 group，且不能单个绑定 disabled。当前视图绑定也没有 keyed children、动态 image.src 或 description。 · A card needs an icon, cost badge, title and effect; the native button cannot contain parts. A tappable panel is focusable but has group semantics and no individual disabled binding. The view does not yet reconcile keyed child lists.
+- 绕过办法 · Workaround：使用复合原生 panel、完整语义名称、整手牌视图 activate/deactivate 与动作锁；仅在卡牌 UID 或费用改变时重建手牌，使用共享段落缓存。 · Use native composite panels, accessible names, activation gating and identity-based hand rebuilds with a shared paragraph cache.
+- 建议 · Suggestion：提供原生复合按钮/可选角色和禁用绑定、keyed/repeat 列表以复用同一个卡牌精灵、焦点、图标和段落。 · Add rich buttons with explicit role/disabled, and keyed repeat/reconciliation to retain focus, content and image/paragraph borrows.
+- 状态 · Status：可使用原生组合实现；未改引擎 · native workaround, engine unchanged.
+

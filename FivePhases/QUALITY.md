@@ -41,3 +41,24 @@ this file; items by hand or on a device are marked not run until someone runs th
 | E4 | 切回后声音和计时正常 · Sound and timers right after coming back | 真机 · device | 未运行 · not run |  |
 
 自动项不达标 · Automatic items failing: T2, F1, I1。真机项（T1、F2、E4）和人工项（I2、A1m、S4）未运行，除非上表另有记录 · Device and by-hand items were not run unless the table says otherwise.
+
+## 实机回归 · Physical device regression (2026-11-26)
+
+引擎 8e70dcb3。完整自然路线采用实际鼠标/触屏事件和只读场况选取合法动作，不跳关、不修改血量、能量、牌组与判定。rAF 帧间隔不是 GPU 执行时间。 · Input-driven full runs; no stage skipping or rule/state injection. rAF is browser frame timing, not GPU execution.
+
+| 项目 · Item | PC Edge 158.0.4370.33 / RTX 5090 Laptop / WebGL2 | Galaxy Z Fold7 SM-F966U1 / Android 17 / Chrome 157 / Adreno 830 / WebGL2 |
+|---|---|---|
+| 三关 · Three stage times | 24.24 / 24.74 / 24.51 s | 18.54 / 52.13 / 54.63 s |
+| 结算 · Final | 915 HP, chain 10 | 1000 HP, chain 13 |
+| 操作 · Actions | 7 two-tap + 7 drag swaps, 22 cards, 7 end-turn | 8 two-tap + 8 drag swaps, 28 cards, 12 end-turn |
+| 操作帧时间 · Action rAF p95 / max | 4.3 / 20.9 ms (17,573 samples) | 16.7 / 34.6 ms (7,504 samples) |
+| 多连锁 · Chain rAF p95 / max | 4.3 / 12.5 ms (14,081) | 16.7 / 34.6 ms (5,286) |
+| rAF intervals >50 ms | 0 | 0 |
+
+- 两设备均验证两次自然三选一、牌组承接、结算、重开、规则说明、手牌详情与模态阻止背景交换、能量不足不消耗、原有静音偏好。真实路线无控制台错误或请求失败。 · Natural choices, deck transfer, result, restart, guide, details/modal input lock, insufficient energy and mute toggle passed.
+- 旧版 PC 自然路线 p95 4.3 ms、最大 175 ms（14,579 samples），新版同设备自然路线最大 20.9 ms；随机牌局与动作不同，不能把差异直接归因于新版 UI。 · Same device, different natural rounds, not a controlled matched-seed performance experiment.
+- 独立 Long Animation Frame 观察：PC 1 条 51 ms，Fold7 6 条、最大 55.3 ms；浏览器指针/帧循环回调均有所贡献，未做 GPU 归因。 · LoAF is measured separately from rAF, not GPU time.
+- 首次新版 PC 与 Fold7 均在首领死亡时触发语义树空名称问题，已修复并实际复跑完整三关。奖励长文字裁切随后加高卡片，在 Fold7 自然打完第一关及真实选牌回归通过，最大 49.7 ms；最后增加只读语义文本，浏览器专项覆盖。 · The full route rerun fixed the semantic transition fault; a focused actual-phone replay verified the final taller reward cards. Final read-only semantic fields are covered by browser acceptance.
+- 实测真实 Fold7 竖屏 411×813、DPR 2.625；实际牌阵 CSS 375.79×813.71，画布 1500×3248。奖励卡点击区约 96.20×194.41 CSS px。 · Real Fold7 portrait and card target dimensions.
+- 构建、存储、自动语义以及真机触控均分开记录；未测试实体手柄、Safari、真实读屏语音、扬声器声学听感或中端手机。无英文玩法词条及跨局战斗存档仍是原版范围。 · No physical gamepad, Safari, spoken screen-reader or acoustic audio acceptance, or mid-range phone; English localization and campaign saves remain outside original scope.
+
