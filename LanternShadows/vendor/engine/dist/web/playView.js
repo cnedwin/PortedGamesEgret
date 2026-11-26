@@ -5,7 +5,7 @@
 // the handle a view is.
 import { EgretError } from '@egret/runtime';
 import { directViewActivation, viewTapActivation } from './playActivation.js';
-import { checkView, planView } from './view.js';
+import { TABLET_SHORT_SIDE, checkView, planView } from './view.js';
 import { keyCap } from './viewParts.js';
 import { createPlayViewScrolls } from './playViewScroll.js';
 // Keep declarative loads within BrowserGame's image budget across all views in this host.
@@ -160,9 +160,8 @@ export function createPlayViews(game, hooks) {
                 for (const child of part.children ?? [])
                     checkPanelRoles(child);
             };
-            checkPanelRoles(description.root);
-            if (description.portrait !== undefined)
-                checkPanelRoles(description.portrait);
+            for (const parts of variantsOf(description))
+                checkPanelRoles(parts);
             return names;
         };
         const names = validate(description, bind);
@@ -182,8 +181,7 @@ export function createPlayViews(game, hooks) {
         const richStyle = (part) => (part.type === 'text' || part.type === 'button' ? part.paragraph : undefined);
         const usesParagraph = (part) => richStyle(part) !== undefined || (part.type === 'panel' && (part.children?.some(usesParagraph) ?? false));
         const paragraphCache = options.paragraphCache;
-        if (paragraphCache === undefined &&
-            (usesParagraph(description.root) || (description.portrait !== undefined && usesParagraph(description.portrait))))
+        if (paragraphCache === undefined && variantsOf(description).some(usesParagraph))
             throw new EgretError('UI_VIEW_BINDING_INVALID', { cause: 'paragraph parts need a paragraphCache' });
         if (options.gamepad !== undefined && typeof options.gamepad !== 'boolean')
             throw new EgretError('UI_VIEW_BINDING_INVALID', { cause: 'gamepad takes a boolean' });
@@ -211,7 +209,16 @@ export function createPlayViews(game, hooks) {
         const removals = [];
         const scrollHandles = new Map();
         let scrollItems = [];
-        const frame = () => ({ screen: game.screen, safe: game.safe, orientation: game.orientation });
+        // A view is drawn `uiScale` times larger than the game's units: its root is scaled, and it is planned in an area
+        // that much smaller, so that it fills the same part of the screen.
+        const scaled = (area, by) => by === 1 ? area : { x: area.x / by, y: area.y / by, width: area.width / by, height: area.height / by };
+        const frame = () => {
+            const by = hooks.uiScale?.() ?? 1;
+            root.scaleX = root.scaleY = by;
+            // A tablet's screen: its shorter side, in CSS pixels, at least TABLET_SHORT_SIDE.
+            const plan = game.browser.screen, form = Math.min(plan.width, plan.height) * plan.scale >= TABLET_SHORT_SIDE ? 'tablet' : 'phone';
+            return { screen: scaled(game.screen, by), safe: scaled(game.safe, by), orientation: game.orientation, form };
+        };
         const colourOf = (part, item) => {
             const skin = plan.skin;
             if (part.type === 'panel' && item.disabled && hasAction(item))
@@ -623,7 +630,7 @@ export function createPlayViews(game, hooks) {
         const placeDim = () => {
             if (dim === undefined)
                 return;
-            const screen = game.screen;
+            const screen = frame().screen;
             dim.graphics
                 .clear()
                 .beginFill(0x000000, plan.skin.dim)
@@ -969,20 +976,24 @@ export function createPlayViews(game, hooks) {
             if (original === undefined)
                 throw new EgretError('UI_VIEW_BINDING_INVALID', { cause: name + ': expected a named panel' });
             const oldNames = rowNames(original.children ?? []);
-            if (description.portrait !== undefined) {
-                const other = collectionPanel(description.portrait, name);
+            for (const parts of variantsOf(description).slice(1)) {
+                const other = collectionPanel(parts, name);
                 const otherNames = other === undefined ? undefined : rowNames(other.children ?? []);
                 if (otherNames === undefined ||
                     otherNames.size !== oldNames.size ||
                     [...oldNames].some(key => !otherNames.has(key)))
                     throw new EgretError('UI_VIEW_VARIANT_MISMATCH', {
-                        cause: name + ': collection descendants must belong to the same panel in both variants'
+                        cause: name + ': collection descendants must belong to the same panel in every variant'
                     });
             }
             const nextDescription = {
                 ...description,
                 root: withChildren(description.root, name, children),
-                ...(description.portrait === undefined ? {} : { portrait: withChildren(description.portrait, name, children) })
+                ...(description.portrait === undefined ? {} : { portrait: withChildren(description.portrait, name, children) }),
+                ...(description.tablet === undefined ? {} : { tablet: withChildren(description.tablet, name, children) }),
+                ...(description.tabletPortrait === undefined
+                    ? {}
+                    : { tabletPortrait: withChildren(description.tabletPortrait, name, children) })
             };
             // Validate shape, size, depth and globally unique names before traversing supplied rows.
             checkView(nextDescription);
@@ -997,9 +1008,7 @@ export function createPlayViews(game, hooks) {
                     nextBind[key] = binding;
                 }
             validate(nextDescription, nextBind);
-            if (paragraphCache === undefined &&
-                (usesParagraph(nextDescription.root) ||
-                    (nextDescription.portrait !== undefined && usesParagraph(nextDescription.portrait))))
+            if (paragraphCache === undefined && variantsOf(nextDescription).some(usesParagraph))
                 throw new EgretError('UI_VIEW_BINDING_INVALID', { cause: 'paragraph parts need a paragraphCache' });
             const nextPlan = planView(nextDescription, frame());
             const oldPlan = plan, oldMade = made, oldBind = bind, oldDescription = description;
@@ -1325,7 +1334,7 @@ export function createPlayViews(game, hooks) {
             if (options[key] !== undefined && typeof options[key] !== 'string')
                 throw new EgretError('UI_VIEW_BINDING_INVALID', { cause: 'confirm: ' + key + ' is words' });
         const turn = asked.then(() => new Promise(resolve => {
-            const width = Math.min(440, Math.max(240, game.safe.width - 32));
+            const width = Math.min(440, Math.max(240, game.safe.width / (hooks.uiScale?.() ?? 1) - 32));
             let view;
             const answer = (yes) => {
                 if (open?.answer !== answer)
@@ -1742,4 +1751,8 @@ function relative(rect, parent) {
     return parent === undefined
         ? rect
         : { x: rect.x - parent.x, y: rect.y - parent.y, width: rect.width, height: rect.height };
+}
+/** The parts of every variant a description has: `root` first, then portrait, tablet and tablet upright. */
+function variantsOf(description) {
+    return [description.root, description.portrait, description.tablet, description.tabletPortrait].filter((parts) => parts !== undefined);
 }

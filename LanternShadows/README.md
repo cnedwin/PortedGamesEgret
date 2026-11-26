@@ -186,6 +186,8 @@ The game's code and its generated art are released under Apache-2.0. The engine 
 
 ## 已验证 · Verified
 
+- 2026-11-27：固定百身术 100 分身、同逻辑进度 Fold7 严格 A/B/B/A 与低开销 B/A/B；共同准入的几何准备 p95 12.0 → 7.8 ms、低探针候选两轮密集 p95 33.2 ms，原版 49.7 ms。更新后的集成候选真实 PC/Fold7 与 Node 90/90、浏览器 13/13 通过，未改变规则和资源。详见 [QUALITY.md](QUALITY.md) 与 [本地复现](test/perf/tail-20261127/README.md)。 · Matched physical-device clone geometry work decreases; all original counts, state, events and rules retained.
+
 - 2026-11-26：使用引擎主干 8e70dcb3 的官方生成副本，重建轻量单文件及开发模式的入口映射。89 项游戏 Node 测试全部通过，保持三幕规则、资源校验、历史通关记录和独立单棒试演。 · Official engine copy 8e70dcb3; rebuilt the compact package and development import map. All 89 Node tests passed, including three-act rules, resource integrity, campaign records and separate staff trials.
 
 - 2026-11-21 引擎副本升级到 `b5628eb`、重新打包后：85 项 Node 测试通过；无头 Chromium 下打包页面和 `?dev` 都能开始，第一幕和第三幕各打 20 秒无控制台错误（`?clones=200` 时的 Spine 实例上限报错升级前后都有，见已知问题）。 · After the engine update and a new pack: 85 tests pass, both the packed page and ?dev start, and acts one and three play clean.
@@ -209,6 +211,8 @@ The game's code and its generated art are released under Apache-2.0. The engine 
 
 ## 已知问题 · Known issues
 
+- 百身术密集长尾仍非完全解决：严格候选一次 66.3 ms，余下主要为 Spine 同步发布与 WebGL2 提交波动；集中退场的独立粒子热点已解决（ENGINE-NOTES #9、#13）。 · Residual synchronous Spine and WebGL2 submission variance; no universal FPS claim.
+
 - Fold7 原生 UI 密集百身术仍存在帧率差距，此前自然路线 rAF p95 旧版 33.2–33.3 ms、新版 49.7 ms；本轮固定同背板测量旧新实际提交 p95 均约 50 ms，Atlas 已降低中位开销但尾部仍待优化；已验证 backing 和幕布裁切对照，保留全部分身，详见 ENGINE-NOTES 第 9 条。 · Native UI dense clone p95 remains higher on Fold7; the measured backing and clip comparison did not restore the old result. All clones are retained; see engine note 9.
 
 - `?clones` 设得太大（例如 200）时，同台的 Spine 实例超过引擎每个骨骼的 128 个上限，多出的分身建不出来，控制台报 `SPINE_INSTANCE_LIMIT_FAILED`（ENGINE-NOTES 第 3 条）；默认的一百个不会碰到。 · A large `?clones` (200, say) passes the engine's limit of 128 Spine instances; the default hundred does not.
@@ -217,6 +221,8 @@ The game's code and its generated art are released under Apache-2.0. The engine 
 - 2026-11-26 历史统一品质基线：[QUALITY.md](QUALITY.md)，当时 14/16 达标；F1 无头软件渲染 p95 17.5 ms、L1 限速通用首屏 3.3 s 略超阈值（此前 16.7 ms / 3.1 s）。真实 Fold7 同场景 A/B 单列，不将通用软件测试当真机。 · The historical generic software F1 and startup proxy exceeded their thresholds; this refresh uses targeted acceptance and physical-device routes, not a new full quality-table run.
 
 ## 已解决 · Solved
+
+- 百身术退场的多点尘雾：白鹭 #508 公开了 burstAtMany，同一发射器 48 次网格发布合为一次，仍保留全部 48 个位置和 192 个粒子；Fold7 同引擎 A/B/B 的事件 CPU 40.0→2.2/5.4 ms（ENGINE-NOTES #13）。 · Exact simultaneous puffs retained; repeated mesh rebuild removed.
 
 - iPhone 上一直停在加载、开锣键没有反应：引擎自带的 PNG 读取要求 2D 画布报告 sRGB 色彩空间，iPhone 的浏览器不报告。改为用浏览器自带的图片元素解码，并按清单校验和核对（`src/pictures.mjs`，`e6dd7ac`，ENGINE-NOTES 第 1 条）。 · Stuck on loading on iPhone: pictures are now decoded by the browser's image element (item 1).
 - 页面逐个加载约 260 个模块才开始：`tools/bundle.mjs` 打成一个压缩文件，并早期在 `index.html` 里预先列出第一幕要读的文件；原生 UI 后改为入口优先，全部资产仍在开锣前就绪（`7647b50`，ENGINE-NOTES 第 2 条）。 · About 260 module requests before the start; packed into one file (item 2).
@@ -231,7 +237,7 @@ The game's code and its generated art are released under Apache-2.0. The engine 
 
 ## 未完成 · Unfinished
 
-- iPhone Safari、实体手柄、真实扬声器音质，以及偶发长帧的归因尚未验证。 · iPhone Safari, a physical gamepad, acoustic speaker quality and long-frame attribution remain unverified.
+- iPhone Safari、实体手柄、真实扬声器音质，以及剩余长帧的 GPU 执行与呈现归因尚未验证。 · iPhone Safari, a physical gamepad, acoustic speaker quality and remaining GPU/presentation tail attribution remain unverified.
 - 中端设备、独立扬声器试听和失效资源重试仍需独立验收。 · Mid-range phones, acoustic listening and failed-resource retry need separate acceptance.
 
 ## 目录 · Layout
@@ -267,6 +273,6 @@ test/                   规则与资源的检查 · checks of the rules and the 
 
 All playable screens use native Egret Play views, with a semantic tree for keyboard focus, accessibility names and browser acceptance. Expanded screen layout keeps the portrait HUD and controls outside the shadow cloth. The original rules, three stages, record keys and audio mix remain unchanged. Horizontal analog input and held jumping use native engine pointer sessions. Only the pre-engine recoverable boot notice remains in HTML.
 
-引擎副本取自 [Egret_rebuild](https://github.com/cnedwin/Egret_rebuild) 提交 `94bd70fb26b1f81794c9c6fbbb258c655fcd19df`，由引擎仓库的 `tools/vendor-game.mjs` 复制，见 [vendor/SOURCE.md](vendor/SOURCE.md)。
+引擎副本取自 [Egret_rebuild](https://github.com/cnedwin/Egret_rebuild) 提交 `83bec954ef253be13455af2016af956376f98b71`，由引擎仓库的 `tools/vendor-game.mjs` 复制，见 [vendor/SOURCE.md](vendor/SOURCE.md)。
 
-The engine copy is from [Egret_rebuild](https://github.com/cnedwin/Egret_rebuild) commit `94bd70fb26b1f81794c9c6fbbb258c655fcd19df`, copied by the engine's `tools/vendor-game.mjs`; see [vendor/SOURCE.md](vendor/SOURCE.md).
+The engine copy is from [Egret_rebuild](https://github.com/cnedwin/Egret_rebuild) commit `83bec954ef253be13455af2016af956376f98b71`, copied by the engine's `tools/vendor-game.mjs`; see [vendor/SOURCE.md](vendor/SOURCE.md).

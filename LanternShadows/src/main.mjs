@@ -632,8 +632,8 @@ function happen(events) {
       input.gamepads?.rumble(0, { duration: 300, weak: 0.9, strong: 0.6 });
       counted = true;
     } else if (type === 'clones-gone') {
-      // Each goes in a puff, as far as the puffs go round.
-      event.at.slice(0, 48).forEach(at => burst(dust, at.x, at.y - 30, 4));
+      // Keep the same ordered puffs, but publish this emitter's combined geometry once.
+      dust.burstAtMany(event.at.slice(0, 48).map(at => ({x: at.x, y: at.y - 30, count: 4})));
       sound.play('whirl', { volume: 0.6, rate: 0.8, pan });
       counted = true;
     } else if (type === 'foe-block') {

@@ -12,6 +12,19 @@ import { createBrowserPointerInput } from './pointer.js';
 import { createBrowserKeyboardInput } from './keyboard.js';
 import { createBrowserStatsPanel } from './BrowserStatsPanel.js';
 import { planScreen } from './screen.js';
+const GAME_FITS = [
+    'none',
+    'contain',
+    'cover',
+    'stretch',
+    'expand',
+    'fixedWidth',
+    'fixedHeight',
+    'fixedNarrow',
+    'fixedWide'
+];
+/** The fits of which the stage follows the plan of the screen, its size included. */
+const plannedFit = (fit) => fit === 'none' || fit === 'cover' || fit === 'stretch' ? undefined : fit;
 const invalid = () => new EgretError('BROWSER_GAME_OPTIONS_INVALID');
 const whole = (value) => typeof value === 'number' && Number.isSafeInteger(value) && value > 0;
 const finite = (value) => typeof value === 'number' && Number.isFinite(value);
@@ -68,11 +81,6 @@ async function chooseBackend(asked) {
         return 'webgl2';
     }
 }
-/**
- * What a game does with the diagnostics of its Engine. An error the Engine can only report, such as a listener of
- * pointer input that threw, which ends that input, is told as a failure of the loop is: to `onError`, or to the page,
- * where the console shows it. Without this it was told to no one, and the game went on without its input.
- */
 /** Tells a tool's `globalThis.__egretAgent.warning`, where a page has one, of a warning; what it throws is the tool's. */
 function tellAgent(warning) {
     const agent = globalThis.__egretAgent;
@@ -85,6 +93,25 @@ function tellAgent(warning) {
         /* The tool's own failure, not the game's. */
     }
 }
+/**
+ * The safe-area insets a tool's `globalThis.__egretAgent.insets` gives, in the window's CSS pixels, to fit the game as
+ * a phone with a notch would; undefined where a page has none, or none of 0 or more on each side.
+ */
+function agentInsets() {
+    const agent = globalThis.__egretAgent;
+    const insets = agent?.insets;
+    if (insets === null || typeof insets !== 'object')
+        return undefined;
+    const sides = [insets.top, insets.right, insets.bottom, insets.left];
+    if (!sides.every(side => typeof side === 'number' && Number.isFinite(side) && side >= 0))
+        return undefined;
+    return { top: insets.top, right: insets.right, bottom: insets.bottom, left: insets.left };
+}
+/**
+ * What a game does with the diagnostics of its Engine. An error the Engine can only report, such as a listener of
+ * pointer input that threw, which ends that input, is told as a failure of the loop is: to `onError`, or to the page,
+ * where the console shows it. Without this it was told to no one, and the game went on without its input.
+ */
 export function gameDiagnostics(onError) {
     return diagnostic => {
         if (diagnostic.severity !== 'error')
@@ -111,7 +138,11 @@ export async function createBrowserGame(options) {
         throw invalid();
     const { canvas, width, height, update, onError, onWarning } = options;
     const asked = options.backend ?? 'auto', clearColor = options.clearColor ?? 0, clearAlpha = options.clearAlpha ?? 1, blendSpace = options.blendSpace ?? 'linear', enableEffects = options.effects ?? false;
-    const device = Number(globalThis.devicePixelRatio), pixelRatio = options.pixelRatio ?? (device > 0 ? Math.min(device, 2) : 1);
+    const deviceRatio = () => {
+        const ratio = Number(globalThis.devicePixelRatio);
+        return ratio > 0 && Number.isFinite(ratio) ? ratio : 1;
+    };
+    const wholeScale = options.wholeScale ?? false, pixelRatio = options.pixelRatio ?? (wholeScale ? 1 : Math.min(deviceRatio(), 2));
     if (canvas === null ||
         typeof canvas !== 'object' ||
         typeof canvas.getBoundingClientRect !== 'function' ||
@@ -140,7 +171,9 @@ export async function createBrowserGame(options) {
                 typeof options.renderRetry.shouldRetry !== 'function')) ||
         (onWarning !== undefined && typeof onWarning !== 'function') ||
         [options.pointer, options.keyboard, options.hover, options.autoStart, options.stats, options.staticLayers].some(flag => flag !== undefined && typeof flag !== 'boolean') ||
-        !['none', 'contain', 'cover', 'stretch', 'expand'].includes(options.fit ?? 'none') ||
+        !GAME_FITS.includes(options.fit ?? 'none') ||
+        typeof wholeScale !== 'boolean' ||
+        (wholeScale && (plannedFit(options.fit ?? 'none') === undefined || pixelRatio !== 1)) ||
         (options.fitTo !== undefined && (options.fitTo === null || typeof options.fitTo !== 'object')))
         throw invalid();
     // The plan of the stage: refused here, before anything is made, when the portrait size or the insets are not valid.
@@ -148,7 +181,8 @@ export async function createBrowserGame(options) {
         box,
         design: { width, height },
         ...(options.portrait === undefined ? {} : { portrait: options.portrait }),
-        fit: options.fit === 'expand' ? 'expand' : 'contain',
+        fit: plannedFit(options.fit ?? 'none') ?? 'contain',
+        ...(wholeScale ? { wholeScale, pixelRatio: deviceRatio() } : {}),
         ...(insets === undefined ? {} : { insets })
     });
     try {
@@ -434,7 +468,7 @@ export async function createBrowserGame(options) {
                     texture.dispose();
             }
         };
-        // The canvas in its element: sized now and whenever the element changes size. With "contain" and "expand" the
+        // The canvas in its element: sized now and whenever the element changes size. With the planned fits the
         // stage follows the plan of the screen: its size, and, with a portrait size, its shape.
         const fit = options.fit ?? 'none', holder = options.fitTo ?? canvas.parentElement;
         const screenListeners = new Set();
@@ -462,13 +496,20 @@ export async function createBrowserGame(options) {
                 page.body.appendChild(probe);
             }
             const style = view.getComputedStyle(probe), read = (value) => (Number.isFinite(parseFloat(value)) ? Math.max(0, parseFloat(value)) : 0);
+            // A tool may stand in for a phone's notch and home bar, which a headless browser does not have.
+            const standIn = agentInsets(), edges = standIn ?? {
+                top: read(style.paddingTop),
+                right: read(style.paddingRight),
+                bottom: read(style.paddingBottom),
+                left: read(style.paddingLeft)
+            };
             // Insets are of the window; the element may be anywhere in it.
             const box = (holder ?? canvas).getBoundingClientRect(), across = view.innerWidth, down = view.innerHeight;
             return {
-                top: Math.max(0, read(style.paddingTop) - box.top),
-                left: Math.max(0, read(style.paddingLeft) - box.left),
-                right: Math.max(0, read(style.paddingRight) - (finite(across) ? across - box.right : 0)),
-                bottom: Math.max(0, read(style.paddingBottom) - (finite(down) ? down - box.bottom : 0))
+                top: Math.max(0, edges.top - box.top),
+                left: Math.max(0, edges.left - box.left),
+                right: Math.max(0, edges.right - (finite(across) ? across - box.right : 0)),
+                bottom: Math.max(0, edges.bottom - (finite(down) ? down - box.bottom : 0))
             };
         };
         if (fit !== 'none' && holder !== null) {
@@ -496,6 +537,9 @@ export async function createBrowserGame(options) {
                     frame = Object.freeze({ width: next.width, height: next.height, clearColor, clearAlpha });
                 style.width = next.width * next.scale + 'px';
                 style.height = next.height * next.scale + 'px';
+                // Whole steps are enlarged as they are, a canvas pixel to a square of the device's.
+                if (wholeScale)
+                    style.imageRendering = 'pixelated';
                 style.marginLeft = next.left + 'px';
                 style.marginTop = next.top + 'px';
                 const moved = next.width !== before.width ||

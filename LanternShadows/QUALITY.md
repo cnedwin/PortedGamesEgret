@@ -153,3 +153,58 @@ A 实际提交的稳态 CPU p50/p95：动画 update 0.1/0.3 ms、apply 0.4/1.0�
 
 正式副本 · Released engine copy：94bd70fb26b1f81794c9c6fbbb258c655fcd19df。官方工具重生成后，与实测候选的所有 451 个记录文件逐项校验 SHA-256，除 vendor/SOURCE.md 的正式版本标记外 450 个文件均完全相同（运行时、导入映射、页面与发布包均一致），因此上述实际验收适用于正式运行时代码。 · Official generation from main is byte-identical to the tested candidate except the provenance pin in SOURCE.md.
 发布包 · Packed JS SHA-256: a9862dd15f396023ed4489f07aac5d1426b6b005b9469d3dbcc12bf5218cf60a (1,256,814 bytes).
+
+## 2026-11-27 百身术同逻辑长帧复测 · Matched 100-clone tail investigation
+
+本次只替换已测试的引擎共享网格准备实现；游戏玩法、100 个分身、资源、Spine 动作、原生 HUD、显示密度、判定与存档均保持。诊断固定第一幕、种子 734、逻辑步长 1/60 s、同一施法时刻，不是自然通关。所有记录的 rAF 为浏览器回调间隔；各阶段为 CPU 墙钟耗时（包含可能的驱动等待），不是 GPU 执行或屏幕呈现时间。历史 66.2 ms 记录不含精确状态，不能断言复现了同一个历史随机帧。· The matched deterministic fixture isolates CPU stages, not GPU execution, with no gameplay or visual reduction.
+
+| 诊断 · Probe | Fold7 旧版 / 候选 · A / B | 解释 · Interpretation |
+|---|---|---|
+| 严格 A/B/B/A（每块 330 个密集采样） | rAF p95 均约 49.7 ms；最大 66.4 / 49.8 / 66.3 / 51.3 ms；>50 ms：2 / 0 / 1 / 3 | 深度测点有开销；未消除全部长帧 / deep probe retains tails |
+| 严格共同准入的 190 个逻辑点（A/B 各 380 样本） | 几何准备 p50/p95 5.4/12.0 → 4.7/7.8 ms；整个 WebGL2 prepare 6.6/13.3 → 5.9/10.0；Host CPU 25.3/40.8 → 24.2/38.3；提交 3.7/11.4 → 3.3/10.8 | 预算和几何输出不变；局部几何 p95 降约 35% / measured stage reduction |
+| 低开销 B/A/B（每块 330 个密集采样） | p95/max B1 33.2/49.7、A 49.7/66.3、B2 33.2/49.8 ms；>50 ms：0/5/0 | 重复实测改善，不承诺永远无长帧 / observed, not guaranteed |
+| 低开销共同准入的 205 个逻辑点 | 几何中位 6.6 → 4.5 ms，p95 11.2 → 12.4；Host CPU p50/p95 24.5/40.0 → 22.8/35.1 ms | 中位稳定、尾部仍波动 / median improves; tail varies |
+| PC 实机严格 A/B/A | 几何 p50 2.4 / 1.8 / 2.9 ms；rAF p95 16.7 / 16.8 / 20.9，max 20.9 / 29.0 / 29.2 ms；无超过 33.4 ms | 不把帧率波动解释为性能提升 / no general FPS claim |
+
+- Fold7：SM-F966U1 / Android 17 / Chrome 157 / Adreno 830 / WebGL2，横屏 CSS 873×325、backing 2291×854，严格和低开销交替时电池温度约 31.7–32.8°C，thermal 0。每块 548 逻辑行、330 密集行均呈现/求姿 100 个分身；严格四块的 6,421 次有序事件摘要与每次 Host 可提交修订一致，低开销的三处状态摘要一致；均无页面错误。PC：实际 Windows Edge / RTX 5090 Laptop / WebGL2，1280×800 CSS、1281×801 backing。同设备各组尺寸、输入进度、种子一致。· All matched state and committed revisions passed; no simulated device claim.
+- 分解：严格旧版一条 66.2 ms 的间隔对应同步 CPU 40.8 ms，其中 Spine 10.0、几何 18.9、提交 4.3；低开销旧版一条长回调 CPU 60.9 ms，其中 Spine 24.7、几何 10.7、提交 17.6，LoAF/longtask 匹配。候选严格剩余 66.3 ms 的间隔对应 CPU 54.7 ms，其中 Spine 32.6（拷贝 12.4、提取 8.4）、几何 7.0、提交 2.3。未发现 UI、判定或特效突然爆发导致这些长帧。不同长帧的瓶颈并非同一个阶段。· No evidence of one universal cause.
+- 本次引擎补丁：[Egret Rebuild #508](https://github.com/cnedwin/Egret_rebuild/pull/508)，直接复用已验证的非退化三角形角点并保持原预算和回退顺序。独立的 100 份 Spine 几何准备 A/B/A/B 中位 2.46/2.06/2.41/1.96 ms；所有输出、打包及预算完全相同。· Exact preparation/packing microbenchmark and real devices agree on the local gain.
+- 未覆盖 · Limits：没有本轮自然三幕通关、实体手柄、中端手机、Safari/Firefox、异步 GPU 执行或屏幕呈现时间；不隐藏历史全量质量表的失败项。密集区外的百身术同时退场，另一次严格探针测到规则回调长任务，低开销候选未再出现；需独立复现，不并入本次密集几何优化。
+
+- 未插桩候选发布包 · Uninstrumented candidate: Fold7 实际点击开锣、摇杆按住移动 x168→346.75 再松手（轴归零）、跳跃、暂停继续均正常，普通路线 121 个 rAF 间隔 p95/max 16.7/16.7 ms，无页面错误。单独百身术视觉检查两张实拍前后均 100 logical/out/carried/made、1 次施法，未见明显几何或纹理损坏；这不是性能采样期间截图。候选发布 JS SHA-256 46bb2112cba170b8915b72294798144845eb9aa0327b8d911ab1900939f2ce19。 · Real device touch and independent visual fixture; no timing claim from the screenshot.
+
+- 引擎验收额外边界 · Engine verification scope: 423/423 共享渲染/Spine CPU 检查与类型检查通过。默认 Edge 的 WebGL2/WebGPU 26 个原纯 2D 正例，对两版本共 104 次原像素规则检查均通过，52 对整幅读回逐字节相同。历史全量 shared-webgpu 工具在基线与候选均因已删除 Scene3D 入口在启动前失败；四个旧的混合 3D 正例和 mutation 控制未由补充范围运行，完整旧门不记为通过，不改变其判定。 · Applicable 2D readback suite passed independently; obsolete mixed 3D full gate remains incomplete.
+
+可公开复跑 · Reproducible diagnostic: [test/perf/tail-20261127/README.md](test/perf/tail-20261127/README.md), [脱敏数据 · sanitized reference](test/perf/tail-20261127/reference-fold7.json)。诊断测点只构建本地测试包，不进入发布包。
+
+- 候选游戏回归 · Candidate game regression: Node 90/90；原浏览器验收 13/13（headless Chromium / SwiftShader，非真机），标题/暂停截图差异 0.67%/2.28%，保留原基线。键盘、原生焦点、中英文、模拟触屏越界/释放、暂停、坏资源恢复、记录和重演均通过。 · Existing suite and screenshot baselines retained; no new natural three-act claim.
+
+- 主干并行更新后的实际回归 · Integration refresh: #507 合入后，#508 的测试头正常更新为 df0e12369d3477f2f7033e824e96f3eadafd39b3。几何文件及专项测试字节完全不变；它额外包含 BrowserGame/BrowserPlay/screen 的屏幕模式更新，本作明确沿用 expand，不启用 wholeScale。引擎 build 及 28/28 定向测试通过。Fold7 同低探针固定 548/330 行、3 个稀疏摘要与画布相同，p95/max 33.2/49.8 ms，密集 >50 ms 为零；PC 同低探针 16.4/26.2 ms，相同逻辑和几何。未插桩集成包 SHA256 03bb38d064608454ef6cce03aaa7688e571c28fa6a4db81e3a99d3190bde2a07：Fold7 普通路线移动 x168→338.5、释放归零、跳跃、暂停恢复、两张 100 分身实拍均通过，普通 121 rAF p95/max 16.7/16.7 ms，零错误；Node 90/90、浏览器 13/13、标题/暂停截图差异 0.67%/1.91%，保留基线。· Integrated candidate, not merely the earlier patch, also passed the actual device route and existing browser tests.
+
+- 分身集中退场 · Separate expiry event: 集成候选全段另一次 82.9 ms 发生在 sample516 百身术由 100→0，规则 step 0.3 ms、事件 66.3 ms、Spine 0.1、geometry 0.5、submit 2.8，整同步 CPU 74.4 ms；较早的严格候选也在相同退场点出现类似长帧。源码中退场尘雾 48 次 `burst(4)` 每次重建整个 emitter 网格；这是独立的可复现粒子发布问题，不计入密集区，也不是此次三角形补丁已解决的部分。· The expiry event is distinct from dense geometry processing and warrants a targeted batched emission fix that preserves every puff.
+
+### 分身退场粒子发布 · Clone-expiry particle publication
+
+本次又在同一个固定逻辑点复现了百身术退场的独立长帧。使用引擎 [#508](https://github.com/cnedwin/Egret_rebuild/pull/508) 的 `ParticleEmitter.burstAtMany(sites)`：游戏仅在 `clones-gone` 将前 48 个位置的 4 粒子逐点 burst 换为一次同序批处理（`src/main.mjs`），192 个尘雾的数量、位置、随机序列、容量、音效、出现时间、战斗规则与存档不变。引擎完整预校验、逐点 spawn，返回前同步发布最终网格；原单次 burst 不变。· The second bottleneck uses one synchronous multi-origin emission, without changing the particles or gameplay.
+
+| 同一逻辑点 sample516 · Matched expiry at logic 1034 | 旧逐点 A · Sequential | 批量 B · Batch | 旧复跑或批量复跑 |
+|---|---:|---:|---:|
+| Fold7 事件 CPU (ms) | 40.0 | 2.2 | 5.4 (B) |
+| Fold7 同步整帧 CPU (ms) | 45.7 | 10.1 | 13.3 (B) |
+| Fold7 rAF (ms) | 33.2 | 16.5 | 16.5 (B) |
+| PC 事件 CPU (ms) | 28.6 | 1.6 | 30.2 (A) |
+| PC 同步整帧 CPU (ms) | 34.0 | 6.4 | 35.6 (A) |
+| PC rAF (ms) | 35.8 | 7.8 | 36.5 (A) |
+| 实际非空事件网格发布 · Real event mesh publications | 48 | 1 | B 1 / A 48 |
+| 尘雾存活粒子 · Live dust | 192 | 192 | 192 |
+
+- 两组 A/B 输入的 448 个 vendor 文件逐字节一致，合并候选 `99f520231d0423edbe5a28ba575d7508c0b32ac5`，两端每块 548 行/330 个 100 分身密集行，逻辑/RNG、三个状态摘要、所有粒子存活计数完全对齐；Fold7 为 A/B/B、PC A/B/A。Fold7 30.6–30.8°C、thermal 0、同 Adreno 830 WebGL2 2291×854。48 处、192 请求、每个退场样本粒子列表 alive=[17,23,192,0]。事件 CPU 下降 86.5%–94.5%（Fold7 本次独立观察）。· Real same-engine causal comparison; exact geometry and particle state also independently tested in Node (48 vs 1 publications, median CPU 39.42→1.37ms, 100 alternating rounds).
+- 密集窗并非退场 · Dense window is separate：这组 Fold7 A/B/B 的密集 rAF p95 都约 33.2 ms，最大值 66.3/49.8/66.2 ms。B2 sample339、age 4.05 的 66.2 ms 对应 CPU 51.8、Spine 15.0、geometry 11.5、prepare 13.0、submit 11.7 ms，事件/UI 均 0；本次批量接口不可能修复此类时序波动。· The independently fixed expiry does not eliminate dense tails; CPU phase measurements are not GPU execution.
+
+- 未插桩双修复包 · Physical production candidate: SHA-256 ae31f37e900fec5811b2908ff30cdd566a4443537f90e7d0acd2c210cba83c0d；Fold7 实际移动、松手归零、跳跃、暂停恢复正常（普通 121 rAF p95/max 16.7/16.7 ms，零错误）。在未修改时钟、无暂停的独立实拍中，真实分身剩余寿命 0.242 s 后自然 100→0，保留可见多点烟尘带、角色与 UI 无明显几何或布局异常。Node 90/90、浏览器 13/13（headless）通过；标题/暂停基线差异 0.67%/1.62%，保留原基线。 · Real touch and separate puff visual inspection; not a performance capture.
+
+- 最新集成头 · Newest measured integration: `5059be3a4ad15084422a63af72a609969844690f` 额外包含主干 #510 的可选 UI scale（本作不传，默认 1）；源几何粒子实现和测试仍逐字节相同，双语 API 索引重生。真实 PC/Fold7 同探针均与上一候选 548/330 行、状态/粒子数匹配，退场事件 1.7/3.4 ms、一次网格发布、尘雾 192；dense p95/max PC 16.7/25.1，Fold7 33.2/49.8 ms（该块全段无 >50）。Fold7 未插桩正式候选 SHA-256 b1cb1f403f349e0a2920b926dfd6fb6b722d0f8d4be6987431abc1346ed11976，普通触控 x168→341.25、释放、跳跃、暂停恢复零错误，121 rAF p95/max 16.6/16.7 ms。· Same verified patch after main integration; no global long-tail guarantee. 最新候选 Node 90/90、原无头浏览器验收 13/13，通过未改基线的标题/暂停差异 0.67%/1.80%。 · Latest candidate passes both existing suites without updating baselines.
+
+- #511 平板布局集成 · Tablet integration: `703cda2476cc3fc3e1550d657d51266df2b69ab5` 保留两项优化源码/测试字节，重生 API 索引，57/57 定向通过。本作未指定平板专用分支，仍按 root/portrait 回退。此次实际 PC/Fold7 单 B 复核 548/330 逻辑及全部粒子计数一致（无新 A/B 归因）；退场事件 PC 1.4、Fold7 2.2 ms，一次网格发布、192 尘雾；密集 p95/max PC 16.7/29.1, Fold7 33.2/49.8。未插桩候选包 SHA256 332ebb39046e9a290e9e12b673e60a3e1ac53dccd55fdd1be9b3c60df2a057ff，Fold7 普通触控、跳跃、暂停恢复通过，121 rAF p95/max 16.7/16.7，无错误。 · Latest tested integration retains both exact fixes.
+
+- 正式发布引擎 · Released engine main: `83bec954ef253be13455af2016af956376f98b71`（[Egret Rebuild #508](https://github.com/cnedwin/Egret_rebuild/pull/508) 已通过正常 M0/merge-ready、Windows 全量/四分片、macOS/Linux 等检查并合入），Git tree 与最终候选 `7b8f9ba2` 完全一致。由官方 detached main 构建和 vendor-game 重新生成，不发布诊断代码。包含 #513 的新可选八屏验收工具（正常游戏不设置其 agent）。发布包 SHA-256 `098ded1e996c15a2593a43ac45e7637049131d21973442a221219fabc54f255f`，实际 Fold7 读取该包并完成普通真实触控路线（x168→346.75、轴归零、跳跃、暂停恢复、121 rAF p95/max 16.7/16.7 ms，零错误）及独立自然退场烟尘实拍。Node 90/90、原浏览器验收 13/13（headless）、标题/暂停基线 0.67%/2.02%、原基线保留、游戏标准通过。· Official generated bundle on real handset, not a new full profiling matrix; engine merge is distinct from Pages deployment.

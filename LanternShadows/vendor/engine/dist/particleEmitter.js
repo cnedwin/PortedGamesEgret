@@ -226,6 +226,37 @@ export function createParticleEmitter(options) {
             spawn(count);
             draw();
         },
+        burstAtMany(sites) {
+            // Validate and snapshot every site before changing the position, RNG or mesh.
+            if (!Array.isArray(sites))
+                throw new EgretError('PARTICLE_OPTIONS_INVALID');
+            const length = sites.length;
+            if (!Number.isSafeInteger(length) || length < 0 || length > 16384)
+                throw new EgretError('PARTICLE_OPTIONS_INVALID');
+            const plan = [];
+            let total = 0;
+            for (let i = 0; i < length; i++) {
+                const site = sites[i];
+                if (!record(site))
+                    throw new EgretError('PARTICLE_OPTIONS_INVALID');
+                const { x, y, count } = site;
+                if (!finite(x) || !finite(y) || typeof count !== 'number' || !Number.isSafeInteger(count) || count < 0)
+                    throw new EgretError('PARTICLE_OPTIONS_INVALID');
+                total += count;
+                if (total > 1048576)
+                    throw new EgretError('PARTICLE_OPTIONS_INVALID');
+                plan.push({ x, y, count });
+            }
+            open();
+            if (plan.length === 0)
+                return;
+            for (const site of plan) {
+                x = site.x;
+                y = site.y;
+                spawn(site.count);
+            }
+            draw();
+        },
         clear() {
             open();
             alive = 0;
