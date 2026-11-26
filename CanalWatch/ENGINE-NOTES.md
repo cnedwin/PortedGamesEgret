@@ -20,15 +20,17 @@ and two page buttons) in headless Chromium.
 - 现象：给了 `parent` 时，`play` 把画布放进自己建的盒子，盒子的内联样式写死 `background:#000`。`transparent: true` 让画布清成透明，可透出来的是这块黑底，不是页面——文档说的「what the page has under the canvas shows through」不成立。最小页面里这个盒子的计算背景色是 `rgb(0, 0, 0)`。 · What happens: with `parent`, `play` puts the canvas in a holder of its own whose inline style is `background:#000`; a clear canvas shows that black, not the page, so the documented "what the page has under the canvas shows through" does not hold. In the minimal page the holder's computed background is `rgb(0, 0, 0)`.
 - 绕过办法：`play` 返回后把 `game.canvas.parentElement.style.background` 改成 `transparent`（`src/main.mjs`）。 · Workaround: set `game.canvas.parentElement.style.background` to `transparent` once `play` has returned.
 - 建议：`transparent: true` 时盒子不写背景色。 · Suggestion: give the holder no background when `transparent` is true.
-- 状态：已在 `450bb9e` 解决（引擎 #457）：`transparent: true` 时引擎建的盒子也是透明的。 · Resolved in `450bb9e` (engine #457): with `transparent: true` the holder the engine makes is clear too.
+- 状态：已在 `450bb9e` 解决（引擎 #457）：`transparent: true` 时引擎建的盒子也是透明的。 · Resolved in `450bb9e` (engine #457): with `transparent: true` the holder the engine makes is clear too. 本次已删除游戏侧 background 覆写，仅保留地理美术层与舞台的叠层顺序。 · The game no longer overwrites the holder background; only the backdrop/stage stacking order remains.
 
-### 3. 静止的大图每帧重画，软件渲染下帧时间翻倍 · A still map drawn again each frame doubles the frame time under software rendering — 已写入文档 / documented
-<!-- engine-note: {"id": "CanalWatch#3", "status": "documented", "topic": "still-layer-cache", "workaround": ["src/ground.mjs"]} -->
+### 3. 静止的大图每帧重画，软件渲染下帧时间翻倍 · A still map drawn again each frame doubles the frame time under software rendering — 部分解决 / partly
+<!-- engine-note: {"id": "CanalWatch#3", "status": "partly", "topic": "still-layer-cache", "workaround": ["src/ground.mjs"]} -->
 
 - 现象：整张地图（两层远山、两层水道、纤道、芦苇、柳树、城墙、建造位）画在一个 `game.sprite` 里，只画一次、之后不动。无头 Chromium + SwiftShader、1280×800 下，标题画面帧时间 p95 33.3 ms；把这个精灵设为不可见就回到 16.7 ms。逐项去掉试过：去掉远山或去掉水道中的任何一项都能回到 16.8 ms 左右，说明是大片半透明填充的填充量，而不是三角形数。`play` 里没有把静止图层缓存成一张纹理的办法（`cacheAsBitmap` 在迁移文档里写着「Not there」）。 · What happens: the whole map is one `game.sprite`, drawn once and never changed. In headless Chromium with SwiftShader at 1280 × 800 the title's frame time is 33.3 ms p95, and 16.7 ms with that sprite hidden. Leaving out either the hills or the canal alone brings it to about 16.8 ms, so it is the fill of large translucent areas, not the triangles. `play` has no way to keep a still layer as one texture (`cacheAsBitmap` is "Not there" in the migration notes).
 - 绕过办法：地图由 Canvas 2D 绘制，放在白鹭透明画布下，只在地图框尺寸变化时重画（`src/ground.mjs`）。最初验证此方案时，标题帧时间 p95 为 16.7 ms，第十波满屏敌人时为 16.8 ms。 · Workaround: Canvas 2D paints the map beneath Egret's transparent canvas and redraws it when the map changes size. The original test of this arrangement measured 16.7 ms p95 on the title and 16.8 ms during a crowded tenth wave.
 - 建议：给 `play` 一个把精灵（及其子精灵）烘成纹理、之后当一张图画的办法，例如 `game.bake(sprite)`，在内容改变时再烘；或者在文档里写明大片半透明填充的代价和「静止背景交给页面」的做法。 · Suggestion: a way for `play` to bake a sprite and its children into a texture drawn as one picture until it changes, say `game.bake(sprite)`; or say in the docs what large translucent fills cost and that a still background can be left to the page.
 - 状态：已写入文档（引擎 #485，`8637ace`）：引擎把这条写成 guide 卡片 still-background；把子树烘成纹理的「静止层」还没有。 · Documented (engine #485, `8637ace`): the engine wrote this up as its still-background guide card; a still layer that bakes a subtree is not there yet.
+- 新能力：引擎 #505 增加 opt-in `staticLayers: true`（WebGL2）和 `game.browser.staticLayers`，将真实的共享帧静态绘制捕获烘到 GPU 层；移动只更新 placements，修改时重新烘。不是自动任意子树缓存，当前仅限 WebGL2、先于普通舞台绘制。 · The engine now provides retained GPU backgrounds on WebGL2, using genuine captured draw recipes and placement-only composition; arbitrary subtree snapshots, interleaving and WebGPU are not included.
+- 本作的现状：默认实际设备走 WebGPU，地图已经由 Canvas2D 在尺寸变化时一次生成静止美术（不是每帧重复重画的原生图层）。丰富的水墨笔触、渐变、裁剪水道和透明叠色不是现有 GPU capture 的原生输入；若把已生成的单张图再上传烘成 GPU 层，只增加读回/上传/目标分配，不会消除原有地图几何准备。因此保持现有静止美术底图和透明白鹭前景，不为使用 API 而强制切换渲染后端；未测得也不宣称此作的缓存收益。 · The default physical-device backend is WebGPU and the map is already painted as a static Canvas2D backdrop only on size changes. Reuploading and baking that raster would duplicate work, not remove the old native geometry preparation. The art and backend remain unchanged. No GPU-cache speedup is claimed for this game.
 
 ### 4. 画布在 `game.canvas`，文档没写 · The canvas is `game.canvas`, which the docs do not say — 已写入文档 / documented
 <!-- engine-note: {"id": "CanalWatch#4", "status": "documented", "topic": "play-canvas-docs", "workaround": ["src/main.mjs"]} -->
@@ -40,14 +42,13 @@ and two page buttons) in headless Chromium.
 
 ## 原生 UI 迁移 · Native UI migration — 8e70dcb3
 
-### 5. 原生 tap 的输入来源和语义角色 · Native tap origin and semantic role — 未解决 / open
-<!-- engine-note: {"id": "CanalWatch#5", "status": "open", "topic": "native-ui-activation-source", "workaround": ["src/main.mjs", "src/native-ui.mjs"]} -->
+### 5. 原生 tap 的输入来源和语义角色 · Native tap origin and semantic role — 已在 `7f32c3b9` 解决 / resolved in `7f32c3b9`
+<!-- engine-note: {"id": "CanalWatch#5", "status": "resolved", "topic": "native-ui-activation-source", "workaround": ["src/main.mjs", "src/native-field-ui.mjs"]} -->
 
-- 现象：同一个建塔按钮，鼠标/键盘直接建造，触屏先预览再确认。原生 tap 回调没有公开本次激活的来源参数，游戏短时记录原始指针类型，键盘输入清除前次指针标记；地图点船直接以成对指针事件处理，避免同帧按下和放开被帧状态采样遗漏。· The same tower control builds immediately with mouse/key input but previews first on touch. Native tap bindings do not expose the activation source, so the game briefly records the pointer type and clears it on keyboard input; paired pointer events keep fast carrier taps from being lost to frame sampling.
-- 建议：在保持现有零参数绑定兼容的同时，提供可选的激活来源（mouse/touch/pen/keyboard/semantic）及坐标，便于实现差异化交互。· Optionally supply activation source and coordinates to tap handlers without breaking existing zero-argument bindings.
-- 绕过办法：12 个透明塔位需要按钮语义、动态名称、较小的独立装饰。原生可点击 panel 默认语义为 group；游戏语义桥将父控件声明为 button 并把装饰项标记为隐藏（按钮语义是叶节点）。建议支持声明式的 semantic role、动态 accessible name、装饰性子节点排除，避免额外桥接。· The clickable panel is a group by default; the game provides dynamic button semantics and hides decorative descendants from the semantic tree. Declarative role, dynamic accessible name and decorative exclusion would remove this bridge.
-
-- 状态：待改进；现有原生控件通过游戏侧兼容绑定工作。· Open; the native controls work through compatible game-side bindings.
+- 原现象：同一个建塔按钮，鼠标/键盘直接建造，触屏先预览再确认；旧 tap 回调没有本次输入来源，透明塔位 panel 为 group 语义，需暂存指针类型并包装语义定义。· Previously mouse/keyboard built directly, while touch previewed first. Tap had no origin, and clickable panels needed a semantic bridge for plot buttons.
+- 状态：引擎 #499 提供 tap 的第二参数 `activation.source`、panel 的 `role: 'button'` 和动态 `bind.label`。游戏删除 1.8 秒指针回忆和自定义语义包装，对触屏/笔给预览，对鼠标、键盘、手柄、语义激活直接建造，塔位图标不再产生额外语义节点。· The engine now provides activation context, button roles on panels and bound accessible labels. The game uses native branching and semantic leaf buttons instead of the previous heuristic and wrapper.
+- 保留：地图上船只直接点选仍需要成对原始指针事件和命中检查，快速按下/松开不能丢失；鼠标指针类型只用于悬停预览，不再猜测控件的激活来源。· Paired map pointer events and mouse hover tracking remain intentional, not activation-source workarounds.
+- 回归入口：`test/accept.mjs` 覆盖键盘/鼠标直接建塔、触屏预览与确认、实时语义名称和按钮叶节点。· The browser acceptance covers the interaction split, dynamic names and leaf roles.
 
 ### 6. 扩展屏幕、滚动与坐标 · Expanded screen and scroll geometry — documented integration
 <!-- engine-note: {"id": "CanalWatch#6", "status": "documented", "topic": "native-ui-geometry", "workaround": ["src/native-layout.mjs", "src/native-ui.mjs", "src/main.mjs"]} -->

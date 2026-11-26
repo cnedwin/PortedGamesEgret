@@ -66,16 +66,10 @@ if it sank now. The report tracks ships held at each gate and crews ashore, stop
 | `play`（`@egret/engine/play`） | 一次调用建好画布、帧循环和地图框里的透明舞台 · one call makes the canvas, the loop and the clear stage inside the map's box | `src/main.mjs` |
 | `game.show` + native UI views | 标题、帮助、设置、战场操作栏、塔位、建造和结算；通过布局与状态绑定适配横竖屏 · all screens, controls, tower picker and results via native layout and bindings | `src/native-screens.mjs`, `src/native-field-ui.mjs` |
 | `createUiSemantics` + `createBrowserSemantics` | 原生控件的可访问名称、焦点和浏览器语义投影 · accessible names, focus and browser projection for native controls | `src/native-ui.mjs`, `src/main.mjs` |
-| `game.sprite` + Graphics | 四种塔（每级多一点红）、五种敌人、箭石火、闸门、射程圈，全用代码画 · the towers (a red pip a level), the raiders, arrows, stones and fire, the gates and the reach rings, all drawn in code | `src/native-layout.mjs`, `src/native-ui.mjs` | 屏幕几何、原生视图句柄及语义投影 · screen geometry, native view handles and semantics |
-| `src/native-screens.mjs`, `src/native-field-ui.mjs` | 原生标题、帮助、暂停、结算、战斗栏和塔位建造 · native title, help, pause, results, field HUD and picker |
-| `src/view.mjs` |
-| `game.rect`、`game.circle`、图层精灵 · layer sprites | 血条、火苗；塔、敌人、箭石分层，后建的塔也在敌人后面 · health bars and flames; towers, raiders and shots in layers | `src/native-layout.mjs`, `src/native-ui.mjs` | 屏幕几何、原生视图句柄及语义投影 · screen geometry, native view handles and semantics |
-| `src/native-screens.mjs`, `src/native-field-ui.mjs` | 原生标题、帮助、暂停、结算、战斗栏和塔位建造 · native title, help, pause, results, field HUD and picker |
-| `src/view.mjs` |
+| `game.sprite` + Graphics | 四种塔（每级多一点红）、五种敌人、箭石火、闸门、射程圈，全用代码画 · the towers (a red pip a level), the raiders, arrows, stones and fire, the gates and the reach rings, all drawn in code | `src/view.mjs` |
+| `game.rect`、`game.circle`、图层精灵 · layer sprites | 血条、火苗；塔、敌人、箭石分层，后建的塔也在敌人后面 · health bars and flames; towers, raiders and shots in layers | `src/view.mjs` |
 | `game.burst`、`game.shake` | 投石尘浪和落水、沉船碎片、失守反馈。减弱动画时保留静态命中标记 · debris, water impacts, and a breach cue. Reduced motion keeps static hit markers | `src/combat-fx.mjs` |
-| `game.text` + `game.tween` | 击退时飘起的「+银子」· the floating silver on a kill | `src/native-layout.mjs`, `src/native-ui.mjs` | 屏幕几何、原生视图句柄及语义投影 · screen geometry, native view handles and semantics |
-| `src/native-screens.mjs`, `src/native-field-ui.mjs` | 原生标题、帮助、暂停、结算、战斗栏和塔位建造 · native title, help, pause, results, field HUD and picker |
-| `src/view.mjs` |
+| `game.text` + `game.tween` | 击退时飘起的「+银子」· the floating silver on a kill | `src/view.mjs` |
 | `game.toast` | 「第 n 波来了」「旗舰来了」· the wave notices | `src/main.mjs` |
 | `game.timeScale`、`pause`、`resume`、`after` | ×1/×2/×3 加速、菜单暂停、结算前的停顿 · the speeds, the pause behind the menu, the beat before the end | `src/main.mjs` |
 | `game.reducedMotion` | 设置里的「减弱动画」，没设时跟随系统 · the reduced-motion setting, following the system unless set | `src/main.mjs` |
@@ -114,6 +108,9 @@ node tools/balance.mjs 12
 - 浏览器验收：51/51；标题、地图、结算三张新基线差异 0.00%，无控制台或页面错误。覆盖键盘、鼠标、模拟触屏、双语、横竖屏、建塔/升级/拆除、关闸、速度、暂停、胜败、存档及真实生成的载人船点击预判。· 51/51 browser checks and 0.00% differences against the three reviewed new baselines; keyboard, mouse, emulated touch, both languages, layout, tower actions, gates, speed, pause, results, saves and actual carrier preview.
 - 两种模式与原有数值、存档格式和美术资源均未变化。真机结果及性能限制见 [QUALITY.md](QUALITY.md)。· Both modes, numbers, save format and art are unchanged; see QUALITY.md for device results and performance limits.
 - `node tools/balance.mjs 12`：原有结果见上一节 · original results in the section above.
+
+- 2026-11-27 引擎升级：35/35 Node、56/56 原生浏览器验收全部通过，既有标题/地图/结算基线差异 0.00%/0.05%/0.04%。PC 与 Fold7 实机短路线前后对照，原生标签、键鼠直接建造、触屏预览确认、暂停及第一波通过。详见 QUALITY.md（不把短路线和历史整局等同）。 · Engine refresh: 35 Node and 56 browser checks pass, unchanged screenshot baselines within tolerance. Paired physical PC/Fold7 short routes verify native tower activation, pause and wave one; see QUALITY.md.
+
 ## 已知问题 · Known issues
 
 - 真机验收的设备、路线和未覆盖项目请见 QUALITY.md；软件渲染指标与真实 GPU 指标分开记录。 · See QUALITY.md for devices, routes and uncovered items; software-rendered and physical GPU measurements are separate.
@@ -124,10 +121,12 @@ node tools/balance.mjs 12
 ## 已解决 · Solved
 
 - 旧页面按钮的 Tab 和 Space 问题已由引擎解决（ENGINE-NOTES 1）；现在原生 UI 处理焦点与按键激活，游戏仅保留专用快捷键。 · The old page-button issue is resolved; native UI owns focus and activation while the game keeps dedicated shortcuts.
-- 透明画布下面是一片黑：`play` 给装画布的盒子写死了黑底（ENGINE-NOTES 2），开局后把它改成透明。 · A black box under the clear canvas, from the holder `play` makes (ENGINE-NOTES 2); made clear after start.
+- 透明画布下面是一片黑：`play` 给装画布的盒子写死了黑底（ENGINE-NOTES 2），引擎已经修好，删除游戏侧的背景覆写，仅保留底图的层级。 · The engine fixed the holder background (ENGINE-NOTES 2); the game no longer overrides it.
 - 标题画面帧时间 p95 33 ms：静止的地图交给引擎每帧重画，大片半透明的填充在软件渲染下太贵（ENGINE-NOTES 3）。地图改由页面在一块二维画布上画一次（`src/ground.mjs`），画法函数和引擎 Graphics 同名，p95 回到 16.7 ms。 · A title frame time of 33 ms p95 from the still map being drawn again each frame (ENGINE-NOTES 3); the page now paints it once on a 2D canvas, and p95 is 16.7 ms.
 - `game.browser.canvas` 是 `undefined`，画布在 `game.canvas`（ENGINE-NOTES 4）。 · The canvas is `game.canvas`, not `game.browser.canvas` (ENGINE-NOTES 4).
 - 第一版平衡里险峻难度第三波就输、铜锣哨放在够不着道的建造位上：加了每波 6% 的强度递增、调了弩楼和险峻的数字，电脑玩家的铜锣改放到建造位 8。 · The first balance lost hard at wave 3 and put the gong where it reached no way; a 6% rise in strength a wave, new crossbow and hard numbers, and the bot's gong moved to plot 8.
+
+- 本轮改为白鹭 tap 激活上下文、panel 按钮角色及动态无障碍标签，删除游戏侧语义桥及指针来源计时猜测（ENGINE-NOTES 5）。地图的原始按下/抬起与悬停仍按原规则处理。 · Native activation context, button roles and bound names replace the previous wrappers; paired map input and hover remain intentional.
 
 ## 未完成 · Unfinished
 
@@ -157,10 +156,10 @@ node tools/balance.mjs 12
 
 ## 引擎副本 · Engine copy
 
-引擎副本取自 [Egret_rebuild](https://github.com/cnedwin/Egret_rebuild) 提交 `8e70dcb3a8a0b40c9966483c92cb9f691a1cefd8`，由引擎仓库的 `tools/vendor-game.mjs` 复制，见 [vendor/SOURCE.md](vendor/SOURCE.md)。用到的入口详见 SOURCE.md；包括 play、kit、UI、语义及浏览器语义投影。
+引擎副本取自 [Egret_rebuild](https://github.com/cnedwin/Egret_rebuild) 提交 `94bd70fb26b1f81794c9c6fbbb258c655fcd19df`，由引擎仓库的 `tools/vendor-game.mjs` 复制，见 [vendor/SOURCE.md](vendor/SOURCE.md)。用到的入口详见 SOURCE.md；包括 play、kit、UI、语义及浏览器语义投影。
 
 The engine copy is from [Egret_rebuild](https://github.com/cnedwin/Egret_rebuild) commit
-`8e70dcb3a8a0b40c9966483c92cb9f691a1cefd8`, copied by the engine's `tools/vendor-game.mjs`; see
+`94bd70fb26b1f81794c9c6fbbb258c655fcd19df`, copied by the engine's `tools/vendor-game.mjs`; see
 [vendor/SOURCE.md](vendor/SOURCE.md). Entries used include the play, kit, UI, semantics and browser semantics packages; see the exact list in SOURCE.md.
 
 ```sh

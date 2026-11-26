@@ -59,3 +59,14 @@
 - 自动品质工具 F1 在并行运行时为 33.4 ms，单独复跑 25.1 ms，均高于 16.7 ms 软件基准；真实 GPU 的主流程符合上表。这不是对 GPU 执行耗时的归因。· F1 software-rendered title target was not met; real GPU measurements are separate.
 - E2：拒绝一项装饰标题图资源，无未捕获异常，但没有单独重试按钮；标题可用性与装饰图缺失接受标准不同。· A refused decorative title image does not crash; the standalone retry check still fails.
 - 未覆盖：标准 12 波两种难度完整真机手动战斗、低/中端设备、系统读屏器和扬声器实听、PC 两次长帧归因。· Full physical twelve-wave runs on both difficulties, low/mid-range devices, actual screen-reader and speaker listening, and PC long-frame attribution remain unverified.
+
+## 2026-11-27 引擎更新回归 · Engine refresh regression
+
+本轮先对同一游戏源码的引擎候选 `b1f275d7c208784f73824f20d8de4b093de3d00c` 完成实机和浏览器验收，再核对正式引擎提交的实际运行时字节。上面的完整质量表为历史基线，本轮不重新执行整个 `tools/quality.mjs` 自动量表。· The full table above is historical; this refresh uses focused regression and physical-device comparisons.
+
+- Node `--test test/*.test.mjs`：35/35；`node test/accept.mjs`：56/56，无页面错误。既有截图标题 0.00%、地图 0.05%、结算 0.04% 差异，全部通过且不更新基线。新增验证 native panel 是语义按钮叶节点，移动设备模拟先触屏再点鼠标不串输入来源。· All tests pass; existing screenshot baselines retained, with the new native-role and mixed-input assertions.
+- PC 真机 · Physical PC：Windows / Edge 158.0.4370.33 / RTX 5090 Laptop / WebGPU，1280×800 CSS，画布 1121×701。实际键盘 Enter 建塔位 5、鼠标建塔位 4，N 开第一波；两局均余银 189，塔位和地图布局一致。180 个 rAF 间隔 p95 4.3→4.3 ms，最大 12.6→12.5 ms，均无 >33.4 ms、零错误。同场景截图肉眼地图、塔和操作栏一致，敌人自然步进时间略有差异。· Matched foreground browser route and rendered scene; measured browser cadence, not GPU execution.
+- Fold7 真机 · Physical Fold7：SM-F966U1 / Android 17 / Chrome 157 / Adreno 830，实际横屏 873×325 CSS，场地 backing 1073×603、UI 3652×1360；新版本确认 WebGPU，旧版本未单独读取后端。真实触控从标题、塔位 5、弩楼预览、明确确认（240→170 银）到暂停继续和第一波。场地和第一波各 121 个 rAF，p95 与最大值旧/新均为 16.7 ms，零页面错误。· Real touch input confirms the two-step purchase and controls; backend is recorded for the new build only.
+- 边界 · Limits：本轮真机是回归短路线，不是新的完整十二波或双闸五波通关；胜败与分支存档仍由浏览器现有结果 fixture 及 Node 覆盖。不把真实旗舰机与中档设备、模拟尺寸或 GPU 执行时间混为一谈。#505 仅提供 WebGL2 retained layer，本作保持现有仅 resize 重画的 Canvas2D 美术，因此不声称 GPU 静态缓存速度提升。· Short physical regression, not a full campaign or GPU timer result.
+
+正式副本 · Released engine copy：94bd70fb26b1f81794c9c6fbbb258c655fcd19df。官方工具重生成后，与实测候选的所有 356 个记录文件逐项校验 SHA-256，除 vendor/SOURCE.md 的正式版本标记外 355 个文件均完全相同（运行时、导入映射、页面均一致），因此上述实际验收适用于正式运行时代码。 · Official generation from main is byte-identical to the tested candidate except the provenance pin in SOURCE.md.

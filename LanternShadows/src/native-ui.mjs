@@ -109,13 +109,13 @@ export function createLanternUi(play,state,cb) {
     const {modal=false,dim=SKIN.dim,initialFocus,dismiss,gamepad=true,skin={}}=options;
     const description={label,area:'screen',root:root(parts),skin:{...SKIN,dim,...skin},modal};
     const bindings={...bind},actions=[];
-    // A changing status may legitimately become empty. The semantic tree
-    // requires nonempty names; hide such a node and use a harmless fallback.
+    // Optional status lines disappear when blank; Play now excludes empty
+    // bound text from the semantic tree without a synthetic visual label.
     function visit(part) {
       const original=bind[part.name];
       if(part.name&&part.type==='text'&&original?.text) {
         const read=original.text,visible=original.visible;
-        bindings[part.name]={...original,text:s=>safeText(read(s)),
+        bindings[part.name]={...original,text:s=>String(read(s)??''),
           visible:s=>nonempty(read(s))&&(!visible||Boolean(visible(s)))};
       }
       if(part.type==='button'||part.type==='toggle'||(part.type==='panel'&&original?.tap))actions.push(part);

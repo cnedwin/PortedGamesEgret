@@ -4,7 +4,7 @@ import { SkeletonRendererCore } from '@esotericsoftware/spine-core';
 import { DisplayObjectContainer, Mesh2D, Scope, EgretError } from '@egret/engine';
 import { requireSpineRender } from './renderAuthority.js';
 import { registerResetDisplay } from './resetAuthority.js';
-import { copySpineDraws, drawFault } from './drawGeometry.js';
+import { copySpineDraws, drawFault, SpineDrawScratch } from './drawGeometry.js';
 const apply = Reflect.apply, add = DisplayObjectContainer.prototype.addChild, remove = DisplayObjectContainer.prototype.removeChild;
 const children = Object.getOwnPropertyDescriptor(DisplayObjectContainer.prototype, 'numChildren').get, childAt = DisplayObjectContainer.prototype.getChildAt;
 const closeContainer = DisplayObjectContainer.prototype.dispose, use = Scope.prototype.use;
@@ -46,6 +46,7 @@ export function createSpineDisplay(instance, scope, options) {
     let disposed = false, revision = 0, detach, renderer = new SkeletonRendererCore();
     let current, meshes = [], bindings = [], rows = [];
     const materials = new Map();
+    const scratch = new SpineDrawScratch();
     const retired = new Set();
     function markRetired(row) {
         row.finish ??= row.bindings.map(binding => binding.beginDispose());
@@ -113,6 +114,7 @@ export function createSpineDisplay(instance, scope, options) {
         unregister?.();
         renderer = undefined;
         materials.clear();
+        scratch.clear();
         const failures = [], active = { container: current, bindings };
         current = undefined;
         meshes = [];
@@ -142,7 +144,7 @@ export function createSpineDisplay(instance, scope, options) {
         dispose,
         prepare(skeleton) {
             intact();
-            const next = copySpineDraws(renderer.render(skeleton, false, undefined, 2), port.asset, limits, materials);
+            const next = copySpineDraws(renderer.render(skeleton, false, undefined, 2), port.asset, limits, materials, scratch);
             const reuse = next.length === rows.length &&
                 next.every((row, i) => row.lease === rows[i].lease && row.material === rows[i].material);
             const prepared = reuse ? next.map((row, i) => bindings[i].prepare(row.lease, row.geometry)) : [];

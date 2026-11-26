@@ -11,8 +11,34 @@ const modes = new Map([
     [BlendMode.Multiply, 'multiply-factor'],
     [BlendMode.Screen, 'screen']
 ]);
+/** Private per-display, exact-size conversion staging. No published geometry borrows it. */
+export class SpineDrawScratch {
+    // 512 retained vertices x 9 f32 components = 18 KiB of typed payload per display.
+    // Larger or unusual sizes remain one-use rather than growing retained memory.
+    #sizes = new Map();
+    #retainedVertices = 0;
+    forVertices(n) {
+        const previous = this.#sizes.get(n);
+        if (previous !== undefined)
+            return previous;
+        const buffers = {
+            positions: new Float32Array(n * 2),
+            lightColors: new Float32Array(n * 4),
+            darkColors: new Float32Array(n * 3)
+        };
+        if (n <= 512 - this.#retainedVertices) {
+            this.#sizes.set(n, buffers);
+            this.#retainedVertices += n;
+        }
+        return buffers;
+    }
+    clear() {
+        this.#sizes.clear();
+        this.#retainedVertices = 0;
+    }
+}
 /** Premultiplied shared-frame output over straight pages; no reinterpretation of shared-frame/1. */
-export function copySpineDraws(head, asset, limits, materials) {
+export function copySpineDraws(head, asset, limits, materials, scratch) {
     const setup = asset.getSetup(), leases = asset.getPages(), rows = [], seen = new Set();
     let vertices = 0, indices = 0;
     for (let command = head; command; command = command.next) {
@@ -57,24 +83,36 @@ export function copySpineDraws(head, asset, limits, materials) {
             material = createSharedMaterial2D({ blend, filter, samplingDomain: 'page' });
             materials.set(key, material);
         }
-        const positions = new Float32Array(n * 2), lightColors = new Float32Array(n * 4), darkColors = new Float32Array(n * 3);
+        // The factory below finishes copying before the next command can reuse this exact-size scratch.
+        const { positions, lightColors, darkColors } = scratch.forVertices(n);
         for (let i = 0; i < n; i++) {
             positions[i * 2] = command.positions[i * 2];
             positions[i * 2 + 1] = -command.positions[i * 2 + 1];
             // Core emits packed ARGB8; shared vertices store straight light and dark coefficients.
             const light = command.colors[i], dark = command.darkColors[i];
-            lightColors.set([((light >>> 16) & 255) / 255, ((light >>> 8) & 255) / 255, (light & 255) / 255, (light >>> 24) / 255], i * 4);
-            darkColors.set([((dark >>> 16) & 255) / 255, ((dark >>> 8) & 255) / 255, (dark & 255) / 255], i * 3);
+            // Store directly in Float32 so each component retains the previous rounding
+            // without allocating two temporary Arrays per vertex.
+            const li = i * 4, di = i * 3;
+            lightColors[li] = ((light >>> 16) & 255) / 255;
+            lightColors[li + 1] = ((light >>> 8) & 255) / 255;
+            lightColors[li + 2] = (light & 255) / 255;
+            lightColors[li + 3] = (light >>> 24) / 255;
+            darkColors[di] = ((dark >>> 16) & 255) / 255;
+            darkColors[di + 1] = ((dark >>> 8) & 255) / 255;
+            darkColors[di + 2] = (dark & 255) / 255;
         }
         rows.push({
             lease,
             material,
             geometry: createSharedGeometry2D({
                 positions,
-                uvs: new Float32Array(command.uvs),
+                // Core owns these exact used-range views until its next render. The
+                // synchronous shared-geometry factory validates, copies and freezes them
+                // before returning; never retain a mutable Core view in a frame.
+                uvs: command.uvs,
                 lightColors,
                 darkColors,
-                indices: new Uint16Array(command.indices)
+                indices: command.indices
             })
         });
     }

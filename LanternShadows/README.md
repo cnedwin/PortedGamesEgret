@@ -205,6 +205,8 @@ The game's code and its generated art are released under Apache-2.0. The engine 
 
 - Fold7 最新百身术受控 A/B/A：拆开 Spine 动画/骨骼语义与网格发布，延期可省去背压跳过帧的网格工作；但真实提交间隔 p50 16.7→33.1→16.7 ms，因此保留生产同步发布。完整逐帧严格等价检查及 990 帧数据在 [test/perf](test/perf/README.md)，正式版 100 分身、规则与引擎副本未改。 · Controlled physical-device A/B/A found that mesh deferral saved rejected-frame CPU but worsened cadence. The release is unchanged; see the detailed reproducer and evidence.
 
+- 2026-11-27 引擎升级：90/90 Node、13/13 浏览器验收全部通过，既有标题/暂停画面基线差异 0.67%/1.87%。真实 PC/Fold7 普通输入短路线及单独 100 分身诊断通过；没有重新把三幕全部通关，也不宣称密集性能已根治。见 QUALITY.md。 · Engine refresh: 90 Node and 13 browser checks pass; existing title and pause baselines remain within tolerance. Physical short routes and a separately identified 100-clone diagnostic passed; no claim of a new three-act run or universal frame-rate uplift.
+
 ## 已知问题 · Known issues
 
 - Fold7 原生 UI 密集百身术仍存在帧率差距，此前自然路线 rAF p95 旧版 33.2–33.3 ms、新版 49.7 ms；本轮固定同背板测量旧新实际提交 p95 均约 50 ms，Atlas 已降低中位开销但尾部仍待优化；已验证 backing 和幕布裁切对照，保留全部分身，详见 ENGINE-NOTES 第 9 条。 · Native UI dense clone p95 remains higher on Fold7; the measured backing and clip comparison did not restore the old result. All clones are retained; see engine note 9.
@@ -212,7 +214,7 @@ The game's code and its generated art are released under Apache-2.0. The engine 
 - `?clones` 设得太大（例如 200）时，同台的 Spine 实例超过引擎每个骨骼的 128 个上限，多出的分身建不出来，控制台报 `SPINE_INSTANCE_LIMIT_FAILED`（ENGINE-NOTES 第 3 条）；默认的一百个不会碰到。 · A large `?clones` (200, say) passes the engine's limit of 128 Spine instances; the default hundred does not.
 - 画面太慢时会自动收回一部分分身（写了 `?clones` 就不收），所以慢的设备上身外身的分身数会少于一百。 · On a slow device some clones are sent back, so fewer than a hundred appear unless `?clones` is given.
 - 第一次加载页面要先下载打包文件和第一幕的全部文件，改过 `src/`、`vendor/` 或 `assets/` 后必须重新运行 `tools/bundle.mjs`，否则页面跑的是旧代码（测试会指出来）。 · After a change under `src/`, `vendor/` or `assets/` the page runs old code until `tools/bundle.mjs` is run again (a test says so).
-- 新版统一品质检查：[QUALITY.md](QUALITY.md)，本批 14/16 达标；F1 无头软件渲染 p95 17.5 ms、L1 限速通用首屏 3.3 s 略超阈值（此前 16.7 ms / 3.1 s）。真实 Fold7 同场景 A/B 单列，不将通用软件测试当真机。 · The generic software F1 and startup proxy remain above their thresholds; physical Fold7 profiling is separate.
+- 2026-11-26 历史统一品质基线：[QUALITY.md](QUALITY.md)，当时 14/16 达标；F1 无头软件渲染 p95 17.5 ms、L1 限速通用首屏 3.3 s 略超阈值（此前 16.7 ms / 3.1 s）。真实 Fold7 同场景 A/B 单列，不将通用软件测试当真机。 · The historical generic software F1 and startup proxy exceeded their thresholds; this refresh uses targeted acceptance and physical-device routes, not a new full quality-table run.
 
 ## 已解决 · Solved
 
@@ -224,6 +226,8 @@ The game's code and its generated art are released under Apache-2.0. The engine 
 - Fold7 真实竖屏旋转时英文标题撑大布局而无法开锣：限制网格内在尺寸和字体，英文允许换行。实际 411×813 屏幕开锣、摇杆、单跳及暂停恢复通过。 · Rotating a physical Fold7 had pushed the English Start button off-screen; bounded grid tracks and wrapping fix it, verified on the real portrait phone.
 
 - 短横屏落幕上下裁切：印章与统计并排，操作区和挑战完整显示；Fold7 实打第三幕落幕验证 12/12 内容及入口可见/命中。仍有 2 CSS px 装饰性滚动余量。 · Short landscape result clipping fixed; 12/12 result items and control centers were in bounds in a physical-device win, with a 2 px scroll remainder.
+
+- 引擎现在原生处理空的非交互状态文字与独立标签；正常首幕不发布空 Boss/分身占位符（ENGINE-NOTES 7、11）。官方 renderRetry/ beforeRender 替代游戏侧循环重启，仍只允许原有的特定 WebGL2 精度拒绝和限次相机呈现补偿，不延迟任何 Spine 更新（ENGINE-NOTES 12）。 · Native empty text and independent accessible names; bounded render-only recovery replaces the custom loop restart, without deferring Spine.
 
 ## 未完成 · Unfinished
 
@@ -263,6 +267,6 @@ test/                   规则与资源的检查 · checks of the rules and the 
 
 All playable screens use native Egret Play views, with a semantic tree for keyboard focus, accessibility names and browser acceptance. Expanded screen layout keeps the portrait HUD and controls outside the shadow cloth. The original rules, three stages, record keys and audio mix remain unchanged. Horizontal analog input and held jumping use native engine pointer sessions. Only the pre-engine recoverable boot notice remains in HTML.
 
-引擎副本取自 [Egret_rebuild](https://github.com/cnedwin/Egret_rebuild) 提交 `f0dfde367431713578e23fb3931544177b443c3c`，由引擎仓库的 `tools/vendor-game.mjs` 复制，见 [vendor/SOURCE.md](vendor/SOURCE.md)。
+引擎副本取自 [Egret_rebuild](https://github.com/cnedwin/Egret_rebuild) 提交 `94bd70fb26b1f81794c9c6fbbb258c655fcd19df`，由引擎仓库的 `tools/vendor-game.mjs` 复制，见 [vendor/SOURCE.md](vendor/SOURCE.md)。
 
-The engine copy is from [Egret_rebuild](https://github.com/cnedwin/Egret_rebuild) commit `f0dfde367431713578e23fb3931544177b443c3c`, copied by the engine's `tools/vendor-game.mjs`; see [vendor/SOURCE.md](vendor/SOURCE.md).
+The engine copy is from [Egret_rebuild](https://github.com/cnedwin/Egret_rebuild) commit `94bd70fb26b1f81794c9c6fbbb258c655fcd19df`, copied by the engine's `tools/vendor-game.mjs`; see [vendor/SOURCE.md](vendor/SOURCE.md).

@@ -103,6 +103,10 @@ async function desktop(page) {
 
   await click(page, 'start');
   await wait(page, () => __lantern.playing && __lantern.act.time > 0.08);
+  assert.equal((await snapshot(page)).bossName, '', 'the first soldiers precede their boss');
+  assert(!(await uiNodes(page, ['text'])).some(n => /:(boss-name|crowd)$/.test(n.id)),
+    'optional blank battle text is not announced with a placeholder');
+  log('blank named native boss/crowd text has no published accessible placeholder');
   await page.keyboard.press('p');
   await waitPaused(page, true);
   assert.equal((await snapshot(page)).screen, 'play');
