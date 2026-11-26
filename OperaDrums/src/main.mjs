@@ -103,6 +103,8 @@ const backdrop = document.querySelector('#backdrop'),
 /** The stage of the performance: its frame, then the lane, notes and instruments of src/view.mjs, in stage units. */
 function buildWorld() {
   stageRoot = game.sprite();
+  // The canvas covers the window, so notes coming in from the right are cut at the stage's edge.
+  stageRoot.clipRect = { x: -2, y: -2, width: 964, height: 544 };
   game.sprite(drawStageFrame, stageRoot);
   view = createView(game, {
     words: t,
