@@ -26,9 +26,10 @@ const engine = arg('engine'),
 const { standInPage } = await import(pathToFileURL(path.join(engine, 'tools/wechat/check-minigame.mjs')).href);
 const W = 844,
   H = 390;
-const TYPES = { '.js': 'text/javascript', '.json': 'application/json' };
+const TYPES = { '.js': 'text/javascript', '.json': 'application/json', '.jpg': 'image/jpeg', '.png': 'image/png' };
 const server = createServer((request, response) => {
   const url = decodeURIComponent(new URL(request.url, 'http://x').pathname);
+  if (url === '/favicon.ico') { response.writeHead(204); return response.end(); }
   if (url === '/') {
     response.writeHead(200, { 'content-type': 'text/html; charset=utf-8' });
     return response.end(standInPage({ width: W, height: H, ratio: 2 }));
@@ -42,7 +43,7 @@ const server = createServer((request, response) => {
   response.end(readFileSync(file));
 });
 await new Promise((done) => server.listen(0, '127.0.0.1', done));
-const browser = await chromium.launch({ args: ['--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist'] });
+const browser = await chromium.launch({ ...(process.env.CHROMIUM_PATH ? {executablePath:process.env.CHROMIUM_PATH} : {}), args: ['--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist'] });
 const checks = [],
   problems = [];
 const check = (ok, words) => {
@@ -79,6 +80,8 @@ const shot = async (name) => writeFileSync(path.join(process.env.SHOTS ?? tmpdir
 try {
   await page.goto(`http://127.0.0.1:${server.address().port}/`);
   await screenIs('title');
+  await until(() => GameGlobal.egretGame.view.art.state !== 'loading');
+  check(await game(() => GameGlobal.egretGame.view.art.state === 'ready'), 'original title art loads in the mini game');
   check(await game(() => GameGlobal.egretGame.app.miniGame), 'the game knows it is a mini game');
   await game(() => GameGlobal.egretGame.game.invalidate());
   await page.waitForTimeout(400);
@@ -90,6 +93,8 @@ try {
   await shot('levels');
   await tap(await middleOf('egret.view.focus[0]'));
   await screenIs('build');
+  await until(() => GameGlobal.egretGame.view.art.state !== 'loading' && GameGlobal.egretGame.view.trees.every(t => t.state !== 'loading'));
+  check(await game(() => GameGlobal.egretGame.view.art.state === 'ready' && GameGlobal.egretGame.view.trees.every(t => t.state === 'ready')), 'chapter artwork and riverbank trees load in the mini game');
   await until(() => GameGlobal.egretGame.overlay === 'tip');
   // The notes card's one button, which holds the focus.
   await tap(await game(() => GameGlobal.egretGame.focusNow().sprite.localToGlobal(0, 0)));

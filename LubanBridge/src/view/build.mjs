@@ -5,6 +5,7 @@
 // only draws the outcome: members moved to their nodes and washed by their load, carts set by their wheels, broken
 // timber and stone falling into the water by the physics.
 import { Sprite } from '@egret/engine';
+import { chapterArt, treeArt, makeArtRetry } from './art.mjs';
 import { createGestures } from '@egret/engine/web/gestures';
 import { createBrowserHoverInput } from '@egret/engine/web/hover';
 import { GRID, costOf, createHistory, fixedPoints, key, lengthOf, mirrored, pontoonAllowed, sameMember, whyNot } from '../sim/design.mjs';
@@ -13,7 +14,7 @@ import { MATERIALS, memberPrice } from '../sim/materials.mjs';
 import { createRun } from '../sim/run.mjs';
 import { VEHICLES } from '../sim/vehicles.mjs';
 import { designOf, keepDesign, recordCrossing } from '../saves.mjs';
-import { C, hitBox } from './kit.mjs';
+import { C, landscapeTouchSize, hitBox } from './kit.mjs';
 import { lay, paintBoat, paintDebris, paintGrid, paintMember, paintPart, paintPier, paintPontoon, paintScenery, showStrain } from './paint.mjs';
 
 
@@ -56,8 +57,11 @@ export async function buildScreen(app, layer, levelId) {
     tall = H > W;
   const say = (k, v) => app.say(k, v);
   const lang = app.lang();
-  const TOP = tall ? 104 : 58;
-  const bottomH = tall ? 292 : 132;
+  const thumb = landscapeTouchSize(game);
+  const TOP = tall ? 104 : thumb ? thumb + 12 : 58;
+  const bottomH = tall ? 292 : thumb ? thumb*2 + 18 : 132;
+  const materialY = tall ? 52 : thumb ? thumb/2 + 7 : 34;
+  const toolY = tall ? 146 : thumb ? thumb*1.5 + 12 : 92;
   const viewRect = { x: 0, y: TOP, w: W, h: H - TOP - bottomH - 30 };
 
   // ---- the drawing and its history ----
@@ -75,6 +79,8 @@ export async function buildScreen(app, layer, levelId) {
   layer.addChild(cam);
   const scenery = paintScenery(level);
   cam.addChild(scenery);
+  const art = chapterArt(game,layer,level,viewRect,scenery.backdrop);
+  const trees = treeArt(game,scenery,level);
   const grid = paintGrid(level);
   cam.addChild(grid);
   const piersLayer = new Sprite(),
@@ -164,19 +170,26 @@ export async function buildScreen(app, layer, levelId) {
   const bar = new Sprite();
   // The bars reach past the stage's sides, for a mini game whose screen is wider than the design.
   bar.graphics.beginFill(C.silk, 0.96).drawRect(-600, -600, W + 1200, TOP + 600).endFill();
-  bar.graphics.lineStyle(1.5, C.inkSoft, 0.7).moveTo(0, TOP - 1).lineTo(W, TOP - 1);
+  bar.graphics.beginFill(C.ink,0.88).drawRect(-600,TOP-6,W+1200,6).endFill();
+  bar.graphics.lineStyle(1.5,C.gold,0.9).moveTo(0,TOP-7).lineTo(W,TOP-7);
+  bar.graphics.lineStyle(0,0,0);
   ui.addChild(bar);
   const chapter = CHAPTERS[level.chapter];
   const title = level.sandbox ? level.name[lang] : `${say('level', { id: level.id })} · ${level.name[lang]}`;
   kit.spoken(ui, title, { x: 20, y: tall ? 32 : TOP / 2, size: tall ? 22 : 24, baseline: 'middle', bold: true }, 'heading');
   const costText = kit.spoken(ui, '', { x: tall ? 20 : W / 2, y: tall ? 76 : TOP / 2, size: 20, baseline: 'middle', align: tall ? 'left' : 'center' }, 'status');
+  const costMeter = new Sprite();
+  ui.addChild(costMeter);
   const menuButton = kit.button(ui, say('menu'), { x: W - (tall ? 64 : 70), y: TOP / 2, w: tall ? 100 : 110, h: 40, size: 18 }, () => app.pauseMenu(screen));
   const helpButton = kit.button(ui, say('help'), { x: W - (tall ? 184 : 200), y: TOP / 2, w: tall ? 124 : 130, h: 40, size: 18 }, () => app.overlay('help'));
 
   const tray = new Sprite();
   tray.y = H - bottomH;
   tray.graphics.beginFill(C.silk, 0.97).drawRect(-600, 0, W + 1200, bottomH + 600).endFill();
-  tray.graphics.lineStyle(1.5, C.inkSoft, 0.7).moveTo(0, 1).lineTo(W, 1);
+  tray.graphics.beginFill(C.ink,0.88).drawRect(-600,0,W+1200,6).endFill();
+  tray.graphics.lineStyle(1.2,C.gold,0.95).moveTo(0,6).lineTo(W,6);
+  tray.graphics.lineStyle(1,C.silkDeep,0.55).moveTo(20,tall ? 99 : thumb ? thumb+10 : 61).lineTo(W-20,tall ? 99 : 61);
+  tray.graphics.lineStyle(0,0,0);
   ui.addChild(tray);
   const info = kit.spoken(ui, '', { x: 20, y: H - bottomH - 16, size: 18, baseline: 'middle', color: C.inkSoft }, 'status');
 
@@ -187,7 +200,7 @@ export async function buildScreen(app, layer, levelId) {
     const b = kit.button(
       tray,
       `${say('m_' + m)} ${MATERIALS[m].price}`,
-      { x: 20 + mw / 2 + i * (mw + 8), y: tall ? 52 : 34, w: mw, h: 48, size: tall ? 16 : 17, kind: 'quiet', name: say('material', { name: say('m_' + m), price: MATERIALS[m].price }) },
+      { x: 20 + mw / 2 + i * (mw + 8), y: materialY, w: mw, h: 48, size: tall ? (lang === 'zh' ? 16 : 13) : 17, kind: 'quiet', swatch: MATERIALS[m].colour, name: say('material', { name: say('m_' + m), price: MATERIALS[m].price }) },
       () => pickMaterial(m)
     );
     b.material = m;
@@ -206,15 +219,16 @@ export async function buildScreen(app, layer, levelId) {
   ];
   const tw = tall ? Math.min(82, (W - 36) / tools.length - 4) : Math.min(120, (W - 40 - 180) / tools.length - 8);
   const toolButtons = new Map(
-    tools.map(([id, words, fn], i) => [id, kit.button(tray, words, { x: (tall ? 18 : 20) + tw / 2 + i * (tw + (tall ? 4 : 8)), y: tall ? 146 : 92, w: tw, h: 44, size: tall ? (lang === 'zh' ? 17 : 13) : 17 }, fn)])
+    tools.map(([id, words, fn], i) => [id, kit.button(tray, words, { x: (tall ? 18 : 20) + tw / 2 + i * (tw + (tall ? 4 : 8)), y: toolY, w: tw, h: 44, size: tall ? (lang === 'zh' ? 17 : 13) : 17 }, fn)])
   );
-  const testButton = kit.button(tray, say('test'), { x: tall ? W - 140 : W - 100, y: tall ? 240 : 92, w: tall ? 240 : 160, h: 50, size: 22, kind: 'primary' }, () => (running ? stopTest() : startTest()));
-  const slowButton = kit.button(tray, say('slow'), { x: tall ? 140 : W - 100, y: tall ? 240 : 34, w: tall ? 240 : 160, h: 44, size: 18 }, () => {
+  const testButton = kit.button(tray, say('test'), { x: tall ? W - 140 : W - 100, y: tall ? 240 : toolY, w: tall ? 240 : 160, h: 50, size: 22, kind: 'primary' }, () => (running ? stopTest() : startTest()));
+  const slowButton = kit.button(tray, say('slow'), { x: tall ? 140 : W - 100, y: tall ? 240 : materialY, w: tall ? 240 : 160, h: 44, size: 18 }, () => {
     slow = !slow;
     slowButton.setOn(slow);
     slowButton.setText(slow ? say('fast') : say('slow'));
   });
   slowButton.visible = false;
+  const retryArt = makeArtRetry(app,ui,[art.status,...trees],{x:W-102,y:H-bottomH-(tall ? 62 : thumb ? thumb/2+12 : 42),w:164,h:48,size:17});
 
   function pickMaterial(m) {
     material = m;
@@ -239,6 +253,12 @@ export async function buildScreen(app, layer, levelId) {
     const over = Number.isFinite(level.budget) && cost > level.budget;
     costText.say(`${say(over ? 'costOver' : 'cost', { cost })}  ·  ${Number.isFinite(level.budget) ? say('budget', { budget: level.budget }) : say('noBudget')}`);
     costText.color = over ? C.cinnabar : C.ink;
+    const meter = costMeter.graphics.clear();
+    if (Number.isFinite(level.budget)) {
+      const w = tall ? 210 : 232, x = tall ? 20 : (W-w)/2, y = tall ? 91 : thumb ? TOP-13 : 46;
+      meter.beginFill(C.silkDeep,0.58).drawRect(x,y,w,4).endFill();
+      meter.beginFill(over ? C.cinnabar : C.malachite,0.96).drawRect(x,y,w*Math.max(0,Math.min(1,cost/level.budget)),4).endFill();
+    }
     toolButtons.get('undo').setEnabled(history.canUndo);
     toolButtons.get('redo').setEnabled(history.canRedo);
   }
@@ -308,7 +328,7 @@ export async function buildScreen(app, layer, levelId) {
         }
       })
     );
-    if (ok) sound.play('knock', { rate: 0.9 + Math.random() * 0.2 });
+    if (ok) sound.play('knock', { material, rate: 0.9 + Math.random() * 0.2 });
     return ok;
   }
   /** The member nearest a point (metres), within reach. */
@@ -342,7 +362,7 @@ export async function buildScreen(app, layer, levelId) {
         }
       })
     );
-    sound.play('pull');
+    sound.play('pull', { material: mem[4] });
     return true;
   }
   function togglePontoon(p) {
@@ -358,7 +378,7 @@ export async function buildScreen(app, layer, levelId) {
         else d.pontoons.push([p.gx, p.gy]);
       })
     );
-    sound.play('knock', { rate: 0.7 });
+    sound.play('knock', { material: 'pontoon', rate: 0.9 });
   }
   function togglePier(m) {
     const i = level.piers.findIndex((p) => Math.abs(p.x * GRID - m.x) < 1 && m.y > p.top * GRID - 1);
@@ -372,7 +392,7 @@ export async function buildScreen(app, layer, levelId) {
         } else d.piers.push(i);
       })
     );
-    sound.play('knock', { rate: 0.6 });
+    sound.play('knock', { material: 'stone', rate: 0.9 });
     return true;
   }
   /** A tap at a stage point, in the current mode. */
@@ -581,7 +601,7 @@ export async function buildScreen(app, layer, levelId) {
     const p = toStageOf(e.x ?? 0, e.y ?? 0),
       w = game.world.globalToLocal(p.x, p.y);
     if (e.type === 'break') {
-      sound.play('crack', { rate: 0.8 + Math.random() * 0.4 });
+      sound.play('crack', { material: e.material, rate: 0.8 + Math.random() * 0.4 });
       if (!game.reducedMotion) {
         game.burst(w.x, w.y, { color: MATERIALS[e.material].colour, count: 14, speed: 120, life: 0.6, size: 3, gravity: 400 });
         game.shake(3, 0.2);
@@ -739,9 +759,11 @@ export async function buildScreen(app, layer, levelId) {
 
   const screen = {
     name: 'build',
+    art: art.status,
+    trees,
     level,
     update,
-    focus: [...matButtons, ...toolButtons.values(), testButton, helpButton, menuButton].map((b) => b.focusRecord),
+    focus: [...matButtons, ...toolButtons.values(), testButton, helpButton, menuButton, retryArt].map((b) => b.focusRecord),
     focusStart: matButtons.length,
     back() {
       if (keyActions.cancel()) return;
@@ -781,6 +803,8 @@ export async function buildScreen(app, layer, levelId) {
       startTest();
     },
     dispose() {
+      art.status.dispose();
+      for (const tree of trees) tree.dispose();
       running?.dispose();
       running = null;
       scope.dispose();

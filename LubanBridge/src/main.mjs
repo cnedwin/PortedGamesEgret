@@ -91,6 +91,7 @@ app.go = async (name, arg) => {
     screen.name ??= name;
     screen.arg = arg;
     if (!over && !ask) focus.set(screen.focus ?? [], false, screen.focusStart ?? 0);
+    app.sound.scene?.(name);
     app.sound.music(app.settings().music);
   } catch (cause) {
     console.warn('screen', cause);
@@ -313,7 +314,7 @@ await play({
   height: 720,
   portrait: { width: 720, height: 1280 },
   fit: miniGame ? 'expand' : 'contain',
-  background: 0xe6d8b8,
+  background: 0xf0e4c7,
   // A still site (nothing moving while a bridge is drawn) keeps its last frame; a test crossing draws every frame.
   renderMode: 'on-demand',
   ...(software ? { pixelRatio: 0.75 } : {}),

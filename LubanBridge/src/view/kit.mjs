@@ -8,19 +8,28 @@ import { semanticBoundsOf } from '@egret/engine/ui/semantics';
 
 /** The palette of a painting on silk: aged silk, ink, azurite blue, malachite green, cinnabar. */
 export const C = {
-  silk: 0xe6d8b8,
-  silkDeep: 0xcdb98f,
-  ink: 0x2b2621,
-  inkSoft: 0x5d5347,
-  azurite: 0x2f6f8f,
-  malachite: 0x4e8b6a,
-  cinnabar: 0xb8432f,
-  gold: 0xc59a3c,
+  silk: 0xf0e4c7,
+  silkDeep: 0xcdb890,
+  ink: 0x20352f,
+  inkSoft: 0x506258,
+  azurite: 0x256779,
+  malachite: 0x497c5d,
+  cinnabar: 0xa73529,
+  gold: 0xc3a164,
   water: 0x7fa6a3,
   sky: 0xd9d2b6,
   dusk: 0x9fb3ad,
-  white: 0xf7f1e3
+  white: 0xfff6de
 };
+
+/** Touch screens held sideways need more design units for each comfortable physical target. */
+export function landscapeTouchSize(game) {
+  if (game.height >= game.width || !globalThis.matchMedia?.('(pointer: coarse)')?.matches) return 0;
+  const r = game.canvas?.getBoundingClientRect?.();
+  const scale = r?.width && r?.height ? Math.min(r.width/game.width,r.height/game.height)
+    : Math.min(globalThis.innerWidth/game.width,globalThis.innerHeight/game.height);
+  return Number.isFinite(scale) && scale > 0 ? Math.min(108, Math.max(60, Math.ceil(44/scale))) : 88;
+}
 
 /** A sprite with a nearly clear rectangle, so taps land on it. */
 export function hitBox(sprite, x, y, w, h) {
@@ -34,14 +43,30 @@ export function shown(sprite) {
   return true;
 }
 
-/** A silk panel with an ink rule inside its edge. */
+/** Fine brass corner brackets inspired by a carpenter's bound notebook. */
+export function brackets(g, x, y, w, h, tone = C.gold, alpha = 0.8) {
+  const l = Math.min(14, w / 6, h / 5);
+  g.lineStyle(1.6, tone, alpha);
+  for (const hx of [0, 1]) for (const hy of [0, 1]) {
+    const a = x + hx * w, b = y + hy * h, dx = hx ? -l : l, dy = hy ? -l : l;
+    g.moveTo(a, b + dy).lineTo(a, b).lineTo(a + dx, b);
+  }
+  g.lineStyle(0, 0, 0);
+}
+
+/** Silk paper with a recessed brass rule and a shallow shadow. */
 export function panel(parent, x, y, w, h, { fill = C.silk, alpha = 0.97, rule = C.inkSoft } = {}) {
   const p = new Sprite();
   p.x = x;
   p.y = y;
-  p.graphics.beginFill(fill, alpha).drawRect(0, 0, w, h).endFill();
-  p.graphics.lineStyle(1.5, rule, 0.8).drawRect(5, 5, w - 10, h - 10);
-  p.graphics.lineStyle(0, 0, 0);
+  const g = p.graphics;
+  g.beginFill(C.ink, 0.21).drawRect(5, 7, w, h).endFill();
+  g.beginFill(fill, alpha).drawRect(0, 0, w, h).endFill();
+  g.beginFill(C.silkDeep, 0.25).drawRect(0, 0, w, 7).drawRect(0, h - 7, w, 7).endFill();
+  g.lineStyle(1, rule, 0.65).drawRect(4, 4, w - 8, h - 8);
+  g.lineStyle(0.7, C.gold, 0.6).drawRect(8, 8, w - 16, h - 16);
+  brackets(g, 11, 11, w - 22, h - 22);
+  g.lineStyle(0, 0, 0);
   parent.addChild(p);
   return p;
 }
@@ -56,12 +81,18 @@ export function createKit(game, sound, { semantics, focused = () => false }) {
     game.text(String(words), { x, y, size, color, align, baseline, bold, layer: parent, ...(vertical ? { vertical } : {}) });
 
   /** A button whose middle is at (x, y). `kind`: 'plain', 'primary' (cinnabar) or 'quiet' (no fill). */
-  function button(parent, words, { x, y, w = 200, h = 52, size, kind = 'plain', name } = {}, onTap) {
+  function button(parent, words, { x, y, w = 200, h = 52, size, kind = 'plain', name, swatch } = {}, onTap) {
     // On a tall screen (a phone held upright) the stage is shrunk most: a button is then at least 84 stage units, so
     // it is 44 CSS pixels or more on a 390-pixel-wide phone.
     if (game.height > game.width) {
       h = Math.max(h, 84);
       w = Math.max(w, 82);
+    } else {
+      const target = landscapeTouchSize(game);
+      if (target) {
+        h = Math.max(h,target);
+        w = Math.max(w,target);
+      }
     }
     size ??= Math.round(Math.min(h, 60) * 0.42);
     const s = new Sprite();
@@ -76,14 +107,23 @@ export function createKit(game, sound, { semantics, focused = () => false }) {
     const paint = () => {
       const g = face.graphics;
       g.clear();
-      const fill = !enabled ? 0xd8ccb2 : kind === 'primary' ? C.cinnabar : on ? C.azurite : hot ? C.white : kind === 'quiet' ? C.silk : C.silk;
-      g.beginFill(fill, kind === 'quiet' && !on && !hot ? 0.55 : 0.97).drawRect(-w / 2, -h / 2, w, h).endFill();
-      g.lineStyle(1.5, kind === 'primary' || on ? C.ink : C.inkSoft, enabled ? 0.9 : 0.35).drawRect(-w / 2 + 3, -h / 2 + 3, w - 6, h - 6);
+      const x = -w / 2, y = -h / 2, active = kind === 'primary' || on;
+      const fill = !enabled ? 0xd3c6aa : kind === 'primary' ? C.cinnabar : on ? C.azurite : hot ? C.white : kind === 'quiet' ? 0xeee1c0 : C.silk;
+      g.beginFill(C.ink, enabled ? 0.23 : 0.08).drawRect(x+2, y+3, w-1, h-1).endFill();
+      g.beginFill(fill, 0.98).drawRect(x, y, w, h).endFill();
+      g.beginFill(active ? 0xf0d3a0 : C.white, enabled ? 0.21 : 0.10).drawRect(x+1, y+1, w-2, 3).endFill();
+      g.beginFill(C.ink, 0.12).drawRect(x+1, y+h-4, w-2, 3).endFill();
+      g.lineStyle(1, active ? C.gold : C.inkSoft, enabled ? 0.85 : 0.32).drawRect(x+1, y+1, w-2, h-2);
       g.lineStyle(0, 0, 0);
+      if (swatch !== undefined && enabled) {
+        g.beginFill(swatch,0.95).drawRect(x+7,y+8,4,h-16).endFill();
+        g.beginFill(C.white,0.3).drawRect(x+7,y+8,1,h-16).endFill();
+      }
+      if (enabled) brackets(g, x+4, y+4, w-8, h-8, active ? 0xf0ce8d : C.gold, 0.85);
     };
     paint();
-    const label = text(s, words, { size, color: kind === 'primary' ? C.white : C.ink, align: 'center', baseline: 'middle' });
-    const recolor = () => (label.color = !enabled ? 0x8f8577 : kind === 'primary' || on ? C.white : C.ink);
+    const label = text(s, words, { size, color: kind === 'primary' ? C.white : C.ink, align: 'center', baseline: 'middle', bold: kind === 'primary' });
+    const recolor = () => (label.color = !enabled ? 0x7c7766 : kind === 'primary' || on ? C.white : C.ink);
     hitBox(s, -w / 2, -h / 2, w, h);
     const press = () => {
       if (!enabled) return;
@@ -165,15 +205,15 @@ export function createFocus(game, layer) {
   layer.addChild(ring);
   const draw = () => {
     const it = items[index];
-    const p = it && !it.sprite.isDisposed && game.focusVisible ? it.sprite.localToGlobal(0, 0) : null;
+    const p = it && shown(it.sprite) && game.focusVisible ? it.sprite.localToGlobal(0, 0) : null;
     const q = p ? layer.globalToLocal(p.x, p.y) : null;
     const key = q ? `${Math.round(q.x)},${Math.round(q.y)},${it.w},${it.h}` : '';
     if (key === drawn) return;
     drawn = key;
     ring.graphics.clear();
     if (!q) return;
-    ring.graphics.lineStyle(3, C.cinnabar, 1).drawRect(q.x - it.w / 2 - 5, q.y - it.h / 2 - 5, it.w + 10, it.h + 10);
-    ring.graphics.lineStyle(0, 0, 0);
+    ring.graphics.lineStyle(2, C.cinnabar, 1).drawRect(q.x - it.w / 2 - 4, q.y - it.h / 2 - 4, it.w + 8, it.h + 8);
+    brackets(ring.graphics, q.x-it.w/2-7, q.y-it.h/2-7, it.w+14, it.h+14, C.gold, 1);
     game.invalidate?.();
   };
   return {
@@ -185,10 +225,13 @@ export function createFocus(game, layer) {
     },
     move(step) {
       if (!items.length) return;
-      index = (index + step + items.length) % items.length;
+      for (let n = 0; n < items.length; n++) {
+        index = (index + step + items.length) % items.length;
+        if (shown(items[index].sprite)) break;
+      }
       draw();
     },
-    activate: () => items[index]?.activate(),
+    activate: () => { if (items[index] && shown(items[index].sprite)) items[index].activate(); },
     current: () => items[index],
     redraw: draw,
     get ring() {

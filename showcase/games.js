@@ -709,14 +709,24 @@ export const GAMES = [
   {
     id: 'luban', folder: 'LubanBridge', kind: '2d',
     scenes: [
-      { zh: "马帮 · 两座桥楼之间挂着铁链，吊绳吊住木板桥面，马车和挑夫正在过峡", en: "The horse caravan · Iron chains hang between two gate towers and ropes hold the plank deck as a horse cart and a porter cross the gorge" },
-      { zh: "赵州桥 · 双层石拱托着石板桥面，牛车和运石车同时上桥，吃力的石块泛红", en: "Zhaozhou Bridge · A two-ring stone arch carries the slab deck as an ox cart and a stone wagon cross; the stones working hardest turn red" },
-      { zh: "嫁女 · 太浅的竹桁架撑不住花轿，竹竿折断，桥身从岸边滑落", en: "A bride crosses · A truss of bamboo too shallow for the sedan: the canes snap and the bridge slides off the bank" },
+      { zh: "开篇画卷 · 原创水彩蜀道悬索桥，题签和朱砂工坊按钮", en: "Opening scroll · Original painted Shu Road suspension bridge with silk and cinnabar menu" },
+      { zh: "赵州桥 · 双层石拱的参考图纸与受力工程网格", en: "Zhaozhou Bridge · A reference double stone arch, drawn in the live engineering grid" },
+      { zh: "试通小河 · 玩家搭成木桥后，挑夫与独轮车从左岸出发", en: "First crossing · A porter and wheelbarrow set off toward the player-built timber bridge" },
     ],
     zh: "鲁班造桥", en: "Luban's Bridges",
     genre: { zh: "物理造桥解谜", en: "Physics bridge-building puzzle" },
-    summary: { zh: "鲁班门下的匠人走遍江南、赵州、蜀道、潮州和侗乡，在网格上搭木梁、竹架、石拱、悬索和浮桥，让挑夫、花轿、马车和运石车过河。点“试通”后桥身按真实受力弯曲变色，太吃力的杆件拉断、压坏、落水。五章二十五关，每章最后重建一座名桥，三枚印章，另有沙盒。画面和声音全部用代码画出、合成；网页之外还能导出为微信小游戏。", en: "One of Lu Ban's apprentices travels through Jiangnan, Zhaozhou, the Shu Road, Chaozhou and Dong country, laying timber beams, bamboo frames, stone arches, suspension cables and pontoon bridges on a grid so that porters, a bridal sedan, horse carts and a stone wagon can cross. On Test the bridge bends and colours with its real loads, and a member that works too hard tears, crushes and falls in the river. Five chapters of five levels, each ending with a famous bridge, three seals, and a sandbox. Every picture and sound is made in code; it also exports as a WeChat mini game." },
+    summary: { zh: "鲁班门下的匠人走遍江南、赵州、蜀道、潮州和侗乡，在网格上搭木梁、竹架、石拱、悬索和浮桥，让挑夫、花轿、马车和运石车过河。点“试通”后桥身按真实受力弯曲变色，太吃力的杆件拉断、压坏、落水。五章二十五关，每章最后重建一座名桥，三枚印章，另有沙盒。原创青绿水彩原画与实时工程绘制相结合，配有原创古琴、箫与材料拟音；支持触屏、键鼠和横竖屏。", en: "One of Lu Ban's apprentices travels through Jiangnan, Zhaozhou, the Shu Road, Chaozhou and Dong country, laying timber beams, bamboo frames, stone arches, suspension cables and pontoon bridges on a grid so that porters, a bridal sedan, horse carts and a stone wagon can cross. On Test the bridge bends and colours with its real loads, and a member that works too hard tears, crushes and falls in the river. Five chapters of five levels, each ending with a famous bridge, three seals, and a sandbox. Original watercolor scenery accompanies live engineering drawings, with an original guqin-and-xiao score and material foley. Touch and keyboard/mouse, wide and tall." },
     features: [
+      {
+        title: { zh: "原生图像与实时结构绘制", en: "Native images and live structural drawing" },
+        description: { zh: "game.image 按场景异步加载原创水彩和透明树木，失败使用程序绘图并可重试；Graphics 绘制杆件、地形、节点和受力颜色，切关释放图层资源。", en: "game.image loads original watercolor plates and transparent trees per scene, with a procedural fallback and retry. Graphics draws the members, terrain, joints and load colors; scene changes release image layers." },
+        source: 'src/view/art.mjs',
+      },
+      {
+        title: { zh: "白鹭音频混音与材料反馈", en: "Egret audio mixing and material feedback" },
+        description: { zh: "原创立体声配乐、流水环境声与 24 种合成音效经引擎混音器播放，施工及断裂按材料区分，音乐音效独立控制。", en: "The engine mixer plays the original stereo music, river ambience and 24 synthesized cues, distinguishing material placement and fracture with independent music and effects controls." },
+        source: 'src/audio/sound.mjs',
+      },
       {
         title: { zh: "2D 物理：车轮、牵引和落水的碎木", en: "2D physics: wheels, hitches and falling debris" },
         description: { zh: "createPhysicsWorld 里车轮是圆形刚体，两轮之间一根 distance 关节，牲口和车之间一根 rope 关节；桥面是跟着桥身走的运动刚体，断下来的木石是动态刚体，落水后木浮石沉。桥身本身由小步长位置约束求解，每根杆件的力直接算出，按材料判断拉断或压坏。", en: "In createPhysicsWorld the wheels are circles joined by a distance joint, a beast and its cart by a rope joint; the deck is kinematic bodies following the frame, and broken timber and stone are dynamic bodies, wood floating and stone sinking. The frame itself is solved with small-step position constraints that give each member's force, judged against its material." },
