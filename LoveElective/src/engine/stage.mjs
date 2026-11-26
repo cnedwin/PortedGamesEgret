@@ -1,7 +1,4 @@
-// The game's connection to the Egret engine: one shared-frame 2D engine on a
-// WebGL2 (or WebGPU) host, textures made from pictures the game paints in code,
-// a display tree of bitmaps, tinting, tweens driven by the engine clock, and
-// pointer and keyboard input in the game's 1280 x 720 coordinates.
+// A single Egret Play host, native UI/input and the game's layered illustration textures.
 import {
   Bitmap,
   Sprite,
@@ -9,16 +6,13 @@ import {
   after,
   createAssetRef,
   createAssetType,
-  createEngineForProfile,
   createImageData2D,
   createTexture,
   isTexture,
   createSharedMaterial2D,
 } from '@egret/engine';
-import { createBrowserFrameLoop } from '@egret/engine/web/loop';
-import { createBrowserHoverInput } from '@egret/engine/web/hover';
-import { createBrowserKeyboardInput } from '@egret/engine/web/keyboard';
-import { createBrowserPointerInput } from '@egret/engine/web/pointer';
+import { play } from '@egret/engine/play';
+import { createUiSemantics } from '@egret/engine/ui/semantics';
 
 export const W = 1280;
 export const H = 720;
@@ -107,18 +101,44 @@ export class Pic {
 
 /** Start the engine on a canvas. backend is 'webgl2' or 'webgpu'. */
 export async function createStage(canvas, { backend = 'webgl2', pixelRatio = 1, onError } = {}) {
-  let host;
-  if (backend === 'webgpu') {
-    const { createSharedWebGPUHost } = await import('@egret/engine/webgpu');
-    host = createSharedWebGPUHost({ canvas, pixelRatio, outputAlpha: 'opaque' });
-  } else {
-    const { createSharedWebGL2Host } = await import('@egret/engine/webgl2');
-    host = createSharedWebGL2Host({ canvas, pixelRatio, outputAlpha: 'opaque' });
-  }
-  const engine = await createEngineForProfile({ host }, 'egret.shared-frame2d/1');
-  const scope = engine.createScope();
-  const frame = { width: W, height: H, clearColor: 0x14122a, clearAlpha: 1, outputAlpha: 'opaque' };
+  const semantics = createUiSemantics({ maxNodes: 4096 });
+  const semanticMeta = new Map();
+  // Native views own actions/bounds/focus. This small metadata extension gives
+  // artwork-backed controls their descriptive names and roles without a second
+  // input or focus system.
+  const semanticBridge = Object.create(semantics, {
+    add: { value(definition) {
+      const part = definition.id.split(':').at(-1);
+      const meta = semanticMeta.get(part);
+      if (!meta) return semantics.add(definition);
+      return semantics.add({
+        ...definition,
+        ...(meta.role ? { role: meta.role } : {}),
+        describe: () => ({
+          ...definition.describe(),
+          ...(meta.label ? { name: meta.label } : {}),
+          ...(meta.disabled ? { disabled: true } : {}),
+          ...(meta.selected !== undefined ? { selected: meta.selected } : {}),
+        }),
+      });
+    } },
+  });
 
+  let stage;
+  let processInput = () => {};
+  const native = await play({
+    canvas, width: W, height: H, fit: 'contain',
+    backend, pixelRatio, background: 0x14122a,
+    // The existing game mixer owns music/voices. Do not create a second one.
+    audio: false, blendSpace: 'linear', semantics: semanticBridge,
+    onError(error) { if (stage) stage.fail(error); else onError?.(error); },
+    update() { processInput(); },
+  });
+  const { engine } = native;
+  const { host, scope } = native.browser;
+  // World artwork remains below native controls. The curtain is a separate
+  // stage child above both of these layers, including any active native modal.
+  const overlay = engine.stage.addChild(scope.use(new DisplayObjectContainer()));
   // Painted canvases reach the engine as textures through its asset manager.
   const type = createAssetType('love-elective-picture', isTexture);
   const waiting = new Map();
@@ -140,15 +160,20 @@ export async function createStage(canvas, { backend = 'webgl2', pixelRatio = 1, 
   const tickers = new Set();
   const kept = [];
   let serial = 0,
-    failed = false;
+    failed = false,
+    started = false;
 
-  const stage = {
+  stage = {
     engine,
     host,
     backend,
     canvasElement: canvas,
-    root: engine.stage,
-    pointer: { x: W / 2, y: H / 2, down: false },
+    native,
+    semantics,
+    semanticMeta,
+    root: native.world,
+    overlay,
+    pointer: native.pointer,
 
     /** A new offscreen canvas of w x h game units at `res` pixels per unit, already scaled for drawing. */
     canvas(w, h, res, draw) {
@@ -270,30 +295,19 @@ export async function createStage(canvas, { backend = 'webgl2', pixelRatio = 1, 
     },
 
     start() {
-      // Every picture is drawn with smooth filtering unless a Pic sets its own tint.
+      if (started) return;
+      started = true;
+      // Play already owns the frame loop. Keep world motion on its engine
+      // clock; no additional renderer, requestAnimationFrame or input device.
       stage.root.sharedMaterial = stage.material(1, 1, 1, 1, 'normal');
       engine.clock.onTick(scope, tick => {
         const dt = Math.min(0.05, tick.deltaSeconds);
         for (const fn of [...tickers]) fn(dt, tick.elapsedSeconds);
         return undefined;
       });
-      // The engine's frame loop steps the clock in pieces it accepts (a slow frame is played back for up to half a
-      // second; after a hidden tab time simply resumes) and draws only when the host has finished the last frame.
-      const loop = createBrowserFrameLoop({
-        engine,
-        host,
-        frame,
-        maxPendingFrames: 1,
-        maxStepSeconds: engine.clock.maxDeltaSeconds * 0.9,
-        catchUpSeconds: 0.5,
-        onError: error => stage.fail(error),
-      });
-      scope.use(loop);
-      loop.start();
     },
   };
 
-  // The painted panels still own hit regions and modal order. Egret owns native input and coordinate mapping.
   const handlers = { down: new Set(), up: new Set(), move: new Set(), key: new Set() };
   stage.on = (kind, fn) => {
     handlers[kind].add(fn);
@@ -302,78 +316,44 @@ export async function createStage(canvas, { backend = 'webgl2', pixelRatio = 1, 
   const emit = (kind, ...args) => {
     for (const fn of [...handlers[kind]]) fn(...args);
   };
-  const keyboard = createBrowserKeyboardInput({ engine, scope });
-  // The artwork is a composite bitmap. A non-rendering hit area keeps hover
-  // tracking across the whole stage, including the empty space between panels.
-  const inputSurface = stage.root.addChild(new Sprite());
-  inputSurface.touchEnabled = true;
-  inputSurface.hitArea = { x: 0, y: 0, width: W, height: H };
-  const shortcutId = 'campus-shortcuts';
-  keyboard.registerTarget({ id: shortcutId, target: inputSurface, tabIndex: -1 });
-  const focusShortcuts = () => {
-    if (document.hidden || document.activeElement !== canvas) return;
-    const { state, focusedId } = keyboard.getSnapshot();
-    if (state === 'active' && focusedId !== shortcutId) keyboard.focus(shortcutId);
+
+  // Native controls consume their own pointer taps. Expose only an unconsumed
+  // background press/release for full-scene story advancement; preserve the
+  // background pointer position for the existing parallax artwork.
+  let backgroundContact = false;
+  let lastX = native.pointer.x, lastY = native.pointer.y;
+  processInput = () => {
+    const p = native.pointer;
+    const point = { pointerType: native.device === 'touch' ? 'touch' : 'mouse' };
+    if (p.pressed) {
+      backgroundContact = true;
+      emit('down', p.x, p.y, point);
+    }
+    if (p.x !== lastX || p.y !== lastY) {
+      lastX = p.x; lastY = p.y;
+      emit('move', p.x, p.y, point);
+    }
+    if (backgroundContact && p.released) {
+      backgroundContact = false;
+      emit('up', p.x, p.y, point);
+    } else if (backgroundContact && !p.down) {
+      backgroundContact = false;
+      emit('up', -1, -1, point);
+    }
   };
-  // Egret releases held keys and logical focus on blur. Rebind when the canvas owns DOM focus again.
-  canvas.addEventListener('focus', focusShortcuts);
-  window.addEventListener('focus', focusShortcuts);
-  document.addEventListener('visibilitychange', focusShortcuts);
+  // The native Play listener runs first; a shortcut is forwarded only when
+  // Play admitted the key rather than a focused control/modal consuming it.
+  // Keep the actual event timing for hold-to-skip reader mode.
+  const shortcut = event => {
+    if (!event.repeat && native.keys.pressed(event.code)) emit('key', event.key, event);
+  };
+  const contextmenu = event => event.preventDefault();
+  canvas.addEventListener('keydown', shortcut);
+  canvas.addEventListener('contextmenu', contextmenu);
   scope.use({ dispose() {
-    canvas.removeEventListener('focus', focusShortcuts);
-    window.removeEventListener('focus', focusShortcuts);
-    document.removeEventListener('visibilitychange', focusShortcuts);
+    canvas.removeEventListener('keydown', shortcut);
+    canvas.removeEventListener('contextmenu', contextmenu);
   } });
-  inputSurface.on(keyboard.events.keyDown, event => {
-    const key = event.payload;
-    if (!key.repeat) emit('key', key.key, event);
-  });
   if (document.activeElement === document.body) canvas.focus({ preventScroll: true });
-  focusShortcuts();
-
-  let activeContact = null;
-  createBrowserPointerInput({
-    engine, scope, width: W, height: H,
-    onContact({ kind, contact }) {
-      const { globalX: x, globalY: y, session, buttons } = contact;
-      const { pointerType } = session;
-      if (kind === 'begin') {
-        if (activeContact || (pointerType !== 'touch' && !(buttons & 1))) return;
-        activeContact = session;
-        canvas.focus({ preventScroll: true });
-        Object.assign(stage.pointer, { x, y, down: true });
-        emit('down', x, y);
-        return;
-      }
-      if (activeContact !== session) return;
-      if (kind === 'move') {
-        Object.assign(stage.pointer, { x, y });
-        emit('move', x, y, session);
-        return;
-      }
-      activeContact = null;
-      stage.pointer.down = false;
-      if (kind === 'cancel') emit('up', -1, -1, session);
-      else {
-        Object.assign(stage.pointer, { x, y });
-        emit('up', x, y, session);
-      }
-    },
-  });
-  createBrowserHoverInput({
-    canvas, engine, scope, width: W, height: H, onError: stage.fail,
-    onHover({ kind, point, reason }) {
-      if (activeContact) return;
-      if (kind === 'leave') {
-        if (reason !== 'target') emit('move', -1, -1, point);
-        return;
-      }
-      const { globalX: x, globalY: y } = point;
-      Object.assign(stage.pointer, { x, y });
-      emit('move', x, y, point);
-    },
-  });
-  canvas.addEventListener('contextmenu', e => e.preventDefault());
-
   return stage;
 }

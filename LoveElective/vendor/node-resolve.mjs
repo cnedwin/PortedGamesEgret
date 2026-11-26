@@ -19,7 +19,18 @@ export const MAP = {
   "@egret/engine/web/keyboard": "./engine/dist/web/keyboard.js",
   "@egret/engine/audio": "./engine/dist/audio.js",
   "@egret/engine/web/audio": "./engine/dist/web/audio.js",
+  "@egret/engine/kit": "./engine/dist/kit.js",
+  "@egret/engine/input/gamepad": "./engine/dist/gamepad.js",
+  "@egret/runtime/text": "./runtime/dist/text/index.js",
+  "@egret/engine/text": "./engine/dist/text.js",
+  "@egret/runtime/ui": "./runtime/dist/ui/index.js",
+  "@egret/engine/ui": "./engine/dist/ui/index.js",
+  "@egret/runtime/paragraph": "./runtime/dist/paragraph/index.js",
+  "@egret/engine/paragraph": "./engine/dist/paragraph.js",
+  "@egret/engine/play": "./engine/dist/web/play.js",
+  "@egret/engine/web/kit": "./engine/dist/web/kit.js",
   "@egret/engine/ui/semantics": "./engine/dist/semantics.js",
+  "@egret/engine/ui/testing": "./engine/dist/ui/testing.js",
   "@egret/engine/web/semantics": "./engine/dist/web/semantics.js"
 };
 export function resolve(specifier, context, next) {

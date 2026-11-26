@@ -1,9 +1,11 @@
-// Interface panels. A panel is painted with ordinary canvas calls into one
-// picture, shown through the engine as a bitmap, and remembers which
-// rectangles of it can be tapped. Painter holds the game's visual style.
+// Native Egret views own interactive parts, text and focus. Canvas artwork is decoration only.
 import { W, H } from './stage.mjs';
 import { rrect, rgba, shade, heart, star, poly } from '../art/draw.mjs';
-import { createPanelSemantics, describePaintedHit } from './ui-semantics.mjs';
+import { Sprite } from '@egret/engine';
+import { createHoverControl } from '@egret/engine/ui';
+import { createBrowserHoverInput } from '@egret/engine/web/hover';
+import { createBrowserSemantics } from '@egret/engine/web/semantics';
+import { describePaintedHit } from './ui-semantics.mjs';
 
 export const FONT = '"PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Noto Sans CJK SC", "Source Han Sans SC", system-ui, sans-serif';
 export const SERIF = '"Noto Serif SC", "Songti SC", "Noto Serif CJK SC", "Source Han Serif SC", "STSong", Georgia, serif';
@@ -32,6 +34,17 @@ export function wrapText(g, text, maxW) {
   return lines;
 }
 
+const rgb = (value, fallback = 0x27263d) => {
+  if (Number.isInteger(value)) return value;
+  const hex = String(value).match(/^#([0-9a-f]{3}|[0-9a-f]{6}|[0-9a-f]{8})$/i)?.[1];
+  if (hex) return Number.parseInt(hex.length === 3 ? [...hex].map(c=>c+c).join('') : hex.slice(0,6), 16);
+  const rgba = String(value).match(/^rgba?\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)/);
+  return rgba ? Number(rgba[1])*65536+Number(rgba[2])*256+Number(rgba[3]) : fallback;
+};
+const SKIN = {text:0x27263d,panel:0xfff9ee,panelAlpha:1,button:0xfffbf3,buttonText:0x27263d,
+  disabled:0x968c9b,accent:0xf5bb81,track:0xe2d9e0,radius:10,size:18,dim:.22};
+const rect = (x,y,w,h) => ({x,y,width:Math.max(.5,w),height:Math.max(.5,h)});
+
 /** Drawing helpers bound to one panel's canvas. */
 export class Painter {
   constructor(g, panel) {
@@ -53,19 +66,15 @@ export class Painter {
     const lh = lineH ?? Math.round(size * 1.45);
     const width = Math.max(0, ...lines.map(line => g.measureText(line).width));
     this.panel.words.push({ text: String(str), x: x - (align === 'center' ? width / 2 : align === 'right' ? width : 0), y, w: width, h: lines.length * lh, size });
-    g.save();
-    g.globalAlpha *= alpha;
     lines.forEach((line, i) => {
-      if (stroke) {
-        g.lineWidth = stroke[1];
-        g.strokeStyle = stroke[0];
-        g.lineJoin = 'round';
-        g.strokeText(line, x, y + i * lh);
-      }
-      g.fillStyle = color;
-      g.fillText(line, x, y + i * lh);
+      if (!line) return;
+      const width = Math.max(6, (maxW ?? g.measureText(line).width) * 1.12 + 6);
+      const left = x - (align === 'center' ? width / 2 : align === 'right' ? width : 0);
+      const name = this.panel.partName('text');
+      this.panel.parts.push({type:'text',name,...rect(left,y+i*lh,width,Math.max(lh,size*1.28)),
+        text:line,size,color:rgb(color),bold:weight>=650,align});
+      if(alpha!==1)this.panel.alphas.set(name,alpha);
     });
-    g.restore();
     return lines.length * lh;
   }
 
@@ -119,17 +128,9 @@ export class Painter {
 
   /** Shared segmented control used in the wardrobe and phone. */
   segment(x, y, w, h, label, on, tap, { size = 16 } = {}) {
-    const g = this.g;
-    g.fillStyle = on ? '#34304c' : '#ede5eb';
-    g.fill(rrect(x, y, w, h, 9));
-    this.text(label, x + w / 2, y + (h - size * 1.22) / 2, { size, weight: 750, color: on ? THEME.light : THEME.soft, align: 'center' });
-    if (on) {
-      g.fillStyle = '#eda4ad';
-      g.fill(rrect(x + w / 2 - 11, y + h - 3, 22, 2, 1));
-    }
-    this.hit(x, y, w, h, tap, { r: 9, label, role: 'tab', selected: Boolean(on) });
+    this.panel.control(x,y,w,h,tap,{label,role:'button',selected:Boolean(on),type:'button',
+      color:on?0x34304c:0xede5eb,textColor:on?0xfff9ef:0x575469,size,border:{color:on?0xdca0b5:0xe2d9e0,width:1}});
   }
-
   /** Left-to-right gradient fill for accents. */
   gradient(x, w, a = THEME.pink, b = THEME.violet) {
     const gr = this.g.createLinearGradient(x, 0, x + w, 0);
@@ -140,52 +141,22 @@ export class Painter {
 
   /** Register a tappable rectangle; tap(x, y) receives where inside it the tap landed. */
   hit(x, y, w, h, tap, { hover = true, r = 12, label, role = 'button', selected, disabled = false } = {}) {
-    const hit = { x, y, w, h, tap, hover, r, disabled };
-    // Keep disabled controls in hit testing so a tap cannot fall through to panel.blank.
-    if (tap) this.panel.hits.push(hit);
-    this.panel.controls.push({
-      hit, role, selected, disabled,
-      label: label ?? describePaintedHit(this.panel.words, hit, this.g.fillStyle),
-      key: `${role}:${x}:${y}:${w}:${h}`,
-    });
+    const hit={x,y,w,h,tap,hover,r,disabled};
+    this.panel.control(x,y,w,h,tap,{type:'panel',role:'button',label:label??describePaintedHit(this.panel.words,hit,this.g.fillStyle),
+      selected,disabled,coordinate:!hover});
   }
 
-  /** Button styles used by titles, dialogue and transaction panels. */
+  /** Native buttons use the original warm-paper, rose and dark palette. */
   button(x, y, w, h, label, tap, { kind = 'plain', disabled = false, size = 18, sub, icon, r = 10, color, accessibleName } = {}) {
-    const g = this.g;
-    const radius = Math.min(r, h / 2, 12);
-    const path = rrect(x, y, w, h, radius);
-    g.save();
-    if (disabled) g.globalAlpha = .54;
-    if (kind === 'primary') {
-      g.shadowColor = rgba(color ?? '#ac3e61', .30);
-      g.shadowBlur = 14;
-      g.shadowOffsetY = 4;
-    }
-    g.fillStyle = kind === 'primary'
-      ? this.gradient(x, w, color ? shade(color, -.17) : '#a93758', color ? shade(color, -.33) : '#754477')
-      : kind === 'dark' ? '#322d48' : kind === 'ghost' ? rgba('#211c34', .45) : '#fffbf3';
-    g.fill(path);
-    g.shadowColor = 'transparent';
-    if (kind === 'primary') {
-      g.strokeStyle = rgba('#fff0e8', .52);
-      g.lineWidth = 1;
-      g.stroke(rrect(x + 2, y + 2, w - 4, h - 4, Math.max(1, radius - 2)));
-    } else {
-      g.strokeStyle = kind === 'ghost' ? rgba('#ffe5d9', .52) : kind === 'dark' ? '#514968' : '#dfd4df';
-      g.lineWidth = 1;
-      g.stroke(path);
-    }
-    const ink = kind === 'plain' ? THEME.ink : THEME.light;
-    const tx = icon ? x + w / 2 + size * .55 : x + w / 2;
-    const top = y + (h - size * 1.22) / 2 - (sub ? 9 : 0);
-    if (icon) this.text(icon, tx - this.measure(label, size, 700) / 2 - size * 1.3, top, { size: size * 1.05, color: ink });
-    this.text(label, tx, top, { size, weight: 750, color: ink, align: 'center' });
-    if (sub) this.text(sub, x + w / 2, y + h / 2 + 5, { size: size * .68, color: ink, align: 'center', alpha: .82 });
-    g.restore();
-    this.hit(x, y, w, h, tap, { r: radius, label: accessibleName ?? (sub ? `${label} · ${sub}` : label), disabled });
+    const fill=kind==='primary'?rgb(color?shade(color,-.17):'#a93758'):kind==='dark'?0x322d48:kind==='ghost'?0x3b304c:0xfffbf3;
+    const ink=kind==='plain'?0x27263d:0xfff9ef;
+    const display=icon?icon+'  '+label:label;
+    this.panel.control(x,y,w,h,tap,{type:'button',label:accessibleName??(sub?label+' · '+sub:label),display,
+      disabled,color:fill,textColor:ink,size:sub?Math.min(size,h*.32):size,
+      border:{color:kind==='primary'?0xdca0b5:kind==='ghost'?0xa18196:0xdfd4df,width:1}});
+    if(sub)this.text(sub,x+w/2,y+h*.68,{size:Math.min(size*.68,Math.max(10,h*.23)),weight:500,
+      color:kind==='plain'?'#575469':'#f2dce0',align:'center',maxW:w-14,lineH:Math.max(13,size*.83)});
   }
-
   /** A small rounded label. */
   chip(str, x, y, { color = THEME.violet, size = 13, ink = '#ffffff', padX = 10, h = 24 } = {}) {
     const w = this.measure(str, size, 700) + padX * 2;
@@ -196,17 +167,10 @@ export class Painter {
   }
 
   /** Progress bar from 0 to max. */
-  bar(x, y, w, h, value, max, { color = THEME.pink, color2, back = rgba('#2b2a4a', 0.1) } = {}) {
-    const g = this.g;
-    g.fillStyle = back;
-    g.fill(rrect(x, y, w, h, h / 2));
-    const fw = Math.max(h, w * Math.max(0, Math.min(1, value / max)));
-    if (value > 0) {
-      g.fillStyle = this.gradient(x, w, color, color2 ?? shade(color, 0.25));
-      g.fill(rrect(x, y, fw, h, h / 2));
-    }
+  bar(x, y, w, h, value, max, { color = THEME.pink } = {}) {
+    this.panel.parts.push({type:'bar',name:this.panel.partName('bar'),...rect(x,y,w,h),
+      value:Math.max(0,Math.min(1,max?value/max:0)),color:rgb(color)});
   }
-
   heart(x, y, s, color = THEME.rose) {
     this.g.fillStyle = color;
     this.g.fill(heart(x, y, s));
@@ -238,143 +202,242 @@ export class Painter {
   }
 }
 
+
 /**
- * One painted panel. Options: position and size in game units, `res` (canvas
- * pixels per unit), `parent` (a display container), and `modal` for a pop-up
- * that blocks everything behind it. A screen may also set:
- *   panel.solid = true    taps on the panel never fall through to what is behind
- *   panel.blank = fn      called when an empty part of the panel is tapped
- *   panel.dismiss = fn    called when a pop-up is tapped beside, or Escape is pressed
+ * A panel has a stable display container for the illustrated backing and existing scene animation.
+ * Its corresponding native view owns every word, button, bar, focus and pointer activation.
+ * Mounting both under the view also keeps modal dimming, art and controls in the same order.
  */
 export class Panel {
   constructor(ui, { x = 0, y = 0, w = W, h = H, res = 1.25, parent, modal = false, title }) {
-    this.ui = ui;
-    this.w = w;
-    this.h = h;
-    this.res = res;
-    this.modal = modal;
-    this.title = title;
-    this.hits = [];
-    this.controls = [];
-    this.words = [];
-    this.paintRevision = 0;
-    this.pic = ui.stage.pic(parent ?? ui.layer);
-    this.node = this.pic.node;
-    this.node.x = x;
-    this.node.y = y;
-    this.enabled = true;
+    Object.assign(this,{ui,w,h,res,modal,title,parentRef:parent??ui.layer,enabled:true});
+    this.id='love'+(++ui.serial);
+    this.pic=ui.stage.pic(this.parentRef);
+    this.node=this.pic.node;
+    this.node.x=x;this.node.y=y;
+    this.nativeLineHandles=new Set();
     ui.panels.push(this);
   }
-
-  /** Repaint the panel: draw(painter) lays out its content and tappable areas. */
+  partName(kind) { return this.id+'-'+kind+'-'+(this.counts[kind]=(this.counts[kind]??0)+1); }
+  active() {return this.enabled&&!this.closed&&!this.ui.locked&&this.node.visible;}
+  activation(x,y,w,h,fn) {
+    if(!this.active()||!fn)return;
+    let lx=w/2,ly=h/2;
+    const input=this.ui.input;
+    if(input.pointer && performance.now()-input.time<1500){
+      try{
+        const local=this.node.globalToLocal(input.x,input.y);
+        lx=Math.max(0,Math.min(w,local.x-x));ly=Math.max(0,Math.min(h,local.y-y));
+      }catch{}
+    }
+    this.ui.onTap?.();
+    fn(lx,ly);
+  }
+  pointerInside() {
+    const input=this.ui.input;
+    if(!input.pointer||performance.now()-input.time>1500)return null;
+    try{return this.node.globalToLocal(input.x,input.y);}catch{return null;}
+  }
+  inside(p) {return p&&p.x>=0&&p.y>=0&&p.x<=this.w&&p.y<=this.h;}
+  control(x,y,w,h,tap,options) {
+    const name=this.partName('control'), box=rect(x,y,w,h), opts=options??{};
+    this.controlBoxes.push({...box,name,hover:!opts.disabled&&!opts.coordinate});
+    this.ui.stage.semanticMeta.set(name,{role:'button',label:String(opts.label??opts.display??''),disabled:Boolean(opts.disabled)});
+    this.metaNames.push(name);
+    if(opts.type==='button'){
+      this.parts.push({type:'button',name,...box,text:String(opts.display??opts.label??''),size:opts.size??18,
+        color:opts.color??SKIN.button,textColor:opts.textColor??SKIN.buttonText,...(opts.border?{border:opts.border}:{})});
+      this.bind[name]={disabled:()=>Boolean(opts.disabled)||!this.active(),tap:()=>this.activation(x,y,w,h,tap)};
+    }else{
+      this.parts.push({type:'panel',name,...box,children:[]});
+      // A painted illustration remains the visual for this target; Egret supplies the actual hit and focus.
+      this.bind[name]={tap:()=>{if(!opts.disabled)this.activation(x,y,w,h,tap);},...(opts.disabled||opts.coordinate?{pointerOnly:true}:{})};
+    }
+  }
+  clearHover() {
+    for(const {name,handle,glow} of this.hoverControls??[]){
+      handle.dispose();
+      this.ui.hovered.delete(name);
+      glow.parent?.removeChild(glow);
+      if(!glow.isDisposed)glow.dispose();
+    }
+    this.hoverControls=[];
+    this.ui.updateCursor();
+  }
+  attachHover(view) {
+    this.clearHover();
+    for(const {name,width,height,hover} of this.controlBoxes){
+      if(!hover)continue;
+      const target=view.get(name),glow=new Sprite();
+      glow.touchEnabled=false;glow.visible=false;
+      glow.graphics.beginFill(0xffffff,.13).drawRoundRect(0,0,width,height,Math.min(16,height)).endFill();
+      target.addChild(glow);
+      const handle=createHoverControl({hover:this.ui.hover,target,onHoverChange:value=>{
+        const active=value&&this.active();
+        glow.visible=active;
+        if(active)this.ui.hovered.add(name);else this.ui.hovered.delete(name);
+        this.ui.updateCursor();
+      }});
+      this.hoverControls.push({name,handle,glow});
+    }
+    this.ui.hover.sync?.();
+  }
+  unmount() {
+    if(!this.view)return;
+    this.clearHover();
+    // Detach the stable art/animation container before disposing the native view's transient parts.
+    this.oldFocus=this.view.focused;
+    const shell=this.shell, screen=this.screenNode;
+    if(shell?.parent===this.node&&screen&&!screen.isDisposed)screen.addChild(shell);
+    if(this.node.parent)this.node.parent.removeChild(this.node);
+    if(this.proxy?.parent)this.proxy.parent.removeChild(this.proxy);
+    if(this.proxy&&!this.proxy.isDisposed)this.proxy.dispose();
+    this.view.close();
+    this.view=null;this.proxy=null;this.shell=null;this.screenNode=null;
+    for(const name of this.previousMeta??[])this.ui.stage.semanticMeta.delete(name);
+  }
+  syncTransform() {
+    if(!this.proxy||!this.screenNode||this.parentRef.isDisposed)return;
+    // Campus pins parallax with their authored parent; the native controls follow exactly the same transform.
+    const from=(x,y)=>{
+      const a=this.parentRef.localToGlobal(x,y);
+      return this.screenNode.globalToLocal(a.x,a.y);
+    };
+    const a=from(0,0),b=from(1,0),c=from(0,1);
+    this.proxy.x=a.x;this.proxy.y=a.y;
+    this.proxy.scaleX=Math.hypot(b.x-a.x,b.y-a.y);
+    this.proxy.scaleY=Math.hypot(c.x-a.x,c.y-a.y);
+    this.proxy.rotation=Math.atan2(b.y-a.y,b.x-a.x)*180/Math.PI;
+    this.proxy.visible=this.parentRef.visible;
+  }
+  mount(view) {
+    const screen=view.get(this.id+'-screen'), shell=view.get(this.id+'-surface');
+    if(this.proxy?.parent&&this.proxy.parent!==screen){
+      this.proxy.parent.removeChild(this.proxy);
+      if(!this.proxy.isDisposed)this.proxy.dispose();
+      this.proxy=null;
+    }
+    if(!this.proxy)this.proxy=new Sprite();
+    screen.addChild(this.proxy);
+    this.proxy.addChild(this.node);
+    this.node.addChild(shell);
+    shell.x=shell.y=0;
+    this.screenNode=screen;this.shell=shell;
+    this.syncTransform();
+    for(const [name,alpha] of this.alphas)view.get(name).alpha=alpha;
+    this.attachHover(view);
+  }
   paint(draw) {
-    this.paintRevision++;
-    this.hits = [];
-    this.controls = [];
-    this.words = [];
-    this.label = this.title;
-    const canvas = this.ui.stage.canvas(this.w, this.h, this.res, g => draw(new Painter(g, this)));
-    this.pic.show(canvas, canvas.res);
-    this.ui.accessibility?.invalidate();
+    if(this.closed)return this;
+    this.unmount();
+    this.parts=[];this.bind={};this.words=[];this.counts={};this.alphas=new Map();this.metaNames=[];this.controlBoxes=[];
+    this.label=this.title;
+    const canvas=this.ui.stage.canvas(this.w,this.h,this.res,g=>draw(new Painter(g,this)));
+    this.pic.show(canvas,canvas.res);
+    const surface={type:'panel',name:this.id+'-surface',...rect(0,0,this.w,this.h),children:this.parts};
+    if(this.modal||this.solid||this.blank)this.bind[surface.name]={pointerOnly:true,tap:()=>{
+            // Native tap events can bubble from a child. A blank surface is not an additional activation.
+      const p=this.pointerInside();
+      if(this.active()&&this.inside(p)&&!this.controlBoxes.some(b=>p.x>=b.x&&p.x<=b.x+b.width&&p.y>=b.y&&p.y<=b.y+b.height))this.blank?.();
+    }};
+    const screen={type:'panel',name:this.id+'-screen',...rect(0,0,W,H),children:[surface]};
+    if(this.modal)this.bind[screen.name]={pointerOnly:true,tap:()=>{
+            // Only the part genuinely outside the illustrated modal dismisses it, not a child button.
+      const p=this.pointerInside();
+      if(this.active()&&p&&!this.inside(p))this.dismiss?.();
+    }};
+    const description={label:this.label??'Love Elective',area:'screen',modal:this.modal,skin:SKIN,root:screen};
+    // Repaint is a new native view with the same part IDs. Retain focus where the part still exists.
+    this.view=this.ui.stage.native.show(description,{
+      bind:this.bind,built:view=>this.mount(view),
+      ...(this.modal?{dismiss:()=>{if(this.active()&&this.dismiss)this.dismiss();else this.ui.keys?.('Escape');}}:{})
+    });
+    this.previousMeta=this.metaNames.slice();
+    if(this.oldFocus&&this.parts.some(p=>p.name===this.oldFocus)){
+      try{this.view.focus(this.oldFocus);}catch{}
+    }
     return this;
   }
-
+  /** Native retained text nodes, clipped per line for the original dialogue typewriter. */
+  nativeLines(lines,{x,y,width,size,lineH,color,weight}) {
+    const native=this.ui.stage.native, group=new Sprite(), lineGroups=[];
+    this.node.addChild(group);group.x=x;group.y=y;
+    for(let i=0;i<lines.length;i++){
+      const row=new Sprite();
+      group.addChild(row);row.y=i*lineH;
+      const text=native.text(lines[i],{layer:row,size,color:rgb(color),bold:weight>=650,baseline:'top'});
+      row.clipRect={x:0,y:0,width:1,height:lineH+8};row.visible=false;
+      lineGroups.push({row,text});
+    }
+    const id=this.id+'-dialogue-'+this.ui.serial++;
+    let closed=false;
+    const semantic=this.ui.semantics.add({id,role:'text',describe:()=>{
+      const a=group.localToGlobal(0,0),b=group.localToGlobal(width,lines.length*lineH);
+      return {name:lines.join(' '),hidden:closed||!this.node.visible||this.node.alpha<.01,
+        bounds:{x:a.x,y:a.y,width:Math.max(1,b.x-a.x),height:Math.max(1,b.y-a.y)}};
+    }});
+    const handle={
+      reveal:(line,pixels)=>{
+        if(closed)return;
+        lineGroups.forEach(({row},i)=>{
+          row.visible=i<line||(i===line&&pixels>0);
+          row.clipRect={x:0,y:0,width:i<line?width+20:Math.max(1,pixels),height:lineH+8};
+        });
+      },
+      showAll:()=>handle.reveal(lines.length,width+20),
+      close:()=>{
+        if(closed)return;closed=true;
+        semantic.remove();
+        for(const {text} of lineGroups)native.remove(text);
+        group.parent?.removeChild(group);group.dispose();
+        this.nativeLineHandles.delete(handle);
+      }
+    };
+    this.nativeLineHandles.add(handle);
+    return handle;
+  }
   close() {
-    const i = this.ui.panels.indexOf(this);
-    if (i >= 0) this.ui.panels.splice(i, 1);
-    if (this.ui.hovered?.panel === this) this.ui.setHover(null);
+    if(this.closed)return;this.closed=true;
+    for(const handle of [...this.nativeLineHandles])handle.close();
+    this.unmount();
+    const i=this.ui.panels.indexOf(this);
+    if(i>=0)this.ui.panels.splice(i,1);
     this.pic.destroy();
-    this.ui.accessibility?.invalidate();
   }
 }
 
-/** Panel manager: routes taps to the top-most panel under the pointer and shows the hover highlight. */
-export function createUI(stage, layer) {
-  const ui = { stage, layer, panels: [], hovered: null, pressed: null, background: null, keys: null, locked: 0 };
-  const glow = stage.rect(layer, 0xffffff, 10, 10);
-  glow.alpha = 0;
-
-  function find(x, y) {
-    for (let i = ui.panels.length - 1; i >= 0; i--) {
-      const panel = ui.panels[i];
-      if (!panel.enabled || !panel.node.visible) continue;
-      let p;
-      try {
-        p = panel.node.globalToLocal(x, y);
-      } catch {
-        continue;
-      }
-      for (let k = panel.hits.length - 1; k >= 0; k--) {
-        const h = panel.hits[k];
-        if (p.x >= h.x && p.x <= h.x + h.w && p.y >= h.y && p.y <= h.y + h.h) return { panel, hit: h, lx: p.x - h.x, ly: p.y - h.y };
-      }
-      const inside = p.x >= 0 && p.y >= 0 && p.x <= panel.w && p.y <= panel.h;
-      if (panel.modal || (panel.solid && inside)) return { panel, hit: null, inside };
-    }
-    return null;
-  }
-
-  ui.setHover = found => {
-    ui.hovered = found;
-    if (!found?.hit?.hover || found.hit.disabled) {
-      glow.alpha = 0;
-      return;
-    }
-    const { panel, hit } = found,
-      a = panel.node.localToGlobal(hit.x, hit.y),
-      b = panel.node.localToGlobal(hit.x + hit.w, hit.y + hit.h);
-    glow.x = a.x;
-    glow.y = a.y;
-    glow.scaleX = (b.x - a.x) / 10;
-    glow.scaleY = (b.y - a.y) / 10;
-    glow.alpha = ui.pressed ? 0.26 : 0.14;
-    layer.setChildIndex(glow, layer.numChildren - 1);
+/** The native view manager owns activation and focus; game shortcuts and coordinate dye input are adapters only. */
+export function createUI(stage,layer) {
+  const ui={stage,layer,panels:[],serial:0,background:null,keys:null,locked:0,input:{pointer:false,time:0},
+    semantics:stage.semantics};
+  const canvas=stage.canvasElement;
+  // Hover is another native input authority on the same host, not a game-side hit router.
+  ui.hovered=new Set();
+  ui.updateCursor=()=>{canvas.style.cursor=ui.hovered.size?'pointer':'default';};
+  ui.hover=createBrowserHoverInput({canvas,engine:stage.engine,scope:stage.native.browser.scope,width:W,height:H,onError:stage.fail});
+  const track=event=>{
+    if(event.target!==canvas)return;
+    const bounds=canvas.getBoundingClientRect();
+    if(!bounds.width||!bounds.height)return;
+    ui.input={pointer:true,time:performance.now(),x:(event.clientX-bounds.left)*W/bounds.width,
+      y:(event.clientY-bounds.top)*H/bounds.height};
   };
-
-  stage.on('move', (x, y, e) => {
-    if (ui.locked || e?.pointerType === 'touch') return;
-    const found = find(x, y);
-    if (found?.hit !== ui.hovered?.hit) ui.setHover(found);
-    stage.canvasElement.style.cursor = found?.hit && !found.hit.disabled ? 'pointer' : 'default';
+  window.addEventListener('pointerdown',track,true);
+  window.addEventListener('pointerup',track,true);
+  window.addEventListener('keydown',()=>{ui.input={pointer:false,time:performance.now()};},true);
+  stage.on('up',(x,y)=>{if(!ui.locked&&x>=0)ui.background?.(x,y);});
+  stage.on('key',(key,event)=>{if(!ui.locked)ui.keys?.(key,event);});
+  stage.onTick(()=>{
+    for(const panel of ui.panels)panel.syncTransform();
   });
-  stage.on('down', (x, y) => {
-    if (ui.locked) return;
-    ui.pressed = find(x, y);
-    ui.setHover(ui.pressed);
-  });
-  stage.on('up', (x, y, e) => {
-    const pressed = ui.pressed;
-    ui.pressed = null;
-    if (ui.locked) return;
-    const found = x < 0 ? null : find(x, y);
-    ui.setHover(e?.pointerType === 'touch' ? null : found);
-    if (x < 0) return;
-    if (pressed?.hit) {
-      if (found?.hit === pressed.hit && !pressed.hit.disabled) {
-        ui.accessibility.pointerFocus(pressed.panel, pressed.hit);
-        glow.alpha = 0;
-        ui.onTap?.();
-        pressed.hit.tap(found.lx, found.ly);
-      }
-      return;
-    }
-    // A tap on an empty part of a panel goes to that panel; a tap beside a
-    // pop-up dismisses it if it allows that; a tap on nothing goes to the screen.
-    if (pressed?.panel) {
-      if (pressed.inside) pressed.panel.blank?.();
-      else pressed.panel.dismiss?.();
-    } else ui.background?.(x, y);
-  });
-  stage.on('key', (key, e) => {
-    if (ui.locked) return;
-    if (ui.accessibility.key(key, e)) return;
-    // Escape closes the top-most pop-up that can be dismissed.
-    const top = [...ui.panels].reverse().find(panel => panel.modal);
-    if (key === 'Escape' && top?.dismiss) top.dismiss();
-    else ui.keys?.(key, e);
-  });
-
-  ui.panel = options => new Panel(ui, options);
-  ui.accessibility = createPanelSemantics(ui, stage, { width: W, height: H });
+  ui.panel=options=>new Panel(ui,options);
+  ui.projection=createBrowserSemantics({semantics:stage.semantics,canvas,width:W,height:H,onError:stage.fail});
+  ui.point=name=>{
+    const nodes=ui.semantics.publish().nodes;
+    const node=[...nodes].reverse().find(n=>(n.id===name||n.name===name||n.id.endsWith(':'+name))&&!n.hidden&&!n.inert&&n.bounds.width>0&&n.bounds.height>0);
+    if(!node)return null;
+    const b=node.bounds,r=canvas.getBoundingClientRect();
+    return {x:r.left+(b.x+b.width/2)*r.width/W,y:r.top+(b.y+b.height/2)*r.height/H};
+  };
   return ui;
 }

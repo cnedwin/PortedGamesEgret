@@ -18,7 +18,18 @@
     "@egret/engine/web/keyboard": "./vendor/engine/dist/web/keyboard.js",
     "@egret/engine/audio": "./vendor/engine/dist/audio.js",
     "@egret/engine/web/audio": "./vendor/engine/dist/web/audio.js",
+    "@egret/engine/kit": "./vendor/engine/dist/kit.js",
+    "@egret/engine/input/gamepad": "./vendor/engine/dist/gamepad.js",
+    "@egret/runtime/text": "./vendor/runtime/dist/text/index.js",
+    "@egret/engine/text": "./vendor/engine/dist/text.js",
+    "@egret/runtime/ui": "./vendor/runtime/dist/ui/index.js",
+    "@egret/engine/ui": "./vendor/engine/dist/ui/index.js",
+    "@egret/runtime/paragraph": "./vendor/runtime/dist/paragraph/index.js",
+    "@egret/engine/paragraph": "./vendor/engine/dist/paragraph.js",
+    "@egret/engine/play": "./vendor/engine/dist/web/play.js",
+    "@egret/engine/web/kit": "./vendor/engine/dist/web/kit.js",
     "@egret/engine/ui/semantics": "./vendor/engine/dist/semantics.js",
+    "@egret/engine/ui/testing": "./vendor/engine/dist/ui/testing.js",
     "@egret/engine/web/semantics": "./vendor/engine/dist/web/semantics.js"
   }
 }
