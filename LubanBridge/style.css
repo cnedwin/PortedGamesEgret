@@ -11,17 +11,17 @@ body {
   -webkit-user-select: none;
   user-select: none;
   -webkit-tap-highlight-color: transparent;
-  background: #3b3329;
+  background: #20352f;
 }
 body {
-  background: radial-gradient(ellipse at center, #5a4e3c 0%, #2b241c 80%);
+  background: radial-gradient(ellipse at center, #465e51 0%, #182722 80%);
 }
 #loading {
   position: fixed;
   inset: 0;
   margin: auto;
   height: 1.5em;
-  color: #e6d8b8;
+  color: #f0e4c7;
   font: 20px/1.5 serif;
   text-align: center;
   letter-spacing: 0.3em;

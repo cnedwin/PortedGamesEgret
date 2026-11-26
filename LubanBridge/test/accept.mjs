@@ -16,12 +16,14 @@ const server = await serve(),
   browser = await launch(),
   checks = [],
   check = (ok, words) => checks.push([Boolean(ok), words]);
-let page, tall;
+let page, tall, fallback;
 try {
   page = await openPage(browser, `${server.url}${path}/?seed=1&lang=zh&tips=0`, { width: 1280, height: 720 });
   await page.evaluate(() => localStorage.clear());
   await page.reload();
   await until(page, () => window.egretGame?.ready && window.egretGame.screen === 'title');
+  await until(page, () => window.egretGame.view.art.state === 'ready');
+  check(true, 'the original title painting is loaded by Egret');
   await page.waitForTimeout(800);
   const title = await matchBaseline(page, GAME, 'title');
   check(title.written || title.passed, `title looks as its baseline (${(title.share * 100).toFixed(2)}% differs)`);
@@ -87,11 +89,15 @@ try {
   await page.keyboard.press('z');
   await page.mouse.move(5, 5);
   await page.waitForTimeout(500);
+  await until(page, () => window.egretGame.view.art.state === 'ready' && window.egretGame.view.trees.every((t) => t.state === 'ready'));
+  check(true, 'chapter painting and both riverbank tree sprites are loaded');
   const site = await matchBaseline(page, GAME, 'site');
   check(site.written || site.passed, `the site looks as its baseline (${(site.share * 100).toFixed(2)}% differs)`);
   check((await page.evaluate(() => JSON.parse(localStorage.getItem('luban-bridge')).data.designs['1-1'].members.length)) === laid, 'the drawing is kept in the save');
 
   // T sends the carts across; the result gives three seals, and they are saved.
+  // Use full-motion seals and advance immediately: a scheduled seal must not touch a disposed screen.
+  await page.evaluate(() => window.egretGame.app.setSetting('reducedMotion', false));
   await page.keyboard.press('t');
   await until(page, () => window.egretGame.view?.running);
   check(true, 'T starts a test crossing');
@@ -101,6 +107,8 @@ try {
   await page.keyboard.press('Enter');
   await until(page, () => window.egretGame?.ready && !window.egretGame.busy && window.egretGame.screen === 'build' && window.egretGame.view.level.id === '1-2');
   check(true, 'Enter on the result goes on to the next level');
+  await page.waitForTimeout(1150);
+  check(!page.problems.some((p) => p.includes('OBJECT_DISPOSED')), 'leaving a seal animation immediately does not access a disposed sprite');
 
   // A level's failing bridge: a bare deck on 1-2 drops the carts in the river.
   await page.evaluate(() => {
@@ -117,8 +125,30 @@ try {
   tall = await openPage(browser, `${server.url}${path}/?seed=1&lang=zh&tips=0&level=2-3&ref=1&all=1`, { width: 720, height: 1280 });
   await until(tall, () => window.egretGame?.ready && window.egretGame.screen === 'build');
   await tall.waitForTimeout(600);
+  await until(tall, () => window.egretGame.view.art.state === 'ready' && window.egretGame.view.trees.every((t) => t.state === 'ready'));
+  check(true, 'portrait loads its own chapter painting and trees');
   const tallSite = await matchBaseline(tall, GAME, 'site-tall');
   check(tallSite.written || tallSite.passed, `the tall site looks as its baseline (${(tallSite.share * 100).toFixed(2)}% differs)`);
+
+  // The backdrop is decorative; if it fails, the vector scenery and title remain usable.
+  let failedPictures = 0;
+  fallback = await openPage(browser, server.url + path + '/?lang=en&tips=0', { before: (p) => p.route('**/assets/title-gorge.jpg', (route) => { failedPictures++; return route.abort(); }) });
+  await until(fallback, () => window.egretGame?.ready && window.egretGame.view.art.state === 'fallback');
+  const retryPoint = await fallback.evaluate(() => {
+    const e = window.egretGame, retry = e.view.focus.at(-1).sprite, point = retry.localToGlobal(0, 0), r = e.game.canvas.getBoundingClientRect();
+    return { visible: retry.visible, x: r.left + point.x * r.width / e.game.width, y: r.top + point.y * r.height / e.game.height };
+  });
+  check(retryPoint.visible, 'missing art offers a non-blocking retry');
+  await fallback.mouse.click(retryPoint.x, retryPoint.y);
+  await fallback.waitForTimeout(600);
+  check(failedPictures >= 2 && (await fallback.evaluate(() => window.egretGame.view.art.state)) === 'fallback', 'retry makes another request and leaves fallback usable if still unavailable');
+  const fallbackStart = await fallback.evaluate(() => {
+    const e = window.egretGame, point = e.view.focus[0].sprite.localToGlobal(0, 0), r = e.game.canvas.getBoundingClientRect();
+    return { x: r.left + point.x * r.width / e.game.width, y: r.top + point.y * r.height / e.game.height };
+  });
+  await fallback.mouse.click(fallbackStart.x, fallbackStart.y);
+  await until(fallback, () => window.egretGame.screen === 'build' && !window.egretGame.busy);
+  check(true, 'failed decorative painting leaves the title playable and Begin opens the first level');
 
   // A broken save: the game starts again and says so, without an error.
   await page.evaluate(() => localStorage.setItem('luban-bridge', '{broken'));
@@ -129,7 +159,7 @@ try {
 } catch (error) {
   check(false, `the walk stopped: ${error.message.split('\n')[0]}`);
 } finally {
-  const problems = [...(page?.problems ?? []), ...(tall?.problems ?? [])];
+  const problems = [...(page?.problems ?? []), ...(tall?.problems ?? []), ...(fallback?.problems ?? []).filter((p) => !p.includes('ERR_FAILED'))];
   await browser.close();
   await server.close();
   report('LubanBridge acceptance (headless Chromium, SwiftShader)', checks, problems);

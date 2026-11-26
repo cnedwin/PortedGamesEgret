@@ -1,11 +1,10 @@
 // 导出微信小游戏：先在临时目录里整理一份小游戏用的游戏目录（不带测试、工具和文档），交给引擎的
-// tools/wechat/export-wechat.mjs 打包。本作没有图片和音频文件，画面和声音都在代码里，所以只有一个主包。
+// tools/wechat/export-wechat.mjs 打包。本作的插画及树木贴图在 assets/，音频由代码合成，保持一个主包。
 //
 //   node LubanBridge/tools/wechat.mjs --engine <Egret_rebuild> --esbuild <esbuild package folder> --out <new folder>
 //
 // Exports the WeChat mini game: a copy of the game folder fit for a mini game (without the tests, tools and docs) is
-// put together in a temporary folder and packed by the engine's tools/wechat/export-wechat.mjs. This game has no
-// picture or sound files, its pictures and sounds being made in code, so there is only the main package.
+// put together in a temporary folder and packed by the engine's tools/wechat/export-wechat.mjs. Lightweight artwork is in assets/; sound is made in code, keeping one main package.
 import { cpSync, mkdtempSync, rmSync, readdirSync, statSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { tmpdir } from 'node:os';
