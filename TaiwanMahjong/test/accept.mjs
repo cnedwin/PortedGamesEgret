@@ -15,11 +15,22 @@ const wait = (page, fn, value, timeout = 14000) => page.waitForFunction(fn, valu
 const names = async (page, role) => state(page, role => window.mahjong.semantics.publish().nodes
   .filter(node => !node.inert && (!role || node.role === role)).map(node => node.name), role);
 const focus = page => state(page, () => window.mahjong.ui.focused);
+const viewFocus = (page, view) => state(page, view => window.mahjong.ui.view(view)?.focused, view);
 const shown = (page, name) => state(page, name => Boolean(window.mahjong.ui.point(name)), name);
 const see = (page, name) => wait(page, name => Boolean(window.mahjong.ui.point(name)), name);
 const hidden = (page, name) => wait(page, name => !window.mahjong.ui.point(name), name);
 const waitScreen = (page, screen, timeout) => wait(page, screen => window.mahjong.screen === screen, screen, timeout);
 const frame = page => page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
+
+async function nativeFocus(page, view, name, words) {
+  const actual = await viewFocus(page, view);
+  const semantic = await state(page, name => {
+    const tree = window.mahjong.semantics.publish();
+    const node = tree.nodes.find(node => !node.inert && node.focused && node.id.endsWith(':' + name));
+    return node && tree.focused === node.id && Boolean(window.mahjong.game.canvas.getAttribute('aria-activedescendant'));
+  }, name);
+  check(actual === name && await focus(page) === name && semantic, words);
+}
 
 async function startPage(seed, { width = 1280, height = 720, touch = false } = {}) {
   const page = await openPage(browser, server.url + path + '/?seed=' + seed + '&lang=zh', { width, height, touch });
@@ -73,6 +84,7 @@ async function walkEastRound() {
   const title = await matchBaseline(page, game, 'title');
   check(title.written || title.passed, 'title looks as its baseline (' + (title.share * 100).toFixed(2) + '% differs)');
   check(await focus(page) === 'startButton', 'the title focuses Sit down');
+  await nativeFocus(page, 'title', 'startButton', 'title focus agrees with the native view and browser semantics');
   const accessibility = await page.locator('body').ariaSnapshot();
   check(/button "開始打牌/.test(accessibility), 'the browser semantic tree names Sit down');
 
@@ -92,6 +104,7 @@ async function walkEastRound() {
   check(await tabTo(page, 'settingsButton'), 'Tab reaches Settings');
   await key(page, 'Enter');
   await see(page, 'settingsClose');
+  await nativeFocus(page, 'settings', 'setting-sound', 'Settings native initial focus lands on sound');
   check(await tabTo(page, 'setting-sound'), 'Tab reaches the sound switch');
   await key(page, 'Enter');
   await wait(page, () => window.mahjong.app.save.data.settings.sound === false);
@@ -99,16 +112,19 @@ async function walkEastRound() {
   await key(page, 'Escape');
   await hidden(page, 'settingsClose');
   check(await focus(page) === 'settingsButton', 'Escape closes Settings and restores focus');
+  await nativeFocus(page, 'title', 'settingsButton', 'native modal dismissal restores its title opener');
 
   check(await tabTo(page, 'rulesButton', true), 'Shift+Tab reaches rules');
   await key(page, 'Enter');
   await see(page, 'rulesClose');
+  await nativeFocus(page, 'rules', 'rulesClose', 'Rules native initial focus selects Close rather than the scroll viewport');
   const rules = await matchBaseline(page, game, 'rules');
   check(rules.written || rules.passed, 'rules look as their baseline (' + (rules.share * 100).toFixed(2) + '% differs)');
   const words = await visibleRules(page);
   check(/門清一摸三/.test(words) && /八仙過海/.test(words) && /截胡/.test(words), 'the paged rules expose tai and nearest-winner text');
   await key(page, 'Escape');
   await hidden(page, 'rulesClose');
+  await nativeFocus(page, 'title', 'rulesButton', 'closing paged Rules restores the title button');
 
   check(await tabTo(page, 'languageButton'), 'Tab reaches the language switch');
   await key(page, 'Enter');
@@ -138,6 +154,8 @@ async function walkEastRound() {
     await key(page, 'Enter');
     await wait(page, () => window.mahjong.app.selected !== null);
     check('tile-' + await state(page, () => window.mahjong.app.selected) === tile, 'Enter raises the focused tile');
+    check(await state(page, before => window.mahjong.app.match.hand.players[0].discards.length === before, before),
+      'the first native Enter selects a tile without discarding it');
     await key(page, 'Enter');
     await wait(page, before => window.mahjong.app.match.hand.players[0].discards.length > before, before);
     discarded = true;
@@ -147,6 +165,24 @@ async function walkEastRound() {
   await wait(page, () => !window.mahjong.app.human || window.mahjong.app.human.options.type === 'act');
   await activate(page, 'pauseButton');
   await see(page, 'resumeButton');
+  await nativeFocus(page, 'menu', 'resumeButton', 'Pause natively focuses Resume');
+  await activate(page, 'menuRules');
+  await see(page, 'rulesClose');
+  await nativeFocus(page, 'rules', 'rulesClose', 'nested Rules receives its native initial focus');
+  await key(page, 'Escape');
+  await hidden(page, 'rulesClose');
+  await nativeFocus(page, 'menu', 'menuRules', 'closing nested Rules returns to its Pause opener');
+  await activate(page, 'menuSettings');
+  await see(page, 'settingsClose');
+  await nativeFocus(page, 'settings', 'setting-sound', 'nested Settings receives its native initial focus');
+  await activate(page, 'setting-language');
+  await wait(page, () => document.documentElement.lang === 'en');
+  await nativeFocus(page, 'settings', 'setting-language', 'changing language retains the native focus within nested Settings');
+  await key(page, 'Enter');
+  await wait(page, () => document.documentElement.lang === 'zh-Hant');
+  await key(page, 'Escape');
+  await hidden(page, 'settingsClose');
+  await nativeFocus(page, 'menu', 'menuSettings', 'closing translated Settings restores the original Pause opener');
   const events = await state(page, () => window.mahjong.app.match.hand.events.length);
   await page.waitForTimeout(1100);
   check(await state(page, events => window.mahjong.game.paused && window.mahjong.app.match.hand.events.length === events, events),
@@ -169,6 +205,7 @@ async function walkEastRound() {
     (settlement.result.kind === 'draw' ? /流局/.test(details) : /台/.test(details)),
   'the settlement reads four players and tai or a draw, with a zero-sum payout');
   check(await focus(page) === 'nextButton', 'settlement focuses the next hand');
+  await nativeFocus(page, 'result', 'nextButton', 'settlement native initial focus skips decorative paper');
   check(await state(page, () => JSON.parse(localStorage.getItem('taiwan-mahjong')).data.record.hands === 1), 'the record keeps the completed hand');
   await key(page, 'Enter');
 
@@ -187,6 +224,7 @@ async function walkEastRound() {
     return record.games === 1 && record.bestGame !== null && record.hands >= 4;
   }), 'the record keeps the East round and best score');
   check(await focus(page) === 'againButton', 'the final panel focuses another match');
+  await nativeFocus(page, 'final', 'againButton', 'final native initial focus skips decorative paper');
   await key(page, 'Tab');
   await key(page, 'Enter');
   await waitScreen(page, 'title');
@@ -197,6 +235,68 @@ async function walkEastRound() {
   await wait(page, () => window.mahjong?.ready && window.mahjong.screen === 'title');
   const notice = (await names(page)).join(' ');
   check(/存檔讀不懂.*重新開始/.test(notice), 'the title reports the broken save and starts again');
+  await page.context().close();
+}
+
+// PC Chromium simulations: a vertical gesture in the rules panel's *local* coordinates must
+// scroll once even when the whole interface is rotated 90 degrees for a portrait screen.
+// No direct scroll-controller writes: actual CDP touch contacts and real mouse wheel input.
+async function checkNativeRulesScroll(tall) {
+  const page = await startPage(16, tall ? { width: 390, height: 844, touch: true } : { width: 1280, height: 720, touch: true });
+  const label = tall ? 'rotated portrait (PC touch simulation)' : 'landscape (PC touch simulation)';
+  await activate(page, 'rulesButton', true);
+  await see(page, 'rulesClose');
+  await nativeFocus(page, 'rules', 'rulesClose', label + ' Rules opens with native focus');
+  const session = await page.context().newCDPSession(page);
+  const offset = () => state(page, () => window.mahjong.ui.view('rules').scroll('rulesScroll').offset);
+  async function drag(axis, delta) {
+    const plan = await state(page, ({ axis, delta }) => {
+      const { ui, game } = window.mahjong;
+      const view = ui.view('rules'), panel = view.get('rulesScroll'), scroll = view.scroll('rulesScroll');
+      const bounds = ui.rect('rulesScroll'), pixels = game.canvas.getBoundingClientRect();
+      const unit = Math.max(game.width, game.height) / 1280;
+      const origin = { x: bounds.w * unit / 2, y: bounds.h * unit / 2 };
+      const points = Array.from({ length: 8 }, (_, i) => {
+        const spot = { ...origin, [axis]: origin[axis] + delta * i / 7 };
+        const global = panel.localToGlobal(spot.x, spot.y);
+        return { x: pixels.left + global.x * pixels.width / game.width, y: pixels.top + global.y * pixels.height / game.height };
+      });
+      return { points, before: scroll.offset, maximum: scroll.maximum, rotation: game.ui.rotation };
+    }, { axis, delta });
+    const size = page.viewportSize();
+    if (plan.points.some(({ x, y }) => x < 0 || y < 0 || x > size.width || y > size.height)) throw new Error('Rules drag outside viewport');
+    const dispatch = (type, point) => session.send('Input.dispatchTouchEvent', { type, touchPoints: point ? [{ ...point, id: 1 }] : [] });
+    await dispatch('touchStart', plan.points[0]);
+    for (const point of plan.points.slice(1)) {
+      await dispatch('touchMove', point);
+      await frame(page);
+    }
+    await dispatch('touchEnd');
+    await frame(page);
+    return { ...plan, after: await offset() };
+  }
+  if (!tall) {
+    const point = await state(page, () => window.mahjong.ui.point('rulesScroll'));
+    await page.mouse.move(point.x, point.y);
+    await page.mouse.wheel(0, 92);
+    await wait(page, () => window.mahjong.ui.view('rules').scroll('rulesScroll').offset > 0);
+    check(await offset() > 0, 'landscape Rules accepts real mouse wheel input');
+    await page.mouse.wheel(0, -200);
+    await wait(page, () => window.mahjong.ui.view('rules').scroll('rulesScroll').offset === 0);
+  }
+  const cross = await drag('x', -80);
+  const forward = await drag('y', -90);
+  const reverse = await drag('y', 90);
+  check(cross.rotation === (tall ? 90 : 0) && Math.abs(cross.after - cross.before) < 1,
+    label + ' perpendicular local drag does not scroll');
+  check(forward.maximum > 90 && Math.abs(forward.after - forward.before - 90) <= 4,
+    label + ' advances exactly once by the local 90-unit drag (' + (forward.after - forward.before).toFixed(1) + ')');
+  check(Math.abs(reverse.after - cross.before) <= 4,
+    label + ' reverses the drag back to the first row (' + reverse.after.toFixed(1) + ')');
+  await activate(page, 'rulesClose', true);
+  await hidden(page, 'rulesClose');
+  await nativeFocus(page, 'title', 'rulesButton', label + ' close returns focus to its opener');
+  await session.detach();
   await page.context().close();
 }
 
@@ -235,9 +335,11 @@ async function replay({ seed, name, touch = false, actions }) {
         const choice = options.chows.findIndex(ids => ids.length === action.ids.length && ids.every(id => action.ids.includes(id)));
         if (choice < 0) throw new Error('The fixed seed did not offer the expected Chow option');
         await see(page, 'chow-choice-' + choice);
+        await nativeFocus(page, 'chow', 'chow-choice-0', name + ' chooser opens on first native action');
         if (touch) {
           await activate(page, 'chow-back', true);
           await hidden(page, 'chow-choice-' + choice);
+          await nativeFocus(page, 'actions', 'action-chow', name + ' back returns to Chow opener');
           await activate(page, 'action-chow', true);
         }
         await activate(page, 'chow-choice-' + choice, touch);
@@ -270,6 +372,8 @@ async function replay({ seed, name, touch = false, actions }) {
 
 try {
   await walkEastRound();
+  await checkNativeRulesScroll(false);
+  await checkNativeRulesScroll(true);
   for (const route of routes) await replay(route);
 } catch (error) {
   check(false, 'the walk stopped: ' + error.message.split('\n')[0]);

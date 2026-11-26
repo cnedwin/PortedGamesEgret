@@ -2,7 +2,6 @@ import { Bitmap } from '@egret/engine';
 import { getLanguage, t, tileName } from './i18n.mjs';
 import { kindOf } from './sim/game.mjs';
 import { BACK, CELL, frameOf } from './tiles.mjs';
-import { scrollRotatedTouch } from './ui.mjs';
 
 const SCALE = .75;
 const INK = 0x263935;
@@ -39,8 +38,7 @@ const scoreStyle = value => ({ color: value < 0 ? RED : value > 0 ? JADE : INK, 
 export function createRoundUi(game, ui, lease, { nameOf, sealOf, signed }) {
   const measure = document.createElement('canvas').getContext('2d');
   const tileSlots = new WeakMap();
-  let peopleTexture = null, repaintResult, resultView;
-  scrollRotatedTouch(game, () => ui.modal === 'result' ? resultView : null, 'resultTai');
+  let peopleTexture = null, repaintResult;
   void game.browser.loadTexture(new URL('../assets/seat-portraits.webp', import.meta.url).href).then(texture => {
     peopleTexture = texture;
     repaintResult?.();
@@ -108,7 +106,7 @@ export function createRoundUi(game, ui, lease, { nameOf, sealOf, signed }) {
     ui.show('actions', { label: t('canCall'), items });
   }
 
-  function showChow(chows, kind, choose, close, focus = true) {
+  function showChow(chows, kind, choose, close) {
     const h = 129 + chows.length * 80;
     const x = 441, y = (720 - h) / 2, w = 398;
     const items = [shade(), panel('chow-paper', x, y, w, h, { decorate: paper, decorative: true }),
@@ -122,8 +120,9 @@ export function createRoundUi(game, ui, lease, { nameOf, sealOf, signed }) {
       kinds.forEach((k, i) => items.push(tilePart('chow-tile-' + index + '-' + i, k, x + 118 + i * 56, top + 5, 48, 61)));
     });
     items.push(card('chow-back', t('back'), x + 44, y + h - 59, w - 88, 45, close));
-    ui.show('chow', { label: t('chooseChow'), modal: true, skin: modalSkin, items });
-    if (focus) ui.focus('chow-choice-0');
+    ui.show('chow', {
+      label: t('chooseChow'), modal: true, skin: modalSkin, initialFocus: 'chow-choice-0', dismiss: close, items
+    });
   }
 
   function resultTiles(hand, result) {
@@ -156,8 +155,8 @@ export function createRoundUi(game, ui, lease, { nameOf, sealOf, signed }) {
       }
     });
   }
-  function showResult(entry, match, next, focus = true) {
-    repaintResult = () => showResult(entry, match, next, false);
+  function showResult(entry, match, next) {
+    repaintResult = () => showResult(entry, match, next);
     const { result, dealer } = entry;
     const won = result.kind !== 'draw', seat = result.seat;
     const title = won ? t(result.from === null ? 'resultSelf' : 'resultWin', { name: nameOf(seat) }) : t('resultDraw');
@@ -198,17 +197,15 @@ export function createRoundUi(game, ui, lease, { nameOf, sealOf, signed }) {
     for (let index = 0; index < 4; index++) {
       const at = rowY + index * 58, payment = result.payments?.[index] ?? 0;
       items.push(panel('result-pay-row-' + index, tx, at, tw, 51, { color: index % 2 ? 0xf4e8d0 : 0xfdf6e7, decorative: true }),
-        text('result-seat-' + index, nameOf(index) + (index === dealer ? ' · ' + t('dealer') : ''), tx + 10, at, tw * .52 - 8, 51, { size: 18, bold: index === 0 }),
-        text('result-payment-' + index, payment ? signed(payment) : '0', tx + tw * .55, at, tw * .17, 51, { size: 18, ...scoreStyle(payment) }),
-        text('result-balance-' + index, signed(match.scores[index]), tx + tw * .75, at, tw * .22, 51, { size: 18, ...scoreStyle(match.scores[index]) }));
+        text('result-seat-' + index, nameOf(index) + (index === dealer ? ' · ' + t('dealer') : ''), tx + 10, at, tw * .52 - 8, 51, { size: 19, bold: index === 0 }),
+        text('result-payment-' + index, payment ? signed(payment) : '0', tx + tw * .55, at, tw * .17, 51, { size: 19, ...scoreStyle(payment) }),
+        text('result-balance-' + index, signed(match.scores[index]), tx + tw * .75, at, tw * .22, 51, { size: 19, ...scoreStyle(match.scores[index]) }));
     }
     items.push(card('nextButton', t(match.over ? 'finalScores' : 'nextHand'), x + w - 292, y + h - 81, 249, 60, next, primary));
-    const view = ui.show('result', { label: title, modal: true, skin: modalSkin, items });
-    resultView = won ? view : null;
-    if (focus) ui.focus('nextButton');
+    ui.show('result', { label: title, modal: true, skin: modalSkin, initialFocus: 'nextButton', items });
   }
 
-  function showFinal(match, best, again, home, focus = true) {
+  function showFinal(match, best, again, home) {
     const title = t('gameOver'), x = 313, y = 86, w = 654, h = 549;
     const items = [shade(), panel('finalPaper', x, y, w, h, { decorate: paper, decorative: true }),
       text('finalTitle', title, x + 40, y + 29, w - 80, 46, { size: 36, bold: true, role: 'heading' })];
@@ -223,14 +220,12 @@ export function createRoundUi(game, ui, lease, { nameOf, sealOf, signed }) {
     if (best) items.push(text('finalNote', t('bestGame'), x + 42, y + 388, w - 84, 45, { size: 20, color: JADE }));
     items.push(card('againButton', t('again'), x + 42, y + 449, 250, 66, again, primary),
       card('homeButton', t('toTitle'), x + 312, y + 449, 280, 66, home));
-    ui.show('final', { label: title, modal: true, skin: modalSkin, items });
-    if (focus) ui.focus('againButton');
+    ui.show('final', { label: title, modal: true, skin: modalSkin, initialFocus: 'againButton', items });
   }
   return {
     showTools, showHand, showActions, showChow, showResult, showFinal,
     closeResult() {
       repaintResult = null;
-      resultView = null;
       ui.hide('result');
     }
   };

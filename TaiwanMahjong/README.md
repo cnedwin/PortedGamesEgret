@@ -84,15 +84,15 @@ quarter of their discards are not the best) and hardly defend; experts defend ha
 
 | 引擎入口 / API · Entry / API | 在本游戏中的用途 · Use in this game | 文件 · File |
 |---|---|---|
-| `play`（`@egret/engine/play`） | 透明画布、帧循环、暂停；宽屏和竖屏各开一种 · the clear canvas, the loop and pause; made wide or tall | `src/main.mjs` |
+| `play`（`@egret/engine/play`）、`pixelRatio` | 透明畫布、帧循環、暫停與自適應像素密度；保留橫、直向的邏輯尺寸 · clear canvas, loop and pause; adaptive pixel density for the wide and tall logical stages | `src/main.mjs`, `src/layout.mjs` |
 | `game.browser.textureFromCanvas` + `Bitmap.sourceRect` | 42 种牌面画在一张图集上，手牌和飞行的牌各取一块 · one atlas of 42 faces, each hand or flying tile a rectangle of it | `src/view.mjs`, `src/tiles.mjs` |
 | `game.tween`（缓动 · easing `cubicOut`、`backOut`） | 牌打出、摸进的飞行，选中时抬起，吃碰胡的大字弹出 · tiles flying, rising when chosen, the call words popping | `src/view.mjs` |
 | `game.text`、`game.burst`、`Graphics` | 吃、碰、槓、胡、自摸的印章、震圈、牌形與粒子 · call stamps, impact rings, tile silhouettes and particles | `src/view.mjs` |
 | `game.rect`、`game.sprite` | 听牌提示的金点；分层的容器 · the gold ready dots; the layers | `src/view.mjs` |
 | `game.sfx.define` / `play` | 合成落牌、摸牌、吃、碰、槓、胡及補花等音效，依座位區分左右聲道 · synthesized table sounds with seat-based stereo placement | `src/sound.mjs` |
 | `game.pause`、`resume`、`reducedMotion` | 暂停菜单；减弱动画 · the pause menu; reduced motion | `src/main.mjs` |
-| `game.show`、面板滚动与绑定 · Declarative views, panel scrolling and bindings | 标题、规则、设置、战绩、暂停、牌局按钮、吃牌组合与结算 · title, rules, settings, records, pause, calls, chow choices and settlements | `src/screens.mjs`, `src/round-ui.mjs` |
-| `createUiSemantics` + `createBrowserSemantics` | 画布控件的名称、选中状态、模态焦点与键盘定位 · names, selected states, modal focus and keyboard navigation for canvas controls | `src/ui.mjs`, `src/main.mjs` |
+| `game.show`、原生視圖綁定、`initialFocus`、`view.focus`、`view.focused`、`view.scroll` | 標題、規則、設定、戰績、暫停、牌局按鈕、吃牌組合與結算；由引擎管理焦點、彈窗關閉復位與旋轉列表捲動 · declaration, binding, named focus and viewport-local scrolling in the title, rules, settings, records, pause, calls, chow choices and settlements | `src/ui.mjs`, `src/screens.mjs`, `src/round-ui.mjs` |
+| `createUiSemantics` + `createBrowserSemantics` | 畫布控件的名稱、角色、選取狀態與引擎原生焦點；瀏覽器語意樹同步 · names, roles and selection states, with native focus projected into the browser semantic tree | `src/ui.mjs`, `src/main.mjs` |
 | `createTextTable` + `pickLanguage` | 繁体中文和英文文字表，开局按浏览器语言 · the words, by the browser's language | `src/i18n.mjs` |
 | `createSaveStore` + `browserSaveStorage` | 设置、上次的选择和战绩；坏档另存后重开 · settings, the last setup and the record; a broken save set aside | `src/saves.mjs` |
 
@@ -100,13 +100,13 @@ quarter of their discards are not the best) and hardly defend; experts defend ha
 
 - `node --test test/*.test.mjs` 通过 30 项，覆盖十六张规则、台数、庄家轮换、四圈结束、收支守恒、旧档和坏档，以及中英文词表和引擎副本。 · 30 Node tests cover rules, tai, the dealer and four winds, zero-sum results, saves, localization, and the engine copy.
 - `node test/accept.mjs` 覆盖原生控件的键盘和语义树、横竖屏触控、吃牌有多个组合、碰、槓、荣和、自摸、暂停、四家结算和战绩。标题和规则有截图基线。 · Browser acceptance covers native keyboard controls and semantics, touch in both orientations, multiple chow options, pong, kong, discard win, self-draw, pause, settlement, and records, with title and rules screenshot baselines.
-- 真机对局、帧时间、断网插画恢复及自动检查的限制见 [QUALITY.md](QUALITY.md)。 · See [QUALITY.md](QUALITY.md) for device play, frame timings, recovery from missing title art, and automated check limits.
+- 真机对局、帧时间、断网插画恢复及自动检查的限制见 [QUALITY.md](QUALITY.md)。新版驗收腳本另包含原生彈窗焦點、巢狀選單語言切換、兩次 Enter 出牌及 0°／90° 捲動位移檢查。 · See [QUALITY.md](QUALITY.md) for device play, frame timings, recovery from missing title art, and automated check limits. The updated acceptance script additionally checks native modal focus, nested language changes, two-press discard and 0°/90° scroll displacement.
 
 ## 已知问题 · Known issues
 
 - 裝置上的音效驗證涵蓋播放事件、聲音訊號和設定。仍待使用手機喇叭實聽整局的混音。 · Device checks covered playback, signal and settings. The complete mix through phone speakers still needs a listening pass.
 - 手机横屏（高 390 像素）时一张手牌约 35×52 CSS 像素，比 44 像素的触控建议窄；十七张牌要排在一行里，宽不了更多。 · On a phone held sideways (390 px tall) a hand tile is about 35 × 52 CSS px, narrower than the 44 px advice; seventeen tiles must fit one row.
-- 像素比 1 的屏幕上，手牌（引擎画，四分之三分辨率）比桌上静止的牌（页面画，全分辨率）稍软（引擎笔记第 3 条）。 · On a ratio-1 screen the hand, drawn by the engine at three-quarter resolution, is slightly softer than the still tiles (item 3).
+- 引擎畫布與文字圖集的像素密度上限為 2，以維持手機的渲染及圖集預算。若實際顯示尺寸與裝置像素比要求更高密度，畫布仍需放大，部分細字或牌面可能稍軟。 · Render and text-atlas density is capped at 2 to protect the mobile rendering and atlas budgets. Very large or dense displays can still upscale the canvas and soften fine type or tile details (item 3).
 - 螢幕轉向時會重建牌桌畫布，飛行中的牌會直接落到位。配樂維持原本的播放進度。 · Turning the screen recreates the table renderer. Tiles in flight land at once, and music keeps its position.
 - 台数表是台湾常见的一种，各地牌桌的规矩不尽相同（例如天地人胡的台数、花槓算法）；没有天听、地听、嚦咕嚦咕和过水。 · The tai table is one common Taiwanese table; tables differ, and some hands are left out.
 - 电脑牌友不读别家的牌河推理听什么，防守只看危险程度的粗略估计；老陈为做大牌放槍偏多。 · The computer players do not read rivers for waits; defence is a rough danger estimate, and Old Chen deals in more for his big hands.
@@ -114,10 +114,10 @@ quarter of their discards are not the best) and hardly defend; experts defend ha
 
 ## 已解决 · Solved
 
-- 牌局按钮改用白鹭原生视图并加入键盘焦点和语义树。Tab、Enter 和 Space 可操作标题和牌局。 · Native views expose control names, keyboard focus and activation on the title and at the table.
+- 牌局按鈕使用白鷺原生視圖與語意樹。引擎 #488 新增具名彈窗初始焦點、原生焦點查詢與設定；標題、吃牌組合、結算及巢狀暫停選單不再另設焦點控制器。Tab、Enter 和 Space 的一般介面操作交由引擎接管。 · Native views expose control names and keyboard activation. Engine #488 supplies named initial modal focus and native focus access; the Demo removes its separate focus controller.
 - 透明画布与静止牌桌分层合成。暂停、规则与结算在引擎中统一处理前景遮罩。 · The clear canvas combines with the static table, while the engine draws the pause, rules and result scrims.
-- 牌桌使用 1280×720 设计坐标，在 960×540 的引擎画布上按需渲染。 · The 1280 × 720 table is drawn on a 960 × 540 engine canvas using on-demand rendering.
-- 竖屏旋转在引擎内部完成。台数表的拖动方向按面板本地坐标换算（引擎笔记第 7 条）。 · The canvas remains upright in portrait, and tai lists use viewport-local gesture axes (engine note 7).
+- 牌桌保留 1280×720 設計座標、960×540 邏輯舞台及按需渲染；使用引擎 `play({ pixelRatio })`，建置或轉向重建舞台時按實際顯示尺寸與裝置像素比選擇 1–2 的渲染及文字密度。標題卡片、規則說明與結算表格的小字略為加大，不改操作區與玩法。 · The 1280 × 720 design and 960 × 540 logical stage are unchanged. On-demand rendering uses Egret's `pixelRatio` (1–2), chosen at stage creation from its actual display size and device ratio. Small captions, rules and settlement type are slightly enlarged without changing the controls or rules.
+- 直向畫面在引擎內部旋轉。引擎 #486 已統一按視口本地座標判斷拖曳方向、閾值和位移，規則與結算台數表直接使用原生捲動，不再另外擷取旋轉觸控（引擎筆記第 7 條）。 · The canvas stays upright in portrait. Engine #486 fixes viewport-local touch panning; the rules and result lists now use native scrolling without a rotated-touch workaround (engine note 7).
 - 两百多张静止的牌做成 Bitmap 太慢（ENGINE-NOTES 5）：静止的牌画在页面 canvas 上，只在变化时重画。 · Two hundred still Bitmaps too slow (item 5): still tiles painted on a page canvas when they change.
 - 选圈数和难度没存上（ENGINE-NOTES 6）：`update` 的回调返回了赋值的结果，被当成新存档；改成不返回值。 · The setup not saved (item 6): the update callback returned its assignment; now it returns nothing.
 - 结算时牌桌上已经显示下一局的庄家和门风：每局开始时把庄家、圈风、连庄记在这一局里，显示都读这一局的。 · The result showed the next hand's dealer: each hand now keeps its own dealer, wind and streak for display.
@@ -137,9 +137,9 @@ quarter of their discards are not the best) and hardly defend; experts defend ha
 | `index.html`, `style.css` | 页面、import map、牌桌底图、名牌、听牌提示和加载状态 · page shell, import map, table backing, plates, ready hints and loading state |
 | `src/main.mjs` | 引擎启动、牌局流程、输入和存档 · engine startup, round flow, input and saves |
 | `src/screens.mjs`, `src/round-ui.mjs` | 大厅与牌局的白鹭原生界面 · native Egret lobby and game views |
-| `src/ui.mjs` | 界面坐标、焦点、语义和旋转滚动 · UI coordinates, focus, semantics and rotated scrolling |
+| `src/ui.mjs` | 設計座標、客製裝飾、原生視圖綁定與語意角色；焦點和捲動交由引擎 · design coordinates, decoration, native view binding and semantic roles; focus and scrolling are owned by the engine |
 | `src/tiles.mjs` | 牌面图集（2D canvas 画） · the tile atlas |
-| `src/layout.mjs` | 桌上每张牌的位置和方向 · where each tile sits |
+| `src/layout.mjs` | 桌上每張牌的位置、方向及自適應像素密度 · where each tile sits and adaptive render density |
 | `src/felt.mjs` | 静止的牌桌（页面 canvas） · the still table |
 | `src/view.mjs` | 引擎画的手牌、飞行的牌、大字和火花 · the engine's part |
 | `src/sound.mjs`, `src/voice.mjs`, `assets/audio/` | 音效合成、配樂、牌友語音與獨立靜音 · synthesized effects, music, table voices and independent mute |
@@ -151,10 +151,10 @@ quarter of their discards are not the best) and hardly defend; experts defend ha
 
 ## 引擎副本 · Engine copy
 
-引擎副本取自 [Egret_rebuild](https://github.com/cnedwin/Egret_rebuild) 提交 `2e53f45fdd7b487ec68110a6f0f9cbc683a73cd5`，由引擎仓库的 `tools/vendor-game.mjs` 复制，见 [vendor/SOURCE.md](vendor/SOURCE.md)。用到的入口见下方命令。
+引擎副本取自 [Egret_rebuild](https://github.com/cnedwin/Egret_rebuild) 提交 `8e70dcb3a8a0b40c9966483c92cb9f691a1cefd8`，由引擎仓库的 `tools/vendor-game.mjs` 复制，见 [vendor/SOURCE.md](vendor/SOURCE.md)。用到的入口见下方命令。
 
 The engine copy is from [Egret_rebuild](https://github.com/cnedwin/Egret_rebuild) commit
-`2e53f45fdd7b487ec68110a6f0f9cbc683a73cd5`, copied by the engine's `tools/vendor-game.mjs`; see
+`8e70dcb3a8a0b40c9966483c92cb9f691a1cefd8`, copied by the engine's `tools/vendor-game.mjs`; see
 [vendor/SOURCE.md](vendor/SOURCE.md) and the entries below.
 
 ```sh

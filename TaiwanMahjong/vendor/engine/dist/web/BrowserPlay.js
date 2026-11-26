@@ -99,6 +99,8 @@ const KEY_NAMES = {
 };
 /** Keys a game uses that would otherwise scroll or move about the page. */
 const KEPT_FROM_PAGE = new Set(['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Space', 'Tab']);
+/** Frames in a row in which update made one kind of thing before play tells PLAY_MADE_EVERY_FRAME. */
+const MADE_EVERY_FRAMES = 60;
 /** The buttons of a pad a key name may be, as `'pad:a'`: the standard layout, by where each button is. */
 const PAD_BUTTONS = Object.freeze([
     'a',
@@ -499,6 +501,7 @@ export async function play(options) {
         }
     };
     const letGo = () => {
+        touch.cancelFloating('blur');
         touch.cancel();
         touchHeld.clear();
         touchStick.x = touchStick.y = 0;
@@ -1031,7 +1034,47 @@ export async function play(options) {
                 syncLabelVisibility();
         });
     };
+    // What update makes in every frame, to be told once: a text, a shape or a sprite made each frame is drawn anew each
+    // frame, where made once in setup it would only change.
+    let inUpdate = false, making = 0;
+    const madeThisFrame = new Set(), madeStreak = new Map(), toldMade = new Set();
+    const made = (call) => {
+        if (inUpdate && making === 0)
+            madeThisFrame.add(call);
+    };
+    const noteMade = () => {
+        for (const call of new Set([...madeStreak.keys(), ...madeThisFrame])) {
+            if (!madeThisFrame.has(call)) {
+                madeStreak.delete(call);
+                continue;
+            }
+            const frames = (madeStreak.get(call) ?? 0) + 1;
+            madeStreak.set(call, frames);
+            if (frames === MADE_EVERY_FRAMES && !toldMade.has(call)) {
+                toldMade.add(call);
+                tellWarning({
+                    code: 'PLAY_MADE_EVERY_FRAME',
+                    message: `${call} was called in update in each of the last ${MADE_EVERY_FRAMES} frames: make it once in setup and change it when it changes.`
+                });
+            }
+        }
+        madeThisFrame.clear();
+    };
+    const tellWarning = (warning) => {
+        const frozen = Object.freeze(warning);
+        const agent = globalThis.__egretAgent;
+        if (typeof agent?.warning === 'function')
+            try {
+                agent.warning(frozen);
+            }
+            catch {
+                /* The tool's own failure, not the game's. */
+            }
+        // A handler that throws is a failure of the frame, as an update that throws is.
+        options.onWarning?.(frozen);
+    };
     const text = (given, o = {}) => {
+        made('game.text');
         if (o === null || typeof o !== 'object')
             throw invalid('the options of a text are an object');
         const { size = 24, color = 0xffffff, align = 'left', bold = false } = o;
@@ -1210,6 +1253,7 @@ export async function play(options) {
                 }
         }
         endRemoved();
+        touch.sync();
         wentDown.clear();
         cameUp.clear();
         point.pressed = false;
@@ -1256,6 +1300,8 @@ export async function play(options) {
         }
         if (padSampled)
             pollPadButtons();
+        // A modal may open between steps while the floating stick's owner stays down.
+        touch.sync();
         if (disposed || version !== generation || playLoop.state !== 'running') {
             endFrame();
             return;
@@ -1326,7 +1372,14 @@ export async function play(options) {
                     }
                 }
             }
-            update?.(seconds, api);
+            inUpdate = true;
+            try {
+                update?.(seconds, api);
+            }
+            finally {
+                inUpdate = false;
+            }
+            noteMade();
             if (!active()) {
                 endFrame();
                 return;
@@ -1496,6 +1549,7 @@ export async function play(options) {
                 timeScale = Math.min(value, 8);
         },
         sprite(draw, into = world) {
+            made('game.sprite');
             const node = scope.use(new Sprite());
             if (draw !== undefined)
                 draw(node.graphics);
@@ -1507,11 +1561,19 @@ export async function play(options) {
                 throw invalid('rect takes x, y, a width, a height and a colour');
             if (into !== undefined && !(into instanceof Sprite))
                 throw invalid('the layer of a rect is a sprite');
-            const node = game.sprite(g => {
-                g.beginFill(color)
-                    .drawRect(-w / 2, -h / 2, w, h)
-                    .endFill();
-            }, into);
+            made('game.rect');
+            making++;
+            let node;
+            try {
+                node = game.sprite(g => {
+                    g.beginFill(color)
+                        .drawRect(-w / 2, -h / 2, w, h)
+                        .endFill();
+                }, into);
+            }
+            finally {
+                making--;
+            }
             node.x = x;
             node.y = y;
             return node;
@@ -1521,9 +1583,17 @@ export async function play(options) {
                 throw invalid('circle takes x, y, a radius and a colour');
             if (into !== undefined && !(into instanceof Sprite))
                 throw invalid('the layer of a circle is a sprite');
-            const node = game.sprite(g => {
-                g.beginFill(color).drawCircle(0, 0, radius).endFill();
-            }, into);
+            made('game.circle');
+            making++;
+            let node;
+            try {
+                node = game.sprite(g => {
+                    g.beginFill(color).drawCircle(0, 0, radius).endFill();
+                }, into);
+            }
+            finally {
+                making--;
+            }
             node.x = x;
             node.y = y;
             return node;
@@ -1535,22 +1605,29 @@ export async function play(options) {
             const { width: w = 160, height: h = 44, color = 0x3b82f6, textColor = 0xffffff } = o;
             if (!finite(w) || !finite(h) || w <= 0 || h <= 0 || !colour(color) || !colour(textColor))
                 throw invalid('a button has a width and a height above 0 and colours');
-            const node = game.sprite(g => {
-                g.beginFill(color)
-                    .drawRoundRect(-w / 2, -h / 2, w, h, Math.min(w, h) * 0.25)
-                    .endFill();
-            }, o.layer ?? ui);
-            node.x = o.x;
-            node.y = o.y;
-            node.label = text(words, {
-                size: finite(o.size) && o.size > 0 ? o.size : h * 0.45,
-                color: textColor,
-                align: 'center',
-                baseline: 'middle',
-                layer: node
-            });
-            game.onTap(node, onTap);
-            return node;
+            made('game.button');
+            making++;
+            try {
+                const node = game.sprite(g => {
+                    g.beginFill(color)
+                        .drawRoundRect(-w / 2, -h / 2, w, h, Math.min(w, h) * 0.25)
+                        .endFill();
+                }, o.layer ?? ui);
+                node.x = o.x;
+                node.y = o.y;
+                node.label = text(words, {
+                    size: finite(o.size) && o.size > 0 ? o.size : h * 0.45,
+                    color: textColor,
+                    align: 'center',
+                    baseline: 'middle',
+                    layer: node
+                });
+                game.onTap(node, onTap);
+                return node;
+            }
+            finally {
+                making--;
+            }
         },
         toFront(node) {
             if (node === undefined || node === null || node.isDisposed)
@@ -1992,6 +2069,7 @@ export async function play(options) {
         },
         pause() {
             paused = true;
+            touch.cancelFloating();
             for (const each of loops)
                 each.hold(true);
         },
@@ -2084,6 +2162,13 @@ export async function play(options) {
             setupRequest?.reject(new EgretError('SCOPE_CLOSED'));
             setupRequest = undefined;
             void (async () => {
+                let touchFailure;
+                try {
+                    touch.cancelFloating('dispose');
+                }
+                catch (cause) {
+                    touchFailure = { cause };
+                }
                 try {
                     stopLoops();
                     resizeObserver?.disconnect();
@@ -2092,6 +2177,8 @@ export async function play(options) {
                     if (addedTabIndex && surface.getAttribute('tabindex') === '0')
                         surface.removeAttribute('tabindex');
                     await browser.dispose();
+                    if (touchFailure !== undefined)
+                        throw touchFailure.cause;
                 }
                 finally {
                     holder?.remove();
@@ -2135,6 +2222,14 @@ export async function play(options) {
         toStage: (x, y) => {
             const at = browser.toStage(x, y);
             return { x: at.x - shown.designRect.x, y: at.y - shown.designRect.y };
+        },
+        cssScale() {
+            const box = surface.getBoundingClientRect();
+            return { x: box.width / browser.frame.width, y: box.height / browser.frame.height };
+        },
+        allowFloating: () => !disposed && !paused && !widgets.asking && !views.modalActive,
+        failed: cause => {
+            failure ??= { cause };
         },
         layer: glass
     });
