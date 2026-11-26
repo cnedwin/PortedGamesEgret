@@ -7,6 +7,14 @@ import { createTextTable, pickLanguage } from '@egret/engine/kit';
 
 export const WORDS = {
   zh: {
+    loading: '载入中',
+    loadError: '载入失败',
+    loadRetryNote: '请检查网络后重试。',
+    reload: '重新载入',
+    artworkRetry: '立绘载入失败 · 重试',
+    experience: '经验',
+    dragHint: '拖动海面',
+    autoAttackHint: '移动 · 法宝自动攻击',
     titleLine: '守陈塘关二十波，炼法宝，退东海潮兵。',
     controlTouch: '拖动海面移动，法宝会自动攻击。',
     controlKeys: 'WASD 或方向键移动，法宝会自动攻击。',
@@ -106,6 +114,8 @@ export const WORDS = {
     stats: '属性',
     nextWave: '下一波',
     nextWaveName: '出发去第 {n} 波',
+    marketPrevious: '上一页',
+    marketMore: '下一页',
     notEnough: '珍珠不够',
     full: '法宝满了，又没有能合成的',
     merged: '{name}合成好了',
@@ -190,6 +200,14 @@ export const WORDS = {
     aoBing: '敖丙'
   },
   en: {
+    loading: 'Loading',
+    loadError: 'Could not load',
+    loadRetryNote: 'Check your connection and try again.',
+    reload: 'Reload game',
+    artworkRetry: 'Portraits unavailable · Retry',
+    experience: 'Experience',
+    dragHint: 'Drag on the sea',
+    autoAttackHint: 'Move · Auto-attack',
     titleLine: 'Hold Chentang Pass for twenty waves and forge divine treasures.',
     controlTouch: 'Drag on the sea to move. Your treasures attack automatically.',
     controlKeys: 'Move with WASD or arrows. Your treasures attack automatically.',
@@ -289,6 +307,8 @@ export const WORDS = {
     stats: 'Stats',
     nextWave: 'Next wave',
     nextWaveName: 'Set out for wave {n}',
+    marketPrevious: 'Previous',
+    marketMore: 'Next page',
     notEnough: 'Not enough pearls',
     full: 'No free slot, and nothing to merge with',
     merged: '{name} merged',

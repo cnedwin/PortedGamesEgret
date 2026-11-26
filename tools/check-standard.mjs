@@ -13,6 +13,7 @@
 import { existsSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join, relative, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { readNotes } from './engine-notes.mjs';
 
 export const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 export const TEMPLATE = 'templates/egret-game';
@@ -134,6 +135,9 @@ export function checkGame(folder, { root = ROOT, fix = false } = {}) {
     row('ENGINE-NOTES: numbered items', items.length > 0 || none, none ? 'none recorded' : `${items.length} items`);
     const bad = items.filter((item) => !item.status || !item.parts.every(Boolean));
     row('ENGINE-NOTES: status, what happens, workaround, suggestion in every item', none || (items.length > 0 && bad.length === 0), bad.length ? `incomplete: ${bad.map((item) => item.number).join(', ')}` : '');
+    // The header line under each heading is what tools/engine-notes.mjs and the engine's `egret notes` read.
+    const unread = readNotes(notes, folder.split('/').pop(), dir).filter((note) => note.problems.length);
+    row('ENGINE-NOTES: an engine-note header under every item', unread.length === 0, unread.map((note) => `${note.number}: ${note.problems[0]}`).join('; '));
   }
 
   row('QUALITY.md', existsSync(join(dir, 'QUALITY.md')));

@@ -115,22 +115,23 @@ The tests replay the recorded solution of every level in Node through the same s
 | `levels/`, `media/` | 生成的地图、瓦片图、开场短片 · generated maps, tiles and film |
 | `vendor/` | 引擎副本，见 `vendor/SOURCE.md` · the engine copy |
 
-引擎副本取自 Egret_rebuild 提交 `687037a`，由引擎仓库的 `tools/vendor-game.mjs` 复制。The engine copy is from Egret_rebuild commit `687037a`, copied by the engine's `tools/vendor-game.mjs`.
+引擎副本取自 Egret_rebuild 提交 `8637ace`，由引擎仓库的 `tools/vendor-game.mjs` 复制。The engine copy is from Egret_rebuild commit `8637ace`, copied by the engine's `tools/vendor-game.mjs`.
 
 ## 已验证 · Verified
 
 - `node --test test/*.test.mjs`：关卡（每关的机关和锁都在、能被解开）、挑战、存档、合成声音、弹道预测、引擎副本的 import map。 · The Node tests: levels, challenges, the save, sound, the aiming trajectory and the engine copy's import map.
 - GitHub Pages 上的线上页面在 PR #95、#96 合并后打开并玩过第一关（无头 Chromium）。 · The live page was opened and its first level played after PRs #95 and #96 (headless Chromium).
+- 升级到引擎 `8637ace` 后，在本地无头 Chromium（SwiftShader）里：标题画面和关内的「设置」按钮都能直接打开设置卡；选关列表用竖向滚轮和横向滚轮都能滚动、能滚回来；第一关能发射；没有页面错误。 · After the move to engine `8637ace`, in local headless Chromium (SwiftShader): the Settings buttons on the title screen and in a level open the card straight away; the level strip scrolls with an up-and-down wheel and a sideways one, and back; level 1 fires; no page errors.
 
 ## 已知问题 · Known issues
 
 - 真显卡和真手机上没有测过帧时间。 · Frame times were not measured on a real GPU or phone.
-- 引擎方面仍未解决的见 [ENGINE-NOTES.md](ENGINE-NOTES.md) 中标为「未解决 / open」的条目（径向渐变的三角形、被拒的 `update` 仍改内存、输入分发中不能建 UI 根、横向滚动控件不读竖向滚轮）。 · The engine's open items are those marked open in ENGINE-NOTES.
+- 引擎方面仍未解决的见 [ENGINE-NOTES.md](ENGINE-NOTES.md) 中标为「未解决 / open」的条目（径向渐变的三角形）。 · The engine's open items are those marked open in ENGINE-NOTES.
 - 品质验收未达标 · Quality items failing（[QUALITY.md](QUALITY.md)，2026-11-20，无头 Chromium + SwiftShader · headless, software rendering）：T2 触控区 ≥ 44×44 CSS px（4 of 4 under 44×44: 开始 115×28; 选关 55×22; 开场短片 55×22; 设置 55×22）；F1 桌面帧时间 p95 ≤ 16.7 ms（p95 50.0 ms over 105 frames）；I1 中英文全可切换，英文下无中文（no way to choose English found）；A3 尊重 prefers-reduced-motion（prefers-reduced-motion is not read）；E2 资源失败有错误界面和重试（1 files refused; uncaught: pageerror: ASSET_LOAD_FAILED: A provider failed to load the ass）。
 
 ## 已解决 · Solved
 
-见 [ENGINE-NOTES.md](ENGINE-NOTES.md) 中标为「已解决 / resolved」的条目：吊绳用 `rope` 关节、切断用 `removeJoint`；粒子 `blendMode: 'add'`；代码画的贴图用 `textureFromCanvas`；滚轮用悬停输入；焦点控件用掉的键用 `skipPrevented`；Web Audio 后端；视频的多个文件。 · See the items marked resolved in ENGINE-NOTES.
+见 [ENGINE-NOTES.md](ENGINE-NOTES.md) 中标为「已解决 / resolved」的条目：吊绳用 `rope` 关节、切断用 `removeJoint`；粒子 `blendMode: 'add'`；代码画的贴图用 `textureFromCanvas`；滚轮用悬停输入；焦点控件用掉的键用 `skipPrevented`；Web Audio 后端；视频的多个文件；被拒的 `update` 不再改动内存、按钮回调里能直接建 UI 根、横向列表用 `wheel.crossAxis` 读竖向滚轮（引擎 #424，游戏在 `8637ace` 去掉了对应的绕过办法）。 · See the items marked resolved in ENGINE-NOTES; since engine #424 the game has dropped its workarounds for items 18–20.
 
 ## 未完成 · Unfinished
 
@@ -142,8 +143,8 @@ The tests replay the recorded solution of every level in Node through the same s
 
 ## 引擎副本 · Engine copy
 
-引擎副本取自 [Egret_rebuild](https://github.com/cnedwin/Egret_rebuild) 提交 `687037ac462c48dbfe00523312125b94072ffea4`，由引擎仓库的 `tools/vendor-game.mjs` 复制，见 [vendor/SOURCE.md](vendor/SOURCE.md)。
+引擎副本取自 [Egret_rebuild](https://github.com/cnedwin/Egret_rebuild) 提交 `8637ace9a40667714abd6d74157e8dcf4587232d`，由引擎仓库的 `tools/vendor-game.mjs` 复制，见 [vendor/SOURCE.md](vendor/SOURCE.md)。
 
-The engine copy is from [Egret_rebuild](https://github.com/cnedwin/Egret_rebuild) commit `687037ac462c48dbfe00523312125b94072ffea4`, copied by the engine's `tools/vendor-game.mjs`; see [vendor/SOURCE.md](vendor/SOURCE.md).
+The engine copy is from [Egret_rebuild](https://github.com/cnedwin/Egret_rebuild) commit `8637ace9a40667714abd6d74157e8dcf4587232d`, copied by the engine's `tools/vendor-game.mjs`; see [vendor/SOURCE.md](vendor/SOURCE.md).
 
 入口 · Entries: `@egret/engine`, `@egret/engine/physics2d`, `@egret/engine/tilemap`, `@egret/engine/camera`, `@egret/engine/particles`, `@egret/engine/bitmapfont`, `@egret/engine/ui`, `@egret/engine/ui/semantics`, `@egret/engine/web/semantics`, `@egret/engine/kit`, `@egret/engine/web/kit`, `@egret/engine/audio`, `@egret/engine/web/audio`, `@egret/engine/web/video`, `@egret/engine/web/game`, `@egret/engine/web/hover`, `@egret/engine/text`, `@egret/engine/web/text`.

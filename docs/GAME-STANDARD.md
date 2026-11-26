@@ -21,6 +21,7 @@ capability in full (see [CAPABILITIES.md](../CAPABILITIES.md)).
 | `test/*.test.mjs` | 能用 `node --test test/*.test.mjs` 跑的 Node 测试，至少覆盖规则和存档（文件名或内容里有 `rules`/`sim` 与 `save`） · Node tests run with `node --test`, covering at least the rules and the save |
 | `test/accept.mjs` | 浏览器验收脚本：用 Playwright（`tools/lib/browser.mjs`）打开游戏、走完一段固定流程、断言没有控制台错误，失败时退出码非零 · browser acceptance: opens the game with Playwright, walks a fixed path, asserts a clean console, exits non-zero on failure |
 | `test/baseline/*.png` | 截图基线：固定视口、固定随机种子（`?seed=`）、减弱动画下的关键画面；`test/accept.mjs` 用 `matchBaseline` 比对并把差异图写到 `test/baseline/diff/`（不提交） · screenshot baselines at a fixed viewport, a fixed seed and reduced motion, compared by `matchBaseline`, with the difference picture written to `test/baseline/diff/` (not committed) |
+| `AGENTS.md`, `CLAUDE.md`, `.claude/skills/egret-game/` | 编程智能体怎样开发这款游戏：命令、做法、说「做完」之前要跑什么；`CLAUDE.md` 只有一行 `@AGENTS.md`，让 Claude Code 读同一份。模板自带，建议保留 · how a coding agent works on this game: the commands, the way through, what to run before saying it is done; `CLAUDE.md` is the one line `@AGENTS.md`, so Claude Code reads the same file. The template has them; keep them |
 | `vendor/` | 引擎副本，由引擎仓库的 `tools/vendor-game.mjs` 生成；`vendor/SOURCE.md` 写着引擎提交号；页面的 import map 与 `vendor/importmap.json` 一致 · the engine copy made by the engine's `tools/vendor-game.mjs`; `vendor/SOURCE.md` names the engine commit; the page's import map matches `vendor/importmap.json` |
 
 规则（`src/sim/` 或同类目录）不碰页面也不碰引擎，能在 Node 里用固定种子跑；画面只读规则的状态。界面上的字一律从文字表取，中英文都有。
@@ -72,7 +73,34 @@ A game that truly met no engine fault invents no item: it writes one line, `**�
 
 已解决或已写入文档的条目可以不再写建议；也可以按「原来 / 引擎提交 / 本作现在」三段写（见 MechanismCity）。`tools/check-standard.mjs` 按这些字样检查每一条。
 
+每条标题的下一行是一行给程序读的头，网页上看不见：
+
+```html
+### 3. 小游戏里没有 CanvasKit，段落用不了 · No CanvasKit in a mini game, so no paragraphs — 未解决 / open
+<!-- engine-note: {"id": "InquestScrolls#3", "status": "open", "topic": "paragraph-without-webassembly", "workaround": ["src/view/plainText.mjs"]} -->
+```
+
+- `id`：游戏目录名、`#` 和条目编号；编号不重复使用。
+- `status`：`open`、`partly`、`worked-around`、`documented` 或 `resolved`，与标题末尾的状态一致。
+- `topic`：用连字符连起来的小写英文词说明是什么缺陷。别的游戏遇到同一个缺陷时写同一个 topic，先在 [ENGINE-GAPS.md](ENGINE-GAPS.md) 里找有没有现成的。
+- `workaround`：存放绕过代码的游戏文件，相对游戏目录。
+
+修好一条之后，在那条笔记里加一行，写明改了什么、在哪个提交；修复本身单独一个提交（见第 6 节）。
+
+After a fix, add a line to the note saying what changed and in which commit; the fix itself is a commit of its own (part 6).
+
+`node tools/engine-notes.mjs --write` 把所有游戏的笔记汇总成 [ENGINE-GAPS.md](ENGINE-GAPS.md)。两个以上游戏遇到同一个 topic，就是引擎接口的问题，在引擎里修；只有一个游戏遇到的，先写成引擎指南的卡片。引擎修好或写进文档时，会在引擎仓库的 `guide/resolved.json` 里按 topic 记一条；刷新引擎副本后在游戏目录里运行 `node vendor/egret.mjs notes`，它列出副本已经修好、而笔记还标着未解决的条目，以及要去掉的绕过代码。去掉后验一遍游戏，再改笔记的状态和标题。
+
 An item the engine has resolved or documented may drop its suggestion, and an item may be written as "before / the engine commit / this game now" (as in MechanismCity). `tools/check-standard.mjs` looks for these words in every item.
+
+The line under each heading is one header for programs, which a rendered page does not show:
+
+- `id`: the game's folder, `#` and the item's number; a number is never used again.
+- `status`: `open`, `partly`, `worked-around`, `documented` or `resolved`, as the end of the heading says.
+- `topic`: the fault in lower-case English words joined by dashes. Another game that meets the same fault writes the same topic: look for one in [ENGINE-GAPS.md](ENGINE-GAPS.md) first.
+- `workaround`: the game's files that hold the workaround, relative to its folder.
+
+`node tools/engine-notes.mjs --write` gathers the notes of every game into [ENGINE-GAPS.md](ENGINE-GAPS.md). A topic two or more games met is a fault of the engine's interface, to be fixed in the engine; one a single game met is first written as a card of the engine's guide. When the engine fixes or documents a fault it adds an entry by topic to its `guide/resolved.json`; after refreshing the engine copy, run `node vendor/egret.mjs notes` in the game's folder. It lists the items the copy has fixed that the notes still mark open, and the workarounds to take out. Take them out, check the game again, then change the item's status and heading.
 
 ## 4. 引擎副本 · The engine copy
 
@@ -85,6 +113,10 @@ node tools/vendor-game.mjs ../PortedGamesEgret/<目录 · folder> @egret/engine 
 
 Then paste `vendor/importmap.json` into the import map of `index.html`. `vendor/` is changed only by that tool; a game
 never edits its engine copy by hand, and writes the engine's faults into ENGINE-NOTES instead.
+
+引擎副本带着 `vendor/egret.mjs`：在游戏目录里，`node vendor/egret.mjs guide <问题>` 查引擎指南，`list genre` 列出各类游戏的配方，`check` 查引擎名字和常见误用，`verify` 在无头浏览器里运行游戏并列出引擎告警，`notes` 说明引擎修好了哪些笔记。
+
+The engine copy carries `vendor/egret.mjs`. In the game's folder, `node vendor/egret.mjs guide <question>` asks the engine's guide, `list genre` lists the recipes of each kind of game, `check` reads the game for engine names and common mistakes, `verify` runs it in a headless browser and lists the engine's warnings, and `notes` says which notes the engine fixed.
 
 ## 5. 从模板开始 · Starting from the template
 
@@ -129,3 +161,5 @@ only `npm run create` in this repository.
 3. **产出 2–5 张引擎 guide 卡片草稿**，放进 [`guide-cards/`](../guide-cards/)，并在 `guide-cards/README.md` 登记来源游戏和 ENGINE-NOTES 条目；引擎已有卡片能覆盖的，改为建议给那张卡加证据 · **two to five draft guide cards** go into `guide-cards/`, registered in its README with the game and ENGINE-NOTES item; where an engine card already covers it, propose evidence for that card instead.
 4. `node tools/capability-matrix.mjs` 重新生成能力矩阵 · the capability matrix is generated again.
 5. 根目录 README 与展示站（`showcase/games.js`）加上这款游戏 · the root README and the showcase list the game.
+6. **保留修复提交**：不要把一款游戏的历史压成一个提交。每个修复单独一个提交，说明里写清修了什么、怎么复现；引擎指南的卡片在证据里用 `fix:` 引用这些提交，压掉就找不回来了 · **keep the fix commits**: do not squash a game's history into one commit. Each fix is a commit of its own whose message says what it fixed and how to see it; the engine's guide cards cite these commits as `fix:` in their evidence, and a squash loses them.
+7. `node tools/duplication.mjs --write` 重新生成 [DUPLICATION.md](DUPLICATION.md)：这款游戏和另外两个以上游戏写了几乎相同的代码时，它该进模板或引擎的 kit；表里写着引擎已有的替代 · `node tools/duplication.mjs --write` makes [DUPLICATION.md](DUPLICATION.md) again: code this game wrote nearly as two or more others did belongs in the template or the engine's kit, and the table names what the engine already has.

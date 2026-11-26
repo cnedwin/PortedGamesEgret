@@ -633,6 +633,18 @@ export class TerrainStream3D extends Object3D {
             throw new World3DError('WORLD3D_INPUT_INVALID', 'loadsPerUpdate');
         this.#options = options;
     }
+    #viewer;
+    /**
+     * How far the viewer of the last `update` is from the nearest point of a tile, in world units: for showing the
+     * things a game scattered on it in more or less detail. 0 inside it; Infinity before the first update.
+     */
+    distanceOf(tile) {
+        const viewer = this.#viewer;
+        if (viewer === undefined)
+            return Infinity;
+        const size = this.tileSize, [x, z] = viewer;
+        return Math.hypot(Math.max(tile.x * size - x, 0, x - (tile.x + 1) * size), Math.max(tile.z * size - z, 0, z - (tile.z + 1) * size));
+    }
     get tiles() {
         return [...this.#tiles.values()];
     }
@@ -672,6 +684,7 @@ export class TerrainStream3D extends Object3D {
             throw new World3DError('WORLD3D_BUDGET', 'terrain stream tile range');
         }
         const near = (tx, tz) => Math.hypot(Math.max(tx * size - x, 0, x - (tx + 1) * size), Math.max(tz * size - z, 0, z - (tz + 1) * size));
+        this.#viewer = [x, z];
         this.#updating = true;
         try {
             for (const [key, tile] of this.#tiles)
@@ -741,7 +754,13 @@ export class TerrainStream3D extends Object3D {
                     return;
                 terrain.setPosition((x + 0.5) * this.tileSize, 0, (z + 0.5) * this.tileSize);
                 this.addChild(terrain);
-                const tile = Object.freeze({ x, z, field, terrain });
+                const tile = Object.freeze({
+                    x,
+                    z,
+                    field,
+                    terrain,
+                    center: Object.freeze([(x + 0.5) * this.tileSize, (z + 0.5) * this.tileSize])
+                });
                 this.#tiles.set(key, tile);
                 this.#requests.delete(key);
                 staged = undefined;

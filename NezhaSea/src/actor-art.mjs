@@ -40,58 +40,6 @@ function wheelShape(g, x, y, radius) {
   g.restore();
 }
 
-function hero(g, wiggle, variant) {
-  const lotus = variant === 'lotus';
-  const arms = variant === 'sixArms';
-  const coat = lotus ? colors(g, '#b8f2c9', '#348584', -8, 19) : arms ? colors(g, '#cc6040', '#65274e', -10, 21) : colors(g, '#ee5547', lacquer, -10, 22);
-  shadow(g, 0, 23, 21, 5);
-  g.save(); g.translate(0, wiggle * 1.4);
-  line(g, 'M-4 -6 Q-18 -5 -28 -12 Q-39 -21 -37 -8 Q-35 10 -30 9', '#842337', 7);
-  line(g, 'M-3 -8 Q-19 -8 -29 -15 Q-39 -23 -37 -8', '#ed6052', 3.2);
-  line(g, 'M-24 -12 Q-35 -15 -38 -10 Q-35 -3 -30 2', '#ffc286', 1);
-  g.restore();
-  if (arms) {
-    oval(g, 0, -4, 25, 24, null, '#e9a45b97', 1.25);
-    const fan = ['M-5 -5 Q-21 -20 -28 -17', 'M-6 0 Q-24 1 -32 -7', 'M-7 5 Q-19 15 -28 13',
-      'M7 -5 Q20 -21 25 -20', 'M7 0 Q22 -3 32 -6', 'M7 4 Q20 13 28 11'];
-    g.save(); g.rotate(wiggle * 0.055);
-    for (const path of fan) { line(g, path, '#45263b', 6.5); line(g, path, '#e5b187', 3.6); }
-    for (const [x,y] of [[-28,-17],[-32,-7],[-28,13],[25,-20],[32,-6],[28,11]]) oval(g,x,y,3,3,gold,'#562b3e');
-    line(g, 'M24 -20 L30 -30', gold, 1.4);
-    form(g, 'M28 -31L34 -37L34 -29L30 -26Z', '#ffe5a6', '#88393b');
-    g.restore();
-  }
-  if (lotus) {
-    for (let i = -2; i <= 2; i++) {
-      g.save(); g.translate(i * 8, 19); g.rotate(i * 0.53);
-      form(g, 'M-6 8 Q-11 -3 0 -18 Q10 -3 6 8 Q0 13 -6 8Z', colors(g,'#fff6d7','#d5778a',-18,9), '#783d57', 1.15);
-      line(g, 'M0 -12Q-1 -1 0 5', '#fff2c99f'); g.restore();
-    }
-  } else {
-    wheelShape(g, -9 - wiggle * 2, 20 + wiggle * 1.2, 8);
-    wheelShape(g, 10 + wiggle * 1.5, 20 - wiggle * 1.4, 8.7);
-  }
-  g.save(); g.rotate(wiggle * 0.085);
-  form(g, 'M-9 7 Q-13 18 -8 21 L0 16 L6 21 L11 17 L8 4Z', '#653141');
-  g.restore();
-  form(g, 'M-13 -7 Q-12 -10 -6 -10 L9 -8 Q16 -4 16 3 L10 6 L12 13 Q2 19 -12 12 L-10 3 L-17 0Z', coat);
-  g.save(); g.translate(0, wiggle * 1.5);
-  form(g, 'M7 -6 Q17 -8 20 -2 Q22 3 17 6 Q13 6 11 3Z', '#edbd94', '#6f3644', 1.1);
-  g.restore();
-  line(g, 'M-11 8 Q-1 13 10 8 M-12 -6L-7 -1L-7 4 M11 -2L8 3', '#e8ad63', 1.35);
-  oval(g, 3, 9, 3, 2.6, gold, '#683742');
-  form(g, 'M-11 -21 Q-11 -34 0 -34 Q12 -32 12 -22 L17 -17 L12 -12 Q5 -7 -3 -11 Q-9 -13 -11 -21Z', colors(g,'#ffdcb7','#d89576',-33,-9), '#503140', 1.3);
-  oval(g, -8, -31, 7.6, 7.6, '#171e30', '#72424b', 1.1);
-  oval(g, 8, -33, 6.1, 6.1, '#171e30', '#72424b', 1.1);
-  form(g, 'M-12 -23Q-15 -31 -6 -34Q6 -38 12 -28L11 -23L7 -28L3 -21L1 -26L-5 -20L-7 -23L-11 -19Z', '#232132', '#342434', 1);
-  line(g, 'M-12 -32Q-9 -38 -5 -35 M5 -36Q8 -39 11 -35', '#97576c', 1.45);
-  line(g, 'M5 -24 L10 -26', '#622f38', 1.25);
-  smallEye(g, 7, -21);
-  line(g, 'M9 -15L12 -15', '#994750', 1.1);
-  oval(g, -4, -7, 7.1, 3.1, null, gold, 1.65);
-  if (lotus) form(g, 'M-2 -33 Q0 -42 3 -36 Q9 -38 8 -34 L4 -30Z', '#ffe6aa', '#87465b', 1);
-}
-
 function shrimp(g, pose) {
   form(g, pose > 0 ? 'M-22 -5Q-19 -8 -12 -2L-15 7L-24 10L-21 3L-26 1Z' : 'M-23 -8L-15 -4L-13 3L-21 9L-22 2L-27 -4Z', '#3a8990', '#143746');
   form(g, 'M-15 -4Q-13 -14 -1 -13Q11 -13 17 -6L22 -3L16 3Q8 10 -2 8Q-14 9 -16 3Z', colors(g,'#90e5b8','#397f87',-12,9));
@@ -279,8 +227,9 @@ const smallSprites = new Set([
   'shrimp', 'crab', 'jelly', 'shark', 'puffer', 'conch',
   'pearl', 'largePearl', 'wheel', 'heavenWheel', 'ring', 'dragonRing', 'brick', 'dragonBrick', 'spit', 'ice'
 ]);
+const HERO_FORMS = ['boy', 'lotus', 'sixArms'];
+const HERO_CELL_WIDTH = 176, HERO_CELL_HEIGHT = 180;
 const sprites = [
-  ...['boy','lotus','sixArms'].map((key)=>[key,88,90,(g,pose)=>hero(g,pose,key),2]),
   ...Object.entries(actors).map(([key,draw])=>[key,key==='aoBing'?134:key==='yaksha'?105:68,key==='yaksha'?142:key==='aoBing'?118:60,draw,2]),
   ['dragonSegment',46,44,segment], ['wheel',40,40,(g)=>wheelShape(g,0,0,12)],
   ['heavenWheel',44,44,(g)=>{wheelShape(g,0,0,14); oval(g,0,0,13,13,null,jade,1.0);}],
@@ -347,10 +296,28 @@ function makeStamp(canvas, { bounds, originX, originY }, density, sample) {
 }
 
 export async function createBattleAtlas(game) {
+  // Decode the six illustrated poses once, then pack them into the existing
+  // actor texture so all entities keep the shared atlas and GPU prewarm path.
+  const heroSheet = new Image();
+  heroSheet.src = new URL('../assets/hero-sprites.webp', import.meta.url).href;
+  await heroSheet.decode();
+  if (heroSheet.naturalWidth !== HERO_CELL_WIDTH * 2 ||
+      heroSheet.naturalHeight !== HERO_CELL_HEIGHT * HERO_FORMS.length) {
+    throw new Error('Nezha hero sprite sheet has an unexpected layout');
+  }
+  const heroSprites = HERO_FORMS.map((key, row) => [
+    key, HERO_CELL_WIDTH / 2, HERO_CELL_HEIGHT / 2,
+    (g, pose) => {
+      shadow(g, 0, 36, 18, 4);
+      g.drawImage(heroSheet, pose > 0 ? HERO_CELL_WIDTH : 0, row * HERO_CELL_HEIGHT,
+        HERO_CELL_WIDTH, HERO_CELL_HEIGHT, -HERO_CELL_WIDTH / 4, -HERO_CELL_HEIGHT / 4,
+        HERO_CELL_WIDTH / 2, HERO_CELL_HEIGHT / 2);
+    }, 2
+  ]);
   const density = 2, width = 1024;
   const regions = new Map();
   let x = 0, y = 0, row = 0;
-  for (const [key, w, h, draw, count = 1, originX = w / 2] of sprites) {
+  for (const [key, w, h, draw, count = 1, originX = w / 2] of [...heroSprites, ...sprites]) {
     const frames = [];
     for (let i = 0; i < count; i++) {
       const bounds = { x, y, width:w*density, height:h*density };

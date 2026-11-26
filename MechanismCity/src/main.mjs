@@ -108,9 +108,7 @@ const app = {
   async openSettings() {
     if (settings?.open || openingSettings) return;
     openingSettings = true;
-    // A root may not be made while the press that asked for it is being delivered (only its prepare waits):
-    // leave the delivery through a settled promise first, as the engine's refusal says (ENGINE-NOTES.md, item 19).
-    await Promise.resolve();
+    // A root may be made while the press that asked for it is being delivered (ENGINE-NOTES.md, item 19).
     settings = await openSettings(game, {
       semantics,
       sound,

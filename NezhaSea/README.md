@@ -26,8 +26,8 @@ Nezha Stirs the Sea is a survival action game built with [Egret Rebuild](https:/
 |---|---|---|---|
 | 走 · Move | WASD、方向键 · WASD, arrows | 左摇杆、十字键 · left stick, d-pad | 在海面任意位置按住并拖动 · hold and drag anywhere on the sea |
 | 暂停 · Pause | P、Esc | | 「暂停」· Pause |
-| 升级 · Level-up | 1–4，或 Tab 加 Enter · or Tab and Enter | | 点 · tap |
-| 集市 · Market | Tab、Enter、Space；Esc 取消选中 · Esc to unpick | | 点 · tap |
+| 升级 · Level-up | 1–4，或 Tab 加 Enter · or Tab and Enter | 方向键选、A 确认 · D-pad and A | 点 · tap |
+| 集市 · Market | Tab、Enter、Space；Esc 取消选中 · Esc to unpick | 方向键、A、B · D-pad, A and B | 点选或拖放合成 · tap or drag to merge |
 
 设置在标题和暂停菜单里。音效和配乐可独立关闭，减弱动画（系统设了「减少动态效果」时自动减弱）、中英文。切到别的标签页时，进行中的一波停在暂停菜单上。 · Settings are on the title and in the pause menu. Music and effects have independent mute switches. Switching tabs pauses a wave behind the menu.
 
@@ -63,10 +63,13 @@ Nezha Stirs the Sea is a survival action game built with [Egret Rebuild](https:/
 | 引擎入口 / API · Entry / API | 在本游戏中的用途 · Use in this game | 文件 · File |
 |---|---|---|
 | `play`（`@egret/engine/play`） | 一次调用建好竖屏 540×960 的透明画布和帧循环 · the clear 540 × 960 canvas and the loop from one call | `src/main.mjs` |
-| `game.keys.axis()` | 键盘及手柄输入由引擎提供，触屏摇杆有独立的触点归属 · engine keyboard and gamepad input, with independent touch ownership | `src/main.mjs` |
-| Pointer Events | 战场接管单个触点，越界继续追踪，取消和暂停时归零 · a single owned contact continues outside the field and resets on cancel and pause | `src/sea-stick.mjs` |
+| `game.keys.axis()`、`game.touchStick({ floating })` | 键盘、手柄和触屏方向由引擎提供，浮动摇杆保留独立触点归属 · engine keyboard, gamepad and native floating touch input with independent contact ownership | `src/main.mjs`, `src/sea-stick.mjs` |
+| `game.show`、`createUiScreenStack` | 标题、设置、暂停、结算、升级与集市由白鹭绘制和管理；顶栏绑定血量、经验与滚动数字 · Egret views and navigation for all screens, with bound health, experience and rolling counters | `src/main.mjs`, `src/ui-screens.mjs`, `src/ui-hud.mjs`, `src/ui-market.mjs` |
+| `game.hints`、`game.dragAndDrop` | 随输入设备切换的操作提示；允许拖放合成两件匹配法宝 · device-aware hints and drag-and-drop merging | `src/ui-hud.mjs`, `src/ui-market.mjs` |
+| `createUiSemantics`、`createBrowserSemantics`、`createUiTester` | 浏览器无障碍树和按名称验收；白鹭处理键盘及手柄焦点 · browser accessibility tree, named-control testing and native keyboard and gamepad focus | `src/ui-input.mjs`, `test/accept.mjs` |
+| Pointer Events | 兼容桌面原有的鼠标及触控笔拖动 · retains the original mouse and pen steering on desktop | `src/sea-stick.mjs` |
 | Egret Bitmap + Graphics | 三种哪吒、六类水族兵、两位首领和法宝共用一张运行时画集，动态特效按类型复用 · pooled actors on one shared runtime atlas, with separate weapon effects | `src/view.mjs`, `src/actor-art.mjs` |
-| `game.burst`、`game.shake`、`game.flash`、`game.text` | 击退、砸落、升级的碎片；受伤一抖；合成神器一闪；伤害数字（减弱动画时不抖不闪） · bursts, a shake when hurt, a flash for a divine merge, damage numbers | `src/view.mjs`, `src/main.mjs` |
+| `game.burst`、`game.shake`、`game.flash`、`game.text` | 击退、砸落、升级的碎片；受伤一抖；合成神器一闪；伤害数字（减弱动画时不抖不闪） · bursts, a shake when hurt, a flash for a divine merge, damage numbers | `src/view.mjs`, `src/ui-market.mjs` |
 | `game.pause`、`resume`、`after` | 暂停菜单、结算前的停顿 · the pause menu, the beat before the end | `src/main.mjs` |
 | Egret Web Audio mixer | 标题、战斗、首领和集市原创配乐，跨场景淡入淡出，21 种反馈音效；采样在 Worker 内合成 · four score loops, crossfades and 21 synthesized effects | `src/sound.mjs`, `src/audio-synth.mjs` |
 | `createTextTable` + `pickLanguage` | 中英文文字表，`missing()` 检查两种语言齐全 · the word table, checked complete | `src/i18n.mjs` |
@@ -75,14 +78,14 @@ Nezha Stirs the Sea is a survival action game built with [Egret Rebuild](https:/
 
 ## 美术与玩法界面 · Art and interface
 
-- `assets/` 的陈塘关封面、战场、龙宫集市和三张形态立绘为本 Demo 生成的原创插画。绘制角色画集、配乐和音效的源码一并收录。 · The cover, battlefield, market and three form portraits in `assets/` are original illustrations generated for this demo. The source for the actor atlas, score and sound effects ships with the game.
-- 手机集市可切换「货架」和「我的法宝」。珍珠余额和「下一波」始终可见，选中法宝后可查看合成结果。 · On mobile, switch between stock and your treasures. The wallet and Next wave stay visible, and selecting a treasure previews any available merge.
+- `assets/` 的陈塘关封面、战场、龙宫集市和三张形态立绘为本 Demo 生成的原创插画。三种哪吒战斗形态各有透明待机与滑行动作，合入共享角色图集；配乐、音效及图集源码一并收录。 · The cover, battlefield, market and three form portraits in `assets/` are original illustrations generated for this demo. The three battle forms each have transparent idle and glide poses on the shared actor atlas. Atlas, score and effect sources ship with the game.
+- 手机集市可切换「货架」和「我的法宝」。珍珠余额和「下一波」始终可见，选中法宝后可查看合成结果，也可直接将它拖到可合成的另一件上。 · On mobile, switch between stock and your treasures. The wallet and Next wave stay visible. Select a treasure to preview a merge, or drag it onto a matching treasure.
 
 ## 已验证 · Verified
 
 在 `NezhaSea` 目录运行 `node --test test/*.test.mjs` 和 `node test/accept.mjs`，覆盖规则、存档、中英文、界面键盘流程、购买、合成及结算基线。Chromium 的胜负和解锁界面用测试场景驱动。
 
-Windows Chrome 与三星 Fold7 实机检查首波、暂停、升级和集市。Fold7 使用浏览器触控事件验证任意位置起手、拖出画面、取消及第二触点，并在横竖屏复测购买、换货、合成和进入下一波。 · Windows Chrome and a Samsung Fold7 covered the first wave, pause, level-up and market. Browser touch input exercised pointer ownership, orientation changes, purchases, restocking and merging on the Fold7.
+引擎 UI 版的验收环境、测量及覆盖限制见 [QUALITY.md](QUALITY.md)。Windows PC 与三星 Fold7 使用 WebGPU 从新档正常打败第 10 波夜叉，均在第 11 波败退、解锁莲花并刷新验档。最终构建独立通过新角色、集市和实时旋转检查。 · On both Windows and a Samsung Fold7 using WebGPU, a fresh normal run defeated the wave-10 Yaksha, ended at wave 11, unlocked the lotus form and survived reload. The final build separately passed character, market and live-rotation checks.
 
 ## 已知问题 · Known issues
 
@@ -90,20 +93,23 @@ Windows Chrome 与三星 Fold7 实机检查首波、暂停、升级和集市。F
 
 ## 已解决 · Solved
 
-窄屏集市的购买、选中和合成分成两个切换页，下一波入口固定在底部。暂停会清除战场摇杆的触点。 · The compact market separates stock from equipped treasures and pins the next-wave action. Pause releases the battlefield touch stick.
+窄屏集市的购买、选中和合成分成两个切换页，下一波入口固定在底部。窄横屏波次与倒计时分行，实时缩放仍保持暂停触控区。暂停会清除战场摇杆的触点。 · The compact market separates stock from equipped treasures and pins the next-wave action. Narrow landscape HUDs stack the clock and preserve the Pause target through live resizing. Pause releases the battlefield touch stick.
+
+浮动触屏摇杆采用白鹭原生捕获，保留原有 5 CSS 像素死区及响应幅度；触点越出战场仍受控。立绘加载失败时保留可读角色卡，标题提供重试。 · Egret handles floating-touch capture with the original five-CSS-pixel dead zone and movement response. Failed portrait downloads leave readable cards and an explicit title-screen retry.
 
 首领登场提示显示在独立的血条下方，文字不会被顶栏盖住。 · Boss introductions appear directly below the boss health bar.
 
 ## 未完成 · Unfinished
 
-本轮发布前尚未实测物理手柄、完整二十波和扬声器听感。 · Physical gamepad input, a full twenty-wave session and speaker listening are pending separate checks.
+物理手柄、读屏软件、Safari、完整二十波及扬声器听感需用对应环境进一步验收。 · Physical gamepads, screen readers, Safari, a full twenty-wave playthrough and speaker listening require separate checks.
 
 ## 目录结构 · Layout
 
 | 路径 · Path | 内容 · Contents |
 |---|---|
-| `index.html`, `style.css` | 页面、import map、海面框、顶栏、标题 / 升级 / 集市 / 暂停 / 结算 · the page and its panels |
-| `src/main.mjs` | 入口：存档、语言、`play`、每帧、集市与合成、画面切换 · the entry |
+| `index.html`, `style.css` | 页面入口、引擎加载前的失败恢复与背景美术 · entry point, pre-engine recovery and background art |
+| `src/main.mjs` | 入口：存档、语言、`play`、每帧与界面切换 · application flow, persistence and the game loop |
+| `src/ui-*.mjs` | 白鹭界面、集市操作、屏幕适配、战斗顶栏和无障碍输入 · Egret views, market actions, screen fitting, HUD and accessible input |
 | `src/view.mjs` | 哪吒、水族兵、法宝出手、珍珠、水弹，按种类放池子 · what moves, pooled |
 | `assets/`, `src/actor-art.mjs` | 场景、立绘与角色画集 · backgrounds, portraits and actor atlas |
 | `src/sea-stick.mjs` | 战场触屏输入 · captured touch input |
@@ -114,16 +120,22 @@ Windows Chrome 与三星 Fold7 实机检查首波、暂停、升级和集市。F
 | `src/i18n.mjs`, `src/saves.mjs` | 文字表、存档 · the words, the save |
 | `test/` | Node 测试、浏览器验收和截图基线 · tests, acceptance and baselines |
 | `vendor/` | 引擎副本 · the engine copy |
+| `bundle/`, `tools/launch-bundle/` | 可复现的首屏入口与构建脚本 · reproducible browser entry and build recipe |
 
 ## 引擎副本 · Engine copy
 
-引擎副本取自 [Egret_rebuild](https://github.com/cnedwin/Egret_rebuild) 提交 `b5628eb9997b67cf6163a388f5aa06f321f3833a`，由引擎仓库的 `tools/vendor-game.mjs` 复制，见 [vendor/SOURCE.md](vendor/SOURCE.md)。用到的入口：`@egret/engine/play`、`@egret/engine/kit`、`@egret/engine/web/kit`（`@egret/engine` 随 `play` 一起复制）。
+引擎副本取自 [Egret_rebuild](https://github.com/cnedwin/Egret_rebuild) 的 main 提交 `0728eccc8ee5340f786fdeacd375927d3d8e315a`，生成记录见 [vendor/SOURCE.md](vendor/SOURCE.md)。
 
-The engine copy is from [Egret_rebuild](https://github.com/cnedwin/Egret_rebuild) commit
-`b5628eb9997b67cf6163a388f5aa06f321f3833a`, copied by the engine's `tools/vendor-game.mjs`; see
-[vendor/SOURCE.md](vendor/SOURCE.md). Entries used: `@egret/engine/play`, `@egret/engine/kit` and
-`@egret/engine/web/kit` (`@egret/engine` comes with `play`).
+The runtime is from Egret Rebuild main at the commit above. Run the following command in the engine checkout to reproduce it.
 
 ```sh
-node tools/vendor-game.mjs ../PortedGamesEgret/NezhaSea @egret/engine @egret/engine/play @egret/engine/kit @egret/engine/web/kit
+node tools/vendor-game.mjs ../PortedGamesEgret/NezhaSea @egret/engine @egret/engine/play @egret/engine/kit @egret/engine/web/kit @egret/engine/ui @egret/engine/ui/semantics @egret/engine/ui/testing @egret/engine/web/semantics
+```
+
+游戏入口使用可复现的模块打包以减少首屏请求；引擎副本保持原样，规则与音频 Worker 保持独立源文件。更新源码或引擎后，在本目录重新生成并校验入口。 · The release uses a reproducible module bundle to reduce startup requests without modifying the vendored engine. Rebuild and verify it after source or engine changes.
+
+```sh
+npm ci --ignore-scripts --prefix tools/launch-bundle
+node tools/launch-bundle/build.mjs
+node --test test/bundle.test.mjs
 ```

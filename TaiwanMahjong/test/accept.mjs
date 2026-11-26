@@ -1,175 +1,280 @@
-// 浏览器验收：在无头 Chromium 里打开游戏，走一遍——标题（Tab 选「高手」和「一將」再改回「東風圈」、设置里关音效、
-// 切英文再切回中文）、规则面板、Enter 开局、用真按键选一张牌再打出去（轮到别人能吃碰时按 Esc 过）、P 暂停后牌局
-// 不动、Esc 继续、托管打到一局结算、Enter 下一局、托管打完一圈看终局排名和战绩、回首页、坏档提示——每一步都断言，
-// 比对标题和规则两张截图基线，最后断言没有控制台错误。`node test/accept.mjs` 跑一遍；`--update` 重写基线。
-// Browser acceptance: opens the game in headless Chromium and goes through it — the title (Tab to Expert and to the
-// full game and back to the East round, sound off in the settings, English and back), the rules, Enter to sit down,
-// a tile chosen and discarded with real keys (Escape passing when a call is offered), P pausing the table, Escape
-// going on, auto-play to a hand's result, Enter for the next hand, auto-play to the end of the round with the ranking
-// and the record, back to the title, and a broken save — checking each step, comparing the title and the rules with
-// their baselines, and finally that the console stayed clean.
+// Browser acceptance covers keyboard navigation, live calls, the East round record, and rotated touch input.
 import { dirname, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { ROOT, launch, matchBaseline, openPage, report, serve, until } from '../../tools/lib/browser.mjs';
+import { ROOT, launch, matchBaseline, openPage, report, serve } from '../../tools/lib/browser.mjs';
 
-const GAME = resolve(dirname(fileURLToPath(import.meta.url)), '..'),
-  path = relative(ROOT, GAME).split('\\').join('/');
-const server = await serve(),
-  browser = await launch(),
-  checks = [],
-  check = (ok, words) => checks.push([Boolean(ok), words]);
-let page;
-const state = (expression, argument) => page.evaluate(expression, argument);
-const focused = () =>
-  state(() => {
-    const el = document.activeElement,
-      by = el?.getAttribute('aria-labelledby');
-    if (by) return by.split(' ').map((id) => document.getElementById(id)?.textContent ?? '').join(' ');
-    return el?.getAttribute('aria-label') || el?.textContent?.trim() || el?.tagName;
+const game = resolve(dirname(fileURLToPath(import.meta.url)), '..');
+const path = relative(ROOT, game).split('\\').join('/');
+const server = await serve();
+const browser = await launch();
+const checks = [];
+const pages = [];
+const check = (ok, words) => checks.push([Boolean(ok), words]);
+const state = (page, fn, value) => page.evaluate(fn, value);
+const wait = (page, fn, value, timeout = 14000) => page.waitForFunction(fn, value, { timeout });
+const names = async (page, role) => state(page, role => window.mahjong.semantics.publish().nodes
+  .filter(node => !node.inert && (!role || node.role === role)).map(node => node.name), role);
+const focus = page => state(page, () => window.mahjong.ui.focused);
+const shown = (page, name) => state(page, name => Boolean(window.mahjong.ui.point(name)), name);
+const see = (page, name) => wait(page, name => Boolean(window.mahjong.ui.point(name)), name);
+const hidden = (page, name) => wait(page, name => !window.mahjong.ui.point(name), name);
+const waitScreen = (page, screen, timeout) => wait(page, screen => window.mahjong.screen === screen, screen, timeout);
+const frame = page => page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
+
+async function startPage(seed, { width = 1280, height = 720, touch = false } = {}) {
+  const page = await openPage(browser, server.url + path + '/?seed=' + seed + '&lang=zh', { width, height, touch });
+  pages.push(page);
+  await wait(page, () => window.mahjong?.ready && window.mahjong.screen === 'title');
+  return page;
+}
+async function activate(page, name, touch = false) {
+  await see(page, name);
+  const point = await state(page, name => window.mahjong.ui.point(name), name);
+  const { x, y } = point;
+  const size = page.viewportSize();
+  if (!(x >= 0 && y >= 0 && x <= size.width && y <= size.height)) {
+    throw new Error('Control lies outside the browser at ' + name + ': ' + JSON.stringify(point));
+  }
+  await (touch ? page.touchscreen.tap(x, y) : page.mouse.click(x, y));
+  await frame(page);
+}
+async function key(page, name) {
+  await page.keyboard.press(name);
+  await frame(page);
+}
+async function tabTo(page, test, back = false) {
+  for (let index = 0; index < 48; index++) {
+    const current = await focus(page);
+    if (typeof test === 'string' ? current === test : test.test(current ?? '')) return true;
+    await page.keyboard.press(back ? 'Shift+Tab' : 'Tab');
+  }
+  return false;
+}
+async function setTempo(page) {
+  await state(page, () => {
+    window.mahjong.app.speed = 16;
+    window.mahjong.game.timeScale = 16;
   });
-const tabTo = async (pattern, back = false) => {
-  for (let i = 0; i < 60 && !pattern.test(await focused()); i++) await page.keyboard.press(back ? 'Shift+Tab' : 'Tab');
-  return pattern.test(await focused());
-};
-const waitFor = (fn, arg, seconds = 60) => page.waitForFunction(fn, arg, { timeout: seconds * 1000 });
+}
+async function visibleRules(page) {
+  const words = new Set(await names(page));
+  for (let i = 0; i < 12 && await shown(page, 'rulesDown'); i++) {
+    const before = words.size;
+    await activate(page, 'rulesDown');
+    for (const word of await names(page)) words.add(word);
+    if (words.size === before) break;
+  }
+  return [...words].join(' ');
+}
+
+async function walkEastRound() {
+  const page = await startPage(11);
+  await page.waitForTimeout(500);
+  const title = await matchBaseline(page, game, 'title');
+  check(title.written || title.passed, 'title looks as its baseline (' + (title.share * 100).toFixed(2) + '% differs)');
+  check(await focus(page) === 'startButton', 'the title focuses Sit down');
+  const accessibility = await page.locator('body').ariaSnapshot();
+  check(/button "開始打牌/.test(accessibility), 'the browser semantic tree names Sit down');
+
+  check(await tabTo(page, 'rounds-4'), 'Tab reaches the full game');
+  await key(page, 'Enter');
+  await wait(page, () => window.mahjong.app.save.data.setup.rounds === 4);
+  check(await focus(page) === 'rounds-4', 'Enter chooses it and the focus stays');
+  check(await tabTo(page, 'level-hard'), 'Tab reaches Expert');
+  await key(page, 'Space');
+  await wait(page, () => window.mahjong.app.save.data.setup.level === 'hard');
+  check(true, 'Space chooses Expert and the save keeps it');
+  check(await tabTo(page, 'rounds-1', true), 'Shift+Tab goes back to the East round');
+  await key(page, 'Enter');
+  await wait(page, () => window.mahjong.app.save.data.setup.rounds === 1);
+  check(true, 'Enter selects the East round again');
+
+  check(await tabTo(page, 'settingsButton'), 'Tab reaches Settings');
+  await key(page, 'Enter');
+  await see(page, 'settingsClose');
+  check(await tabTo(page, 'setting-sound'), 'Tab reaches the sound switch');
+  await key(page, 'Enter');
+  await wait(page, () => window.mahjong.app.save.data.settings.sound === false);
+  check(true, 'Enter turns the sound off and persists the preference');
+  await key(page, 'Escape');
+  await hidden(page, 'settingsClose');
+  check(await focus(page) === 'settingsButton', 'Escape closes Settings and restores focus');
+
+  check(await tabTo(page, 'rulesButton', true), 'Shift+Tab reaches rules');
+  await key(page, 'Enter');
+  await see(page, 'rulesClose');
+  const rules = await matchBaseline(page, game, 'rules');
+  check(rules.written || rules.passed, 'rules look as their baseline (' + (rules.share * 100).toFixed(2) + '% differs)');
+  const words = await visibleRules(page);
+  check(/門清一摸三/.test(words) && /八仙過海/.test(words) && /截胡/.test(words), 'the paged rules expose tai and nearest-winner text');
+  await key(page, 'Escape');
+  await hidden(page, 'rulesClose');
+
+  check(await tabTo(page, 'languageButton'), 'Tab reaches the language switch');
+  await key(page, 'Enter');
+  await wait(page, () => document.documentElement.lang === 'en');
+  const english = (await names(page, 'button')).join('|');
+  check(!/[\u3400-\u9fff]/.test(english) && /Sit down/.test(english), 'every visible English title button has an English accessible name');
+  await key(page, 'Enter');
+  await wait(page, () => document.documentElement.lang === 'zh-Hant');
+  check(await focus(page) === 'languageButton', 'the same keyboard key switches back to Taiwanese Chinese');
+
+  check(await tabTo(page, 'startButton', true), 'Shift+Tab reaches Sit down');
+  await key(page, 'Enter');
+  await waitScreen(page, 'play');
+  await setTempo(page);
+  let discarded = false;
+  for (let index = 0; index < 16 && !discarded; index++) {
+    await wait(page, () => window.mahjong.app.human || window.mahjong.screen !== 'play', null, 25000);
+    if (await state(page, () => window.mahjong.screen !== 'play')) break;
+    const options = await state(page, () => window.mahjong.app.human.options);
+    if (options.type !== 'act') {
+      await key(page, 'Escape');
+      continue;
+    }
+    const tile = await focus(page);
+    check(/^tile-\d+$/.test(tile), 'the keyboard focus moves to the current hand');
+    const before = await state(page, () => window.mahjong.app.match.hand.players[0].discards.length);
+    await key(page, 'Enter');
+    await wait(page, () => window.mahjong.app.selected !== null);
+    check('tile-' + await state(page, () => window.mahjong.app.selected) === tile, 'Enter raises the focused tile');
+    await key(page, 'Enter');
+    await wait(page, before => window.mahjong.app.match.hand.players[0].discards.length > before, before);
+    discarded = true;
+  }
+  check(discarded, 'the player discards with real keyboard events');
+
+  await wait(page, () => !window.mahjong.app.human || window.mahjong.app.human.options.type === 'act');
+  await activate(page, 'pauseButton');
+  await see(page, 'resumeButton');
+  const events = await state(page, () => window.mahjong.app.match.hand.events.length);
+  await page.waitForTimeout(1100);
+  check(await state(page, events => window.mahjong.game.paused && window.mahjong.app.match.hand.events.length === events, events),
+    'the table and its event sequence stand still behind Pause');
+  await key(page, 'Escape');
+  await hidden(page, 'resumeButton');
+  check(await state(page, () => !window.mahjong.game.paused), 'Escape resumes the table');
+
+  await activate(page, 'autoButton');
+  check(await state(page, () => window.mahjong.app.autoplay), 'the autoplay control starts autoplay');
+  await waitScreen(page, 'result', 120000);
+  const settlement = await state(page, () => {
+    const app = window.mahjong.app;
+    const result = app.match.hand.result;
+    return { result, sum: app.match.scores.reduce((total, score) => total + score, 0) };
+  });
+  const payRows = await Promise.all([0, 1, 2, 3].map(seat => shown(page, 'result-seat-' + seat)));
+  const details = (await names(page)).join(' ');
+  check(payRows.every(Boolean) && settlement.sum === 0 && /你/.test(details) && /阿德/.test(details) && /小美/.test(details) && /老陳/.test(details) &&
+    (settlement.result.kind === 'draw' ? /流局/.test(details) : /台/.test(details)),
+  'the settlement reads four players and tai or a draw, with a zero-sum payout');
+  check(await focus(page) === 'nextButton', 'settlement focuses the next hand');
+  check(await state(page, () => JSON.parse(localStorage.getItem('taiwan-mahjong')).data.record.hands === 1), 'the record keeps the completed hand');
+  await key(page, 'Enter');
+
+  for (let i = 0; i < 35; i++) {
+    await wait(page, () => ['result', 'final'].includes(window.mahjong.screen), null, 120000);
+    if (await state(page, () => window.mahjong.screen === 'final')) break;
+    await activate(page, 'nextButton');
+  }
+  await waitScreen(page, 'final');
+  const rankRows = await Promise.all([0, 1, 2, 3].map(index => shown(page, 'rank-name-' + index)));
+  const ranks = (await names(page)).join(' ');
+  check(rankRows.every(Boolean) && /你/.test(ranks) && /阿德/.test(ranks) && /小美/.test(ranks) && /老陳/.test(ranks),
+    'the final panel names all four ranked players');
+  check(await state(page, () => {
+    const record = JSON.parse(localStorage.getItem('taiwan-mahjong')).data.record;
+    return record.games === 1 && record.bestGame !== null && record.hands >= 4;
+  }), 'the record keeps the East round and best score');
+  check(await focus(page) === 'againButton', 'the final panel focuses another match');
+  await key(page, 'Tab');
+  await key(page, 'Enter');
+  await waitScreen(page, 'title');
+  check(true, 'the keyboard returns to the title');
+
+  await state(page, () => localStorage.setItem('taiwan-mahjong', '{broken'));
+  await page.reload();
+  await wait(page, () => window.mahjong?.ready && window.mahjong.screen === 'title');
+  const notice = (await names(page)).join(' ');
+  check(/存檔讀不懂.*重新開始/.test(notice), 'the title reports the broken save and starts again');
+  await page.context().close();
+}
+
+// Each input below is a real legal choice in an unchanged seed. The browser never edits a hand or its options.
+const routes = [
+  { seed: 16, name: 'two Chow combinations in portrait', touch: true, actions: [{ type: 'chow', ids: [49, 57] }] },
+  { seed: 3, name: 'Pong', actions: [{ type: 'pong' }] },
+  { seed: 34, name: 'open Kong', actions: [{ type: 'discard', id: 109 }, { type: 'discard', id: 122 }, { type: 'kong' }] },
+  { seed: 200, name: 'win on a discard', actions: [
+    { type: 'discard', id: 67 }, { type: 'pong' }, { type: 'discard', id: 102 }, { type: 'chow', ids: [7, 9] },
+    { type: 'discard', id: 29 }, { type: 'chow', ids: [85, 90] }, { type: 'discard', id: 89 }, { type: 'win' }
+  ] },
+  { seed: 79, name: 'self-draw win', actions: [
+    { type: 'discard', id: 113 }, { type: 'pong' }, { type: 'discard', id: 126 }, { type: 'discard', id: 78 },
+    { type: 'discard', id: 85 }, { type: 'kong' }, { type: 'discard', id: 57 }, { type: 'win' }
+  ] }
+];
+
+async function replay({ seed, name, touch = false, actions }) {
+  const page = await startPage(seed, touch ? { width: 390, height: 844, touch } : {});
+  await setTempo(page);
+  await activate(page, 'startButton', touch);
+  await waitScreen(page, 'play');
+  for (const action of actions) {
+    await wait(page, () => window.mahjong.app.human, null, 25000);
+    const { options, firstEvent } = await state(page, () => ({
+      options: window.mahjong.app.human.options, firstEvent: window.mahjong.app.match.hand.events.length
+    }));
+    if (action.type === 'discard') {
+      await activate(page, 'tile-' + action.id, touch);
+      await wait(page, id => window.mahjong.app.selected === id, action.id);
+      await activate(page, 'tile-' + action.id, touch);
+    } else {
+      await activate(page, 'action-' + action.type, touch);
+      if (action.type === 'chow' && options.chows?.length > 1) {
+        const choice = options.chows.findIndex(ids => ids.length === action.ids.length && ids.every(id => action.ids.includes(id)));
+        if (choice < 0) throw new Error('The fixed seed did not offer the expected Chow option');
+        await see(page, 'chow-choice-' + choice);
+        if (touch) {
+          await activate(page, 'chow-back', true);
+          await hidden(page, 'chow-choice-' + choice);
+          await activate(page, 'action-chow', true);
+        }
+        await activate(page, 'chow-choice-' + choice, touch);
+      }
+    }
+    await wait(page, ({ action, firstEvent }) => window.mahjong.app.match.hand.events.slice(firstEvent).some(event =>
+      event.seat === 0 && event.type === action.type && (action.id === undefined || event.id === action.id) &&
+      (!action.ids || action.ids.every(id => event.tiles?.includes(id)))), { action, firstEvent }, 26000);
+  }
+  if (actions.at(-1).type === 'win') {
+    await waitScreen(page, 'result');
+    const win = await state(page, () => window.mahjong.app.match.hand.result);
+    check((win.from === null) === name.startsWith('self-draw') && await shown(page, 'nextButton'), name + ' reaches the correct settlement');
+  } else {
+    check(true, name + ' resolves via real ' + (touch ? 'touch input' : 'mouse input'));
+  }
+  if (touch) {
+    await page.setViewportSize({ width: 844, height: 390 });
+    await wait(page, () => window.mahjong.ready && !window.mahjong.app.tall && window.mahjong.app.game);
+    check(await state(page, () => window.mahjong.app.match.hand.players[0].melds.some(meld => meld.type === 'chow')),
+      'touch browser rotation preserves the active hand and chosen combination');
+    await activate(page, 'pauseButton', true);
+    await see(page, 'resumeButton');
+    await activate(page, 'resumeButton', true);
+    await hidden(page, 'resumeButton');
+    check(true, 'touch controls still pause and resume after rotation');
+  }
+  await page.context().close();
+}
 
 try {
-  page = await openPage(browser, `${server.url}${path}/?seed=11&lang=zh`, { width: 1280, height: 720 });
-  await page.evaluate(() => localStorage.clear());
-  await page.reload();
-  await until(page, () => window.mahjong?.ready && window.mahjong.screen === 'title');
-  await page.waitForTimeout(500);
-  const title = await matchBaseline(page, GAME, 'title');
-  check(title.written || title.passed, `title looks as its baseline (${(title.share * 100).toFixed(2)}% differs)`);
-  check(/開始打牌/.test(await focused()), `the title opens on Sit down (${await focused()})`);
-
-  // Choices on the title by keyboard.
-  check(await tabTo(/^一將/), 'Tab reaches the full game');
-  await page.keyboard.press('Enter');
-  await until(page, () => window.mahjong.app.save.data.setup.rounds === 4);
-  check(/^一將/.test(await focused()), 'Enter chooses it and the focus stays');
-  check(await tabTo(/^高手/), 'Tab reaches Expert');
-  await page.keyboard.press('Space');
-  await until(page, () => window.mahjong.app.save.data.setup.level === 'hard');
-  check(true, 'Space chooses Expert and the save keeps it');
-  check(await tabTo(/^東風圈/, true), 'Shift+Tab goes back to the East round');
-  await page.keyboard.press('Enter');
-  await until(page, () => window.mahjong.app.save.data.setup.rounds === 1);
-  check(true, 'and Enter chooses it again');
-
-  // Settings.
-  check(await tabTo(/^設定$/), 'Tab reaches Settings');
-  await page.keyboard.press('Enter');
-  await until(page, () => !document.querySelector('#settings').hidden);
-  check(await tabTo(/^音效/), 'Tab reaches the sound switch');
-  await page.keyboard.press('Enter');
-  await until(page, () => window.mahjong.app.save.data.settings.sound === false);
-  check(true, 'Enter turns the sound off and the save keeps it');
-  await page.keyboard.press('Escape');
-  await until(page, () => document.querySelector('#settings').hidden);
-  check(/^設定$/.test(await focused()), 'Escape closes the settings and the focus goes back');
-
-  // Rules.
-  check(await tabTo(/^規則與台數$/, true), 'Shift+Tab reaches the rules');
-  await page.keyboard.press('Enter');
-  await until(page, () => !document.querySelector('#rules').hidden);
-  const rules = await state(() => document.querySelector('#rules').textContent);
-  check(/門清一摸三/.test(rules) && /八仙過海/.test(rules) && /截胡/.test(rules), 'the rules list the tai and the nearest-winner rule');
-  const rulesShot = await matchBaseline(page, GAME, 'rules');
-  check(rulesShot.written || rulesShot.passed, `the rules look as their baseline (${(rulesShot.share * 100).toFixed(2)}% differs)`);
-  await page.keyboard.press('Escape');
-
-  // English and back.
-  check(await tabTo(/切換到英文/), 'Tab reaches the language switch');
-  await page.keyboard.press('Enter');
-  await until(page, () => document.documentElement.lang === 'en');
-  const names = await state(() => [...document.querySelectorAll('#title button')].map((b) => b.getAttribute('aria-label') || b.textContent).join('|'));
-  check(!/[\u3400-\u9fff]/.test(names) && /Sit down/.test(names), `in English every title button reads in English: ${names.slice(0, 90)}…`);
-  await page.keyboard.press('Enter');
-  await until(page, () => document.documentElement.lang === 'zh-Hant');
-  check(true, 'Enter on the same key goes back to Chinese');
-
-  // A game.
-  check(await tabTo(/^開始打牌$/, true), 'Shift+Tab goes back to Sit down');
-  await page.keyboard.press('Enter');
-  await until(page, () => window.mahjong.screen === 'play' && window.mahjong.app.match?.hand);
-  let discarded = false,
-    passed = false;
-  for (let i = 0; i < 40 && !discarded; i++) {
-    await waitFor(() => window.mahjong.app.human || window.mahjong.screen !== 'play', null, 60);
-    if ((await state(() => window.mahjong.screen)) !== 'play') break;
-    const type = await state(() => window.mahjong.app.human.options.type);
-    if (type === 'act') {
-      const before = await state(() => window.mahjong.app.match.hand.players[0].discards.length);
-      const label = await focused();
-      await page.keyboard.press('Enter');
-      await until(page, () => window.mahjong.app.selected !== null);
-      const raised = await state(() => document.querySelector('#handKeys button[aria-pressed="true"]')?.getAttribute('aria-label'));
-      check(/手牌|剛摸的/.test(label) && raised === label, `Enter on a tile chooses it (${label})`);
-      await page.keyboard.press('Enter');
-      await waitFor((n) => window.mahjong.app.match.hand.players[0].discards.length > n, before, 10);
-      discarded = true;
-      check(true, 'Enter again discards it into the river');
-    } else {
-      await page.keyboard.press('Escape');
-      passed = true;
-    }
-  }
-  check(discarded, 'the player discarded with real keys');
-  if (passed) check(true, 'Escape passed on an offered call');
-
-  // Pause.
-  await waitFor(() => !window.mahjong.app.human || window.mahjong.app.human.options.type === 'act', null, 30);
-  await state(() => document.querySelector('#pauseButton').focus());
-  await page.keyboard.press('Enter');
-  await until(page, () => !document.querySelector('#menu').hidden && window.mahjong.game.paused);
-  const events = await state(() => window.mahjong.app.match.hand.events.length);
-  await page.waitForTimeout(1500);
-  check((await state(() => window.mahjong.app.match.hand.events.length)) === events, 'paused: no one plays behind the menu');
-  await page.keyboard.press('Escape');
-  await until(page, () => document.querySelector('#menu').hidden && !window.mahjong.game.paused);
-  check(true, 'Escape goes on');
-
-  // Auto-play to the hand's result, faster.
-  await state(() => {
-    window.mahjong.game.timeScale = 6;
-    window.mahjong.app.speed = 6;
-    document.querySelector('#autoButton').click();
-  });
-  check((await state(() => document.querySelector('#autoButton').getAttribute('aria-pressed'))) === 'true', 'the auto-play switch says it is on');
-  await waitFor(() => window.mahjong.screen === 'result', null, 180);
-  const result = await state(() => ({ title: document.querySelector('#resultTitle').textContent, tai: document.querySelector('#resultTai').textContent, rows: document.querySelectorAll('#resultPay tr').length, sum: window.mahjong.app.match.scores.reduce((a, b) => a + b, 0) }));
-  check(result.rows === 4 && result.sum === 0 && (/胡|自摸/.test(result.title) ? /台/.test(result.tai) : /流局/.test(result.title)), `the hand ends with its result, tai and payments summing to zero (${result.title})`);
-  check(/下一局|看總分/.test(await focused()), 'the result offers the next hand');
-  check((await state(() => JSON.parse(localStorage.getItem('taiwan-mahjong')).data.record.hands)) === 1, 'the hand is counted in the record');
-  await page.keyboard.press('Enter');
-
-  // On to the end of the round.
-  for (let i = 0; i < 40; i++) {
-    await waitFor(() => ['result', 'final'].includes(window.mahjong.screen), null, 240);
-    if ((await state(() => window.mahjong.screen)) === 'final') break;
-    await state(() => document.querySelector('#nextButton').click());
-  }
-  const final = await state(() => ({ ranks: [...document.querySelectorAll('#finalRanks li')].map((li) => li.textContent), me: document.querySelector('#finalRanks li.me')?.textContent }));
-  check(final.ranks.length === 4 && final.me, `the round ends with the four ranked (${final.ranks.join(' / ')})`);
-  const record = await state(() => JSON.parse(localStorage.getItem('taiwan-mahjong')).data.record);
-  check(record.games === 1 && record.bestGame !== null && record.hands >= 4, `the record keeps the game (${record.hands} hands)`);
-  check(/再來一將/.test(await focused()), `the end offers another game first (${await focused()})`);
-  await page.keyboard.press('Tab');
-  await page.keyboard.press('Enter');
-  await until(page, () => window.mahjong.screen === 'title');
-  check(true, 'and then the title');
-
-  // A broken save.
-  await state(() => localStorage.setItem('taiwan-mahjong', '{broken'));
-  page.problems.length = 0;
-  await page.reload();
-  await until(page, () => window.mahjong?.ready && window.mahjong.screen === 'title');
-  check((await state(() => document.querySelector('#title .notice')?.textContent ?? '')).length > 0, 'a broken save is started again, and the title says so');
+  await walkEastRound();
+  for (const route of routes) await replay(route);
 } catch (error) {
-  check(false, `the walk stopped: ${error.message.split('\n')[0]}`);
+  check(false, 'the walk stopped: ' + error.message.split('\n')[0]);
 } finally {
-  const problems = page?.problems ?? [];
+  const problems = pages.flatMap(page => page.problems);
   await browser.close();
   await server.close();
   report('TaiwanMahjong acceptance (headless Chromium, SwiftShader)', checks, problems);

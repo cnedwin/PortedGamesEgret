@@ -7,6 +7,7 @@ part 3 of [docs/GAME-STANDARD.md](../../docs/GAME-STANDARD.md). A game made from
 of the form, or replaces it with its own.
 
 ### 1. `save.update` 返回布尔值 · `save.update` returns a boolean — 已写入文档 / documented
+<!-- engine-note: {"id": "egret-game#1", "status": "documented", "topic": "save-update-return", "workaround": ["src/main.mjs", "src/screens.mjs"]} -->
 
 - 现象：`createSaveStore` 的 `update(change)` 在存储拒绝写入或数据没通过 `validate` 时返回 `false`，成功返回 `true`，不返回对象；写成 `result.ok === false` 的判断永远不成立，进度丢了也不会提示。 · What happens: `update(change)` returns `false` when the storage refuses or the data fails `validate`, and `true` otherwise — not an object; a check written as `result.ok === false` never holds, and lost progress goes unsaid.
 - 绕过办法：直接用返回的布尔值，`false` 时在界面上说「本次进度不会保留」（`src/main.mjs` 的 `setSetting`，`src/screens.mjs` 的结算）。 · Workaround: use the boolean as it is, and say on the screen that the progress will not be kept when it is `false`.

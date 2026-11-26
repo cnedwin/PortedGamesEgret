@@ -12,8 +12,9 @@ export class TransformControls3D {
     #pointer = -1;
     #disposed = false;
     /**
-     * Create these before orbit or fly controls on the same element: a press
-     * that lands on a handle is then kept from reaching them.
+     * A press that lands on a handle is kept from orbit, fly and follow controls
+     * on the same element, made before or after these: the handles listen in the
+     * capture phase, which runs first. A press anywhere else reaches them.
      */
     constructor(camera, element, options = {}) {
         if (!camera || !element || typeof element.addEventListener !== 'function')
@@ -60,7 +61,7 @@ export class TransformControls3D {
             ['pointercancel', up]
         ];
         for (const [type, listener] of this.#listeners)
-            element.addEventListener(type, listener);
+            element.addEventListener(type, listener, { capture: true });
     }
     get mode() {
         return this.gizmo.mode;
@@ -116,7 +117,7 @@ export class TransformControls3D {
             return;
         this.#disposed = true;
         for (const [type, listener] of this.#listeners)
-            this.element.removeEventListener(type, listener);
+            this.element.removeEventListener(type, listener, { capture: true });
         this.gizmo.dispose();
     }
 }

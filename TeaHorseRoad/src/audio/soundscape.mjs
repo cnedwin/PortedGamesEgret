@@ -19,11 +19,8 @@ export function createSoundscape(scene, camera, { waters = [], volume = 0.8, mus
   camera.addChild(listener);
   const context = listener.context,
     buffers = {};
-  const audioBuffer = (samples) => {
-    const made = context.createBuffer(1, samples.length, RATE);
-    made.copyToChannel(samples, 0);
-    return made;
-  };
+  // Synthesized samples become a buffer through the listener (ENGINE-NOTES.md, item 16).
+  const audioBuffer = (samples) => listener.bufferFrom(samples, RATE);
   const buffer = (name) => {
     return buffers[name] ??= audioBuffer(SOUNDS[name]());
   };
@@ -146,8 +143,8 @@ export function createSoundscape(scene, camera, { waters = [], volume = 0.8, mus
         if (!started) return;
         for (const source of streams) source.play();
         wind.play();
-        // The engines' voices stay alive so their pitch can follow the throttle.
-        for (const engine of engines) engine.voice = engine.source.play();
+        // The engines loop from the start; their pitch follows the throttle through the source (ENGINE-NOTES.md, item 15).
+        for (const engine of engines) engine.source.play();
         if (musicOn) prepareTunes();
       }).finally(() => { starting = null; });
       return starting;
@@ -173,11 +170,11 @@ export function createSoundscape(scene, camera, { waters = [], volume = 0.8, mus
       if (!started) return;
       // Engines: pitch follows the speed, and the throttle opens them up.
       for (const engine of engines) {
-        const { truck, voice } = engine,
+        const { truck, source } = engine,
           speed = Math.abs(truck.vehicle.speed),
           rate = 0.75 + Math.min(1.3, speed / 16) + Math.abs(truck.vehicle.throttle) * 0.12;
         engine.rate = (engine.rate ?? rate) + (rate - (engine.rate ?? rate)) * Math.min(1, seconds * 4);
-        if (voice) voice.playbackRate.value = engine.rate;
+        source.playbackRate = engine.rate;
       }
       // Bells: a stroke now and then while the truck rolls, more often over rough ground.
       bells.forEach(({ truck, source }, i) => {

@@ -73,6 +73,9 @@ await edit('src/i18n.mjs', (s) =>
     .replace("title: { zh: '" + oldZh + "', en: '" + oldEn + "' }", () => `title: { zh: '${js(zh)}', en: '${js(en)}' }`)
     .replace("stage: { zh: '提灯人 · 游戏模板', en: 'The Lantern Bearer · game template' }", () => `stage: { zh: '${js(zh)}', en: '${js(en)}' }`)
 );
+// AGENTS.md (with CLAUDE.md and the Claude Code skill beside it) names the game and points at the standard one folder up.
+if (!management)
+  await edit('AGENTS.md', (s) => s.replaceAll(oldZh, () => zh).replaceAll(oldEn, () => en).replaceAll('../../docs/', '../docs/'));
 if (management) {
   await edit('AGENTS.md', s => s.replace('../../docs/en/management-first-playable.md', 'AUTHORING.md').replace('../../docs/Cns/management-first-playable.md', 'AUTHORING.zh-CN.md'));
   await cp(join(ROOT, 'docs/Cns/management-first-playable.md'), join(target, 'AUTHORING.zh-CN.md'));
@@ -91,7 +94,15 @@ await edit('README.md', (s) => {
     .replaceAll(oldEn, () => en)
     .replaceAll(templatePath + '/', `${folder}/`);
 });
-for (const name of ['ENGINE-NOTES.md', 'QUALITY.md']) await edit(name, (s) => s.replaceAll(oldZh, () => zh).replaceAll(oldEn, () => en).replaceAll(templatePath, folder));
+for (const name of ['ENGINE-NOTES.md', 'QUALITY.md'])
+  await edit(name, (s) =>
+    s
+      .replaceAll(oldZh, () => zh)
+      .replaceAll(oldEn, () => en)
+      .replaceAll(templatePath, folder)
+      // An engine note's id is the game's folder and its number.
+      .replace(/("id": ")[A-Za-z0-9_-]+(#\d+")/g, (_, a, b) => a + folder + b)
+  );
 
 // 引擎副本 · The engine copy.
 let vendored = 'kept';
@@ -115,9 +126,15 @@ const count = async (dir) => {
   return n;
 };
 console.log(`已建 · Made ${folder}/ (${await count(target)} files), save key '${saveKey}', engine ${vendored === 'kept' ? `copy kept from the template (${commit.slice(0, 7)})` : `copied from ${vendored} (${commit.slice(0, 7)})`}.`);
+const kit = existsSync(join(target, 'vendor', 'egret.mjs'));
 console.log(`接下来 · Next:
   cd ${folder}
-  node --test test/*.test.mjs
+  node --test test/*.test.mjs${kit ? `
+  node vendor/egret.mjs check     # 引擎名字与常见误用 · engine names and common mistakes` : ''}
   node test/accept.mjs --update   # 第一次写下截图基线 · writes the first baselines
   node test/accept.mjs
-  node ../tools/quality.mjs .`);
+  node ../tools/quality.mjs .${kit ? `
+AGENTS.md 写明智能体怎样开发这款游戏；node vendor/egret.mjs guide <问题> 查引擎指南。
+AGENTS.md says how an agent works on this game; node vendor/egret.mjs guide <question> asks the engine's guide.` : `
+这份引擎副本没有 egret 命令：用 --engine 指向构建好的引擎仓库重新生成。
+This engine copy has no egret command: make it again with --engine and a built engine checkout.`}`);

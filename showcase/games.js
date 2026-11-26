@@ -491,6 +491,11 @@ export const GAMES = [
         source: 'src/main.mjs',
       },
       {
+        title: { zh: "白鹭原生界面与输入", en: "Egret views and controls" },
+        description: { zh: "声明式视图管理标题、战斗顶栏和集市。集市支持手机分页、拖放合成及按名称验收。", en: "Declarative views cover the title, combat HUD and market, including compact tabs, drag-to-merge and named-control testing." },
+        source: 'src/ui-market.mjs',
+      },
+      {
         title: { zh: "共享角色图集与战斗特效", en: "Shared actor atlas and combat effects" },
         description: { zh: "白鹭 Bitmap 共用运行时图集绘制哪吒、水族兵、首领和法宝，Graphics 绘制武器轨迹与首领预警。", en: "Egret Bitmap draws Nezha, sea soldiers, bosses and treasures from a shared runtime atlas, with Graphics for weapon trails and boss telegraphs." },
         source: 'src/view.mjs',
@@ -661,6 +666,11 @@ export const GAMES = [
         description: { zh: "锣鼓经的点子按难度排谱，判定、连击和彩槽都能在 Node 里由电脑玩家整首打完。", en: "Patterns become charts by difficulty, judged with combo and gauge, all playable by a bot in Node." },
         source: 'src/sim/judge.mjs',
       },
+      {
+        title: { zh: "数据界面与读屏", en: "Views as data, read aloud" },
+        description: { zh: "标题、设置、校准、暂停、结算和四块敲击区都是引擎的数据界面，横竖屏各一套部件，经屏幕栈开关，语义树给读屏和 Tab 用；敲击区另听指针按下，按事件时间戳判定。", en: "The title, settings, delay, pause, curtain call and the four pads are engine views with a wide and a tall set of parts, opened through the screen stack and published to the semantic tree for screen readers and Tab; the pads also hear the pointer go down and are judged by its time stamp." },
+        source: 'src/ui/screens.mjs',
+      },
     ],
   },
   {
@@ -693,6 +703,49 @@ export const GAMES = [
         title: { zh: "按案成组载入与谜题审计", en: "Pictures loaded by case, and the puzzle audit" },
         description: { zh: "每案的背景、人物和器物用 engine.createAssetGroup 一组载入、一并释放；案卷用数据写出“线索 → 结论”，Node 测试验证每案可解、每空唯一、没有能填两个空的词，中英两套案卷各验一遍。", en: "Each case's pictures load and go together as one engine asset group; the cases are written as clue → conclusion data, and Node tests hold that each case is solvable, every blank has one answer and no word fits two blanks, in both languages." },
         source: 'src/sim/audit.mjs',
+      },
+    ],
+  },
+  {
+    id: 'luban', folder: 'LubanBridge', kind: '2d',
+    scenes: [
+      { zh: "开篇画卷 · 原创水彩蜀道悬索桥，题签和朱砂工坊按钮", en: "Opening scroll · Original painted Shu Road suspension bridge with silk and cinnabar menu" },
+      { zh: "赵州桥 · 双层石拱的参考图纸与受力工程网格", en: "Zhaozhou Bridge · A reference double stone arch, drawn in the live engineering grid" },
+      { zh: "试通小河 · 玩家搭成木桥后，挑夫与独轮车从左岸出发", en: "First crossing · A porter and wheelbarrow set off toward the player-built timber bridge" },
+    ],
+    zh: "鲁班造桥", en: "Luban's Bridges",
+    genre: { zh: "物理造桥解谜", en: "Physics bridge-building puzzle" },
+    summary: { zh: "鲁班门下的匠人走遍江南、赵州、蜀道、潮州和侗乡，在网格上搭木梁、竹架、石拱、悬索和浮桥，让挑夫、花轿、马车和运石车过河。点“试通”后桥身按真实受力弯曲变色，太吃力的杆件拉断、压坏、落水。五章二十五关，每章最后重建一座名桥，三枚印章，另有沙盒。原创青绿水彩原画与实时工程绘制相结合，配有原创古琴、箫与材料拟音；支持触屏、键鼠和横竖屏。", en: "One of Lu Ban's apprentices travels through Jiangnan, Zhaozhou, the Shu Road, Chaozhou and Dong country, laying timber beams, bamboo frames, stone arches, suspension cables and pontoon bridges on a grid so that porters, a bridal sedan, horse carts and a stone wagon can cross. On Test the bridge bends and colours with its real loads, and a member that works too hard tears, crushes and falls in the river. Five chapters of five levels, each ending with a famous bridge, three seals, and a sandbox. Original watercolor scenery accompanies live engineering drawings, with an original guqin-and-xiao score and material foley. Touch and keyboard/mouse, wide and tall." },
+    features: [
+      {
+        title: { zh: "原生图像与实时结构绘制", en: "Native images and live structural drawing" },
+        description: { zh: "game.image 按场景异步加载原创水彩和透明树木，失败使用程序绘图并可重试；Graphics 绘制杆件、地形、节点和受力颜色，切关释放图层资源。", en: "game.image loads original watercolor plates and transparent trees per scene, with a procedural fallback and retry. Graphics draws the members, terrain, joints and load colors; scene changes release image layers." },
+        source: 'src/view/art.mjs',
+      },
+      {
+        title: { zh: "白鹭音频混音与材料反馈", en: "Egret audio mixing and material feedback" },
+        description: { zh: "原创立体声配乐、流水环境声与 24 种合成音效经引擎混音器播放，施工及断裂按材料区分，音乐音效独立控制。", en: "The engine mixer plays the original stereo music, river ambience and 24 synthesized cues, distinguishing material placement and fracture with independent music and effects controls." },
+        source: 'src/audio/sound.mjs',
+      },
+      {
+        title: { zh: "2D 物理：车轮、牵引和落水的碎木", en: "2D physics: wheels, hitches and falling debris" },
+        description: { zh: "createPhysicsWorld 里车轮是圆形刚体，两轮之间一根 distance 关节，牲口和车之间一根 rope 关节；桥面是跟着桥身走的运动刚体，断下来的木石是动态刚体，落水后木浮石沉。桥身本身由小步长位置约束求解，每根杆件的力直接算出，按材料判断拉断或压坏。", en: "In createPhysicsWorld the wheels are circles joined by a distance joint, a beast and its cart by a rope joint; the deck is kinematic bodies following the frame, and broken timber and stone are dynamic bodies, wood floating and stone sinking. The frame itself is solved with small-step position constraints that give each member's force, judged against its material." },
+        source: 'src/sim/run.mjs',
+      },
+      {
+        title: { zh: "手势、悬停与键盘光标", en: "Gestures, hover and a keyboard cursor" },
+        description: { zh: "createGestures 拖动搭杆、长按拆、双指缩放平移、双击复位；createBrowserHoverInput 悬停显示杆长和造价、滚轮按指针缩放；键盘和手柄用网格光标搭桥。读屏软件能念出每个按钮。", en: "createGestures lays members by dragging, takes them down with a long press, zooms and pans with two fingers and fits with a double tap; createBrowserHoverInput shows a member's length and price and zooms at the pointer; keys and gamepads build with a grid cursor. A screen reader names every button." },
+        source: 'src/view/build.mjs',
+      },
+      {
+        title: { zh: "版面规划与安全区", en: "View planning and the safe area" },
+        description: { zh: "选关页由 web/view 的 planView 按描述排版，横屏竖屏各一套；小游戏里用 web/screen 的 planScreen 按手机的刘海和底部横条算出安全区；?check=1 时用 ui/testing 按语义树自检一遍。", en: "The level choice is laid out by web/view's planView from a description, wide and tall; in a mini game web/screen's planScreen works out the safe area from the phone's notch and home bar; ?check=1 runs a self check through the semantic tree with ui/testing." },
+        source: 'src/view/screens.mjs',
+      },
+      {
+        title: { zh: "每关都有一份在 Node 里试通过的参考解", en: "Every level has a reference sent across in Node" },
+        description: { zh: "参考解由桁架、石拱、悬索、浮桥、墩上桁架几种桥式拼出，测试在 Node 里让它们全部过河、一根不断，预算由参考解的造价定；只铺桥面不加支撑的桥在每一关都过不去。", en: "References are built from trusses, arches, suspension, pontoon and pier designs; the tests send each across in Node with nothing broken, and its cost sets the budget; a bare deck fails on every level." },
+        source: 'test/rules.test.mjs',
       },
     ],
   },

@@ -7,11 +7,11 @@ Gaps, awkward spots, unclear documentation and suggestions found in the new Egre
 engine offers is done through its API; where it offers nothing, the effect is built from parts the engine does have
 and written down here, rather than replaced by code of the game's own.
 
-第 1–17 条最初记于提交 `0e72ffb`。引擎在 `687037a`（PR #419–#422）按这些笔记做了修改，游戏随之升级；每条注明现在的状态和这边的改法。第 18–20 条是升级时新发现的。
+第 1–17 条最初记于提交 `0e72ffb`。引擎在 `687037a`（PR #419–#422）按这些笔记做了修改，游戏随之升级；每条注明现在的状态和这边的改法。第 18–20 条是升级时新发现的。游戏后来升级到 `8637ace`（引擎 #424–#485），第 18–20 条的绕过办法随之去掉。
 
 Items 1–17 were first written at commit `0e72ffb`. The engine changed after them in `687037a` (PRs #419–#422) and the
 game was upgraded with it; each item now says where it stands and what the game does. Items 18–20 were found during
-the upgrade.
+the upgrade. The game later moved to `8637ace` (engine #424–#485) and dropped its workarounds for items 18–20.
 
 状态 · Status: **已解决 / resolved** · **部分解决 / partly resolved** · **未解决 / open** · **已写入文档 / documented**
 
@@ -20,6 +20,7 @@ the upgrade.
 ## 物理 · Physics 2D
 
 ### 1. 关节、绳索和旋转 · Joints, ropes and rotation — 部分解决 / partly resolved
+<!-- engine-note: {"id": "MechanismCity#1", "status": "partly", "topic": "physics2d-joints-ropes"} -->
 
 - 原来：没有关节、绳索，刚体不转动，种类建好后不能改。吊着的重物是 kinematic 刚体，绳断时删掉再建一个 dynamic 的。
 - 687037a：有了 `world.addJoint({ kind: 'distance' | 'rope', ... })`、`removeJoint` 和 `body.setKind()`。
@@ -39,6 +40,7 @@ the upgrade.
   roll is only its picture turning.
 
 ### 2. 接触回调里能做什么 · What a contact listener may do — 已写入文档 / documented
+<!-- engine-note: {"id": "MechanismCity#2", "status": "documented", "topic": "contact-listener-rules"} -->
 
 - 原来：文档没说回调里能否改动世界。本作在回调里只把要做的事记进队列，步完再执行。
 - 687037a：文档写明回调里可以增删刚体和关节、施冲量、改种类，改动从下一步生效；不能调用 `step`（`PHYSICS_STEP_REENTRANT`）。
@@ -56,6 +58,7 @@ the upgrade.
 ## 渲染 · Rendering
 
 ### 3. 形状遮罩的代价 · The cost of a shape mask — 部分解决 / partly resolved
+<!-- engine-note: {"id": "MechanismCity#3", "status": "partly", "topic": "shape-mask-cost"} -->
 
 - 原来：遮罩只要移动或缩放就在 CPU 上重画一张图。从弩机放大到全屏的圆形遮罩转场，在软件渲染下拖了约一分钟。
 - 687037a：只移动的遮罩沿用原图；均匀缩放在变化超过约 9% 前沿用原图并拉伸，放大一倍约重画 8 次。文档写明了代价，并建议转场用淡出的色块。
@@ -78,6 +81,7 @@ the upgrade.
   mask image at its size on the screen rather than twice the masked node.
 
 ### 4. 粒子的混合模式 · The blend mode of particles — 已解决 / resolved
+<!-- engine-note: {"id": "MechanismCity#4", "status": "resolved", "topic": "particle-blend-mode"} -->
 
 - 原来：发射器没有混合模式选项，只能事后设 `emitter.display.blendMode`。
 - 本作现在：创建时传 `blendMode: 'add'`（火花、雷光、锁开的金光、弹丸拖尾）。
@@ -87,6 +91,7 @@ the upgrade.
   the pellet's trail).
 
 ### 5. 每帧最多 8 组效果 · At most eight effect groups a frame — 已写入文档 / documented
+<!-- engine-note: {"id": "MechanismCity#5", "status": "documented", "topic": "effect-group-limit"} -->
 
 - 687037a：文档写明第 9 组会让 Host 拒绝这一帧，错误为 "more than 8 effect groups in one frame"。
 - 本作现在：不变。任何时刻有效果的节点不超过 8 个（机关锁、标题、选中的卡片、结算星星、头像遮罩）。
@@ -97,6 +102,7 @@ the upgrade.
   the stars of a result, the portrait's mask).
 
 ### 6. 径向渐变的三角形很多 · Radial gradients cost many triangles — 未解决 / open
+<!-- engine-note: {"id": "MechanismCity#6", "status": "open", "topic": "radial-gradient-triangles"} -->
 
 - 现象：`beginRadialGradientFill` 为了平滑会细分出很多三角形，每帧重画代价明显。
 - 本作：渐变只在形状或状态改变时重画（弩、瞄准线、弹簧、按钮只在状态或焦点变化时重画）。
@@ -107,6 +113,7 @@ the upgrade.
 - Suggestion: mention the cost, or cache Graphics that have not changed.
 
 ### 7. 代码画的贴图 · Textures painted in code — 已解决 / resolved
+<!-- engine-note: {"id": "MechanismCity#7", "status": "resolved", "topic": "textures-painted-in-code"} -->
 
 - 原来：要 `createImageData2D` → `createTexture` → `createAssetType` → `register` → `acquire` 五步，游戏封装成 `leasePainted()`。
 - 本作现在：`await game.textureFromCanvas(canvas)` 一步拿到租约（粒子光点、木屑、位图字体页），`leasePainted()` 已删除。
@@ -116,6 +123,7 @@ the upgrade.
   the page of the bitmap font); `leasePainted()` is gone.
 
 ### 8. `backend: 'auto'` 的控制台日志 · The console line of `'auto'` — 已写入文档 / documented
+<!-- engine-note: {"id": "MechanismCity#8", "status": "documented", "topic": "auto-backend-console-line"} -->
 
 - 687037a：文档写明无头浏览器里那条 "No available adapters." 来自浏览器本身，并建议检查控制台错误的场合用 `'webgl2'`。
 - 本作现在：保持 `backend: 'webgl2'`（地址加 `?backend=webgpu` 可试 WebGPU）。
@@ -129,6 +137,7 @@ the upgrade.
 ## 界面 · UI
 
 ### 9. 托管界面叶子里的文字 · Labels in managed UI leaves — 已解决 / resolved
+<!-- engine-note: {"id": "MechanismCity#9", "status": "resolved", "topic": "ui-leaf-labels"} -->
 
 - 原来：`game.createLabel()` 的文字属于游戏的 scope，放不进叶子；游戏把文字在提交后按 `localToGlobal` 叠放到叶子上。
 - 687037a：`createLabel({ scope })`；`UI_CONTENT_INVALID` 的 cause 写明是哪个叶子、什么原因。
@@ -142,6 +151,7 @@ the upgrade.
   in a browser.
 
 ### 10. 从按钮回调里 prepare · Preparing from a button's callback — 已解决，见第 19 条 / resolved, see item 19
+<!-- engine-note: {"id": "MechanismCity#10", "status": "resolved", "topic": "prepare-from-button-callback"} -->
 
 - 687037a：输入分发或绘制期间调用的 `root.prepare()` 会等那次结束再开始；每个 `UI_BUSY` 在 cause 里写明原因。
 - 本作现在：`setTimeout(0)` 已删除。但设置卡每次打开都新建一个根，而 `createUiRoot()` 本身在分发期间仍被拒绝，见第 19 条。
@@ -152,6 +162,7 @@ the upgrade.
   `createUiRoot()` itself is still refused during delivery: see item 19.
 
 ### 11. 托管界面的显隐 · Showing and hiding managed UI — 已写入文档 / documented
+<!-- engine-note: {"id": "MechanismCity#11", "status": "documented", "topic": "managed-ui-show-hide"} -->
 
 - 687037a：文档写明可把根注册为图层管理器的浮层，用 `open(id)` / `close(id)` 显隐；每次新建也是预期用法。
 - 本作现在：设置卡仍是每次打开新建、关闭时释放。
@@ -161,6 +172,7 @@ the upgrade.
 - This game now: the settings card is still made on each open and disposed on close.
 
 ### 12. 滚轮需要悬停输入 · The wheel needs hover input — 已解决 / resolved
+<!-- engine-note: {"id": "MechanismCity#12", "status": "resolved", "topic": "wheel-needs-hover"} -->
 
 - 原来：要从 `@egret/engine/web/hover` 单独引入并创建 `createBrowserHoverInput`。
 - 本作现在：`createBrowserGame({ hover: true })`，滚动控件的 `wheel` 用 `game.hover`；单独的引入已删除。另见第 20 条。
@@ -170,6 +182,7 @@ the upgrade.
   is gone. See also item 20.
 
 ### 13. 焦点控件用掉的键 · Keys a focused control took — 已解决 / resolved
+<!-- engine-note: {"id": "MechanismCity#13", "status": "resolved", "topic": "focused-control-keys"} -->
 
 - 原来：空格在焦点按钮上既按按钮又发射；游戏读动作前查 `keyboard.getSnapshot()` 来屏蔽。
 - 本作现在：`bindBrowserInputActions(actions, { keyTarget: canvas, skipPrevented: true })`，屏蔽判断已删除。已在浏览器里确认：焦点在「设置」上按空格只打开设置、不发射；焦点在力度滑条上按方向键只改力度、不转弩。`keyTarget` 保持为画布即可。
@@ -180,6 +193,7 @@ the upgrade.
   focused power slider only change the power. `keyTarget` can stay the canvas.
 
 ### 14. 语义节点的 `range` · The `range` of a semantic node — 已写入文档 / documented
+<!-- engine-note: {"id": "MechanismCity#14", "status": "documented", "topic": "semantic-range"} -->
 
 - 687037a：文档写明 `range` 是 `{ now, min, max }`，并列出各角色可用的字段。本作不用改。
 
@@ -190,6 +204,7 @@ the upgrade.
 ## 存档、声音、视频 · Saves, sound, video
 
 ### 15. `save.update` 的返回值 · What `save.update` returns — 已解决，见第 18 条 / resolved, see item 18
+<!-- engine-note: {"id": "MechanismCity#15", "status": "resolved", "topic": "save-update-return"} -->
 
 - 原来：回调返回非 `undefined` 的值就成为新存档，不经过 `validate`。
 - 687037a：返回值和原地修改后的数据都要通过 `validate`；不通过时不写入、返回 `false`。
@@ -202,6 +217,7 @@ the upgrade.
   refused and not written.
 
 ### 16. Web Audio 后端 · A Web Audio backend — 已解决 / resolved
+<!-- engine-note: {"id": "MechanismCity#16", "status": "resolved", "topic": "web-audio-backend"} -->
 
 - 687037a：导出了 `createWebAudioBackend`，页面也能用 `createAudioMixer` 自建混音器。
 - 本作现在：页面继续用 `createBrowserAudio`（它就是这三步的合并）；测试里用 `createAudioMixer` 加一个只记录调用的后端，验证总线分配和静音。
@@ -211,6 +227,7 @@ the upgrade.
   `createAudioMixer` with a recording backend to check the buses and muting.
 
 ### 17. 视频的多个文件 · A film in several files — 已解决 / resolved
+<!-- engine-note: {"id": "MechanismCity#17", "status": "resolved", "topic": "film-in-several-files"} -->
 
 - 原来：`src` 只能给一个地址，游戏用 `canPlayType` 自己挑 mp4 还是 webm。
 - 本作现在：`src` 直接给列表 `[{ src: 'intro.webm', type }, { src: 'intro.mp4', type }]`，浏览器播第一个能播的；`canPlayType` 判断已删除。已在 Chrome 和不带 H.264 的 Chromium 里确认播放的是 webm。
@@ -223,49 +240,57 @@ the upgrade.
 
 ## 升级时新发现 · Found during the upgrade
 
-### 18. 被拒的 `update` 仍改动了内存里的存档 · A refused `update` still changes the save in memory — 未解决 / open
+### 18. 被拒的 `update` 仍改动了内存里的存档 · A refused `update` still changes the save in memory — 已在 `1e60300` 解决 / resolved in `1e60300`
+<!-- engine-note: {"id": "MechanismCity#18", "status": "resolved", "topic": "save-refused-update-memory"} -->
 
 - 现象：`update(change)` 把实时数据交给回调。像 `data => (data.open = 5)` 这样先原地改、再返回值的回调，会被拒绝且不写盘，但 `save.data.open` 已经是 5 了；文档说的是"内存中保持原样"。原地修改后不通过 `validate` 的情况也一样。
-- 本作：回调都是块体，不受影响；测试里记下了现在的行为（不写盘，但内存已变）。
+- 本作：回调都是块体，不受影响。升级到 `8637ace` 后，测试改为记下修好后的行为：被拒时不写盘，内存里的存档也不变。
 - 建议：把数据的副本交给回调（如 `structuredClone`），通过后再替换；或者改文档，写明被拒时内存可能已被回调改动。
 
 - What happens: `update(change)` gives the callback the live data. A callback that edits in place and then returns a
   value, such as `data => (data.open = 5)`, is refused and nothing is written, yet `save.data.open` is already 5; the
   documentation says the save is left as it was in memory. An edit in place that fails `validate` is the same.
-- This game: its callbacks are blocks and are not affected; the tests record the behaviour as it is (not written, but
-  changed in memory).
+- This game: its callbacks are blocks and are not affected. Since the move to `8637ace` the tests record the fixed
+  behaviour: a refused change is not written, and the save in memory is left as it was.
 - Suggestion: give the callback a copy (such as `structuredClone`) and take it only once it passes, or say in the
   documentation that a refused change may already have altered the data in memory.
+- 状态 · Status：已在 `1e60300` 解决（引擎 #424）：`save.update` 把副本交给回调，被拒时内存里的存档不变。 · Resolved in `1e60300` (engine #424): `save.update` gives the callback a copy, so a refused update leaves the save in memory as it was.
 
-### 19. 输入分发期间不能新建 UI 根 · A UI root cannot be made while input is delivered — 未解决 / open
+### 19. 输入分发期间不能新建 UI 根 · A UI root cannot be made while input is delivered — 已在 `1e60300` 解决 / resolved in `1e60300`
+<!-- engine-note: {"id": "MechanismCity#19", "status": "resolved", "topic": "ui-root-during-input"} -->
 
 - 现象：687037a 让 `root.prepare()` 在输入分发期间推迟执行，但 `createUiRoot()` 本身仍调用 `assertIdle()`，在按钮的 `onActivate` 里直接新建根会抛 `UI_BUSY`（cause：input is being delivered）。对"每次打开新建一个根"的用法（第 11 条说这是预期用法）来说，修复没有生效。
-- 本作：打开设置前先 `await Promise.resolve()`，等这次分发结束，正如错误信息建议的那样。
+- 本作：原先打开设置前先 `await Promise.resolve()`，等这次分发结束；升级到 `8637ace` 后去掉了这一步，按钮回调里直接打开设置卡，已在浏览器里确认。
 - 建议：`createUiRoot()` 也推迟或允许在分发中创建；或在文档里写明只有 `prepare()` 会推迟。
 
 - What happens: 687037a lets `root.prepare()` wait until the delivery is over, but `createUiRoot()` itself still calls
   `assertIdle()`, so making a root straight from a button's `onActivate` throws `UI_BUSY` (cause: input is being
   delivered). For a panel made anew on each open, which item 11 calls intended, the fix does not reach.
-- This game: before opening the settings it awaits `Promise.resolve()` so that the delivery is over, as the error
-  suggests.
+- This game: it used to await `Promise.resolve()` before opening the settings so that the delivery was over; since the
+  move to `8637ace` that step is gone and the card opens straight from the button's callback, checked in a browser.
 - Suggestion: let `createUiRoot()` be made during delivery as well, or say that only `prepare()` waits.
+- 状态 · Status：已在 `1e60300` 解决（引擎 #424）：按钮回调里可以新建 UI 根。 · Resolved in `1e60300` (engine #424): a UI root can be made from a button callback.
 
-### 20. 横向滚动控件不读竖向滚轮 · A sideways scroll control ignores an ordinary wheel — 未解决 / open
+### 20. 横向滚动控件不读竖向滚轮 · A sideways scroll control ignores an ordinary wheel — 已在 `1e60300` 解决 / resolved in `1e60300`
+<!-- engine-note: {"id": "MechanismCity#20", "status": "resolved", "topic": "sideways-scroll-wheel"} -->
 
 - 现象：`createScrollControl({ axis: 'x', wheel })` 只读 `deltaX`。普通鼠标滚轮只有 `deltaY`，所以横向列表只能用触控板或横向滚轮滚动。另外 `wheel.target` 必须是视口本身（滚轮在视口或其子孙上才算），一开始把它设成视口里一块背板时，鼠标落在卡片上就不滚了。
-- 本作：`wheel.target` 设为视口容器；再在视口上听 `game.hover` 的滚轮事件，没有 `deltaX` 时把 `deltaY` 交给控件自己的 `scrollBy()`。已在浏览器里确认滚轮能滚动选关列表。
+- 本作：`wheel.target` 设为视口容器。原先还在视口上听 `game.hover` 的滚轮事件，没有 `deltaX` 时把 `deltaY` 交给控件的 `scrollBy()`；升级到 `8637ace` 后改用 `wheel.crossAxis: true`，自己的监听去掉了。已在浏览器里确认竖向和横向滚轮都能滚动选关列表。
 - 建议：给 `wheel` 一个选项（如 `crossAxis: true`），横向控件在没有 `deltaX` 时读 `deltaY`；大多数平台的横向列表都这样做。
 
 - What happens: `createScrollControl({ axis: 'x', wheel })` reads only `deltaX`. An ordinary mouse wheel gives only
   `deltaY`, so a sideways list scrolls only with a trackpad or a sideways wheel. Also, `wheel.target` must be the
   viewport itself (a wheel over it or its descendants counts); set first to a backing sprite inside the viewport, it
   did not scroll while the mouse was over a card.
-- This game: `wheel.target` is the viewport container, and a listener on the viewport for the wheel of `game.hover`
-  hands `deltaY`, when there is no `deltaX`, to the control's own `scrollBy()`. Checked in a browser.
+- This game: `wheel.target` is the viewport container. It used to listen on the viewport for the wheel of
+  `game.hover` and hand `deltaY`, when there was no `deltaX`, to the control's `scrollBy()`; since the move to
+  `8637ace` it sets `wheel.crossAxis: true` and that listener is gone. Checked in a browser with an up-and-down and a
+  sideways wheel.
 - Suggestion: an option of `wheel` (such as `crossAxis: true`) so that a sideways control reads `deltaY` when there is
   no `deltaX`, as most platforms do for sideways lists.
 
 ---
+- 状态 · Status：已在 `1e60300` 解决（引擎 #424）：横向滚动控件读普通的竖向滚轮（`wheel.crossAxis`）。 · Resolved in `1e60300` (engine #424): a sideways scroll control reads the ordinary wheel (`wheel.crossAxis`).
 
 ## 用得顺手的地方 · What worked well
 

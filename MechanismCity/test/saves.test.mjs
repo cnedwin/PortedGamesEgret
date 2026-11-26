@@ -84,8 +84,8 @@ test('a change that returns a value instead of editing in place is refused and n
   const before = storage.getItem(SAVE_KEY);
   assert.equal(save.update((data) => (data.open = 5)), false);
   assert.equal(storage.getItem(SAVE_KEY), before);
-  // The callback is given the live data, so what it changed before returning stays in memory, unwritten
-  // (ENGINE-NOTES.md, item 18). The game's callbacks are blocks that return nothing.
-  assert.equal(save.data.open, 5);
+  // Since engine #424 the callback is given a copy, so a refused change leaves the save in memory as it was
+  // (ENGINE-NOTES.md, item 18). The game's callbacks are blocks that return nothing all the same.
+  assert.equal(save.data.open, 3);
   assert.equal(openSave(storage).data.open, 3);
 });

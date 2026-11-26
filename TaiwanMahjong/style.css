@@ -24,12 +24,8 @@ button { font: inherit; color: inherit; }
 
 #frame { position: fixed; inset: 0; display: grid; place-items: center; }
 .layer { position: absolute; left: 0; top: 0; width: 1280px; height: 720px; transform-origin: 0 0; overflow: hidden; }
-#table { font-size: 22px; }
+#table { font-size: 22px; pointer-events: none; }
 #felt { position: absolute; inset: 0; width: 1280px; height: 720px; }
-#stage { position: absolute; left: 0; top: 0; width: 960px; height: 540px; transform-origin: 0 0; pointer-events: none; }
-#stage.tall { width: 540px; height: 960px; }
-#stage canvas { width: 960px !important; height: 540px !important; }
-#stage.tall canvas { width: 540px !important; height: 960px !important; }
 /* play sizes its canvas to its holder × the device ratio, so the holder is three quarters of the stage and is scaled up
    (ENGINE-NOTES 3). */
 
@@ -97,112 +93,18 @@ button { font: inherit; color: inherit; }
 .plate .who { grid-column: 2 / 4; grid-row: 1; justify-self: start; }
 
 /* The player's hand: transparent keys over the engine's tiles. */
-#handKeys { position: absolute; left: 0; top: 600px; width: 1280px; height: 120px; pointer-events: none; }
-#handKeys button { position: absolute; top: 12px; width: 64px; height: 96px; border: 0; padding: 0; background: transparent; border-radius: 8px; cursor: pointer; pointer-events: auto; }
-#handKeys button:focus-visible { outline: 3px solid var(--gold-soft); outline-offset: 2px; }
-#handKeys button[disabled] { cursor: default; }
 
-/* Calls and the discard. */
-#actions { position: absolute; right: 200px; bottom: 126px; display: flex; gap: 12px; }
-#actions button { min-width: 96px; height: 84px; padding: 0 18px; border-radius: 9px; border: 2px solid #f2c793; font: 700 30px/1 var(--serif); color: #fff5dc; background: linear-gradient(155deg,#b35340,#7a362b); box-shadow: 0 4px 0 #4f211d, 0 8px 18px #04151c80; cursor: pointer; display: flex; align-items: center; gap: 8px; }
-#actions button.win { background: linear-gradient(#e2a52c, #a8670d); color: #2a1400; border-color: #fff0c0; box-shadow: 0 4px 0 #5d3806, 0 0 24px rgba(245, 201, 92, .6); }
-#actions button.pass { background: linear-gradient(#3e5a4c, #22382d); border-color: #9fb9a9; box-shadow: 0 4px 0 #142219; font-size: 26px; }
-#actions button.discard { background: linear-gradient(#2c6b50, #174532); border-color: #9fd3b6; box-shadow: 0 4px 0 #0c271c; font-size: 26px; }
-#actions button:focus-visible { outline: 3px solid #fff; outline-offset: 3px; }
-#actions button:active { transform: translateY(2px); }
-#actions img { width: 30px; height: 40px; }
+/* Ready-tile hints beneath the engine UI. */
 
-#hint { position: absolute; left: 260px; top: 544px; max-width: 760px; min-height: 40px; display: flex; gap: 8px; align-items: center; padding: 4px 14px; border: 1px solid #c1935e65; border-radius: 6px; background: #102932e8; font-size: 19px; pointer-events: none; }
+#hint { position: absolute; left: 260px; top: 466px; max-width: 760px; min-height: 40px; display: flex; gap: 8px; align-items: center; padding: 4px 14px; border: 1px solid #c1935e65; border-radius: 6px; background: #102932e8; font-size: 19px; pointer-events: none; }
 #hint:empty { display: none; }
 #hint img { width: 26px; height: 35px; vertical-align: middle; }
 #hint .count { font-size: 15px; color: var(--gold); margin-right: 6px; }
 
-#tools { position: absolute; left: 166px; top: 112px; display: flex; flex-direction: column; gap: 10px; }
-#tools button { min-width: 96px; height: 84px; padding: 0 14px; border-radius: 8px; border: 1px solid #c39161a0; background: #0c262eea; font-size: 17px; cursor: pointer; }
-#tools button[aria-pressed="true"] { background: var(--gold); color: #2a1400; }
-#tools button:focus-visible { outline: 3px solid var(--gold-soft); }
-#table.atTitle #tools, #table.atTitle .plate, #table.atTitle #centre, #table.atTitle #hint, #table.atTitle #actions { display: none; }
+#table.atTitle .plate, #table.atTitle #centre, #table.atTitle #hint { display: none; }
 
-/* Panels. */
-.panel { position: absolute; z-index: 5; }
-.sheet { left: 50%; top: 50%; transform: translate(-50%, -50%); width: 760px; max-height: 680px; overflow: auto; padding: 28px 36px; color: var(--ink); background: linear-gradient(156deg,#fdf4df 10%,var(--paper-deep)); border-radius: 12px; border: 2px solid var(--gold); box-shadow: 0 0 0 5px #132e36ed, 0 24px 60px #041519b8; }
-.sheet.wide { width: 1100px; }
-.sheet.small { width: 420px; }
-.sheet h2 { margin: 0 0 10px; font: 700 36px/1.2 var(--serif); color: var(--lacquer-deep); }
-.sheet p { margin: 6px 0; line-height: 1.5; }
-.row { display: flex; gap: 12px; flex-wrap: wrap; margin-top: 18px; }
-.column { display: flex; flex-direction: column; gap: 10px; margin-top: 12px; }
-.sheet button, .title button { min-height: 84px; min-width: 96px; padding: 0 22px; border-radius: 10px; border: 2px solid #b08a3e; background: #fffaf0; color: var(--ink); font-size: 21px; cursor: pointer; }
-.sheet button.primary, .title button.primary { background: linear-gradient(155deg,#b35340,#7a362b); color: #fff5dc; border-color: #f5c596; font-weight: 700; }
-.sheet button:focus-visible, .title button:focus-visible, .choice:focus-visible { outline: 3px solid #1f7a4a; outline-offset: 2px; }
 
-.tileRow { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 2px; margin: 12px 0; }
-.tileRow img { width: 40px; height: 54px; }
-.tileRow .gap { width: 12px; }
-.tileRow img.won { outline: 3px solid #d9822b; border-radius: 6px; }
-.resultHeading { display: flex; align-items: center; gap: 16px; margin-bottom: 12px; }
-.resultHeading h2, .resultHeading p { margin: 0; }
-.resultHeading .portrait { width: 72px; height: 72px; line-height: 70px; }
-.taiList { list-style: none; padding: 0; margin: 8px 0; columns: 2; column-gap: 32px; font-size: 21px; }
-.taiList li { display: flex; justify-content: space-between; border-bottom: 1px dotted #b8a37c; padding: 3px 0; break-inside: avoid; }
-.taiTotal { margin: 4px 0 0; font: 700 26px var(--serif); color: var(--lacquer-deep); text-align: right; }
-.payTable { width: 100%; border-collapse: collapse; font-size: 20px; margin-top: 8px; }
-.payTable td { padding: 4px 6px; border-bottom: 1px solid #d8c8a6; }
-.payTable td.num { text-align: right; font-variant-numeric: tabular-nums; }
-.plus { color: #1f6b3f; font-weight: 700; }
-.minus { color: #a3261d; }
-
-.ranks { padding: 0; list-style: none; margin: 12px 0; }
-.ranks li { display: grid; grid-template-columns: 110px 1fr auto; align-items: center; padding: 10px 6px; border-bottom: 1px solid #d8c8a6; font-size: 24px; }
-.ranks li.me { background: rgba(217, 180, 90, 0.25); }
-.ranks .place { font-family: var(--serif); font-weight: 700; color: var(--lacquer-deep); }
-
-.rulesBody { display: grid; grid-template-columns: 1fr 1.1fr; gap: 28px; font-size: 19px; }
-.rulesText p { margin: 0 0 12px; }
-.taiTable table { width: 100%; border-collapse: collapse; font-size: 17px; }
-.taiTable td { padding: 3px 6px; border-bottom: 1px solid #ded0b1; vertical-align: top; }
-.taiTable td:first-child { white-space: nowrap; font-weight: 700; }
-.taiTable td.num { text-align: right; white-space: nowrap; color: var(--lacquer-deep); font-weight: 700; }
-.taiTable .note { color: var(--muted); }
-
-.settingsList { display: grid; grid-template-columns: minmax(0,1fr) 138px minmax(0,1fr) 138px; gap: 12px 16px; align-items: center; font-size: 22px; margin-top: 8px; }
-.settingsList button { min-width: 0; padding: 0 12px; }
-.recordList { display: grid; grid-template-columns: 1fr auto; gap: 10px 24px; font-size: 22px; }
-.recordList dd { margin: 0; text-align: right; font-weight: 700; font-variant-numeric: tabular-nums; }
-
-/* The parlor illustration is designed with a quiet left side for the controls. */
-.title { inset: 0; overflow: hidden; background: #0c262b; }
-.titleArt {
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(90deg,#071a20fa 1%,#081d23c2 35%,#081d234f 56%,transparent 75%),
-    url("assets/rain-room.webp") center / cover no-repeat;
-}
-.titleBody { position: relative; display: flex; flex-direction: column; gap: 12px; width: 660px; padding: 45px 24px 28px 52px; }
-.titleHeading { margin-bottom: 4px; }
-.titleType { display: flex; align-items: center; gap: 11px; margin: 0 0 8px; color: #e7b582; font-weight: 700; font-size: 19px; letter-spacing: .11em; }
-.titleType::before { content: ""; width: 27px; height: 1px; background: currentColor; }
-.title h1 { margin: 0; font: 900 76px/1.04 var(--serif); color: #fdf0d5; letter-spacing: .045em; text-shadow: 0 8px 22px #041113db; }
-html[lang="en"] .title h1 { font-size: 54px; letter-spacing: -.04em; }
-.tagline { margin: 9px 0 0; color: #eee2cb; font-size: 22px; line-height: 1.38; }
-.notice { margin: 0; padding: 6px 12px; border-radius: 8px; background: rgba(163, 38, 29, 0.85); font-size: 18px; }
-fieldset { border: 0; margin: 0; padding: 0; min-width: 0; }
-legend { font-size: 18px; color: var(--gold); margin-bottom: 5px; padding: 0; }
-.choices { display: flex; gap: 8px; }
-.title .choice { flex: 1; min-width: 0; text-align: left; padding: 8px 12px; border-radius: 7px; border: 1px solid #b080587e; background: #0c272fdf; color: var(--paper); cursor: pointer; }
-.choice b { display: block; font-size: 22px; }
-.choice small { display: block; margin-top: 1px; font-size: 16px; line-height: 1.15; color: #dac5ac; }
-.title .choice[aria-pressed="true"] { border-color: var(--gold-soft); background: #47382fef; box-shadow: inset 3px 0 #e1af79; }
-.people { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 8px; margin-top: 2px; }
-.person { display: flex; min-width: 0; gap: 8px; align-items: center; padding: 6px; border: 1px solid #a8785269; border-radius: 7px; background: #0b262fe6; font-size: 15px; line-height: 1.16; color: #ddd2be; }
-.person b { display: block; color: var(--paper); font-size: 19px; }
-.title .titleActions { flex-wrap: wrap; gap: 7px; margin-top: 4px; }
-.titleActions button:not(.primary) { min-width: 84px; background: #0c2831e8; color: var(--paper); border: 1px solid #bb875d99; padding: 0 10px; font-size: 18px; white-space: nowrap; }
-.titleActions button.primary { min-width: 160px; padding: 0 14px; font-size: 24px; white-space: nowrap; }
-#title button:focus-visible { outline: 3px solid var(--gold-soft); outline-offset: 3px; }
-
-.loading { position: absolute; inset: 0; display: grid; place-items: center; margin: 0; font: 28px var(--serif); color: var(--gold); background: var(--jade-deep); z-index: 9; }
-
-@media (prefers-reduced-motion: reduce) {
-  * { transition: none !important; }
-}
+/* Egret receives pointer input on its unrotated surface. Table art below it can still turn. */
+#stage { position: absolute; z-index: 2; top: 0; left: 0; width: 960px; height: 540px; touch-action: none; }
+#stage canvas { width: 100% !important; height: 100% !important; outline: none; touch-action: none; }
+.loading { position: absolute; inset: 0; z-index: 3; display: grid; place-items: center; margin: 0; background: #0c262b; color: #fdf0d5; font-size: 26px; }
