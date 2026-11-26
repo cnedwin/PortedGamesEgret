@@ -10,6 +10,7 @@ import { createRandom, encodeWav } from '@egret/engine/kit';
 import { createBrowserAudio } from './audio.js';
 import { createBrowserGamepadInput } from './gamepad.js';
 import { createBrowserGame } from './game.js';
+import { isScreenPin, pinBox } from './screen.js';
 import { createBrowserFrameLoop } from './loop.js';
 import { SFX_PRESETS, isSfxRecipe, synthesizeSfx } from './playSfx.js';
 import { createPlayWidgets, verticalPlayWords } from './playWidgets.js';
@@ -287,8 +288,23 @@ export async function play(options) {
     if (onError !== undefined && typeof onError !== 'function')
         throw invalid('onError is a function');
     const fitAsked = options.fit ?? 'contain';
-    if (fitAsked !== 'contain' && fitAsked !== 'expand')
-        throw invalid("fit is 'contain' or 'expand'");
+    if (!['contain', 'expand', 'fixedWidth', 'fixedHeight', 'fixedNarrow', 'fixedWide'].includes(fitAsked))
+        throw invalid("fit is 'contain', 'expand', 'fixedWidth', 'fixedHeight', 'fixedNarrow' or 'fixedWide'");
+    const wholeScale = options.wholeScale ?? false;
+    const uiBounds = options.uiScale;
+    if (uiBounds !== undefined) {
+        const bound = (value) => value === undefined || (typeof value === 'number' && Number.isFinite(value) && value > 0);
+        if (uiBounds === null ||
+            typeof uiBounds !== 'object' ||
+            !bound(uiBounds.min) ||
+            !bound(uiBounds.max) ||
+            (uiBounds.min !== undefined && uiBounds.max !== undefined && uiBounds.min > uiBounds.max))
+            throw invalid('uiScale is { min, max }, CSS pixels a unit above 0, min not above max');
+    }
+    if (typeof wholeScale !== 'boolean')
+        throw invalid('wholeScale is true or false');
+    if (wholeScale && (options.canvas !== undefined || (options.pixelRatio !== undefined && options.pixelRatio !== 1)))
+        throw invalid('wholeScale needs a canvas of play itself, drawn at pixelRatio 1');
     if (options.portrait !== undefined &&
         (options.portrait === null ||
             typeof options.portrait !== 'object' ||
@@ -352,7 +368,7 @@ export async function play(options) {
     const surface = canvas;
     let api;
     const deviceDensity = Number(globalThis.devicePixelRatio);
-    const playDensity = options.pixelRatio ?? (deviceDensity > 0 ? Math.min(deviceDensity, 2) : 1);
+    const playDensity = options.pixelRatio ?? (wholeScale ? 1 : deviceDensity > 0 ? Math.min(deviceDensity, 2) : 1);
     const baseBrowser = await createBrowserGame({
         canvas: surface,
         width,
@@ -365,7 +381,7 @@ export async function play(options) {
         ...(options.staticLayers === undefined ? {} : { staticLayers: options.staticLayers }),
         autoStart: false,
         keyboard: false,
-        ...(holder === undefined ? {} : { fit: fitAsked, fitTo: holder }),
+        ...(holder === undefined ? {} : { fit: fitAsked, fitTo: holder, ...(wholeScale ? { wholeScale } : {}) }),
         ...(options.portrait === undefined ? {} : { portrait: options.portrait }),
         ...(options.insets === undefined ? {} : { insets: options.insets }),
         ...(options.backend === undefined ? {} : { backend: options.backend }),
@@ -732,6 +748,117 @@ export async function play(options) {
         node.hitArea = next;
         boundsAreas.set(node, next);
     };
+    // How much larger than the game's units play's views are drawn, from the CSS pixels a unit the screen shows now.
+    const uiScaleNow = () => {
+        if (uiBounds === undefined || !(shown.scale > 0))
+            return 1;
+        const kept = Math.min(uiBounds.max ?? Infinity, Math.max(uiBounds.min ?? 0, shown.scale));
+        return kept / shown.scale;
+    };
+    const pinned = new Map();
+    const onStage = (node) => {
+        let at = node;
+        while (at !== undefined && at !== stage)
+            at = at.parent;
+        return at === stage;
+    };
+    const placePinned = (node, held, again) => {
+        if (node.isDisposed) {
+            pinned.delete(node);
+            return;
+        }
+        const parent = node.parent;
+        if (parent === undefined || !onStage(node))
+            return;
+        // The node's box on the stage, children, scale and turn included.
+        const local = node.getBounds();
+        const corners = [
+            node.localToGlobal(local.x, local.y),
+            node.localToGlobal(local.x + local.width, local.y),
+            node.localToGlobal(local.x, local.y + local.height),
+            node.localToGlobal(local.x + local.width, local.y + local.height)
+        ];
+        const left = Math.min(...corners.map(c => c.x)), top = Math.min(...corners.map(c => c.y));
+        const box = {
+            x: left,
+            y: top,
+            width: Math.max(...corners.map(c => c.x)) - left,
+            height: Math.max(...corners.map(c => c.y)) - top
+        };
+        const area = held.area === 'screen' ? { x: 0, y: 0, width: shown.width, height: shown.height } : shown.safe;
+        const key = [area.x, area.y, area.width, area.height, box.width, box.height].join(',');
+        if (!again && key === held.last)
+            return;
+        held.last = key;
+        const to = pinBox(area, box, held.pin);
+        if (to.x === box.x && to.y === box.y)
+            return;
+        // The move on the stage, as a move in the parent's units.
+        const from = parent.globalToLocal(box.x, box.y), moved = parent.globalToLocal(to.x, to.y);
+        node.x += moved.x - from.x;
+        node.y += moved.y - from.y;
+    };
+    const placeAllPinned = (again) => {
+        for (const [node, held] of [...pinned])
+            placePinned(node, held, again);
+    };
+    // A tool that runs the game for an agent (tools/verify-screens.mjs) is told, about four times a second, where the
+    // nodes that take taps are on the page and where the safe part is, in CSS pixels, to check them on many screens.
+    let toldControls = Infinity;
+    const tellControls = (seconds) => {
+        const agent = globalThis.__egretAgent;
+        if (typeof agent?.controls !== 'function')
+            return;
+        toldControls += seconds;
+        if (toldControls < 0.25)
+            return;
+        toldControls = 0;
+        const box = surface.getBoundingClientRect(), across = box.width / shown.width, down = box.height / shown.height;
+        const page = (r) => ({
+            x: box.left + r.x * across,
+            y: box.top + r.y * down,
+            width: r.width * across,
+            height: r.height * down
+        });
+        const shows = (node) => {
+            for (let at = node; at !== undefined; at = at.parent)
+                if (!at.visible || at.alpha <= 0)
+                    return false;
+            return true;
+        };
+        const controls = [];
+        for (const node of tappable) {
+            if (node.isDisposed || !onStage(node) || !shows(node))
+                continue;
+            const local = node.hitArea ?? node.getBounds();
+            if (!(local.width > 0 && local.height > 0))
+                continue;
+            const corners = [
+                node.localToGlobal(local.x, local.y),
+                node.localToGlobal(local.x + local.width, local.y + local.height)
+            ];
+            const x = Math.min(corners[0].x, corners[1].x), y = Math.min(corners[0].y, corners[1].y);
+            const label = node.label;
+            controls.push({
+                name: node.name || tapNames.get(node) || (label instanceof PlayText ? label.text : ''),
+                ...page({
+                    x,
+                    y,
+                    width: Math.abs(corners[1].x - corners[0].x),
+                    height: Math.abs(corners[1].y - corners[0].y)
+                })
+            });
+        }
+        try {
+            agent.controls(controls, {
+                safe: page(shown.safe),
+                canvas: { x: box.left, y: box.top, width: box.width, height: box.height }
+            });
+        }
+        catch {
+            /* The tool's own failure, not the game's. */
+        }
+    };
     const areaFromBounds = (node) => {
         if (boundsAreas.has(node) || node.hitArea !== undefined)
             return;
@@ -742,6 +869,8 @@ export async function play(options) {
     };
     // Sprites of onTap with a name: their buttons in the semantic tree.
     const tapButtons = new Map();
+    // The name onTap was given, by which a tool names the control.
+    const tapNames = new WeakMap();
     let tapButtonCount = 0;
     const pointerDown = (event) => {
         device = event.pointerType === 'touch' ? 'touch' : 'mouse';
@@ -1391,6 +1520,8 @@ export async function play(options) {
         const seconds = frameSeconds;
         frameSeconds = 0;
         if (!disposed) {
+            placeAllPinned(false);
+            tellControls(seconds);
             views.tick(seconds);
             syncLabelVisibility();
             if (options.semantics !== undefined)
@@ -1801,6 +1932,8 @@ export async function play(options) {
             const name = tapOptions?.name;
             if (name !== undefined && (typeof name !== 'string' || name.trim() === '' || name.length > 1024))
                 throw invalid('the name of a tap is words');
+            if (name !== undefined)
+                tapNames.set(node, name);
             const tap = (activation) => {
                 const round = generation;
                 tapListener(() => callback(activation), cause => {
@@ -2287,6 +2420,37 @@ export async function play(options) {
         },
         confirm: (question, confirmOptions) => views.confirm(question, confirmOptions),
         hints: list => views.hints(list),
+        get uiScale() {
+            return uiScaleNow();
+        },
+        pin(node, pin, options = {}) {
+            if (node === null || typeof node !== 'object' || typeof node.getBounds !== 'function')
+                throw invalid('pin takes a node of the game');
+            if (!isScreenPin(pin))
+                throw invalid('a pin is at most one of left, right, centerX and one of top, bottom, centerY');
+            const area = options?.area ?? 'safe';
+            if (area !== 'safe' && area !== 'screen')
+                throw invalid("a pin's area is 'safe' or 'screen'");
+            const held = { pin: Object.freeze({ ...pin }), area, last: undefined };
+            pinned.set(node, held);
+            placePinned(node, held, true);
+            return Object.freeze({
+                get pin() {
+                    return held.pin;
+                },
+                set(next) {
+                    if (!isScreenPin(next))
+                        throw invalid('a pin is at most one of left, right, centerX and one of top, bottom, centerY');
+                    held.pin = Object.freeze({ ...next });
+                    if (pinned.get(node) === held)
+                        placePinned(node, held, true);
+                },
+                dispose() {
+                    if (pinned.get(node) === held)
+                        pinned.delete(node);
+                }
+            });
+        },
         loading: (tasks, loadingOptions) => views.loading(tasks, loadingOptions),
         badges,
         compact: (value, compactOptions) => formatCompact(value, { locale: /^zh\b/i.test(win.navigator?.language ?? '') ? 'zh' : 'en', ...compactOptions }),
@@ -2347,7 +2511,8 @@ export async function play(options) {
         failed: cause => {
             failure ??= { cause };
         },
-        semantics: () => options.semantics
+        semantics: () => options.semantics,
+        uiScale: () => uiScaleNow()
     });
     const touch = createPlayTouch(game, {
         hold(key) {
@@ -2390,15 +2555,16 @@ export async function play(options) {
         point.y = Math.min(point.y, game.height);
         if (!disposed)
             views.arrange();
-        if (api === undefined || disposed || options.arrange === undefined)
-            return;
-        try {
-            options.arrange(game);
-        }
-        catch (cause) {
-            // As what `update` throws: the game stops at its next step and is told.
-            failure ??= { cause };
-        }
+        if (api !== undefined && !disposed && options.arrange !== undefined)
+            try {
+                options.arrange(game);
+            }
+            catch (cause) {
+                // As what `update` throws: the game stops at its next step and is told.
+                failure ??= { cause };
+            }
+        if (!disposed)
+            placeAllPinned(true);
     });
     try {
         if (mixer !== undefined)

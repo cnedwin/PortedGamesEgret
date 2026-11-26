@@ -1,0 +1,1662 @@
+{
+  "schema": "lantern-tail-20261127/1",
+  "date": "2026-11-27",
+  "scope": "Instrumented fixed-step diagnostic, not a natural completion or isolated GPU execution/presentation measurement.",
+  "pins": {
+    "publishedGameMain": "0816da4883e6737f60f7d9514c615443633ebdb7",
+    "lastLanternChangeCommit": "43c2f24cea3adaae2f01a3531126483d327e3b71",
+    "otherVerifiedMain": "ea5adf58e0b131bb95a2f6d250ae21ba9c35d750",
+    "identicalLanternShadowsGitTree": "61e0593877d5037d49720c4c33cd6d2a5062530c",
+    "A": "94bd70fb26b1f81794c9c6fbbb258c655fcd19df",
+    "B": "7935151638792ef0f1518d879ee5b92612a64b13",
+    "candidateStatus": "tested local candidate commit, not assumed to be the final main merge hash"
+  },
+  "verifiedPayload": {
+    "srcFiles": 18,
+    "srcSha256": "8bf7ac707ecadafd2e7794c20546f15ead8c93f3559655a3b9ea241710fe89f8",
+    "assetsFiles": 109,
+    "assetsSha256": "5c773e1d6495e007d11701dd1b04fdbb5519f833a07a883de5e557ab0aa46929",
+    "cssSha256": "9c2d5fc38a582acfb4bfac2e2df81705e24cbaf6dbcf0555a61eee6e9ddc81d7",
+    "aggregateClientSha256": "62403c1a8a9a16d6b39b3733b10fb4095626012e75ecebc8eda997dc04fb768e",
+    "aggregateBundleA": "3b3e021bc6fb9f53d1c26d47a8b7ae7d3742e4b38ec891befe8a55347f731f89",
+    "aggregateBundleB": "c5f02526140134a47888746a161da09a1644476e0e8bdb72f7ec81cc1053cd0f"
+  },
+  "device": {
+    "model": "Samsung Galaxy Z Fold7",
+    "os": "Android 17",
+    "browser": "Chrome 157",
+    "renderer": "Adreno 830 / WebGL2",
+    "viewportCss": [
+      873,
+      325
+    ],
+    "backing": [
+      2291,
+      854
+    ],
+    "dpr": 2.625,
+    "orientation": "landscape",
+    "power": "USB",
+    "thermalStatus": 0
+  },
+  "fixture": {
+    "seed": 734,
+    "fixedDt": 0.016666666666666666,
+    "castAt": 1.2,
+    "actualCastTime": 1.63333333333333,
+    "denseCloneAgeWindow": [
+      1,
+      6.5
+    ],
+    "allRows": 548,
+    "denseRows": 330,
+    "fullCloneCount": 100,
+    "onlyFixtureChanges": "Give one cast hairs and temporary hero safety; no saved score; no pose, mesh or effect work removed."
+  },
+  "percentile": "floor(n*p) in sorted observations, capped at n-1; common submitted subset is not full cadence",
+  "strictABBA": {
+    "order": "ABBA",
+    "protocol": "lantern-dense-fixed-step/2",
+    "commonSubmittedPoints": 190,
+    "validation": {
+      "mismatchCount": 0,
+      "rowsEach": 548,
+      "denseRowsEach": 330,
+      "exactLogicalStateEveryRow": true,
+      "cumulativeEventsEveryRow": true,
+      "sparseExactCheckpointsEach": 3,
+      "submittedRevisionChecks": 1978,
+      "allActualClones": 100
+    },
+    "blocks": [
+      {
+        "ordinal": 1,
+        "variant": "A",
+        "actualSubmittedDense": 285,
+        "backpressureSkippedDense": 45,
+        "batterySensorC": [
+          31.7,
+          31.8
+        ],
+        "thermalStatus": [
+          0,
+          0
+        ],
+        "rafDense": {
+          "n": 330,
+          "p50": 16.7,
+          "p95": 49.7,
+          "p99": 49.8,
+          "max": 66.4,
+          "mean": 25.464
+        },
+        "over50Dense": 2,
+        "commonSubmitted": {
+          "raf": {
+            "n": 190,
+            "p50": 33,
+            "p95": 49.7,
+            "p99": 66.3,
+            "max": 66.4,
+            "mean": 26.265
+          },
+          "engine.frame.cpu": {
+            "n": 190,
+            "p50": 24.3,
+            "p95": 38.6,
+            "p99": 55.3,
+            "max": 66.3,
+            "mean": 25.074
+          },
+          "demo.spine.advance": {
+            "n": 190,
+            "p50": 8.1,
+            "p95": 16.4,
+            "p99": 19.5,
+            "max": 21.4,
+            "mean": 8.339
+          },
+          "engine.frame.capture": {
+            "n": 190,
+            "p50": 2.6,
+            "p95": 3.8,
+            "p99": 7,
+            "max": 13.3,
+            "mean": 2.657
+          },
+          "engine.webgl2.prepare": {
+            "n": 190,
+            "p50": 6.5,
+            "p95": 14.1,
+            "p99": 17.1,
+            "max": 17.6,
+            "mean": 6.738
+          },
+          "engine.webgl2.prepare.geometry": {
+            "n": 190,
+            "p50": 5.3,
+            "p95": 12.7,
+            "p99": 15.7,
+            "max": 15.9,
+            "mean": 5.669
+          },
+          "engine.webgl2.prepare.pack": {
+            "n": 190,
+            "p50": 0.7,
+            "p95": 1.3,
+            "p99": 3.8,
+            "max": 5,
+            "mean": 0.797
+          },
+          "engine.webgl2.submit": {
+            "n": 190,
+            "p50": 3.9,
+            "p95": 11.4,
+            "p99": 27.6,
+            "max": 39.1,
+            "mean": 5.132
+          },
+          "engine.webgl2.draw": {
+            "n": 190,
+            "p50": 2.7,
+            "p95": 10.3,
+            "p99": 26.8,
+            "max": 37.8,
+            "mean": 3.698
+          }
+        },
+        "eventCount": 6421,
+        "submittedAll": 494,
+        "submittedRevisionOk": 494,
+        "longDense": [
+          {
+            "sample": 159,
+            "actTime": 2.667,
+            "age": 1.05,
+            "rafMs": 66.4,
+            "cpu": 66.3,
+            "spine": 19.5,
+            "prepare": 3.5,
+            "geometry": 3.1,
+            "submit": 39.1,
+            "draw": 37.8,
+            "drawCalls": 33
+          },
+          {
+            "sample": 436,
+            "actTime": 7.283,
+            "age": 5.667,
+            "rafMs": 66.3,
+            "cpu": 55.3,
+            "spine": 15.1,
+            "prepare": 6.7,
+            "geometry": 5.4,
+            "submit": 27.6,
+            "draw": 26.8,
+            "drawCalls": 33
+          }
+        ]
+      },
+      {
+        "ordinal": 2,
+        "variant": "B",
+        "actualSubmittedDense": 285,
+        "backpressureSkippedDense": 45,
+        "batterySensorC": [
+          31.8,
+          31.8
+        ],
+        "thermalStatus": [
+          0,
+          0
+        ],
+        "rafDense": {
+          "n": 330,
+          "p50": 16.7,
+          "p95": 49.7,
+          "p99": 49.8,
+          "max": 49.8,
+          "mean": 26.067
+        },
+        "over50Dense": 0,
+        "commonSubmitted": {
+          "raf": {
+            "n": 190,
+            "p50": 33.1,
+            "p95": 34.6,
+            "p99": 49.8,
+            "max": 49.8,
+            "mean": 26.621
+          },
+          "engine.frame.cpu": {
+            "n": 190,
+            "p50": 25.6,
+            "p95": 38.4,
+            "p99": 45.1,
+            "max": 46.4,
+            "mean": 25.493
+          },
+          "demo.spine.advance": {
+            "n": 190,
+            "p50": 8.1,
+            "p95": 16.5,
+            "p99": 22,
+            "max": 29.7,
+            "mean": 8.654
+          },
+          "engine.frame.capture": {
+            "n": 190,
+            "p50": 3.4,
+            "p95": 5.1,
+            "p99": 9.7,
+            "max": 13.3,
+            "mean": 3.185
+          },
+          "engine.webgl2.prepare": {
+            "n": 190,
+            "p50": 6.6,
+            "p95": 10.2,
+            "p99": 16.7,
+            "max": 17.9,
+            "mean": 6.558
+          },
+          "engine.webgl2.prepare.geometry": {
+            "n": 190,
+            "p50": 5,
+            "p95": 7.6,
+            "p99": 14.3,
+            "max": 15.8,
+            "mean": 4.917
+          },
+          "engine.webgl2.prepare.pack": {
+            "n": 190,
+            "p50": 1.2,
+            "p95": 2.3,
+            "p99": 9.6,
+            "max": 11.1,
+            "mean": 1.348
+          },
+          "engine.webgl2.submit": {
+            "n": 190,
+            "p50": 3.4,
+            "p95": 10.3,
+            "p99": 15.6,
+            "max": 19,
+            "mean": 4.503
+          },
+          "engine.webgl2.draw": {
+            "n": 190,
+            "p50": 1.9,
+            "p95": 9.1,
+            "p99": 14.8,
+            "max": 18.2,
+            "mean": 3.168
+          }
+        },
+        "eventCount": 6421,
+        "submittedAll": 486,
+        "submittedRevisionOk": 486,
+        "longDense": []
+      },
+      {
+        "ordinal": 3,
+        "variant": "B",
+        "actualSubmittedDense": 294,
+        "backpressureSkippedDense": 36,
+        "batterySensorC": [
+          31.8,
+          32
+        ],
+        "thermalStatus": [
+          0,
+          0
+        ],
+        "rafDense": {
+          "n": 330,
+          "p50": 16.6,
+          "p95": 49.7,
+          "p99": 49.8,
+          "max": 66.3,
+          "mean": 25.116
+        },
+        "over50Dense": 1,
+        "commonSubmitted": {
+          "raf": {
+            "n": 190,
+            "p50": 16.6,
+            "p95": 49.7,
+            "p99": 49.9,
+            "max": 49.9,
+            "mean": 25.128
+          },
+          "engine.frame.cpu": {
+            "n": 190,
+            "p50": 23.1,
+            "p95": 37.1,
+            "p99": 44.6,
+            "max": 46.9,
+            "mean": 24.005
+          },
+          "demo.spine.advance": {
+            "n": 190,
+            "p50": 7.7,
+            "p95": 18.5,
+            "p99": 22.1,
+            "max": 22.7,
+            "mean": 8.919
+          },
+          "engine.frame.capture": {
+            "n": 190,
+            "p50": 2.3,
+            "p95": 4.6,
+            "p99": 6,
+            "max": 7.2,
+            "mean": 2.684
+          },
+          "engine.webgl2.prepare": {
+            "n": 190,
+            "p50": 5,
+            "p95": 9.6,
+            "p99": 15,
+            "max": 19,
+            "mean": 5.614
+          },
+          "engine.webgl2.prepare.geometry": {
+            "n": 190,
+            "p50": 3.9,
+            "p95": 8.1,
+            "p99": 13.2,
+            "max": 13.7,
+            "mean": 4.427
+          },
+          "engine.webgl2.prepare.pack": {
+            "n": 190,
+            "p50": 0.8,
+            "p95": 1.6,
+            "p99": 6.5,
+            "max": 7.3,
+            "mean": 0.938
+          },
+          "engine.webgl2.submit": {
+            "n": 190,
+            "p50": 3.3,
+            "p95": 11.4,
+            "p99": 19.2,
+            "max": 20.1,
+            "mean": 4.461
+          },
+          "engine.webgl2.draw": {
+            "n": 190,
+            "p50": 2,
+            "p95": 9,
+            "p99": 18.1,
+            "max": 18.8,
+            "mean": 3.165
+          }
+        },
+        "eventCount": 6421,
+        "submittedAll": 500,
+        "submittedRevisionOk": 500,
+        "longDense": [
+          {
+            "sample": 167,
+            "actTime": 2.8,
+            "age": 1.183,
+            "rafMs": 66.3,
+            "cpu": 54.7,
+            "spine": 32.6,
+            "prepare": 8.9,
+            "geometry": 7,
+            "submit": 2.3,
+            "draw": 1.3,
+            "drawCalls": 33
+          }
+        ]
+      },
+      {
+        "ordinal": 4,
+        "variant": "A",
+        "actualSubmittedDense": 292,
+        "backpressureSkippedDense": 38,
+        "batterySensorC": [
+          32,
+          32.5
+        ],
+        "thermalStatus": [
+          0,
+          0
+        ],
+        "rafDense": {
+          "n": 330,
+          "p50": 33.1,
+          "p95": 49.7,
+          "p99": 49.8,
+          "max": 51.3,
+          "mean": 26.874
+        },
+        "over50Dense": 3,
+        "commonSubmitted": {
+          "raf": {
+            "n": 190,
+            "p50": 33.1,
+            "p95": 49.7,
+            "p99": 51,
+            "max": 51.3,
+            "mean": 28.349
+          },
+          "engine.frame.cpu": {
+            "n": 190,
+            "p50": 25.9,
+            "p95": 42.4,
+            "p99": 47.9,
+            "max": 57.4,
+            "mean": 26.798
+          },
+          "demo.spine.advance": {
+            "n": 190,
+            "p50": 9,
+            "p95": 19.6,
+            "p99": 26.5,
+            "max": 26.6,
+            "mean": 9.626
+          },
+          "engine.frame.capture": {
+            "n": 190,
+            "p50": 2.8,
+            "p95": 4.6,
+            "p99": 6.8,
+            "max": 7.3,
+            "mean": 2.82
+          },
+          "engine.webgl2.prepare": {
+            "n": 190,
+            "p50": 7.3,
+            "p95": 12.6,
+            "p99": 18,
+            "max": 19.1,
+            "mean": 7.287
+          },
+          "engine.webgl2.prepare.geometry": {
+            "n": 190,
+            "p50": 6.2,
+            "p95": 11,
+            "p99": 16.2,
+            "max": 18.2,
+            "mean": 5.948
+          },
+          "engine.webgl2.prepare.pack": {
+            "n": 190,
+            "p50": 0.9,
+            "p95": 1.9,
+            "p99": 5.2,
+            "max": 7,
+            "mean": 1.042
+          },
+          "engine.webgl2.submit": {
+            "n": 190,
+            "p50": 3.4,
+            "p95": 11.6,
+            "p99": 20.7,
+            "max": 25.4,
+            "mean": 4.663
+          },
+          "engine.webgl2.draw": {
+            "n": 190,
+            "p50": 2.1,
+            "p95": 10.5,
+            "p99": 19.7,
+            "max": 24.2,
+            "mean": 3.409
+          }
+        },
+        "eventCount": 6421,
+        "submittedAll": 498,
+        "submittedRevisionOk": 498,
+        "longDense": [
+          {
+            "sample": 210,
+            "actTime": 3.517,
+            "age": 1.9,
+            "rafMs": 51,
+            "cpu": 50.4,
+            "spine": 21.3,
+            "prepare": 9.4,
+            "geometry": 8.3,
+            "submit": 12.6,
+            "draw": 11.9,
+            "drawCalls": 33
+          },
+          {
+            "sample": 244,
+            "actTime": 4.083,
+            "age": 2.467,
+            "rafMs": 51,
+            "cpu": 41,
+            "spine": 20.5,
+            "prepare": 8.7,
+            "geometry": 6.7,
+            "submit": 5.2,
+            "draw": 4.3,
+            "drawCalls": 37
+          },
+          {
+            "sample": 399,
+            "actTime": 6.667,
+            "age": 5.05,
+            "rafMs": 51.3,
+            "cpu": 46.7,
+            "spine": 26.6,
+            "prepare": 8.2,
+            "geometry": 6.7,
+            "submit": 5.6,
+            "draw": 4.1,
+            "drawCalls": 33
+          }
+        ]
+      }
+    ],
+    "pooledCommon": {
+      "A": {
+        "raf": {
+          "n": 380,
+          "p50": 33.1,
+          "p95": 49.7,
+          "p99": 51,
+          "max": 66.4,
+          "mean": 27.307
+        },
+        "engine.frame.cpu": {
+          "n": 380,
+          "p50": 25.3,
+          "p95": 41,
+          "p99": 47.9,
+          "max": 66.3,
+          "mean": 25.936
+        },
+        "demo.spine.advance": {
+          "n": 380,
+          "p50": 8.5,
+          "p95": 18,
+          "p99": 24.3,
+          "max": 26.6,
+          "mean": 8.982
+        },
+        "engine.frame.capture": {
+          "n": 380,
+          "p50": 2.7,
+          "p95": 4.2,
+          "p99": 6.8,
+          "max": 13.3,
+          "mean": 2.738
+        },
+        "engine.webgl2.prepare": {
+          "n": 380,
+          "p50": 6.6,
+          "p95": 13.3,
+          "p99": 17.1,
+          "max": 19.1,
+          "mean": 7.013
+        },
+        "engine.webgl2.prepare.geometry": {
+          "n": 380,
+          "p50": 5.4,
+          "p95": 12,
+          "p99": 15.7,
+          "max": 18.2,
+          "mean": 5.808
+        },
+        "engine.webgl2.prepare.pack": {
+          "n": 380,
+          "p50": 0.8,
+          "p95": 1.7,
+          "p99": 3.8,
+          "max": 7,
+          "mean": 0.919
+        },
+        "engine.webgl2.submit": {
+          "n": 380,
+          "p50": 3.7,
+          "p95": 11.5,
+          "p99": 20.7,
+          "max": 39.1,
+          "mean": 4.898
+        },
+        "engine.webgl2.draw": {
+          "n": 380,
+          "p50": 2.3,
+          "p95": 10.5,
+          "p99": 19.7,
+          "max": 37.8,
+          "mean": 3.554
+        }
+      },
+      "B": {
+        "raf": {
+          "n": 380,
+          "p50": 33,
+          "p95": 49.7,
+          "p99": 49.8,
+          "max": 49.9,
+          "mean": 25.874
+        },
+        "engine.frame.cpu": {
+          "n": 380,
+          "p50": 24.2,
+          "p95": 38.3,
+          "p99": 44.6,
+          "max": 46.9,
+          "mean": 24.749
+        },
+        "demo.spine.advance": {
+          "n": 380,
+          "p50": 7.9,
+          "p95": 18,
+          "p99": 22,
+          "max": 29.7,
+          "mean": 8.787
+        },
+        "engine.frame.capture": {
+          "n": 380,
+          "p50": 2.6,
+          "p95": 4.7,
+          "p99": 8.2,
+          "max": 13.3,
+          "mean": 2.935
+        },
+        "engine.webgl2.prepare": {
+          "n": 380,
+          "p50": 5.9,
+          "p95": 10.1,
+          "p99": 16,
+          "max": 19,
+          "mean": 6.086
+        },
+        "engine.webgl2.prepare.geometry": {
+          "n": 380,
+          "p50": 4.7,
+          "p95": 8,
+          "p99": 13.2,
+          "max": 15.8,
+          "mean": 4.672
+        },
+        "engine.webgl2.prepare.pack": {
+          "n": 380,
+          "p50": 1,
+          "p95": 1.8,
+          "p99": 7.3,
+          "max": 11.1,
+          "mean": 1.143
+        },
+        "engine.webgl2.submit": {
+          "n": 380,
+          "p50": 3.3,
+          "p95": 10.9,
+          "p99": 19,
+          "max": 20.1,
+          "mean": 4.482
+        },
+        "engine.webgl2.draw": {
+          "n": 380,
+          "p50": 2,
+          "p95": 9.1,
+          "p99": 18.1,
+          "max": 18.8,
+          "mean": 3.167
+        }
+      }
+    },
+    "pairedDeltas": {
+      "raf": {
+        "n": 190,
+        "p50": -0.05,
+        "p95": 16.6,
+        "p99": 16.7,
+        "max": 24.9,
+        "mean": -1.433,
+        "improved": 104,
+        "worse": 81,
+        "unit": "B minus A, matched common submitted sample (wall ms)"
+      },
+      "engine.frame.cpu": {
+        "n": 190,
+        "p50": -0.85,
+        "p95": 10.8,
+        "p99": 14.15,
+        "max": 14.25,
+        "mean": -1.187,
+        "improved": 104,
+        "worse": 86,
+        "unit": "B minus A, matched common submitted sample (wall ms)"
+      },
+      "demo.spine.advance": {
+        "n": 190,
+        "p50": -0.3,
+        "p95": 6.4,
+        "p99": 10.95,
+        "max": 12.2,
+        "mean": -0.196,
+        "improved": 97,
+        "worse": 93,
+        "unit": "B minus A, matched common submitted sample (wall ms)"
+      },
+      "engine.frame.capture": {
+        "n": 190,
+        "p50": 0.1,
+        "p95": 2.15,
+        "p99": 4.05,
+        "max": 5.25,
+        "mean": 0.196,
+        "improved": 82,
+        "worse": 103,
+        "unit": "B minus A, matched common submitted sample (wall ms)"
+      },
+      "engine.webgl2.prepare": {
+        "n": 190,
+        "p50": -0.8,
+        "p95": 2.7,
+        "p99": 4.2,
+        "max": 5.55,
+        "mean": -0.927,
+        "improved": 123,
+        "worse": 66,
+        "unit": "B minus A, matched common submitted sample (wall ms)"
+      },
+      "engine.webgl2.prepare.geometry": {
+        "n": 190,
+        "p50": -0.95,
+        "p95": 2.05,
+        "p99": 3.3,
+        "max": 5.45,
+        "mean": -1.136,
+        "improved": 130,
+        "worse": 60,
+        "unit": "B minus A, matched common submitted sample (wall ms)"
+      },
+      "engine.webgl2.prepare.pack": {
+        "n": 190,
+        "p50": 0.2,
+        "p95": 0.95,
+        "p99": 4.1,
+        "max": 5.05,
+        "mean": 0.224,
+        "improved": 59,
+        "worse": 131,
+        "unit": "B minus A, matched common submitted sample (wall ms)"
+      },
+      "engine.webgl2.submit": {
+        "n": 190,
+        "p50": 0,
+        "p95": 5.75,
+        "p99": 8.5,
+        "max": 8.7,
+        "mean": -0.416,
+        "improved": 96,
+        "worse": 94,
+        "unit": "B minus A, matched common submitted sample (wall ms)"
+      },
+      "engine.webgl2.draw": {
+        "n": 190,
+        "p50": -0.1,
+        "p95": 5.2,
+        "p99": 8.45,
+        "max": 8.7,
+        "mean": -0.387,
+        "improved": 100,
+        "worse": 89,
+        "unit": "B minus A, matched common submitted sample (wall ms)"
+      }
+    }
+  },
+  "lowBAB": {
+    "order": "BAB",
+    "protocol": "lantern-dense-tail/3",
+    "commonSubmittedPoints": 205,
+    "validation": {
+      "mismatchCount": 0,
+      "rowsEach": 548,
+      "denseRowsEach": 330,
+      "exactLogicalStateEveryRow": false,
+      "cumulativeEventsEveryRow": false,
+      "sparseExactCheckpointsEach": 3,
+      "allActualClones": 100
+    },
+    "blocks": [
+      {
+        "ordinal": 1,
+        "variant": "B",
+        "actualSubmittedDense": 284,
+        "backpressureSkippedDense": 46,
+        "batterySensorC": [
+          32.5,
+          32.6
+        ],
+        "thermalStatus": [
+          0,
+          0
+        ],
+        "rafDense": {
+          "n": 330,
+          "p50": 16.6,
+          "p95": 33.2,
+          "p99": 49.7,
+          "max": 49.7,
+          "mean": 22.755
+        },
+        "over50Dense": 0,
+        "commonSubmitted": {
+          "raf": {
+            "n": 205,
+            "p50": 16.6,
+            "p95": 33.2,
+            "p99": 49.7,
+            "max": 49.7,
+            "mean": 24.342
+          },
+          "engine.frame.cpu": {
+            "n": 205,
+            "p50": 22.4,
+            "p95": 33.6,
+            "p99": 38,
+            "max": 42.2,
+            "mean": 22.4
+          },
+          "demo.spine.advance": {
+            "n": 205,
+            "p50": 7.1,
+            "p95": 15,
+            "p99": 18.5,
+            "max": 20.8,
+            "mean": 7.69
+          },
+          "engine.frame.capture": {
+            "n": 205,
+            "p50": 2.9,
+            "p95": 4.3,
+            "p99": 8.3,
+            "max": 12,
+            "mean": 2.879
+          },
+          "engine.webgl2.prepare": {
+            "n": 205,
+            "p50": 5.3,
+            "p95": 12.4,
+            "p99": 15.7,
+            "max": 16.5,
+            "mean": 5.875
+          },
+          "engine.webgl2.prepare.geometry": {
+            "n": 205,
+            "p50": 4.2,
+            "p95": 10.7,
+            "p99": 13.6,
+            "max": 15,
+            "mean": 4.796
+          },
+          "engine.webgl2.prepare.pack": {
+            "n": 205,
+            "p50": 0.8,
+            "p95": 1.4,
+            "p99": 2.1,
+            "max": 7.5,
+            "mean": 0.825
+          },
+          "engine.webgl2.submit": {
+            "n": 205,
+            "p50": 3,
+            "p95": 9.9,
+            "p99": 11.8,
+            "max": 19.6,
+            "mean": 4.129
+          },
+          "engine.webgl2.draw": {
+            "n": 205,
+            "p50": 1.7,
+            "p95": 9.2,
+            "p99": 11.3,
+            "max": 18.8,
+            "mean": 2.9
+          }
+        },
+        "longDense": []
+      },
+      {
+        "ordinal": 2,
+        "variant": "A",
+        "actualSubmittedDense": 281,
+        "backpressureSkippedDense": 49,
+        "batterySensorC": [
+          32.6,
+          32.6
+        ],
+        "thermalStatus": [
+          0,
+          0
+        ],
+        "rafDense": {
+          "n": 330,
+          "p50": 16.7,
+          "p95": 49.7,
+          "p99": 66.3,
+          "max": 66.3,
+          "mean": 25.469
+        },
+        "over50Dense": 5,
+        "commonSubmitted": {
+          "raf": {
+            "n": 205,
+            "p50": 33.1,
+            "p95": 49.7,
+            "p99": 66.3,
+            "max": 66.3,
+            "mean": 26.686
+          },
+          "engine.frame.cpu": {
+            "n": 205,
+            "p50": 24.5,
+            "p95": 40.1,
+            "p99": 53.4,
+            "max": 64.7,
+            "mean": 25.8
+          },
+          "demo.spine.advance": {
+            "n": 205,
+            "p50": 7.2,
+            "p95": 16.1,
+            "p99": 22.8,
+            "max": 35.7,
+            "mean": 8.071
+          },
+          "engine.frame.capture": {
+            "n": 205,
+            "p50": 3.4,
+            "p95": 5.7,
+            "p99": 8,
+            "max": 11.7,
+            "mean": 3.252
+          },
+          "engine.webgl2.prepare": {
+            "n": 205,
+            "p50": 8.1,
+            "p95": 13.1,
+            "p99": 17.5,
+            "max": 21.8,
+            "mean": 7.996
+          },
+          "engine.webgl2.prepare.geometry": {
+            "n": 205,
+            "p50": 6.6,
+            "p95": 11.2,
+            "p99": 16.3,
+            "max": 19.4,
+            "mean": 6.482
+          },
+          "engine.webgl2.prepare.pack": {
+            "n": 205,
+            "p50": 1.1,
+            "p95": 1.8,
+            "p99": 2.9,
+            "max": 10.7,
+            "mean": 1.223
+          },
+          "engine.webgl2.submit": {
+            "n": 205,
+            "p50": 3,
+            "p95": 11.3,
+            "p99": 17.1,
+            "max": 34.9,
+            "mean": 4.426
+          },
+          "engine.webgl2.draw": {
+            "n": 205,
+            "p50": 1.8,
+            "p95": 9,
+            "p99": 16.2,
+            "max": 33.8,
+            "mean": 3.146
+          }
+        },
+        "longDense": [
+          {
+            "sample": 237,
+            "actTime": 3.967,
+            "age": 2.35,
+            "rafMs": 66.3,
+            "cpu": 64.7,
+            "spine": 35.7,
+            "prepare": 13.4,
+            "geometry": 11.2,
+            "submit": 9.4,
+            "draw": 5.4,
+            "bursts": 0,
+            "crowdChanged": false,
+            "admission": {
+              "pendingFrames": 0,
+              "limit": 2,
+              "accepted": true
+            },
+            "drawCalls": 36
+          },
+          {
+            "sample": 268,
+            "actTime": 4.483,
+            "age": 2.867,
+            "rafMs": 66.3,
+            "cpu": 48.3,
+            "spine": 8.6,
+            "prepare": 21.7,
+            "geometry": 19,
+            "submit": 11.7,
+            "draw": 2.2,
+            "bursts": 0,
+            "crowdChanged": false,
+            "admission": {
+              "pendingFrames": 1,
+              "limit": 2,
+              "accepted": true
+            },
+            "drawCalls": 56
+          },
+          {
+            "sample": 285,
+            "actTime": 4.767,
+            "age": 3.15,
+            "rafMs": 66.3,
+            "cpu": 56.5,
+            "spine": 10.6,
+            "prepare": 5.5,
+            "geometry": 4.4,
+            "submit": 34.9,
+            "draw": 33.8,
+            "bursts": 0,
+            "crowdChanged": false,
+            "admission": {
+              "pendingFrames": 1,
+              "limit": 2,
+              "accepted": true
+            },
+            "drawCalls": 66
+          },
+          {
+            "sample": 369,
+            "actTime": 6.167,
+            "age": 4.55,
+            "rafMs": 66.3,
+            "cpu": 49.2,
+            "spine": 14.2,
+            "prepare": 10.7,
+            "geometry": 8.7,
+            "submit": 9,
+            "draw": 4.1,
+            "bursts": 0,
+            "crowdChanged": true,
+            "admission": {
+              "pendingFrames": 1,
+              "limit": 2,
+              "accepted": true
+            },
+            "drawCalls": 31
+          },
+          {
+            "sample": 398,
+            "actTime": 6.65,
+            "age": 5.033,
+            "rafMs": 66.3,
+            "cpu": 53.4,
+            "spine": 23.5,
+            "prepare": 12.8,
+            "geometry": 10.1,
+            "submit": 10.7,
+            "draw": 6.3,
+            "bursts": 0,
+            "crowdChanged": false,
+            "admission": {
+              "pendingFrames": 1,
+              "limit": 2,
+              "accepted": true
+            },
+            "drawCalls": 33
+          }
+        ]
+      },
+      {
+        "ordinal": 3,
+        "variant": "B",
+        "actualSubmittedDense": 284,
+        "backpressureSkippedDense": 46,
+        "batterySensorC": [
+          32.6,
+          32.8
+        ],
+        "thermalStatus": [
+          0,
+          0
+        ],
+        "rafDense": {
+          "n": 330,
+          "p50": 16.6,
+          "p95": 33.2,
+          "p99": 49.8,
+          "max": 49.8,
+          "mean": 23.853
+        },
+        "over50Dense": 0,
+        "commonSubmitted": {
+          "raf": {
+            "n": 205,
+            "p50": 16.7,
+            "p95": 49.6,
+            "p99": 49.8,
+            "max": 49.8,
+            "mean": 25.537
+          },
+          "engine.frame.cpu": {
+            "n": 205,
+            "p50": 23.3,
+            "p95": 38.5,
+            "p99": 45.7,
+            "max": 48.8,
+            "mean": 24.2
+          },
+          "demo.spine.advance": {
+            "n": 205,
+            "p50": 7.4,
+            "p95": 16,
+            "p99": 25.5,
+            "max": 29.1,
+            "mean": 8.352
+          },
+          "engine.frame.capture": {
+            "n": 205,
+            "p50": 3.4,
+            "p95": 4.9,
+            "p99": 7.7,
+            "max": 11.6,
+            "mean": 3.136
+          },
+          "engine.webgl2.prepare": {
+            "n": 205,
+            "p50": 6.2,
+            "p95": 14.6,
+            "p99": 17.9,
+            "max": 19.9,
+            "mean": 6.986
+          },
+          "engine.webgl2.prepare.geometry": {
+            "n": 205,
+            "p50": 4.9,
+            "p95": 13.7,
+            "p99": 15.9,
+            "max": 17.1,
+            "mean": 5.756
+          },
+          "engine.webgl2.prepare.pack": {
+            "n": 205,
+            "p50": 0.9,
+            "p95": 1.6,
+            "p99": 2.3,
+            "max": 6.9,
+            "mean": 0.935
+          },
+          "engine.webgl2.submit": {
+            "n": 205,
+            "p50": 2.9,
+            "p95": 9.5,
+            "p99": 13.8,
+            "max": 21.2,
+            "mean": 3.89
+          },
+          "engine.webgl2.draw": {
+            "n": 205,
+            "p50": 1.6,
+            "p95": 5.8,
+            "p99": 13.2,
+            "max": 20.6,
+            "mean": 2.642
+          }
+        },
+        "longDense": []
+      }
+    ],
+    "pooledCommon": {
+      "B": {
+        "raf": {
+          "n": 410,
+          "p50": 16.7,
+          "p95": 33.2,
+          "p99": 49.7,
+          "max": 49.8,
+          "mean": 24.939
+        },
+        "engine.frame.cpu": {
+          "n": 410,
+          "p50": 22.9,
+          "p95": 35.1,
+          "p99": 42.6,
+          "max": 48.8,
+          "mean": 23.3
+        },
+        "demo.spine.advance": {
+          "n": 410,
+          "p50": 7.4,
+          "p95": 15.6,
+          "p99": 21.7,
+          "max": 29.1,
+          "mean": 8.021
+        },
+        "engine.frame.capture": {
+          "n": 410,
+          "p50": 3.1,
+          "p95": 4.7,
+          "p99": 8.3,
+          "max": 12,
+          "mean": 3.007
+        },
+        "engine.webgl2.prepare": {
+          "n": 410,
+          "p50": 5.7,
+          "p95": 13.7,
+          "p99": 17.2,
+          "max": 19.9,
+          "mean": 6.43
+        },
+        "engine.webgl2.prepare.geometry": {
+          "n": 410,
+          "p50": 4.6,
+          "p95": 12.6,
+          "p99": 15.4,
+          "max": 17.1,
+          "mean": 5.276
+        },
+        "engine.webgl2.prepare.pack": {
+          "n": 410,
+          "p50": 0.8,
+          "p95": 1.4,
+          "p99": 2.3,
+          "max": 7.5,
+          "mean": 0.88
+        },
+        "engine.webgl2.submit": {
+          "n": 410,
+          "p50": 2.9,
+          "p95": 9.8,
+          "p99": 13.8,
+          "max": 21.2,
+          "mean": 4.01
+        },
+        "engine.webgl2.draw": {
+          "n": 410,
+          "p50": 1.7,
+          "p95": 7.4,
+          "p99": 13.2,
+          "max": 20.6,
+          "mean": 2.771
+        }
+      },
+      "A": {
+        "raf": {
+          "n": 205,
+          "p50": 33.1,
+          "p95": 49.7,
+          "p99": 66.3,
+          "max": 66.3,
+          "mean": 26.686
+        },
+        "engine.frame.cpu": {
+          "n": 205,
+          "p50": 24.5,
+          "p95": 40.1,
+          "p99": 53.4,
+          "max": 64.7,
+          "mean": 25.8
+        },
+        "demo.spine.advance": {
+          "n": 205,
+          "p50": 7.2,
+          "p95": 16.1,
+          "p99": 22.8,
+          "max": 35.7,
+          "mean": 8.071
+        },
+        "engine.frame.capture": {
+          "n": 205,
+          "p50": 3.4,
+          "p95": 5.7,
+          "p99": 8,
+          "max": 11.7,
+          "mean": 3.252
+        },
+        "engine.webgl2.prepare": {
+          "n": 205,
+          "p50": 8.1,
+          "p95": 13.1,
+          "p99": 17.5,
+          "max": 21.8,
+          "mean": 7.996
+        },
+        "engine.webgl2.prepare.geometry": {
+          "n": 205,
+          "p50": 6.6,
+          "p95": 11.2,
+          "p99": 16.3,
+          "max": 19.4,
+          "mean": 6.482
+        },
+        "engine.webgl2.prepare.pack": {
+          "n": 205,
+          "p50": 1.1,
+          "p95": 1.8,
+          "p99": 2.9,
+          "max": 10.7,
+          "mean": 1.223
+        },
+        "engine.webgl2.submit": {
+          "n": 205,
+          "p50": 3,
+          "p95": 11.3,
+          "p99": 17.1,
+          "max": 34.9,
+          "mean": 4.426
+        },
+        "engine.webgl2.draw": {
+          "n": 205,
+          "p50": 1.8,
+          "p95": 9,
+          "p99": 16.2,
+          "max": 33.8,
+          "mean": 3.146
+        }
+      }
+    },
+    "pairedDeltas": {
+      "raf": {
+        "n": 205,
+        "p50": -0.05,
+        "p95": 16.65,
+        "p99": 24.85,
+        "max": 33.2,
+        "mean": -1.747,
+        "improved": 105,
+        "worse": 93,
+        "unit": "B minus A, matched common submitted sample (wall ms)"
+      },
+      "engine.frame.cpu": {
+        "n": 205,
+        "p50": -1.75,
+        "p95": 11.85,
+        "p99": 17.05,
+        "max": 18.65,
+        "mean": -2.5,
+        "improved": 118,
+        "worse": 87,
+        "unit": "B minus A, matched common submitted sample (wall ms)"
+      },
+      "demo.spine.advance": {
+        "n": 205,
+        "p50": 0.35,
+        "p95": 7.4,
+        "p99": 9.8,
+        "max": 10.4,
+        "mean": -0.05,
+        "improved": 93,
+        "worse": 111,
+        "unit": "B minus A, matched common submitted sample (wall ms)"
+      },
+      "engine.frame.capture": {
+        "n": 205,
+        "p50": -0.05,
+        "p95": 2.05,
+        "p99": 3.45,
+        "max": 4.2,
+        "mean": -0.245,
+        "improved": 107,
+        "worse": 94,
+        "unit": "B minus A, matched common submitted sample (wall ms)"
+      },
+      "engine.webgl2.prepare": {
+        "n": 205,
+        "p50": -1.6,
+        "p95": 4.2,
+        "p99": 6.35,
+        "max": 7.85,
+        "mean": -1.565,
+        "improved": 140,
+        "worse": 65,
+        "unit": "B minus A, matched common submitted sample (wall ms)"
+      },
+      "engine.webgl2.prepare.geometry": {
+        "n": 205,
+        "p50": -1.2,
+        "p95": 4.25,
+        "p99": 6.15,
+        "max": 7.3,
+        "mean": -1.206,
+        "improved": 135,
+        "worse": 69,
+        "unit": "B minus A, matched common submitted sample (wall ms)"
+      },
+      "engine.webgl2.prepare.pack": {
+        "n": 205,
+        "p50": -0.3,
+        "p95": 0.35,
+        "p99": 1.15,
+        "max": 6.2,
+        "mean": -0.343,
+        "improved": 163,
+        "worse": 39,
+        "unit": "B minus A, matched common submitted sample (wall ms)"
+      },
+      "engine.webgl2.submit": {
+        "n": 205,
+        "p50": 0.35,
+        "p95": 4.7,
+        "p99": 7.1,
+        "max": 8.35,
+        "mean": -0.416,
+        "improved": 87,
+        "worse": 118,
+        "unit": "B minus A, matched common submitted sample (wall ms)"
+      },
+      "engine.webgl2.draw": {
+        "n": 205,
+        "p50": 0.15,
+        "p95": 4.05,
+        "p99": 7.2,
+        "max": 8.6,
+        "mean": -0.375,
+        "improved": 90,
+        "worse": 113,
+        "unit": "B minus A, matched common submitted sample (wall ms)"
+      }
+    }
+  },
+  "earlierLowSamePin": {
+    "allRowsLogicalProgressAndRngMatch": 548,
+    "denseRowsMatch": 330,
+    "sparseExactCheckpoints": 3,
+    "pcAndFoldDifferentBacking": true,
+    "foldRafDense": {
+      "n": 330,
+      "p50": 16.6,
+      "p95": 33.3,
+      "p99": 49.8,
+      "max": 66.3
+    },
+    "foldSubmitted": 281,
+    "foldSkipped": 49,
+    "tailCases": [
+      {
+        "sample": 336,
+        "actTime": 5.617,
+        "age": 4,
+        "rafMs": 66.3,
+        "cpu": 60.9,
+        "spine": 24.7,
+        "capture": 4.1,
+        "prepare": 12,
+        "geometry": 10.7,
+        "submit": 17.6,
+        "draw": 16.7,
+        "bursts": 0,
+        "crowdChanged": false,
+        "particlesAlive": [
+          5,
+          0,
+          0,
+          0
+        ],
+        "admission": {
+          "pendingFrames": 1,
+          "limit": 2,
+          "accepted": true
+        },
+        "observedEntries": [
+          {
+            "type": "longtask",
+            "duration": 61
+          },
+          {
+            "type": "long-animation-frame",
+            "duration": 61.2,
+            "scriptDurations": [
+              60.9
+            ]
+          }
+        ]
+      },
+      {
+        "sample": 376,
+        "actTime": 6.283,
+        "age": 4.667,
+        "rafMs": 66.3,
+        "cpu": 43.5,
+        "spine": 19.4,
+        "capture": 3.6,
+        "prepare": 10.7,
+        "geometry": 7.2,
+        "submit": 7,
+        "draw": 3,
+        "bursts": 0,
+        "crowdChanged": false,
+        "particlesAlive": [
+          17,
+          9,
+          0,
+          0
+        ],
+        "admission": {
+          "pendingFrames": 1,
+          "limit": 2,
+          "accepted": true
+        },
+        "observedEntries": [
+          {
+            "type": "long-animation-frame",
+            "duration": 55.5,
+            "scriptDurations": [
+              11.2,
+              43.5
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "lateCastControl": {
+    "castAt": 3,
+    "actualCastTime": 3.433,
+    "rows": 656,
+    "fullPosedDenseRows": 319,
+    "tailAtPriorActTimeReproduced": false,
+    "around8_7667": [
+      {
+        "actTime": 8.767,
+        "age": 5.35,
+        "rafMs": 16.6,
+        "engineCpu": 28.7,
+        "spine": 17.3
+      }
+    ],
+    "differentLongCase": {
+      "sample": 249,
+      "actTime": 4.167,
+      "age": 0.75,
+      "rafMs": 66.2,
+      "cpu": 54.6,
+      "spine": 7.8,
+      "capture": 3.5,
+      "prepare": 7.7,
+      "geometry": 5.8,
+      "submit": 34.2,
+      "draw": 33,
+      "bursts": 0,
+      "crowdChanged": false,
+      "particlesAlive": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "admission": {
+        "pendingFrames": 1,
+        "limit": 2,
+        "accepted": true
+      },
+      "observedEntries": [
+        {
+          "type": "longtask",
+          "duration": 55
+        },
+        {
+          "type": "long-animation-frame",
+          "duration": 55,
+          "scriptDurations": [
+            54.6
+          ]
+        }
+      ]
+    }
+  },
+  "residualStrictCandidateLong": {
+    "sample": 167,
+    "rafMs": 66.3,
+    "actTime": 2.8,
+    "age": 1.183,
+    "engineCpu": 54.7,
+    "spine": 32.6,
+    "spineTimings": {
+      "spine.animation.update": 0.1,
+      "spine.animation.apply": 1.6,
+      "spine.physics.solve": 0.7,
+      "spine.semantic.publish": 3.6,
+      "spine.display.extract": 8.4,
+      "spine.display.copy": 12.4,
+      "spine.mesh.prepare": 0.5,
+      "spine.display.prepare": 22.8,
+      "spine.mesh.commit": 0.6,
+      "spine.display.commit": 1.2,
+      "spine.display.retire": 0.1,
+      "spine.events.deliver": 0.1,
+      "spine.display.flush": 0
+    },
+    "semanticDeliveries": 104,
+    "events": 7,
+    "published": 104,
+    "revisionMismatch": 0,
+    "geometry": 7,
+    "submit": 2.3
+  },
+  "limits": [
+    "Geometric normalization improvement is scoped, not proof of universal FPS uplift.",
+    "CPU timings are nested wall-clock durations and can include synchronous driver wait. No GPU timer query, presentation timestamp or full-browser tracing was used.",
+    "Strict all-frame semantic/revision proof belongs to the deep protocol; the lower-overhead client retains only sparse exact game-state hashes and per-frame logic/RNG/count matching.",
+    "The late-cast run did not recreate the prior natural-wall-clock random event; it has different emergence and full-pose counts.",
+    "No production rules, actor count, art, FX or save format were changed."
+  ],
+  "percentileNote": "This summary uses floor(n*p) with n-1 cap. The device-runner nearest-style p95 of the same common admitted strict geometry samples is 12.0 ms (A) to 7.8 ms (B); this summary floor convention gives 12.0 to 8.0. Use one convention within a comparison.",
+  "publicRebuildValidation": {
+    "sameCandidateBundleSha256": true,
+    "sameClientSha256": true,
+    "modules": 338,
+    "bytes": 1260153
+  }
+}

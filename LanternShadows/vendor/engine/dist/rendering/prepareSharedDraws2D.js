@@ -407,6 +407,7 @@ export function prepareSharedDraws2D(frame, width, height, options, retention) {
     // and ten corner comparisons) are made at once; when they do not fit, or anything else differs, the general path runs
     // instead and decides the first failure itself. The result is the same polygon, made of the same corner objects.
     const QUAD_COST = { preparedVertices: 0, predicates: 7, tupleComparisons: 10 };
+    const TRIANGLE_COST = { preparedVertices: 0, predicates: 3, tupleComparisons: 6 };
     const axisQuad = (points) => {
         if (m.b !== 0 || m.c !== 0 || m.a === 0 || m.d === 0)
             return undefined;
@@ -491,7 +492,18 @@ export function prepareSharedDraws2D(frame, width, height, options, retention) {
                     sharedFailure('precision');
                 return;
             }
-            polygon = normalizeOwned(preparation, points);
+            // A placed nondegenerate triangle already has canonical, distinct corners. The three cyclic exact signs
+            // agree with its known winding. Replay the original normalization charges (two adjacent, one closing and
+            // three pair comparisons, followed by three predicates) only as an atomic admission; a miss leaves the
+            // original path to decide the first refusal. Clipping and both texture-domain checks still follow.
+            if (points.length === 3 &&
+                TRIANGLE_COST.predicates <= options.maxClipEdgeTests - preparation.edgeTests &&
+                budget.tryReplayStageCost(TRIANGLE_COST)) {
+                preparation.edgeTests += TRIANGLE_COST.predicates;
+                polygon = sign < 0 ? points.reverse() : points;
+            }
+            else
+                polygon = normalizeOwned(preparation, points);
         }
         for (const clip of clips)
             polygon = intersect(polygon, clip);

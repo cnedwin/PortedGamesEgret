@@ -19,6 +19,8 @@ export const DEFAULT_VIEW_SKIN = Object.freeze({
     size: 24,
     dim: 0.55
 });
+/** The shorter side, in CSS pixels, from which a screen is a tablet's for the `tablet` parts of a view. */
+export const TABLET_SHORT_SIDE = 600;
 const MAX_PARTS = 1024, MAX_DEPTH = 32, NAME = /^[A-Za-z_][A-Za-z0-9_.-]{0,63}$/;
 const ANCHORS = new Set([
     'top-left',
@@ -227,7 +229,7 @@ export function checkView(description) {
     if (description === null || typeof description !== 'object')
         throw invalid('view', 'a description is an object');
     for (const key of Object.keys(description))
-        if (!['label', 'root', 'portrait', 'area', 'modal', 'skin'].includes(key))
+        if (!['label', 'root', 'portrait', 'tablet', 'tabletPortrait', 'area', 'modal', 'skin'].includes(key))
             throw invalid('view', 'a view has no ' + key);
     if (description.label !== undefined && typeof description.label !== 'string')
         throw invalid('view', 'label');
@@ -251,15 +253,18 @@ export function checkView(description) {
         }
     }
     const names = checkTree(description.root, 'root');
-    if (description.portrait !== undefined) {
-        const other = checkTree(description.portrait, 'portrait');
+    for (const variant of ['portrait', 'tablet', 'tabletPortrait']) {
+        const parts = description[variant];
+        if (parts === undefined)
+            continue;
+        const other = checkTree(parts, variant);
         const missing = [...names.keys()].filter(name => !other.has(name)), extra = [...other.keys()].filter(name => !names.has(name)), changed = [...names].filter(([name, type]) => other.has(name) && other.get(name) !== type).map(([name]) => name);
         if (missing.length + extra.length + changed.length > 0)
             throw new EgretError('UI_VIEW_VARIANT_MISMATCH', {
                 cause: [
-                    missing.length ? 'not in portrait: ' + missing.join(', ') : '',
-                    extra.length ? 'only in portrait: ' + extra.join(', ') : '',
-                    changed.length ? 'of another kind in portrait: ' + changed.join(', ') : ''
+                    missing.length ? 'not in ' + variant + ': ' + missing.join(', ') : '',
+                    extra.length ? 'only in ' + variant + ': ' + extra.join(', ') : '',
+                    changed.length ? 'of another kind in ' + variant + ': ' + changed.join(', ') : ''
                 ]
                     .filter(Boolean)
                     .join('; ') + '.'
@@ -300,10 +305,20 @@ export function planView(description, frame) {
         typeof frame !== 'object' ||
         !rect(frame.screen) ||
         !rect(frame.safe) ||
-        (frame.orientation !== 'landscape' && frame.orientation !== 'portrait'))
+        (frame.orientation !== 'landscape' && frame.orientation !== 'portrait') ||
+        (frame.form !== undefined && frame.form !== 'phone' && frame.form !== 'tablet'))
         throw new EgretError('UI_VIEW_FRAME_INVALID');
     const skin = Object.freeze({ ...DEFAULT_VIEW_SKIN, ...description.skin });
-    const variant = frame.orientation === 'portrait' && description.portrait !== undefined ? 'portrait' : 'landscape';
+    const upright = frame.orientation === 'portrait', tablet = frame.form === 'tablet';
+    // A tablet's own parts first, then the parts of the shape, then the root.
+    const variant = tablet && upright && description.tabletPortrait !== undefined
+        ? 'tabletPortrait'
+        : tablet && !upright && description.tablet !== undefined
+            ? 'tablet'
+            : upright && description.portrait !== undefined
+                ? 'portrait'
+                : 'landscape';
+    const chosen = variant === 'landscape' ? description.root : description[variant];
     const area = Object.freeze({ ...(description.area === 'screen' ? frame.screen : frame.safe) });
     const parts = [];
     const names = new Map();
@@ -350,7 +365,7 @@ export function planView(description, frame) {
             cursor += length + gap + spread;
         });
     };
-    put(variant === 'portrait' ? description.portrait : description.root, -1, placeFree(variant === 'portrait' ? description.portrait : description.root, area, skin));
+    put(chosen, -1, placeFree(chosen, area, skin));
     return Object.freeze({ variant, area, parts: Object.freeze(parts), names, skin });
 }
 /** A part in a panel that lays out freely: its size against the panel, then its place from its anchor, inward. */
