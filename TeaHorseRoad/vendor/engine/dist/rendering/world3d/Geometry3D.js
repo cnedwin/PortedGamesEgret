@@ -201,10 +201,16 @@ export class Geometry3D extends Resource3D {
     get boundingSphere() {
         return (this.#boundingSphere ??= sphereFromBox(new Float32Array(4), this.boundingBox));
     }
-    /** Call after editing position data in place. */
+    #boundsVersion = 0;
+    /** Counts `invalidateBounds` calls: what a mesh's world bounds are kept by, beside the structure version. */
+    get boundsVersion() {
+        return this.#boundsVersion;
+    }
+    /** Call after editing position data in place. Meshes of this geometry find their world bounds again. */
     invalidateBounds() {
         this.#boundingBox = undefined;
         this.#boundingSphere = undefined;
+        this.#boundsVersion++;
     }
     // ---- derived attributes ------------------------------------------------
     /** Area-weighted smooth normals for triangle geometry. */

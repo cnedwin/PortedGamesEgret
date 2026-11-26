@@ -98,10 +98,8 @@ function dressCargo(scene, physics, truck) {
     }
     // A keeper over the load holds the lashing across the same row as the truck accelerates.
     for (const i of [0, 1, 6, 11, 12]) rope.pinPoint(i, body);
-    // The mesh's bounds are cached where it was made and not refreshed as it travels (see ENGINE-NOTES), so it is
-    // never culled; it is a handful of triangles.
+    // The mesh's bounds follow the rope as the truck carries it, so it is culled like any other (ENGINE-NOTES.md, item 1).
     const mesh = rope.createMesh(lashing, 0.022, 5);
-    mesh.frustumCulled = false;
     scene.addChild(mesh);
     dressing.push(rope);
   }
@@ -136,7 +134,6 @@ function dressCargo(scene, physics, truck) {
   };
   const mesh = tarp.createMesh(tarpMaterial);
   mesh.castShadow = true;
-  mesh.frustumCulled = false;
   scene.addChild(mesh);
   dressing.push(tarp);
   return {

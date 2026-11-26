@@ -90,7 +90,9 @@ class Strands3D {
     }
     /**
      * Hold a point where it is now. With a body, the point keeps its place on
-     * that body and follows it as the body moves and turns.
+     * that body and follows it as the body moves and turns. The pin is one-way:
+     * the cloth or rope follows the body and never pulls on it, so a tarp on a
+     * truck does not slow the truck.
      */
     pinPoint(index, body) {
         this.check(index);

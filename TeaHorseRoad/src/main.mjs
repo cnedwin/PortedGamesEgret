@@ -162,7 +162,10 @@ let hud = null,
 async function buildOverlay() {
   STAGE.height = ui.height = stageHeight();
   ui.width = uiWidth();
-  ui.overlay = await createWorld3DOverlay(canvas, { width: ui.width, height: STAGE.height, update: (seconds) => uiFrame(Math.min(seconds, 1 / 20)), onError: (cause) => console.error('ui', cause) });
+  // The stage's width follows the screen's shape when it is made. Between rebuilds a small change of shape keeps the
+  // interface's proportions (`fit: 'contain'`) instead of squashing it; a change of more than a tenth makes the
+  // overlay again at the new width, so the HUD still reaches both edges (ENGINE-NOTES.md, item 17).
+  ui.overlay = await createWorld3DOverlay(canvas, { width: ui.width, height: STAGE.height, fit: 'contain', update: (seconds) => uiFrame(Math.min(seconds, 1 / 20)), onError: (cause) => console.error('ui', cause) });
   ui.game = ui.overlay.game;
   ui.pages = [await ui.game.textureFromCanvas(painted.canvas)];
   ui.projection = ui.game.scope.use(

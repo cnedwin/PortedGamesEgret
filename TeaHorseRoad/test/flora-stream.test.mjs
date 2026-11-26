@@ -13,7 +13,8 @@ test('transferred tile dressing preserves the tea hillside, obstacle layout and 
   const x = 0, z = -1, columns = 97;
   const { heights } = geography.fillTile((x + 0.5) * TILE, (z + 0.5) * TILE, TILE, columns, 128);
   const field = createHeightField3D({ width: TILE, depth: TILE, columns, rows: columns, heights });
-  const tile = { x, z, field, terrain: new Object3D() };
+  // A tile as the stream gives it, with the centre of its height field.
+  const tile = { x, z, center: [(x + 0.5) * TILE, (z + 0.5) * TILE], field, terrain: new Object3D() };
   const bodies = [], removed = [];
   const flora = createFlora(null, {
     createBody(body) { bodies.push(body); return body; },

@@ -23,8 +23,20 @@ function compareOpaque(a, b) {
 function compareTransparent(a, b) {
     return a.mesh.renderOrder - b.mesh.renderOrder || b.depth - a.depth || a.mesh.id - b.mesh.id;
 }
+/** Internal stand-in for ordinary draws. Its instance matrices are the original world transforms. */
+export class AutoBatchMesh3D extends InstancedMesh3D {
+}
+function opaqueMaterial(material) {
+    return !(material.isTransparent || material.transmission > 0);
+}
 function foldable(material) {
     return !material.billboard && !material.screenSpace && !material.wireframe;
+}
+/** Whether a representative draw can acquire a matrix-only batch when enough meshes enter view. */
+export function canAutoInstance3D(mesh, material, shadow) {
+    return (mesh.canInstance &&
+        foldable(material) &&
+        (shadow ? !Array.isArray(mesh.material) && material.id < 4194304 : opaqueMaterial(material)));
 }
 /** What a camera sees, sorted for drawing: opaque and transparent items, shadow casters and lights. */
 export class RenderList3D {
@@ -224,7 +236,7 @@ export class RenderList3D {
             list.length = 0;
         for (let i = 0; i < casters.length; i++) {
             const mesh = casters[i], material = mesh.material;
-            if (Array.isArray(material) || !mesh.canInstance || !foldable(material) || material.id >= 4194304) {
+            if (Array.isArray(material) || !canAutoInstance3D(mesh, material, true)) {
                 out.push(mesh);
                 continue;
             }
@@ -265,7 +277,7 @@ export class RenderList3D {
             }
         if (!found || found.mesh.capacity < count) {
             const capacity = Math.max(16, 2 ** Math.ceil(Math.log2(count)));
-            const mesh = new InstancedMesh3D(geometry, material, capacity);
+            const mesh = new AutoBatchMesh3D(geometry, material, capacity);
             mesh.name = 'auto-instances';
             mesh.pickable = false;
             mesh.frustumCulled = false;
@@ -407,6 +419,17 @@ export class RenderList3D {
             mesh.skeleton.update(this.#frame);
         if (mesh instanceof ScreenLayer3D && mesh.autoUpdate)
             mesh.refreshSource();
+        // Too far to be seen: neither drawn nor casting a shadow.
+        if (mesh.cullDistance < Infinity) {
+            const bounds = worldRenderSphere3D(mesh);
+            if (bounds && bounds[3] >= 0) {
+                const eye = camera.matrixWorld, away = Math.hypot(bounds[0] - eye[12], bounds[1] - eye[13], bounds[2] - eye[14]) - bounds[3];
+                if (away > mesh.cullDistance) {
+                    this.stats.culled++;
+                    return;
+                }
+            }
+        }
         if (mesh.castShadow)
             this.#casters.push(mesh);
         if ((mesh.layers & layerMask) === 0)
@@ -442,7 +465,7 @@ export class RenderList3D {
         if (!material.visible || material.isDisposed || count <= 0)
             return;
         // A transmitting surface shows what was drawn before it, so it waits for the opaque pass like blended ones.
-        const opaque = !(material.isTransparent || material.transmission > 0), order = mesh.renderOrder;
+        const opaque = opaqueMaterial(material), order = mesh.renderOrder;
         // Layers are a 32-bit mask; the two flags ride above it.
         const group = (mesh.layers >>> 0) + (mesh.receiveShadow ? 4294967296 : 0) + (opaque && mesh.canInstance ? 8589934592 : 0);
         let item = this.#pool[this.#used];

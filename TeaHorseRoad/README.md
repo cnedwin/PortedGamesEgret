@@ -58,7 +58,7 @@ Every item below is done through the engine's API; the table says where it shows
 | `createScreenMarkers3D` | 下一个驿站（带距离）和两辆队友车的屏幕标记，出了画面贴边并用箭头指向 · markers for the next station (with its distance) and the two other trucks, held at the edge with an arrow when off the picture | `src/ui/markers.mjs` |
 | `createWorld3DOverlay` | 所有 2D 界面（标题、HUD、触屏控件、卡片）画在 3D 画面上的引擎 2D 舞台里；按在空白处的拖动交给 3D 画布（扎营时转相机、拖手柄） · the whole 2D interface (title, HUD, touch controls, cards) is drawn on the engine's 2D stage over the 3D picture; drags on empty parts go to the 3D canvas (turning the camp camera, dragging the handles) | `src/main.mjs`, `src/ui/*.mjs` |
 | `createTransformControls3D`（其手柄即 `TransformGizmo3D` · whose handles are a `TransformGizmo3D`）+ `createOrbitControls3D` | 扎营：移动、旋转营地物件，带吸附；相机绕营地转 · the camp: moving and turning pieces with snapping; the camera circling the yard | `src/play/camp.mjs` |
-| `serializeScene3D` + `deserializeScene3D` | 营地写成场景文档存进存档，下次路过时读回来摆好 · the camp is written as a scene document into the save and read back on later journeys | `src/play/camp.mjs`, `src/main.mjs` |
+| `serializeScene3D` + `deserializeScene3D` | 营地写成场景文档存进存档，下次路过时读回来摆好；物件的几何按名字存（`geometryKey` / `resolveGeometry`） · the camp is written as a scene document into the save and read back on later journeys, its pieces' geometries stored by name | `src/play/camp.mjs`, `src/main.mjs` |
 | `createWater3D` | 浅滩、峡谷里的江和高原湖；车轮蹚水时按水深溅起水花、不起车尘；高画质下湖面有倒影 · the ford, the river in the gorge and the plateau lake; wading wheels throw spray by the depth and raise no dust; the lake reflects on High | `src/world/water.mjs`, `src/play/effects.mjs` |
 | `createTrail3D` | 后轮扬起的车尘，颜色随地面（土黄、雪白），在水里和慢速时消失 · dust behind the rear wheels, coloured by the ground (earth, snow), gone in water and at low speed | `src/play/effects.mjs` |
 | `createGpuParticles3D` | 雪山段的飘雪、涉水的水花、撞倒山匪扬起的尘土 · falling snow in the mountains, spray at the ford, dust when a bandit goes down | `src/play/effects.mjs` |
@@ -77,7 +77,7 @@ Every item below is done through the engine's API; the table says where it shows
 | `createWorld3DApp` | 后端与画质选择（低画质无阴影、无泛光）、色调映射、帧循环 · backend and quality (Low without shadows or bloom), tone mapping, the loop | `src/main.mjs` |
 | `createFollowCamera3D` | 跟车相机，碰到地形会拉近；三种距离 · the chase camera, pulled in by the ground; three distances | `src/main.mjs` |
 | `CatmullRomCurve3D` | 路的中线：38 个控制点的向心 Catmull-Rom 曲线，每 2 米取样 · the road's centre line, a centripetal Catmull-Rom curve through 38 points sampled every 2 m | `src/world/route.mjs` |
-| `InstancedMesh3D` + `createGeometryBuilder3D` | 茶树、松树、冷杉、阔叶树、石头按地块成组实例化，远近两种精度；车、驿站、白塔、营地物件由几何拼装 · tea, pines, firs, broadleaf trees and stones instanced per tile, with a near and a far shape; trucks, stations, the stupa and camp pieces assembled from parts | `src/world/flora.mjs`, `src/models/*.mjs` |
+| `InstancedMesh3D` + `createGeometryBuilder3D` | 茶树、松树、冷杉、阔叶树、石头按地块成组实例化，远近两种精度（碎草碎石用 `cullDistance`）；车、驿站、白塔、营地物件由几何拼装 · tea, pines, firs, broadleaf trees and stones instanced per tile, with a near and a far shape (tufts and scree by `cullDistance`); trucks, stations, the stupa and camp pieces assembled from parts | `src/world/flora.mjs`, `src/models/*.mjs` |
 
 ## 素材 · Assets
 
@@ -101,9 +101,9 @@ node tools/make-ending.mjs http://localhost:8000/TeaHorseRoad/   # 重录结尾�
 python3 tools/make-glyphs.py                     # 重画立体字字形（需要 shapely）
 ```
 
-测试检查路（长度、坡度、驿站与埋伏的次序、路面高度）、存档（旅程、营地文档、坏档另存）、合成的声音（有限、不削波、循环无缝）和引擎副本的 import map。
+测试检查路（长度、坡度、驿站与埋伏的次序、路面高度）、存档（旅程、营地文档、坏档另存）、营地文档（几何按名字存、读回同一份几何、旧存档照样能读）、合成的声音（有限、不削波、循环无缝）和引擎副本的 import map。
 
-The tests check the road (its length, grades, the order of stations and ambushes, the road's height), the save (the journey, camp documents, an unreadable save set aside), the synthesized sound (finite, unclipped, seamless loops) and the import map of the engine copy.
+The tests check the road (its length, grades, the order of stations and ambushes, the road's height), the save (the journey, camp documents, an unreadable save set aside), the camp document (geometries stored by name, the same geometries read back, older saves still read), the synthesized sound (finite, unclipped, seamless loops) and the import map of the engine copy.
 
 | 目录 · Folder | 内容 · Contents |
 |---|---|
@@ -115,24 +115,28 @@ The tests check the road (its length, grades, the order of stations and ambushes
 | `media/` | 结尾短片 · the closing film |
 | `vendor/` | 引擎副本，见 `vendor/SOURCE.md` · the engine copy |
 
-引擎副本取自 Egret_rebuild 提交 `687037a`，由引擎仓库的 `tools/vendor-game.mjs` 复制。The engine copy is from Egret_rebuild commit `687037a`, copied by the engine's `tools/vendor-game.mjs`.
+引擎副本取自 Egret_rebuild 提交 `8637ace`，由引擎仓库的 `tools/vendor-game.mjs` 复制；带着两处本地补丁，见 `vendor/SOURCE.md` 和 ENGINE-NOTES 第 25、26 条。The engine copy is from Egret_rebuild commit `8637ace`, copied by the engine's `tools/vendor-game.mjs`, with two local patches (see `vendor/SOURCE.md` and ENGINE-NOTES items 25 and 26).
 
 ## 已验证 · Verified
 
 - `node --test test/*.test.mjs`：路（长度、坡度、驿站与埋伏的次序、路面高度）、存档、合成声音、引擎副本的 import map。 · The Node tests: the road, the save, the synthesized sound and the engine copy's import map.
 - 无头 Chromium（SwiftShader 软件渲染）：自动驾驶从出发跑到结局，没有控制台错误；手机横屏触屏模拟（844×390）下踏板、方向滑条、喇叭可用，能开到第一个驿站；营地存档后刷新能读回。这些在提交 `0899e4a` 上跑过。 · In headless Chromium with software rendering: an autopilot journey from the start to the ending with a clean console; touch on an emulated phone held sideways (844 × 390) driving to the first station; a saved camp read back after a reload — run at commit `0899e4a`.
 - GitHub Pages 上的线上页面在 `0899e4a` 部署后打开、开始并能驾驶。 · The live page on GitHub Pages opened, started and drove after `0899e4a` was deployed.
+- 升级到引擎 `8637ace` 后，在本地无头 Chromium（SwiftShader）里：自动驾驶从起点跑到结尾短片（经过两个驿站和沿路的埋伏），没有控制台错误；开出 370 米后车上篷布和捆绳的包围球仍在车上，跟车视角和升级前的截图一致；标题画面的「设置」、Esc 暂停都能直接打开卡片（宽屏和 844×390 触屏）；扎营时拖手柄移动物件、相机不动，拖空白处转相机；营地保存后刷新能读回；窗口小幅变窄时界面保持比例，变窄超过一成时按新宽度重建。 · After the move to engine `8637ace`, in local headless Chromium with software rendering: an autopilot run from the start to the closing film, through two stations and the ambushes, with a clean console; tarps and lashings still bounded on their trucks after 370 m, the chase view matching the pictures from before; Settings and Esc opening their cards at once (wide and 844 × 390 touch); camp handles moving a piece with the camera still, and empty ground turning it; a saved camp read back after a reload; the interface keeping its shape when the window narrows a little and rebuilt at the new width past a tenth.
 
 ## 已知问题 · Known issues
 
 - 真显卡和真手机上没有运行过，帧率没有测过。 · Not run on a real GPU or phone; frame rates were not measured.
 - 软件渲染下天空盒是黑的（见 ENGINE-NOTES），截图里天顶偏暗。 · Under software rendering the skybox is black (see ENGINE-NOTES), so pictures show a dark zenith.
+- 比 4:3 还窄的屏幕上，界面上下会露出几十像素的场景（舞台最窄 4:3，叠加层按比例放进画面）。 · On a screen narrower than 4:3 a few dozen pixels of the scene show above and below the interface (the stage is 4:3 at its narrowest and fitted whole).
+- 引擎副本带着两处本地补丁（2D 着色器开局并行链接、地形碰撞体从 Worker 交回），以后升级引擎要再带上，直到引擎收进这两处（ENGINE-NOTES 第 25、26 条）。 · The engine copy carries two local patches (parallel 2D program links at the start, terrain colliders handed back from a worker) that each upgrade must carry until the engine takes them in (ENGINE-NOTES items 25 and 26).
 - 一趟的时长只按自动驾驶估计：全程最快约 4.7 分钟驾驶，真人估计十分钟上下，没有实测。 · A journey's length is estimated from the autopilot alone (about 4.7 minutes of driving at best); no player was timed.
 - 品质验收未达标 · Quality items failing（[QUALITY.md](QUALITY.md)，2026-11-20，无头 Chromium + SwiftShader · headless, software rendering）：F1 桌面帧时间 p95 ≤ 16.7 ms（p95 483.2 ms over 19 frames）；I1 中英文全可切换，英文下无中文（no way to choose English found）；E2 资源失败有错误界面和重试（1 files refused; no uncaught error; no error screen with a retry）。
 
 ## 已解决 · Solved
 
-- 车上的篷布和捆绳开出几十米后消失：引擎布料与绳子的网格包围球不随顶点更新，被视锥剔除；车上的这几块网格关掉剔除（ENGINE-NOTES「布和绳的网格移动后被视锥剔除掉」）。 · Tarps and lashings vanished a few dozen metres on: the cloth and rope meshes keep stale bounds and are culled; those meshes are no longer culled.
+- 车上的篷布和捆绳开出几十米后消失：引擎布料与绳子的网格包围球不随顶点更新，被视锥剔除。先是关掉这几块网格的剔除；引擎 #425 修好后，升级到 `8637ace` 时恢复了默认剔除（ENGINE-NOTES 第 1 条）。 · Tarps and lashings vanished a few dozen metres on: the cloth and rope meshes kept stale bounds and were culled. At first those meshes were not culled; since engine #425 fixed the bounds, the move to `8637ace` put the usual culling back (ENGINE-NOTES item 1).
+- 升级到 `8637ace` 时去掉的其他绕过办法：建卡片前等一次投递结束（第 20 条）、拖手柄时关掉轨道相机（第 21 条）、自己留着发动机声的节点改音高（第 15 条）、自己装 `AudioBuffer`（第 16 条）；营地几何按名字存（第 22 条）。 · Other workarounds dropped in the move to `8637ace`: waiting out the delivery before a card (item 20), switching the orbit camera off while a handle drags (item 21), keeping the engine sound's node to re-pitch it (item 15), filling an `AudioBuffer` by hand (item 16); and the camp's geometries are now saved by name (item 22).
 - 吊桥主索在桥下打折、捆绳松垮：`slack` 是多出来的比例，不是长度倍数（ENGINE-NOTES「绳子的 `slack`」）。 · The bridge cables folded under the deck and the lashings hung loose: `slack` is the extra share, not a length factor.
 - 篷布和经幡缩成一团：`Cloth3D` 的 `right` / `down` 是整条边。 · The tarps and flags collapsed: `right` and `down` of `Cloth3D` are whole edges.
 - 低画质一帧 630 万个三角形：草木改成按地块、按距离切换远近两种精度。 · 6.3 million triangles a frame on Low: plants switch between a near and a far shape by tile and distance.
@@ -149,8 +153,8 @@ The tests check the road (its length, grades, the order of stations and ambushes
 
 ## 引擎副本 · Engine copy
 
-引擎副本取自 [Egret_rebuild](https://github.com/cnedwin/Egret_rebuild) 提交 `687037ac462c48dbfe00523312125b94072ffea4`，由引擎仓库的 `tools/vendor-game.mjs` 复制，见 [vendor/SOURCE.md](vendor/SOURCE.md)。
+引擎副本取自 [Egret_rebuild](https://github.com/cnedwin/Egret_rebuild) 提交 `8637ace9a40667714abd6d74157e8dcf4587232d`，由引擎仓库的 `tools/vendor-game.mjs` 复制，见 [vendor/SOURCE.md](vendor/SOURCE.md)。复制后带上了 `687037a` 副本里的两处本地补丁（ENGINE-NOTES 第 25、26 条）。
 
-The engine copy is from [Egret_rebuild](https://github.com/cnedwin/Egret_rebuild) commit `687037ac462c48dbfe00523312125b94072ffea4`, copied by the engine's `tools/vendor-game.mjs`; see [vendor/SOURCE.md](vendor/SOURCE.md).
+The engine copy is from [Egret_rebuild](https://github.com/cnedwin/Egret_rebuild) commit `8637ace9a40667714abd6d74157e8dcf4587232d`, copied by the engine's `tools/vendor-game.mjs`; see [vendor/SOURCE.md](vendor/SOURCE.md). The two local patches of the `687037a` copy were carried over (ENGINE-NOTES items 25 and 26).
 
 入口 · Entries: `@egret/engine`, `@egret/engine/world3d`, `@egret/engine/webgl2/world3d`, `@egret/engine/webgpu/world3d`, `@egret/engine/bitmapfont`, `@egret/engine/ui`, `@egret/engine/ui/semantics`, `@egret/engine/web/semantics`, `@egret/engine/kit`, `@egret/engine/web/kit`, `@egret/engine/web/game`, `@egret/engine/web/video`, `@egret/engine/web/gamepad`, `@egret/engine/input/gamepad`, `@egret/engine/text`, `@egret/engine/web/text`.
