@@ -1,5 +1,14 @@
 # 品质验收 · Quality — 哪吒闹海 · Nezha Stirs the Sea
 
+## 2026-11-27 原生集市与屏幕通知 · Native market and screen notifications
+
+- **版本 · Version:** Egret main `94bd70fb26b1f81794c9c6fbbb258c655fcd19df`。官方副本刷新、正式入口重建，265 项运行文件（含游戏源码、引擎 JS 和入口包）与完成验收的候选逐字节相同；仅 pin 和构建元数据改变。无规则、存档、音频及素材改动。 · Official vendor and entry rebuild; all 265 checked runtime paths match the tested candidate byte for byte.
+- **适配 · Integration:** 删除画布 ResizeObserver、语义别名代理和法宝/强化卡片自绘文字；使用原生 arrange、标签绑定、叶子按钮面板。固定数量的货架与槽位继续使用普通绑定；拖放、出售确认、分页和下一波操作不变。 · Native screen notifications, labels and leaf-button panels replace the local bridges without changing market operations.
+- **自动验收 · Automated:** 正式 Node 32/32；功能字节一致的 Chromium SwiftShader 74/74，包含实际视口缩放、两位数波次与 44 CSS px Pause、正常键盘、模拟手柄、触屏和合成。标题/结算截图差异 0.31% / 0.52%，旧基线未改。 · The approved baselines remain unchanged.
+- **PC 硬件 · PC hardware:** Windows Edge 158、WebGPU，1440×850；同 seed 8 的隔离市场场景，改前/改后均 11/11，购买、锁定、点选与拖放神器合成、出售确认、安全进入下一波。短时 wave 1 的 rAF p95 4.3→4.3 ms、最大 16.7→20.8 ms（193→196 样本）；wave 2 p95 4.3→4.3、最大 8.3→8.3 ms（121→127），无 >50 ms、页面异常或失败 HTTP 请求；同构集市和强化卡片视觉一致。 · Hardware keyboard/mouse with a controlled market fixture; times are browser cadence, not GPU execution.
+- **Fold7 硬件 · Fold7 hardware:** Chrome 157、WebGPU，实际横竖屏。同市场测试 12/12→12/12；各 121 个短时 rAF 间隔 p95/max 16.7→16.7 ms，零页面错误和失败请求。真实竖屏法宝格、分页、下一波入口前后实拍一致。 · Physical handset, injected actual browser gestures, not human touch or a desktop viewport simulation.
+- **限制 · Limits:** 这是定向集市场景而非正常二十波通关；本轮未测物理手柄、Safari、读屏软件、音响听感或最终 140 敌压力。未将短时稳定性外推为整局性能提升。 · Targeted market checks do not certify a natural twenty-wave game, physical gamepads, Safari, screen readers, speaker audio or maximum-enemy performance.
+
 ## 2026-11-26 最新引擎、角色与首屏 · Latest engine, actors and startup
 
 - **版本 · Version:** Egret main `0728eccc8ee5340f786fdeacd375927d3d8e315a`。原规则、数值、存档模块未改；引擎副本由官方工具生成。三种哪吒新增共六个待机/滑行姿势的 352×540 透明 WebP（63,916 字节）；复用同一战斗图集。 · The simulation and save sources are unchanged. Three forms share six new idle/glide poses on the existing battle atlas.

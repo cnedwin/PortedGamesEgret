@@ -31,7 +31,7 @@ const ANCHORS = new Set([
     'bottom',
     'bottom-right'
 ]);
-const BASE_KEYS = ['type', 'name', 'anchor', 'x', 'y', 'width', 'height', 'visible', 'border'];
+const BASE_KEYS = ['type', 'name', 'anchor', 'x', 'y', 'width', 'height', 'visible', 'border', 'semantic'];
 const KEYS = {
     panel: new Set([
         ...BASE_KEYS,
@@ -45,12 +45,35 @@ const KEYS = {
         'alpha',
         'label',
         'scroll',
+        'role',
         'children'
     ]),
-    text: new Set([...BASE_KEYS, 'text', 'size', 'color', 'align', 'bold', 'paragraph']),
-    button: new Set([...BASE_KEYS, 'text', 'size', 'color', 'textColor', 'description', 'paragraph']),
+    text: new Set([
+        ...BASE_KEYS,
+        'text',
+        'size',
+        'color',
+        'align',
+        'bold',
+        'paragraph',
+        'fontFamily',
+        'fontWeight',
+        'italic'
+    ]),
+    button: new Set([
+        ...BASE_KEYS,
+        'text',
+        'size',
+        'color',
+        'textColor',
+        'description',
+        'paragraph',
+        'fontFamily',
+        'fontWeight',
+        'italic'
+    ]),
     bar: new Set([...BASE_KEYS, 'value', 'color', 'label']),
-    toggle: new Set([...BASE_KEYS, 'text', 'checked', 'size']),
+    toggle: new Set([...BASE_KEYS, 'text', 'checked', 'size', 'fontFamily', 'fontWeight', 'italic']),
     space: new Set(BASE_KEYS),
     image: new Set([...BASE_KEYS, 'src', 'label'])
 };
@@ -70,8 +93,8 @@ function partOptions(value, keys, label, field) {
     return value;
 }
 function checkParagraph(value, label) {
-    const row = partOptions(value, ['fontFamilies', 'lineHeight', 'locale', 'direction', 'maxLines'], label, 'paragraph');
-    const families = row['fontFamilies'], lineHeight = row['lineHeight'], maxLines = row['maxLines'];
+    const row = partOptions(value, ['fontFamilies', 'lineHeight', 'locale', 'direction', 'maxLines', 'density'], label, 'paragraph');
+    const families = row['fontFamilies'], lineHeight = row['lineHeight'], maxLines = row['maxLines'], density = row['density'];
     if (!Array.isArray(families) ||
         families.length === 0 ||
         families.length > 16 ||
@@ -85,6 +108,8 @@ function checkParagraph(value, label) {
         throw invalid(label, 'paragraph direction');
     if (maxLines !== undefined && (!finite(maxLines) || !Number.isInteger(maxLines) || maxLines < 1 || maxLines > 256))
         throw invalid(label, 'paragraph maxLines');
+    if (density !== undefined && (!finite(density) || density < 0.25 || density > 4))
+        throw invalid(label, 'paragraph density');
 }
 /** Checks the parts of one tree and returns its named parts with their kinds. */
 function checkTree(root, where) {
@@ -114,6 +139,12 @@ function checkTree(root, where) {
             names.set(name, type);
         }
         const label = name === undefined ? at : at + ' (' + name + ')';
+        if (part['semantic'] !== undefined && part['semantic'] !== false)
+            throw invalid(label, 'semantic is false');
+        if (part['role'] !== undefined && part['role'] !== 'group' && part['role'] !== 'button')
+            throw invalid(label, 'panel role');
+        if (part['role'] === 'button' && (name === undefined || part['semantic'] === false))
+            throw invalid(label, 'a button role needs a named semantic panel');
         if (part['anchor'] !== undefined && !ANCHORS.has(part['anchor']))
             throw invalid(label, 'anchor');
         for (const key of ['x', 'y'])
@@ -150,9 +181,15 @@ function checkTree(root, where) {
         for (const key of ['alpha', 'value'])
             if (part[key] !== undefined && (!finite(part[key]) || part[key] < 0 || part[key] > 1))
                 throw invalid(label, key + ' is 0 to 1');
-        for (const key of ['visible', 'card', 'bold', 'checked'])
+        for (const key of ['visible', 'card', 'bold', 'checked', 'italic'])
             if (part[key] !== undefined && typeof part[key] !== 'boolean')
                 throw invalid(label, key + ' is true or false');
+        const family = part['fontFamily'];
+        if (family !== undefined && (typeof family !== 'string' || !family.trim() || family.length > 256))
+            throw invalid(label, 'fontFamily');
+        const weight = part['fontWeight'];
+        if (weight !== undefined && (!Number.isInteger(weight) || weight < 1 || weight > 1000))
+            throw invalid(label, 'fontWeight is an integer from 1 to 1000');
         for (const key of ['text'])
             if (part[key] !== undefined && typeof part[key] !== 'string' && !finite(part[key]))
                 throw invalid(label, 'text');

@@ -19,23 +19,7 @@ export function rpgDensity(landscape, portrait, css, dpr = 1) {
   const steps = [1, 1.5, 2, 2.5].filter(scale => area * scale * scale <= 4_000_000 && edge * scale <= 4096);
   const scale = steps.find(value => value >= required) ?? steps.at(-1) ?? 1;
   const pixelRatio = Math.max(1, Math.min(2, required / scale, Math.sqrt(4_000_000 / (area * scale * scale)), 4096 / (edge * scale)));
-  return { scale, pixelRatio };
-}
-
-// Play paragraphs currently use one pixel per design unit. Higher design-unit
-// density preserves the same CSS geometry and makes native long text sharper.
-export function scaleViewPart(part, scale) {
-  const result = { ...part };
-  for (const key of ['x', 'y', 'width', 'height', 'padding', 'gap', 'size', 'radius', 'offsetX', 'offsetY']) {
-    if (typeof part[key] === 'number') result[key] = part[key] * scale;
-  }
-  if (part.border && typeof part.border.width === 'number') result.border = { ...part.border, width: part.border.width * scale };
-  if (part.paragraph) {
-    result.paragraph = { ...part.paragraph };
-    for (const key of ['lineHeight', 'letterSpacing', 'wordSpacing']) {
-      if (typeof part.paragraph[key] === 'number') result.paragraph[key] = part.paragraph[key] * scale;
-    }
-  }
-  if (part.children) result.children = part.children.map(child => scaleViewPart(child, scale));
-  return result;
+  // Keep the same physical backing budget. Native paragraph raster density
+  // is now independent of logical layout and the canvas pixel ratio.
+  return { paragraphDensity: scale, pixelRatio: scale * pixelRatio };
 }

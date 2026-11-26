@@ -1,5 +1,14 @@
 # 验收记录 · Quality
 
+## 2026-11-27 · 原生键控集合、段落密度 / Native collections and paragraph density
+
+- **版本 · Version:** 正式 Egret main `94bd70fb26b1f81794c9c6fbbb258c655fcd19df`；260 个运行文件与真机验收候选逐字节相同。规则、数值、存档及美术不变。 · Official vendor; the tested runtime matches byte for byte.
+- **适配与自动验收 · Integration:** 原生 `view.replaceChildren` 保持同结构列表的滚动、焦点及稳定物品行；图片由原生 `src` 绑定，长段落用原生密度参数，删除坐标树缩放。正式 Node 53/53，Chromium 17/17（包含货架及买入项语义身份稳定、买入/出售成员切换、行囊、锁级配方、存读档）；标题/西岐旧截图差异 0.24%/1.38%，未替换基线。 · Keyed lists, bound images and native density preserve controls; incompatible layout changes still receive a new description.
+- **PC 实测 · PC hardware:** Windows Edge 158、WebGL2，1440×850；同一合法旧 v1 赚取存档在全新隔离浏览器中继续。三次旧版与三次新版均 5/5、8/8 冷装备图片像素匹配、8 个唯一图请求、实际换装及刷新存档、无错误警告。首次可操作的轮询观察上限旧 136.1/138.7/139.3 ms，新 168.5/150.9/193.5 ms；不是 GPU 时间。 · The observed upper bound rose, so no startup speedup is claimed.
+- **分段复查 · Diagnostic timing:** 同一硬件/存档使用浏览器响应中的 QA-only 计时标记，真实键鼠打开，旧首次原生语义就绪 rAF 110.6/120.4 ms，新 114.1/123.6 ms。Play 创建是大头（旧 92.6/102.8，新 94.7/102.6 ms），描述构建约 1 ms，`game.show` 旧 8.7/9.4、新 9.4/10.4 ms，投影约 0.6–0.7 ms；节点数 38→57。首图请求 99.4/110.0→104.1/112.6 ms。仅改不可变行图为静态地址的隔离诊断，首次可操作为 122.5/122.8 ms，未稳定改善，故未纳入正式版。 · Direct readiness is only about 3–4 ms slower; polling cadence and later image transfer account for additional variance. No evidence justifies sacrificing the native feature or moving the cost to startup.
+- **Fold7 实测 · Fold7 hardware:** Chrome 157、实际横竖屏，旧档继续、商店与铁匠铺六次滚动/转屏、配方选择和回到场景方向操作均通过。成功的旧/新版各 121 个 rAF 样本，p95/max 16.7→16.7 ms，零错误和失败请求；旧版两次未完整准备的试次未纳入指标。新版竖屏商店/铁铺正文、图标、裁切实拍保持旧版观感；PC 行囊已穿戴槽的副文字较大且左对齐，无裁切。 · Actual handset and browser gestures, not emulation. No overall full-campaign FPS gain is asserted.
+- **限制 · Limits:** 本轮为针对性原生 UI 和旧档测试；未重新自然打完整多章节、验证所有 30 件装备中部连售、Safari、读屏软件、扬声器或物理手柄。 · Full-length expansion and separate hardware modes remain outside this batch.
+
 
 ## 2026-11-26 · 最新引擎、原生 RPG 界面与清晰度 / Latest engine, RPG views and visual density
 
