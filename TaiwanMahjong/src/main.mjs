@@ -8,7 +8,7 @@ import { createScreens } from './screens.mjs';
 import { createRoundUi } from './round-ui.mjs';
 import { createFelt } from './felt.mjs';
 import { getLanguage, onLanguage, setLanguage, startLanguage, t, tileName } from './i18n.mjs';
-import { handCentre, handSlots, riverSlot, STAGE } from './layout.mjs';
+import { displayPixelRatio, handCentre, handSlots, riverSlot, STAGE, STAGE_SCALE } from './layout.mjs';
 import { LEVEL_NAMES, openSave, recordGame, recordHand } from './saves.mjs';
 import { createSound } from './sound.mjs';
 import { CHARACTERS, decide } from './sim/bot.mjs';
@@ -115,11 +115,14 @@ async function buildEngine(tall) {
     if (old) await old.dispose();
     const host = $('#stage');
     host.replaceChildren();
+    const box = host.getBoundingClientRect();
+    const pixelRatio = displayPixelRatio(box.width, box.height, tall, window.devicePixelRatio);
     const semantics = createUiSemantics({ maxNodes: 1024 });
     const bridge = bridgeUiSemantics(semantics);
     const game = await play({
-      width: (tall ? STAGE.height : STAGE.width) * .75,
-      height: (tall ? STAGE.width : STAGE.height) * .75,
+      width: (tall ? STAGE.height : STAGE.width) * STAGE_SCALE,
+      height: (tall ? STAGE.width : STAGE.height) * STAGE_SCALE,
+      pixelRatio,
       parent: host, transparent: true, seed: app.seed, semantics: bridge,
       renderMode: 'on-demand',
       arrange(next) {
@@ -148,10 +151,10 @@ async function buildEngine(tall) {
     if (app.match?.hand && app.screen !== 'title') paintTable();
     if (app.screen === 'play') {
       paintTools();
-      if (app.chow) displayChow(false);
+      if (app.chow) displayChow();
     }
-    if (app.screen === 'result') renderResult(false);
-    if (app.screen === 'final') renderFinal(false);
+    if (app.screen === 'result') renderResult();
+    if (app.screen === 'final') renderFinal();
     for (const panel of priorPanels) app.screens.open(panel);
     if (priorFocus) app.ui.focus(priorFocus);
   } finally {
@@ -341,8 +344,8 @@ function chooseChow(chows, kind) {
   app.chow = { chows, kind };
   displayChow();
 }
-function displayChow(focus) {
-  app.round?.showChow(app.chow.chows, app.chow.kind, ids => answer({ type: 'chow', ids }), closeChow, focus);
+function displayChow() {
+  app.round?.showChow(app.chow.chows, app.chow.kind, ids => answer({ type: 'chow', ids }), closeChow);
 }
 function closeChow() {
   app.chow = null;
@@ -559,8 +562,8 @@ function showResult(entry) {
     renderResult();
   });
 }
-function renderResult(focus) {
-  if (app.resultEntry && app.match) app.round?.showResult(app.resultEntry, app.match, app.resolveResult, focus);
+function renderResult() {
+  if (app.resultEntry && app.match) app.round?.showResult(app.resultEntry, app.match, app.resolveResult);
 }
 function showFinal() {
   const match = app.match;
@@ -570,12 +573,12 @@ function showFinal() {
   app.sound.music('result');
   renderFinal();
 }
-function renderFinal(focus) {
+function renderFinal() {
   if (!app.match) return;
   app.round?.showFinal(app.match, app.best, () => {
     app.seed = (app.seed * 48271) % 2147483647;
     beginGame();
-  }, () => show('title'), focus);
+  }, () => show('title'));
 }
 function show(name) {
   app.screen = name;
@@ -634,9 +637,9 @@ function updateLanguage() {
   app.screens?.refresh();
   paintTools();
   if (app.match?.hand && app.screen !== 'title') paintTable();
-  if (app.screen === 'result') renderResult(false);
-  if (app.screen === 'final') renderFinal(false);
-  if (app.chow) displayChow(false);
+  if (app.screen === 'result') renderResult();
+  if (app.screen === 'final') renderFinal();
+  if (app.chow) displayChow();
 }
 onLanguage(updateLanguage);
 
@@ -678,10 +681,8 @@ function pause(on) {
 document.addEventListener('keydown', event => {
   if (event.altKey || event.ctrlKey || event.metaKey || !app.ui) return;
   if (event.key === 'Escape') {
-    if (app.screens.modal === 'menu') resume();
-    else if (app.screens.modal) app.screens.close();
-    else if (app.chow) closeChow();
-    else if (app.human && app.human.options.type !== 'act') answer({ type: 'pass' });
+    if (app.ui.modal) return; // Native modal focus owns Escape and dismisses once.
+    if (app.human && app.human.options.type !== 'act') answer({ type: 'pass' });
     else if (app.screen === 'play') openMenu();
     else return;
     event.preventDefault();
@@ -711,7 +712,7 @@ document.addEventListener('keydown', event => {
     const tiles = myTiles().ids;
     const id = Number(app.ui.focused.slice(5)), at = tiles.indexOf(id);
     const index = Math.max(0, Math.min(tiles.length - 1, at + (event.key === 'ArrowLeft' ? -1 : 1)));
-    if (tiles[index] !== undefined) app.ui.focus('tile-' + tiles[index], { via: 'keyboard' });
+    if (tiles[index] !== undefined) app.ui.focus('tile-' + tiles[index]);
     event.preventDefault();
   }
 }, true);

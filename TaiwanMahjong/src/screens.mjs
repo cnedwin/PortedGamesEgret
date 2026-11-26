@@ -1,7 +1,6 @@
 // The menu controls and rules viewport are Egret views. The rain-room art and seals share the game texture scope.
 import { Bitmap } from '@egret/engine';
 import { getLanguage, t } from './i18n.mjs';
-import { scrollRotatedTouch } from './ui.mjs';
 
 const TITLE_ART = new URL('../assets/rain-room.webp', import.meta.url).href;
 const PORTRAITS = new URL('../assets/opponents.webp', import.meta.url).href;
@@ -10,12 +9,13 @@ const IVORY = 0xfff5dc;
 const COPPER = 0xd7a674;
 const GOLD = 0xffda9e;
 const INK = 0x29201b;
-const MUTED = 0x6b5546;
+const MUTED = 0x594537;
 const LACQUER = 0x79382c;
 const JADE = 0x12353b;
 const SCALE = 0.75;
 const TITLE_SKIN = { accent: GOLD, dim: 0.5 };
 const SHEET_SKIN = { accent: 0x28644a, dim: 0 };
+const SHEET_FOCUS = { menu: 'resumeButton', rules: 'rulesClose', settings: 'setting-sound', record: 'recordClose' };
 const TITLE_TARGET = 82;
 const textMeasure = document.createElement('canvas').getContext('2d');
 const titleCrowd = [1, 3, 2];
@@ -63,13 +63,11 @@ function paragraph(name, value, x, y, w, size, lineHeight, options) {
 export function createScreens(game, ui, {
   save, problems, nameOf, seats, levelNames, rules, tai, start, setSetting, switchLanguage, resume, quit, playUi
 }) {
-  let title = false, rulesView, titleLease, portraitsLease, artPending;
+  let title = false, titleLease, portraitsLease, artPending;
   let artFailed = false, retryWasFocused = false;
   const stack = [];
   const art = new WeakMap();
   const ready = loadArt();
-
-  scrollRotatedTouch(game, () => stack.at(-1) === 'rules' ? rulesView : null, 'rulesScroll');
 
   function loadArt() {
     if (artPending) return artPending;
@@ -131,7 +129,7 @@ export function createScreens(game, ui, {
         card: { radius: 8, border: selected ? GOLD : 0x9d785b }
       }),
       text(name + '-caption', caption, x + 12, 9, w - 24, 27, { parent, color: IVORY, size: 22, bold: true, decorative: true }),
-      ...paragraph(name + '-detail', detail, x + 12, 34, w - 24, 16, 16, { parent, color: 0xe1c8ae, decorative: true })
+      ...paragraph(name + '-detail', detail, x + 12, 34, w - 24, getLanguage() === 'en' && w < 220 ? 15 : 17, 18, { parent, color: 0xe1c8ae, decorative: true })
     ];
   }
 
@@ -156,6 +154,8 @@ export function createScreens(game, ui, {
       text('title-name', t('title'), 54, 91, 708, 92, { color: IVORY, bold: true, size: en ? 51 : 76, role: 'heading', level: 1 }),
       ...paragraph('tagline', t('tagline'), 56, 181, 638, 22, 27, { color: 0xf2e2c6 }),
       ...notices,
+      // Begin keyboard traversal at the main action, while retaining the established visual layout.
+      button('startButton', t('play'), 56, top + 322, 162, TITLE_TARGET, start, { dark: true, primary: true, size: 23 }),
       text('rounds-label', t('length'), 56, top, 305, 24, { color: COPPER, size: 17, bold: true }),
       part('panel', 56, top + 30, 611, TITLE_TARGET, { name: 'rounds-group', role: 'radiogroup', label: t('length') }),
       ...[[1, 'oneRound', 'oneRoundNote'], [4, 'fullGame', 'fullGameNote']].flatMap(([value, key, note], index) =>
@@ -173,18 +173,17 @@ export function createScreens(game, ui, {
             decorate(node, { w, h }) { bitmap(node, portraitsLease, w, h, { x: index * 480, y: 0, width: 480, height: 480 }); }
           }),
           text('opponent-' + seat, nameOf(seat), x + 66, y + 5, 122, 27, { color: IVORY, size: 18, bold: true }),
-          ...paragraph('opponent-note-' + seat, t(seats[seat].key + 'Note'), x + 66, y + 34, 122, 13, 15, { color: 0xe2ccb3 })
+          ...paragraph('opponent-note-' + seat, t(seats[seat].key + 'Note'), x + 66, y + 33, 122, 14, 16, { color: 0xe2ccb3 })
         ];
       }),
       ...[
-        ['startButton', t('play'), 162, start, { primary: true }],
         ['rulesButton', t('rules'), 137, () => open('rules')],
         ['recordButton', t('record'), 100, () => open('record')],
         ['settingsButton', t('settings'), 101, () => open('settings')],
         ['languageButton', en ? t('chinese') : t('english'), TITLE_TARGET, () => switchLanguage(), { label: t('switchLanguage') }]
       ].map(([name, label, w, action, options], index, entries) => {
-        const x = 56 + entries.slice(0, index).reduce((width, row) => width + row[2] + 8, 0);
-        return button(name, label, x, top + 322, w, TITLE_TARGET, action, { dark: true, size: index === 0 ? 23 : 18, ...options });
+        const x = 226 + entries.slice(0, index).reduce((width, row) => width + row[2] + 8, 0);
+        return button(name, label, x, top + 322, w, TITLE_TARGET, action, { dark: true, size: 18, ...options });
       })
     ];
     if (artFailed) {
@@ -199,8 +198,9 @@ export function createScreens(game, ui, {
   }
 
   function sheet(id, heading, x, y, w, h, contents) {
-    const view = ui.show(id, {
+    ui.show(id, {
       label: heading, modal: true, skin: SHEET_SKIN,
+      initialFocus: SHEET_FOCUS[id],
       dismiss: () => id === 'menu' ? resume() : close(id),
       ...(id === 'menu' ? { resume } : {}),
       items: [
@@ -213,13 +213,11 @@ export function createScreens(game, ui, {
         ...contents
       ]
     });
-    return view;
   }
 
   function paintRules() {
     const x = 62, y = 24, w = 1156, h = 672;
     const viewport = { x: x + 512, y: y + 116, w: 604, h: 448 };
-    const top = rulesView?.scroll('rulesScroll').offset ?? 0;
     const descriptions = [];
     let lineY = y + 105;
     for (const key of ['rulesIntro', 'rulesFlow', 'rulesPay', 'rulesNotIncluded']) {
@@ -231,18 +229,18 @@ export function createScreens(game, ui, {
     let rowY = 0;
     for (const [index, [key, points]] of Object.entries(tai).entries()) {
       const parent = 'rulesScroll';
-      const notes = paragraph('rule-note-' + key, t('note_' + key), 220, rowY + 7, 320, 16, 22, { parent, color: MUTED });
-      const rowH = Math.max(41, notes.length * 22 + 14);
+      const notes = paragraph('rule-note-' + key, t('note_' + key), 220, rowY + 7, 320, 17, 24, { parent, color: MUTED });
+      const rowH = Math.max(43, notes.length * 24 + 14);
       rows.push(
         fill(0, rowY, viewport.w, rowH - 1, index % 2 ? 0xf0e1c5 : 0xfaf1de, { parent }),
-        text('rule-tai-' + key, t('tai_' + key), 10, rowY + 3, 205, rowH - 7, { parent, size: 17, bold: true }),
+        text('rule-tai-' + key, t('tai_' + key), 10, rowY + 3, 205, rowH - 7, { parent, size: 18, bold: true }),
         ...notes,
         text('rule-points-' + key, String(points), viewport.w - 56, rowY + 3, 42, rowH - 7, { parent, size: 19, align: 'right', bold: true, color: LACQUER })
       );
       rowY += rowH;
     }
-    const page = (direction) => () => rulesView?.scroll('rulesScroll').scrollBy(direction * viewport.h * 0.88 * SCALE);
-    rulesView = sheet('rules', t('rules'), x, y, w, h, [
+    const page = (direction) => () => ui.view('rules')?.scroll('rulesScroll').scrollBy(direction * viewport.h * 0.88 * SCALE);
+    sheet('rules', t('rules'), x, y, w, h, [
       ...descriptions,
       text('tai-table-heading', t('taiTable'), viewport.x, y + 83, viewport.w, 30, { color: LACQUER, size: 20, bold: true, role: 'heading' }),
       part('panel', viewport.x, viewport.y, viewport.w, viewport.h, { name: 'rulesScroll', label: t('taiTable'), scroll: 'vertical' }),
@@ -251,7 +249,6 @@ export function createScreens(game, ui, {
       button('rulesUp', '↑', x + w - 202, y + 581, 76, 69, page(-1), { label: t('rulesUp') }),
       button('rulesDown', '↓', x + w - 116, y + 581, 76, 69, page(1), { label: t('rulesDown') })
     ]);
-    rulesView.scroll('rulesScroll').scrollTo(top);
   }
 
   function paintSettings() {
@@ -320,23 +317,18 @@ export function createScreens(game, ui, {
     playUi();
     stack.push(id);
     painters[id]();
-    const first = { menu: 'resumeButton', rules: 'rulesClose', settings: 'setting-sound', record: 'recordClose' };
-    ui.focus(first[id], { via: 'keyboard' });
   }
   function close(id = stack.at(-1)) {
     const at = stack.lastIndexOf(id);
     if (at === -1) return;
-    for (const closed of stack.splice(at).reverse()) {
-      if (closed === 'rules') rulesView = undefined;
-      ui.hide(closed);
-    }
+    for (const closed of stack.splice(at).reverse()) ui.hide(closed);
   }
   return {
     ready,
     showTitle() {
       title = true;
       paintTitle();
-      ui.focus('startButton', { via: 'keyboard' });
+      ui.focus('startButton');
     },
     hideTitle() {
       title = false;
