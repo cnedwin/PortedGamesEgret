@@ -477,9 +477,9 @@ export const GAMES = [
     id: 'nezha', folder: 'NezhaSea', kind: '2d',
     portraitGallery: true,
     scenes: [
-      { zh: "第十四波 · 海面上的乾坤圈与火尖枪", en: "Wave fourteen · Ring and spear at sea" },
-      { zh: "龙宫集市 · 买宝、锁定与合成", en: "The Dragon Palace market · Buying, locking and merging" },
-      { zh: "第二十波 · 敖丙（英文）", en: "Wave twenty · Ao Bing (in English)" },
+      { zh: "新版标题 · 哪吒的三种形态与选角", en: "Title screen · Three forms of Nezha and character selection" },
+      { zh: "第五波 · 乾坤圈迎战龙宫水族", en: "Wave five · The universe ring confronts the sea creatures" },
+      { zh: "第十波 · 巡海夜叉首领与法宝特效", en: "Wave ten · The Sea Yaksha boss and treasure effects" },
     ],
     zh: "哪吒闹海", en: "Nezha Stirs the Sea",
     genre: { zh: "割草肉鸽", en: "Survivors-like roguelite" },
