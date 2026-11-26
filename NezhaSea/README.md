@@ -85,7 +85,7 @@ Nezha Stirs the Sea is a survival action game built with [Egret Rebuild](https:/
 
 在 `NezhaSea` 目录运行 `node --test test/*.test.mjs` 和 `node test/accept.mjs`，覆盖规则、存档、中英文、界面键盘流程、购买、合成及结算基线。Chromium 的胜负和解锁界面用测试场景驱动。
 
-引擎 UI 版的验收环境、测量及覆盖限制见 [QUALITY.md](QUALITY.md)。旧版本在 Windows Chrome 和三星 Fold7 通过过首波、暂停、升级及集市触控检查。 · See the quality report for the environments, measurements and limits of the engine UI checks. The earlier release was also tested through the first wave, pause, level-up and market on Windows and a Samsung Fold7.
+引擎 UI 版的验收环境、测量及覆盖限制见 [QUALITY.md](QUALITY.md)。Windows PC 与三星 Fold7 使用 WebGPU 从新档正常打败第 10 波夜叉，均在第 11 波败退、解锁莲花并刷新验档。最终构建独立通过新角色、集市和实时旋转检查。 · On both Windows and a Samsung Fold7 using WebGPU, a fresh normal run defeated the wave-10 Yaksha, ended at wave 11, unlocked the lotus form and survived reload. The final build separately passed character, market and live-rotation checks.
 
 ## 已知问题 · Known issues
 
@@ -93,7 +93,7 @@ Nezha Stirs the Sea is a survival action game built with [Egret Rebuild](https:/
 
 ## 已解决 · Solved
 
-窄屏集市的购买、选中和合成分成两个切换页，下一波入口固定在底部。暂停会清除战场摇杆的触点。 · The compact market separates stock from equipped treasures and pins the next-wave action. Pause releases the battlefield touch stick.
+窄屏集市的购买、选中和合成分成两个切换页，下一波入口固定在底部。窄横屏波次与倒计时分行，实时缩放仍保持暂停触控区。暂停会清除战场摇杆的触点。 · The compact market separates stock from equipped treasures and pins the next-wave action. Narrow landscape HUDs stack the clock and preserve the Pause target through live resizing. Pause releases the battlefield touch stick.
 
 浮动触屏摇杆采用白鹭原生捕获，保留原有 5 CSS 像素死区及响应幅度；触点越出战场仍受控。立绘加载失败时保留可读角色卡，标题提供重试。 · Egret handles floating-touch capture with the original five-CSS-pixel dead zone and movement response. Failed portrait downloads leave readable cards and an explicit title-screen retry.
 

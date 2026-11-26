@@ -114,7 +114,7 @@ SwiftShader. Sections 4 and 5 use Chrome with hardware acceleration.
 - 现象：每帧提交不变化的标题时，同机软件渲染 F1 为 33.4 ms。限速样本里主模块约 2.7 s 完成载入和执行入口，随后启动图形后端、文字与角色图集，首屏仍约 3.6 s。 · Continuous redraws of the settled title measured 33.4 ms p95 on the software renderer. One throttled startup reached the app entry at about 2.7 s, then initialized graphics, text and the actor atlas. The quality startup remains around 3.6 s.
 - 绕过办法：`95897d78` 由 [Play 的 `renderMode: 'on-demand'`](src/main.mjs) 跳过静止标题重复提交。保留输入轮询，无需 Demo 启停循环或自行监听手柄唤醒。限速首屏另测。 · Native on-demand Play skips redundant title submissions while retaining input polling. The demo's loop suspension and controller wake code are removed. Cold startup is measured separately.
 - 建议：保留按需绘制的输入回归。冷启动仍可继续优化模块依赖调度。 · Retain on-demand input regressions and continue profiling startup dependency scheduling.
-- 状态：`253bd197` 通用品质复测 F1 静置标题 p95 4.2 ms，L1 3.7 s / 2.6 MB，仍超 3 秒门槛。 · On-demand title F1 passes; throttled L1 still exceeds the 3-second target.
+- 状态：原生按需绘制已生效；`0728eccc` 下由本作的可复现入口包将 L1 从同机 3.7 s / 2.6 MB 降至 2.0 s / 1.4 MB。F1 静置标题 p95 4.3 ms，均达标。引擎仍未提供可直接部署的入口打包方案。 · On-demand drawing works. The reproducible app bundle improves the matched L1 sample from 3.7 s / 2.6 MB to 2.0 s / 1.4 MB. Idle title F1 is 4.3 ms p95; both pass. A deployment bundling recipe would still help.
 
 ### 14. WebGPU 加载页与主动预热共享存储竞争 · WebGPU loading and manual warm-up compete for shared storage — 已在游戏侧绕过 / worked around
 <!-- engine-note: {"id": "NezhaSea#14", "status": "worked-around", "topic": "webgpu-loading-atlas-prewarm", "workaround": ["src/main.mjs", "src/view.mjs"]} -->
@@ -123,3 +123,11 @@ SwiftShader. Sections 4 and 5 use Chrome with hardware acceleration.
 - 绕过办法：`src/main.mjs` 与 `src/view.mjs` 使用已有浏览器帧循环展示预热用的临时角色，最多 120 ms；不存在独立帧提交。普通启动不依赖预热完成。 · Use the existing browser frame loop to show the warm-up actor under the loading layer, for at most 120 ms. Do not submit directly or make successful startup depend on optional warm-up.
 - 建议：提供可安全排队的无显示纹理预热接口，等待 GPU 资源可用、提交和退役，支持超时、取消和设备丢失。不要将可恢复的共享存储压力报告为资源下载失败。 · Provide an awaitable, cancellable off-screen texture warm-up, coordinated with normal frame reservations and retirement. Distinguish recoverable shared-storage pressure from a resource-load error.
 - 状态：Demo 修复后同一 Fold7 WebGPU 冷启动、标题与竖屏出海均通过；引擎未改动。 · Demo fix passes a cold start, title and portrait battle on the same Fold7. No engine change.
+
+### 15. 嵌入画布仅缩放时未触发 arrange · CSS-only canvas resize does not notify arrange — 已在游戏侧绕过 / worked around
+<!-- engine-note: {"id": "NezhaSea#15", "status": "worked-around", "topic": "play-css-scale-arrange", "workaround": ["src/main.mjs", "src/ui-hud.mjs"]} -->
+
+- 现象：将运行中的战斗从 540×960 浏览器视口改成 844×320，画布物理 CSS 尺寸变为 180×320，但舞台仍为 540×960。BrowserGame 的屏幕变化判断只比较设计宽高、安全区及逻辑方向，不比较 scale，造成 Play 的 arrange 未触发。暂停仍是 44 设计单位，相当于 14.7 CSS px。横屏上旧单行 HUD 的倒计时也可能盖住英文波次。 · Resize the active battle from 540×960 to 844×320. The canvas measures 180×320 CSS px while its stage stays 540×960. BrowserGame does not include scale in the screen-change condition, leaving the Pause button at about 14.7 CSS px. A narrow single-row HUD can also obscure English wave digits.
+- 绕过办法：`src/main.mjs` 观察实际画布 CSS 尺寸，变化才调用已有重排；引擎正常的 arrange 回调保留。 `src/ui-hud.mjs` 根据最长波次文字将狭窄布局的计时置于波次下方，并保留独立 44 CSS px 暂停目标。 · Observe physical CSS dimensions and reuse the existing arrangement, alongside normal Play callbacks. Stack the timer beneath the wave label when needed without shrinking the Pause target.
+- 建议：当 `screen.scale` 或实际可见 CSS 尺寸发生变化但设计范围保持不变时，也发出屏幕变化事件；避免重复回调。用固定比例嵌入画布跑动态缩小、放大、旋转测试，确保 44 CSS px 控件尺寸、输入比例与焦点一致。 · Include scale or visible CSS size changes in screen notifications even when stage bounds stay fixed. Verify embed resizing, rotation, 44-CSS-pixel targets, input scaling and focus without redundant events.
+- 状态：浏览器回归通过；Fold7 运行中的战斗从 411×813 转到 873×325 再转回，暂停分别为 65×44、52×44 和 65×44 CSS px。暂停恢复、新触点、松手及不滚动均通过；横屏波次 1/20、10/20 完整显示。 · Browser regression passes. During a live Fold7 rotation, Pause retained 65×44, 52×44 and 65×44 CSS px. Pause/resume, new touch, release and no page scroll pass; both wave 1/20 and wave 10/20 are legible.

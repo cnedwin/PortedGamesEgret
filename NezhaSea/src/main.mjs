@@ -95,7 +95,14 @@ function renderScreen(name, focus) {
   present(name, screens[name](), focus);
 }
 
+let lastCanvasSize = '';
+function canvasSize() {
+  const box = game.canvas.getBoundingClientRect();
+  return Math.round(box.width * 100) + ':' + Math.round(box.height * 100);
+}
+
 function redraw() {
+  lastCanvasSize = canvasSize();
   ui.resize();
   stick?.arrange();
   if (hud && app.run && ['play', 'menu', 'shop', 'levelUp'].includes(app.screen)) {
@@ -347,3 +354,11 @@ if (!loadFailed) {
   showTitle();
   ready = true;
 }
+
+// Play's arrange hook reports changes to design units/safe bounds. An embedded
+// field can keep identical design bounds while its physical CSS pixels shrink.
+lastCanvasSize = canvasSize();
+const cssResize = new ResizeObserver(() => {
+  if ((ready || loadFailed) && canvasSize() !== lastCanvasSize) redraw();
+});
+cssResize.observe(game.canvas);

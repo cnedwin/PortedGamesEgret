@@ -1,6 +1,6 @@
 import { t } from './i18n.mjs';
 import { FIELD, WAVES, waveSeconds, xpToLevel } from './sim/data.mjs';
-import { GOLD, MUTED, button, label, layoutFor, panel, wrap } from './ui-layout.mjs';
+import { GOLD, MUTED, button, label, layoutFor, panel, textWidth, wrap } from './ui-layout.mjs';
 
 export function createHud(game, app, rules, pause) {
   let view, hints, introStarted, onlyPaused = false, maxHp = 1;
@@ -46,7 +46,15 @@ export function createHud(game, app, rules, pause) {
     const short = w < 285;
     const x = (left - safe.x) / u, y = (top - safe.y) / u;
     const labelSize = short ? 12 : 15, pauseW = short ? 52 : 65;
-    const timerW = short ? 53 : 78, timerX = w - pauseW - timerW - 10;
+    const normalTimerW = short ? 53 : 78;
+    const waveMaxWidth = textWidth(t('wave', { n: WAVES, total: WAVES }), labelSize, true);
+    // In a very narrow landscape battlefield, share the left column vertically.
+    // The pause button keeps its independent 44 CSS pixel tap target.
+    const stackedClock = w - pauseW - normalTimerW - 18 < waveMaxWidth + 8;
+    const timerX = stackedClock ? 7 : w - pauseW - normalTimerW - 10;
+    const timerW = stackedClock ? w - pauseW - 16 : normalTimerW;
+    const timerY = stackedClock ? 24 : 8, timerH = stackedClock ? 20 : 30;
+    const waveW = stackedClock ? timerW : timerX - 8, waveH = stackedClock ? 24 : 46;
     const tutorialWords = wrap(t('visualTip'), w - 20, short ? 11 : 13);
     const tutorialH = tutorialWords.split('\n').length * 17 + 14;
     state.tutorial = tutorialWords;
@@ -54,9 +62,9 @@ export function createHud(game, app, rules, pause) {
     const tutorialY = Math.min((fieldBottom - top) / u - 60 - tutorialH, (fieldBottom - top) / u * 0.82);
     const row = panel(undefined, x, y, w, 143, { children: [
       panel(undefined, 0, 0, w, 46, { color: 0x0b2424, alpha: 0.96 }),
-      label('wave', 7, 0, timerX - 8, 46, '', labelSize, { bold: true, color: GOLD }),
-      panel(undefined, timerX, 8, timerW, 30, { color: 0x193c34, alpha: 1 }),
-      label('timer', timerX, 8, timerW, 30, '', short ? 11 : 13, { align: 'center' }),
+      label('wave', 7, 0, waveW, waveH, '', labelSize, { bold: true, color: GOLD }),
+      panel(undefined, timerX, timerY, timerW, timerH, { color: 0x193c34, alpha: 1 }),
+      label('timer', timerX, timerY, timerW, timerH, '', short ? 11 : 13, { align: 'center' }),
       button('pause', w - pauseW - 1, 1, pauseW, 44, t('pause'), { size: short ? 11 : 13 }),
       bar('hp', 0, 49, w, 15, 0xb44a3c, t('hpName')),
       label('hpText', 6, 49, w - 12, 15, '', 11, { bold: true }),

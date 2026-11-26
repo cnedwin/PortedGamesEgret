@@ -1,5 +1,15 @@
 # 品质验收 · Quality — 哪吒闹海 · Nezha Stirs the Sea
 
+## 2026-11-26 最新引擎、角色与首屏 · Latest engine, actors and startup
+
+- **版本 · Version:** Egret main `0728eccc8ee5340f786fdeacd375927d3d8e315a`。原规则、数值、存档模块未改；引擎副本由官方工具生成。三种哪吒新增共六个待机/滑行姿势的 352×540 透明 WebP（63,916 字节）；复用同一战斗图集。 · The simulation and save sources are unchanged. Three forms share six new idle/glide poses on the existing battle atlas.
+- **集中自动验收 · Automated:** Node 32/32，Chromium SwiftShader 74/74，原标题及结算截图差异 0.26% / 0.34%；未修改本轮基线。质量脚本 16 项自动检查通过，0 失败；其余 6 项属人工或设备检查。F1 静置标题 p95 **4.3 ms**（962 样本），L1 限速首屏 **2.0 s / 1.4 MB**（上一轮 3.7 s / 2.6 MB），E2 拒绝 6 个资源时有重试且无未捕获错误。 · All automatic checks pass, including cold loading and failure recovery; baseline files are retained.
+- **实际 PC · PC hardware:** Windows、Edge 158、RTX 5090 Laptop、WebGPU，1440×850。新档普通难度以真实浏览器键鼠输入（只读策略）通过第 1–10 波，击败 765 HP 夜叉，进入第 11 波自然失败，678 击杀、5 次合成、解锁莲花，刷新核对存档一致。36/36 检查；未更改规则、生命、物品、珍珠、时间或存档。战场 77,745 个 rAF 间隔 p95 4.3 ms / p99 4.4 ms / 最大 20.8 ms，>50 ms 为 0，Long Tasks 为 0。首屏就绪 983.6 ms，出海到推进观察 133 ms。 · Hardware run used actual input driven by read-only strategy and ended naturally; cadence is browser rAF, not GPU execution.
+- **实际 Fold7 · Fold7 hardware:** SM-F966U1、Android 17、Chrome 157、Adreno 830、WebGPU，873×325 横屏及实际竖屏。新档普通难度真实触控通过第 1–10 波，击败夜叉后进入第 11 波自然失败，804 击杀、8 次合成、解锁莲花，刷新核对存档一致。51/51 检查；20,099 个战场 rAF 间隔 p95/p99 16.7 ms、最大 33.2 ms、>50 ms 为 0。独立浏览器 Long Tasks 3 次（71/56/63 ms），不能视作不存在长任务；这些数据不等于 GPU 时间。首屏就绪 1540.3 ms，出海观察 380 ms。 · Real touch was used on the Android hardware. The run ended naturally and the saved unlock persisted; no game values were scripted.
+- **最终增量回归 · Final targeted regression:** PC 与 Fold7 的三形态资源、待机、移动及退出；Fold7 集市 12/12（余额不足、购买、留货、换货、双页、点选与拖放合成、出售确认和下一波）；两机横屏 HUD 3/3；Fold7 实际旋转 6/6（411×813→873×325→411×813，Pause 65×44→52×44→65×44 CSS px，继续、移动、松手和页面零滚动）。美术/市场/两位数 HUD 定向验证使用隔离测试局面，不算正常解锁或胜利。 · The full natural route preceded the localized HUD/resize patches. Final builds got targeted checks for forms, market, narrow HUD and live rotation; fixtures are distinct from the natural run.
+- **复现与限制 · Reproduction and limits:** 两台自然路线零页面错误和资源 HTTP 错误；最终检查修复 WebGPU 载入图集背压与仅 CSS 尺寸变化不触发 arrange 的问题。详见 ENGINE-NOTES 14/15。未跑动物理手柄、Safari、屏幕阅读软件、完整二十波真人通关、扬声器听感或第 16 波 140 敌人的最终硬件压力测试。旧版本测量保留在下方。 · No page or resource HTTP errors on either natural run. Physical gamepads, Safari, screen readers, human twenty-wave completion, speaker listening and the final 140-enemy hardware stress test remain unverified.
+
+
 ## 2026-11-26 原生浮动摇杆与恢复 · Native floating stick and recovery
 
 - **版本 · Version:** Egret main `253bd197febfff80608fa4b313b4026e5694e23f`。玩法、数值及存档源码没有改动。 · The rules and save sources are unchanged.

@@ -173,6 +173,27 @@ try {
   await waitScreen('play');
   check(await state(() => !window.nezhaSea.game.paused), 'Escape resumes play');
 
+  await page.setViewportSize({ width: 844, height: 320 });
+  await page.waitForTimeout(250);
+  const clock = await state(() => {
+    const { game, ui } = window.nezhaSea;
+    const parts = ui.tree.snapshot.nodes;
+    const bounds = name => parts.find(node => !node.inert && node.id.endsWith(':' + name))?.bounds;
+    const wave = bounds('wave'), timer = bounds('timer'), pause = bounds('pause');
+    if (!wave || !timer || !pause) return null;
+    const scale = game.canvas.getBoundingClientRect().width / game.screen.width;
+    const ctx = document.createElement('canvas').getContext('2d');
+    ctx.font = '700 12px system-ui, "Microsoft YaHei", sans-serif';
+    const needed = ctx.measureText('Wave 20/20').width;
+    return { waveFits: wave.width * scale >= needed,
+      separated: wave.y + wave.height <= timer.y + 0.01 || wave.x + wave.width <= timer.x + 0.01,
+      minimumPause: Math.min(pause.width, pause.height) * scale };
+  });
+  check(clock?.waveFits && clock.separated && clock.minimumPause >= 43.9,
+    'narrow landscape HUD shows the full two-digit wave count and an independent 44px pause target');
+  await page.setViewportSize({ width: 540, height: 960 });
+  await page.waitForTimeout(250);
+
   await finishWaveSoon();
   await waitScreen('levelUp', 30);
   check(/Level up/i.test((await byPart('upgradeTitle'))?.name), 'the first wave ends in a level-up');

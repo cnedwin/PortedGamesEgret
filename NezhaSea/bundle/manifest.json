@@ -8,13 +8,13 @@
     "src/audio-render.mjs": "ee3296773ab4728d582fd4b2b44f1e89ee7be5d9effd07caba54a97a4dad4416",
     "src/audio-synth.mjs": "cf770cf6f1b2c833f900ce9d77f3cb38bb4bf10803d0dd9460a16fb223244190",
     "src/i18n.mjs": "55fea973a60f234db802be0a6fd733afd5e2f978b5a56506361e0d2c899e2717",
-    "src/main.mjs": "2a271f1cc6e1f98e2d4ecdb6eb3c293bcf5f1fa2e744806176dc822e9c69c891",
+    "src/main.mjs": "2b5bb3d108219f963bcd32db5c17444c7a3a5024d6aeee3a1323b5a4687ce61d",
     "src/saves.mjs": "085675ca92df142665da6803e4281bed087aeac72338a20a52de19d03c8d2542",
     "src/sea-stick.mjs": "0be44f5f63ddaa28f3332af89603462c8b7925a08396cc1e1b22198b03939465",
     "src/sim/data.mjs": "191acdb7671393e686741ef94641d98b899f8776aca79a098841c068e9b5ffc2",
     "src/sim/world.mjs": "476cf4f178b5461c17fce00bb0ac8b6ddafbaf5573664fda82f818b9e5a2ea1c",
     "src/sound.mjs": "8c331c966ece4f580a4f1fd30456d5bf2285fb99d4a28ae897a8fa7f4b3da6e8",
-    "src/ui-hud.mjs": "0f08b52bd7eb17f678b67fae39f2793bd8ca0bffd8ac07b8593a95438975ad58",
+    "src/ui-hud.mjs": "a7aafbd154aa3d59d86a8ef59b6ce31aa923ab7cbd9fde25c45b47ef4e6c7796",
     "src/ui-input.mjs": "33ba08be4c377d9c4c9614df6614b4e583f44741db9d27af1db5fa3ffcec1503",
     "src/ui-layout.mjs": "e2f429845a025c51b0a2c8115ab381148b1bedcd56dfbfa06ee6da809aec5b92",
     "src/ui-market.mjs": "ffd14b31346f5030ecb3693c8edcb37840c3882d911b97edb65ee6181f10f864",
@@ -266,6 +266,6 @@
     "chunk-SV7MWPHI.mjs": "4514c834e4d122572b4ceae8a60f1c4cfc005f76b4d6ddfa96aad3b9571ed456",
     "chunk-T6JX3FAY.mjs": "6cf96783087ee71c381b783ca79568e0fc8a4144a0123373e82989155b085478",
     "chunk-YZIZ3Y6E.mjs": "f8348dc7519bcc53cac5b32264faf4180249e742e504acdce2219c1c25847e41",
-    "main.mjs": "afbdda3fc3b3a244ab21310927a80e745c9913aa5667a92fbbb155c065f8c01b"
+    "main.mjs": "0efcc4fea838d197cde6bfb7e09e65703a0b50e28250ed7b9542ca7af994e044"
   }
 }
