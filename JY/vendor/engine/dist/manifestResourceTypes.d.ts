@@ -11,6 +11,7 @@ export interface ManifestAssetBinding<T> extends ManifestBinding {
     readonly ref: AssetRef<T>;
     readonly [manifestBindingValue]?: (value: T) => T;
 }
+/** How urgently a manifest group loads: for what is needed now, or in the background. */
 export interface ManifestGroupOptions {
     readonly priority?: 'interactive' | 'background';
 }

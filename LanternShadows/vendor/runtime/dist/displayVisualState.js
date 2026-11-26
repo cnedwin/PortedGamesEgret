@@ -6,6 +6,30 @@ import { EgretError } from "./EgretError.js";
 const states = new WeakMap();
 const readRevisionState = states.get.bind(states);
 const sameValue = Object.is;
+// An engine may opt in to reading its visual revision without walking the stage.
+const observedEngines = new WeakMap();
+const readObserved = observedEngines.get.bind(observedEngines);
+let observations = 0;
+export function watchDisplayRevision(context) {
+    const state = readObserved(context) ?? { revision: 0, watches: 0 };
+    observedEngines.set(context, state);
+    observations++;
+    state.watches++;
+    let live = true;
+    return Object.freeze({
+        get revision() {
+            return state.revision;
+        },
+        dispose() {
+            if (!live)
+                return;
+            live = false;
+            observations--;
+            if (--state.watches === 0)
+                observedEngines.delete(context);
+        }
+    });
+}
 export const VISUAL_STRUCTURE = 1;
 export const VISUAL_TRANSFORM = 2;
 export const VISUAL_APPEARANCE = 4;
@@ -22,6 +46,13 @@ export function recordVisualChange(node, changes) {
     const state = readRevisionState(node);
     if (state === undefined)
         return;
+    if (observations !== 0) {
+        const context = engineOf(node);
+        const observed = context === undefined ? undefined : readObserved(context);
+        // A synchronous counter is safe in a commit. Never run an observer callback here.
+        if (observed !== undefined)
+            observed.revision = observed.revision >= REVISION_RESTART ? 0 : observed.revision + 1;
+    }
     state.changes++;
     if (((changes & VISUAL_STRUCTURE) !== 0 && state.structureRevision >= REVISION_RESTART) ||
         ((changes & VISUAL_TRANSFORM) !== 0 && state.transformRevision >= REVISION_RESTART) ||
@@ -65,6 +96,7 @@ export function registerVisual(node) {
         anchorOffsetY: 0,
         visible: true,
         renderEffect: undefined,
+        maskUses: 0,
         sharedMaterial: null,
         renderBoundary: "none",
         clipRect: undefined,
@@ -102,11 +134,31 @@ export function assertVisualMutable(node) {
     assertLive(node);
     engineOf(node)?.assertOpen();
 }
+/** A refused display value: the error says which property was set and what it was given. */
+export function invalidDisplayValue(property, value) {
+    // An object is named by its kind alone: a refused value is never read.
+    const given = typeof value === "string"
+        ? JSON.stringify(value.length > 40 ? value.slice(0, 40) + "…" : value)
+        : value === null || (typeof value !== "object" && typeof value !== "function" && typeof value !== "symbol")
+            ? String(value)
+            : typeof value === "object"
+                ? "an object"
+                : "a " + typeof value;
+    return new EgretError("DISPLAY_VALUE_INVALID", { cause: new RangeError(`${property} was given ${given}`) });
+}
 export function finite(value) {
     return typeof value === "number" && Number.isFinite(value);
 }
 export function color(value) {
     return finite(value) && Number.isInteger(value) && value >= 0 && value <= 0xffffff;
+}
+/**
+ * An alpha as it is kept: a finite number, held to 0 and 1. A game's arithmetic often lands a hair outside (a fade
+ * that runs one step long, an easing that overshoots), and that is not worth stopping a frame for. What is not a
+ * finite number gives undefined, for the caller to refuse.
+ */
+export function alphaOf(value) {
+    return finite(value) ? (value < 0 ? 0 : value > 1 ? 1 : value) : undefined;
 }
 export function unit(value) {
     return finite(value) && value >= 0 && value <= 1;

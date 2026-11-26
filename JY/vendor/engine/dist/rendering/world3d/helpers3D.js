@@ -171,6 +171,7 @@ export class ScreenLayer3D extends Mesh3D {
         throw new World3DError('WORLD3D_INPUT_INVALID', 'a screen layer cannot be cloned; create a new one from the same source');
     }
 }
+/** Makes a picture drawn over the whole screen, above or below the scene. */
 export function createScreenLayer3D(source, options = {}) {
     return new ScreenLayer3D(source, options);
 }

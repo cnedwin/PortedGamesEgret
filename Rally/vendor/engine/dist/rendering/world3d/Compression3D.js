@@ -5,6 +5,7 @@
 // on whole buffers. Zstandard dictionaries are not supported, and checksums
 // are skipped rather than verified.
 import { World3DError } from './core3D.js';
+/** The most bytes a decompression gives. */
 export const COMPRESSION3D_LIMITS = Object.freeze({ maxOutputBytes: 536870912 });
 const bad = (detail) => new World3DError('WORLD3D_INPUT_INVALID', 'compressed data: ' + detail);
 const tooBig = () => new World3DError('WORLD3D_BUDGET', 'decompressed size');
@@ -13,7 +14,10 @@ class Output {
     bytes;
     length = 0;
     #max;
-    constructor(hint, max) { this.#max = max; this.bytes = new Uint8Array(Math.min(Math.max(hint, 64), max)); }
+    constructor(hint, max) {
+        this.#max = max;
+        this.bytes = new Uint8Array(Math.min(Math.max(hint, 64), max));
+    }
     reserve(extra) {
         const need = this.length + extra;
         if (need <= this.bytes.length)
@@ -24,13 +28,22 @@ class Output {
         grown.set(this.bytes.subarray(0, this.length));
         this.bytes = grown;
     }
-    result() { return this.bytes.subarray(0, this.length); }
+    result() {
+        return this.bytes.subarray(0, this.length);
+    }
 }
 // ---- zlib ---------------------------------------------------------------------
-const LENGTH_BASE = [3, 4, 5, 6, 7, 8, 9, 10, 11, 13, 15, 17, 19, 23, 27, 31, 35, 43, 51, 59, 67, 83, 99, 115, 131, 163, 195, 227, 258];
+const LENGTH_BASE = [
+    3, 4, 5, 6, 7, 8, 9, 10, 11, 13, 15, 17, 19, 23, 27, 31, 35, 43, 51, 59, 67, 83, 99, 115, 131, 163, 195, 227, 258
+];
 const LENGTH_EXTRA = [0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 2, 2, 2, 2, 3, 3, 3, 3, 4, 4, 4, 4, 5, 5, 5, 5, 0];
-const DISTANCE_BASE = [1, 2, 3, 4, 5, 7, 9, 13, 17, 25, 33, 49, 65, 97, 129, 193, 257, 385, 513, 769, 1025, 1537, 2049, 3073, 4097, 6145, 8193, 12289, 16385, 24577];
-const DISTANCE_EXTRA = [0, 0, 0, 0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6, 7, 7, 8, 8, 9, 9, 10, 10, 11, 11, 12, 12, 13, 13];
+const DISTANCE_BASE = [
+    1, 2, 3, 4, 5, 7, 9, 13, 17, 25, 33, 49, 65, 97, 129, 193, 257, 385, 513, 769, 1025, 1537, 2049, 3073, 4097, 6145,
+    8193, 12289, 16385, 24577
+];
+const DISTANCE_EXTRA = [
+    0, 0, 0, 0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6, 7, 7, 8, 8, 9, 9, 10, 10, 11, 11, 12, 12, 13, 13
+];
 const CODE_ORDER = [16, 17, 18, 0, 8, 7, 9, 6, 10, 5, 11, 4, 12, 3, 13, 2, 14, 1, 15];
 /** Canonical prefix code from code lengths: symbols ordered by length, then by value. */
 function prefixTable(lengths, count) {
@@ -54,7 +67,10 @@ export function inflate3D(source, options = {}) {
         throw bad('source');
     let at = 0, hold = 0, held = 0;
     if (!options.raw) {
-        if (source.length < 6 || (source[0] & 15) !== 8 || ((source[0] << 8) | source[1]) % 31 !== 0 || (source[1] & 32) !== 0)
+        if (source.length < 6 ||
+            (source[0] & 15) !== 8 ||
+            ((source[0] << 8) | source[1]) % 31 !== 0 ||
+            (source[1] & 32) !== 0)
             throw bad('zlib header');
         at = 2;
     }
@@ -235,12 +251,20 @@ function fseBuild(norm, count, log) {
 /** Read an FSE table description stored as a forward bitstream. Returns the table and where the description ends. */
 function fseRead(source, at, end, maxSymbol, maxLog) {
     let hold = 0, held = 0;
-    const need = (n) => { while (held < n) {
-        hold += (at < end ? source[at] : 0) * 2 ** held;
-        at++;
-        held += 8;
-    } };
-    const take = (n) => { need(n); const value = hold % (1 << n); hold = Math.floor(hold / (1 << n)); held -= n; return value; };
+    const need = (n) => {
+        while (held < n) {
+            hold += (at < end ? source[at] : 0) * 2 ** held;
+            at++;
+            held += 8;
+        }
+    };
+    const take = (n) => {
+        need(n);
+        const value = hold % (1 << n);
+        hold = Math.floor(hold / (1 << n));
+        held -= n;
+        return value;
+    };
     const log = take(4) + 5;
     if (log > maxLog)
         throw bad('zstd table accuracy');
@@ -281,15 +305,36 @@ function fseRead(source, at, end, maxSymbol, maxLog) {
         throw bad('zstd table');
     return { table: fseBuild(norm, s, log), at };
 }
-const LL_NORM = [4, 3, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 1, 1, 1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 3, 2, 1, 1, 1, 1, 1, -1, -1, -1, -1];
-const ML_NORM = [1, 4, 3, 2, 2, 2, 2, 2, 2, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, -1, -1, -1, -1, -1, -1, -1];
+const LL_NORM = [
+    4, 3, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 1, 1, 1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 3, 2, 1, 1, 1, 1, 1, -1, -1, -1, -1
+];
+const ML_NORM = [
+    1, 4, 3, 2, 2, 2, 2, 2, 2, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+    1, 1, 1, 1, 1, 1, 1, -1, -1, -1, -1, -1, -1, -1
+];
 const OF_NORM = [1, 1, 1, 1, 1, 1, 2, 2, 2, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, -1, -1, -1, -1, -1];
-const LL_BASE = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 18, 20, 22, 24, 28, 32, 40, 48, 64, 128, 256, 512, 1024, 2048, 4096, 8192, 16384, 32768, 65536];
-const LL_BITS = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 2, 2, 3, 3, 4, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16];
-const ML_BASE = [3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 37, 39, 41, 43, 47, 51, 59, 67, 83, 99, 131, 259, 515, 1027, 2051, 4099, 8195, 16387, 32771, 65539];
-const ML_BITS = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 2, 2, 3, 3, 4, 4, 5, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16];
+const LL_BASE = [
+    0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 18, 20, 22, 24, 28, 32, 40, 48, 64, 128, 256, 512, 1024,
+    2048, 4096, 8192, 16384, 32768, 65536
+];
+const LL_BITS = [
+    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 2, 2, 3, 3, 4, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16
+];
+const ML_BASE = [
+    3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33,
+    34, 35, 37, 39, 41, 43, 47, 51, 59, 67, 83, 99, 131, 259, 515, 1027, 2051, 4099, 8195, 16387, 32771, 65539
+];
+const ML_BITS = [
+    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 2, 2, 3,
+    3, 4, 4, 5, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16
+];
 /** One-symbol table, for the "every code is the same" mode. */
-const fseSingle = (value) => ({ log: 0, symbol: new Uint8Array([value]), bits: new Uint8Array(1), base: new Uint16Array(1) });
+const fseSingle = (value) => ({
+    log: 0,
+    symbol: new Uint8Array([value]),
+    bits: new Uint8Array(1),
+    base: new Uint16Array(1)
+});
 /** Read a Huffman tree description; returns the table and where the description ends. */
 function huffmanRead(source, at, end) {
     if (at >= end)
@@ -503,9 +548,9 @@ function zstdBlock(source, start, end, out, frameStart, state) {
                 throw bad('zstd sequences reuse a table that was never sent');
             return previous;
         };
-        const ll = state.ll = table(modes >> 6, state.ll, LL_NORM, 6, 35, 9);
-        const of = state.of = table((modes >> 4) & 3, state.of, OF_NORM, 5, 31, 8);
-        const ml = state.ml = table((modes >> 2) & 3, state.ml, ML_NORM, 6, 52, 9);
+        const ll = (state.ll = table(modes >> 6, state.ll, LL_NORM, 6, 35, 9));
+        const of = (state.of = table((modes >> 4) & 3, state.of, OF_NORM, 5, 31, 8));
+        const ml = (state.ml = table((modes >> 2) & 3, state.ml, ML_NORM, 6, 52, 9));
         const stream = new BackwardBits(source, at, end), offsets = state.offsets;
         let llState = stream.read(ll.log), ofState = stream.read(of.log), mlState = stream.read(ml.log);
         for (let i = 0; i < sequences; i++) {

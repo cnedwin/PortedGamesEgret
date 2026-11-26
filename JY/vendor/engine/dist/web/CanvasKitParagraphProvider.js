@@ -182,6 +182,7 @@ export function canvasKitParagraphCapabilities(ck) {
             typeof ck.Paragraph?.prototype?.hasLineEllipsis === 'function'
     });
 }
+/** Lays out and draws paragraphs with CanvasKit and the fonts it is given. */
 export function createCanvasKitParagraphProvider(options) {
     return createCanvasKitParagraphProviderOwned(options);
 }

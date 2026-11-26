@@ -2,6 +2,7 @@ import { type Blending3D, type ColorInput3D } from './Material3D.js';
 import { InstancedMesh3D } from './Mesh3D.js';
 import type { Texture3D } from './Texture3D.js';
 type Range = number | readonly [number, number];
+/** GPU particles to make: how many and how long they live, how they move, grow, turn and fade, where they come from and how they blend. */
 export interface GpuParticlesOptions3D {
     /** Number of particles. Default 10000. */
     readonly count?: number;
@@ -102,6 +103,7 @@ export declare class GpuParticles3D extends InstancedMesh3D {
     /** Release the geometry and the material. */
     dispose(): void;
 }
+/** Makes particles simulated on the GPU. */
 export declare function createGpuParticles3D(options?: GpuParticlesOptions3D): GpuParticles3D;
 export {};
 //# sourceMappingURL=GpuParticles3D.d.ts.map

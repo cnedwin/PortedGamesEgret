@@ -22,7 +22,7 @@ export function createSaveSlot(identity, slot = autoSlot) {
   }
 
   async function write(snapshot) {
-    const next = { ...snapshot, format, slot, revision: revision + 1 };
+    const next = { ...snapshot, format, slot, revision: revision + 1, savedAt: new Date().toISOString() };
     await update(key, previous => {
       if ((previous?.revision ?? 0) !== revision) throw new Error(`另一個頁面已更新第 ${slot} 槽，請重新載入。`);
       return next;

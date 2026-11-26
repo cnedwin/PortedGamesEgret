@@ -8,6 +8,7 @@ import { InstancedMesh3D, Mesh3D } from './Mesh3D.js';
 const inverse = new Float32Array(16), instanceWorld = new Float32Array(16);
 const localOrigin = new Float32Array(3), localDirection = new Float32Array(3);
 const hit = new Float32Array(3), worldPoint = new Float32Array(3);
+/** Casts rays through a scene, from a point or from the camera through a screen point. */
 export class Raycaster3D {
     origin = new Float32Array(3);
     direction = new Float32Array([0, 0, -1]);

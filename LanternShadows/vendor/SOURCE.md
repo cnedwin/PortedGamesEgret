@@ -1,9 +1,11 @@
-# Vendored browser runtime
+# Vendored engine
 
-- Egret Engine community rebuild, branch `main`, pinned commit [`2fb4646c1ccec058d31c6f93cc2193061add1979`](https://github.com/cnedwin/Egret_rebuild/tree/2fb4646c1ccec058d31c6f93cc2193061add1979).
-- Built from `packages/engine`, `packages/runtime`, `packages/contracts` and `packages/spine` with `node tools/build.mjs`, using Node.js 26.7.0 and TypeScript 7.0.2. Source tree: `aa6c1ee215d1663fdc42901032785f6d3cbad1ee`. The runtime packages and dependency lockfile have the same source as the previous pin.
-- Only the JavaScript files the game loads are kept: the import closure of the entries named in the import map of `index.html` (`@egret/engine`, its `web/game`, `webgl2`, `webgpu`, `camera`, `particles`, `tilemap`, `web/audio` and `web/gamepad` entries, `@egret/spine` and `@egret/contracts/resources`). Source maps and type declarations are left out, and the source-map comment at the end of each file is removed; the code is otherwise unchanged.
-- `@esotericsoftware/spine-core` 4.3.13 is the Spine package's dependency, copied with its license (`spine-core/LICENSE`) and with inline source-map comments removed. It is used under the Spine Runtimes License Agreement, which requires a Spine Editor license of whoever uses a product built with it.
-- `robust-predicates` 3.0.3 is the engine's dependency, copied unchanged with its license.
+- Egret Engine community rebuild, commit `8e70dcb3a8a0b40c9966483c92cb9f691a1cefd8`, copied by `tools/vendor-game.mjs`.
+- Entries: `@egret/engine`, `@egret/engine/web/game`, `@egret/engine/webgl2`, `@egret/engine/webgpu`, `@egret/engine/camera`, `@egret/engine/particles`, `@egret/engine/tilemap`, `@egret/engine/web/audio`, `@egret/engine/web/gamepad`, `@egret/spine`, `@egret/contracts/resources`. Only the JavaScript files they import are kept; source maps and declarations are left out.
+- Third-party packages, copied with their own licences: `robust-predicates` (Unlicense), `@esotericsoftware/spine-core` (LicenseRef-LICENSE).
 - First-party engine code: Apache-2.0, see `LICENSE` and `NOTICE`.
-- The page does not load these files one by one: `tools/bundle.mjs` packs them, with the game's own modules, into `build/lantern.js`. The files here are what that is made from, and what the page loads with `?dev` in its address.
+- In a page: add `vendor/importmap.json` to the import map, or load `vendor/importmap.js` first. In Node: `node --import ./vendor/node-register.mjs`.
+- For a coding agent: `node vendor/egret.mjs guide <question>` asks the engine's guide, copied with its command under `vendor/egret/`; `node vendor/egret.mjs explain <ERROR_CODE>` gives an engine error in English and Chinese. `verify` runs the game in a headless browser with `pngjs` (MIT, `vendor/egret/third-party/pngjs`).
+
+- The Spine runtime license requires a Spine Editor license for use of a product built with the runtime. See the copied licence under @esotericsoftware__spine-core/LICENSE.
+- The game serves the compact assembly build/lantern.js produced by tools/bundle.mjs; ?dev uses the module import map directly.

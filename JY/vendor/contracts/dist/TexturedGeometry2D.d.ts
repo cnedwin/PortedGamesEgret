@@ -1,6 +1,9 @@
 declare const texturedGeometry2DBrand: unique symbol;
+/** A float array of a textured geometry, in single or double precision. */
 export type TexturedFloatArray2D = Float32Array<ArrayBuffer> | Float64Array<ArrayBuffer>;
+/** An index array of a textured geometry, in 16 or 32 bits. */
 export type TexturedIndexArray2D = Uint16Array<ArrayBuffer> | Uint32Array<ArrayBuffer>;
+/** The positions, texture coordinates and triangle indices of a textured mesh to copy. */
 export interface TexturedGeometry2DInput {
     readonly positions: TexturedFloatArray2D;
     readonly uvs: TexturedFloatArray2D;
@@ -19,7 +22,9 @@ export interface TexturedGeometry2D {
     readonly lightColors: readonly number[];
     readonly indices: readonly number[];
 }
+/** Copies and checks a textured mesh; malformed arrays are refused with a TypeError. */
 export declare function createTexturedGeometry2D(input: TexturedGeometry2DInput): TexturedGeometry2D;
+/** Whether a value is a geometry made by `createTexturedGeometry2D`, without reading any of its properties. */
 export declare function isTexturedGeometry2D(value: unknown): value is TexturedGeometry2D;
 export {};
 //# sourceMappingURL=TexturedGeometry2D.d.ts.map

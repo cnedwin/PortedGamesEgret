@@ -5,7 +5,9 @@
 import { World3DError, requireCount3D, requireFinite3D } from './core3D.js';
 import { quatNormalize, quatSlerp } from './math3D.js';
 import { Mesh3D } from './Mesh3D.js';
+/** The most tracks, keys and actions animations hold. */
 export const ANIMATION3D_LIMITS = Object.freeze({ maxTracks: 4096, maxKeys: 1048576, maxActions: 256 });
+/** A named animation: its tracks and its length in seconds. */
 export class AnimationClip3D {
     name;
     tracks;
@@ -43,6 +45,7 @@ export class AnimationClip3D {
         this.duration = duration === undefined ? end : requireFinite3D(duration, 'clip duration');
     }
 }
+/** Makes a clip from its name and tracks; malformed tracks are refused. */
 export function createAnimationClip3D(input) {
     return new AnimationClip3D(input.name ?? '', input.tracks, input.duration);
 }
@@ -175,6 +178,7 @@ class PropertyMix {
             this.target.markTransformDirty();
     }
 }
+/** One clip playing on a mixer: play, stop and reset it, fade it in or out, or cross-fade to another. */
 export class AnimationAction3D {
     clip;
     /** Blend weight before fading is applied. */

@@ -260,6 +260,7 @@ export class Jelly3D {
         return out;
     }
 }
+/** Makes an object squash, stretch and wobble like jelly as it moves. */
 export function createJelly3D(target, options = {}) {
     return new Jelly3D(target, options);
 }

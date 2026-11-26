@@ -60,7 +60,7 @@ export function materializeSharedPages2D(storage, cold, owner, diagnostics) {
     checkSharedCapacity2D(storage, owner, canonicalBytes, sourceCopy);
     const before = diagnostics?.canonicalBytes;
     try {
-        const projections = storage.projectionPlan.views.map((view, index) => cold.has(index) ? copySharedPagePixels(view.image, diagnostics) : undefined);
+        const projections = storage.projectionPlan.views.map((view, index) => cold.has(index) ? copySharedPagePixels(view.image, diagnostics, view.levels ?? 1) : undefined);
         return { projections, canonicalBytes };
     }
     catch (cause) {

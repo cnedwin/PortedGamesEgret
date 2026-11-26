@@ -1,5 +1,5 @@
 /** Accumulates demand into the submission's existing maps without taking ownership of any native resources. */
-export function collectWebGPUImageDemand(projectionPlan, draws, shared, directory, enabled, epoch, hits, candidates) {
+export function collectWebGPUImageDemand(projectionPlan, draws, shared, directory, enabled, epoch, hits, candidates, borrowSubmitted) {
     const buckets = new Map();
     let bytes = 0;
     for (const draw of draws) {
@@ -10,14 +10,18 @@ export function collectWebGPUImageDemand(projectionPlan, draws, shared, director
             continue;
         const view = projectionPlan.views[draw.viewIndex], region = view.region;
         const cropKey = (shared ? 'shared:egret.alpha8-capped-srgb-pma8/1:rgba8unorm-srgb:' : '') +
-            `${region.x},${region.y},${region.width},${region.height}`;
+            `${region.x},${region.y},${region.width},${region.height}` +
+            // A page kept with one level cannot serve a draw that samples its smaller copies.
+            ((view.levels ?? 1) === 1 ? '' : `:levels=${view.levels}`);
         let bucket = directory.get(view.image) ?? buckets.get(view.image);
         if (!bucket) {
             bucket = new Map();
             buckets.set(view.image, bucket);
         }
         const entry = bucket.get(cropKey);
-        if (enabled && entry?.epoch === epoch && entry.state === 'ready')
+        if (enabled &&
+            entry?.epoch === epoch &&
+            (entry.state === 'ready' || (borrowSubmitted && entry.state === 'submitted')))
             hits.set(draw.viewIndex, entry);
         else {
             candidates.set(draw.viewIndex, {

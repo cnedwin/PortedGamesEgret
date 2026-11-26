@@ -2,6 +2,8 @@
 // level.mjs into a handful of meshes: one per surface, so the whole station
 // costs only a few draw calls.
 import { Mesh3D, createGeometry3D, createStandardMaterial3D, createUnlitMaterial3D } from '@egret/engine/world3d';
+import { batchModels } from './asset-models.mjs';
+import { cropSceneModel, mergeSceneReliefs, repeatSceneModel } from './scene-modules.mjs';
 import { createBuilder, rgb } from './build.mjs';
 import { BOUNDS, BOXES, PLACES } from './level.mjs';
 import { weather } from './grime.mjs';
@@ -9,15 +11,64 @@ import { canvasTexture, dotTexture } from './textures.mjs';
 
 const WHITE = [1, 1, 1];
 const shade = (c, k) => [c[0] * k, c[1] * k, c[2] * k];
+const BOX_MODELS = new Set([
+  'dam-step', 'compound', 'booth', 'barrier', 'sandbag', 'container', 'crate', 'canopy',
+  'post', 'roof', 'generator', 'console', 'pipe-rack', 'cabinet', 'server',
+  'desk', 'sofa', 'transformer', 'leg', 'tank', 'barrel', 'pallet', 'tyres', 'reel', 'forklift',
+  'penstock', 'tower',
+]);
+const FACADES = {
+  plant: { west: -8, east: 16, north: -26, south: -8, height: 8 },
+  office: { west: 22, east: 36, north: -20, south: 2, height: 4 },
+};
 
 /** Build the static scenery into `scene`. `surfaces` come from textures.mjs. */
-export function buildScenery(scene, surfaces) {
+export function buildScenery(scene, surfaces, models = {}) {
   // One builder per surface; `plain` has no texture and `glow` is not lit.
   const groups = {};
   for (const name of [...Object.keys(surfaces), 'plain', 'glow']) groups[name] = createBuilder();
   // Concrete laid flat on the ground is wet like the tarmac, so it is kept apart from the walls.
   const apron = createBuilder();
   const { concrete, asphalt, container, wall, wood, sandbag, metal, plain, glow } = groups;
+  const placements = {};
+  const placementModels = {}, modules = new Map(), facades = {};
+  const placeModel = (role, at, w, h, d, yaw = 0, options = {}) => {
+    const { model = models[role], key = role, ...fit } = options;
+    placementModels[key] = model;
+    (placements[key] ??= []).push({ at, slot: [-w / 2, 0, -d / 2, w / 2, h, d / 2], yaw, ...fit });
+  };
+  const repeated = (role, axis, length, scale) => {
+    const key = role + '/' + length.toFixed(3) + '/' + scale.toFixed(3);
+    if (!modules.has(key)) modules.set(key, repeatSceneModel(models[role], axis, length, scale));
+    return { key, model: modules.get(key) };
+  };
+  // Lay a fixed-size window pattern across each full facade, then cut the
+  // original passages out of that pattern. Individual wall runs never stretch it.
+  const placeFacade = (wall) => {
+    if (!models[wall.kind]) return;
+    const layout = FACADES[wall.kind], base = wall.y - wall.h / 2;
+    let length, centre, segment, yaw, at;
+    if (wall.z === layout.north || wall.z === layout.south) {
+      const south = wall.z === layout.south;
+      length = layout.east - layout.west;
+      centre = (wall.x - (layout.west + layout.east) / 2) * (south ? 1 : -1);
+      segment = wall.w;
+      yaw = south ? 0 : Math.PI;
+      at = [wall.x, 0, wall.z + (south ? 1 : -1) * wall.d / 2];
+    } else if (wall.x === layout.west || wall.x === layout.east) {
+      const east = wall.x === layout.east;
+      length = layout.south - layout.north;
+      centre = (wall.z - (layout.north + layout.south) / 2) * (east ? -1 : 1);
+      segment = wall.d;
+      yaw = east ? Math.PI / 2 : -Math.PI / 2;
+      at = [wall.x + (east ? 1 : -1) * wall.w / 2, 0, wall.z];
+    } else return;
+    const source = models[wall.kind], scale = layout.height / (source.bounds[4] - source.bounds[1]);
+    const template = repeated(wall.kind, 0, length, scale).model, bounds = template.bounds;
+    const clipped = cropSceneModel(template, [centre - segment / 2, bounds[1] + base, bounds[2],
+      centre + segment / 2, bounds[1] + base + wall.h, bounds[5]]);
+    (facades[wall.kind] ??= []).push({ model: clipped, origin: [centre, 0, bounds[2]], at, yaw, depth: 0.14 / (bounds[5] - bounds[2]) });
+  };
 
   const OLIVE = rgb(0x4d5a3c),
     STEEL = rgb(0x6f757a),
@@ -53,26 +104,127 @@ export function buildScenery(scene, surfaces) {
         plain.cylinder(x, 0.5, z, 0.5, 0.32, { axis: along === 'x' ? 'z' : 'x', sides: 12, tint: RUBBER });
       }
   };
-  for (const b of BOXES) {
+  for (let index = 0; index < BOXES.length; index++) {
+    const b = BOXES[index];
     const top = b.y + b.h / 2,
       tint = b.tint ? rgb(b.tint) : WHITE;
+    if (models.truck && b.kind === 'truck-bed' && BOXES[index + 1]?.kind === 'truck-cab') {
+      const cab = BOXES[++index], acrossX = b.along === 'x';
+      const left = Math.min(b.x - b.w / 2, cab.x - cab.w / 2), right = Math.max(b.x + b.w / 2, cab.x + cab.w / 2);
+      const back = Math.min(b.z - b.d / 2, cab.z - cab.d / 2), front = Math.max(b.z + b.d / 2, cab.z + cab.d / 2);
+      const w = right - left, d = front - back;
+      placeModel('truck', [(left + right) / 2, b.y - b.h / 2, (back + front) / 2],
+        acrossX ? d : w, b.h, acrossX ? w : d, acrossX ? -Math.PI / 2 : Math.PI, { fit: 'width' });
+      continue;
+    }
+    if (models['water-tower'] && (b.kind === 'tank' || b.kind === 'leg')) {
+      if (b.kind === 'tank') placeModel('water-tower', [b.x, 0, b.z], b.w, top, b.d, 0, { fit: 'height' });
+      continue;
+    }
+    if (models.penstock && b.kind === 'penstock') {
+      // The authored part replaces the pipe and flanges, with its original
+      // concrete cradle left beneath the suspended water inlet.
+      placeModel('penstock', [b.x, b.y - 1.13, -28.2], 2.26, 2.26, 3.9, 0, { fit: 'depth', align: [0.5, 0.5, 0.5] });
+      concrete.box(b.x, 0.7, -28.2, 2.2, 1.4, 1.2, { tile: 2, tint: shade(WHITE, 0.8) });
+      for (const side of [-0.46, 0.46]) plain.box(b.x + side, 1.79, -28.2, 0.12, 0.78, 0.9, { tint: STEEL });
+      plain.box(b.x, 2.16, -28.2, 1.3, 0.08, 0.9, { tint: STEEL });
+      continue;
+    }
+    if (models.container && b.kind === 'container') {
+      const alongX = b.along === 'x', length = alongX ? b.w : b.d;
+      const scale = b.h / (models.container.bounds[4] - models.container.bounds[1]);
+      placeModel('container', [b.x, b.y - b.h / 2, b.z], alongX ? b.d : b.w, b.h, length,
+        alongX ? -Math.PI / 2 : Math.PI, { ...repeated('container', 2, length, scale), fit: 'height' });
+      continue;
+    }
+    if (models[b.kind] && (b.kind === 'barrier' || b.kind === 'sandbag')) {
+      const role = b.kind, length = Math.max(b.w, b.d), depth = Math.min(b.w, b.d);
+      const source = models[role].bounds, sourceHeight = source[4] - source[1];
+      const rows = role === 'sandbag' ? 2 : 1;
+      const scale = b.h / rows / sourceHeight;
+      const height = sourceHeight * scale;
+      const yaw = b.d > b.w ? Math.PI / 2 : 0, base = b.y - b.h / 2;
+      for (let row = 0; row < rows; row++) {
+        placeModel(role, [b.x, base + row * height, b.z], length, height, depth, yaw,
+          { ...repeated(role, 0, length, scale), fit: 'height' });
+      }
+      continue;
+    }
+    if (models.crate && b.kind === 'crate') {
+      const source = models.crate.bounds;
+      const scale = Math.min(b.w / (source[3] - source[0]), b.d / (source[5] - source[2]));
+      const base = b.y - b.h / 2;
+      placeModel('crate', [b.x, base, b.z], b.w, b.h, b.d, 0,
+        { ...repeated('crate', 1, b.h, scale), fit: 'height' });
+      continue;
+    }
+    if (models.console && b.kind === 'console') {
+      const bounds = models.console.bounds, unit = (bounds[3] - bounds[0]) * b.h / (bounds[4] - bounds[1]);
+      const count = Math.max(1, Math.floor(b.w / unit));
+      for (let index = 0; index < count; index++) {
+        const x = count === 1 ? b.x : b.x - (b.w - unit) / 2 + index * (b.w - unit) / (count - 1);
+        placeModel('console', [x, b.y - b.h / 2, b.z], unit, b.h, b.d, 0, { fit: 'height' });
+      }
+      continue;
+    }
+    if (models.canopy && b.kind === 'canopy') {
+      const bounds = models.canopy.bounds, depth = (bounds[5] - bounds[2]) * b.w / (bounds[3] - bounds[0]);
+      const count = Math.ceil(b.d / depth);
+      for (let index = 0; index < count; index++) {
+        const z = count === 1 ? b.z : b.z - (b.d - depth) / 2 + index * (b.d - depth) / (count - 1);
+        placeModel('canopy', [b.x, b.y - b.h / 2, z], b.w, b.h, depth, 0, { fit: 'width' });
+      }
+      continue;
+    }
+    if (BOX_MODELS.has(b.kind) && models[b.kind]) {
+      let { w, h, d } = b, yaw = 0;
+      if (b.kind === 'container') {
+        yaw = b.along === 'x' ? -Math.PI / 2 : Math.PI;
+        if (b.along === 'x') [w, d] = [d, w];
+      } else if (['barrier', 'sandbag', 'compound', 'cabinet', 'desk'].includes(b.kind) && d > w) {
+        [w, d] = [d, w];
+        yaw = Math.PI / 2;
+      }
+      if (b.kind === 'generator') h = 4.9;
+      if (b.kind === 'transformer') h = 2.71;
+      if (b.kind === 'tower') {
+        w = 1.6;
+        h += 0.52;
+      }
+      placeModel(b.kind, [b.x, b.y - b.h / 2, b.z], w, h, d, yaw,
+        b.kind === 'forklift' ? { fit: 'height', align: [0.5, 0, 1] } : {});
+      continue;
+    }
     switch (b.kind) {
       case 'dam': {
         // The foot of the dam: a stepped face with buttresses and three sluice gates.
         concrete.box(b.x, b.y, b.z, b.w, b.h, b.d, { tile: 7, tint: shade(WHITE, 0.82) });
+        const waterFace = b.z + b.d / 2, gates = [-25, -15, 25];
         for (let x = -40; x <= 40; x += 10)
           concrete.box(x, 9, b.z + b.d / 2 + 0.6, 1.6, 18, 1.2, { tile: 5, tint: shade(WHITE, 0.74) });
         concrete.box(b.x, 18.4, b.z + b.d / 2 + 0.9, b.w, 0.8, 1.8, { tile: 5, tint: shade(WHITE, 0.7) });
-        for (const x of [-25, -15, 25]) {
-          plain.box(x, 5.5, b.z + b.d / 2 + 0.02, 6, 7, 0.05, { tint: rgb(0x10161a) });
-          metal.box(x, 7.4, b.z + b.d / 2 + 0.12, 6.2, 3.2, 0.2, { tile: 2.5, tint: rgb(0x566a72) });
-          for (const side of [-3.3, 3.3])
-            concrete.box(x + side, 5.5, b.z + b.d / 2 + 0.25, 0.6, 7.6, 0.5, { tile: 4, tint: shade(WHITE, 0.7) });
+        for (const x of gates) {
+          if (models.dam) {
+            const bounds = models.dam.bounds, scale = 9.8 / (bounds[3] - bounds[0]);
+            const depth = (bounds[5] - bounds[2]) * scale;
+            placeModel('dam', [x, 0.06, waterFace + 0.15 - depth / 2], 9.8, 17.5, depth, 0, { fit: 'width' });
+          } else {
+            plain.box(x, 5.5, waterFace + 0.02, 6, 7, 0.05, { tint: rgb(0x10161a) });
+            metal.box(x, 7.4, waterFace + 0.12, 6.2, 3.2, 0.2, { tile: 2.5, tint: rgb(0x566a72) });
+            for (const side of [-3.3, 3.3])
+              concrete.box(x + side, 5.5, waterFace + 0.25, 0.6, 7.6, 0.5, { tile: 4, tint: shade(WHITE, 0.7) });
+          }
         }
         // Lift joints across the face, a thicker foot, gate houses on the crest and a stair up the east end.
         for (let y = 4; y < 26; y += 4) plain.box(b.x, y, b.z + b.d / 2 + 0.03, b.w, 0.07, 0.06, { tint: rgb(0x4d4b46) });
-        concrete.box(b.x, 3.2, b.z + b.d / 2 + 0.35, b.w, 6.4, 0.7, { tile: 6, tint: shade(WHITE, 0.78) });
-        for (const x of [-25, -15, 25]) {
+        const edge = b.x + b.w / 2;
+        let last = b.x - b.w / 2;
+        for (const x of models.dam ? [...gates, edge + 3.6] : [edge + 3.6]) {
+          const end = x - 3.6;
+          concrete.box((last + end) / 2, 3.2, waterFace + 0.35, end - last, 6.4, 0.7, { tile: 6, tint: shade(WHITE, 0.78) });
+          last = x + 3.6;
+        }
+        for (const x of gates) {
           concrete.box(x, 27.6, b.z + 1, 5.4, 3.2, 3.4, { tile: 3, tint: shade(WHITE, 0.8) });
           metal.box(x, 29.35, b.z + 1, 6, 0.3, 4, { tile: 2, tint: rgb(0x4a5258) });
           for (const dx of [-1.5, 0, 1.5]) glow.box(x + dx, 27.8, b.z + 2.72, 0.8, 0.9, 0.02, { tint: [0.55, 0.45, 0.25] });
@@ -109,9 +261,11 @@ export function buildScenery(scene, surfaces) {
         break;
       case 'plant':
         wall.box(b.x, b.y, b.z, b.w, b.h, b.d, { tile: 4, tint: PLANT });
+        placeFacade(b);
         break;
       case 'office':
         wall.box(b.x, b.y, b.z, b.w, b.h, b.d, { tile: 3.2, tint: OFFICE });
+        placeFacade(b);
         break;
       case 'roof':
         metal.box(b.x, b.y, b.z, b.w, b.h, b.d, { tile: 4, tint: rgb(0x4a5258) });
@@ -378,6 +532,23 @@ export function buildScenery(scene, surfaces) {
       default:
         plain.box(b.x, b.y, b.z, b.w, b.h, b.d, { tint });
     }
+  }
+
+  for (const [role, instances] of Object.entries(placements)) {
+    const cells = new Map();
+    for (const instance of instances) {
+      // Let the engine cull each compact group independently for the main,
+      // mirror and shadow cameras. Geometry and PBR textures remain shared.
+      const spatial = role.startsWith('container/') || role.startsWith('crate/');
+      const key = spatial ? Math.floor(instance.at[0] / 8) + '/' + Math.floor(instance.at[2] / 8) : role;
+      if (!cells.has(key)) cells.set(key, []);
+      cells.get(key).push(instance);
+    }
+    for (const cell of cells.values()) batchModels(scene, placementModels[role], cell);
+  }
+  for (const [role, pieces] of Object.entries(facades)) {
+    const facade = mergeSceneReliefs(models[role].name, pieces);
+    batchModels(scene, facade, [{ slot: facade.bounds, at: [0, 0, 0] }], { shadow: false });
   }
 
   // ---- lamps: a pole, an arm and a lit head (the lights themselves are added by the view) ---

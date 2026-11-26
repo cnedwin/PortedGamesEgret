@@ -7,14 +7,28 @@ import { registerUiRoot } from '../internal/uiRootState.js';
 import { captureSource, captureReveal, revealScroll } from './virtualList.js';
 import { createUiKeyboardFocus } from './keyboardFocus.js';
 import { captureUiTree, leafConstraintTree, leafMeasuredTree, fixedLeafMeasurement } from './leafContent.js';
-import { withoutSources, preparationError, fail, next, number, viewport, origin } from './uiRootModel.js';
+import { withoutSources, preparationError, fail, failBusy, next, number, viewport, origin } from './uiRootModel.js';
+/** Content a leaf or row gave is checked; a refusal says which leaf or row, and why. */
+function contentOf(where, check) {
+    try {
+        check();
+    }
+    catch (e) {
+        if (!(e instanceof EgretError) || e.code !== 'UI_CONTENT_INVALID')
+            throw e;
+        const why = e.cause instanceof Error ? e.cause.message : 'it cannot be shown there';
+        throw new EgretError('UI_CONTENT_INVALID', { cause: new Error('the content of ' + where + ': ' + why) });
+    }
+}
 import { createUiRootDisplayDraft, stageUiRootDisplay } from './uiRootDisplay.js';
 const freeze = Object.freeze;
 /** One owned transaction domain over the genuine display and input authorities. */
 export function createUiRoot(options) {
     const port = requireUiEngine(options.engine);
     port.assertOpen();
-    port.assertIdle();
+    // A root may be made from a button's callback, while input is delivered: making it changes nothing on the stage,
+    // which its first commit does, and its first prepare waits until the delivery is over.
+    port.assertNotDrawing();
     const owner = port.scope(options.scope);
     owner.assertOpen();
     const display = port.display(createUiDisplayOperations);
@@ -364,7 +378,7 @@ export function createUiRoot(options) {
                 fail('UI_STALE');
             }
             const content = value.content, height = number(value.measuredHeight, 1, 1048576);
-            display.validateContent(content, scope.scope);
+            contentOf('row ' + JSON.stringify(key), () => display.validateContent(content, scope.scope));
             check(w.revision);
             // Explicit height updates can supersede the measurement retained by a binding.
             const committedPosition = committedIndex?.indexOf(key) ?? -1;
@@ -469,7 +483,7 @@ export function createUiRoot(options) {
                 fail('UI_STALE');
             }
             const content = value.content, height = number(value.measuredHeight, 0, 1048576);
-            display.validateContent(content, scope.scope);
+            contentOf('leaf ' + JSON.stringify(name), () => display.validateContent(content, scope.scope));
             check(w.revision);
             if (w.paintOnly && height !== leafBindings.get(name)?.height)
                 fail('UI_THEME_METRICS_CHANGED');
@@ -1030,7 +1044,7 @@ export function createUiRoot(options) {
                 if (value === inputIdentity)
                     return;
                 if (busy || committing)
-                    fail('UI_BUSY');
+                    failBusy(busy);
                 port.assertIdle();
                 display.assertStage();
                 if (input !== undefined && input.state() !== 'closed' && input.activeContacts() !== 0)
@@ -1086,9 +1100,23 @@ export function createUiRoot(options) {
         },
         async prepare() {
             open();
+            // Asked for while input is delivered or a frame drawn, as from a button's callback: it starts once that is over,
+            // and holds its place meanwhile, so a prepare asked for after it is the one that is busy.
+            if (!port.isIdle()) {
+                if (busy || committing)
+                    failBusy(busy);
+                busy = true;
+                try {
+                    await Promise.resolve();
+                }
+                finally {
+                    busy = false;
+                }
+                open();
+            }
             port.assertIdle();
             if (busy || committing)
-                fail('UI_BUSY');
+                failBusy(busy);
             for (const c of [...candidates])
                 clearCandidate(c);
             busy = true;
@@ -1130,7 +1158,7 @@ export function createUiRoot(options) {
             }
             port.assertIdle();
             if (busy || committing)
-                fail('UI_BUSY');
+                failBusy(busy);
             display.assertStage();
             if (entry.retired === true ||
                 (entry.candidate !== undefined && !candidates.has(entry.candidate)) ||
@@ -1331,7 +1359,7 @@ export function createUiRoot(options) {
         open();
         port.assertIdle();
         if (committing)
-            fail('UI_BUSY');
+            failBusy(false);
         const p = origin({ x: value.x, y: value.y }, snapshot.viewport);
         display.presentRoot(rootWrapper, {
             x: p.x,
@@ -1430,7 +1458,8 @@ export function createUiRoot(options) {
                 touchChildren: false
             }
         ]);
-        port.assertIdle();
+        port.assertNotDrawing();
+        // The placeholder is drawn into the root's own wrapper, which is on no stage until it is anchored.
         display.commit(placeholder);
         owner.use({
             dispose: () => api.dispose()

@@ -81,6 +81,7 @@ export function createOpeningDialogue({
   const jyx2PortraitWidth = Math.min(148, Math.round(panelWidth * .24));
   const jyx2PortraitHeight = Math.min(148, jyx2Height + 35);
   let jyx2Skin;
+  let skinRequest;
   const classicSkin = panel.addChild(owned.use(new Sprite()));
   const enhancedSkin = panel.addChild(owned.use(new Sprite()));
   const nameBand = enhancedSkin.addChild(owned.use(new Sprite()));
@@ -203,6 +204,14 @@ export function createOpeningDialogue({
     portrait.visible = true;
   }
 
+  function prepareSkin() {
+    return skinRequest ??= createJyx2Skin(engine, owned, panel, Math.min(1 / 3, width / 1920), panelWidth,
+      jyx2Height, jyx2PortraitWidth, jyx2PortraitHeight).catch(error => {
+        if (!closed) console.warn(error);
+        return null;
+      }).then(skin => { jyx2Skin = skin; });
+  }
+
   async function talk({ text: content, head, style, voice, item, speakerName: overrideName }) {
     if (closed) throw closedError;
     if (active) throw new Error('Another dialogue is already active');
@@ -212,13 +221,9 @@ export function createOpeningDialogue({
       const lower = compact || style % 2 === 1;
       const wantsJyx2 = globalThis.document?.body?.dataset.art === 'jyx2';
       const lease = head >= 0 && style !== 2 && style !== 3 ? await loadPortrait(head) : undefined;
-      if (wantsJyx2 && jyx2Skin === undefined) {
-        jyx2Skin = await createJyx2Skin(engine, owned, panel, Math.min(1 / 3, width / 1920), panelWidth,
-          jyx2Height, jyx2PortraitWidth, jyx2PortraitHeight).catch(error => {
-            if (closed) throw closedError;
-            console.warn(error);
-            return null;
-          });
+      if (wantsJyx2) {
+        await prepareSkin();
+        if (closed) throw closedError;
       }
       const jyx2 = wantsJyx2 && Boolean(jyx2Skin);
       const right = jyx2 ? head === 0 : style === 1 || style === 4;
@@ -295,13 +300,15 @@ export function createOpeningDialogue({
               dockPage = { url, heading: heading ?? '', counter: pages.length > 1 ? `${index + 1}/${pages.length}` : '', body: dockPages[index] };
               updateDock();
             }
-            onPage?.({ text: pageText, head, style, voice, page: index + 1, pages: pages.length });
+            onPage?.({ text: pageText, speaker: heading ?? overrideName ?? speakerName?.(head),
+              head, style, voice, page: index + 1, pages: pages.length });
           });
-          if (skipped) break;
+          if (skipped) return false;
         } finally {
           waiter = undefined;
         }
       }
+      return true;
     } finally {
       active = false;
       closeDock();
@@ -314,6 +321,7 @@ export function createOpeningDialogue({
 
   return {
     talk,
+    prepareSkin,
     confirm: () => acknowledge(false),
     skip: () => acknowledge(true),
     close,

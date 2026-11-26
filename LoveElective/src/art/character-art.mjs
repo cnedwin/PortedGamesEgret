@@ -1,7 +1,13 @@
 import { HERO, HEROINES, HEROINE_IDS } from '../data/cast.mjs';
+import { storyLook } from './story-looks.mjs';
+import { paintDyedPortrait, portraitDyes } from './portrait-dyes.mjs';
 
 const portraits = new Map();
 const heads = new Map();
+const variants = new Map();
+const dyedPortraits = new Map();
+const maxVariantImages = 8;
+const portraitUrl = name => new URL(`../../assets/characters/${name}.webp`, import.meta.url);
 const headAnchors = {
   "qingge": [228, 494, 0.365],
   "linxia": [326, 517, 0.372],
@@ -55,7 +61,7 @@ export async function preloadCharacterArt() {
   await Promise.all(['hero', ...HEROINE_IDS, 'professor'].map(async id => {
     const directory = '../../assets/characters/';
     const [image, head] = await Promise.all([
-      loadImage(new URL(directory + id + '.webp', import.meta.url)),
+      loadImage(portraitUrl(id)),
       id === 'professor' ? undefined : loadImage(new URL(directory + id + '-head.webp', import.meta.url)),
     ]);
     if (image) portraits.set(id, image);
@@ -111,36 +117,46 @@ export function paintLayeredHead(g, spec) {
   g.restore();
 }
 
-function samePiece(current, base) {
-  return current?.id === base?.id
-    && current?.c?.[0] === base?.c?.[0]
-    && current?.c?.[1] === base?.c?.[1];
-}
-
-export function hasStoryPortrait(spec) {
-  if (!portraits.has(spec.id)) return false;
-  if (spec.id === 'professor') return true;
-  const character = spec.id === 'hero' ? HERO : HEROINES[spec.id];
-  const look = character.look;
-  const wear = character.wear ?? character.outfits.uniform;
-  const current = spec.wear ?? {};
-  const accessories = current.acc ?? [];
-  const baseAccessories = wear.acc ?? [];
-  return sameHair(spec, look)
-    && accessories.length === baseAccessories.length
-    && accessories.every((item, index) => samePiece(item, baseAccessories[index]))
-    && ['top', 'bottom', 'dress', 'outer', 'shoes', 'legs'].every(key => samePiece(current[key], wear[key]));
-}
-
-/** Frame the portrait into the same visible stage area as the bust rig. */
-export function paintStoryCharacter(g, spec) {
-  if (!hasStoryPortrait(spec)) return false;
+export async function loadStoryPortrait(spec) {
+  const { name, colors } = storyLook(spec);
+  if (name !== spec.id) {
+    let pending = variants.get(name);
+    if (!pending) {
+      pending = loadImage(portraitUrl(`looks/${name}`));
+      if (variants.size >= maxVariantImages) variants.delete(variants.keys().next().value);
+      variants.set(name, pending);
+    }
+    const image = await pending;
+    if (image) {
+      const dyes = portraitDyes(name, colors);
+      if (dyes.some(Boolean)) {
+        const key = [name, ...dyes].join(':');
+        let recolored = dyedPortraits.get(key);
+        if (!recolored) {
+          recolored = loadImage(portraitUrl(`looks/${name}-dye`))
+            .then(mask => mask ? { name, key, image: paintDyedPortrait(name, image, mask, dyes) } : { name, key: name, image })
+            .catch(() => ({ name, key: name, image }));
+          if (dyedPortraits.size >= maxVariantImages) dyedPortraits.delete(dyedPortraits.keys().next().value);
+          dyedPortraits.set(key, recolored);
+        }
+        return recolored;
+      }
+      return { name, key: name, image };
+    }
+    if (variants.get(name) === pending) variants.delete(name);
+  }
   const image = portraits.get(spec.id);
-  const scale = Math.min(392 / image.naturalWidth, 552 / image.naturalHeight);
-  const width = image.naturalWidth * scale;
-  const height = image.naturalHeight * scale;
-  g.drawImage(image, (400 - width) / 2, 600 - height, width, height);
-  return true;
+  return image && { name: spec.id, key: spec.id, image };
+}
+
+/** Preserve the outfit framing when the sprite includes wide hair or sleeves. */
+export function paintStoryCharacter(g, image, frameWidth) {
+  const sourceWidth = image.naturalWidth ?? image.width;
+  const sourceHeight = image.naturalHeight ?? image.height;
+  const scale = Math.min((frameWidth - 8) / sourceWidth, 552 / sourceHeight);
+  const width = sourceWidth * scale;
+  const height = sourceHeight * scale;
+  g.drawImage(image, (frameWidth - width) / 2, 600 - height, width, height);
 }
 
 /** Draw a cropped head-and-shoulders card independently of stage scaling. */

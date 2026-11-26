@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1, maximum-scale=1, viewport-fit=cover, user-scalable=no">
+  <title>九州烽烟 · Nine Provinces Ablaze</title>
+  <meta name="description" content="九州烽烟：一款基于新白鹭引擎独立开发的三国题材即时战略游戏 Demo——天下七十六城、三十四路诸侯、五百余位武将，内政、外交、科技、六边形即时战斗与六条演义。">
+  <meta name="theme-color" content="#1f2b33">
+  <link rel="icon" href="data:,">
+  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="style-interface.css">
+  <link rel="stylesheet" href="style-scenarios.css">
+  <link rel="stylesheet" href="style-custom-faction.css">
+  <link rel="stylesheet" href="src/ui/battle-polish.css">
+  <link rel="stylesheet" href="src/ui/battle-lab.css">
+  <link rel="stylesheet" href="src/ui/player-flow.css">
+  <link rel="stylesheet" href="src/ui/campaign-battle.css">
+  <!-- The engine is a copy inside this folder (vendor/SOURCE.md); this map is vendor/importmap.json, pasted in. -->
+  <script type="importmap">
+    {
+      "imports": {
+        "@egret/contracts": "./vendor/contracts/dist/index.js",
+        "@egret/runtime": "./vendor/runtime/dist/index.js",
+        "@egret/contracts/resources": "./vendor/contracts/dist/resources/index.js",
+        "@egret/engine": "./vendor/engine/dist/index.js",
+        "@egret/engine/kit": "./vendor/engine/dist/kit.js",
+        "@egret/engine/web/kit": "./vendor/engine/dist/web/kit.js",
+        "@egret/engine/audio": "./vendor/engine/dist/audio.js",
+        "@egret/engine/web/audio": "./vendor/engine/dist/web/audio.js",
+        "@egret/engine/world3d": "./vendor/engine/dist/rendering/world3d/index.js",
+        "@egret/runtime/text": "./vendor/runtime/dist/text/index.js",
+        "@egret/engine/text": "./vendor/engine/dist/text.js",
+        "@egret/runtime/input": "./vendor/runtime/dist/input/index.js",
+        "#egret-pointer-input": "./vendor/engine/dist/pointerInput.js",
+        "#egret-keyboard-input": "./vendor/engine/dist/keyboardInput.js",
+        "robust-predicates": "./vendor/robust-predicates/index.js",
+        "#egret-textured-frame-state": "./vendor/engine/dist/internal/texturedFrameState.js",
+        "@egret/engine/input/hover": "./vendor/engine/dist/hover.js",
+        "@egret/engine/input/gamepad": "./vendor/engine/dist/gamepad.js",
+        "@egret/engine/webgl2/world3d": "./vendor/engine/dist/web/world3d/index.js"
+      }
+    }
+  </script>
+</head>
+<body>
+  <main id="frame" data-screen="loading">
+    <div id="stageHost"></div>
+    <div id="hud" hidden>
+      <header id="topbar"></header>
+      <aside id="side" hidden aria-live="off"></aside>
+      <section id="log"></section>
+      <div id="toasts" aria-live="polite"></div>
+    </div>
+    <div id="battleHud"></div>
+    <div id="battleFx" aria-hidden="true"></div>
+    <div id="title" hidden></div>
+    <div id="tip" hidden role="tooltip"></div>
+    <div id="modal" hidden><section id="sheet" class="sheet" role="dialog" aria-modal="true" aria-labelledby="dlgTitle"></section></div>
+    <p id="loading">载入中 · Loading</p>
+  </main>
+  <noscript>这个游戏需要 JavaScript · This game needs JavaScript.</noscript>
+  <script type="module" src="src/main.mjs"></script>
+</body>
+</html>

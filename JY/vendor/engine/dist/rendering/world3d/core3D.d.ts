@@ -1,3 +1,4 @@
+/** What went wrong in the 3D world. */
 export type World3DErrorCode = 'WORLD3D_INPUT_INVALID' | 'WORLD3D_BUDGET' | 'WORLD3D_DISPOSED' | 'WORLD3D_HIERARCHY_INVALID' | 'WORLD3D_GLTF_INVALID' | 'WORLD3D_GLTF_UNSUPPORTED' | 'WORLD3D_RESOURCE_FAILED' | 'WORLD3D_CONTEXT_UNAVAILABLE' | 'WORLD3D_CONTEXT_LOST' | 'WORLD3D_SHADER_FAILED';
 /** Stable machine-readable code plus a human-readable detail and the original cause. */
 export declare class World3DError extends Error {
@@ -10,6 +11,7 @@ export declare function allocateId3D(): number;
 export declare function requireFinite3D(value: unknown, field: string): number;
 export declare function requirePositive3D(value: unknown, field: string): number;
 export declare function requireCount3D(value: unknown, field: string, max: number): number;
+/** Called when something is disposed of. */
 export type DisposeListener3D = () => void;
 /**
  * CPU-side resource with a version counter and terminal disposal.

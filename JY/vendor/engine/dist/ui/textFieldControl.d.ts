@@ -14,6 +14,7 @@ export interface TextFieldRectangle {
     readonly width: number;
     readonly height: number;
 }
+/** A text field's value after a change, and whether a composition is under way. */
 export interface TextFieldChange {
     readonly value: string;
     /** True while an input method still holds provisional text. */
@@ -41,6 +42,7 @@ export interface TextFieldEditor<Request> {
     cancel(): void;
     setValue(value: string): void;
 }
+/** A text field to make: its input, target and editor, its value and limits, its labels, and what it calls. */
 export interface TextFieldControlOptions<Presentation extends TextFieldRectangle> {
     readonly input: PointerInput;
     /** The surface of the field. A completed press on it begins an edit. */
@@ -68,6 +70,7 @@ export interface TextFieldControlOptions<Presentation extends TextFieldRectangle
     readonly onEditingChange?: (editing: boolean) => void;
     readonly onPressChange?: (pressed: boolean) => void;
 }
+/** A text field: its value and draft, whether it is being edited, and calls that edit, commit or cancel. */
 export interface TextFieldControl {
     /** The committed text. */
     readonly value: string;
@@ -92,5 +95,6 @@ export interface TextFieldControl {
     setEnabled(enabled: boolean): void;
     dispose(): void;
 }
+/** A text field on a target: pressing it opens the platform's editing, and the value is committed or cancelled. */
 export declare function createTextFieldControl<Presentation extends TextFieldRectangle>(options: TextFieldControlOptions<Presentation>): TextFieldControl;
 //# sourceMappingURL=textFieldControl.d.ts.map

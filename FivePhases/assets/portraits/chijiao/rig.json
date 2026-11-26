@@ -1,0 +1,140 @@
+{
+  "name": "赤蛟",
+  "canvas": {
+    "width": 777,
+    "height": 777
+  },
+  "anchor": [
+    388,
+    745
+  ],
+  "bones": [
+    {
+      "id": "root",
+      "x": 388,
+      "y": 745
+    },
+    {
+      "id": "body",
+      "parent": "root",
+      "x": 386,
+      "y": 490
+    },
+    {
+      "id": "head",
+      "parent": "body",
+      "x": 278,
+      "y": 236
+    },
+    {
+      "id": "mane",
+      "parent": "head",
+      "x": 330,
+      "y": 170
+    },
+    {
+      "id": "tail",
+      "parent": "body",
+      "x": 715,
+      "y": 432
+    },
+    {
+      "id": "left-arm",
+      "parent": "body",
+      "x": 149,
+      "y": 399
+    },
+    {
+      "id": "right-arm",
+      "parent": "body",
+      "x": 236,
+      "y": 463
+    }
+  ],
+  "parts": [
+    {
+      "id": "tide-tail",
+      "bone": "tail",
+      "at": [
+        529,
+        416
+      ],
+      "rect": [
+        717,
+        3,
+        227,
+        332
+      ]
+    },
+    {
+      "id": "far-claw",
+      "bone": "left-arm",
+      "at": [
+        54,
+        324
+      ],
+      "rect": [
+        648,
+        644,
+        124,
+        111
+      ]
+    },
+    {
+      "id": "sea-mane",
+      "bone": "mane",
+      "at": [
+        293,
+        84
+      ],
+      "rect": [
+        413,
+        644,
+        229,
+        250
+      ]
+    },
+    {
+      "id": "coiled-body",
+      "bone": "body",
+      "at": [
+        50,
+        131
+      ],
+      "rect": [
+        3,
+        3,
+        708,
+        635
+      ]
+    },
+    {
+      "id": "horned-head",
+      "bone": "head",
+      "at": [
+        15,
+        6
+      ],
+      "rect": [
+        3,
+        644,
+        404,
+        301
+      ]
+    },
+    {
+      "id": "front-claw",
+      "bone": "right-arm",
+      "at": [
+        87,
+        419
+      ],
+      "rect": [
+        778,
+        644,
+        212,
+        102
+      ]
+    }
+  ]
+}

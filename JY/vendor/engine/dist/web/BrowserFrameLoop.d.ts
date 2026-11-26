@@ -12,6 +12,7 @@ export interface FrameLoopHost {
         readonly pendingFrames: number;
     };
 }
+/** A frame loop to run: its engine, frame and host, its update, how long a step and a catch-up may be, and its frame requests. */
 export interface BrowserFrameLoopOptions<F> {
     readonly engine: FrameLoopEngine<F>;
     /** The frame to draw: its size and clear colour. A function is called for each frame that is drawn. */
@@ -24,13 +25,22 @@ export interface BrowserFrameLoopOptions<F> {
     readonly update?: (deltaSeconds: number) => void;
     /** The longest step, in seconds. A tab that was hidden comes back with one step of this length. Defaults to 0.1, and is never more than the Engine's clock takes. */
     readonly maxStepSeconds?: number;
+    /**
+     * How much of a long gap is played back. A frame that took longer than `maxStepSeconds` is given as several
+     * steps of at most that length, up to this many seconds in all, before one frame is drawn; the rest of the gap
+     * is dropped. 0, the default, gives one step of the longest length, so a slow device plays slower instead of
+     * jumping. A tab that comes back from being hidden still loses the time it was hidden beyond this.
+     */
+    readonly catchUpSeconds?: number;
     /** Told once of what stopped the loop. Without it the failure is thrown from the display's callback, where the console shows it. */
     readonly onError?: (error: unknown) => void;
     /** The display's frame callback and its cancellation; `requestAnimationFrame` and `cancelAnimationFrame` by default. */
     readonly requestFrame?: (callback: (milliseconds: number) => void) => number;
     readonly cancelFrame?: (handle: number) => void;
 }
+/** Whether a frame loop is idle, running, failed or closed. */
 export type BrowserFrameLoopState = 'idle' | 'running' | 'failed' | 'closed';
+/** A frame loop as it is now: its state, its steps, frames and skipped frames, its seconds and any failure. */
 export interface BrowserFrameLoopSnapshot {
     readonly state: BrowserFrameLoopState;
     /** Steps taken, frames drawn, and frames skipped because the Host was busy. */
@@ -41,6 +51,7 @@ export interface BrowserFrameLoopSnapshot {
     readonly seconds: number;
     readonly failure: unknown;
 }
+/** Steps the Engine and draws a frame on each animation frame of the browser. */
 export interface BrowserFrameLoop {
     readonly state: BrowserFrameLoopState;
     /** Starts, or starts again after `stop`. The time spent stopped is not played back. */

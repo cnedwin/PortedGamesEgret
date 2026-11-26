@@ -11,6 +11,23 @@
 //   [girl, expression, 中文, English]  she speaks
 //   ['fx', 'heart' | 'shake' | 'flash']
 //   ['pick', [{ t: [中文, English], fx: { aff, pull, flag }, then: [steps] }, ...]]
+const LINXIA_FIRST_GREETING = [
+  ['linxia', 'joy', '“抱歉抱歉！没撞到吧？新面孔——大一的？”', '"Sorry, sorry! Didn\'t hit you, did I? New face. First year?"'],
+  ['linxia', 'smile', '“我是林夏，田径社的。来，跟我跑一圈，输的人请喝运动饮料！”', '"I\'m Lin Xia, track team. Come on, one lap. Loser buys the sports drinks!"'],
+];
+const LINXIA_RETURNING_GREETING = [
+  ['linxia', 'joy', '「抱歉，沒撞到吧？欸，是在櫻花道幫我計時的你！」', '"Sorry, did I bump into you? Hey, my timekeeper from the cherry-tree walk!"'],
+  ['linxia', 'smile', '「上回你在終點等我，今天換我等你。來跑一圈，輸的人請喝運動飲料！」',
+    '"You waited at the finish last time. Today I’ll wait for you. One lap? Loser buys the sports drinks!"'],
+];
+
+export function linxiaChapterOneAfterMeeting() {
+  return CHAPTERS_SCRIPT.linxia[1].map(step => {
+    const greeting = LINXIA_FIRST_GREETING.indexOf(step);
+    return greeting < 0 ? step : LINXIA_RETURNING_GREETING[greeting];
+  });
+}
+
 export const CHAPTERS_SCRIPT = {
   qingge: {
     1: [
@@ -134,14 +151,17 @@ export const CHAPTERS_SCRIPT = {
               ['qingge', 'surprise', '“……”', '"..."'],
               ['qingge', 'smile', '“很少有人敢当面这么说。”', '"Few people dare say that to my face."'],
               ['qingge', 'smile', '“明天把你的算法给我看。我不保证采纳。”', '"Show me your numbers tomorrow. I promise nothing."'],
+              ['qingge', 'normal', '你不確定的地方也標出來。這次，我們一起問清楚。', 'Mark the parts you are unsure about, too. This time, we will ask the questions together.'],
             ],
           },
           {
             t: ['“没有问题，是他们不懂。”', '"Nothing. They just don\'t get it."'],
-            fx: { aff: 2, pull: 6 },
+            fx: { aff: 2, pull: 6, flag: 'qingge_reassure' },
             then: [
               ['qingge', 'sad', '“……是吗。谢谢你的安慰。”', '"...I see. Thank you for the comfort."'],
               ['th', '她笑了一下，但没有看你的眼睛。', "She smiles, but doesn't meet your eyes."],
+              ['qingge', 'normal', '先陪我坐一下，好嗎？等我能把話說完，再請你當最難應付的那個社團代表。', 'Could you sit with me for a moment? Once I can get the words out, you can play the club representative with the hardest questions.'],
+              ['me', '好。我會先聽你說完。', 'All right. I will hear you out first.'],
             ],
           },
         ],
@@ -199,13 +219,7 @@ export const CHAPTERS_SCRIPT = {
       ['n', '你刚走到跑道边，一阵风就擦着肩膀冲了过去。', "You've barely reached the track when a gust of wind tears past your shoulder."],
       ['fx', 'shake'],
       ['in', 'linxia', 'joy'],
-      ['linxia', 'joy', '“抱歉抱歉！没撞到吧？新面孔——大一的？”', '"Sorry, sorry! Didn\'t hit you, did I? New face. First year?"'],
-      [
-        'linxia',
-        'smile',
-        '“我是林夏，田径社的。来，跟我跑一圈，输的人请喝运动饮料！”',
-        '"I\'m Lin Xia, track team. Come on, one lap. Loser buys the sports drinks!"',
-      ],
+      ...LINXIA_FIRST_GREETING,
       [
         'pick',
         [

@@ -12,11 +12,11 @@ const defaultButtons = {
 };
 
 const keySample = code => ({ code, key: /^Key[A-Z]$/.test(code) ? code.slice(3).toLowerCase() : code === 'Space' ? ' ' : code });
-const buttonDown = (pad, index) => pad.buttons[index]?.pressed === true || pad.buttons[index]?.value >= 0.5;
+const buttonDown = (pad, index) => pad.pressed(index) || pad.value(index) >= 0.5;
 
 function readKeys(pad, mode, buttons, deadzone) {
   const keys = new Set();
-  let [x = 0, y = 0] = pad.axes;
+  let x = pad.axis(0), y = pad.axis(1);
   if (mode !== 'battle') {
     const dx = Number(buttonDown(pad, 15)) - Number(buttonDown(pad, 14));
     const dy = Number(buttonDown(pad, 13)) - Number(buttonDown(pad, 12));
@@ -30,15 +30,21 @@ function readKeys(pad, mode, buttons, deadzone) {
   return keys;
 }
 
-/** Feed a standard controller through the canvas's Egret keyboard target. */
-export function attachGamepadInput(canvas, { keyboard, getMode = () => 'map', signal, mapping = {}, deadzone = 0.35 } = {}) {
+/** Use Egret's browser controller source, keeping JY's mode-specific keyboard actions. */
+export function attachGamepadInput(canvas, { keyboard, createInput, getMode = () => 'map', signal, mapping = {}, deadzone = 0.35 } = {}) {
   const document = canvas.ownerDocument;
   const window = document?.defaultView;
-  if (signal?.aborted || typeof window?.navigator?.getGamepads !== 'function'
-    || typeof window.requestAnimationFrame !== 'function' || !keyboard) return () => {};
+  if (signal?.aborted || typeof window?.requestAnimationFrame !== 'function' || !keyboard || typeof createInput !== 'function') return () => {};
+  let controller;
+  try { controller = createInput(); }
+  catch { return () => {}; }
   const threshold = Number.isFinite(deadzone) && deadzone > 0 && deadzone <= 1 ? deadzone : 0.35;
   const buttons = Object.fromEntries(Object.entries(defaultButtons).map(([mode, defaults]) => [mode,
-    Object.entries({ ...defaults, ...mapping?.[mode] }).filter(([, code]) => typeof code === 'string' && code.length > 0 && code.length <= 64),
+    Object.entries({ ...defaults, ...mapping?.[mode] }).flatMap(([key, code]) => {
+      const index = Number(key);
+      return Number.isInteger(index) && index >= 0 && index <= 63 && String(index) === key
+        && typeof code === 'string' && code.length > 0 && code.length <= 64 ? [[index, code]] : [];
+    }),
   ]));
   const held = new Set();
   const isFocused = () => document.activeElement === canvas && document.visibilityState === 'visible' && document.hasFocus();
@@ -72,16 +78,16 @@ export function attachGamepadInput(canvas, { keyboard, getMode = () => 'map', si
     release('removed', true);
   }
 
-  function poll() {
+  function poll(now) {
     frame = undefined;
     if (closed) return;
     const mode = getMode();
     if (!Object.hasOwn(buttons, mode) || !isFocused()) release('blur');
     else {
-      let pads;
-      try { pads = Array.from(window.navigator.getGamepads()).filter(pad => pad?.connected && pad.mapping === 'standard'); }
+      try { controller.poll(now); }
       catch { detach(); return; }
-      const pad = pads.find(pad => pad.index === padIndex) ?? pads[0];
+      const pads = controller.input.pads;
+      const pad = pads.find(pad => pad.standard && pad.index === padIndex) ?? pads.find(pad => pad.standard);
       if (padIndex !== undefined && pad?.index !== padIndex) release('removed', true);
       if (previousMode !== undefined && previousMode !== mode) release('rebind', true);
       previousMode = mode;
@@ -122,6 +128,7 @@ export function attachGamepadInput(canvas, { keyboard, getMode = () => 'map', si
     window.removeEventListener('gamepaddisconnected', onDisconnected);
     document.removeEventListener('visibilitychange', onHidden);
     signal?.removeEventListener('abort', detach);
+    controller.dispose();
   }
 
   canvas.addEventListener('blur', onBlur);

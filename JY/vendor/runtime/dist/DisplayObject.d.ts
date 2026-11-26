@@ -65,6 +65,14 @@ export declare class DisplayObject extends EventDispatcher {
     /** Shared backends execute effects; legacy captures explicitly refuse them. */
     get renderEffect(): RenderEffect2D | undefined;
     set renderEffect(value: RenderEffect2D | undefined);
+    /**
+     * Egret's `mask`. A display object masks this one with its Graphics, as `renderEffect = { shapeMask }`, and is not
+     * drawn while it masks; a rectangle in this object's own units clips it, as `clipRect`. `undefined` or `null` takes
+     * either away. Reading it gives the shape mask, else the clip rectangle. Setting a shape mask keeps the effect's other
+     * parts and replaces an image mask.
+     */
+    get mask(): DisplayObject | Rectangle2D | undefined;
+    set mask(value: DisplayObject | Rectangle2D | null | undefined);
     /** An ordering boundary is metadata, not another display or resource owner. */
     get renderBoundary(): 'none' | 'isolate';
     set renderBoundary(value: 'none' | 'isolate');

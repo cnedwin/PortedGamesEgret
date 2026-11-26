@@ -10,16 +10,33 @@ import { drawMannequin } from '../art/figure.mjs';
 import { HEROINES, LEVELS, STATS } from '../data/cast.mjs';
 import { PLACES, PLACE_IDS, SLOTS_OF_DAY, DATE_SPOTS } from '../data/places.mjs';
 import { GIFTS, CLOTHES } from '../data/items.mjs';
-import { CHAPTERS_SCRIPT } from '../story/chapters.mjs';
+import { CHAPTERS_SCRIPT, linxiaChapterOneAfterMeeting } from '../story/chapters.mjs';
+import { bailuMainChapter } from '../story/bailu-zero.mjs';
+import { qinggeFestivalRoute } from '../story/qingge-festival.mjs';
 import { CHAT_LINES, GIFT_LINES, DATE_LINES, JEALOUS_LINES } from '../story/lines.mjs';
 import * as sim from '../sim.mjs';
 import { playScript } from './story.mjs';
 import { openPhone } from './phone.mjs';
 import { openShop } from './shop.mjs';
 import { openWardrobe } from './wardrobe.mjs';
+import { openBailuZero } from './bailu-zero.mjs';
+import { openSocialStory } from './social-stories.mjs';
+import { qinggeChapterFour } from './qingge-festival.mjs';
+import { openFirstEvening } from './first-evening.mjs';
+import { FIRST_EVENING, firstEveningStatus, firstEveningTime, firstEveningAction } from '../first-evening.mjs';
+import { SOCIAL_IDS } from '../data/social-stories.mjs';
+import { BAILU_ZERO_TITLE } from '../data/bailu-zero.mjs';
 
 const pickOne = list => list[Math.floor(Math.random() * list.length)];
 const lightOf = s => SLOTS_OF_DAY[s.slot].light;
+
+async function openCampusStory(game, id) {
+  if (id === 'bailu-zero') await openBailuZero(game);
+  else if (id === 'first-evening') await openFirstEvening(game);
+  else if (id.startsWith('social:')) await openSocialStory(game, id.slice(7));
+  else return false;
+  return true;
+}
 
 /** Play days on campus until the term ends or the player returns to the title. */
 export async function campus(game) {
@@ -27,7 +44,10 @@ export async function campus(game) {
   while (!game.state.finale && !game.quit) {
     const place = await mapScreen(game);
     if (!place) break;
-    await placeScreen(game, place);
+    if (!(await openCampusStory(game, place))) {
+      const story = await placeScreen(game, place);
+      if (story) await openCampusStory(game, story);
+    }
     game.save();
   }
   game.hideHud();
@@ -112,6 +132,32 @@ function mapScreen(game) {
           color: '#ffffff',
           align: 'center',
         });
+        const letter=sim.bailuZeroStatus(s);
+        if(letter.unlocked&&!letter.complete){
+          p.card(24,572,596,80,{r:14,fill:rgba('#272038',.97),stroke:'#c9a13e',shadow:.24});
+          p.text('✉ '+L(BAILU_ZERO_TITLE),42,581,{size:20,weight:750,color:'#f6d897'});
+          p.text(`${letter.stage+1}/5 · ${L(letter.next.name)}`,42,612,{size:15,color:'#fff8eb'});
+          p.button(412,591,190,44,L(s.bailuZero.playback?['繼續特別篇','Resume interlude']:['前往特別篇','Go to interlude']),()=>go('bailu-zero'),{kind:'primary',size:16});
+        }
+        const invitations=SOCIAL_IDS.map(id=>sim.socialStatus(s,id)),available=invitations.filter(q=>q.unlocked&&(!q.complete||q.followupAvailable));
+        const firstMeeting = firstEveningStatus(s);
+        const meetingAction = firstEveningAction(firstMeeting);
+        if (meetingAction) {
+          p.card(728, 533, 518, 121, { r: 16, fill: rgba('#272038', .97), stroke: '#e4b9a8', shadow: .30 });
+          game.avatar(p, FIRST_EVENING.girl, 742, 551, 54);
+          p.text(L(FIRST_EVENING.title), 810, 547, { size: 19, weight: 750, color: '#f9d5c8' });
+          p.text(L(firstEveningTime(firstMeeting)) + ' · ' + L(FIRST_EVENING.venue), 810, 575,
+            { size: 13, color: '#fff4e6', maxW: 228, lineH: 17 });
+          p.text(L(FIRST_EVENING.task), 810, 617, { size: 14, weight: 700, color: '#f8d4ba', maxW: 228 });
+          p.hit(728, 533, 518, 121, () => phone('messages'), { r: 16, label: L(FIRST_EVENING.title) });
+          p.button(1051, 543, 176, 45, L(['查看消息', 'Read message']), () => phone('messages'), { kind: 'ghost', size: 15 });
+          p.button(1051, 598, 176, 45, L(meetingAction), () => go('first-evening'), { kind: 'primary', size: game.lang === 'zh' ? 15 : 12 });
+        } else if(available.length){
+          p.card(790,572,456,80,{r:14,fill:rgba('#272038',.97),stroke:'#bd8fa0',shadow:.24});
+          p.text(L(['課餘邀約','Social invitations']),808,582,{size:20,weight:750,color:'#f4c6d5'});
+          p.text(L([`${available.length} 段約定可繼續 · 自願參加`,`${available.length} invitations ready · participation is optional`]),808,614,{size:14,color:'#fff8eb'});
+          p.button(1066,587,162,46,L(['查看邀約','View invitations']),()=>phone('social'),{kind:'primary',size:16});
+        }
       });
     }
 
@@ -120,12 +166,13 @@ function mapScreen(game) {
       paintPins();
       game.showHud(phone);
     };
-    async function phone() {
-      const result = await openPhone(game);
+    async function phone(tab) {
+      const result = await openPhone(game, typeof tab === 'string' ? tab : undefined);
       if (result === 'quit') {
         game.quit = true;
         leave(null);
-      } else refresh();
+      } else if (typeof result === 'string') leave(result);
+      else refresh();
     }
     // The map and its labels shift by different amounts as the pointer moves, so labels float above it.
     const stop = stage.onTick(dt => {
@@ -181,13 +228,27 @@ async function placeScreen(game, placeId) {
   await game.fadeIn(0.3);
 
   let eventChecked = false;
+  let nextStory;
   for (;;) {
     // Story chapters come first: meeting a senior whose next chapter is ready plays it.
     for (const girl of sim.girlsAt(s, placeId)) {
       const chapter = sim.chapterAt(s, girl, placeId);
       if (!chapter) continue;
       game.hideHud();
-      await playScript(game, CHAPTERS_SCRIPT[girl][chapter], { girl });
+      let script = CHAPTERS_SCRIPT[girl][chapter];
+      if (girl === 'bailu') script = bailuMainChapter(s, chapter) || script;
+      if (girl === 'linxia' && chapter === 1 && firstEveningStatus(s)?.phase === 'completed') {
+        script = linxiaChapterOneAfterMeeting();
+      }
+      let reader;
+      if (girl === 'qingge' && chapter === 3) {
+        game.saveQinggeBranch();
+        reader = game.memoryScenes.track('qingge-budget');
+      } else if (girl === 'qingge' && chapter === 4) {
+        script = qinggeChapterFour(s);
+        reader = game.memoryScenes.track(`qingge-preparation-${qinggeFestivalRoute(s)}`);
+      }
+      await playScript(game, script, { girl, reader });
       sim.finishChapter(s, girl, chapter);
       game.save();
       game.toast(`${L(HEROINES[girl].name)} · ${L(['故事第 ', 'Story chapter '])}${chapter}${L([' 章 完成', ' complete'])}`, 'good');
@@ -210,6 +271,10 @@ async function placeScreen(game, placeId) {
     const before = sim.clock(s).absolute;
     const choice = await placeMenu(game, placeId);
     if (choice.type === 'leave') break;
+    if (choice.type === 'story') {
+      nextStory = choice.id;
+      break;
+    }
     if (choice.type === 'quit') {
       game.quit = true;
       break;
@@ -219,7 +284,11 @@ async function placeScreen(game, placeId) {
       if (moved) break;
     } else if (choice.type === 'act') {
       const act = choice.act;
-      if (act.special === 'quests') await openPhone(game, 'quests');
+      if (act.special === 'quests') {
+        const result = await openPhone(game, 'quests');
+        if (result === 'quit') { game.quit = true; break; }
+        if (typeof result === 'string') { nextStory = result; break; }
+      }
       else if (act.special === 'wardrobe') await openWardrobe(game, 'hero');
       else if (act.special?.startsWith('shop:')) await openShop(game, act.special.slice(5));
       else if (act.special === 'sleep') {
@@ -261,6 +330,7 @@ async function placeScreen(game, placeId) {
   }
   await game.fadeOut(0.3);
   await world.hideActor();
+  return nextStory;
 }
 
 /** The list of people and things to do at a place. Resolves with the player's choice. */
@@ -279,6 +349,7 @@ function placeMenu(game, placeId) {
     game.showHud(async () => {
       const result = await openPhone(game);
       if (result === 'quit') done({ type: 'quit' });
+      else if (typeof result === 'string') done({ type: 'story', id: result });
       else {
         game.showHud();
         panel.paint(paint);
@@ -370,6 +441,7 @@ async function girlScreen(game, girl) {
     const choice = await girlMenu(game, girl);
     if (choice.type === 'bye') break;
     if (choice.type === 'chat') {
+      const followup=sim.socialFollowUpReady(s,girl);
       const r = sim.chat(s, girl, choice.approach);
       const [expr, zh, en] = pickOne(CHAT_LINES[girl][r.zone]);
       const [note, tone] = ZONE_NOTE[r.zone];
@@ -377,6 +449,7 @@ async function girlScreen(game, girl) {
       if (r.gain > 0) game.audio.play('good');
       await line([girl, expr, zh, en], gainText(r.gain), r.gain > 0 ? 'good' : 'bad');
       if (r.wish) wishGranted(game, girl, r.wish);
+      if(followup){await openSocialStory(game,followup,{returnToPlace:true});await world.showActor(game.spec(girl,'smile'),{x:X});}
     } else if (choice.type === 'gift') {
       const item = await giftPicker(game);
       if (!item) continue;
@@ -497,7 +570,7 @@ function girlMenu(game, girl) {
       const canChat = sim.canChat(s, girl);
       p.text(
         canChat
-          ? L(['聊天 · 选择这次的距离', 'Chat · choose your distance this time'])
+          ? L(sim.socialFollowUpReady(s,girl)?['聊天 · 接續上次的約定','Chat · continue your shared promise']:['聊天 · 选择这次的距离', 'Chat · choose your distance this time'])
           : L(['这个时段已经聊过了', 'You have already talked this part of the day']),
         30,
         222,

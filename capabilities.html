@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="theme-color" content="#101412">
+  <title>引擎能力矩阵 · 新白鹭引擎游戏案例</title>
+  <meta name="description" content="新白鹭引擎的每个入口和关键 API 在哪个游戏 Demo 里用到、用在哪个文件。">
+  <link rel="icon" href="showcase/egret.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="showcase/site.css">
+</head>
+<body class="matrix-page">
+  <header class="bar">
+    <div class="bar-inner">
+      <a class="brand" href="./">
+        <img src="showcase/egret.svg" alt="" width="38" height="38">
+        <span data-t="brand">白鹭游戏案例</span>
+      </a>
+      <nav class="bar-links">
+        <a href="./" class="catalog-link" data-t="all">全部游戏</a>
+        <a class="engine-link" href="https://github.com/cnedwin/Egret_rebuild" data-t="engine">引擎源码</a>
+        <button class="lang" type="button" data-act="lang" aria-label="Switch to English">EN</button>
+      </nav>
+    </div>
+  </header>
+
+  <main class="matrix">
+    <h1 data-t="title">引擎能力矩阵</h1>
+    <p class="matrix-lead" data-t="lead"></p>
+    <h2 data-t="entries">入口</h2>
+    <div class="matrix-scroll" tabindex="0" data-table="entries"></div>
+    <h2 data-t="apis">关键 API</h2>
+    <div class="matrix-scroll" tabindex="0" data-table="apis"></div>
+    <h2 data-t="gaps">缺口</h2>
+    <p data-t="gapsLead"></p>
+    <ul class="matrix-gaps"></ul>
+  </main>
+
+  <footer class="foot">
+    <div class="foot-inner shell">
+      <p data-t="foot"></p>
+      <p><a href="https://github.com/cnedwin/PortedGamesEgret/blob/main/CAPABILITIES.md" data-t="source">CAPABILITIES.md</a></p>
+    </div>
+  </footer>
+
+  <script type="module" src="showcase/matrix.js"></script>
+</body>
+</html>

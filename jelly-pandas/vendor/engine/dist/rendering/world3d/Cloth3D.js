@@ -7,6 +7,7 @@
 import { World3DError, requireCount3D, requireFinite3D, requirePositive3D } from './core3D.js';
 import { Attribute3D, Geometry3D } from './Geometry3D.js';
 import { Mesh3D } from './Mesh3D.js';
+/** The most points and colliders cloth and ropes hold. */
 export const CLOTH3D_LIMITS = Object.freeze({ maxPoints: 16384, maxColliders: 32 });
 /** Points and links shared by ropes and cloth. */
 class Strands3D {
@@ -45,8 +46,12 @@ class Strands3D {
             this.colliders.push(...options.colliders);
         }
     }
-    get pointCount() { return this.points.length / 3; }
-    get linkCount() { return this.#linkCount; }
+    get pointCount() {
+        return this.points.length / 3;
+    }
+    get linkCount() {
+        return this.#linkCount;
+    }
     /** @internal Place a point and forget its motion. */
     place(index, x, y, z) {
         const o = index * 3;
@@ -85,7 +90,9 @@ class Strands3D {
     }
     /**
      * Hold a point where it is now. With a body, the point keeps its place on
-     * that body and follows it as the body moves and turns.
+     * that body and follows it as the body moves and turns. The pin is one-way:
+     * the cloth or rope follows the body and never pulls on it, so a tarp on a
+     * truck does not slow the truck.
      */
     pinPoint(index, body) {
         this.check(index);
@@ -108,7 +115,9 @@ class Strands3D {
             this.#pins.splice(at, 1);
         this.#free[index] = 1;
     }
-    isPinned(index) { return this.#free[this.check(index)] === 0; }
+    isPinned(index) {
+        return this.#free[this.check(index)] === 0;
+    }
     /** @internal Advance the points by one update. */
     advance(deltaSeconds) {
         const dt = Math.min(Math.max(requireFinite3D(deltaSeconds, 'deltaSeconds'), 0), 1 / 20);
@@ -262,7 +271,7 @@ export class Rope3D extends Strands3D {
         // Lay the points out at the link length, then bring them between the ends; a slack rope starts bunched and falls into its curve.
         const straight = Math.hypot(bx - ax, by - ay, bz - az), spread = 1 + slack;
         for (let i = 0; i <= segments; i++) {
-            const t = i / segments * spread;
+            const t = (i / segments) * spread;
             this.place(i, ax + (bx - ax) * t, ay + (by - ay) * t, az + (bz - az) * t);
         }
         for (let i = 0; i < segments; i++)
@@ -296,7 +305,7 @@ export class Rope3D extends Strands3D {
             }
         for (let ring = 0; ring < rings - 1; ring++)
             for (let s = 0; s < sides; s++) {
-                const a = ring * sides + s, b = ring * sides + (s + 1) % sides, c = a + sides, d = b + sides;
+                const a = ring * sides + s, b = ring * sides + ((s + 1) % sides), c = a + sides, d = b + sides;
                 indices.push(a, c, b, b, c, d);
             }
         geometry.setAttribute('position', positions);
@@ -311,8 +320,13 @@ export class Rope3D extends Strands3D {
         this.rebuild();
         return this.#mesh;
     }
-    get mesh() { return this.#mesh; }
-    update(deltaSeconds) { this.advance(deltaSeconds); this.rebuild(); }
+    get mesh() {
+        return this.#mesh;
+    }
+    update(deltaSeconds) {
+        this.advance(deltaSeconds);
+        this.rebuild();
+    }
     rebuild() {
         const mesh = this.#mesh;
         if (!mesh)
@@ -350,7 +364,7 @@ export class Rope3D extends Strands3D {
             uz /= length;
             const vx = ty * uz - tz * uy, vy = tz * ux - tx * uz, vz = tx * uy - ty * ux, o = ring * 3;
             for (let s = 0; s < sides; s++) {
-                const angle = s / sides * Math.PI * 2, cos = Math.cos(angle), sin = Math.sin(angle), at = (ring * sides + s) * 3;
+                const angle = (s / sides) * Math.PI * 2, cos = Math.cos(angle), sin = Math.sin(angle), at = (ring * sides + s) * 3;
                 const nx = ux * cos + vx * sin, ny = uy * cos + vy * sin, nz = uz * cos + vz * sin;
                 n[at] = nx;
                 n[at + 1] = ny;
@@ -404,13 +418,22 @@ export class Cloth3D extends Strands3D {
     }
     /** Index of the point at a column and row. */
     indexOf(column, row) {
-        if (!Number.isInteger(column) || !Number.isInteger(row) || column < 0 || row < 0 || column >= this.columns || row >= this.rows)
+        if (!Number.isInteger(column) ||
+            !Number.isInteger(row) ||
+            column < 0 ||
+            row < 0 ||
+            column >= this.columns ||
+            row >= this.rows)
             throw new World3DError('WORLD3D_INPUT_INVALID', 'cloth point');
         return row * this.columns + column;
     }
     /** Hold the point at a column and row where it is, or on a body. */
-    pin(column, row, body) { this.pinPoint(this.indexOf(column, row), body); }
-    unpin(column, row) { this.unpinPoint(this.indexOf(column, row)); }
+    pin(column, row, body) {
+        this.pinPoint(this.indexOf(column, row), body);
+    }
+    unpin(column, row) {
+        this.unpinPoint(this.indexOf(column, row));
+    }
     /** A mesh of the sheet, rebuilt by update(). Draw it with a double-sided material to see both faces. */
     createMesh(material) {
         const columns = this.columns, rows = this.rows, count = columns * rows, geometry = new Geometry3D();
@@ -435,8 +458,13 @@ export class Cloth3D extends Strands3D {
         this.rebuild();
         return this.#mesh;
     }
-    get mesh() { return this.#mesh; }
-    update(deltaSeconds) { this.advance(deltaSeconds); this.rebuild(); }
+    get mesh() {
+        return this.#mesh;
+    }
+    update(deltaSeconds) {
+        this.advance(deltaSeconds);
+        this.rebuild();
+    }
     rebuild() {
         const mesh = this.#mesh;
         if (!mesh)
@@ -464,5 +492,11 @@ export class Cloth3D extends Strands3D {
         mesh.geometry.invalidateBounds();
     }
 }
-export function createRope3D(options) { return new Rope3D(options); }
-export function createCloth3D(options) { return new Cloth3D(options); }
+/** Makes a rope of points that hangs and swings. */
+export function createRope3D(options) {
+    return new Rope3D(options);
+}
+/** Makes a sheet of cloth that hangs, folds and blows. */
+export function createCloth3D(options) {
+    return new Cloth3D(options);
+}

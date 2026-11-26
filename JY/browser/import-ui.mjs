@@ -103,14 +103,16 @@ async function start(source) {
   cancel.hidden = progress.hidden = false;
   report({ phase: source ? 'reading' : 'validating' });
   try {
+    const worker = new URL('../browser-sw.mjs', import.meta.url);
+    const registration = navigator.serviceWorker.register(worker, { type: 'module', updateViaCache: 'none' });
+    // The worker can install during the import. Observe failures even if the player cancels first.
+    void registration.catch(() => {});
     const pack = await prepare(source, signal);
     signal.throwIfAborted();
     status.textContent = '正在启动游戏…';
     progress.removeAttribute('value');
     cancel.hidden = true;
-    const worker = new URL('../browser-sw.mjs', import.meta.url);
-    const registration = await navigator.serviceWorker.register(worker, { type: 'module', updateViaCache: 'none' });
-    await readyWorker(registration);
+    await readyWorker(await registration);
     const target = new URL('../play/', import.meta.url);
     target.search = location.search;
     if (!['title', 'preview', 'play'].some(key => target.searchParams.has(key))) target.searchParams.set('title', '1');

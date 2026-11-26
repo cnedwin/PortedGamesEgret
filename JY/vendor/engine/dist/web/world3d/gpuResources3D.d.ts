@@ -10,6 +10,10 @@ export interface Program3D {
     readonly program: WebGLProgram;
     readonly uniforms: Readonly<Record<string, WebGLUniformLocation>>;
 }
+export interface ProgramRequest3D {
+    readonly key: string;
+    readonly sources: () => ShaderSources3D;
+}
 export interface GeometryGpu3D {
     readonly vao: WebGLVertexArrayObject;
     indexType: number;
@@ -41,6 +45,11 @@ export declare class GpuResources3D {
         textures: number;
     };
     program(key: string, sources: () => ShaderSources3D): Program3D;
+    preparePrograms(requests: readonly ProgramRequest3D[]): Promise<void>;
+    private requireProgramContext;
+    private startProgram;
+    private finishProgram;
+    private initializeProgram;
     private upload;
     private glType;
     private buffer;
@@ -58,6 +67,8 @@ export declare class GpuResources3D {
     };
     private releaseWire;
     private releaseGeometry;
+    private instanceBuffer;
+    private uploadInstances;
     /** Vertex array combining a geometry's attributes with per-instance transforms and colors. */
     instances(mesh: InstancedMesh3D, frame: number): WebGLVertexArrayObject;
     /** Float texture holding one 4x4 matrix per row (four RGBA texels). */

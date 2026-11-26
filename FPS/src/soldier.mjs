@@ -1,9 +1,11 @@
-// The enemy soldiers: jointed figures put together from boxes, one set of
-// shapes per kind, moved by a few lines of procedural animation (a walk
-// cycle, an aiming lean, a flinch when hit, and a fall).
+// Enemy figures use complete authored surfaces with a shared GPU skin template per role.
+// Native bone poses drive walking, aiming, recoil, reloads and falls.
+// The explicit original-art benchmark retains its procedural jointed figures.
 import { Mesh3D, Object3D, createRagdoll3D, createStandardMaterial3D } from '@egret/engine/world3d';
+import { addModel } from './asset-models.mjs';
 import { createBuilder, orient, rgb } from './build.mjs';
 import { createDetails } from './textures.mjs';
+import { prepareSoldierSkin, createSoldierSkin, soldierWeaponHold } from './soldier-skin.mjs';
 
 const SKIN = rgb(0xc9a27e),
   BLACK = rgb(0x1b1c1e),
@@ -51,7 +53,7 @@ const HIP = 0.9,
   THIGH = 0.44,
   SHIN = 0.46;
 
-function shapes(look) {
+function shapes(look, separateWeapon) {
   const k = look.bulk,
     skin = look.mask ? BLACK : SKIN,
     cloth = { tint: look.cloth, tile: 0.5 },
@@ -104,24 +106,25 @@ function shapes(look) {
     for (const side of [-1, 1]) arms.box(side * 0.25 * k, 0.5, 0, 0.11, 0.13, 0.17, kit(look.vest)); // shoulder armour
   else arms.limb([-0.272 * k, 0.43, 0.0], [-0.276 * k, 0.37, -0.03], 0.068 * k, 0.066 * k, { tint: look.trim, caps: false }); // arm band
   // The weapon: receiver, handguard, barrel with a suppressor, sight, magazine, stock and sling.
+  const weapon = separateWeapon ? createBuilder() : arms;
   const big = look.visor ? 1.25 : 1;
-  arms.box(0.05, 0.36, -0.36, 0.046 * big, 0.075 * big, 0.3, { tint: GUN });
-  arms.limb([0.05, 0.365, -0.5], [0.05, 0.365, -0.76], 0.03 * big, 0.027 * big, {
+  weapon.box(0.05, 0.36, -0.36, 0.046 * big, 0.075 * big, 0.3, { tint: GUN });
+  weapon.limb([0.05, 0.365, -0.5], [0.05, 0.365, -0.76], 0.03 * big, 0.027 * big, {
     tint: look.visor ? GUN : rgb(0x514833),
     sides: 8,
   });
-  arms.limb([0.05, 0.365, -0.76], [0.05, 0.365, -0.86], 0.011 * big, 0.011 * big, { tint: GUN, sides: 6 });
-  arms.limb([0.05, 0.365, -0.84], [0.05, 0.365, -1.0], 0.02 * big, 0.02 * big, { tint: rgb(0x1e2023), sides: 8 });
-  arms.box(0.05, 0.425, -0.4, 0.034, 0.045, 0.06, { tint: GUN });
-  arms.box(0.05, 0.408, -0.55, 0.02, 0.012, 0.36, { tint: rgb(0x1e2023) });
-  arms.box(0.05, 0.275, -0.42, 0.03, 0.13, look.visor ? 0.13 : 0.055, { tint: rgb(0x1e2023), pitch: 0.22 });
-  arms.box(0.05, 0.3, -0.27, 0.03, 0.09, 0.04, { tint: rgb(0x1e2023), pitch: -0.3 });
-  arms.limb([0.055, 0.365, -0.2], [0.06, 0.365, -0.04], 0.014, 0.014, { tint: GUN, sides: 6 });
-  arms.box(0.06, 0.35, -0.07, 0.04, 0.085, 0.12, { tint: rgb(0x514833) });
-  arms.limb([0.05, 0.33, -0.7], [0.2 * k, 0.52, 0.02], 0.007, 0.007, { tint: BLACK, sides: 4, caps: false });
+  weapon.limb([0.05, 0.365, -0.76], [0.05, 0.365, -0.86], 0.011 * big, 0.011 * big, { tint: GUN, sides: 6 });
+  weapon.limb([0.05, 0.365, -0.84], [0.05, 0.365, -1.0], 0.02 * big, 0.02 * big, { tint: rgb(0x1e2023), sides: 8 });
+  weapon.box(0.05, 0.425, -0.4, 0.034, 0.045, 0.06, { tint: GUN });
+  weapon.box(0.05, 0.408, -0.55, 0.02, 0.012, 0.36, { tint: rgb(0x1e2023) });
+  weapon.box(0.05, 0.275, -0.42, 0.03, 0.13, look.visor ? 0.13 : 0.055, { tint: rgb(0x1e2023), pitch: 0.22 });
+  weapon.box(0.05, 0.3, -0.27, 0.03, 0.09, 0.04, { tint: rgb(0x1e2023), pitch: -0.3 });
+  weapon.limb([0.055, 0.365, -0.2], [0.06, 0.365, -0.04], 0.014, 0.014, { tint: GUN, sides: 6 });
+  weapon.box(0.06, 0.35, -0.07, 0.04, 0.085, 0.12, { tint: rgb(0x514833) });
+  weapon.limb([0.05, 0.33, -0.7], [0.2 * k, 0.52, 0.02], 0.007, 0.007, { tint: BLACK, sides: 4, caps: false });
   if (look.visor)
     for (const side of [-1, 1])
-      arms.limb([0.05, 0.34, -0.72], [0.05 + side * 0.07, 0.22, -0.8], 0.006, 0.006, { tint: GUN, sides: 4 });
+      weapon.limb([0.05, 0.34, -0.72], [0.05 + side * 0.07, 0.22, -0.8], 0.006, 0.006, { tint: GUN, sides: 4 });
 
   // ---- head: face, helmet with rails and a mount, headset, eye protection ---------------
   const head = createBuilder();
@@ -184,19 +187,20 @@ function shapes(look) {
   return {
     upper: upper.finish({ tangents: true }),
     arms: arms.finish({ tangents: true }),
+    weapon: separateWeapon ? weapon.finish({ tangents: true }) : undefined,
     head: head.finish({ tangents: true }),
     thighs: [leg(false), leg(true)],
     shin: shin.finish({ tangents: true }),
   };
 }
 
-/** Builds soldiers of every kind; they share shapes and one material. */
+/** Each role shares its prepared geometry and materials; every actor owns its pose. */
 /**
  * `world` is a physics world holding the map, used only for bodies falling:
  * a soldier who is shot goes limp and drops as jointed rigid bodies. Without
  * one, the fall is a simple tip backwards.
  */
-export function createSoldierFactory(world) {
+export function createSoldierFactory(world, models = {}) {
   const details = createDetails();
   const material = createStandardMaterial3D({
     color: 0xffffff,
@@ -206,31 +210,58 @@ export function createSoldierFactory(world) {
     roughness: 0.86,
   });
   const sets = {};
-  for (const kind of Object.keys(LOOKS)) sets[kind] = shapes(LOOKS[kind]);
+  for (const kind of Object.keys(LOOKS)) {
+    const model = models['soldier-' + kind];
+    const art = { ...model?.parts };
+    // Share the uniform's prepared arms when the heavy torso has no dedicated pair.
+    if (kind === 'heavy' && art.upper && !art.arms) art.arms = models['soldier-rifle']?.parts.arms;
+    const held = models['enemy-' + kind] ?? models['weapon-rifle'];
+    const skin = model && !Object.keys(art).length ? prepareSoldierSkin(model, kind) : undefined;
+    const scale = model && art.upper ? 1.78 / (model.bounds[4] - model.bounds[1]) : undefined;
+    const hold=skin && held ? soldierWeaponHold(held) : undefined;
+    sets[kind] = { ...(skin ? {} : shapes(LOOKS[kind], Boolean(art.arms || held))), art, held, hold, skin, scale, ground: model?.bounds[1] ?? 0 };
+  }
 
   return function createSoldier(kind) {
     const set = sets[kind] ?? sets.rifle,
       bulk = (LOOKS[kind] ?? LOOKS.rifle).bulk;
-    const part = (geometry, parent, x, y, z) => {
-      const mesh = new Mesh3D(geometry, material);
-      mesh.castShadow = true;
-      mesh.receiveShadow = true;
-      mesh.setPosition(x, y, z);
-      parent.addChild(mesh);
-      return mesh;
+    const part = (geometry, parent, x, y, z, art, slot = geometry.boundingBox, anchor) => {
+      const pivot = art ? new Object3D() : new Mesh3D(geometry, material);
+      if (art) {
+        // Every slice retains one full-body scale. Subtract only the native joint's rest position.
+        const transform = anchor && set.scale ? { scale: set.scale,
+          position: [-anchor[0], -set.ground * set.scale - anchor[1], -anchor[2]] } : undefined;
+        addModel(pivot, art, slot, { fit: 'depth', transform });
+      }
+      else pivot.castShadow = pivot.receiveShadow = true;
+      pivot.setPosition(x, y, z);
+      parent.addChild(pivot);
+      return pivot;
     };
-    const root = new Object3D(),
-      body = new Object3D();
-    root.addChild(body);
-    const upper = part(set.upper, body, 0, HIP, 0),
-      head = part(set.head, upper, 0, 0.62, 0),
-      shoulders = new Object3D();
-    shoulders.setPosition(0, 0.5, 0);
-    upper.addChild(shoulders);
-    part(set.arms, shoulders, 0, -0.5, 0);
-    const legs = [-1, 1].map((side) => {
-      const thigh = part(set.thighs[side < 0 ? 0 : 1], body, side * 0.1 * bulk, HIP, 0),
-        shin = part(set.shin, thigh, 0, -THIGH, 0);
+    const skin = set.skin ? createSoldierSkin(set.skin, bulk, set.hold?.palms) : undefined;
+    const root = skin?.root ?? new Object3D(),
+      body = skin?.body ?? new Object3D();
+    if (!skin) root.addChild(body);
+    const torsoSlot = skin ? undefined : Array.from(set.upper.boundingBox);
+    // The stock bounds include the radio antenna above the fabric.
+    if (torsoSlot) torsoSlot[4] = 0.64;
+    const upper = skin?.upper ?? part(set.upper, body, 0, HIP, 0, set.art.upper, torsoSlot, [0, HIP, 0]),
+      head = skin?.head ?? part(set.head, upper, 0, 0.62, 0, set.art.head, undefined, [0, HIP + 0.62, 0]),
+      shoulders = skin?.shoulders ?? new Object3D();
+    if (!skin) {
+      shoulders.setPosition(0, 0.5, 0);
+      upper.addChild(shoulders);
+      part(set.arms, shoulders, 0, -0.5, 0, set.art.arms, undefined, [0, HIP, 0]);
+    }
+    if (skin && set.held) {
+      const weapon = new Object3D();
+      addModel(weapon, set.held, undefined, { transform:set.hold.transform });
+      shoulders.addChild(weapon);
+    } else if (set.weapon) part(set.weapon, shoulders, 0, -0.5, 0, set.held);
+    const legs = skin?.legs ?? [-1, 1].map((side) => {
+      const which = side < 0 ? 'left' : 'right';
+      const thigh = part(set.thighs[side < 0 ? 0 : 1], body, side * 0.1 * bulk, HIP, 0, set.art[which + '-thigh'], undefined, [side * 0.1 * bulk, HIP, 0]),
+        shin = part(set.shin, thigh, 0, -THIGH, 0, set.art[which + '-shin'], undefined, [side * 0.1 * bulk, HIP - THIGH, 0]);
       return { thigh, shin };
     });
     let ragdoll;

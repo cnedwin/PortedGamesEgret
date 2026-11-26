@@ -1,15 +1,17 @@
-// The weapons as the operator sees them: a rifle and a pistol built from
-// boxes, held in front of the camera, with the motion that makes them feel
-// held (sway, bob, recoil, aiming down the sight, reloading, switching).
+// Authored first-person weapons and gloves, with a clear reflex optic and
+// camera-local sway, recoil, reload, slide and switching animation.
+// The procedural shapes supply the explicit original-art comparison mode.
 import {
   Mesh3D,
   Object3D,
   createPointLight3D,
   createQuadGeometry3D,
+  createSphereGeometry3D,
   createStandardMaterial3D,
   createUnlitMaterial3D,
 } from '@egret/engine/world3d';
 import { SWITCH_TIME } from './data.mjs';
+import { addModel } from './asset-models.mjs';
 import { createBuilder, orient, rgb } from './build.mjs';
 import { createDetails, flashTexture } from './textures.mjs';
 
@@ -29,16 +31,56 @@ const PISTOL_CYCLE = 0.09;
 
 /** Where each weapon sits (x right, y up, z back) from the hip and when aimed, and where its muzzle is. */
 const HOLD = {
-  rifle: { hip: [0.17, -0.19, -0.52], aim: [0, -0.0835, -0.34], muzzle: [0, 0.02, -0.62] },
+  rifle: { hip: [0.17, -0.19, -0.52], aim: [0, -0.0835, -0.43], muzzle: [0, 0.02, -0.62] },
   marksman: { hip: [0.17, -0.2, -0.5], aim: [0, -0.1, -0.24], muzzle: [0, 0.02, -0.82] },
   pistol: { hip: [0.15, -0.17, -0.6], aim: [0, -0.058, -0.5], muzzle: [0, 0.03, -0.14] },
 };
 // Barrel tips in the model's own coordinates. The world tracer uses the separate eye offset above.
 const BARREL_TIP = { rifle: [0, 0.006, -0.746], marksman: [0, 0.006, -0.9], pistol: [0, 0.03, -0.136] };
+// Measured source coordinates keep sights, grips and flashes aligned through one uniform model transform.
+const ART_LANDMARKS = {
+  rifle: {
+    bounds: [-0.06472777, 0, -0.48957825, 0.06472777, 0.51684570, 0.48957825],
+    sight: [0, 0.495, 0.31], muzzle: [0.00068993, 0.35270383, -0.48864385],
+    right: [-0.00190891, 0.17792905, 0.26791168], left: [-0.02269963, 0.24919644, -0.09545191],
+  },
+  pistol: {
+    bounds: [-0.11030960, 0, -0.49015808, 0.11030960, 0.65371698, 0.49015808],
+    sight: [0.00472433, 0.64124757, 0.41111231], muzzle: [0.00472433, 0.50810645, -0.48997500],
+    right: [0.09918631, 0.18910825, 0.38833778], left: [-0.13634012, 0.17613043, 0.35286748],
+  },
+  marksman: {
+    bounds: [-0.05277064, 0, -0.49072266, 0.05277064, 0.24578859, 0.49072266],
+    muzzle: [-0.00143470, 0.16200539, -0.48741037],
+    right: [-0.00249920, 0.04806204, 0.29303962], left: [-0.01953119, 0.08728844, -0.02451190],
+  },
+};
 
 /** Tile of the fine surface textures on the weapons, in metres. */
 const GRAIN = 0.045;
 const part = (tint) => ({ tint, tile: GRAIN });
+
+/** An open reflex optic with a clear sight line, rail clamp, chamfered corners and recessed screws. */
+function reflexHousing() {
+  const shape = createBuilder(), dark = part(rgb(0x343d43)), edge = part(rgb(0x727c82));
+  shape.box(0, -0.022, 0, 0.054, 0.008, 0.049, dark);
+  shape.box(0, -0.0275, 0, 0.048, 0.003, 0.042, part(rgb(0x20282c)));
+  shape.box(0, -0.041, 0, 0.034, 0.026, 0.039, dark);
+  shape.box(0, -0.0545, 0, 0.046, 0.003, 0.045, edge);
+  for (const sign of [-1, 1]) {
+    shape.box(sign * 0.022, -0.002, 0, 0.006, 0.031, 0.032, dark);
+    shape.box(sign * 0.0188, 0.0141, 0, 0.0085, 0.005, 0.032, { ...dark, roll: sign * -Math.PI / 4 });
+    shape.cylinder(sign * 0.027, -0.022, 0.010, 0.0025, 0.0025, { ...edge, axis: 'x', sides: 12 });
+    shape.box(sign * 0.0285, -0.022, 0.010, 0.0003, 0.0007, 0.003, part(rgb(0x161c21)));
+    shape.box(sign * 0.022, -0.002, 0.0164, 0.006, 0.024, 0.0008, edge);
+  }
+  shape.box(0, 0.017, 0, 0.033, 0.0055, 0.032, dark);
+  shape.box(0, 0.0197, 0.002, 0.026, 0.001, 0.027, edge);
+  shape.cylinder(-0.029, -0.010, -0.003, 0.0055, 0.008, { ...dark, axis: 'x', sides: 20 });
+  for (const z of [-0.008, 0.004])
+    shape.box(0.0254, -0.009, z, 0.001, 0.0055, 0.004, part(rgb(0x131b1e)));
+  return shape.finish({ tangents: true });
+}
 
 /** A gloved hand as the operator sees it: a palm, four fingers of two joints and a thumb. `curl` gives each finger's three points. */
 function hand(builder, palm, size, fingers, thumb) {
@@ -292,7 +334,7 @@ function poseSupport(model, reach, magazineTravel) {
 }
 
 /** Add the weapons under `camera` and return the object that animates them. */
-export function createGun(camera) {
+export function createGun(camera, art = {}) {
   const details = createDetails();
   // Keep the gun legible in deep shadow without turning the warm sunrise into a gold finish.
   const metal = createStandardMaterial3D({
@@ -321,28 +363,63 @@ export function createGun(camera) {
   rig.setScale(RIG_SCALE);
   camera.addChild(rig);
 
-  const viewPart = (geometry, material) => {
+  const viewPart = (geometry, material, authored, transform) => {
+    if (authored) {
+      const pivot = new Object3D();
+      addModel(pivot, authored, geometry.boundingBox, { transform, shadow: false, cull: false });
+      return pivot;
+    }
     const mesh = new Mesh3D(geometry, material);
     mesh.frustumCulled = false;
     mesh.castShadow = false;
     mesh.receiveShadow = true;
+    if (transform) {
+      const pivot = new Object3D();
+      mesh.setScale(transform.scale).setPosition(...transform.position);
+      pivot.addChild(mesh);
+      return pivot;
+    }
     return mesh;
   };
   const models = {};
   for (const [key, set] of Object.entries({ rifle: rifleShapes(), pistol: pistolShapes(), marksman: rifleShapes(true) })) {
+    const model = art['weapon-' + key], held = art['operator-hands']?.parts;
+    const parts = model?.parts;
+    const bodyArt = parts?.body ?? (parts && !Object.keys(parts).length ? model : undefined);
+    const landmarks = ART_LANDMARKS[key];
+    const bounds = bodyArt ? landmarks.bounds : model?.bounds, native = set.body.boundingBox;
+    const scale = bodyArt ? (native[5] - native[2]) / (bounds[5] - bounds[2]) : 1;
+    const transform = bodyArt ? { scale, position: [
+      -scale * (bounds[0] + bounds[3]) / 2,
+      (set.slide?.boundingBox[4] ?? native[4]) - bounds[4] * scale,
+      native[2] - bounds[2] * scale,
+    ] } : undefined;
+    const mapPoint = point => point.map((value, axis) => value * scale + transform.position[axis]);
+    const rightGrip = key === 'pistol' ? [0.014, -0.06, 0.058] : [0.012, -0.082, 0.092];
+    const rightShift = bodyArt ? mapPoint(landmarks.right).map((value, axis) => value - rightGrip[axis]) : [0, 0, 0];
+    const leftShift = bodyArt ? mapPoint(landmarks.left).map((value, axis) => value - set.palm[axis]) : [0, 0, 0];
+    const palm = set.palm.map((value, axis) => value + leftShift[axis]);
+    const sourceElbow = key === 'pistol' && held ? [-0.19, -0.32, 0.18] : set.elbow;
+    const elbow = sourceElbow.map((value, axis) => value + leftShift[axis]);
+    const magazineAt = bodyArt && parts?.magazine ? mapPoint([
+      (parts.magazine.bounds[0] + parts.magazine.bounds[3]) / 2, parts.magazine.bounds[4],
+      (parts.magazine.bounds[2] + parts.magazine.bounds[5]) / 2,
+    ]) : set.magazineAt.map((value, axis) => value + rightShift[axis]);
+    const magazineTransform = bodyArt && parts?.magazine ? { scale,
+      position: transform.position.map((value, axis) => value - magazineAt[axis]) } : undefined;
     const node = new Object3D(),
-      body = viewPart(set.body, metal),
-      magazine = viewPart(set.magazine, metal),
-      hands = viewPart(set.hands, cloth),
+      body = viewPart(set.body, metal, bodyArt, transform),
+      magazine = bodyArt && !parts?.magazine ? new Object3D() : viewPart(set.magazine, metal, parts?.magazine, magazineTransform),
+      hands = viewPart(set.hands, cloth, held?.[key + '-hands'], { scale: 1, position: rightShift }),
       support = new Object3D(),
-      sleeve = viewPart(set.support, cloth),
-      slide = set.slide ? viewPart(set.slide, metal) : undefined;
+      sleeve = viewPart(set.support, cloth, held?.[key + '-support'], { scale: 1, position: leftShift }),
+      slide = set.slide && (!bodyArt || parts?.slide) ? viewPart(set.slide, metal, parts?.slide, transform) : undefined;
     node.name = `weapon-${key}`;
     magazine.name = 'magazine';
     support.name = 'support-hand';
-    magazine.setPosition(...set.magazineAt);
-    support.setPosition(...set.palm);
-    sleeve.setPosition(-set.palm[0], -set.palm[1], -set.palm[2]);
+    magazine.setPosition(...magazineAt);
+    support.setPosition(...palm);
+    sleeve.setPosition(-palm[0], -palm[1], -palm[2]);
     support.addChild(sleeve);
     for (const part of [body, magazine, hands, support]) node.addChild(part);
     if (slide) {
@@ -351,30 +428,53 @@ export function createGun(camera) {
     }
     node.visible = false;
     rig.addChild(node);
-    const forearm = set.palm.map((value, i) => value - set.elbow[i]);
+    const forearm = palm.map((value, i) => value - elbow[i]);
     const length = Math.hypot(...forearm);
-    models[key] = { node, magazine, support, slide, palm: set.palm, elbow: set.elbow, arm: forearm.map(value => value / length), magazineAt: set.magazineAt, magazineGrip: set.magazineGrip };
+    const sight = bodyArt && landmarks.sight ? mapPoint(landmarks.sight) : [0, 0.0835, -0.05];
+    if (key === 'rifle' && bodyArt) {
+      const optic = new Mesh3D(reflexHousing(), createStandardMaterial3D({ color: 0xffffff, vertexColors: true,
+        metallic: 0.3, roughness: 0.52, environmentIntensity: 0.7 }));
+      optic.name = 'reflex-sight-housing';
+      optic.frustumCulled = false;
+      optic.castShadow = false;
+      optic.setPosition(...sight);
+      node.addChild(optic);
+      const glass = new Mesh3D(createQuadGeometry3D(), createUnlitMaterial3D({ color: 0x72c6d4, opacity: 0.035,
+        alphaMode: 'blend', side: 'double', depthWrite: false }));
+      glass.name = 'reflex-sight-window';
+      glass.setPosition(sight[0], sight[1], sight[2] - 0.004).setScale(0.035, 0.027, 1);
+      glass.castShadow = false;
+      glass.frustumCulled = false;
+      node.addChild(glass);
+    }
+    const aim = bodyArt && landmarks.sight ? [-sight[0], -sight[1], HOLD[key].aim[2]] : HOLD[key].aim;
+    models[key] = { node, magazine, support, slide, bodyArt, sight, aim,
+      flashTip: bodyArt ? mapPoint(landmarks.muzzle) : BARREL_TIP[key],
+      palm, elbow, arm: forearm.map(value => value / length), magazineAt, magazineGrip: set.magazineGrip };
   }
   // The red dot of the rifle's sight.
   const dot = new Mesh3D(
-    createQuadGeometry3D(),
-    createUnlitMaterial3D({ color: 0xff2a1a, alphaMode: 'blend', blending: 'additive', depthWrite: false, toneMapped: false }),
+    createSphereGeometry3D({ radius: 0.5, widthSegments: 16, heightSegments: 8 }),
+    createUnlitMaterial3D({ color: 0xff3425, toneMapped: false }),
   );
-  dot.setPosition(0, 0.0835, -0.05);
-  dot.setScale(0.0035);
+  dot.setPosition(...models.rifle.sight);
+  dot.name = 'reflex-sight-reticle';
+  dot.setScale(0.001);
   dot.frustumCulled = false;
   dot.castShadow = false;
   models.rifle.node.addChild(dot);
-  // The sight's window: a pane of faintly tinted glass.
-  const lens = new Mesh3D(
-    createQuadGeometry3D(),
-    createUnlitMaterial3D({ color: 0x6fb0c8, opacity: 0.12, alphaMode: 'blend', depthWrite: false, side: 'double' }),
-  );
-  lens.setPosition(0, 0.0875, -0.05);
-  lens.setScale(0.037, 0.045, 1);
-  lens.frustumCulled = false;
-  lens.castShadow = false;
-  models.rifle.node.addChild(lens);
+  // The stock sight has a frame for this pane. The imported model uses open sights.
+  if (!models.rifle.bodyArt) {
+    const lens = new Mesh3D(
+      createQuadGeometry3D(),
+      createUnlitMaterial3D({ color: 0x6fb0c8, opacity: 0.12, alphaMode: 'blend', depthWrite: false, side: 'double' }),
+    );
+    lens.setPosition(0, 0.0875, -0.05);
+    lens.setScale(0.037, 0.045, 1);
+    lens.frustumCulled = false;
+    lens.castShadow = false;
+    models.rifle.node.addChild(lens);
+  }
 
   // Muzzle flash: two crossed cards and a brief light.
   const flashMaterial = createUnlitMaterial3D({
@@ -423,8 +523,8 @@ export function createGun(camera) {
   return {
     /** Offset from the eye, in the camera's own axes, of the muzzle (for tracers). */
     muzzleOffset(aim) {
-      const hold = HOLD[state.weapon];
-      return [0, 1, 2].map((i) => (hold.hip[i] + (hold.aim[i] - hold.hip[i]) * aim + hold.muzzle[i]) * 1);
+      const hold = HOLD[state.weapon], model = models[state.weapon], blend = ease(aim);
+      return [0, 1, 2].map(i => (hold.hip[i] + (model.aim[i] - hold.hip[i]) * blend + model.flashTip[i]) * RIG_SCALE);
     },
     fire(weapon, aim) {
       state.kickBack += weapon === 'pistol' ? 0.028 : weapon === 'marksman' ? 0.06 : 0.022 - 0.008 * aim;
@@ -434,9 +534,9 @@ export function createGun(camera) {
       const size = (weapon === 'pistol' ? 0.16 : 0.26) * (0.8 + Math.random() * 0.5);
       for (const card of cards) card.setScale(size);
       orient(flash, 0, 0, Math.random() * 6.28);
-      const { node } = models[weapon];
+      const { node, flashTip } = models[weapon];
       if (flash.parent !== node) node.addChild(flash);
-      const [x, y, z] = BARREL_TIP[weapon];
+      const [x, y, z] = flashTip;
       flash.setPosition(x, y, z - 0.04);
     },
     reload(seconds) {
@@ -451,7 +551,8 @@ export function createGun(camera) {
       const p = game.player,
         weapon = game.weapons[p.weapon],
         model = models[p.weapon],
-        hold = HOLD[p.weapon];
+        hold = HOLD[p.weapon],
+        aimed = model.aim;
       if (state.weapon !== p.weapon) {
         state.weapon = p.weapon;
         state.reload = 0;
@@ -479,9 +580,9 @@ export function createGun(camera) {
         bobSize = (1 - aim * 0.85) * moving * (p.sprinting ? 0.016 : 0.008),
         swayX = state.swayX * (1 - aim * 0.72),
         swayY = state.swayY * (1 - aim * 0.72);
-      let x = hold.hip[0] + (hold.aim[0] - hold.hip[0]) * aim,
-        y = hold.hip[1] + (hold.aim[1] - hold.hip[1]) * aim,
-        z = hold.hip[2] + (hold.aim[2] - hold.hip[2]) * aim;
+      let x = hold.hip[0] + (aimed[0] - hold.hip[0]) * aim,
+        y = hold.hip[1] + (aimed[1] - hold.hip[1]) * aim,
+        z = hold.hip[2] + (aimed[2] - hold.hip[2]) * aim;
       x += swayX + Math.sin(state.bob) * bobSize + state.lower * 0.045;
       y += swayY - Math.abs(Math.cos(state.bob)) * bobSize - state.landing - state.lower * 0.32;
       z += state.kickBack;
@@ -517,7 +618,10 @@ export function createGun(camera) {
       state.slideLeft = Math.max(0, state.slideLeft - dt);
       model.node.setPosition(x, y, z);
       orient(model.node, yaw, pitch, roll);
-      dot.visible = p.weapon === 'rifle';
+      dot.visible = visible && p.weapon === 'rifle' && p.aim > 0.2;
+      const sightDepth = Math.max(0.08, -models.rifle.aim[2] - models.rifle.sight[2]);
+      const lensHeight = Math.max(1, globalThis.innerHeight ?? 900);
+      dot.setScale(2 * Math.tan(camera.fov * Math.PI / 360) * sightDepth * 4 / lensHeight);
 
       state.flashLeft -= dt;
       flash.visible = visible && !scoped && state.flashLeft > 0;

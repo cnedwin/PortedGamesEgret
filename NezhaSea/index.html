@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1, maximum-scale=1, viewport-fit=cover, user-scalable=no">
+  <title>哪吒闹海 · Nezha Stirs the Sea</title>
+  <meta name="description" content="哪吒闹海：基于新白鹭引擎独立开发的动作游戏 Demo。哪吒守陈塘关二十波，波间在龙宫集市买法宝、合成神器。 · Nezha Stirs the Sea: a standalone action game demo made with the new Egret engine.">
+  <meta name="theme-color" content="#0d2a3a">
+  <link rel="icon" href="data:,">
+  <link rel="stylesheet" href="style.css">
+  <link rel="preload" as="image" href="assets/title.webp">
+  <script type="importmap">
+    {
+      "imports": {
+        "@egret/contracts": "./vendor/contracts/dist/index.js",
+        "@egret/runtime": "./vendor/runtime/dist/index.js",
+        "@egret/contracts/resources": "./vendor/contracts/dist/resources/index.js",
+        "@egret/engine": "./vendor/engine/dist/index.js",
+        "@egret/engine/kit": "./vendor/engine/dist/kit.js",
+        "@egret/engine/audio": "./vendor/engine/dist/audio.js",
+        "@egret/engine/input/gamepad": "./vendor/engine/dist/gamepad.js",
+        "@egret/runtime/text": "./vendor/runtime/dist/text/index.js",
+        "@egret/engine/text": "./vendor/engine/dist/text.js",
+        "@egret/runtime/input": "./vendor/runtime/dist/input/index.js",
+        "#egret-pointer-input": "./vendor/engine/dist/pointerInput.js",
+        "#egret-keyboard-input": "./vendor/engine/dist/keyboardInput.js",
+        "robust-predicates": "./vendor/robust-predicates/index.js",
+        "#egret-textured-frame-state": "./vendor/engine/dist/internal/texturedFrameState.js",
+        "@egret/engine/input/hover": "./vendor/engine/dist/hover.js",
+        "@egret/runtime/ui": "./vendor/runtime/dist/ui/index.js",
+        "@egret/engine/ui": "./vendor/engine/dist/ui/index.js",
+        "@egret/runtime/paragraph": "./vendor/runtime/dist/paragraph/index.js",
+        "@egret/engine/paragraph": "./vendor/engine/dist/paragraph.js",
+        "@egret/engine/play": "./vendor/engine/dist/web/play.js",
+        "@egret/engine/web/kit": "./vendor/engine/dist/web/kit.js",
+        "@egret/engine/ui/semantics": "./vendor/engine/dist/semantics.js",
+        "@egret/engine/ui/testing": "./vendor/engine/dist/ui/testing.js",
+        "@egret/engine/web/semantics": "./vendor/engine/dist/web/semantics.js"
+      }
+    }
+  </script>
+  <link rel="modulepreload" href="./bundle/main.mjs">
+</head>
+<body>
+  <main id="frame" data-screen="loading">
+    <div id="ground" aria-hidden="true"></div>
+    <div id="surface"></div>
+    <p id="boot" role="status">载入中 · Loading</p>
+    <!-- A failed module fetch can run before the engine exists. -->
+    <section id="bootError" role="alertdialog" aria-modal="true" aria-labelledby="bootErrorTitle" hidden>
+      <h1 id="bootErrorTitle">载入失败 · Could not load</h1>
+      <p>请检查网络后重试。 · Check your connection and try again.</p>
+      <button type="button" id="bootReload">重新载入 · Reload game</button>
+    </section>
+  </main>
+  <noscript>这个游戏需要 JavaScript · This game needs JavaScript.</noscript>
+  <script type="module">
+    const requested = new URLSearchParams(location.search).get('lang');
+    const english = requested ? requested === 'en' : navigator.language.startsWith('en');
+    if (english) {
+      document.documentElement.lang = 'en';
+      document.getElementById('boot').textContent = 'Loading';
+      document.getElementById('bootErrorTitle').textContent = 'Could not load';
+      document.querySelector('#bootError p').textContent = 'Check your connection and try again.';
+      document.getElementById('bootReload').textContent = 'Reload game';
+    } else {
+      document.getElementById('boot').textContent = '载入中';
+      document.getElementById('bootErrorTitle').textContent = '载入失败';
+      document.querySelector('#bootError p').textContent = '请检查网络后重试。';
+      document.getElementById('bootReload').textContent = '重新载入';
+    }
+    try {
+      await import('./bundle/main.mjs');
+    } catch (cause) {
+      document.getElementById('boot')?.remove();
+      document.getElementById('bootError').hidden = false;
+      const reload = document.getElementById('bootReload');
+      reload.addEventListener('click', () => location.reload(), { once: true });
+      reload.focus();
+      console.error(cause);
+    }
+  </script>
+</body>
+</html>

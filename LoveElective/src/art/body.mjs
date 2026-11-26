@@ -9,8 +9,8 @@ export const CX = 200;
 /** Body measurements (half widths) for the two builds. */
 export function metrics(sex) {
   return sex === 'm'
-    ? { sex, nw: 13, sh: 74, bust: 65, waist: 57, hip: 58, armU: 16, armL: 12, wrist: 8, thigh: 27, knee: 19, calf: 20, ankle: 11 }
-    : { sex, nw: 11, sh: 60, bust: 52, waist: 39, hip: 54, armU: 12, armL: 9.5, wrist: 7, thigh: 25, knee: 17, calf: 17.5, ankle: 9 };
+    ? { sex, nw: 13, sh: 75, bust: 70, waist: 61, hip: 63, armU: 16, armL: 12, wrist: 8, thigh: 28, knee: 21, calf: 22, ankle: 12 }
+    : { sex, nw: 11, sh: 63, bust: 55, waist: 43, hip: 58, armU: 13, armL: 10, wrist: 7, thigh: 26, knee: 18, calf: 19, ankle: 10 };
 }
 
 const PROFILE_Y = [271, 302, 332, 399, 462, 506];
@@ -43,11 +43,12 @@ export function torsoPoints(B, { ease = 0, hem = 506, neck = 236, flare = 0 } = 
 
 /** Centre line of an arm; s = -1 is the left of the picture, +1 the right. */
 export function armLine(B, s) {
+  const relaxed = s > 0 ? 3 : 0;
   return [
-    [CX + s * (B.sh - 16), 252, B.armU * .52],
+    [CX + s * (B.sh - 17), 254, B.armU * .52],
     [CX + s * (B.sh - 9), 280, B.armU],
-    [CX + s * (B.sh + 3), 386, (B.armU + B.armL) / 2],
-    [CX + s * (B.sh - 4), 514, B.wrist],
+    [CX + s * (B.sh + 4 + relaxed), 386, (B.armU + B.armL) / 2],
+    [CX + s * (B.sh + relaxed), 514 + relaxed, B.wrist],
   ];
 }
 
@@ -66,12 +67,13 @@ export function sleevePoints(B, s, len, ease = 4, cuff = 0) {
 }
 
 export function legLine(B, s) {
+  const relaxed = s > 0 ? 3 : 0;
   return [
     [CX + s * B.hip * .49, 470, B.thigh],
     [CX + s * B.hip * .50, 530, B.thigh],
-    [CX + s * B.hip * .46, 682, B.knee],
-    [CX + s * B.hip * .51, 765, B.calf],
-    [CX + s * B.hip * .55, 895, B.ankle],
+    [CX + s * (B.hip * .46 + relaxed), 682, B.knee],
+    [CX + s * (B.hip * .51 + relaxed), 765, B.calf],
+    [CX + s * (B.hip * .54 + relaxed), 895, B.ankle],
   ];
 }
 
@@ -79,7 +81,7 @@ export function legLine(B, s) {
 // and shoes must use the same ankle and floor line.
 export function footAnchor(B, s) {
   const [x, y, ankle] = legLine(B, s).at(-1);
-  return { x, y, ankle, ground: 942, toe: B.sex === 'm' ? 26 : 23 };
+  return { x, y, ankle, ground: 942, toe: (B.sex === 'm' ? 24 : 22) - (s > 0 ? 3 : 0) };
 }
 
 export function footOutline(B, s) {

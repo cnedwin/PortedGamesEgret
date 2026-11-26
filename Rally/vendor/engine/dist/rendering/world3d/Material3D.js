@@ -3,18 +3,32 @@
 // values are linear RGB; factories accept 0xRRGGBB sRGB hex for convenience.
 import { Resource3D, World3DError } from './core3D.js';
 import { colorFromHex } from './math3D.js';
+/** Makes a material drawn by shaders of your own. */
 export function createCustomShader3D(input) {
     if (!input || typeof input.key !== 'string' || input.key.length === 0 || /[\s|/]/.test(input.key))
         throw new World3DError('WORLD3D_INPUT_INVALID', 'shader key');
-    if (input.glsl === undefined && input.wgsl === undefined && input.glslVertex === undefined && input.wgslVertex === undefined && input.glslNormal === undefined && input.wgslNormal === undefined)
+    if (input.glsl === undefined &&
+        input.wgsl === undefined &&
+        input.glslVertex === undefined &&
+        input.wgslVertex === undefined &&
+        input.glslNormal === undefined &&
+        input.wgslNormal === undefined)
         throw new World3DError('WORLD3D_INPUT_INVALID', 'shader source');
     const uniforms = new Float32Array(16);
     if (input.uniforms)
         uniforms.set(Array.from(input.uniforms).slice(0, 16));
-    return Object.freeze({ key: input.key, ...(input.glsl === undefined ? {} : { glsl: input.glsl }), ...(input.wgsl === undefined ? {} : { wgsl: input.wgsl }),
-        ...(input.glslVertex === undefined ? {} : { glslVertex: input.glslVertex }), ...(input.wgslVertex === undefined ? {} : { wgslVertex: input.wgslVertex }),
-        ...(input.glslNormal === undefined ? {} : { glslNormal: input.glslNormal }), ...(input.wgslNormal === undefined ? {} : { wgslNormal: input.wgslNormal }), uniforms });
+    return Object.freeze({
+        key: input.key,
+        ...(input.glsl === undefined ? {} : { glsl: input.glsl }),
+        ...(input.wgsl === undefined ? {} : { wgsl: input.wgsl }),
+        ...(input.glslVertex === undefined ? {} : { glslVertex: input.glslVertex }),
+        ...(input.wgslVertex === undefined ? {} : { wgslVertex: input.wgslVertex }),
+        ...(input.glslNormal === undefined ? {} : { glslNormal: input.glslNormal }),
+        ...(input.wgslNormal === undefined ? {} : { wgslNormal: input.wgslNormal }),
+        uniforms
+    });
 }
+/** Writes a color into a float array as red, green and blue. */
 export function setColor3D(out, input) {
     if (typeof input === 'number')
         colorFromHex(out, input);
@@ -42,6 +56,7 @@ export class Material3D extends Resource3D {
     alphaMode = 'opaque';
     /** Fragments below this alpha are discarded in 'mask' mode. */
     alphaCutoff = 0.5;
+    /** How a blended fragment combines with what is behind it. Used only when `alphaMode` is 'blend'. */
     blending = 'normal';
     depthTest = true;
     depthWrite = true;
@@ -144,7 +159,10 @@ export class Material3D extends Resource3D {
         this.opacity = options.opacity ?? 1;
         this.map = options.map;
         this.side = options.side ?? 'front';
-        this.alphaMode = options.alphaMode ?? (this.opacity < 1 ? 'blend' : 'opaque');
+        // Additive, multiply and premultiplied blending only take effect in the blended pass, so asking for one
+        // is asking for that pass.
+        this.alphaMode =
+            options.alphaMode ?? (this.opacity < 1 || (options.blending ?? 'normal') !== 'normal' ? 'blend' : 'opaque');
         this.alphaCutoff = options.alphaCutoff ?? 0.5;
         this.blending = options.blending ?? 'normal';
         this.depthTest = options.depthTest ?? true;
@@ -165,8 +183,14 @@ export class Material3D extends Resource3D {
     get isTransparent() {
         return this.alphaMode === 'blend';
     }
-    setColor(color) { setColor3D(this.color, color); return this; }
-    setEmissive(color) { setColor3D(this.emissive, color); return this; }
+    setColor(color) {
+        setColor3D(this.color, color);
+        return this;
+    }
+    setEmissive(color) {
+        setColor3D(this.emissive, color);
+        return this;
+    }
     /** Independent copy sharing texture references. */
     clone() {
         const copy = new Material3D(this.shading);

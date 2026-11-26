@@ -1,5 +1,6 @@
 import type { AssetLease, AssetProvider, Scope, SequenceClip, SpriteSheet, Texture } from '@egret/runtime';
 import type { ManifestBinding, ManifestGroupOptions } from './manifestResourceTypes.js';
+/** One resource a content loader binds: its id, its kind and its manifest binding. */
 export interface ContentBinding {
     readonly id: string;
     readonly kind: 'image' | 'atlas' | 'sequence';
@@ -10,6 +11,7 @@ export interface ContentProviders {
     readonly textures: AssetProvider<Texture>;
     readonly metadata: AssetProvider<string>;
 }
+/** Makes the providers that load a content loader's resources, given what they bind. */
 export type ContentProviderFactory = (bindings: readonly ContentBinding[]) => ContentProviders;
 /** All returned values are borrowed until this group or its owning Scope retires. */
 export interface ContentGroup {

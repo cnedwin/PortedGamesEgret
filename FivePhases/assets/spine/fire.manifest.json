@@ -1,0 +1,404 @@
+{
+  "portrait": "fire",
+  "name": "焰",
+  "canvas": {
+    "width": 635,
+    "height": 952
+  },
+  "format": "PNG, RGBA8888, 像素尺寸与 size 完全一致，透明底",
+  "note": "独立 PNG 保持原尺寸。offset 是骨骼到轴心的偏移，rect 是图集取样矩形。",
+  "atlas": {
+    "width": 1024,
+    "height": 1076
+  },
+  "anchor": [
+    264,
+    601
+  ],
+  "bones": [
+    {
+      "id": "root",
+      "parent": null,
+      "at": [
+        264,
+        601
+      ]
+    },
+    {
+      "id": "hip",
+      "parent": "root",
+      "at": [
+        268,
+        316
+      ]
+    },
+    {
+      "id": "chest",
+      "parent": "hip",
+      "at": [
+        258,
+        241
+      ]
+    },
+    {
+      "id": "head",
+      "parent": "chest",
+      "at": [
+        239,
+        149
+      ]
+    },
+    {
+      "id": "hair-tail",
+      "parent": "head",
+      "at": [
+        217,
+        46
+      ]
+    },
+    {
+      "id": "shoulder-far",
+      "parent": "chest",
+      "at": [
+        177,
+        209
+      ]
+    },
+    {
+      "id": "elbow-far",
+      "parent": "shoulder-far",
+      "at": [
+        104,
+        324
+      ]
+    },
+    {
+      "id": "shoulder-near",
+      "parent": "chest",
+      "at": [
+        317,
+        205
+      ]
+    },
+    {
+      "id": "elbow-near",
+      "parent": "shoulder-near",
+      "at": [
+        403,
+        273
+      ]
+    },
+    {
+      "id": "hand-near",
+      "parent": "elbow-near",
+      "at": [
+        471,
+        252
+      ]
+    },
+    {
+      "id": "skirt-r",
+      "parent": "hip",
+      "at": [
+        275,
+        321
+      ]
+    },
+    {
+      "id": "sash",
+      "parent": "skirt-r",
+      "at": [
+        336,
+        353
+      ]
+    }
+  ],
+  "parts": [
+    {
+      "order": 0,
+      "id": "ponytail",
+      "file": "ponytail.png",
+      "bone": "hair-tail",
+      "layer": 0,
+      "size": [
+        224,
+        322
+      ],
+      "pivot": [
+        0.5,
+        0.5
+      ],
+      "rotation": 0,
+      "offset": [
+        -94,
+        124
+      ],
+      "rect": [
+        391,
+        554,
+        224,
+        322
+      ]
+    },
+    {
+      "order": 1,
+      "id": "boots",
+      "file": "boots.png",
+      "bone": "root",
+      "layer": 1,
+      "size": [
+        298,
+        125
+      ],
+      "pivot": [
+        0.5,
+        0.5
+      ],
+      "rotation": 0,
+      "offset": [
+        -11,
+        285.5
+      ],
+      "rect": [
+        285,
+        912,
+        298,
+        125
+      ]
+    },
+    {
+      "order": 2,
+      "id": "robe",
+      "file": "robe.png",
+      "bone": "skirt-r",
+      "layer": 2,
+      "size": [
+        430,
+        545
+      ],
+      "pivot": [
+        0.5,
+        0.5
+      ],
+      "rotation": 0,
+      "offset": [
+        -54,
+        259.5
+      ],
+      "rect": [
+        3,
+        3,
+        430,
+        545
+      ]
+    },
+    {
+      "order": 3,
+      "id": "far-sleeve",
+      "file": "far-sleeve.png",
+      "bone": "shoulder-far",
+      "layer": 3,
+      "size": [
+        155,
+        198
+      ],
+      "pivot": [
+        0.5,
+        0.5
+      ],
+      "rotation": 0,
+      "offset": [
+        -26.5,
+        56
+      ],
+      "rect": [
+        621,
+        554,
+        155,
+        198
+      ]
+    },
+    {
+      "order": 4,
+      "id": "far-bracer",
+      "file": "far-bracer.png",
+      "bone": "elbow-far",
+      "layer": 4,
+      "size": [
+        136,
+        161
+      ],
+      "pivot": [
+        0.5,
+        0.5
+      ],
+      "rotation": 0,
+      "offset": [
+        -33,
+        63.5
+      ],
+      "rect": [
+        3,
+        912,
+        136,
+        161
+      ]
+    },
+    {
+      "order": 5,
+      "id": "torso",
+      "file": "torso.png",
+      "bone": "chest",
+      "layer": 5,
+      "size": [
+        382,
+        352
+      ],
+      "pivot": [
+        0.5,
+        0.5
+      ],
+      "rotation": 0,
+      "offset": [
+        47,
+        -43
+      ],
+      "rect": [
+        3,
+        554,
+        382,
+        352
+      ]
+    },
+    {
+      "order": 6,
+      "id": "near-sleeve",
+      "file": "near-sleeve.png",
+      "bone": "shoulder-near",
+      "layer": 6,
+      "size": [
+        134,
+        155
+      ],
+      "pivot": [
+        0.5,
+        0.5
+      ],
+      "rotation": 0,
+      "offset": [
+        37,
+        46.5
+      ],
+      "rect": [
+        145,
+        912,
+        134,
+        155
+      ]
+    },
+    {
+      "order": 7,
+      "id": "near-bracer",
+      "file": "near-bracer.png",
+      "bone": "elbow-near",
+      "layer": 7,
+      "size": [
+        100,
+        83
+      ],
+      "pivot": [
+        0.5,
+        0.5
+      ],
+      "rotation": 0,
+      "offset": [
+        35,
+        5.5
+      ],
+      "rect": [
+        589,
+        912,
+        100,
+        83
+      ]
+    },
+    {
+      "order": 8,
+      "id": "sword-hand",
+      "file": "sword-hand.png",
+      "bone": "hand-near",
+      "layer": 8,
+      "size": [
+        181,
+        375
+      ],
+      "pivot": [
+        0.5,
+        0.5
+      ],
+      "rotation": 0,
+      "offset": [
+        71.5,
+        -49.5
+      ],
+      "rect": [
+        605,
+        3,
+        181,
+        375
+      ]
+    },
+    {
+      "order": 9,
+      "id": "face",
+      "file": "face.png",
+      "bone": "head",
+      "layer": 9,
+      "size": [
+        116,
+        181
+      ],
+      "pivot": [
+        0.5,
+        0.5
+      ],
+      "rotation": 0,
+      "offset": [
+        12,
+        -29.5
+      ],
+      "rect": [
+        782,
+        554,
+        116,
+        181
+      ]
+    },
+    {
+      "order": 10,
+      "id": "waist-sash",
+      "file": "waist-sash.png",
+      "bone": "sash",
+      "layer": 10,
+      "size": [
+        160,
+        381
+      ],
+      "pivot": [
+        0.5,
+        0.5
+      ],
+      "rotation": 0,
+      "offset": [
+        36,
+        136.5
+      ],
+      "rect": [
+        439,
+        3,
+        160,
+        381
+      ]
+    }
+  ]
+}

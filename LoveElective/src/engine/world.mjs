@@ -5,8 +5,8 @@
 import { W, H } from './stage.mjs';
 import { ambient, SCENE_W, SCENE_H } from '../art/scenes.mjs';
 import { loadCampusScene, paintCampusScene } from '../art/campus-art.mjs';
-import { hasLayeredHead, hasStoryPortrait, paintStoryCharacter } from '../art/character-art.mjs';
-import { drawFigure, FIGURE_W, FIGURE_H, FIGURE_TOP } from '../art/figure.mjs';
+import { hasLayeredHead, loadStoryPortrait, paintStoryCharacter } from '../art/character-art.mjs';
+import { drawWardrobeFigure, FIGURE_W, FIGURE_H, FIGURE_TOP } from '../art/figure.mjs';
 import { footAnchor, metrics } from '../art/body.mjs';
 import { heart, star, ellipse, rgba } from '../art/draw.mjs';
 
@@ -84,7 +84,8 @@ export function createWorld(stage) {
   const world = { root, scene: null, light: 'day', actor: null, zoom: 1, shakeTime: 0, calm: false };
   let particles = [],
     particleKind = null,
-    sceneToken = 0;
+    sceneToken = 0,
+    actorToken = 0;
   const cam = { x: 0, y: 0 };
 
   function place(name) {
@@ -132,16 +133,23 @@ export function createWorld(stage) {
   }
 
   /**
-   * Show a character. view 'bust' frames head to thigh for conversation;
-   * 'full' shows the whole figure for the wardrobe. x is the centre in game units.
+   * Conversations use painted portraits. The full view is the wardrobe's
+   * live fitting preview. x is the centre in stage units.
    */
   world.showActor = async (spec, { view = 'bust', x = W / 2, key, enter = true } = {}) => {
     const full = view === 'full';
+    const token = ++actorToken;
+    const portrait = full ? null : await loadStoryPortrait(spec);
+    if (token !== actorToken) return;
+    if (!full && !portrait) {
+      await world.hideActor();
+      return;
+    }
     const scale = full ? 0.665 : 1.24,
       crop = full ? FIGURE_H : 600;
+    const frameWidth = portrait && portrait.name !== spec.id ? 520 : FIGURE_W;
     const res = full ? 1.5 : 1.0;
-    const portrait = !full && hasStoryPortrait(spec);
-    const id = portrait ? `portrait:${key ?? spec.id}` : `figure:${key ?? JSON.stringify(spec) + view}`;
+    const id = portrait ? `portrait:${portrait.key}` : `fitting:${key ?? JSON.stringify(spec)}`;
     if (!world.actor) {
       const group = stage.group(actorGroup);
       world.actor = { group, pic: stage.pic(group), blink: stage.pic(group), id: null, x, nextBlink: 2, blinkLeft: 0, t: 0 };
@@ -151,10 +159,10 @@ export function createWorld(stage) {
     const a = world.actor,
       fresh = a.id === null;
     if (a.id === id && a.x === x) return;
-    a.id = id;
     a.full = full;
-    a.usesPortrait = portrait;
-    a.illustratedHead = !portrait && hasLayeredHead(spec);
+    a.usesPortrait = Boolean(portrait);
+    a.portraitKey = portrait?.name;
+    a.illustratedHead = full && hasLayeredHead(spec);
     a.scale = scale;
     const paintFigure = (blink, [cx, cy, cw, ch]) =>
       stage.canvas(cw * scale, ch * scale, res, g => {
@@ -179,9 +187,10 @@ export function createWorld(stage) {
           feet.forEach(({ x, toe }, i) => shadow(x - FIGURE_W / 2 + (i ? 1 : -1) * toe * .28, 34, .43));
           g.restore();
         }
-        if (!portrait || !paintStoryCharacter(g, spec)) drawFigure(g, spec, { blink });
+        if (full) drawWardrobeFigure(g, spec, { blink });
+        else paintStoryCharacter(g, portrait.image, frameWidth);
       });
-    const body = paintFigure(false, [0, 0, FIGURE_W, crop]);
+    const body = paintFigure(false, [0, 0, frameWidth, crop]);
     const ready = a.pic.show(body, body.res, 'actor:' + id);
     if (portrait || a.illustratedHead) {
       a.blink.clear();
@@ -193,8 +202,10 @@ export function createWorld(stage) {
       a.blink.node.y = EYES[1] * scale;
       await Promise.all([ready, a.blink.show(eyes, eyes.res, 'blink:' + id)]);
     }
+    if (token !== actorToken) return;
+    a.id = id;
     tintActor();
-    a.w = FIGURE_W * scale;
+    a.w = frameWidth * scale;
     a.h = crop * scale;
     a.baseY = full ? H - a.h - 6 : 64;
     if (fresh || a.x !== x) {
@@ -213,6 +224,7 @@ export function createWorld(stage) {
   };
 
   world.hideActor = async () => {
+    actorToken++;
     const a = world.actor;
     if (!a) return;
     world.actor = null;

@@ -23,6 +23,7 @@ export function requireManifestAssetRef(value) {
         throw new EgretError('MANIFEST_BINDING_REF_INVALID');
     return state;
 }
+/** Binds one asset of an admitted manifest to an asset type, for its group to load. */
 export function createManifestAssetBinding(manifest, assetId, type) {
     if (!isAdmittedResourceManifest(manifest))
         throw new EgretError('MANIFEST_BINDING_MANIFEST_INVALID');

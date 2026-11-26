@@ -1,0 +1,55 @@
+---
+id: play-page-controls
+title: Page buttons, a clear canvas and the canvas itself beside play
+applies: [play]
+triggers: [play, "page buttons", "html hud", "dom hud", "tab does nothing", "space does not press", "keyboard navigation", "focus does not move", "transparent canvas black", "parent element", "game.canvas", "game.browser.canvas", "页面按钮", "Tab 不动", "空格不响应", "键盘导航", "透明画布变黑", "画布在哪"]
+local: [stopPropagation, parentElement, openMenu]
+evidence:
+  - { repo: cnedwin/PortedGamesEgret, path: CanalWatch/src/main.mjs, line: 463, commit: 13dcd4b46bc1cf9103cc45cd59d00e73e58ab5f9, pin: b5628eb9997b67cf6163a388f5aa06f321f3833a }
+  - { repo: cnedwin/PortedGamesEgret, path: CanalWatch/src/main.mjs, line: 69, commit: 13dcd4b46bc1cf9103cc45cd59d00e73e58ab5f9, pin: b5628eb9997b67cf6163a388f5aa06f321f3833a }
+  - { repo: cnedwin/PortedGamesEgret, path: CanalWatch/ENGINE-NOTES.md, line: 9, commit: 13dcd4b46bc1cf9103cc45cd59d00e73e58ab5f9, pin: b5628eb9997b67cf6163a388f5aa06f321f3833a }
+  - { repo: cnedwin/PortedGamesEgret, path: CanalWatch/ENGINE-NOTES.md, line: 16, commit: 13dcd4b46bc1cf9103cc45cd59d00e73e58ab5f9, pin: b5628eb9997b67cf6163a388f5aa06f321f3833a }
+  - { repo: cnedwin/PortedGamesEgret, path: CanalWatch/ENGINE-NOTES.md, line: 30, commit: 13dcd4b46bc1cf9103cc45cd59d00e73e58ab5f9, pin: b5628eb9997b67cf6163a388f5aa06f321f3833a }
+  - { repo: cnedwin/PortedGamesEgret, path: NezhaSea/src/main.mjs, line: 454, commit: 9b3d9263f16bbfda9be05128a7c623408daf947f, pin: b5628eb9997b67cf6163a388f5aa06f321f3833a }
+engine: b5628eb9997b67cf6163a388f5aa06f321f3833a
+---
+
+# Page buttons, a clear canvas and the canvas itself beside play
+
+A game made with `play` can keep its bar, menus and build buttons as ordinary page buttons, which keys, touch and screen readers already understand. At engine `b5628eb` three things need care.
+
+**Tab and Space.** `play` listens for `keydown` on `window` and calls `preventDefault` for Tab, Space and the arrows unless an input, text area, select or editable element has the focus. On a focused page button, Tab then does not move the focus and Space does not press it. Catch keys first, in the capture phase, and stop them there; the browser's own actions still happen:
+
+```js
+window.addEventListener('keydown', (event) => {
+  event.stopPropagation();          // play's bubbling listener never hears it
+  if (event.key === 'p') openMenu();  // the game reads its own shortcuts now
+}, true);
+```
+
+`game.keys` hears nothing after this, so read every shortcut in that listener.
+
+When the player still moves by `game.keys.axis()`, stop those keys only while a page button or panel has them:
+
+```js
+const KEPT = new Set(['Tab', ' ', 'Enter', 'ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown']);
+window.addEventListener('keydown', (event) => {
+  if (event.target.closest?.('button, .panel') && KEPT.has(event.key)) event.stopPropagation();
+}, true);
+```
+
+**A clear canvas with `parent`.** `play({ parent, transparent: true })` puts the canvas in a holder whose inline style is `background:#000`, so the page under it does not show. Clear it once `play` has returned:
+
+```js
+game.canvas.parentElement.style.background = 'transparent';
+```
+
+**The canvas.** It is `game.canvas`. `game.browser.canvas` is `undefined`.
+
+Rules:
+
+- Put page buttons over the canvas in a box of the stage's shape and place them by percent of the stage (`left: x / width * 100 + '%'`), so they stay on their spot at every size.
+- Give each button an `aria-label` that says what is there now ("Plot 6: crossbow tower level 1"), and keep it at least 44 CSS pixels.
+- Check it in a browser: Tab from the first button must reach the next, and Space on a focused button must press it.
+
+Learnt from Canal Watch (ENGINE-NOTES 1, 2 and 4) and Nezha Stirs the Sea (ENGINE-NOTES 1).

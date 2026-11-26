@@ -232,10 +232,19 @@ body {
   .playbill { gap: 7px; padding: 12px 20px; }
   .playbill h1 span { font-size: 1.8em; }
   .playbill h1 em { font-size: 3.6em; }
-  .result .playbill { gap: 5px; font-size: 13px; }
-  .result .seal { font-size: 3.4em; }
-  .result .tally { column-gap: 1em; row-gap: 0.12em; }
-  .result .gong.small { width: 3.6em; height: 3.6em; }
+  /* A low screen must show the whole reckoning: seal beside the tally, not above it.
+     If content needs more space (large fonts), start at the top instead of clipping it. */
+  .result { align-items: safe center; }
+  .result .playbill {
+    width: min(100%, 36rem); grid-template-columns: minmax(80px, 1fr) minmax(0, 2fr);
+    gap: 6px 12px; padding: 10px 14px; font-size: 13px;
+  }
+  .result .act, .result .replay, .result .finale, .result .gongs { grid-column: 1 / -1; }
+  .result .seal { grid-column: 1; grid-row: 2; align-self: center; font-size: 3.4em; }
+  .result .tally { grid-column: 2; grid-row: 2; justify-self: start; column-gap: 1em; row-gap: 0.12em; }
+  .result .gongs { gap: 0.9em; }
+  .result .gongs .gong.small { width: clamp(44px, 10cqw, 54px); height: clamp(44px, 10cqw, 54px); }
+  .result .aside { min-height: 44px; }
 }
 .status.is-error { color: #ffd0c0; }
 
@@ -251,15 +260,21 @@ body {
 /* The cloth stays widescreen; a portrait phone has room for hands below it. */
 @media (pointer: coarse) and (orientation: portrait) {
   .booth { width: 100vw; height: 100dvh; aspect-ratio: auto; --cloth-top: calc(50% - 28.125vw); }
-  .playbill { width: 100%; max-width: 30rem; gap: 15px; padding: 20px; font-size: 16px; }
-  .playbill h1 { flex-wrap: wrap; justify-content: center; }
-  .playbill h1 span { font-size: 1.65em; }
-  .playbill h1 em { font-size: 2.75em; white-space: nowrap; }
-  .asides { flex-direction: column; gap: 4px; }
-  .aside { min-height: 36px; }
+  /* A rotation must not let a title's intrinsic width resize the grid track.
+     Keep both languages within the actual viewport, including long English labels. */
+  .curtain, .result { grid-template-columns: minmax(0, 1fr); align-items: safe center; }
+  .playbill { width: 100%; min-width: 0; max-width: min(30rem, 100%); gap: 15px; padding: 20px; font-size: 16px; }
+  .playbill h1 { max-width: 100%; min-width: 0; flex-wrap: wrap; justify-content: center; }
+  .playbill h1 span { font-size: clamp(24px, 8vw, 48px); }
+  .playbill h1 em { font-size: clamp(48px, 13.5vw, 80px); white-space: normal; }
+  :root[lang='en'] .playbill h1 span { font-size: clamp(20px, 6vw, 28px); letter-spacing: 0.12em; }
+  :root[lang='en'] .playbill h1 em { font-size: clamp(27px, 8vw, 40px); white-space: normal; overflow-wrap: anywhere; }
+  .playbill .act, .playbill .finale, .show-records { max-width: 100%; overflow-wrap: anywhere; }
+  .asides { width: 100%; min-width: 0; flex-direction: column; gap: 4px; }
+  .aside { min-height: 44px; max-width: 100%; white-space: normal; }
   .hud { font-size: 13px; }
   .tools { top: max(12px, env(safe-area-inset-top)); left: 4%; right: 4%; justify-content: center; flex-wrap: wrap; }
-  .tools button { min-height: 36px; }
+  .tools button, .tools a { min-height: 44px; }
   .banner { top: calc(var(--cloth-top) - 99px); left: 5%; writing-mode: horizontal-tb; padding: 0.4em 0.7em; clip-path: none; }
   .peaches { top: calc(var(--cloth-top) - 56px); left: 6%; }
   .hairs { top: calc(var(--cloth-top) - 29px); left: 6%; color: var(--pale-gold); text-shadow: none; }

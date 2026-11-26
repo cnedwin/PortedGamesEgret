@@ -13,7 +13,9 @@ export interface ImageResidencyEntry {
     pinCount: number;
     previous: ImageResidencyEntry | undefined;
     next: ImageResidencyEntry | undefined;
-    state: 'cold' | 'ready' | 'detached';
+    state: 'cold' | 'submitted' | 'ready' | 'detached';
+    /** Producer error scopes, held only while an immutable page is lent before its fence. */
+    validation?: Promise<void>;
 }
 export interface ImageResidencyCandidate {
     image: ImageData2D;
@@ -45,9 +47,10 @@ export interface ImageResidencyUse {
     pinned: boolean;
     finished: boolean;
     touchedQueue: boolean;
+    producerValidations?: Set<Promise<void>>;
 }
 /** Accumulates demand into the submission's existing maps without taking ownership of any native resources. */
-export declare function collectWebGPUImageDemand(projectionPlan: ProjectionPlan2D, draws: readonly ImageResidencyDraw[], shared: boolean, directory: WeakMap<ImageData2D, Map<string, ImageResidencyEntry>>, enabled: boolean, epoch: object, hits: Map<number, ImageResidencyEntry>, candidates: Map<number, ImageResidencyCandidate>): number;
+export declare function collectWebGPUImageDemand(projectionPlan: ProjectionPlan2D, draws: readonly ImageResidencyDraw[], shared: boolean, directory: WeakMap<ImageData2D, Map<string, ImageResidencyEntry>>, enabled: boolean, epoch: object, hits: Map<number, ImageResidencyEntry>, candidates: Map<number, ImageResidencyCandidate>, borrowSubmitted: boolean): number;
 /** Reads the ready list in eviction order. The Host retains all mutation and retirement authority. */
 export declare function selectWebGPUImageVictims(oldest: ImageResidencyEntry | undefined, epoch: object, available: number, count: number, maxReadyBytes: number, bytes: number, candidateCount: number, hits: ReadonlyMap<number, ImageResidencyEntry>): ImageResidencyEntry[];
 //# sourceMappingURL=webgpuImageResidency.d.ts.map

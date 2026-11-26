@@ -1,0 +1,175 @@
+{
+  "source": "Original additive strings and wind instruments, modal bronze and drum synthesis, and noise-sculpted transients, composed and arranged by Codex for Fengshen Chronicle on 2026-11-22. No recorded or externally sourced audio.",
+  "seed": 1902064134,
+  "codec": {
+    "music": "Ogg Vorbis, VBR q4",
+    "sfx": "PCM signed 16-bit WAV"
+  },
+  "sampleRate": 44100,
+  "files": {
+    "music/city.ogg": {
+      "seconds": 38.4,
+      "channels": 2,
+      "bytes": 489934,
+      "sha256": "563c4aa5072f8d68c78fb8721da3fef95cf18b1026d9ff80e311f876dc93a5b4",
+      "peakDbfs": -4.38,
+      "rmsDbfs": -18.98,
+      "loop": true,
+      "bpm": 75,
+      "bars": 12,
+      "loopSeamDbfs": -50.62
+    },
+    "music/trail.ogg": {
+      "seconds": 30.6383,
+      "channels": 2,
+      "bytes": 399554,
+      "sha256": "49901f74d41b97fb5657c81eade50b90123caa9f69f3b3483ce48cba99c9f437",
+      "peakDbfs": -3.25,
+      "rmsDbfs": -18,
+      "loop": true,
+      "bpm": 94,
+      "bars": 12,
+      "loopSeamDbfs": -42.35
+    },
+    "music/boss.ogg": {
+      "seconds": 31.47542,
+      "channels": 2,
+      "bytes": 438318,
+      "sha256": "9dd55aa06de605c07f2bb07c0ca7ad51b0d5feaab9ad26ff9306bebda4f4b2df",
+      "peakDbfs": -2.47,
+      "rmsDbfs": -17,
+      "loop": true,
+      "bpm": 122,
+      "bars": 16,
+      "loopSeamDbfs": -39.05
+    },
+    "sfx/attack.wav": {
+      "seconds": 0.36,
+      "channels": 1,
+      "bytes": 31796,
+      "sha256": "23b3c807c53840814309b2f3782abb565a5c609ebed197a434340a20bbb1502f",
+      "peakDbfs": -5.19,
+      "rmsDbfs": -18.01
+    },
+    "sfx/hit.wav": {
+      "seconds": 0.34,
+      "channels": 1,
+      "bytes": 30032,
+      "sha256": "67109e8b71d7ba38bf256a9f996bf73bb78dcc5a81f96746bb16cc75649772f7",
+      "peakDbfs": -3.33,
+      "rmsDbfs": -16.07
+    },
+    "sfx/hero-hurt.wav": {
+      "seconds": 0.55,
+      "channels": 1,
+      "bytes": 48554,
+      "sha256": "e13c784ba2d75ddbce895a87f82e030d9dc6f3d7e8b3508a6763cc5fc042914f",
+      "peakDbfs": -3.75,
+      "rmsDbfs": -17.04
+    },
+    "sfx/artifactCast.wav": {
+      "seconds": 0.86,
+      "channels": 1,
+      "bytes": 75896,
+      "sha256": "94b58ea4f11e30e1dff0b954efd8cbb403af25ddbd1abd7526d70d89a5397735",
+      "peakDbfs": -3.88,
+      "rmsDbfs": -17.01
+    },
+    "sfx/artifactHit.wav": {
+      "seconds": 0.7,
+      "channels": 1,
+      "bytes": 61784,
+      "sha256": "bf3ba64d535c1bb6e4f247e74ee85c6f30b60d7e248cd8e7d014a5c2a2db4fb8",
+      "peakDbfs": -2.77,
+      "rmsDbfs": -15.64
+    },
+    "sfx/artifactReturn.wav": {
+      "seconds": 0.52,
+      "channels": 1,
+      "bytes": 45908,
+      "sha256": "2be6b0e688c6a83f85128ba160a4690b8f539579f169ae0c193d025f4733718b",
+      "peakDbfs": -5.64,
+      "rmsDbfs": -19.01
+    },
+    "sfx/enemyAttack.wav": {
+      "seconds": 0.44,
+      "channels": 1,
+      "bytes": 38852,
+      "sha256": "e890069f44dac632bb170aae7b4916ef432196d7de7caa43cb47ca0de6c028eb",
+      "peakDbfs": -4.97,
+      "rmsDbfs": -17.51
+    },
+    "sfx/telegraphBoss.wav": {
+      "seconds": 0.9,
+      "channels": 1,
+      "bytes": 79424,
+      "sha256": "240b67c0dcb65600d45ff04aaf45cedde218b4d71dd868664d9976ef4c2d422a",
+      "peakDbfs": -6.39,
+      "rmsDbfs": -18
+    },
+    "sfx/rareLoot.wav": {
+      "seconds": 1.54,
+      "channels": 1,
+      "bytes": 135872,
+      "sha256": "5e73d0a5d656b602786178b75bd1e5edd76aad10d8196804700509907953c87c",
+      "peakDbfs": -5.51,
+      "rmsDbfs": -20
+    },
+    "sfx/pickup.wav": {
+      "seconds": 0.32,
+      "channels": 1,
+      "bytes": 28268,
+      "sha256": "1b1a5baba4df69d323701f8a7947888197f910f48cf199f60f79637fbc163309",
+      "peakDbfs": -10.54,
+      "rmsDbfs": -22
+    },
+    "sfx/equip.wav": {
+      "seconds": 0.47,
+      "channels": 1,
+      "bytes": 41498,
+      "sha256": "671a7d2af8a536d27b6c52b95cfdd8537ca5b0beacb12e0ec96971ea301a2616",
+      "peakDbfs": -6.16,
+      "rmsDbfs": -20.01
+    },
+    "sfx/quest.wav": {
+      "seconds": 1.45,
+      "channels": 1,
+      "bytes": 127934,
+      "sha256": "41b371686df866f810d07b57828e67da77b8ab38606b76aae6a20b9755b7f6c4",
+      "peakDbfs": -8.37,
+      "rmsDbfs": -21
+    },
+    "sfx/heal.wav": {
+      "seconds": 1.04,
+      "channels": 1,
+      "bytes": 91772,
+      "sha256": "c5f05aa3c5d57f57096e2f9038c5764882304977c8bacb5289e292829cd5dc61",
+      "peakDbfs": -5.59,
+      "rmsDbfs": -20.01
+    },
+    "sfx/death.wav": {
+      "seconds": 1.54,
+      "channels": 1,
+      "bytes": 135872,
+      "sha256": "102ddf44fc97fd54b484dfac7c607a944cdf756680e33b680251a36e946a803d",
+      "peakDbfs": -4.09,
+      "rmsDbfs": -18.01
+    },
+    "sfx/victory.wav": {
+      "seconds": 2.7,
+      "channels": 1,
+      "bytes": 238184,
+      "sha256": "37c46c510d25fd6aeabadccbcb9a4b8e65c61b1b06007b9a224dc597a398758c",
+      "peakDbfs": -3.71,
+      "rmsDbfs": -18.02
+    },
+    "sfx/ui.wav": {
+      "seconds": 0.19,
+      "channels": 1,
+      "bytes": 16802,
+      "sha256": "fb84c6671923eec2c5c9ce623d8f5bbc5d9e9920bde9fdc4ff9200d91535a6ca",
+      "peakDbfs": -11.26,
+      "rmsDbfs": -24
+    }
+  }
+}

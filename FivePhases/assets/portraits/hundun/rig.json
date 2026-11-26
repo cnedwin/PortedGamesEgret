@@ -1,0 +1,140 @@
+{
+  "name": "混沌",
+  "canvas": {
+    "width": 777,
+    "height": 777
+  },
+  "anchor": [
+    397,
+    733
+  ],
+  "bones": [
+    {
+      "id": "root",
+      "x": 397,
+      "y": 733
+    },
+    {
+      "id": "body",
+      "parent": "root",
+      "x": 418,
+      "y": 460
+    },
+    {
+      "id": "head",
+      "parent": "body",
+      "x": 278,
+      "y": 324
+    },
+    {
+      "id": "mane",
+      "parent": "body",
+      "x": 437,
+      "y": 202
+    },
+    {
+      "id": "left-arm",
+      "parent": "body",
+      "x": 122,
+      "y": 420
+    },
+    {
+      "id": "right-arm",
+      "parent": "body",
+      "x": 472,
+      "y": 418
+    },
+    {
+      "id": "tail",
+      "parent": "body",
+      "x": 656,
+      "y": 484
+    }
+  ],
+  "parts": [
+    {
+      "id": "ink-mane",
+      "bone": "mane",
+      "at": [
+        203,
+        39
+      ],
+      "rect": [
+        3,
+        1062,
+        560,
+        305
+      ]
+    },
+    {
+      "id": "rear-haunch",
+      "bone": "tail",
+      "at": [
+        595,
+        301
+      ],
+      "rect": [
+        485,
+        560,
+        178,
+        387
+      ]
+    },
+    {
+      "id": "obsidian-body",
+      "bone": "body",
+      "at": [
+        89,
+        139
+      ],
+      "rect": [
+        3,
+        3,
+        608,
+        551
+      ]
+    },
+    {
+      "id": "left-grip",
+      "bone": "left-arm",
+      "at": [
+        13,
+        312
+      ],
+      "rect": [
+        270,
+        560,
+        209,
+        422
+      ]
+    },
+    {
+      "id": "ritual-mask",
+      "bone": "head",
+      "at": [
+        82,
+        51
+      ],
+      "rect": [
+        617,
+        3,
+        349,
+        520
+      ]
+    },
+    {
+      "id": "right-grip",
+      "bone": "right-arm",
+      "at": [
+        327,
+        257
+      ],
+      "rect": [
+        3,
+        560,
+        261,
+        496
+      ]
+    }
+  ]
+}

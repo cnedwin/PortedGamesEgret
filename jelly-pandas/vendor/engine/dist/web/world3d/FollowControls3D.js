@@ -1,5 +1,6 @@
 import { FollowCamera3D } from '../../rendering/world3d/Character3D.js';
 import { World3DError } from '../../rendering/world3d/core3D.js';
+/** Turns and zooms a follow camera with the mouse and touch. */
 export class FollowControls3D {
     element;
     /** The camera rig; read `follow.yaw` or call `follow.moveDirection()` to steer a character relative to the view. */
@@ -61,9 +62,12 @@ export class FollowControls3D {
             this.follow.distance *= 1 + Math.sign(event.deltaY) * this.zoomSpeed;
         };
         this.#listeners = [
-            ['pointerdown', down, undefined], ['pointermove', move, undefined], ['pointerup', up, undefined],
-            ['pointercancel', up, undefined], ['lostpointercapture', lost, undefined],
-            ['wheel', wheel, { passive: false }],
+            ['pointerdown', down, undefined],
+            ['pointermove', move, undefined],
+            ['pointerup', up, undefined],
+            ['pointercancel', up, undefined],
+            ['lostpointercapture', lost, undefined],
+            ['wheel', wheel, { passive: false }]
         ];
         for (const [type, listener, listenerOptions] of this.#listeners)
             element.addEventListener(type, listener, listenerOptions);
@@ -74,8 +78,10 @@ export class FollowControls3D {
             element.style.setProperty('touch-action', 'none', this.#previousTouchActionPriority);
     }
     /** Place the camera; call once per frame after moving the target. */
-    update(deltaSeconds = 0) { if (!this.#disposed)
-        this.follow.update(deltaSeconds); }
+    update(deltaSeconds = 0) {
+        if (!this.#disposed)
+            this.follow.update(deltaSeconds);
+    }
     dispose() {
         if (this.#disposed)
             return;
@@ -89,8 +95,9 @@ export class FollowControls3D {
         this.#pinch = 0;
         const style = element.style;
         // Preserve any later inline style installed by the caller.
-        if (this.#previousTouchAction !== 'none' && style.getPropertyValue('touch-action') === 'none'
-            && style.getPropertyPriority('touch-action') === this.#previousTouchActionPriority) {
+        if (this.#previousTouchAction !== 'none' &&
+            style.getPropertyValue('touch-action') === 'none' &&
+            style.getPropertyPriority('touch-action') === this.#previousTouchActionPriority) {
             style.setProperty('touch-action', this.#previousTouchAction, this.#previousTouchActionPriority);
         }
     }
@@ -105,6 +112,7 @@ export class FollowControls3D {
             this.element.releasePointerCapture(id);
     }
 }
+/** Makes follow controls for a follow camera on an element. */
 export function createFollowControls3D(camera, element, target, options = {}) {
     return new FollowControls3D(camera, element, target, options);
 }

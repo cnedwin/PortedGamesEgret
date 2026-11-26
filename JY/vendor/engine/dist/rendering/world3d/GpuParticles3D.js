@@ -394,6 +394,7 @@ export class GpuParticles3D extends InstancedMesh3D {
             this.material.dispose();
     }
 }
+/** Makes particles simulated on the GPU. */
 export function createGpuParticles3D(options = {}) {
     return new GpuParticles3D(options);
 }

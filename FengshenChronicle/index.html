@@ -1,0 +1,173 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#182425">
+  <link rel="icon" href="data:,">
+  <title>封神 · 西岐战纪</title>
+  <link rel="preload" href="./assets/title.webp" as="image">
+  <link rel="stylesheet" href="./style.css">
+  <script type="importmap">
+{
+  "imports": {
+    "@egret/contracts": "./vendor/contracts/dist/index.js",
+    "@egret/runtime": "./vendor/runtime/dist/index.js",
+    "@egret/contracts/resources": "./vendor/contracts/dist/resources/index.js",
+    "@egret/engine": "./vendor/engine/dist/index.js",
+    "@egret/runtime/text": "./vendor/runtime/dist/text/index.js",
+    "@egret/engine/text": "./vendor/engine/dist/text.js",
+    "@egret/runtime/input": "./vendor/runtime/dist/input/index.js",
+    "#egret-pointer-input": "./vendor/engine/dist/pointerInput.js",
+    "#egret-keyboard-input": "./vendor/engine/dist/keyboardInput.js",
+    "robust-predicates": "./vendor/robust-predicates/index.js",
+    "#egret-textured-frame-state": "./vendor/engine/dist/internal/texturedFrameState.js",
+    "@egret/engine/input/hover": "./vendor/engine/dist/hover.js",
+    "@egret/engine/web/game": "./vendor/engine/dist/web/game.js",
+    "@egret/engine/webgl2": "./vendor/engine/dist/web/webgl2.js",
+    "@egret/engine/webgpu": "./vendor/engine/dist/web/webgpu.js",
+    "@egret/engine/kit": "./vendor/engine/dist/kit.js",
+    "@egret/engine/audio": "./vendor/engine/dist/audio.js",
+    "@egret/engine/input/gamepad": "./vendor/engine/dist/gamepad.js",
+    "@egret/runtime/ui": "./vendor/runtime/dist/ui/index.js",
+    "@egret/engine/ui": "./vendor/engine/dist/ui/index.js",
+    "@egret/runtime/paragraph": "./vendor/runtime/dist/paragraph/index.js",
+    "@egret/engine/paragraph": "./vendor/engine/dist/paragraph.js",
+    "@egret/engine/play": "./vendor/engine/dist/web/play.js",
+    "@egret/engine/ui/semantics": "./vendor/engine/dist/semantics.js",
+    "@egret/engine/web/semantics": "./vendor/engine/dist/web/semantics.js",
+    "@egret/engine/ui/testing": "./vendor/engine/dist/ui/testing.js",
+    "@egret/engine/web/paragraph": "./vendor/engine/dist/web/paragraph.js"
+  }
+}
+</script>
+  <script type="module">
+    const retry = document.getElementById('boot-retry');
+    retry.addEventListener('click', () => location.reload());
+    import('./src/main.mjs').catch(error => {
+      console.error('Game startup', error);
+      document.getElementById('boot-stage').textContent = '游戏加载失败';
+      document.getElementById('boot-count').textContent = '';
+      document.getElementById('boot-progress').hidden = true;
+      retry.hidden = false;
+      document.getElementById('title-status').textContent = '部分游戏资源无法读取，请重试。';
+    });
+  </script>
+</head>
+<body>
+<main id="game-shell">
+  <div id="field" aria-label="游戏场景"><canvas id="stage" aria-label="游戏地图"></canvas></div>
+  <section id="title" aria-labelledby="game-title">
+    <div class="title-content">
+      <p class="chapter">封神演义</p>
+      <h1 id="game-title"><span>封神</span>西岐战纪</h1>
+      <p class="title-line">西岐城外，风起四关。持兵、执符或张弓，踏上封神之途。</p>
+      <div class="title-actions">
+        <button class="primary" id="new-game" disabled>初入西岐</button>
+        <button id="continue-game" hidden disabled>继续战纪</button>
+      </div>
+      <div id="startup-loading" class="startup-loading">
+        <div class="startup-caption"><strong id="boot-stage" role="status">正在载入游戏…</strong><span id="boot-count" aria-hidden="true"></span></div>
+        <progress id="boot-progress" max="100" aria-label="游戏加载进度"></progress>
+        <button id="boot-retry" type="button" hidden>重试加载</button>
+      </div>
+      <label class="slot">存档 <select id="slot"><option value="1">一</option><option value="2">二</option><option value="3">三</option></select></label>
+      <p id="title-status" role="status"></p>
+    </div>
+  </section>
+  <div id="hud" hidden>
+    <section class="player" aria-label="主角状态">
+      <div class="player-top"><b id="profession-name">玄甲</b><span id="level"></span><span id="wallet"></span></div>
+      <div class="meter hp"><i id="hp-fill"></i><span id="hp-text"></span></div>
+      <div class="meter xp"><i id="xp-fill"></i></div>
+    </section>
+    <section class="task" aria-label="任务">
+      <header class="task-heading"><strong id="map-name"></strong><button id="quest-toggle" type="button" aria-expanded="false" aria-controls="quest-text">详情</button></header>
+      <div id="quest-title"></div>
+      <p id="quest-text"></p>
+      <button id="track" hidden></button>
+    </section>
+    <div class="utility"><button id="journal">札记 <kbd>J</kbd></button><button id="inventory">行囊 <kbd>B</kbd></button><button id="pause">暂停 <kbd>Esc</kbd></button></div>
+    <section class="boss" id="boss-hud" hidden>
+      <b id="boss-name"></b><div class="meter hp"><i id="boss-fill"></i></div>
+      <p id="boss-warning" aria-live="polite" hidden></p>
+    </section>
+    <aside id="notice" role="status" hidden></aside>
+    <aside id="interactions">
+      <button class="primary" id="interact" hidden></button>
+      <button id="pickup" hidden></button>
+    </aside>
+    <div id="keyboard-help">WASD / 方向键移动 · 点击地面寻路 · 点击敌人接战</div>
+    <div id="joystick" aria-label="移动摇杆"><span></span></div>
+    <div class="actions" aria-label="战斗操作">
+      <button id="potion"><img class="action-mark" src="./assets/gear/potion.webp" alt=""><span id="potion-name">回春散</span> <b id="potion-count"></b><kbd>1</kbd></button>
+      <button id="artifact" disabled><img id="skill-icon" class="action-mark" src="./assets/gear/ring.webp" alt=""><span id="skill-name">法宝</span> <b id="artifact-clock"></b><kbd>Q</kbd></button>
+      <button id="class-skill"><span id="class-mark" class="class-emblem" aria-hidden="true">卫</span><span id="class-skill-name">职业技</span> <b id="class-skill-clock"></b><kbd>X</kbd></button>
+      <button id="rage" title="攻击与受击会积累怒气，满怒可发动范围大招" disabled><span class="rage-emblem" aria-hidden="true">震</span>怒技 <b id="anger-count">0%</b><kbd>R</kbd></button>
+      <button id="attack"><img id="weapon-icon" class="action-mark" src="./assets/gear/bronze-sword.webp" alt="">攻击 <kbd>空格</kbd></button>
+    </div>
+  </div>
+  <div id="native-rpg" inert></div>
+  <section class="dialogue-overlay" id="dialogue-panel" role="dialog" aria-modal="true" aria-labelledby="dialogue-name" hidden>
+    <div class="dialogue-light"></div>
+    <figure class="dialogue-hero"><img id="dialogue-hero-art" src="./assets/portraits/hero.webp" alt="玄甲"></figure>
+    <figure class="dialogue-npc"><img id="dialogue-npc-art" alt=""></figure>
+    <button id="dialogue-close" aria-label="结束交谈">离开</button>
+    <div class="dialogue-caption">
+      <h2 id="dialogue-name"></h2>
+      <p id="dialogue-text" aria-live="polite"></p>
+      <div id="dialogue-options"></div>
+      <button id="dialogue-next" class="primary">继续 <kbd>Enter</kbd></button>
+    </div>
+  </section>
+  <div class="overlay" id="journal-panel" hidden>
+    <section class="card journal-card" role="dialog" aria-modal="true" aria-labelledby="journal-title">
+      <header><h2 id="journal-title">西岐札记</h2><button id="journal-close">关闭</button></header>
+      <div id="journal-entries"></div>
+    </section>
+  </div>
+  <div class="overlay" id="pause-panel" hidden>
+    <section class="card compact" role="dialog" aria-modal="true" aria-labelledby="pause-title">
+      <h2 id="pause-title">暂歇</h2>
+      <p id="save-status" role="status"></p>
+      <div class="menu">
+        <button class="primary" id="resume">继续战斗</button>
+        <button id="save">保存进度</button>
+        <button id="audio" aria-pressed="true">声音开启</button>
+        <label class="mix-control"><span>配乐</span><input id="music-volume" type="range" min="0" max="100" aria-label="配乐音量"></label>
+        <label class="mix-control"><span>音效</span><input id="effects-volume" type="range" min="0" max="100" aria-label="音效音量"></label>
+        <button id="return-title">返回标题</button>
+      </div>
+    </section>
+  </div>
+  <div class="overlay" id="death-panel" hidden>
+    <section class="card compact" role="dialog" aria-modal="true" aria-labelledby="death-title">
+      <p class="chapter">古道遇险</p><h2 id="death-title">力竭</h2>
+      <p>已拾取的装备与任务进度随你回城。</p>
+      <button class="primary" id="retry">返回西岐</button>
+    </section>
+  </div>
+  <div class="overlay" id="profession-panel" hidden>
+    <section class="card profession-card" role="dialog" aria-modal="true" aria-labelledby="profession-title">
+      <header><h2 id="profession-title">择一道入西岐</h2><button id="profession-cancel">返回</button></header>
+      <div id="profession-choices" aria-label="选择职业"></div>
+      <footer><button id="profession-confirm" class="primary">以玄甲启程</button></footer>
+    </section>
+  </div>
+  <div class="overlay" id="victory-panel" hidden>
+    <section class="card compact" role="dialog" aria-modal="true" aria-labelledby="victory-title">
+      <p class="chapter" id="victory-chapter">古道除祟</p><h2 id="victory-title">邪将已伏</h2>
+      <p id="victory-text">拾取掉落的镇邪印，回西岐向姜尚复命。</p>
+      <button class="primary" id="victory-continue">返回战场</button>
+    </section>
+  </div>
+  <div class="overlay" id="new-confirm" hidden>
+    <section class="card compact" role="dialog" aria-modal="true" aria-labelledby="confirm-title">
+      <h2 id="confirm-title">覆盖此存档？</h2><p>选择另一个存档位可保留原来的战纪。</p>
+      <div class="menu"><button class="primary" id="new-cancel">返回</button><button id="new-overwrite">重新出发</button></div>
+    </section>
+  </div>
+  <noscript>请启用 JavaScript 后进入西岐。</noscript>
+</main>
+</body>
+</html>

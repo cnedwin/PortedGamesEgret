@@ -6,6 +6,7 @@ import { THEME, SERIF } from '../engine/ui.mjs';
 import { rgba, ellipse } from '../art/draw.mjs';
 import { HEROINES, HEROINE_IDS } from '../data/cast.mjs';
 import { ACHIEVEMENTS, PERKS } from '../data/memories.mjs';
+import { MEMORY_SCENES } from '../memory-scenes.mjs';
 import * as sim from '../sim.mjs';
 
 /** Every ending in album order: two for each senior, then the one for going alone. */
@@ -17,18 +18,19 @@ const achievementName = id => ACHIEVEMENTS.find(a => a.id === id)?.name;
 export const endingCount = m => `${ENDING_KEYS.filter(k => m.endings[k]).length} / ${ENDING_KEYS.length}`;
 
 /** The album: endings, achievements and perks. Resolves when it is closed. */
-export function openAlbum(game) {
+export function openAlbum(game, tab = 'endings') {
   const { ui, stage, L } = game,
     m = game.memories;
   return new Promise(resolve => {
     const PW = 1120,
       PH = 650;
     const panel = ui.panel({ x: (W - PW) / 2, y: 36, w: PW, h: PH, res: 1.2, modal: true });
-    const view = { tab: 'endings' };
-    const close = () => {
+    const view = { tab };
+    const finish = result => {
       panel.close();
-      resolve();
+      resolve(result);
     };
+    const close = () => finish(null);
     panel.dismiss = close;
     const repaint = () => panel.paint(paint);
 
@@ -86,6 +88,43 @@ export function openAlbum(game) {
             p.text(`${L(['解锁条件', 'Unlocked by'])}: ${L(achievementName(perk.needs))}`, x + 22, y + 58, { size: 12, color: THEME.faint });
         });
       },
+      branches(p) {
+        const snapshot = game.readQinggeBranch();
+        p.text(L(['回看使用独立进度。快进只略过已读对白，遇到新对白或选择会停下。',
+          'Replays are separate from your term. Fast-forward pauses for unread lines and choices.']),
+        32, 104, { size: 17, color: THEME.soft });
+        MEMORY_SCENES.forEach((scene, index) => {
+          const x = 32 + index % 2 * 536;
+          const y = 144 + Math.floor(index / 2) * 168;
+          const open = game.memoryScenes.read(scene.id);
+          const color = HEROINES[scene.girl].color;
+          p.card(x, y, 520, 152, { r: 19, fill: open ? '#fff8ef' : '#f0e8ee', stroke: '#e4ccd9', shadow: 0.1 });
+          game.avatar(p, scene.girl, x + 19, y + 20, 90);
+          p.text(L(scene.name), x + 129, y + 15, { size: 24, weight: 800, family: SERIF, maxW: 363 });
+          p.text(L(scene.detail), x + 129, y + 52, { size: 16, color: THEME.soft, maxW: 361 });
+          if (open) {
+            p.button(x + 125, y + 83, 366, 52, L(scene.open), () => finish(scene.id),
+              { color, kind: 'primary', size: 17 });
+          } else {
+            p.text(L(['完成对应剧情后解锁', 'Complete this story to unlock']), x + 129, y + 96,
+              { size: 16, color: THEME.soft, maxW: 344 });
+          }
+        });
+        p.card(32, 482, PW - 64, 120, { r: 19, fill: '#fff8ef', stroke: '#e4ccd9', shadow: 0.1 });
+        p.text(L(['星空祭筹备 · 预算会书签', 'Star Festival · Budget meeting bookmark']),
+          53, 500, { size: 22, weight: 800, family: SERIF });
+        if (snapshot) {
+          p.text(L([`第 ${snapshot.day} 天的书签。可以试另一种回答，解锁对应尾声。`,
+            `Day ${snapshot.day}. Try a different answer to unlock the other epilogue.`]),
+          53, 539, { size: 16, color: THEME.soft, maxW: 604 });
+          p.button(692, 516, 370, 55, L(['从预算会前回看', 'Review from the budget meeting']), () => finish('qingge-festival'),
+            { kind: 'primary', size: 17 });
+        } else {
+          p.text(L(['在图书馆开启清歌第三章时，会自动保存预算会前进度。',
+            'Start Qingge’s third chapter at the library to bookmark the moment before the budget meeting.']),
+          53, 539, { size: 16, color: THEME.soft, maxW: 990 });
+        }
+      },
     };
 
     function paint(p) {
@@ -103,8 +142,9 @@ export function openAlbum(game) {
         ['endings', ['结局', 'Endings']],
         ['achievements', ['成就', 'Achievements']],
         ['perks', ['开学天赋', 'Perks']],
+        ['branches', ['名场面回看', 'Scene replays']],
       ].forEach(([id, label], i) =>
-        p.segment(560 + i * 142, 24, 132, 44, L(label), view.tab === id, () => {
+        p.segment(422 + i * 139, 24, 130, 44, L(label), view.tab === id, () => {
           view.tab = id;
           repaint();
         }, { size: 16 }),

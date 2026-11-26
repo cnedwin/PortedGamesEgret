@@ -7,6 +7,9 @@ import { PLACES, SLOTS_OF_DAY, DAYS_IN_TERM, DATE_SPOTS } from './data/places.mj
 import { QUESTS } from './data/quests.mjs';
 import { EVENTS } from './data/events.mjs';
 import { PERKS, ACHIEVEMENTS } from './data/memories.mjs';
+import { BAILU_ZERO_STAGES, freshBailuZero } from './data/bailu-zero.mjs';
+import { SOCIAL_SCENES, SOCIAL_IDS, freshSocialStories, freshSocialStory } from './data/social-stories.mjs';
+import { freshFirstEvening, offerFirstEvening } from './first-evening.mjs';
 
 export const SAVE_VERSION = 1;
 const clone = value => JSON.parse(JSON.stringify(value));
@@ -67,6 +70,9 @@ export function newGame(options = {}) {
     perk: null,
     wish: null,
     eventDay: 0,
+    bailuZero: freshBailuZero(),
+    socialStories:freshSocialStories(),
+    firstEvening: freshFirstEvening(),
   };
   const perk = PERKS.find(x => x.id === options.perk);
   if (perk) {
@@ -238,6 +244,7 @@ export function chat(s, girl, approach) {
     (w?.kind === 'chat' && w.approach === approach) || (w?.kind === 'style' && (outfitStyles(s.hero.wear)[w.style] ?? 0) >= WISH_STYLE)
       ? grantWish(s)
       : 0;
+  offerFirstEvening(s);
   return { gain, zone, pull: g.pull, wish };
 }
 
@@ -257,6 +264,7 @@ export function give(s, girl, item) {
   g.giftDay = s.day;
   g.pull = clamp(g.pull + 4, -50, 50);
   s.counters.gift = (s.counters.gift ?? 0) + 1;
+  offerFirstEvening(s);
   if (CLOTHES[item]) {
     // Clothes join her wardrobe; she likes them more when they are her style.
     const fits = Object.keys(CLOTHES[item].styles).some(tag => HEROINES[girl].likes.includes(tag));
@@ -300,6 +308,7 @@ export function date(s, girl, spotId) {
   const w = wishFor(s, girl);
   const wish = w?.kind === 'date' && w.spot === spotId ? grantWish(s) : 0;
   advance(s);
+  offerFirstEvening(s);
   return { gain, zone, jealous, spot, wish };
 }
 
@@ -344,6 +353,8 @@ export function applyEffect(s, girl, fx = {}) {
   if (fx.flag) s.flags[fx.flag] = true;
   if (fx.item) s.bag[fx.item] = (s.bag[fx.item] ?? 0) + 1;
   if (fx.energy) s.energy = clamp(s.energy + fx.energy, 0, 100);
+  if (fx.bailuZero) chooseBailuZero(s, fx.bailuZero.key, fx.bailuZero.value);
+  if (fx.social) chooseSocial(s,fx.social.id,fx.social.key,fx.social.value);
   return gained;
 }
 
@@ -399,6 +410,7 @@ export function act(s, placeId, actId, focus = 'ok') {
   if (a.work) s.counters.work = (s.counters.work ?? 0) + 1;
   if (result.focus === 'perfect') s.counters.perfect = (s.counters.perfect ?? 0) + 1;
   if (!a.free) advance(s);
+  offerFirstEvening(s);
   return result;
 }
 
@@ -425,6 +437,7 @@ export function buy(s, shopId, id) {
     s.hero.hairs[id] = true;
     s.hero.hair.bangs = id;
   } else s.bag[id] = (s.bag[id] ?? 0) + 1; // gifts, supplies and clothes meant as presents
+  offerFirstEvening(s);
   return true;
 }
 
@@ -626,6 +639,8 @@ export function deserialize(text) {
     s.perk ??= null;
     s.wish ??= null;
     s.eventDay ??= 0;
+    restoreBailuZero(s);
+    restoreSocialStories(s);
     recoverLegacyDyes(s.hero, [HERO.wear]);
     for (const id of HEROINE_IDS) recoverLegacyDyes(s.girls[id], Object.values(HEROINES[id].outfits));
     return s;
@@ -633,6 +648,117 @@ export function deserialize(text) {
     return null;
   }
 }
+
+// The optional interlude has its own resumable scene progress and one-time
+// effects. Calendar, main chapters and normal confession rules remain intact.
+function restoreBailuZero(s){
+ const previous=s.bailuZero??{},fresh=freshBailuZero();
+ s.bailuZero={...fresh,...previous,version:1,stage:Number.isInteger(previous.stage)?clamp(previous.stage,0,5):0,
+  clues:Array.isArray(previous.clues)?[...new Set(previous.clues.filter(id=>['mail','roster','timer'].includes(id)))]:[]};
+ const p=s.bailuZero.playback;
+ if(p&&p.id===`bailu-zero-${s.bailuZero.stage}`&&p.done&&p.choices){p.cursor=typeof p.cursor==='string'?p.cursor:'0';}
+ else s.bailuZero.playback=null;
+}
+export function bailuZeroStatus(s){
+ const q=s.bailuZero??freshBailuZero(),unlocked=(s.girls?.bailu?.chapter??0)>=2;
+ return{unlocked,stage:q.stage,complete:q.stage>=5,ending:q.ending,next:BAILU_ZERO_STAGES[q.stage]??null};
+}
+export function beginBailuZero(s){
+ if(!bailuZeroStatus(s).unlocked)return null;
+ if(!s.bailuZero)restoreBailuZero(s);
+ const q=s.bailuZero;if(q.stage>=5)return null;
+ const id=`bailu-zero-${q.stage}`;
+ if(q.playback?.id!==id)q.playback={id,cursor:'0',done:{},choices:{}};
+ return q.playback;
+}
+export function chooseBailuZero(s,key,value){
+ const q=s.bailuZero;if(!q||!bailuZeroStatus(s).unlocked||q.stage>=5)return false;
+ const permitted={archive:[1,['public','ask']],outfit:[2,['own','night']],distance:[3,['close','space']],reading:[3,['read','wait']],ending:[4,['renew','farewell']]};
+ const rule=permitted[key];if(!rule||q.stage!==rule[0]||!rule[1].includes(value))return false;
+ const field=key==='outfit'?'outfitChoice':key;
+ if(q[field])return q[field]===value;
+ q[field]=value;
+ if(key==='outfit'){
+  const g=s.girls.bailu;for(const id of ['cardigan','scarf'])if(!g.gifted.includes(id))g.gifted.push(id);
+  if(value==='night')for(const id of ['cardigan','scarf'])if(!pieces(g.wear).some(p=>p.id===id))toggleWear(s,'bailu',id);
+ }
+ return true;
+}
+export function finishBailuZero(s,stage){
+ const q=s.bailuZero;if(!q||!Number.isInteger(stage)||stage<0||stage>=BAILU_ZERO_STAGES.length||q.stage!==stage||!bailuZeroStatus(s).unlocked)return false;
+ if(stage===1&&!q.archive||stage===2&&!q.outfitChoice||stage===3&&(!q.distance||!q.reading)||stage===4&&!q.ending)return false;
+ const clue={0:'mail',1:'roster',3:'timer'}[stage];if(clue&&!q.clues.includes(clue))q.clues.push(clue);
+ if(stage===2)q.outfit=clone({wear:s.girls.bailu.wear,dyes:s.girls.bailu.dyes});
+ addAffection(s,'bailu',2,false);q.stage++;q.playback=null;
+ if(q.stage===5)s.flags['bailu-zero:'+q.ending]=true;
+ return true;
+}
+export function bailuZeroMatches(s,condition){const[key,value]=condition.split(':');return s.bailuZero?.[key]===value;}
+
+function restoreSocialStories(s){
+ const previous=s.socialStories??{};
+ s.socialStories=Object.fromEntries(SOCIAL_IDS.map(id=>{
+  const q={...freshSocialStory(),...previous[id],version:1};q.stage=Number.isInteger(q.stage)?clamp(q.stage,0,2):0;
+  q.topics=Array.isArray(q.topics)?q.topics.filter(t=>typeof t==='string'):[];
+  const p=q.playback,expected=`social-${id}-${q.stage===2?'followup':q.stage}`;
+  if(!p||p.id!==expected||!p.done||!p.choices)q.playback=null;
+  return[id,q];
+ }));
+}
+export function socialStatus(s,id){
+ const def=SOCIAL_SCENES[id];if(!def)return null;
+ const q=s.socialStories?.[id]??freshSocialStory(),g=s.girls?.[def.lead];
+ const unlocked=Boolean(q.invited||(g?.met&&g.chapter>=def.chapter&&g.aff>=def.aff));
+ return{...def,unlocked,stage:q.stage,complete:q.stage===2,followupAvailable:q.stage===2&&(Boolean(q.playback)||q.followup!=='done'&&q.followupAt!==clock(s).absolute),
+  hint:!unlocked?['讀完她的第二章並累積好感，即可收到邀請。','Finish her second chapter and build affection to receive an invitation.']:q.stage===0?['接受邀請，選擇雙方舒服的服裝。','Accept and choose comfortable outfits together.']:q.stage===1?['服裝已保存，前往約定的公共場所。','Outfits saved; meet at the agreed public place.']:['下次正常聊天，會接續你們選的話題與約定。','Your next ordinary chat continues your topic and invitation.']};
+}
+export function beginSocial(s,id){
+ const status=socialStatus(s,id);if(!status?.unlocked)return null;
+ if(!s.socialStories)restoreSocialStories(s);
+ const q=s.socialStories[id];if(q.stage===2&&!status.followupAvailable)return null;
+ q.invited=true;
+ for(const item of status.heroItems)if(CLOTHES[item])s.hero.owned[item]=true;
+ for(const item of [...status.leadItems,...status.optionalLeadItems??[]])if(CLOTHES[item]&&!s.girls[status.lead].gifted.includes(item))s.girls[status.lead].gifted.push(item);
+ q.loanGranted=[...status.heroItems,...status.leadItems,...status.optionalLeadItems??[]].every(item=>Boolean(CLOTHES[item]));
+ const key=`social-${id}-${q.stage===2?'followup':q.stage}`;
+ if(q.playback?.id!==key)q.playback={id:key,cursor:'0',done:{},choices:{}};
+ return q.playback;
+}
+export function chooseSocial(s,id,key,value){
+ const def=SOCIAL_SCENES[id],q=s.socialStories?.[id];if(!def||!q?.invited||!q.playback)return false;
+ const rules={outfit:[0,['borrow','own']],approach:[1,['closer','respond','space']],response:[1,['yes','later']],followup:[2,['accept','later']]};
+ const rule=rules[key];if(!rule||q.stage!==rule[0]||!rule[1].includes(value))return false;
+ const field=key==='outfit'?'outfitChoice':key==='followup'?'followupDecision':key;
+ if(q[field]!==null)return q[field]===value;
+ q[field]=value;
+ if(key==='outfit'&&value==='borrow'){
+  for(const [who,items]of [[def.lead,def.leadItems],['hero',def.heroItems]])for(const item of items){
+   if(!CLOTHES[item])continue;
+   if(!pieces(wearOf(s,who)).some(piece=>piece.id===item))toggleWear(s,who,item);
+  }
+ }
+ return true;
+}
+export function finishSocial(s,id,stage){
+ const def=SOCIAL_SCENES[id],q=s.socialStories?.[id];if(!def||!q?.playback||q.stage!==stage||![0,1,2].includes(stage))return false;
+ if(stage===0){
+  if(!q.outfitChoice)return false;
+  q.outfit=clone({lead:{wear:s.girls[def.lead].wear,dyes:s.girls[def.lead].dyes},hero:{wear:s.hero.wear,dyes:s.hero.dyes}});q.stage=1;
+ }else if(stage===1){
+  if(!q.approach||!q.response)return false;
+  q.stage=2;q.nameUnlocked=true;q.topics=[def.topic[0]];q.invitation={id:`${id}-next`,accepted:q.response==='yes',used:false};
+  addAffection(s,def.lead,3,false);s.flags[`social:${id}`]=true;
+ }else{
+  if(!q.followupDecision)return false;
+  const accept=q.followupDecision==='accept';q.followup=accept?'done':'later';q.followupAt=clock(s).absolute;
+  q.invitation??={id:`${id}-next`,accepted:false,used:false};q.invitation.accepted=accept;q.invitation.used=accept;
+  if(accept&&!q.followupRewarded){addAffection(s,def.lead,1,false);q.followupRewarded=true;}
+  q.followupDecision=null;
+ }
+ q.playback=null;return true;
+}
+export function socialMatches(s,condition){const[id,key,value]=condition.split(':');return s.socialStories?.[id]?.[key]===value;}
+export function socialFollowUpReady(s,girl){return SOCIAL_IDS.find(id=>SOCIAL_SCENES[id].lead===girl&&socialStatus(s,id).followupAvailable)??null;}
 
 // ------------------------------------------------------------------ randomness
 

@@ -4,6 +4,7 @@
 import { World3DError, requireFinite3D, requirePositive3D } from './core3D.js';
 import { frustumFromMatrix, mat4Invert, mat4Multiply, mat4Orthographic, mat4Perspective, vec3Normalize, vec3Sub, vec3TransformMat4 } from './math3D.js';
 import { Object3D } from './Object3D.js';
+/** A camera: its projection, and calls that turn screen points into rays and world points into screen points. */
 export class Camera3D extends Object3D {
     projectionKind;
     fov = 50;
@@ -108,6 +109,7 @@ export class Camera3D extends Object3D {
         this.customProjection = source.customProjection === undefined ? undefined : Array.from(source.customProjection);
     }
 }
+/** Makes a perspective camera. */
 export function createPerspectiveCamera3D(options = {}) {
     const camera = new Camera3D('perspective');
     camera.fov = options.fov ?? 50;
@@ -117,6 +119,7 @@ export function createPerspectiveCamera3D(options = {}) {
     camera.updateProjectionMatrix();
     return camera;
 }
+/** Makes an orthographic camera. */
 export function createOrthographicCamera3D(options = {}) {
     const camera = new Camera3D('orthographic');
     camera.orthographicHeight = options.height ?? 10;

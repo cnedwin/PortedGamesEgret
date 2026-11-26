@@ -1,5 +1,6 @@
 import type { CancellationSignal, ScopeValue } from "@egret/contracts";
 import type { EngineContext } from "./ownership.js";
+/** Whether a scope is open, disposing what it owns, or closed. */
 export type ScopeState = "open" | "closing" | "closed";
 export declare let createScope: (engine: EngineContext, onClosed: (scope: Scope) => void) => Scope;
 /** Runtime-private identity for owner-chain lifetime validation. */

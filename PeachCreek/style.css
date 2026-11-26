@@ -1,0 +1,28 @@
+/* The host fits the same 1280 × 720 design viewport as the terrain and engine canvas. */
+* { box-sizing: border-box; }
+html, body {
+  margin: 0;
+  height: 100%;
+  overflow: hidden;
+  background: #dbe3d2;
+  color: #293b38;
+  font-family: "Noto Sans SC", "PingFang SC", "Microsoft YaHei", system-ui, sans-serif;
+}
+[hidden] { display: none !important; }
+#frame { position: fixed; inset: 0; overflow: hidden; }
+#back { position: absolute; inset: 0 auto auto 0; width: 1280px; height: 720px; transform-origin: 0 0; overflow: hidden; background: #e9ead8; }
+#map { position: absolute; top: 0; left: 0; transform-origin: 0 0; }
+#stage { position: absolute; top: 0; left: 0; width: 960px; height: 540px; transform-origin: 0 0; touch-action: none; }
+#stage canvas { width: 100% !important; height: 100% !important; outline: none; touch-action: none; }
+#stage.dragging { cursor: grabbing; }
+#loading { position: absolute; inset: 0; display: grid; place-items: center; padding: 18px; margin: 0; background: #fcf8ee; font: 28px Georgia, serif; }
+#rotateHint { display: none; }
+#frame.portrait-view #rotateHint {
+  display: block;
+  position: absolute;
+  inset: auto 0 max(16px, env(safe-area-inset-bottom));
+  text-align: center;
+  color: #345d4d;
+  font-size: 13px;
+  pointer-events: none;
+}

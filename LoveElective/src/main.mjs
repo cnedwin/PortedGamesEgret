@@ -6,6 +6,7 @@ import { playScript } from './screens/story.mjs';
 import { campus } from './screens/campus.mjs';
 import { finale } from './screens/finale.mjs';
 import { openAlbum, pickPerk } from './screens/memories.mjs';
+import { replayMemoryScene } from './screens/memory-replay.mjs';
 import { PROLOGUE } from './story/scenes.mjs';
 import { preloadCharacterArt } from './art/character-art.mjs';
 
@@ -56,8 +57,10 @@ async function start() {
   for (;;) {
     const choice = await titleScreen(game);
     if (choice === 'album') {
+      game.importMemoryScenes();
       await game.fadeIn(0.3);
-      await openAlbum(game);
+      let scene;
+      while ((scene = await openAlbum(game, 'branches'))) await replayMemoryScene(game, scene);
       continue;
     }
     if (choice === 'continue' && game.load()) {

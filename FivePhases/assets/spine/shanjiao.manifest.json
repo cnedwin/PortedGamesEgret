@@ -1,0 +1,268 @@
+{
+  "portrait": "shanjiao",
+  "name": "山魈",
+  "canvas": {
+    "width": 777,
+    "height": 777
+  },
+  "format": "PNG, RGBA8888, 像素尺寸与 size 完全一致，透明底",
+  "note": "独立 PNG 保持原尺寸。offset 是骨骼到轴心的偏移，rect 是图集取样矩形。",
+  "atlas": {
+    "width": 1024,
+    "height": 1262
+  },
+  "anchor": [
+    391,
+    739
+  ],
+  "bones": [
+    {
+      "id": "root",
+      "parent": null,
+      "at": [
+        391,
+        739
+      ]
+    },
+    {
+      "id": "body",
+      "parent": "root",
+      "at": [
+        381,
+        396
+      ]
+    },
+    {
+      "id": "head",
+      "parent": "body",
+      "at": [
+        312,
+        228
+      ]
+    },
+    {
+      "id": "mane",
+      "parent": "head",
+      "at": [
+        346,
+        125
+      ]
+    },
+    {
+      "id": "left-arm",
+      "parent": "body",
+      "at": [
+        170,
+        263
+      ]
+    },
+    {
+      "id": "right-arm",
+      "parent": "body",
+      "at": [
+        530,
+        238
+      ]
+    },
+    {
+      "id": "left-leg",
+      "parent": "body",
+      "at": [
+        298,
+        457
+      ]
+    },
+    {
+      "id": "right-leg",
+      "parent": "body",
+      "at": [
+        468,
+        456
+      ]
+    }
+  ],
+  "parts": [
+    {
+      "order": 0,
+      "id": "left-leg",
+      "file": "left-leg.png",
+      "bone": "left-leg",
+      "layer": 0,
+      "size": [
+        266,
+        321
+      ],
+      "pivot": [
+        0.5,
+        0.5
+      ],
+      "rotation": 0,
+      "offset": [
+        -90,
+        146.5
+      ],
+      "rect": [
+        204,
+        657,
+        266,
+        321
+      ]
+    },
+    {
+      "order": 1,
+      "id": "right-leg",
+      "file": "right-leg.png",
+      "bone": "right-leg",
+      "layer": 1,
+      "size": [
+        259,
+        290
+      ],
+      "pivot": [
+        0.5,
+        0.5
+      ],
+      "rotation": 0,
+      "offset": [
+        71.5,
+        142
+      ],
+      "rect": [
+        742,
+        657,
+        259,
+        290
+      ]
+    },
+    {
+      "order": 2,
+      "id": "left-forearm",
+      "file": "left-forearm.png",
+      "bone": "left-arm",
+      "layer": 2,
+      "size": [
+        195,
+        426
+      ],
+      "pivot": [
+        0.5,
+        0.5
+      ],
+      "rotation": 0,
+      "offset": [
+        -67.5,
+        143
+      ],
+      "rect": [
+        3,
+        657,
+        195,
+        426
+      ]
+    },
+    {
+      "order": 3,
+      "id": "torso",
+      "file": "torso.png",
+      "bone": "body",
+      "layer": 3,
+      "size": [
+        552,
+        648
+      ],
+      "pivot": [
+        0.5,
+        0.5
+      ],
+      "rotation": 0,
+      "offset": [
+        -26,
+        -5
+      ],
+      "rect": [
+        3,
+        3,
+        552,
+        648
+      ]
+    },
+    {
+      "order": 4,
+      "id": "right-gauntlet",
+      "file": "right-gauntlet.png",
+      "bone": "right-arm",
+      "layer": 4,
+      "size": [
+        287,
+        506
+      ],
+      "pivot": [
+        0.5,
+        0.5
+      ],
+      "rotation": 0,
+      "offset": [
+        97.5,
+        133
+      ],
+      "rect": [
+        561,
+        3,
+        287,
+        506
+      ]
+    },
+    {
+      "order": 5,
+      "id": "stone-mane",
+      "file": "stone-mane.png",
+      "bone": "mane",
+      "layer": 5,
+      "size": [
+        248,
+        170
+      ],
+      "pivot": [
+        0.5,
+        0.5
+      ],
+      "rotation": 0,
+      "offset": [
+        35,
+        -38
+      ],
+      "rect": [
+        3,
+        1089,
+        248,
+        170
+      ]
+    },
+    {
+      "order": 6,
+      "id": "mask-and-beard",
+      "file": "mask-and-beard.png",
+      "bone": "head",
+      "layer": 6,
+      "size": [
+        260,
+        305
+      ],
+      "pivot": [
+        0.5,
+        0.5
+      ],
+      "rotation": 0,
+      "offset": [
+        -15,
+        -0.5
+      ],
+      "rect": [
+        476,
+        657,
+        260,
+        305
+      ]
+    }
+  ]
+}

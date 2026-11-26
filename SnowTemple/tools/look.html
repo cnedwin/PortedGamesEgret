@@ -1,0 +1,65 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Model viewer</title>
+<!-- Looks at one sculpted model under plain light. ?m=hero&level=high&yaw=0.4&y=1.6&d=0.7  (name, level of detail, turn, height looked at, distance) -->
+<style>html,body{margin:0;height:100%;background:#20242c}canvas{width:100%;height:100%;display:block}</style>
+<script type="importmap">
+{"imports":{"@egret/engine":"../vendor/engine/dist/index.js","@egret/engine/world3d":"../vendor/engine/dist/rendering/world3d/index.js","@egret/engine/webgl2/world3d":"../vendor/engine/dist/web/world3d/index.js","@egret/runtime":"../vendor/runtime/dist/index.js","@egret/contracts":"../vendor/contracts/dist/index.js","@egret/contracts/resources":"../vendor/contracts/dist/resources/index.js"}}
+</script>
+<canvas id="stage"></canvas>
+<script type="module">
+import { createEngine } from '@egret/engine';
+import { Mesh3D, Scene3D, createDirectionalLight3D, createHemisphereLight3D, createPerspectiveCamera3D, createStandardMaterial3D } from '@egret/engine/world3d';
+import { createWebGL2Renderer3D, createWorld3DHost, createWorld3DView, startWorld3DLoop } from '@egret/engine/webgl2/world3d';
+import { createFigure } from '../src/view/figures.mjs';
+import { loadModels, loadStockCharacters } from '../src/view/models.mjs';
+import { loadCharacterGroup } from '../src/view/characters.mjs';
+
+const q = new URLSearchParams(location.search),
+  name = q.get('m') ?? 'hero',
+  canvas = document.querySelector('#stage'),
+  engine = await createEngine({ host: createWorld3DHost(canvas) }),
+  scope = engine.createScope(),
+  renderer = createWebGL2Renderer3D({ canvas, antialias: true, toneMapping: 'aces' }),
+  scene = new Scene3D(),
+  camera = createPerspectiveCamera3D({ fov: 30, near: 0.05, far: 100 }),
+  level = q.get('level') ?? 'high';
+scope.use(renderer);
+const character = ['hero', 'blade', 'shield', 'bow', 'lu'].includes(name);
+const [models, external] = await Promise.all([
+  loadModels(level),
+  character && q.get('characters') !== 'original'
+    ? loadCharacterGroup(engine, scope, level, undefined, { requested: [name] })
+      .then(async ({ group }) => (await group.ready)[0]?.value)
+      .catch(error => ({ error: String(error?.message ?? error) }))
+    : null
+]);
+scene.background = [0.05, 0.06, 0.08];
+scene.addChild(camera);
+scene.addChild(createHemisphereLight3D({ color: 0xdde6ff, groundColor: 0x54483e, intensity: 0.9 }));
+const key = createDirectionalLight3D({ color: 0xfff1dd, intensity: 2.2 });
+key.setPosition(2, 3, 3).lookAt(0, 1, 0);
+scene.addChild(key);
+// A figure stands in its sculpted pose; anything else is shown as it is.
+const body = external?.parts;
+if (character) {
+  if (!body) models[name] = (await loadStockCharacters())[name];
+  window.characterPreview = { name, level, loaded: Boolean(body), failure: external?.error ?? null };
+  scene.addChild(createFigure(name, models, level, body).root);
+}
+else scene.addChild(new Mesh3D(models[name], createStandardMaterial3D({ vertexColors: true, roughness: 0.7 })));
+const yaw = Number(q.get('yaw') ?? 0.4),
+  y = Number(q.get('y') ?? 1),
+  d = Number(q.get('d') ?? 3.4);
+createWorld3DView(engine, scope, {
+  renderer,
+  scene,
+  camera,
+  onUpdate() {
+    camera.setPosition(Math.sin(yaw) * d, y + d * 0.12, Math.cos(yaw) * d);
+    camera.lookAt(0, y, 0);
+    window.ready = true;
+  }
+});
+startWorld3DLoop(engine, console.error);
+</script>

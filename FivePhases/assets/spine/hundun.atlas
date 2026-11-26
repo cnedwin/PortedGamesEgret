@@ -1,0 +1,18 @@
+../portraits/hundun/atlas.png
+size: 1024,1370
+format: RGBA8888
+filter: Linear,Linear
+repeat: none
+pma: false
+ink-mane
+  bounds: 3,1062,560,305
+rear-haunch
+  bounds: 485,560,178,387
+obsidian-body
+  bounds: 3,3,608,551
+left-grip
+  bounds: 270,560,209,422
+ritual-mask
+  bounds: 617,3,349,520
+right-grip
+  bounds: 3,560,261,496

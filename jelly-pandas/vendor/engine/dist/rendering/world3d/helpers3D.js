@@ -39,7 +39,16 @@ export function createBoxEdgesGeometry3D(box) {
     if (!box || box.length !== 6)
         throw new World3DError('WORLD3D_INPUT_INVALID', 'box');
     const x0 = box[0], y0 = box[1], z0 = box[2], x1 = box[3], y1 = box[4], z1 = box[5];
-    const corners = [[x0, y0, z0], [x1, y0, z0], [x1, y1, z0], [x0, y1, z0], [x0, y0, z1], [x1, y0, z1], [x1, y1, z1], [x0, y1, z1]];
+    const corners = [
+        [x0, y0, z0],
+        [x1, y0, z0],
+        [x1, y1, z0],
+        [x0, y1, z0],
+        [x0, y0, z1],
+        [x1, y0, z1],
+        [x1, y1, z1],
+        [x0, y1, z1]
+    ];
     const edges = [0, 1, 1, 2, 2, 3, 3, 0, 4, 5, 5, 6, 6, 7, 7, 4, 0, 4, 1, 5, 2, 6, 3, 7], positions = [];
     for (const index of edges)
         positions.push(...corners[index]);
@@ -76,7 +85,9 @@ export class Lod3D extends Object3D {
     constructor() {
         super('object');
     }
-    get levels() { return this.#levels; }
+    get levels() {
+        return this.#levels;
+    }
     /** Show `object` once the camera is at least `distance` world units away. */
     addLevel(object, distance = 0) {
         if (!(distance >= 0) || !Number.isFinite(distance))
@@ -120,12 +131,23 @@ export class ScreenLayer3D extends Mesh3D {
     autoUpdate;
     constructor(source, options = {}) {
         const overlay = (options.order ?? 'overlay') === 'overlay';
-        const texture = new Texture3D(source, { mipmaps: false, wrapS: 'clamp', wrapT: 'clamp', flipY: options.topRowFirst ?? true });
-        const material = new Material3D('unlit', { map: texture, alphaMode: overlay ? 'blend' : 'opaque', depthTest: false, depthWrite: false, opacity: options.opacity ?? 1 });
+        const texture = new Texture3D(source, {
+            mipmaps: false,
+            wrapS: 'clamp',
+            wrapT: 'clamp',
+            flipY: options.topRowFirst ?? true
+        });
+        const material = new Material3D('unlit', {
+            map: texture,
+            alphaMode: overlay ? 'blend' : 'opaque',
+            depthTest: false,
+            depthWrite: false,
+            opacity: options.opacity ?? 1
+        });
         material.screenSpace = true;
         material.fog = false;
         material.toneMapped = false;
-        super(layerGeometry ??= createPlaneGeometry3D({ width: 2, height: 2 }), material);
+        super((layerGeometry ??= createPlaneGeometry3D({ width: 2, height: 2 })), material);
         this.texture = texture;
         this.autoUpdate = options.autoUpdate ?? true;
         this.name = overlay ? 'screen-overlay' : 'screen-underlay';
@@ -149,6 +171,7 @@ export class ScreenLayer3D extends Mesh3D {
         throw new World3DError('WORLD3D_INPUT_INVALID', 'a screen layer cannot be cloned; create a new one from the same source');
     }
 }
+/** Makes a picture drawn over the whole screen, above or below the scene. */
 export function createScreenLayer3D(source, options = {}) {
     return new ScreenLayer3D(source, options);
 }

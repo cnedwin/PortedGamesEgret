@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1, maximum-scale=1, viewport-fit=cover, user-scalable=no">
+  <title>镇邪司 · Night Wardens</title>
+  <meta name="description" content="基于新白鹭引擎的竖屏塔防射击：一把符弩守城门，三夜镇住百鬼。A tall-screen tower shooter built on the new Egret engine: one talisman crossbow, one gate, three nights of haunts.">
+  <meta name="theme-color" content="#0b0d16">
+  <link rel="icon" href="data:,">
+  <link rel="preload" as="image" href="assets/art/cover.webp" media="(max-aspect-ratio: 10/9)">
+  <link rel="preload" as="image" href="assets/art/cover-wide.webp" media="(min-aspect-ratio: 10/9)">
+  <link rel="stylesheet" href="style.css">
+  <!-- The engine is a copy inside this folder (vendor/SOURCE.md); this map is vendor/importmap.json, pasted in. -->
+  <script type="importmap">
+{
+  "imports": {
+    "@egret/contracts": "./vendor/contracts/dist/index.js",
+    "@egret/runtime": "./vendor/runtime/dist/index.js",
+    "@egret/contracts/resources": "./vendor/contracts/dist/resources/index.js",
+    "@egret/engine": "./vendor/engine/dist/index.js",
+    "@egret/runtime/ui": "./vendor/runtime/dist/ui/index.js",
+    "@egret/engine/ui": "./vendor/engine/dist/ui/index.js",
+    "@egret/engine/ui/semantics": "./vendor/engine/dist/semantics.js",
+    "@egret/engine/web/semantics": "./vendor/engine/dist/web/semantics.js",
+    "@egret/engine/kit": "./vendor/engine/dist/kit.js",
+    "@egret/engine/web/kit": "./vendor/engine/dist/web/kit.js",
+    "@egret/runtime/text": "./vendor/runtime/dist/text/index.js",
+    "@egret/engine/text": "./vendor/engine/dist/text.js",
+    "@egret/runtime/input": "./vendor/runtime/dist/input/index.js",
+    "#egret-pointer-input": "./vendor/engine/dist/pointerInput.js",
+    "#egret-keyboard-input": "./vendor/engine/dist/keyboardInput.js",
+    "robust-predicates": "./vendor/robust-predicates/index.js",
+    "#egret-textured-frame-state": "./vendor/engine/dist/internal/texturedFrameState.js",
+    "@egret/engine/input/hover": "./vendor/engine/dist/hover.js",
+    "@egret/engine/web/game": "./vendor/engine/dist/web/game.js",
+    "@egret/engine/audio": "./vendor/engine/dist/audio.js",
+    "@egret/engine/web/audio": "./vendor/engine/dist/web/audio.js",
+    "@egret/engine/web/text": "./vendor/engine/dist/web/text.js",
+    "@egret/engine/particles": "./vendor/engine/dist/particles.js",
+    "@egret/engine/animation": "./vendor/engine/dist/animation/index.js",
+    "@egret/engine/layout": "./vendor/engine/dist/layout.js",
+    "@egret/engine/input/gamepad": "./vendor/engine/dist/gamepad.js",
+    "@egret/engine/web/gamepad": "./vendor/engine/dist/web/gamepad.js",
+    "@egret/engine/webgpu": "./vendor/engine/dist/web/webgpu.js",
+    "@egret/engine/webgl2": "./vendor/engine/dist/web/webgl2.js"
+  }
+}
+  </script>
+</head>
+<body>
+  <main id="frame">
+    <p id="loading">载入中 · Loading</p>
+  </main>
+  <noscript>这个游戏需要 JavaScript · This game needs JavaScript.</noscript>
+  <script type="module" src="src/main.mjs"></script>
+</body>
+</html>

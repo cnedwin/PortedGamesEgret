@@ -5,7 +5,7 @@ import { SharedPreparationRetention2D } from '../rendering/sharedPreparationRete
 import { planSharedSubmission2D, packSharedSubmission2D, packSharedRegionWindows2D, SHARED_REGION_WINDOW_STRIDE_2D, SHARED_REGION_WINDOW_BYTES_2D, materializeSharedPages2D, checkSharedCapacity2D, SharedStorageError2D } from './prepareSharedSubmission2D.js';
 import { SHARED_BATCH_PAGES_2D } from '../rendering/packSharedDraws2D.js';
 import { prepareSharedBatches2D } from '../rendering/preparedSharedBatches2D.js';
-import { decodeSharedSRGBByte } from '../rendering/sharedColor2D.js';
+import { sharedBlendSpace2D, sharedPageLevelLayout2D, sharedTargetChannel2D } from '../rendering/sharedColor2D.js';
 import { createSharedWebGPUPipeline, SHARED_BLENDS, SHARED_PIPELINE_KINDS } from './webgpuSharedPass.js';
 import { createSharedEffectPipeline, EFFECT_PASSES, EFFECT_UNIFORM_BYTES } from './sharedEffectShaders.js';
 import { createSharedResolvePipeline } from './webgpuSharedResolvePass.js';
@@ -80,6 +80,7 @@ class WebGPUHostImplementation {
     pendingGeometryBytes = 0;
     pendingColorBytes = 0;
     pendingCanonicalBytes = 0;
+    frameDrawCalls = 0;
     ledger = new Set();
     batchScratch = new PreparedBatchScratch2D();
     /** The prepared draws of the last frame. A Host that is not active keeps none. */
@@ -223,8 +224,11 @@ class WebGPUHostImplementation {
             throw error('WEBGPU_OPTIONS_INVALID', cause);
         }
         this.borrowedPolicy = this.borrowed !== undefined;
+        const admittedSpace = SHARED_OPTIONS.get(this).blendSpace;
         Object.defineProperties(this, {
             sharedFrameProfile: { value: SHARED_FRAME_PROFILE_2D, enumerable: true },
+            // The space this Host mixes in; an Engine's frames record it.
+            sharedBlendSpace: { value: admittedSpace, enumerable: true },
             renderSharedFrame: {
                 value: (frame) => this.renderSharedOwnedFrame(frame),
                 enumerable: true
@@ -243,6 +247,10 @@ class WebGPUHostImplementation {
             recover: { value: (device) => this.recoverShared(device), enumerable: true },
             stageSharedFrame: {
                 value: (frame, options) => this.renderSharedOwnedFrame(frame, { options }),
+                enumerable: true
+            },
+            getFrameDrawCalls: {
+                value: () => this.frameDrawCalls,
                 enumerable: true
             },
             getSharedStatus: {
@@ -1071,13 +1079,15 @@ class WebGPUHostImplementation {
             let synchronous;
             try {
                 this.scoped(null, 'startup', scopes, gate, () => {
+                    // A target that mixes stored codes, as a 2D canvas does, is ordinary UNORM; its pipelines write codes.
+                    const coded = SHARED_OPTIONS.get(this).blendSpace === 'srgb';
                     for (const kind of SHARED_PIPELINE_KINDS)
                         for (const blend of SHARED_BLENDS)
-                            createSharedWebGPUPipeline(capturedShader, capturedPipeline, kind, blend);
-                    createSharedResolvePipeline(capturedShader, capturedPipeline, this.format, SHARED_OPTIONS.get(this).outputAlpha === 'opaque');
+                            createSharedWebGPUPipeline(capturedShader, capturedPipeline, kind, blend, coded);
+                    createSharedResolvePipeline(capturedShader, capturedPipeline, this.format, SHARED_OPTIONS.get(this).outputAlpha === 'opaque', coded);
                     if (SHARED_OPTIONS.get(this).enableEffects)
                         for (const mode of EFFECT_PASSES)
-                            createSharedEffectPipeline(capturedShader, capturedPipeline, mode);
+                            createSharedEffectPipeline(capturedShader, capturedPipeline, mode, coded);
                     for (const filter of ['nearest', 'linear'])
                         for (const u of ['clamp-to-edge', 'repeat', 'mirror-repeat'])
                             for (const v of ['clamp-to-edge', 'repeat', 'mirror-repeat']) {
@@ -1279,7 +1289,7 @@ class WebGPUHostImplementation {
             size: { width: view.region.width, height: view.region.height, depthOrArrayLayers: 1 },
             dimension: '2d',
             format: candidate.entry.format,
-            mipLevelCount: 1,
+            mipLevelCount: view.levels ?? 1,
             sampleCount: 1,
             usage: 2 | 4
         });
@@ -1319,10 +1329,10 @@ class WebGPUHostImplementation {
         gate();
         return { texture, view: result };
     }
-    planImageResidency(projectionPlan, draws, shared = false) {
+    planImageResidency(projectionPlan, draws, borrowSubmitted) {
         this.active();
         const hits = new Map(), candidates = new Map();
-        const bytes = collectWebGPUImageDemand(projectionPlan, draws, shared, this.imageDirectory, this.imageEnabled, this.imageEpoch, hits, candidates);
+        const bytes = collectWebGPUImageDemand(projectionPlan, draws, true, this.imageDirectory, this.imageEnabled, this.imageEpoch, hits, candidates, borrowSubmitted);
         // Every profile of this Host shares one ready residence; a shared Host may lower its bytes.
         const victims = selectWebGPUImageVictims(this.imageOldest, this.imageEpoch, this.allocatedImageBytes + this.reservedImageBytes, this.readyCount, SHARED_OPTIONS.get(this)?.maxReadyPageBytes ?? 33554432, bytes, candidates.size, hits);
         return {
@@ -1410,7 +1420,9 @@ class WebGPUHostImplementation {
             this.imageDirectory.set(candidate.image, candidate.entry.bucket);
         // Pin the complete hit set before touching order or entering any native call.
         for (const entry of use.hits.values()) {
-            if (entry.pinCount === 0) {
+            if (entry.validation)
+                (use.producerValidations ??= new Set()).add(entry.validation);
+            if (entry.state === 'ready' && entry.pinCount === 0) {
                 this.resourcePinnedBytes += entry.bytes;
                 this.resourcePinnedEntries++;
             }
@@ -1419,6 +1431,8 @@ class WebGPUHostImplementation {
         this.sampleResourceImages();
         use.pinned = true;
         for (const entry of use.hits.values()) {
+            if (entry.state !== 'ready')
+                continue;
             this.unlinkImageResidency(entry);
             this.appendImageResidency(entry);
         }
@@ -1445,20 +1459,25 @@ class WebGPUHostImplementation {
         }
         const candidate = use.candidates.get(viewIndex), projection = record.projectionPlan.views[viewIndex];
         const owned = this.ownedTexture(projection, record, gate, candidate);
+        // A page with smaller copies carries each level's bytes after the one before it.
+        const chain = record.projections[viewIndex], levels = sharedPageLevelLayout2D(projection.region.width, projection.region.height, projection.levels ?? 1);
         if (record.stage) {
-            record.stage.writes.push({
-                kind: 'texture',
-                texture: owned.texture,
-                data: record.projections[viewIndex],
-                width: projection.region.width,
-                height: projection.region.height,
-                offset: 0
-            });
+            for (const [mipLevel, { width, height, offset }] of levels.entries())
+                record.stage.writes.push({
+                    kind: 'texture',
+                    texture: owned.texture,
+                    data: chain.subarray(offset, offset + 4 * width * height),
+                    width,
+                    height,
+                    offset: 0,
+                    mipLevel
+                });
             return owned;
         }
         // Attempted queue writes retain the original fence obligation, including throws.
         use.touchedQueue = true;
-        (record.owner?.native.writeTexture ?? this.writeTexture)({ texture: owned.texture, mipLevel: 0, origin: { x: 0, y: 0, z: 0 }, aspect: 'all' }, record.projections[viewIndex], { offset: 0, bytesPerRow: 4 * projection.region.width, rowsPerImage: projection.region.height }, { width: projection.region.width, height: projection.region.height, depthOrArrayLayers: 1 });
+        for (const [mipLevel, { width, height, offset }] of levels.entries())
+            (record.owner?.native.writeTexture ?? this.writeTexture)({ texture: owned.texture, mipLevel, origin: { x: 0, y: 0, z: 0 }, aspect: 'all' }, chain.subarray(offset, offset + 4 * width * height), { offset: 0, bytesPerRow: 4 * width, rowsPerImage: height }, { width, height, depthOrArrayLayers: 1 });
         if (record.shared)
             this.resourcePageWrite(record.projections[viewIndex].byteLength);
         gate();
@@ -1491,6 +1510,11 @@ class WebGPUHostImplementation {
         if (!use || use.finished)
             return;
         use.finished = true;
+        const failed = (cause) => {
+            const failure = this.fail('WEBGPU_RENDER_FAILED', cause, 'cleanup', record.serial, true);
+            record.unsafe = true;
+            record.failure ??= failure;
+        };
         if (use.pinned) {
             use.pinned = false;
             for (const entry of use.hits.values()) {
@@ -1499,24 +1523,33 @@ class WebGPUHostImplementation {
                     this.resourcePinnedEntries--;
                 }
                 entry.pinCount--;
+                if (entry.state === 'detached' && entry.pinCount === 0) {
+                    try {
+                        this.destroyReadyImage(entry);
+                    }
+                    catch (cause) {
+                        failed(cause);
+                    }
+                }
             }
             this.sampleResourceImages();
         }
-        const failed = (cause) => {
-            const failure = this.fail('WEBGPU_RENDER_FAILED', cause, 'cleanup', record.serial, true);
-            record.unsafe = true;
-            record.failure ??= failure;
-        };
         for (const candidate of use.candidates.values()) {
             const entry = candidate.entry, resource = entry.resource;
             if (!resource || candidate.transferred)
                 continue;
+            if (entry.state === 'submitted') {
+                entry.bucket.delete(entry.cropKey);
+                delete entry.validation;
+                entry.state = 'cold';
+            }
             // Re-read qualification, winner and slot after every earlier cleanup callback.
             if (allowPromotion &&
                 this.isImagePromotionEligible(record) &&
                 entry.epoch === this.imageEpoch &&
                 !entry.bucket.has(entry.cropKey) &&
-                this.readyCount < 256) {
+                this.readyCount < 256 &&
+                this.resourceReadyBytes + entry.bytes <= (SHARED_OPTIONS.get(this)?.maxReadyPageBytes ?? 33554432)) {
                 try {
                     const revision = {};
                     entry.bucket.set(entry.cropKey, entry);
@@ -1524,6 +1557,10 @@ class WebGPUHostImplementation {
                     entry.state = 'ready';
                     this.readyCount++;
                     this.resourceReadyBytes += entry.bytes;
+                    if (entry.pinCount > 0) {
+                        this.resourcePinnedBytes += entry.bytes;
+                        this.resourcePinnedEntries++;
+                    }
                     this.sampleResourceImages();
                     candidate.transferred = true;
                     record.textures.splice(record.textures.indexOf(resource), 1);
@@ -1537,12 +1574,24 @@ class WebGPUHostImplementation {
                         this.unlinkImageResidency(entry);
                         this.readyCount--;
                         this.resourceReadyBytes -= entry.bytes;
+                        if (entry.pinCount > 0) {
+                            this.resourcePinnedBytes -= entry.bytes;
+                            this.resourcePinnedEntries--;
+                        }
                         entry.state = 'cold';
                         this.sampleResourceImages();
                     }
                     candidate.transferred = false;
                     failed(cause);
                 }
+            }
+            // A later draw can still be using a page whose producer cannot enter READY (close, loss or capacity).
+            // Transfer cleanup to the Host until that last borrower retires.
+            if (!candidate.transferred && entry.pinCount > 0) {
+                this.imageCleanup.add(entry);
+                entry.state = 'detached';
+                candidate.transferred = true;
+                record.textures.splice(record.textures.indexOf(resource), 1);
             }
             if (!candidate.transferred && !resource.cleaned) {
                 const failures = cleanupWebGPUTexture(resource);
@@ -1711,7 +1760,8 @@ class WebGPUHostImplementation {
                             throw cause;
                         }
                     }
-                    if (frame.outputAlpha !== options.outputAlpha ||
+                    if (sharedBlendSpace2D(frame) !== options.blendSpace ||
+                        frame.outputAlpha !== options.outputAlpha ||
                         frame.outputRepresentation !==
                             (options.outputAlpha === 'opaque' ? 'egret.srgb-opaque-unorm8/1' : 'egret.srgb-premultiplied-unorm8/1'))
                         refuse('WEBGPU_FRAME_PROFILE_UNSUPPORTED');
@@ -1748,7 +1798,7 @@ class WebGPUHostImplementation {
                     for (const group of prepared.effects.groups)
                         if (group.maskPageIndex !== undefined)
                             demands.push({ kind: 'image', packed: { vertexCount: 3 }, viewIndex: group.maskPageIndex });
-                    const imagePlan = this.planImageResidency(storage.projectionPlan, demands, true);
+                    const imagePlan = this.planImageResidency(storage.projectionPlan, demands, !staging);
                     const pages = materializeSharedPages2D(storage, new Set(imagePlan.use.candidates.keys()), this.sharedOwnerSnapshot(), this.resourceCpu);
                     materialized = pages.canonicalBytes;
                     this.active();
@@ -2134,7 +2184,12 @@ class WebGPUHostImplementation {
                             }
                             else {
                                 const row = write.width * 4, rows = count / row;
-                                record.owner.native.writeTexture({ texture: write.texture, mipLevel: 0, origin: { x: 0, y: write.offset / row, z: 0 }, aspect: 'all' }, write.data, { offset: write.offset, bytesPerRow: row, rowsPerImage: rows }, { width: write.width, height: rows, depthOrArrayLayers: 1 });
+                                record.owner.native.writeTexture({
+                                    texture: write.texture,
+                                    mipLevel: write.mipLevel,
+                                    origin: { x: 0, y: write.offset / row, z: 0 },
+                                    aspect: 'all'
+                                }, write.data, { offset: write.offset, bytesPerRow: row, rowsPerImage: rows }, { width: write.width, height: rows, depthOrArrayLayers: 1 });
                                 this.resourcePageWrite(count);
                             }
                             write.offset += count;
@@ -2383,18 +2438,21 @@ class WebGPUHostImplementation {
         for (const group of prepared.effects.groups)
             buffer('uniform', 72, group.uniform.byteLength);
         const colorId = requests.length;
+        // Working targets hold light, encoded by the format on store, or the codes of a space that mixes them.
+        const target = SHARED_OPTIONS.get(this).blendSpace === 'srgb'
+            ? { format: 'rgba8unorm', recipe: 'egret.encoded-srgb-pma8-target/1' }
+            : { format: 'rgba8unorm-srgb', recipe: 'egret.srgb-pma8-target/1' };
         requests.push({
             kind: 'color',
             id: colorId,
             width,
             height,
-            format: 'rgba8unorm-srgb',
+            ...target,
             usage: 20,
             byteLength: storage.colorBytes,
             sampleCount: 1,
             mipLevelCount: 1,
-            depthOrArrayLayers: 1,
-            recipe: 'egret.srgb-pma8-target/1'
+            depthOrArrayLayers: 1
         });
         for (let i = 0; i < prepared.effects.targetCount; i++)
             requests.push({
@@ -2402,13 +2460,12 @@ class WebGPUHostImplementation {
                 id: requests.length,
                 width,
                 height,
-                format: 'rgba8unorm-srgb',
+                ...target,
                 usage: 20,
                 byteLength: storage.colorBytes,
                 sampleCount: 1,
                 mipLevelCount: 1,
-                depthOrArrayLayers: 1,
-                recipe: 'egret.srgb-pma8-target/1'
+                depthOrArrayLayers: 1
             });
         const bufferPlan = this.bufferPool.plan(requests), bufferLeases = new Array(requests.length).fill(undefined);
         for (const lease of bufferPlan.leases)
@@ -2686,6 +2743,7 @@ class WebGPUHostImplementation {
         return { vertices, bindings, regionBindings, color, resolveBinding, effectTargets, effects };
     }
     drawSharedGPU(record, p, recipe, staging, ticket, gate) {
+        this.frameDrawCalls = 0;
         const { storage, batch } = p, { frame, width, height } = storage.prepared, serial = record.serial;
         const { vertices, bindings, color, resolveBinding } = recipe;
         const texture = record.owner.native.currentTexture();
@@ -2695,15 +2753,16 @@ class WebGPUHostImplementation {
         const encoder = record.owner.native.encoder();
         gate();
         const begin = this.method(encoder, 'beginRenderPass', gate), finish = this.method(encoder, 'finish', gate), copy = ticket ? this.method(encoder, 'copyTextureToBuffer', gate) : undefined;
-        const c = frame.clearColor, a = frame.clearAlpha;
+        // The clear colour as the target holds it: light, or the codes of a target that mixes them.
+        const c = frame.clearColor, a = frame.clearAlpha, space = SHARED_OPTIONS.get(this).blendSpace;
         const attachment = {
             view: color.view,
             loadOp: 'clear',
             storeOp: 'store',
             clearValue: {
-                r: a * decodeSharedSRGBByte(c >>> 16),
-                g: a * decodeSharedSRGBByte(c >>> 8),
-                b: a * decodeSharedSRGBByte(c),
+                r: a * sharedTargetChannel2D(space, c >>> 16),
+                g: a * sharedTargetChannel2D(space, c >>> 8),
+                b: a * sharedTargetChannel2D(space, c),
                 a
             }
         };
@@ -2749,6 +2808,7 @@ class WebGPUHostImplementation {
             if (draw.regionWindow >= 0)
                 active.pass.setBindGroup(1, recipe.regionBindings.get(draw));
             active.pass.draw(draw.vertexCount);
+            this.frameDrawCalls++;
         };
         if (storage.prepared.effects.groups.length === 0) {
             for (const draw of batch.draws)
@@ -2764,6 +2824,7 @@ class WebGPUHostImplementation {
                 run.pass.setScissorRect(0, 0, width, height);
                 run.pass.setBindGroup(0, recipe.effects.get(group).get(mode));
                 run.pass.draw(3);
+                this.frameDrawCalls++;
                 run.end();
                 gate();
             };
@@ -2809,6 +2870,7 @@ class WebGPUHostImplementation {
         resolve.setScissorRect(0, 0, width, height);
         resolve.setBindGroup(0, resolveBinding);
         resolve.draw(3);
+        this.frameDrawCalls++;
         endResolve();
         gate();
         if (staging) {
@@ -2829,6 +2891,14 @@ class WebGPUHostImplementation {
     finishSubmission(record, ticket, done, outcomes, touchedQueue, synchronous, submitted, staging, frameId, width, height, rowPitch, output) {
         const serial = record.serial;
         let result;
+        const use = record.imageUse;
+        if (use?.producerValidations)
+            outcomes.push(...use.producerValidations);
+        // Queue order makes the completed writes visible to the next direct draw. Its own completion must
+        // also observe producer validation errors, even when the consumer's fence is reported first.
+        const pageValidation = !record.stage && submitted && !synchronous && use?.candidates.size
+            ? observed(Promise.all(outcomes).then(() => undefined))
+            : undefined;
         const nativeOutcomes = [...outcomes], nativeFailure = synchronous;
         if (submitted && staging && !synchronous) {
             try {
@@ -2907,6 +2977,16 @@ class WebGPUHostImplementation {
                 (this.firstFailure.serial === null || this.firstFailure.serial <= serial))
                 throw error(this.firstFailure.code, this.firstFailure.cause);
         }));
+        if (pageValidation && use && this.isImagePromotionEligible(record)) {
+            for (const { entry } of use.candidates.values()) {
+                if (!entry.resource || !entry.view || entry.bucket.has(entry.cropKey))
+                    continue;
+                entry.state = 'submitted';
+                entry.validation = pageValidation;
+                entry.bucket.set(entry.cropKey, entry);
+            }
+            this.imageRevision = {};
+        }
         if (synchronous)
             throw synchronous;
         return undefined;
@@ -3343,6 +3423,7 @@ class WebGPUHostImplementation {
         };
     }
 }
+/** A host that draws shared frames with WebGPU on a canvas. */
 export function createSharedWebGPUHost(options) {
     return new WebGPUHostImplementation(options);
 }

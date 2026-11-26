@@ -11,6 +11,7 @@ export interface ManifestBindingState {
 export declare function requireManifestBinding(value: unknown): ManifestBindingState;
 /** A matching ref ID alone cannot turn caller metadata into a verified source. */
 export declare function requireManifestAssetRef(value: unknown): ManifestBindingState;
+/** Binds one asset of an admitted manifest to an asset type, for its group to load. */
 export declare function createManifestAssetBinding<T>(manifest: AdmittedResourceManifest, assetId: string, type: AssetType<T>): ManifestAssetBinding<T>;
 export type { ManifestBinding } from './manifestResourceTypes.js';
 //# sourceMappingURL=manifestResourceState.d.ts.map

@@ -3,7 +3,8 @@ import {
   colorFromHex, createDirectionalLight3D, createHemisphereLight3D, createOrthographicCamera3D,
   createPerspectiveCamera3D, vec3Cross, vec3Dot, vec3Normalize,
 } from '@egret/engine/world3d';
-import { createWebGL2Renderer3D, loadGltfFromUrl3D } from '@egret/engine/webgl2/world3d';
+import { loadGltfFromUrl3D } from '@egret/engine/webgl2/world3d';
+import { createWorldRenderer } from './world3d-renderer.mjs';
 import { cloneNativeSceneActor } from './native-scene-actor.mjs';
 import { createNativeSceneSprites } from './native-scene-sprites.mjs';
 import { createNativeStoryProps, nativeStoryEventProp } from './native-story-props.mjs';
@@ -290,7 +291,7 @@ export async function createNativeSubmapView(viewport, overlay, { map, textures 
     });
     scene.addChild(scenery.root);
     player = actor(scene, mainAsset, true);
-    renderer = createWebGL2Renderer3D({ canvas, shadowAtlasSize: 2048, toneMapping: 'none',
+    renderer = createWorldRenderer({ canvas, shadowAtlasSize: 2048, toneMapping: 'none',
       onContextLost() { lost = true; }, onContextRestored() { lost = false; } });
     setScene(map);
     viewport.insertBefore(canvas, overlay);

@@ -1,9 +1,7 @@
-// The title scene keeps the painted cast visible behind a compact menu.
+// Keep the menu available while the title illustration loads independently.
 import { W, H } from '../engine/stage.mjs';
 import { SERIF } from '../engine/ui.mjs';
 import { rgba, star } from '../art/draw.mjs';
-import { drawFigure } from '../art/figure.mjs';
-import { HEROINES, HEROINE_IDS } from '../data/cast.mjs';
 import { loadCover } from '../art/character-art.mjs';
 import { endingCount } from './memories.mjs';
 
@@ -20,28 +18,18 @@ export function titleScreen(game) {
     world.calm = false;
     world.setScene('gate', 'dusk');
     game.hideHud();
+    // An opaque base also covers the world while the title textures are prepared.
+    const backdrop = stage.rect(ui.layer, 0x18162b);
+    const artwork = stage.pic(ui.layer);
+    artwork.node.alpha = 0;
     const scene = ui.panel({ x: 0, y: 0, w: W, h: H, res: 1 });
     const menu = ui.panel({ x: 0, y: 0, w: 600, h: H, res: 1.25 });
     let confirmNew = false;
     let ending = false;
-    let image;
 
-    function paintScene(image) {
+    function paintScene() {
       scene.paint(p => {
         const g = p.g;
-        if (image) coverImage(g, image);
-        else {
-          const order = [0, 6, 1, 5, 2, 4, 3];
-          for (const i of order) {
-            const girl = HEROINES[HEROINE_IDS[i]];
-            const scale = .53 + (3 - Math.abs(i - 3)) * .031;
-            g.save();
-            g.translate(552 + i * 105 - 200 * scale, H - 1040 * scale + 104 - (3 - Math.abs(i - 3)) * 8);
-            g.scale(scale, scale);
-            drawFigure(g, { ...girl.look, wear: girl.outfits.uniform, expr: 'smile' });
-            g.restore();
-          }
-        }
         const fade = g.createLinearGradient(0, H - 186, 0, H);
         fade.addColorStop(0, rgba('#211b2e', 0));
         fade.addColorStop(1, rgba('#181527', .80));
@@ -100,7 +88,7 @@ export function titleScreen(game) {
         y += 68;
         p.button(70, y, 138, 42, game.lang === 'zh' ? 'English' : '中文', () => {
           game.setLang(game.lang === 'zh' ? 'en' : 'zh');
-          paintScene(image);
+          paintScene();
           paintMenu();
         }, { kind: 'ghost', size: 16 });
         p.button(218, y, 138, 42, game.audio.muted ? L(['声音关', 'Sound off']) : L(['声音开', 'Sound on']), () => {
@@ -117,12 +105,31 @@ export function titleScreen(game) {
       });
     }
 
+    function revealCover() {
+      let elapsed = 0;
+      let previous;
+      function frame(now) {
+        if (ending) return;
+        // The cover is shown on display frames. Catch-up time from a blocked
+        // startup frame should not skip the visible transition.
+        if (previous !== undefined) elapsed += Math.min(now - previous, 34);
+        previous = now;
+        const progress = Math.min(1, elapsed / 280);
+        artwork.node.alpha = progress * progress * (3 - 2 * progress);
+        if (progress < 1) requestAnimationFrame(frame);
+      }
+      requestAnimationFrame(frame);
+    }
+
     function finish(result) {
       if (ending) return;
       ending = true;
       ui.keys = null;
       scene.enabled = menu.enabled = false;
       game.fadeOut().then(() => {
+        artwork.destroy();
+        ui.layer.removeChild(backdrop);
+        backdrop.dispose();
         scene.close();
         menu.close();
         resolve(result);
@@ -131,10 +138,11 @@ export function titleScreen(game) {
 
     paintScene();
     paintMenu();
-    void loadCover().then(loaded => {
-      image = loaded;
-      if (!ending && image) paintScene(image);
-    }).catch(() => {});
+    void loadCover().then(async image => {
+      if (!image || ending) return;
+      await artwork.paint(W, H, 1, g => coverImage(g, image));
+      if (!ending && artwork.bitmap) revealCover();
+    }).catch(stage.fail);
     ui.keys = key => {
       if (key === 'Enter') finish(game.hasSave() ? 'continue' : 'new');
     };

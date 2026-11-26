@@ -1,0 +1,160 @@
+{
+  "name": "山魈",
+  "canvas": {
+    "width": 777,
+    "height": 777
+  },
+  "anchor": [
+    391,
+    739
+  ],
+  "bones": [
+    {
+      "id": "root",
+      "x": 391,
+      "y": 739
+    },
+    {
+      "id": "body",
+      "parent": "root",
+      "x": 381,
+      "y": 396
+    },
+    {
+      "id": "head",
+      "parent": "body",
+      "x": 312,
+      "y": 228
+    },
+    {
+      "id": "mane",
+      "parent": "head",
+      "x": 346,
+      "y": 125
+    },
+    {
+      "id": "left-arm",
+      "parent": "body",
+      "x": 170,
+      "y": 263
+    },
+    {
+      "id": "right-arm",
+      "parent": "body",
+      "x": 530,
+      "y": 238
+    },
+    {
+      "id": "left-leg",
+      "parent": "body",
+      "x": 298,
+      "y": 457
+    },
+    {
+      "id": "right-leg",
+      "parent": "body",
+      "x": 468,
+      "y": 456
+    }
+  ],
+  "parts": [
+    {
+      "id": "left-leg",
+      "bone": "left-leg",
+      "at": [
+        75,
+        443
+      ],
+      "rect": [
+        204,
+        657,
+        266,
+        321
+      ]
+    },
+    {
+      "id": "right-leg",
+      "bone": "right-leg",
+      "at": [
+        410,
+        453
+      ],
+      "rect": [
+        742,
+        657,
+        259,
+        290
+      ]
+    },
+    {
+      "id": "left-forearm",
+      "bone": "left-arm",
+      "at": [
+        5,
+        193
+      ],
+      "rect": [
+        3,
+        657,
+        195,
+        426
+      ]
+    },
+    {
+      "id": "torso",
+      "bone": "body",
+      "at": [
+        79,
+        67
+      ],
+      "rect": [
+        3,
+        3,
+        552,
+        648
+      ]
+    },
+    {
+      "id": "right-gauntlet",
+      "bone": "right-arm",
+      "at": [
+        484,
+        118
+      ],
+      "rect": [
+        561,
+        3,
+        287,
+        506
+      ]
+    },
+    {
+      "id": "stone-mane",
+      "bone": "mane",
+      "at": [
+        257,
+        2
+      ],
+      "rect": [
+        3,
+        1089,
+        248,
+        170
+      ]
+    },
+    {
+      "id": "mask-and-beard",
+      "bone": "head",
+      "at": [
+        167,
+        75
+      ],
+      "rect": [
+        476,
+        657,
+        260,
+        305
+      ]
+    }
+  ]
+}

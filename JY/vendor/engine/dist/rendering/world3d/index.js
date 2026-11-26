@@ -51,4 +51,12 @@ export { Trail3D, createTrail3D, TRAIL3D_LIMITS } from './Trail3D.js';
 export { createDecalGeometry3D, createDecal3D, DECAL3D_LIMITS } from './Decal3D.js';
 export { GpuParticles3D, createGpuParticles3D } from './GpuParticles3D.js';
 export { VolumetricFog3D, createVolumetricFog3D } from './VolumetricFog3D.js';
+export { createGeometryBuilder3D, linearColor3D, projectToViewport3D } from './GeometryBuilder3D.js';
+export { SdfShape3D, createSdfGeometry3D, sdfBox, sdfCapsule, sdfCone, sdfCylinder, sdfDisplace, sdfEllipsoid, sdfExtrude, sdfIntersect, sdfLathe, sdfMirror, sdfPattern, sdfRound, sdfShell, sdfSphere, sdfSubtract, sdfTorus, sdfUnion } from './Sdf3D.js';
+export { simplifyGeometry3D } from './Simplify3D.js';
+export { exportGlb3D } from './Export3D.js';
+export { createSdfRig3D } from './Rig3D.js';
+export { createSdfLod3D } from './SdfLod3D.js';
+export { createSurfaceMaterial3D, surfaceShaderSources3D } from './SurfaceMaterial3D.js';
+export { retargetAnimationClip3D } from './Retarget3D.js';
 //# sourceMappingURL=index.js.map

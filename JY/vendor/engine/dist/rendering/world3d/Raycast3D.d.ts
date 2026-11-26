@@ -1,6 +1,7 @@
 import type { Camera3D } from './Camera3D.js';
 import { Mesh3D } from './Mesh3D.js';
 import type { Object3D } from './Object3D.js';
+/** What a ray hit: how far, where, the object, its face, its texture coordinate and its instance. */
 export interface RaycastHit3D {
     /** Distance from the ray origin in world units. */
     readonly distance: number;
@@ -14,6 +15,7 @@ export interface RaycastHit3D {
     /** Instance index for instanced meshes. */
     readonly instanceId: number | undefined;
 }
+/** How a ray is cast: its near and far distances, its layers, and whether only the first hit is wanted. */
 export interface RaycastOptions3D {
     readonly near?: number;
     readonly far?: number;
@@ -22,6 +24,7 @@ export interface RaycastOptions3D {
     /** Stop at the first hit per mesh and skip sorting of further triangles. */
     readonly firstHitOnly?: boolean;
 }
+/** Casts rays through a scene, from a point or from the camera through a screen point. */
 export declare class Raycaster3D {
     readonly origin: Float32Array<ArrayBuffer>;
     readonly direction: Float32Array<ArrayBuffer>;

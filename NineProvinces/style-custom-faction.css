@@ -1,0 +1,23 @@
+/* Founding shares the game's silk/bronze surfaces and scrolls inside setup. */
+.foundingFields { display: grid; gap: 12px; min-width: 0; }
+.foundingFields h4 { margin: 8px 0 0; color: #ecd09a; }
+.foundingIdentity { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) 62px; gap: 8px; }
+.foundingField { display: grid; gap: 5px; min-width: 0; }
+.foundingField > span { color: #d3c7ac; font-size: 12px; }
+.foundingField input, .foundingField select { box-sizing: border-box; width: 100%; max-width: 100%; min-width: 0; min-height: 44px; padding: 7px 9px; color: #f2e5ca; background: #152328; border: 1px solid #a38c6277; border-radius: 3px; font: inherit; }
+.foundingColours { display: flex; flex-wrap: wrap; gap: 8px; }
+.foundingColour { width: 44px; min-height: 44px; background: var(--banner-colour); border: 1px solid #b8a57f; border-radius: 3px; color: #fff0cf; font-size: 21px; }
+.foundingColour[aria-pressed="true"] { outline: 2px solid #e5bd79; outline-offset: 2px; }
+.foundingFork { margin: 0; padding: 10px; background: #8b5f2b33; border-left: 3px solid #c29658; color: #f2d8ab; font-size: 12px; line-height: 1.5; }
+.foundingRuler { display: flex; gap: 13px; align-items: center; padding: 9px; background: #172529aa; border: 1px solid #9d87654d; }
+.foundingRuler .face { width: 82px; height: 109px; flex-shrink: 0; object-fit: cover; }
+.foundingRuler > div { min-width: 0; overflow-wrap: anywhere; }
+.foundingRuler p { margin: 6px 0 0; }
+.foundingCompanions { display: grid; gap: 9px; }
+.foundingStatus { font-size: 12px; line-height: 1.45; color: #e8d8a8; min-height: 1.5em; }
+.foundingSearchCount { margin: -4px 0 0; color: #c1caba; font-size: 12px; }
+@media (max-width: 500px) {
+  .foundingIdentity { grid-template-columns: minmax(0, 1fr) 65px; }
+  .foundingIdentity > label:nth-child(2) { grid-row: 2; grid-column: 1 / -1; }
+  .foundingRuler .face { width: 66px; height: 88px; }
+}

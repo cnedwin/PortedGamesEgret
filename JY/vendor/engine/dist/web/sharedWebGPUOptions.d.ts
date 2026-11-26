@@ -5,6 +5,7 @@ export interface SharedPageLimits2D {
     readonly maxFramePageBytes: number;
     readonly maxReadyPageBytes: number;
 }
+/** A shared WebGPU host's own options: its geometry limits, effects, output alpha, blend space and recovery. */
 export interface SharedWebGPUHostOptions extends WebGPUHostOptions, Partial<SharedPageLimits2D> {
     readonly maxSourceTriangles?: number;
     readonly maxFrameGeometryBytes?: number;
@@ -12,15 +13,18 @@ export interface SharedWebGPUHostOptions extends WebGPUHostOptions, Partial<Shar
     readonly maxTupleComparisons?: number;
     readonly enableEffects?: boolean;
     readonly outputAlpha?: 'premultiplied' | 'opaque';
+    /** Where translucent draws mix: `linear` light (the default) or the stored `srgb` codes, as a 2D canvas does. */
+    readonly blendSpace?: 'linear' | 'srgb';
     readonly recovery?: {
         readonly mode: 'manual' | 'automatic';
         readonly timeoutMs?: number;
     };
 }
-type BaseConfiguration = Required<Omit<SharedWebGPUHostOptions, 'canvas' | 'device' | 'onDiagnostic' | 'enableEffects' | 'outputAlpha' | 'recovery' | keyof SharedPageLimits2D>>;
+type BaseConfiguration = Required<Omit<SharedWebGPUHostOptions, 'canvas' | 'device' | 'onDiagnostic' | 'enableEffects' | 'outputAlpha' | 'blendSpace' | 'recovery' | keyof SharedPageLimits2D>>;
 export type SharedWebGPUConfiguration = BaseConfiguration & SharedPageLimits2D & {
     readonly enableEffects: boolean;
     readonly outputAlpha: 'premultiplied' | 'opaque';
+    readonly blendSpace: 'linear' | 'srgb';
     readonly recovery: {
         readonly mode: 'manual' | 'automatic';
         readonly timeoutMs: number;

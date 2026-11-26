@@ -1,0 +1,41 @@
+/* Opera Drums: the page paints only what never moves — the illustrated stage, behind the menus and under the stage of
+   a performance — and the engine's clear canvas draws everything else over it. */
+html, body {
+  height: 100%;
+  margin: 0;
+  overflow: hidden;
+  background: #141612;
+  color: #eabc76;
+  font: 15px/1.4 "Noto Sans SC", "Microsoft YaHei", "PingFang SC", system-ui, sans-serif;
+}
+#backdrop {
+  position: fixed;
+  inset: 0;
+  background: linear-gradient(90deg, #160e0b99, #12110cdb 50%, #12110ceb), url("assets/stage.webp") center / cover no-repeat, #141612;
+}
+:root[data-mode="play"] #backdrop {
+  background: radial-gradient(ellipse at 50% 27%, #35251d, #141612 72%);
+}
+@media (orientation: portrait) {
+  #backdrop { background: linear-gradient(#140f0cd1, #12110ce6), url("assets/stage.webp") center / cover no-repeat, #141612; }
+}
+#ground {
+  position: fixed;
+  background: #231813 url("assets/stage.webp") center / 100% 100% no-repeat;
+}
+#ground[data-act="tangma"]::after,
+#ground[data-act="jijifeng"]::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(ellipse at 51% 83%, #4d998326, transparent 64%);
+}
+#ground[data-act="jijifeng"]::after { background: radial-gradient(ellipse at 51% 80%, #ac4e343b, transparent 66%); }
+[hidden] { display: none !important; }
+#boot {
+  position: fixed;
+  inset: 43% 0 auto;
+  margin: 0;
+  text-align: center;
+}
+canvas:focus { outline: none; }

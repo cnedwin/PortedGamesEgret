@@ -1,8 +1,10 @@
 # Lantern Shadows · 灯影·闹天宫
 
-灯影·闹天宫是基于[新白鹭引擎 Egret Rebuild](https://github.com/cnedwin/Egret_rebuild)独立开发的 2D 横版动作游戏 Demo，整出戏演在一块皮影戏的幕布上：灯在幕后，镂空上色的皮偶贴着幕布，孙悟空一路打上南天门。目前有三幕。**第一幕南天门**：十名天兵把守一路，哪吒踏着风火轮在门前拦路。**第二幕蟠桃园**：桃林里有持盾的力士和从空中扑下来的仙鹤，枝上的桃子可以打下来吃，出口由二郎神带着哮天犬把守。**第三幕兜率宫**：太上老君的丹房，地上的炉口轮流喷火，丹炉可以打翻去烧敌人，有扇火的童子和扔丹药的道士，最后是老君本人、他的金刚琢和八卦炉。每幕四五分钟，三幕演完有一行总评。
+## 简介 · Introduction
 
-Lantern Shadows is an independently developed 2D side-scrolling action demo built with [Egret Rebuild](https://github.com/cnedwin/Egret_rebuild), played as a shadow-puppet show: a lamp behind a cloth, carved and dyed leather puppets against it, and the Monkey King fighting his way to the Southern Gate of Heaven. Three acts are here. **Act one, the Southern Gate**: ten soldiers of heaven hold the road, and Nezha comes down on his wheels of wind and fire to bar the gate. **Act two, the Peach Orchard**: shield-bearers among the trees, cranes that stoop out of the air, peaches on the boughs to knock down and eat, and Erlang with his hound holding the way out. **Act three, the Tushita Palace**: Laozi's furnace room, where grates in the floor breathe fire by turns, a furnace can be knocked over to burn whoever is beyond it, a boy fans the flames and an alchemist throws pills, and at the end Laozi himself, with his Diamond Snare and the Eight Trigrams Furnace. Each is four or five minutes, and when all three are played their seals are told together.
+灯影·闹天宫是基于[新白鹭引擎 Egret Rebuild](https://github.com/cnedwin/Egret_rebuild)独立开发的 2D 横版动作游戏 Demo，整出戏演在一块皮影戏的幕布上：灯在幕后，镂空上色的皮偶贴着幕布，孙悟空一路打上南天门。目前有三幕。**第一幕南天门**：十名天兵把守一路，哪吒踏着风火轮在门前拦路。**第二幕蟠桃园**：桃林里有持盾的力士和从空中扑下来的仙鹤，枝上的桃子可以打下来吃，出口由二郎神带着哮天犬把守。**第三幕兜率宫**：太上老君的丹房，地上的炉口轮流喷火，丹炉可以打翻去烧敌人，有扇火的童子和扔丹药的道士，最后是老君本人、他的金刚琢和八卦炉。每幕四五分钟，三幕演完有一行总评。[在线试玩](https://cnedwin.github.io/PortedGamesEgret/LanternShadows/)
+
+Lantern Shadows is an independently developed 2D side-scrolling action demo built with [Egret Rebuild](https://github.com/cnedwin/Egret_rebuild), played as a shadow-puppet show: a lamp behind a cloth, carved and dyed leather puppets against it, and the Monkey King fighting his way to the Southern Gate of Heaven. Three acts are here. **Act one, the Southern Gate**: ten soldiers of heaven hold the road, and Nezha comes down on his wheels of wind and fire to bar the gate. **Act two, the Peach Orchard**: shield-bearers among the trees, cranes that stoop out of the air, peaches on the boughs to knock down and eat, and Erlang with his hound holding the way out. **Act three, the Tushita Palace**: Laozi's furnace room, where grates in the floor breathe fire by turns, a furnace can be knocked over to burn whoever is beyond it, a boy fans the flames and an alchemist throws pills, and at the end Laozi himself, with his Diamond Snare and the Eight Trigrams Furnace. Each is four or five minutes, and when all three are played their seals are told together. [Play online](https://cnedwin.github.io/PortedGamesEgret/LanternShadows/)
 
 ## 玩法 · How to play
 
@@ -119,21 +121,6 @@ New in **act three**:
 地址参数 · Address options：`?act=2`、`?act=3` 从第二、三幕演起；默认用 WebGL2，`?backend=webgpu` 改用 WebGPU，`?stats` 显示帧率与骨骼数，`?slow=0.25` 以四分之一速度播放（看动作用），`?from=nezha` 从门前的院子演起（`?from=erlang`、`?from=laozi` 从第二、三幕的院子），`?clones=200` 设定一把毫毛变出多少个分身（10 到 400，默认 100），`?lang=en` 以英文开始，`?dev` 不用打包好的文件而逐个加载 `src/` 与 `vendor/` 里的模块（改代码时用）。画面太慢时会自动收回一部分分身，写了 `?clones` 就一个不收。
 `?act=2` and `?act=3` begin with the second and third acts; WebGL2 is the default and `?backend=webgpu` draws with WebGPU instead, `?stats` shows the frame rate and bone count, `?slow=0.25` plays at quarter speed (to watch the motion), `?from=nezha` begins at the court before the gate (and `?from=erlang` and `?from=laozi` at the second and third acts'), `?clones=200` sets how many clones a tuft makes (10 to 400, a hundred unless said), `?lang=en` starts in English, and `?dev` loads the modules in `src/` and `vendor/` one by one instead of the packed file (for working on the code). When the stage is drawn too slowly some of the clones are sent back; with `?clones` given, none are.
 
-## 用到的引擎能力 · What it uses of the engine
-
-| 能力 · Capability | 用在哪里 · Where |
-|---|---|
-| Spine 骨骼动画 · Spine skeletal animation (`@egret/spine`) | 十种皮偶（第二幕添了力士、仙鹤、二郎神、他变的鹰和 15 根骨骼的哮天犬；鹰与仙鹤骨骼同名，共用一套动画；二郎神法天象地时整副骨骼按比例放大），其中：悟空 25 根骨骼、24 片皮、12 段动画；哪吒 21 根骨骼、19 片皮、17 段动画；枪兵与弓手各 18 根骨骼；木人桩 8 根。一幕里同台 14 个，只推进镜头附近的；使出身外身时再加一百个悟空，一共两千五百多根骨骼同时在动。动画之间有混合，受击时整台戏定格几帧。 · Ten puppets (act two adds the shield-bearer, the crane, Erlang, the hawk he becomes and a hound of 15 bones; the hawk has the crane's bones under other feathers and moves by the crane's animations; and when Erlang grows, his whole skeleton is scaled), among them the Monkey King with 25 bones, 24 pieces and 12 animations; Nezha with 21 bones, 19 pieces and 17 animations; a spearman and an archer with 18 bones each; and a post with 8. Fourteen share the stage in an act, and only those near the camera are moved on; the body beyond the body adds a hundred Monkey Kings, more than two and a half thousand bones moving at once. Animations blend into one another, and the whole stage holds still for a few frames when a blow lands. |
-| 多轨动画 · Animation tracks | 悟空的金箍棒在不在手里是单独一条轨（被金刚琢套走时收起）。哪吒同时放三条轨：第一条是他在做什么，第二条收放三头六臂，第三条管乾坤圈在不在手里。后两条只动自己那块骨头，其余照旧。 · Whether the staff is in the Monkey King's hand is a track of its own (it is put away when the snare takes it). Nezha plays three tracks at once: what he is doing on the first, his three heads and six arms shown or put away on the second, and whether the ring is in his hand on the third. The upper two move only their own bone and leave the rest as it was. |
-| 瓦片地图 · Tile map (`@egret/engine/tilemap`) | 每一幕是一张 Tiled 地图，各用自己的一套瓦片（南天门的石台与云，蟠桃园的草地与树枝，兜率宫的地板与回廊）：引擎用它画地面，规则读同一个文件里的实心格、可以站的格和摆放的东西。换幕时拆掉上一幕的地图、布景和皮偶，搭起下一幕的。 · Each act is a Tiled map with a tile set of its own (stone and cloud for the gate, turf and boughs for the orchard, boards and galleries for the palace): the engine draws the ground from it, and the rules read the solid cells, the cells that can be stood on and the things placed in the same file. Between acts the last one's map, scenery and puppets are taken down and the next one's put up. |
-| 资源清单 · Resource manifest | 骨骼、图集和贴图由清单登记，按清单里的校验和核对后加载。图片由浏览器自带的图片解码读入（`src/pictures.mjs`），这条路在各家手机浏览器上都走得通。 · Skeletons, atlases and their pages are listed in a manifest and checked against its checksums as they load. Pictures are decoded by the browser's own image element (`src/pictures.mjs`), a way that works in every phone browser. |
-| 混合模式 · Blend modes | 皮偶与布景用正片叠底画在幕布上：皮只会让透过它的光变暗，两片叠着的地方更暗；火星用相加。 · Puppets and scenery are multiplied onto the cloth, since leather only darkens the light that passes through it, and where two pieces overlap it is darker still. Sparks are added. |
-| 2D 摄像机 · 2D camera | 跟随、前瞻、边界、多层视差、受击震动与重击时的推近。 · Following with a lead, bounds, parallax layers, a shake when a blow lands and a push-in on the heaviest. |
-| 粒子 · Particles | 火星、稻草屑、脚下的尘，风火轮上和它碾过的地面上的火，丹房里炉口的火柱、打翻的炉火、扇出的火舌与风。 · Sparks, straw, dust underfoot, the fire on the wheels and on the ground they have crossed, and in the palace the columns over the grates, the spilled furnace fire, and the fan's flame and wind. |
-| 混音器 · Audio mixer | 三幕配乐和动作音效走独立音轨。频繁动作使用不同的短音，限制混战时的重复和叠声。 · The score and foley use separate buses. Common actions rotate through synthesized variants, with limits on repeated and overlapping cues. |
-| 输入 · Input | 键盘、手柄（带震动）、触屏。 · Keyboard, gamepad with rumble, and touch. |
-| 渲染后端 · Renderers | 默认 WebGL2，可选 WebGPU。 · WebGL2 by default, WebGPU on request. |
-
 ## 美术是怎么来的 · Where the art comes from
 
 没有一张手绘位图。每片皮的轮廓、染色和镂空花纹都写在 `tools/puppets/` 里，由 `tools/author.mjs` 画成矢量图、拼成图集，并写出把它们重新连起来的 Spine 骨骼与动画；幕布、戏台、布景和地面的瓦片出自 `tools/scenery.mjs`；关卡在 `tools/levels/` 里用字母格子摆出来，写成 Tiled 地图。皮影本来就是关节相连的平面偶，所以骨骼动画在这里就是它本来的动法。
@@ -169,6 +156,70 @@ The original scores and synthesizers are in `tools/compose-score.py`. Python, Nu
 python tools/compose-score.py ./score-export --ffmpeg ffmpeg
 ```
 
+## 运行与测试 · Run and test
+
+```
+python3 -m http.server 4180        在仓库根目录执行，然后打开 /LanternShadows/ · from the repository root, then open /LanternShadows/
+node --test test/*.test.mjs        在本目录执行 · from this folder
+```
+
+## 许可 · Licences
+
+游戏代码与生成的美术以 Apache-2.0 发布。引擎运行库与其依赖的许可见 `vendor/NOTICE`；其中 Spine 运行库按 Spine Runtimes License Agreement 使用，要求使用者持有 Spine 编辑器授权。
+
+The game's code and its generated art are released under Apache-2.0. The engine runtime and its dependencies are listed in `vendor/NOTICE`; the Spine runtime among them is used under the Spine Runtimes License Agreement, which requires a Spine Editor license of whoever uses it.
+
+## 用到的引擎能力 · What it uses of the engine
+
+| 引擎入口 / API · Entry / API | 在本游戏中的用途 · Use in this game | 文件 · File |
+|---|---|---|
+| Spine 骨骼动画 · Spine skeletal animation (`@egret/spine`) | 十种皮偶（第二幕添了力士、仙鹤、二郎神、他变的鹰和 15 根骨骼的哮天犬；鹰与仙鹤骨骼同名，共用一套动画；二郎神法天象地时整副骨骼按比例放大），其中：悟空 25 根骨骼、24 片皮、12 段动画；哪吒 21 根骨骼、19 片皮、17 段动画；枪兵与弓手各 18 根骨骼；木人桩 8 根。一幕里同台 14 个，只推进镜头附近的；使出身外身时再加一百个悟空，一共两千五百多根骨骼同时在动。动画之间有混合，受击时整台戏定格几帧。 · Ten puppets (act two adds the shield-bearer, the crane, Erlang, the hawk he becomes and a hound of 15 bones; the hawk has the crane's bones under other feathers and moves by the crane's animations; and when Erlang grows, his whole skeleton is scaled), among them the Monkey King with 25 bones, 24 pieces and 12 animations; Nezha with 21 bones, 19 pieces and 17 animations; a spearman and an archer with 18 bones each; and a post with 8. Fourteen share the stage in an act, and only those near the camera are moved on; the body beyond the body adds a hundred Monkey Kings, more than two and a half thousand bones moving at once. Animations blend into one another, and the whole stage holds still for a few frames when a blow lands. | `src/puppets.mjs` |
+| 多轨动画 · Animation tracks | 悟空的金箍棒在不在手里是单独一条轨（被金刚琢套走时收起）。哪吒同时放三条轨：第一条是他在做什么，第二条收放三头六臂，第三条管乾坤圈在不在手里。后两条只动自己那块骨头，其余照旧。 · Whether the staff is in the Monkey King's hand is a track of its own (it is put away when the snare takes it). Nezha plays three tracks at once: what he is doing on the first, his three heads and six arms shown or put away on the second, and whether the ring is in his hand on the third. The upper two move only their own bone and leave the rest as it was. | `src/puppets.mjs` |
+| 瓦片地图 · Tile map (`@egret/engine/tilemap`) | 每一幕是一张 Tiled 地图，各用自己的一套瓦片（南天门的石台与云，蟠桃园的草地与树枝，兜率宫的地板与回廊）：引擎用它画地面，规则读同一个文件里的实心格、可以站的格和摆放的东西。换幕时拆掉上一幕的地图、布景和皮偶，搭起下一幕的。 · Each act is a Tiled map with a tile set of its own (stone and cloud for the gate, turf and boughs for the orchard, boards and galleries for the palace): the engine draws the ground from it, and the rules read the solid cells, the cells that can be stood on and the things placed in the same file. Between acts the last one's map, scenery and puppets are taken down and the next one's put up. | `src/main.mjs` |
+| 资源清单 · Resource manifest | 骨骼、图集和贴图由清单登记，按清单里的校验和核对后加载。图片由浏览器自带的图片解码读入（`src/pictures.mjs`），这条路在各家手机浏览器上都走得通。 · Skeletons, atlases and their pages are listed in a manifest and checked against its checksums as they load. Pictures are decoded by the browser's own image element (`src/pictures.mjs`), a way that works in every phone browser. | `src/pictures.mjs` |
+| 混合模式 · Blend modes | 皮偶与布景用正片叠底画在幕布上：皮只会让透过它的光变暗，两片叠着的地方更暗；火星用相加。 · Puppets and scenery are multiplied onto the cloth, since leather only darkens the light that passes through it, and where two pieces overlap it is darker still. Sparks are added. | `src/main.mjs` |
+| 2D 摄像机 · 2D camera | 跟随、前瞻、边界、多层视差、受击震动与重击时的推近。 · Following with a lead, bounds, parallax layers, a shake when a blow lands and a push-in on the heaviest. | `src/main.mjs` |
+| 粒子 · Particles | 火星、稻草屑、脚下的尘，风火轮上和它碾过的地面上的火，丹房里炉口的火柱、打翻的炉火、扇出的火舌与风。 · Sparks, straw, dust underfoot, the fire on the wheels and on the ground they have crossed, and in the palace the columns over the grates, the spilled furnace fire, and the fan's flame and wind. | `src/main.mjs` |
+| 混音器 · Audio mixer | 三幕配乐和动作音效走独立音轨。频繁动作使用不同的短音，限制混战时的重复和叠声。 · The score and foley use separate buses. Common actions rotate through synthesized variants, with limits on repeated and overlapping cues. | `src/sound.mjs` |
+| 输入 · Input | 键盘、手柄（带震动）、触屏。 · Keyboard, gamepad with rumble, and touch. | `src/input.mjs` |
+| 渲染后端 · Renderers | 默认 WebGL2，可选 WebGPU。 · WebGL2 by default, WebGPU on request. | `src/main.mjs` |
+
+## 已验证 · Verified
+
+- 2026-11-26：使用引擎主干 8e70dcb3 的官方生成副本，重建轻量单文件及开发模式的入口映射。89 项游戏 Node 测试全部通过，保持三幕规则、资源校验、历史通关记录和独立单棒试演。 · Official engine copy 8e70dcb3; rebuilt the compact package and development import map. All 89 Node tests passed, including three-act rules, resource integrity, campaign records and separate staff trials.
+
+- 2026-11-21 引擎副本升级到 `b5628eb`、重新打包后：85 项 Node 测试通过；无头 Chromium 下打包页面和 `?dev` 都能开始，第一幕和第三幕各打 20 秒无控制台错误（`?clones=200` 时的 Spine 实例上限报错升级前后都有，见已知问题）。 · After the engine update and a new pack: 85 tests pass, both the packed page and ?dev start, and acts one and three play clean.
+- 2026-11-21 在提交 `fc1dacb`、Node 22.23.4 下运行 `node --test test/*.test.mjs`：85 项全部通过（三幕的规则、Boss、分身、资源清单与校验和、打包文件不比源码旧）。 · `node --test` at commit `fc1dacb` with Node 22.23.4: all 85 tests pass, including the check that the packed file is not older than its sources.
+- 2026-11-20 `node tools/quality.mjs LanternShadows` 在无头 Chromium + SwiftShader 下测了 16 个自动项，结果见 [QUALITY.md](QUALITY.md)；软件渲染下桌面帧时间 p95 为 66.7 ms，不代表真显卡。 · The 16 automatic quality items in headless Chromium with software rendering; the frame time there says nothing of a real GPU.
+- 没有记录在案的真机整局验收。 · No recorded whole-game run on a real device.
+
+- 2026-11-26 PC 实机：Windows 11 / Edge 158.0.4370.33，WebGL2。用正常键鼠输入完整通过南天门、蟠桃园和兜率宫，评级 B/A/B，游戏内耗时 45.73/47.73/64.15 秒；暂停恢复、分身、落幕及成绩刷新续读正常。三幕普通战斗帧时间 p95 皆为 4.3 ms，百身术 p95 皆为 16.7 ms；第一幕百身术记录一次 54.3 ms 长帧。 · Physical Windows PC, Edge 158.0.4370.33, WebGL2: cleared all three acts through keyboard input (B/A/B), pause/resume, clones and saved records verified. Normal combat p95 4.3 ms and dense-clone p95 16.7 ms in every act; one 54.3 ms dense frame in act one.
+
+- 2026-11-26 三星 Galaxy Z Fold7（SM-F966U1，Android 17，Chrome 157.0.8103.78）横屏真机 WebGL2：仅用触控输入连续通过三幕（C/B/B，游戏内 89.08/75.63/91.07 秒），每幕两次百身术、峰值 100 个分身；老君炉内阶段、落幕、成绩刷新续读正常。移动摇杆越界跟踪、释放/取消、多点操作、暂停恢复及唯一跳键通过。普通战斗 p95 16.7 ms，百身术约 33.2–33.3 ms；普通战斗出现三次 >50 ms（最大 116 ms），第一幕分身三次 >50 ms（最大 66.7 ms）。音乐切换和运行状态通过，扬声器音色未人工实听。 · Physical Fold7 (SM-F966U1, Android 17, Chrome 157), landscape WebGL2: all acts completed through touch (C/B/B), each with two natural clone casts and a peak of 100 clones. Furnace, results, record reload, drag-out, release/cancel, multitouch, pause/resume and a single Jump control verified. Normal p95 16.7 ms; dense p95 33.2–33.3 ms, with occasional long frames (max 116 ms normal, 66.7 ms dense). Music playback state, not acoustic quality, was checked.
+
+- 2026-11-26：浏览器验收主流程 8 项及结算布局专项 1 项均通过；新增标题、暂停战场基线，复跑差异 0.00% 与 1.27%。T2 触控目标和 I1 双语语义检查通过。 · Eight browser acceptance checks and one separate layout fixture passed; new title/paused-scene baselines changed 0.00%/1.27%. T2 and I1 now pass.
+
+## 已知问题 · Known issues
+
+- `?clones` 设得太大（例如 200）时，同台的 Spine 实例超过引擎每个骨骼的 128 个上限，多出的分身建不出来，控制台报 `SPINE_INSTANCE_LIMIT_FAILED`（ENGINE-NOTES 第 3 条）；默认的一百个不会碰到。 · A large `?clones` (200, say) passes the engine's limit of 128 Spine instances; the default hundred does not.
+- 画面太慢时会自动收回一部分分身（写了 `?clones` 就不收），所以慢的设备上身外身的分身数会少于一百。 · On a slow device some clones are sent back, so fewer than a hundred appear unless `?clones` is given.
+- 第一次加载页面要先下载打包文件和第一幕的全部文件，改过 `src/`、`vendor/` 或 `assets/` 后必须重新运行 `tools/bundle.mjs`，否则页面跑的是旧代码（测试会指出来）。 · After a change under `src/`, `vendor/` or `assets/` the page runs old code until `tools/bundle.mjs` is run again (a test says so).
+- 新版统一品质检查：[QUALITY.md](QUALITY.md)，仅 F1 自动软件渲染未达标（Windows Chromium 157 + SwiftShader，p95 99.9 ms）；与真实 PC 帧时间分开记录。 · The quality tool still fails its headless SwiftShader F1 check, separately from physical-device performance.
+
+## 已解决 · Solved
+
+- iPhone 上一直停在加载、开锣键没有反应：引擎自带的 PNG 读取要求 2D 画布报告 sRGB 色彩空间，iPhone 的浏览器不报告。改为用浏览器自带的图片元素解码，并按清单校验和核对（`src/pictures.mjs`，`e6dd7ac`，ENGINE-NOTES 第 1 条）。 · Stuck on loading on iPhone: pictures are now decoded by the browser's image element (item 1).
+- 页面逐个加载约 260 个模块才开始：`tools/bundle.mjs` 打成一个压缩文件，并在 `index.html` 里预先列出第一幕要读的文件（`7647b50`，ENGINE-NOTES 第 2 条）。 · About 260 module requests before the start; packed into one file (item 2).
+- 手机上快速点触屏按钮会缩放页面、戏台滑出屏幕：固定视口，戏台不响应双指、双击和拖动，长按不弹菜单，并在脚本里再拒绝一次（`52cf172`）。 · Quick taps zoomed the page on phones; the viewport and gestures are now held.
+- 触屏上分身计数挡住提示（`15621a1`）；丹房炉火特效分批绘制（`0cf5159`）。 · The clones' line covered the notice on touch screens; the furnace effects are batched.
+
+- Fold7 真实竖屏旋转时英文标题撑大布局而无法开锣：限制网格内在尺寸和字体，英文允许换行。实际 411×813 屏幕开锣、摇杆、单跳及暂停恢复通过。 · Rotating a physical Fold7 had pushed the English Start button off-screen; bounded grid tracks and wrapping fix it, verified on the real portrait phone.
+
+## 未完成 · Unfinished
+
+- iPhone Safari、实体手柄、真实扬声器音质，以及偶发长帧的归因尚未验证。 · iPhone Safari, a physical gamepad, acoustic speaker quality and long-frame attribution remain unverified.
+- 中端设备、独立扬声器试听和失效资源重试仍需独立验收。 · Mid-range phones, acoustic listening and failed-resource retry need separate acceptance.
+
 ## 目录 · Layout
 
 ```
@@ -195,15 +246,8 @@ vendor/                 引擎运行库的源文件，见 vendor/SOURCE.md · th
 test/                   规则与资源的检查 · checks of the rules and the assets
 ```
 
-## 运行与测试 · Run and test
+## 引擎副本 · Engine copy
 
-```
-python3 -m http.server 4180        在仓库根目录执行，然后打开 /LanternShadows/ · from the repository root, then open /LanternShadows/
-node --test test/*.test.mjs        在本目录执行 · from this folder
-```
+引擎副本取自 [Egret_rebuild](https://github.com/cnedwin/Egret_rebuild) 提交 `8e70dcb3a8a0b40c9966483c92cb9f691a1cefd8`，由引擎仓库的 `tools/vendor-game.mjs` 复制，见 [vendor/SOURCE.md](vendor/SOURCE.md)。
 
-## 许可 · Licences
-
-游戏代码与生成的美术以 Apache-2.0 发布。引擎运行库与其依赖的许可见 `vendor/NOTICE`；其中 Spine 运行库按 Spine Runtimes License Agreement 使用，要求使用者持有 Spine 编辑器授权。
-
-The game's code and its generated art are released under Apache-2.0. The engine runtime and its dependencies are listed in `vendor/NOTICE`; the Spine runtime among them is used under the Spine Runtimes License Agreement, which requires a Spine Editor license of whoever uses it.
+The engine copy is from [Egret_rebuild](https://github.com/cnedwin/Egret_rebuild) commit `8e70dcb3a8a0b40c9966483c92cb9f691a1cefd8`, copied by the engine's `tools/vendor-game.mjs`; see [vendor/SOURCE.md](vendor/SOURCE.md).

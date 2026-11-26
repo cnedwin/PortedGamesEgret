@@ -1,1 +1,1 @@
-{"version":3,"file":"physics2d.js","sourceRoot":"","sources":["../src/physics2d.ts"],"names":[],"mappings":"AAAA,sCAAsC;AACtC,yGAAyG;AACzG,OAAO,EAAE,kBAAkB,EAAE,MAAM,qBAAqB,CAAC"}
+{"version":3,"file":"physics2d.js","sourceRoot":"","sources":["../src/physics2d.ts"],"names":[],"mappings":"AAAA,sCAAsC;AACtC,mIAAmI;AACnI,OAAO,EAAE,kBAAkB,EAAE,MAAM,qBAAqB,CAAC"}

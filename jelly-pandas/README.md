@@ -1,5 +1,7 @@
 # Jelly Pandas · 果冻熊猫
 
+## 简介 · Introduction
+
 果冻熊猫是基于[新白鹭引擎 Egret Rebuild](https://github.com/cnedwin/Egret_rebuild)独立开发的 3D 动作生存游戏 Demo。半透明的果冻熊猫要在玩具岛上抵挡越来越多的糖果大军十五分钟：玩具自动开火，软弹的身体本身也是武器，每次升级选一张强化卡，第 5、10、15 分钟各有一个 Boss。 [在线试玩](https://cnedwin.github.io/PortedGamesEgret/jelly-pandas/)
 
 Jelly Pandas is an independently developed 3D action survival demo built with [Egret Rebuild](https://github.com/cnedwin/Egret_rebuild). See-through jelly pandas hold a toy island for fifteen minutes against a growing candy horde: toys fire on their own, the wobbly body is a weapon too, every level brings an upgrade card, and a boss arrives at 5, 10 and 15 minutes. [Play online](https://cnedwin.github.io/PortedGamesEgret/jelly-pandas/)
@@ -33,48 +35,6 @@ Jelly Pandas is an independently developed 3D action survival demo built with [E
 游戏支持键鼠、手柄和手机触屏。音乐和音效都由 Web Audio 实时生成。标题界面可以切换画质（高、中、低），帧率不足时请调低。
 
 The game supports keyboard and mouse, gamepad, and mobile touch controls. Music and sound effects are generated with Web Audio. The title screen has a quality setting (high, medium, low); lower it if the frame rate drops.
-
-## 引擎用法 · How it uses the engine
-
-游戏使用白鹭 World3D，默认以 WebGL2 绘制。各部分对应的引擎功能如下。
-
-The game uses Egret World3D and draws with WebGL2 by default. Each part maps to an engine feature as follows.
-
-| 部分 · Part | 引擎功能 · Engine feature |
-|---|---|
-| 熊猫行走、跳跃、推动道具 · Pandas walking, jumping and pushing props | `createCharacterMotor3D` + `PhysicsWorld3D` |
-| 糖果敌群 · The candy horde | 每个敌人一个刚体球，用碰撞层与熊猫分开 · one rigid sphere per enemy, kept apart from pandas by collision layers |
-| 岛屿碰撞 · Island collision | `createMeshShape3D` 静态三角网格 · static triangle mesh |
-| 沙滩球和木桶 · Beach balls and barrels | 球体与凸包刚体 · sphere and convex-hull rigid bodies |
-| 果冻身体 · Jelly bodies | `createGlassMaterial3D` + 程序生成的花纹纹理 · generated pattern textures |
-| 果冻抖动 · Jelly wobble | `createJelly3D` |
-| 拖尾 · Trails | `createTrail3D` |
-| 植被随风摆动、被角色拨开 · Plants swaying in the wind and parting around characters | `createCustomShader3D` 顶点钩子 · vertex hook |
-| 敌群、弹丸、糖粒、树木 · Horde, shots, sprinkles, trees | `InstancedMesh3D` 逐实例颜色 · per-instance colour |
-| 海面 · The sea | `createWater3D` 波浪与倒影 · waves and reflection |
-| 特效 · Effects | `createParticleEmitter3D` |
-| 相机 · Camera | `createFollowCamera3D` |
-| 帧循环 · Frame loop | Engine 时钟 · Engine clock，`createWorld3DView`，`startWorld3DLoop` |
-| 画面 · Look | 级联阴影、天空环境光、环境遮蔽、泛光、FXAA · cascaded shadows, sky lighting, ambient occlusion, bloom, FXAA |
-
-模型、3D 纹理和音效由代码生成，选角与队伍头像共用一张角色概念图。
-
-3D models, 3D textures and sounds are generated in code. The picker and party portraits share one concept art atlas.
-
-## 目录 · Layout
-
-| 路径 · Path | 内容 · Contents |
-|---|---|
-| `index.html`, `style.css` | 页面与界面样式 · the page and interface styles |
-| `src/main.mjs` | 启动与每帧流程 · start-up and the frame |
-| `src/sim.mjs`, `src/toys.mjs` | 游戏规则，不依赖页面 · the rules, no page needed |
-| `src/data.mjs` | 熊猫、玩具、护符、敌人、Boss 和双语文字 · pandas, toys, charms, enemies, bosses and text in both languages |
-| `src/island.mjs` | 绘制与碰撞共用的岛屿高度网格 · the island height grid shared by drawing and collision |
-| `src/view.mjs`, `src/panda.mjs`, `src/wind.mjs` | 3D 画面与植被的风 · everything drawn in 3D, and the wind in the plants |
-| `src/hud.mjs`, `src/input.mjs`, `src/audio.mjs` | 界面、输入、音效 · interface, input, sound |
-| `assets/panda-roster.webp` | 角色设定和头像图集 · character concepts and portrait atlas |
-| `tools/`, `test/` | 无页面运行与规则测试 · headless run and rule tests |
-| `vendor/` | 引擎运行时副本 · the engine runtime copy |
 
 ## 运行与开发 · Run and develop
 
@@ -116,8 +76,73 @@ Play a whole run without a page (party size, seed and minutes are optional). It 
 node tools/headless.mjs 4 7 17
 ```
 
+## 引擎用法 · How it uses the engine
+
+游戏使用白鹭 World3D，默认以 WebGL2 绘制。各部分对应的引擎功能如下。
+
+The game uses Egret World3D and draws with WebGL2 by default. Each part maps to an engine feature as follows.
+
+| 引擎入口 / API · Entry / API | 在本游戏中的用途 · Use in this game | 文件 · File |
+|---|---|---|
+| `createCharacterMotor3D` + `PhysicsWorld3D` | 熊猫行走、跳跃、推动道具 · Pandas walking, jumping and pushing props | `src/sim.mjs` |
+| 每个敌人一个刚体球，用碰撞层与熊猫分开 · one rigid sphere per enemy, kept apart from pandas by collision layers | 糖果敌群 · The candy horde | `src/sim.mjs` |
+| `createMeshShape3D` 静态三角网格 · static triangle mesh | 岛屿碰撞 · Island collision | `src/sim.mjs` |
+| 球体与凸包刚体 · sphere and convex-hull rigid bodies | 沙滩球和木桶 · Beach balls and barrels | `src/sim.mjs` |
+| `createGlassMaterial3D` + 程序生成的花纹纹理 · generated pattern textures | 果冻身体 · Jelly bodies | `src/panda.mjs` |
+| `createJelly3D` | 果冻抖动 · Jelly wobble | `src/panda.mjs` |
+| `createTrail3D` | 拖尾 · Trails | `src/view.mjs` |
+| `createCustomShader3D` 顶点钩子 · vertex hook | 植被随风摆动、被角色拨开 · Plants swaying in the wind and parting around characters | `src/wind.mjs` |
+| `InstancedMesh3D` 逐实例颜色 · per-instance colour | 敌群、弹丸、糖粒、树木 · Horde, shots, sprinkles, trees | `src/view.mjs` |
+| `createWater3D` 波浪与倒影 · waves and reflection | 海面 · The sea | `src/view.mjs` |
+| `createParticleEmitter3D` | 特效 · Effects | `src/view.mjs` |
+| `createFollowCamera3D` | 相机 · Camera | `src/main.mjs` |
+| Engine 时钟 · Engine clock，`createWorld3DView`，`startWorld3DLoop` | 帧循环 · Frame loop | `src/main.mjs` |
+| 级联阴影、天空环境光、环境遮蔽、泛光、FXAA · cascaded shadows, sky lighting, ambient occlusion, bloom, FXAA | 画面 · Look | `src/view.mjs` |
+
+模型、3D 纹理和音效由代码生成，选角与队伍头像共用一张角色概念图。
+
+3D models, 3D textures and sounds are generated in code. The picker and party portraits share one concept art atlas.
+
+## 已验证 · Verified
+
+- 2026-11-21 引擎副本升级到 `b5628eb` 后：24 项 Node 测试和无页面整局通过；无头 Chromium 下开局后移动、跳跃 35 秒无控制台错误。 · After the engine update: 24 tests and a headless run pass, and 35 s of play run clean.
+- 2026-11-21 在提交 `fc1dacb`、Node 22.23.4 下运行 `node --test test/*.test.mjs`：24 项全部通过（规则、熊猫、输入）。 · `node --test` at commit `fc1dacb` with Node 22.23.4: all 24 tests pass.
+- 提交 `ddd18ce` 记录的测量：高画质、约 190 个敌人的忙碌时刻，每帧三角形从 480 万降到 100 万以下，绘制次数从约 500 降到约 340；四只熊猫无页面整局的规则每步从 1.59 ms 降到 1.28 ms。测量的设备和浏览器没有记录。 · Recorded in `ddd18ce`: triangles a frame from 4.8 million to under 1 million and draw calls from about 500 to 340 in a busy moment; a rules step from 1.59 to 1.28 ms. The device used was not recorded.
+- 2026-11-20 `node tools/quality.mjs jelly-pandas` 在无头 Chromium + SwiftShader 下测了 16 个自动项，结果见 [QUALITY.md](QUALITY.md)；软件渲染下帧时间一项不代表真机。 · The 16 automatic quality items in headless Chromium; its frame time says nothing of real devices.
+
+## 已知问题 · Known issues
+
+- 海面倒影里不画阴影和小物件（植物、敌群、弹丸、拾取物、粒子），这是为了省绘制而有意去掉的。 · The sea's mirror leaves out shadows and small things on purpose, to save drawing.
+- 品质验收未达标 · Quality items failing（[QUALITY.md](QUALITY.md)，2026-11-21，无头 Chromium + SwiftShader · headless, software rendering）：T2 触控区 ≥ 44×44 CSS px（7 of 16 under 44×44: Solo 45×26; +1 friend 72×26; +2 friends 81×26; +3 friends 82×26）；T3 不误触下拉刷新和双击缩放（overscroll held, touch-action auto, double-tap zoom on）；F1 桌面帧时间 p95 ≤ 16.7 ms（p95 683.3 ms over 15 frames）；I1 中英文全可切换，英文下无中文（html lang "en", Chinese left: 果冻熊猫 动作游戏 移动 鼠标转视角 空格跳跃）；E2 资源失败有错误界面和重试（1 files refused; no uncaught error; no error screen with a retry）。
+
+## 已解决 · Solved
+
+- 每帧三角形太多：眼睛、花瓣、草叶、茎和弹丸用更粗的形状，海面倒影不画阴影和小物件，阴影从三级减到两级（`ddd18ce`）。 · Too many triangles; coarser small shapes, a leaner sea mirror and two shadow cascades.
+- 第一次出现的特效、倒影里熊猫的脸、宝石和弹丸各自要新编译管线，开局卡顿：在标题画面里先画一遍，并让弹丸、宝石沿用敌群的顶点布局（`f3cbec0`、`d016836`、`e5ca02e`、`13783f8`，ENGINE-NOTES 第 1、2 条）。 · First-use effects, the face in the mirror, gems and shots each compiled a pipeline; they are drawn on the title, and shots and gems share the horde's vertex layout (items 1 and 2).
+- 触屏拖动会被别的控件抢走（`e5da770`）；触屏上第二根手指可以暂停（`46a3909`）；启动时设置页面语言（`4a6e4e9`）；升级卡片在触屏上更易读（`94bb21a`）。 · Touch drags stay with the control they began on; a second finger pauses; the page language is set at launch; upgrade cards read better on touch.
+
+## 未完成 · Unfinished
+
+- 英文模式下页面上仍有中文（品质 I1）；选人数的按钮太小（T2）；资源加载失败没有错误界面和重试（E2）。 · Chinese left in English mode, small party buttons, no retry after a failed file.
+- 真机上的帧时间和触屏整局验收。 · Frame times and a whole run by touch on real devices.
+
+## 目录 · Layout
+
+| 路径 · Path | 内容 · Contents |
+|---|---|
+| `index.html`, `style.css` | 页面与界面样式 · the page and interface styles |
+| `src/main.mjs` | 启动与每帧流程 · start-up and the frame |
+| `src/sim.mjs`, `src/toys.mjs` | 游戏规则，不依赖页面 · the rules, no page needed |
+| `src/data.mjs` | 熊猫、玩具、护符、敌人、Boss 和双语文字 · pandas, toys, charms, enemies, bosses and text in both languages |
+| `src/island.mjs` | 绘制与碰撞共用的岛屿高度网格 · the island height grid shared by drawing and collision |
+| `src/view.mjs`, `src/panda.mjs`, `src/wind.mjs` | 3D 画面与植被的风 · everything drawn in 3D, and the wind in the plants |
+| `src/hud.mjs`, `src/input.mjs`, `src/audio.mjs` | 界面、输入、音效 · interface, input, sound |
+| `assets/panda-roster.webp` | 角色设定和头像图集 · character concepts and portrait atlas |
+| `tools/`, `test/` | 无页面运行与规则测试 · headless run and rule tests |
+| `vendor/` | 引擎运行时副本 · the engine runtime copy |
+
 ## 引擎与许可 · Engine and license
 
-`vendor/` 中是新白鹭引擎的运行时副本，采用 Apache-2.0 许可，来源和版本见 [vendor/SOURCE.md](vendor/SOURCE.md)。
+`vendor/` 中是新白鹭引擎的运行时副本，采用 Apache-2.0 许可，引擎提交 `b5628eb9997b67cf6163a388f5aa06f321f3833a`，来源和版本见 [vendor/SOURCE.md](vendor/SOURCE.md)。
 
-`vendor/` holds a copy of the Egret Rebuild runtime under Apache-2.0; see [vendor/SOURCE.md](vendor/SOURCE.md) for its source and version.
+`vendor/` holds a copy of the Egret Rebuild runtime under Apache-2.0; engine commit `b5628eb9997b67cf6163a388f5aa06f321f3833a`; see [vendor/SOURCE.md](vendor/SOURCE.md) for its source and version.

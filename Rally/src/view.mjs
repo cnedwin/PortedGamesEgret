@@ -15,6 +15,7 @@ import { createKartModel } from './racers.mjs';
 import { createScenery } from './scenery.mjs';
 import { BOX, CONE, CYLINDER, SPHERE, build, dotTexture, yawQuat } from './shapes.mjs';
 import { wrapAngle } from './track.mjs';
+import { createTrackModelBatch } from './track-models.mjs';
 
 const GOLD = 0xf2c230,
   RED = 0xd8262c;
@@ -27,8 +28,10 @@ const SPARKS = [0xf2f2f2, 0x4fb8ff, 0xff9a2e, 0xc86bff];
  */
 export function createView(scene, camera, track, options = {}) {
   const scenery = createScenery(scene, track, options);
+  const trackModels = options.trackModels ?? {};
   // `shake` is the camera shake still to play out and `flash` the brightness of the thunder's flash; both fade by themselves.
-  const view = { scenery, time: 0, shake: 0, flash: 0, models: [] };
+  // `reducedMotion`: the player asked for less motion, so the camera does not shake and the thunder flashes faintly.
+  const view = { scenery, time: 0, shake: 0, flash: 0, models: [], reducedMotion: false };
 
   /** An instanced mesh that starts empty and is refilled every frame. */
   const pool = (shape, capacity, material) => {
@@ -46,20 +49,19 @@ export function createView(scene, camera, track, options = {}) {
   };
 
   // ---- item boxes: red lanterns with gold bands ------------------------------------------
-  const boxes = pool(
-    build([
-      [BOX, [0, 0, 0], [1.25, 1.25, 1.25], [1.35, 0.16, 0.1]],
-      [BOX, [0, 0.52, 0], [1.34, 0.16, 1.34], GOLD],
-      [BOX, [0, -0.52, 0], [1.34, 0.16, 1.34], GOLD],
-      ...[-1, 1].flatMap((x) => [-1, 1].map((z) => [BOX, [x * 0.62, 0, z * 0.62], [0.1, 1.2, 0.1], GOLD])),
-      [SPHERE, [0, 0, 0.64], [0.28, 0.28, 0.04], GOLD],
-      [SPHERE, [0, 0, -0.64], [0.28, 0.28, 0.04], GOLD],
-      [SPHERE, [0.64, 0, 0], [0.04, 0.28, 0.28], GOLD],
-      [SPHERE, [-0.64, 0, 0], [0.04, 0.28, 0.28], GOLD],
-      [CYLINDER, [0, -0.95, 0], [0.07, 0.7, 0.07], [1.3, 0.75, 0.1]],
-    ]),
-    track.boxes.length,
-  );
+  const boxShape = build([
+    [BOX, [0, 0, 0], [1.25, 1.25, 1.25], [1.35, 0.16, 0.1]],
+    [BOX, [0, 0.52, 0], [1.34, 0.16, 1.34], GOLD],
+    [BOX, [0, -0.52, 0], [1.34, 0.16, 1.34], GOLD],
+    ...[-1, 1].flatMap((x) => [-1, 1].map((z) => [BOX, [x * 0.62, 0, z * 0.62], [0.1, 1.2, 0.1], GOLD])),
+    [SPHERE, [0, 0, 0.64], [0.28, 0.28, 0.04], GOLD],
+    [SPHERE, [0, 0, -0.64], [0.28, 0.28, 0.04], GOLD],
+    [SPHERE, [0.64, 0, 0], [0.04, 0.28, 0.28], GOLD],
+    [SPHERE, [-0.64, 0, 0], [0.04, 0.28, 0.28], GOLD],
+    [CYLINDER, [0, -0.95, 0], [0.07, 0.7, 0.07], [1.3, 0.75, 0.1]],
+  ]);
+  const boxes = pool(boxShape, track.boxes.length);
+  const detailedBoxes = createTrackModelBatch(scene, trackModels['paper-lantern'], boxShape.boundingBox, track.boxes.length);
 
   // ---- items on the road and in the air ---------------------------------------------------
   const shapes = {
@@ -136,22 +138,21 @@ export function createView(scene, camera, track, options = {}) {
   );
   coins.castShadow = false;
   // A festival drum on its side: red lacquer, hide ends and gold studs.
-  const drums = pool(
-    build([
-      [CYLINDER, [0, 0, 0], [1.25, 2.1, 1.25], 0xc8221e, [Math.PI / 2, 0, 0]],
-      [CYLINDER, [0, 0, 0], [1.32, 0.5, 1.32], 0xb01a18, [Math.PI / 2, 0, 0]],
-      [CYLINDER, [0, 0, 1.06], [1.18, 0.05, 1.18], 0xf3e6c4, [Math.PI / 2, 0, 0]],
-      [CYLINDER, [0, 0, -1.06], [1.18, 0.05, 1.18], 0xf3e6c4, [Math.PI / 2, 0, 0]],
-      ...[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11].flatMap((k) => {
-        const a = (k / 12) * Math.PI * 2;
-        return [
-          [SPHERE, [Math.cos(a) * 1.25, Math.sin(a) * 1.25, 0.86], 0.07, 0xf2c230],
-          [SPHERE, [Math.cos(a) * 1.25, Math.sin(a) * 1.25, -0.86], 0.07, 0xf2c230],
-        ];
-      }),
-    ]),
-    Math.max(1, track.drums.length),
-  );
+  const drumShape = build([
+    [CYLINDER, [0, 0, 0], [1.25, 2.1, 1.25], 0xc8221e, [Math.PI / 2, 0, 0]],
+    [CYLINDER, [0, 0, 0], [1.32, 0.5, 1.32], 0xb01a18, [Math.PI / 2, 0, 0]],
+    [CYLINDER, [0, 0, 1.06], [1.18, 0.05, 1.18], 0xf3e6c4, [Math.PI / 2, 0, 0]],
+    [CYLINDER, [0, 0, -1.06], [1.18, 0.05, 1.18], 0xf3e6c4, [Math.PI / 2, 0, 0]],
+    ...[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11].flatMap((k) => {
+      const a = (k / 12) * Math.PI * 2;
+      return [
+        [SPHERE, [Math.cos(a) * 1.25, Math.sin(a) * 1.25, 0.86], 0.07, 0xf2c230],
+        [SPHERE, [Math.cos(a) * 1.25, Math.sin(a) * 1.25, -0.86], 0.07, 0xf2c230],
+      ];
+    }),
+  ]);
+  const drums = createTrackModelBatch(scene, trackModels.drum, drumShape.boundingBox, track.drums.length)
+    ?? pool(drumShape, Math.max(1, track.drums.length));
   // Expanding rings on the ground: the gong's wave, a boost's kick, a hard landing.
   const ringGeometry = createRingGeometry3D({ innerRadius: 0.8, outerRadius: 1, thetaSegments: 48 });
   const rings = Array.from({ length: 8 }, () => {
@@ -435,7 +436,7 @@ export function createView(scene, camera, track, options = {}) {
     for (const pair of skids) for (const trail of pair) trail.removeFromParent();
     view.showcase(undefined);
     view.models = race.karts.map((kart) => {
-      const model = createKartModel(kart.racer);
+      const model = createKartModel(kart.racer, trackModels);
       scene.addChild(model.node);
       return model;
     });
@@ -491,7 +492,7 @@ export function createView(scene, camera, track, options = {}) {
     shown?.node.removeFromParent();
     shown = undefined;
     if (racer === undefined) return;
-    shown = createKartModel(racer);
+    shown = createKartModel(racer, trackModels);
     scene.addChild(shown.node);
     const at = track.sample(14, 0, {});
     shown.still(at.x, at.y, at.z, at.heading + Math.PI);
@@ -615,16 +616,21 @@ export function createView(scene, camera, track, options = {}) {
       });
     });
 
-    // Item boxes turn and bob; taken ones are hidden until they return.
-    let n = 0;
+    // Keep distant pickups legible without drawing the detailed lantern across the entire circuit.
+    let n = 0, nearby = 0;
+    const focusX = watched?.x ?? camera.position[0], focusZ = watched?.z ?? camera.position[2];
     for (const box of race.boxes) {
       if (box.timer > 0) continue;
       position[0] = box.x;
       position[1] = box.y + 1.7 + Math.sin(time * 2.2 + box.index) * 0.18;
       position[2] = box.z;
-      boxes.setTransformAt(n++, position, quatFromEuler(turn, 0.3, time * 1.4 + box.index, 0.2), 1);
+      const rotation = quatFromEuler(turn, 0.3, time * 1.4 + box.index, 0.2);
+      const distanceSquared = (box.x - focusX) ** 2 + (box.z - focusZ) ** 2;
+      if (detailedBoxes && distanceSquared < 65 ** 2) detailedBoxes.setTransformAt(nearby++, position, rotation, 1);
+      else boxes.setTransformAt(n++, position, rotation, 1);
     }
     boxes.count = n;
+    if (detailedBoxes) detailedBoxes.count = nearby;
 
     // Coins spin on the spot; drums roll across the road.
     n = 0;
@@ -724,6 +730,7 @@ export function createView(scene, camera, track, options = {}) {
     rig.fov += (rig.fovTarget - rig.fov) * Math.min(1, dt * 6);
     camera.fov = rig.fov;
     camera.updateProjectionMatrix();
+    if (view.reducedMotion) view.shake = 0;
     if (view.shake > 0) {
       const p = camera.position,
         k = view.shake * view.shake * 0.5;

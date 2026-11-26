@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+  <title>风雪山神庙 / Snow at the Mountain Temple</title>
+  <meta name="description" content="风雪山神庙：基于新白鹭引擎开发的水浒题材 3D 动作 Demo。 / Snow at the Mountain Temple, a 3D action demo from Water Margin built with Egret Rebuild.">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Crect width='16' height='16' fill='%230b111c'/%3E%3Cpath d='M3 13 12 4' stroke='%23d8dee8' stroke-width='1.4'/%3E%3Cpath d='M12 4l2-2-.5 3z' fill='%23d8dee8'/%3E%3Ccircle cx='11' cy='5' r='1.5' fill='%23b3221c'/%3E%3C/svg%3E">
+  <link rel="stylesheet" href="./style.css">
+  <link rel="stylesheet" href="./chapter.css">
+  <link rel="preload" as="image" href="./assets/boot-snow-road.webp" fetchpriority="high">
+  <!-- The engine is a copy inside this folder (see vendor/SOURCE.md), so the game runs from any static host.
+       This map is vendor/importmap.json, pasted in. -->
+  <script type="importmap">
+    {
+      "imports": {
+        "@egret/contracts": "./vendor/contracts/dist/index.js",
+        "@egret/runtime": "./vendor/runtime/dist/index.js",
+        "@egret/contracts/resources": "./vendor/contracts/dist/resources/index.js",
+        "@egret/engine": "./vendor/engine/dist/index.js",
+        "@egret/engine/world3d": "./vendor/engine/dist/rendering/world3d/index.js",
+        "@egret/runtime/text": "./vendor/runtime/dist/text/index.js",
+        "@egret/engine/text": "./vendor/engine/dist/text.js",
+        "@egret/runtime/input": "./vendor/runtime/dist/input/index.js",
+        "#egret-pointer-input": "./vendor/engine/dist/pointerInput.js",
+        "#egret-keyboard-input": "./vendor/engine/dist/keyboardInput.js",
+        "robust-predicates": "./vendor/robust-predicates/index.js",
+        "#egret-textured-frame-state": "./vendor/engine/dist/internal/texturedFrameState.js",
+        "@egret/engine/input/hover": "./vendor/engine/dist/hover.js",
+        "@egret/engine/kit": "./vendor/engine/dist/kit.js",
+        "@egret/engine/audio": "./vendor/engine/dist/audio.js",
+        "@egret/engine/input/gamepad": "./vendor/engine/dist/gamepad.js",
+        "@egret/engine/webgl2/world3d": "./vendor/engine/dist/web/world3d/index.js",
+        "@egret/engine/web/kit": "./vendor/engine/dist/web/kit.js"
+      }
+    }
+  </script>
+</head>
+<body>
+  <main id="game">
+    <canvas id="stage" tabindex="0" aria-label="风雪山神庙：俯视角动作游戏。W A S D 移动，左键出枪，按住右键格挡，空格闪避。 / Snow at the Mountain Temple: a top-down action game. W A S D to move, left button to strike, hold right button to guard, Space to dodge."></canvas>
+    <div id="ui"></div>
+    <div id="boot">
+      <img class="boot-art" src="./assets/boot-snow-road.webp" alt="" width="896" height="560" fetchpriority="high" decoding="async" elementtiming="snow-road-preview">
+      <div class="boot-mark">风雪山神庙</div><div class="boot-bar"><i></i></div><div class="boot-note">扫雪</div>
+    </div>
+    <section id="chapter-result" role="dialog" aria-modal="true" aria-labelledby="result-heading" hidden>
+      <div class="result-paper">
+        <div class="result-seal" aria-hidden="true">水浒</div>
+        <div class="result-mark" hidden><b data-stat="mark"></b><span>等</span></div>
+        <h2 id="result-heading">风雪山神庙</h2>
+        <p data-stat="line">第一回　完</p>
+        <dl>
+          <div><dt>用时</dt><dd data-stat="time"></dd></div>
+          <div><dt>弹反</dt><dd data-stat="parries"></dd></div>
+          <div><dt>回马枪</dt><dd data-stat="ripostes"></dd></div>
+          <div><dt data-stat="last-name">倒地</dt><dd data-stat="last"></dd></div>
+        </dl>
+        <p class="result-news" data-stat="news" hidden></p>
+        <div class="result-actions">
+          <button type="button" data-replay="climb">更上一重</button>
+          <button type="button" data-replay="temple">重战陆谦</button>
+          <button type="button" data-replay="chapter">重走此章</button>
+          <button type="button" data-replay="yard">再守一回</button>
+          <button type="button" data-replay="title">回到卷首</button>
+        </div>
+      </div>
+    </section>
+    <div id="error" role="alert" hidden></div>
+  </main>
+  <script type="module" src="./src/main.mjs"></script>
+</body>
+</html>

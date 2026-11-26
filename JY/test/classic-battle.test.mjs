@@ -62,6 +62,22 @@ test('a finishing strike uses classic damage and awards damage, kill bonus and v
   assert.equal(model.state.settlement[0].learnedMagics[0].level, 2);
 });
 
+test('the presentation attack clock crosses impact on the frame where HP changes', () => {
+  const model = create(spec());
+  const { presentation, roles } = model.state;
+  assert.equal(presentation.attackMotion, undefined);
+  assert.equal(model.attackAt(3, 2), true);
+  assert.equal(presentation.attackMotion.key, roles[0].key);
+  assert.equal(presentation.attackMotion.progress, 0);
+  model.step(199);
+  assert.ok(presentation.attackMotion.progress < presentation.attackMotion.impactAt);
+  assert.equal(roles[1].hp, 100);
+  model.step(1);
+  assert.ok(presentation.attackMotion.progress >= presentation.attackMotion.impactAt);
+  assert.ok(roles[1].hp < 100);
+  advance(model, () => !presentation.attackMotion);
+});
+
 test('a drug uses the shared bag and ends the current actor’s turn', () => {
   const model = create(spec({
     team: [role(0, 2, 2, { hp: 50 })], items: [null, { id: 1, type: 3, hp: 25 }],

@@ -1,15 +1,20 @@
 import { Bitmap, Sprite, copyImageData2DPixels, createAssetRef, createAssetType, createEngineForProfile, createImageData2D, createTexture, isTexture } from '@egret/engine';
 import { createBrowserKeyboardInput } from '@egret/engine/web/keyboard';
+import { createBrowserGamepadInput } from '@egret/engine/web/gamepad';
+import { createBrowserAudio } from '@egret/engine/web/audio';
 import { createTextRasterCache } from '@egret/engine/text';
 import { createCanvasTextRasterProvider } from '@egret/engine/web/text';
 import { createSharedWebGL2Host } from '@egret/engine/webgl2';
 import { createOpeningDialogue } from './opening-dialogue.mjs';
+import { createOpeningReading } from './opening-reading.mjs';
 import { loadOpening, openingEventId, playOpening } from './opening-event.mjs';
 import { createBattleView } from './battle-view.mjs';
 import { createBattleMenu } from './battle-menu.mjs';
 import { attachBattleControls } from './jyx2/ui/battle-controls.mjs';
 import { createBattleMusic } from './battle-music.mjs';
+import { createWavEffects } from './wav-effects.mjs';
 import { autoSlot, createSaveSlot, manualSlots } from './save-slot.mjs';
+import { describeSaveSlot } from './save-info.mjs';
 import { createClassicBattle, resolveClassicTeam } from './classic-battle.mjs';
 import { canUseGear } from './battle-progression.mjs';
 import { loadTrainer, playTrainer, trainerEventId } from './trainer-event.mjs';
@@ -21,9 +26,10 @@ import { showWorldMenu } from './world-menu.mjs';
 import { attachGamepadInput } from './gamepad-input.mjs';
 import { nativeSaveRequest, pickNativeSave, readPreferences, returnToTitle, showTitle } from './jyx2/ui/game-shell.mjs';
 import { createWorldNavigation } from './jyx2/ui/world-navigation.mjs';
+import { createDialogueJournal } from './jyx2/ui/dialogue-journal.mjs';
 import { findTilePath, screenToTile } from './kys-navigation.mjs';
 import { createSceneAtmosphere } from './scene-atmosphere.mjs';
-import { hasJyx2Scene, loadJyx2Scene } from './jyx2/scene/home.mjs';
+import { hasJyx2Scene, homeExitTextures, loadJyx2Scene, nativeHomeSource, readNativeSceneSpec } from './jyx2/scene/home.mjs';
 import { loadActorArt } from './jyx2/actors/actor-art.mjs';
 import { nativeBattleName } from './jyx2/scene/native-battle-fields.mjs';
 
@@ -35,12 +41,17 @@ const hint = document.querySelector('#hint');
 const notice = document.querySelector('#notice');
 const battleResultPanel = document.querySelector('#battle-result');
 const battleResultText = document.querySelector('#battle-result-text');
+const battleResultDetails = document.querySelector('#battle-result-details');
 const battleContinue = document.querySelector('#battle-continue');
 const marker = document.querySelector('#event-marker');
 const menuToggle = document.querySelector('#open-menu');
 const exploreControls = document.querySelector('#explore-controls');
 const exploreDpad = document.querySelector('#explore-dpad');
 const mapInteract = exploreControls.querySelector('[data-map-command="Enter"]');
+const dialogueTools = exploreControls.querySelector('.dialogue-tools');
+const journalButton = document.querySelector('#open-dialogue-journal');
+const skipReadOpening = document.querySelector('#skip-read-opening');
+const openingExitGuide = document.querySelector('#opening-exit-guide');
 const touchExploration = matchMedia('(pointer: coarse)');
 const battleMenuPanel = document.querySelector('#battle-menu');
 const moves = new Map([
@@ -103,6 +114,47 @@ const nativeSceneViews = new Map([
 const isWorldWater = id => id === 419 || id >= 179 && id <= 181 || id >= 253 && id <= 335 || id >= 508 && id <= 511;
 const fits = (map, x, y) => x >= 0 && y >= 0 && x < map.width && y < map.height;
 const samePoint = (point, x, y) => point?.[0] === x && point?.[1] === y;
+
+async function prepareHomeView() {
+  const hints = [];
+  const { assetDirectory, actorDirectory, modelIds } = nativeHomeSource;
+  const playPath = new URL('./', import.meta.url);
+  const root = new URL('../', playPath);
+  const supportsFetchPreload = document.createElement('link').relList.supports('preload');
+
+  function hint(url, rel) {
+    const link = document.createElement('link');
+    link.rel = rel;
+    link.href = url;
+    if (rel === 'preload') {
+      link.as = 'fetch';
+      link.crossOrigin = 'anonymous';
+    }
+    hints.push(document.head.appendChild(link));
+  }
+
+  // These URLs are the same resources consumed by the model and exit-effect loaders.
+  if (supportsFetchPreload) {
+    for (const id of modelIds) hint(actorDirectory + id + '.glb', 'preload');
+    for (const url of Object.values(homeExitTextures)) hint(url, 'preload');
+  }
+  const spec = readNativeSceneSpec(nativeHomeSource).then(data => {
+    if (supportsFetchPreload) hint(assetDirectory + data.asset, 'preload');
+    // Only the hosted /play shell uses these generated virtual module paths.
+    if (playPath.pathname.endsWith('/play/') && Array.isArray(data.modulePreloads)) {
+      for (const path of data.modulePreloads) hint(new URL(path, root).href, 'modulepreload');
+    }
+    return data;
+  });
+  try {
+    const [module] = await Promise.all([import('./jyx2/scene/native-home-view.mjs'), spec]);
+    return await module.prepareNativeHomeView(spec);
+  } finally {
+    void spec.then(removeHints, removeHints);
+  }
+
+  function removeHints() { for (const link of hints) link.remove(); }
+}
 
 async function json(path) {
   const response = await fetch(path);
@@ -334,31 +386,53 @@ async function start() {
     ? baseline.location : previewLocations.get(previewName);
   const autoSave = createSaveSlot(preview ? `${initial.saveIdentity}:${previewName}-preview` : initial.saveIdentity);
   let save = await autoSave.read();
+  let catalogRequest;
+  const loadCatalog = () => catalogRequest ??= json('/api/catalog').catch(error => {
+    catalogRequest = undefined;
+    throw error;
+  });
   if (preview) baseline.location = { ...preview };
   if (!preview && (settings.get('title') === '1' || !save && settings.get('play') !== '1')) {
-    save = await showTitle({ initial, baseline, autoSave, save, preferences, search: settings });
+    save = await showTitle({ initial, baseline, autoSave, save, preferences, search: settings, loadCatalog });
   }
   const requestedStyle = settings.get('visual');
   const visualStyle = ['jyx2', 'classic', 'enhanced'].includes(requestedStyle) ? requestedStyle : preferences.visual;
   document.body.dataset.visual = visualStyle === 'classic' ? 'classic' : 'enhanced';
   document.body.dataset.art = visualStyle;
-  const catalog = await json('/api/catalog');
-  const game = {
-    initial, baseline, autoSave, save, catalog, visualStyle, sound: preferences.sound,
-    programs: new Map(), sceneStates: new Map(), openingDone: save?.openingDone ?? false,
-    mainX: save?.mainX ?? initial.base.mainX, mainY: save?.mainY ?? initial.base.mainY,
-    inventory: new Map(save?.inventory ?? baseline.inventory),
-    roleState: save?.roleState ?? [],
-    party: save?.party ?? baseline.party,
-    scenePatches: new Map(save?.scenePatches ?? []),
-  };
-  catalog.eventIds = new Set(catalog.eventIds);
-  catalog.headIds = new Set(catalog.headIds);
-  catalog.leaveEvents = new Map(catalog.leaveEvents);
-  showSave(game, save ? 'restored' : 'idle');
-  canvas.dataset.recruit = game.scenePatches.has(recruitScene) ? 'restored' : 'idle';
-  if (game.openingDone) canvas.dataset.opening = 'complete';
-  await openMap(game, save?.location ?? baseline.location);
+  const destination = save?.location ?? baseline.location;
+  let preparedHome;
+  if (visualStyle === 'jyx2' && destination.id === homeScene && settings.get('home') !== '2d') {
+    // The player has selected a save or a new game. The GLBs can load alongside original data.
+    preparedHome = prepareHomeView();
+    void preparedHome.catch(() => {}); // openMap reports a load failure when it selects the fallback.
+  }
+  function takePreparedHome() {
+    const pending = preparedHome;
+    preparedHome = undefined;
+    return pending;
+  }
+  try {
+    const catalog = await loadCatalog();
+    const game = {
+      initial, baseline, autoSave, save, catalog, visualStyle, sound: preferences.sound,
+      programs: new Map(), sceneStates: new Map(), openingDone: save?.openingDone ?? false,
+      mainX: save?.mainX ?? initial.base.mainX, mainY: save?.mainY ?? initial.base.mainY,
+      inventory: new Map(save?.inventory ?? baseline.inventory),
+      roleState: save?.roleState ?? [],
+      party: save?.party ?? baseline.party,
+      scenePatches: new Map(save?.scenePatches ?? []),
+    };
+    catalog.eventIds = new Set(catalog.eventIds);
+    catalog.headIds = new Set(catalog.headIds);
+    catalog.leaveEvents = new Map(catalog.leaveEvents);
+    showSave(game, save ? 'restored' : 'idle');
+    canvas.dataset.recruit = game.scenePatches.has(recruitScene) ? 'restored' : 'idle';
+    if (game.openingDone) canvas.dataset.opening = 'complete';
+    await openMap(game, destination, takePreparedHome);
+  } finally {
+    // An original-data failure can stop startup before the 3D view takes ownership.
+    void preparedHome?.then(home => home.dispose(), () => {});
+  }
 }
 
 async function sceneFor(game, id) {
@@ -381,7 +455,7 @@ function showSave(game, phase) {
   });
 }
 
-async function openMap(game, destination) {
+async function openMap(game, destination, takePreparedHome) {
   const { initial, catalog } = game;
   const isWorld = destination.id === 'world';
   const groupName = isWorld ? 'mmap' : 'smap';
@@ -389,7 +463,18 @@ async function openMap(game, destination) {
   notice.hidden = false;
   notice.textContent = '正在读取原作地图与贴图…';
   menuToggle.disabled = true;
-  const scene = isWorld ? (game.world ??= unpackMap(await json('/api/world'))) : await sceneFor(game, destination.id);
+  const sceneRequest = isWorld
+    ? game.world ?? json('/api/world').then(unpackMap)
+    : sceneFor(game, destination.id);
+  const availableRequest = isWorld
+    ? game.worldArt ?? json('/api/art/mmap').then(ids => new Set(ids))
+    : game.submapArt ?? json('/api/art/smap').then(ids => new Set(ids));
+  const [scene, available, scenes] = await Promise.all([sceneRequest, availableRequest, game.scenes ?? json('/api/scenes')]);
+  game.scenes = scenes;
+  if (isWorld) {
+    game.world = scene;
+    game.worldArt = available;
+  } else game.submapArt = available;
   const width = initial.config?.renderWidth ?? 640;
   const height = initial.config?.renderHeight ?? 360;
   const scale = initial.config?.tileScale ?? 1;
@@ -400,9 +485,6 @@ async function openMap(game, destination) {
   const wantsMap3d = game.visualStyle === 'jyx2' && viewSettings.get(viewKey) !== '2d';
   const loadNativeView = nativeSceneViews.get(isWorld ? 'world' : scene.id) ?? loadNativeSubmapView;
   const project = (x, y) => [(x - y) * 18 * scale, (x + y) * 9 * scale];
-  const available = isWorld ? (game.worldArt ??= new Set(await json('/api/art/mmap')))
-    : (game.submapArt ??= new Set(await json('/api/art/smap')));
-  const scenes = game.scenes ??= await json('/api/scenes');
   let map = isWorld ? worldObjects(scene, destination, project, available) : mapObjects(scene, scale, project);
   const opening = !isWorld && initial.config.useScript && scene.events.some(event => event.event3 === openingEventId)
     ? (game.opening ??= await loadOpening()) : undefined;
@@ -568,7 +650,26 @@ async function openMap(game, destination) {
   let forcedPlayerPicture;
   const openingPoses = new Map();
   const listeners = new AbortController();
+  const effects = scope.use(createWavEffects({ createAudio: createBrowserAudio, enabled: game.sound }));
+  const activateEffects = event => { if (event.isTrusted && !event.repeat) effects.activate(); };
+  for (const type of ['keydown', 'pointerup']) {
+    document.addEventListener(type, activateEffects, { capture: true, signal: listeners.signal });
+  }
+  if (navigator.userActivation?.hasBeenActive) effects.activate();
+  if (!game.openingDone && opening?.commands.some(({ name, args }) => name === 'PlayWave' && args[0] === 24)) {
+    void effects.preload('wave', 24);
+  }
+  const journal = createDialogueJournal(game.dialoguePages ??= [], {
+    signal: listeners.signal,
+    restoreFocus: () => canvas.focus({ preventScroll: true }),
+  });
+  const openingReading = opening && createOpeningReading(initial.saveIdentity);
+  let openingCommand;
+  let exitGuideTimer;
+  const openingExit = opening && scene.exits?.[0];
+  openingExitGuide.hidden = dialogueTools.hidden = true;
   const worldNavigation = isWorld && createWorldNavigation(canvas.parentElement, {
+    controls: exploreControls,
     signal: listeners.signal,
     cancel() {
       cancelWorldRoute();
@@ -647,13 +748,15 @@ async function openMap(game, destination) {
     bottomDocked: () => Boolean(map3dView),
     loadPortrait, speakerName: head => speakerNames.get(head),
     portraitUrl: id => `/art/${portraitGroup}/${id}.png`,
-    onPage({ text, head, style, voice, page, pages }) {
+    onPage({ text, speaker, head, style, voice, page, pages }) {
       Object.assign(canvas.dataset, { talkText: text, talkHead: head, talkStyle: style, talkVoice: voice, talkPage: page, talkPages: pages });
+      journal.record(speaker ?? (head < 0 ? '提示' : '對話'), text);
       if (openingActive) canvas.dataset.opening = 'talk';
       updateExploreControls();
       hint.textContent = `${touchExploration.matches ? '點畫面或按繼續' : '點擊畫面 / Enter 繼續'} · ${page}/${pages}`;
     },
   });
+  if (opening && !game.openingDone && game.visualStyle === 'jyx2') void dialogue.prepareSkin();
 
   const indexOf = (x, y) => x + y * scene.width;
   const eventAt = (x, y) => scene.events?.[scene.layers.eventIndex[indexOf(x, y)]];
@@ -689,6 +792,8 @@ async function openMap(game, destination) {
     const canMove = !reading && !worldMenuActive && !eventEnded && !battle;
     exploreDpad.hidden = !canMove;
     mapInteract.textContent = reading ? '繼續' : '對話';
+    dialogueTools.hidden = !dialogue.waiting || !journal.hasEntries || Boolean(battle) || menu.active;
+    skipReadOpening.hidden = !openingActive || !openingReading.known(openingCommand);
   }
 
   function showCell() {
@@ -698,8 +803,13 @@ async function openMap(game, destination) {
     coordinates.textContent = `格点 ${x} · ${y}`;
     const event = eventAt(x, y);
     marker.textContent = event?.event3 > 0 ? `经过事件 ${event.event3}` : '';
+    const interaction = facingEvent();
+    const trainerNearby = hasTrainer && facingOffsets.some(([dx, dy]) =>
+      fits(scene, x + dx, y + dy) && eventAt(x + dx, y + dy)?.event1 === trainerEventId);
     hint.textContent = eventEnded ? '劇情完成 · 在江湖選單可返回主選單'
-      : facingEvent() ? (touchExploration.matches ? '點「對話」與面前人物交談' : 'Enter / 空格與 NPC 對話')
+      : interaction?.id === trainerEventId ? (touchExploration.matches ? '黑帝斯 · 點「對話」可開始試煉' : '黑帝斯 · 按 Enter 開始試煉')
+      : trainerNearby ? '面向黑帝斯，對話可開始試煉'
+      : interaction ? (touchExploration.matches ? '點「對話」與面前人物交談' : 'Enter / 空格與 NPC 對話')
       : scene.exits?.some(([ex, ey]) => x === ex && y === ey) ? '已到达原作出口'
       : touchExploration.matches ? '點選地圖尋路，或使用方向鍵移動'
         : isWorld && map3dView ? '方向鍵 / WASD 移動 · 點擊地名進入' : '方向鍵或 WASD 移動';
@@ -717,8 +827,13 @@ async function openMap(game, destination) {
     const view = {
       requestFrame,
       presentFrame,
-      talk: options => dialogue.talk(options),
+      wave: id => effects.play('wave', id, { signal: listeners.signal }),
+      async talk(options) {
+        if (openingReading.shouldSkip(openingCommand)) return;
+        if (await dialogue.talk(options)) openingReading.acknowledge(openingCommand);
+      },
       command(name, index) {
+        openingCommand = index;
         canvas.dataset.opening = 'running';
         canvas.dataset.command = String(index);
         canvas.dataset.commandName = name;
@@ -740,7 +855,7 @@ async function openMap(game, destination) {
         requestFrame();
       },
     };
-    void playOpening({ opening, scene, slot, signal: listeners.signal, view, sound: game.sound }).then(async () => {
+    void playOpening({ opening, scene, slot, signal: listeners.signal, view }).then(async () => {
       forcedPlayerPicture = undefined;
       openingPoses.clear();
       await presentFrame();
@@ -756,6 +871,10 @@ async function openMap(game, destination) {
       });
       canvas.dataset.opening = 'complete';
       showCell();
+      if (openingExit) {
+        openingExitGuide.hidden = false;
+        exitGuideTimer = setTimeout(() => { openingExitGuide.hidden = true; }, 18000);
+      }
     }).catch(error => {
       if (listeners.signal.aborted) return;
       canvas.dataset.opening = 'error';
@@ -776,20 +895,18 @@ async function openMap(game, destination) {
       if (saved) Object.assign(role, saved);
     }
     listeners.signal.throwIfAborted();
-    const soundPlayers = new Map();
+    let soundSession = new AbortController();
+    let soundSignal = AbortSignal.any([listeners.signal, soundSession.signal]);
     let view;
     let arena;
     let musicLive = false;
     function playSound(group, id) {
-      if (!game.sound || !Number.isInteger(id) || id < 0 || id > 99) return;
-      const path = `/audio/${group}/${id}.wav`;
-      let audio = soundPlayers.get(path);
-      if (!audio) {
-        audio = new Audio(path);
-        soundPlayers.set(path, audio);
-      }
-      audio.currentTime = 0;
-      void audio.play().catch(() => {});
+      void effects.play(group, id, { signal: soundSignal });
+    }
+    function resetSound() {
+      soundSession.abort();
+      soundSession = new AbortController();
+      soundSignal = AbortSignal.any([listeners.signal, soundSession.signal]);
     }
     try {
       const roster = spec.party.map(roleId => spec.roster.find(role => role.id === roleId));
@@ -809,6 +926,15 @@ async function openMap(game, destination) {
       });
       const selected = spec.autoTeamMate[0] >= 0 ? undefined : await menu.chooseTeam(roster, listeners.signal);
       spec.team = resolveClassicTeam(spec, selected);
+      // Warm a bounded set of opening skills while the arena and actors load.
+      const skillIds = new Set([...spec.team, ...spec.enemy]
+        .flatMap(role => (role.learnedMagics ?? []).slice(0, 2).map(skill => skill.id)));
+      for (const id of [...skillIds].slice(0, 6)) {
+        const skill = spec.magics[id];
+        if (!skill) continue;
+        void effects.preload('wave', skill.soundId);
+        void effects.preload('hit', skill.effectId);
+      }
       Object.assign(canvas.dataset, { trainer: 'loading', battleTeam: spec.team.map(role => role.id).join(',') });
       notice.hidden = false;
       notice.textContent = '正在讀取原作戰場與人物動畫…';
@@ -845,8 +971,12 @@ async function openMap(game, destination) {
       const usedItems = new Set([...inventory.keys(), ...spec.enemy.flatMap(role => role.carriedItems.map(item => item.id))]);
       const itemEffectIds = [0, 30, 36, ...[...usedItems].map(id => spec.items[id]).filter(item => item?.type === 4)
         .map(item => item.hiddenWeaponEffectId)];
+      const prepared = arena?.prepareOpeningPrograms(model.state.roles).catch(error => {
+        console.warn('白鷺 World3D 戰場程式預備未完成', error);
+      });
       view = await createBattleView({ engine, cache, spec, width, height, scale, loadArt, bakeGround, json, visualStyle: game.visualStyle, outputAlpha, arena,
         itemEffectIds, grid: battleGrid });
+      await prepared;
       listeners.signal.throwIfAborted();
       // Keep the Egret keyboard target active while the map layers are hidden.
       ground.visible = objects.visible = false;
@@ -857,20 +987,20 @@ async function openMap(game, destination) {
       marker.textContent = '經典回合制';
       notice.hidden = true;
       await new Promise((resolve, reject) => {
-        battle = { model, makeModel, view, arena, resolve, reject, soundPlayers, lastTime: performance.now() };
+        battle = { model, makeModel, view, arena, resolve, reject, resetSound, lastTime: performance.now() };
         canvas.dataset.battleAllies = model.state.roles.filter(role => role.side === 0).map(role => role.id).join(',');
         canvas.dataset.trainer = 'battle';
       });
       const state = battle.model.state;
       return { id, name: spec.name, won: state.result, settlement: state.settlement, inventoryDelta: state.inventoryDelta };
     } finally {
+      soundSession.abort();
       menu.close();
       musicActive = musicLive = false;
       music.stop();
       mapMusicStarted = false;
       if (!closing) startMapMusic();
       Object.assign(canvas.dataset, { battleMusic: 'stopped', battleMusicLevel: 0 });
-      for (const audio of soundPlayers.values()) audio.pause();
       battle = undefined;
       delete canvas.dataset.battleCommandMode;
       delete canvas.dataset.battlePreview;
@@ -882,6 +1012,7 @@ async function openMap(game, destination) {
       sceneName.textContent = scene.name;
       notice.hidden = true;
       battleResultPanel.hidden = true;
+      if (!trainerActive) delete canvas.dataset.trainer;
       delete canvas.dataset.battlePrompt;
       showCell();
       requestFrame();
@@ -912,7 +1043,6 @@ async function openMap(game, destination) {
     const roles = new Map(game.roleState.map(role => [role.id, role]));
     for (const { expGot, levelsGained, ...role } of result.settlement) roles.set(role.id, { ...roles.get(role.id), ...role });
     await commitProgress({ inventory, roleState: [...roles.values()], lastBattle: { id: result.id, won: result.won } });
-    canvas.dataset.trainer = 'saved';
   }
 
   async function showItemReward(id, amount, phase) {
@@ -937,6 +1067,7 @@ async function openMap(game, destination) {
     delete canvas.dataset.blocked;
     notice.hidden = true;
     let errorText;
+    let saving = false, saved = false;
     try {
       const program = game.trainer ??= await loadTrainer();
       await playTrainer({ program, inventory: game.inventory, view: {
@@ -946,7 +1077,11 @@ async function openMap(game, destination) {
         },
         battle: fight,
         showItem: (id, amount) => showItemReward(id, amount, 'trainer'),
-        save: saveTrainer,
+        async save(inventory, result) {
+          saving = true;
+          await saveTrainer(inventory, result);
+          saved = true;
+        },
       } });
     } catch (error) {
       if (listeners.signal.aborted) return;
@@ -957,8 +1092,12 @@ async function openMap(game, destination) {
         trainerActive = false;
         menuToggle.disabled = false;
         showCell();
-        marker.textContent = errorText ? '事件 692 暫停' : `已自動存檔 · 勝 ${canvas.dataset.wins} / 負 ${canvas.dataset.losses}`;
-        if (errorText) hint.textContent = errorText;
+        if (errorText) {
+          hint.textContent = `${saving && !saved ? '自動存檔失敗' : '試煉結算未完成'} · ${errorText}`;
+        } else if (saved) {
+          hint.textContent = `試煉已記錄 · 勝 ${canvas.dataset.wins} / 負 ${canvas.dataset.losses} · 自動存檔完成`;
+          canvas.dataset.trainer = 'saved';
+        }
         requestFrame();
       }
     }
@@ -1210,7 +1349,7 @@ async function openMap(game, destination) {
           setPosition(nextX, nextY) { x = nextX; y = nextY; cameraOverride = undefined; requestFrame(); },
           travel: travelScript,
           hidePlayer() { hiddenPlayer = true; requestFrame(); },
-          wave(id) { if (game.sound) void new Audio(`/audio/wave/${id}.wav`).play().catch(() => {}); },
+          wave(id) { void effects.play('wave', id, { signal: listeners.signal }); },
           music(id) { mapTrack = id; music.stop(); mapMusicStarted = false; startMapMusic(); },
           shop(stock, money) {
             return menu.choose(`商店 · 銀兩 ${money}`, stock.filter(row => row.count > 0 && row.price <= money).map(row => ({
@@ -1225,8 +1364,7 @@ async function openMap(game, destination) {
           { label: '讀取自動存檔', value: 'retry', dataset: { defeatAction: 'retry' } },
           { label: '返回主選單', value: 'title', dataset: { defeatAction: 'title' } },
         ], listeners.signal);
-        if (command === 'title') returnToTitle();
-        else location.reload();
+        await leaveGame(command === 'title' ? returnToTitle : () => location.reload());
         return;
       }
       if (result.ended === 'complete') result.flags.finished = true;
@@ -1282,10 +1420,11 @@ async function openMap(game, destination) {
       return { number, store, save: await store.read() };
     }));
     const choices = entries.filter(entry => !loading || entry.save).map(entry => {
-      const location = entry.save?.location;
-      const title = !location ? '空槽' : location.id === 'world' ? '江湖大地圖' : scenes.find(row => row.id === location.id)?.name ?? '原作場景';
+      const { location, detail } = describeSaveSlot(entry.save, scenes, catalog.roles);
       const name = entry.number === autoSlot ? '自動存檔 11' : `第 ${entry.number} 槽`;
-      return { label: `${name} · ${title}`, value: entry, dataset: { saveSlot: entry.number } };
+      const title = `${name} · ${location}`;
+      return { title, detail, label: detail ? `${title} · ${detail}` : title,
+        value: entry, dataset: { saveSlot: entry.number } };
     });
     if (!choices.length) {
       await showMessage('目前沒有存檔。');
@@ -1303,6 +1442,7 @@ async function openMap(game, destination) {
     updateExploreControls();
     try {
       await showWorldMenu({ menu, signal: listeners.signal, game, catalog, bagOnly, canUseGear, actions: {
+        history: journal.hasEntries ? () => journal.show() : undefined,
         useQuestItem(itemId) {
           const target = facingEvent('event2');
           return target ? dispatchEvent(target, itemId) : showMessage('這裡無法使用這件物品。');
@@ -1329,22 +1469,22 @@ async function openMap(game, destination) {
           const entry = await chooseSaveSlot(true);
           if (!entry) return;
           if (entry.number !== autoSlot) await game.autoSave.write(entry.save);
-          location.reload();
+          await leaveGame(() => location.reload());
         },
         async new() {
           if (!await menu.askJoin(listeners.signal, '開始新遊戲並替換自動存檔？')) return;
           await game.autoSave.write(game.baseline);
-          location.reload();
+          await leaveGame(() => location.reload());
         },
         async title() {
           await commitProgress();
-          returnToTitle();
+          await leaveGame(returnToTitle);
         },
         async import() {
           const imported = await pickNativeSave();
           if (!imported) return;
           await game.autoSave.write(imported);
-          location.reload();
+          await leaveGame(() => location.reload());
         },
         async export() {
           await commitProgress();
@@ -1383,7 +1523,10 @@ async function openMap(game, destination) {
       crafting && `製成 ${catalog.items[crafting.itemId].name} × ${crafting.count}`,
     ].filter(Boolean));
     battleResultText.textContent = [state.result ? '勝利' : '戰敗', experience, ...progress].join(' · ');
-    hint.textContent = '點擊「繼續」或按 Enter / 空格返回場景';
+    battleResultDetails.hidden = !trainerActive;
+    battleResultDetails.textContent = trainerActive
+      ? `繼續後回到${scene.name}，記錄本場${state.result ? '勝利' : '戰敗'}並自動存檔。` : '';
+    hint.textContent = '點擊「繼續」或按 Enter / 空格';
     battleResultPanel.hidden = false;
     restoreMapKeyboardFocus();
   }
@@ -1525,7 +1668,7 @@ async function openMap(game, destination) {
       if (isConfirm(code)) {
         if (prompt === 'surrender') model.surrender();
         else {
-          for (const audio of battle.soundPlayers.values()) audio.pause();
+          battle.resetSound();
           battle.model = battle.makeModel();
           battle.drawnFrame = undefined;
           battle.lastTime = performance.now();
@@ -1601,6 +1744,7 @@ async function openMap(game, destination) {
   }
 
   function clickToWalk(event) {
+    if (canvas.dataset.phase !== 'ready') return;
     canvas.focus({ preventScroll: true });
     if (event.button !== 0 || closing || battle || eventEnded) return;
     if (openingActive || trainerActive || recruitActive || eventActive || worldMenuActive) {
@@ -1613,6 +1757,10 @@ async function openMap(game, destination) {
     const hit = map3dView ? map3dView.pick(u, v) : screenToTile(u * width, v * height, root.x, root.y, scale);
     const exit = hit?.exit && scene.exits?.[0];
     const target = exit ? { x: exit[0], y: exit[1] } : hit;
+    queueWalk(target);
+  }
+
+  function queueWalk(target) {
     if (!target || !fits(scene, target.x, target.y)) {
       if (worldNavigation) {
         held = pointerWalk = undefined;
@@ -1635,6 +1783,7 @@ async function openMap(game, destination) {
     }
     pointerWalk = { path, target: canTalk || entrance ? target : undefined, entrance, destination };
     if (destination) worldNavigation.show('walking', destination.name, '沿路前往 · 點地面可改道');
+    return true;
   }
 
   function drawWorldRoute(x, y) {
@@ -1775,6 +1924,22 @@ async function openMap(game, destination) {
     });
   }
 
+  function nativeMapFrame(tileX, tileY, elapsedMs, flags = {}) {
+    const people = sceneActors.flatMap(person => {
+      const event = displayedEvents[person.slot];
+      if (!event || event.currentPic <= 0) return [];
+      return [{ ...person, x: event.x, y: event.y, animation: openingPoses.get(person.slot), interactive: event.event1 > 0 }];
+    });
+    const props = map3dView.propSlots.flatMap(slot => displayedEvents[slot] ? [{ slot, ...displayedEvents[slot] }] : []);
+    return {
+      x: tileX, y: tileY, direction: facing, hidden: hiddenPlayer, people, props, opacity: root.alpha, elapsedMs,
+      cameraFocus: cameraOverride, stageEvent: openingActive ? openingEventId : recruitActive ? Number(canvas.dataset.eventId) : undefined,
+      heroAnimation: openingPoses.get(-1), sceneEvents: displayedEvents, animationTick,
+      animateEvents: !openingActive && !trainerActive && !recruitActive && !eventActive,
+      heroPicture: forcedPlayerPicture, ...flags,
+    };
+  }
+
   function render(now) {
     if (buildingGpuGround || restoringGpuGround) return;
     if (!isWorld && now - lastAnimation >= 200 && scene.events.some(animates)) {
@@ -1849,22 +2014,13 @@ async function openMap(game, destination) {
     const sailing = isWorld && isWorldWater(pictureId(scene.layers.earth[indexOf(x, y)]));
     const walking = Boolean(move) || now - lastWalk < 100;
     if (map3dView) {
-      const people = sceneActors.flatMap(person => {
-        const event = displayedEvents[person.slot];
-        if (!event || event.currentPic <= 0) return [];
-        return [{ ...person, x: event.x, y: event.y, animation: openingPoses.get(person.slot), interactive: event.event1 > 0 }];
-      });
       try {
         const refresh = pendingScene3d && map3dView.setScene;
         if (refresh) map3dView.setScene(pendingScene3d);
         pendingScene3d = undefined;
-        const stageEvent = openingActive ? openingEventId : recruitActive ? Number(canvas.dataset.eventId) : undefined;
-        const props = map3dView.propSlots.flatMap(slot => displayedEvents[slot] ? [{ slot, ...displayedEvents[slot] }] : []);
-        const updated = map3dView.update({ x: tx, y: ty, direction: facing, moving: walking, hidden: hiddenPlayer,
-          people, props, opacity: root.alpha, elapsedMs: now, cameraFocus: cameraOverride,
-          stageEvent, heroAnimation: openingPoses.get(-1), sailing, sceneEvents: displayedEvents,
-          animationTick, animateEvents: !openingActive && !trainerActive && !recruitActive && !eventActive,
-          heroPicture: forcedPlayerPicture, force: Boolean(refresh || frameWaiters.length) });
+        const updated = map3dView.update(nativeMapFrame(tx, ty, now, {
+          moving: walking, sailing, force: Boolean(refresh || frameWaiters.length),
+        }));
         // Project against the camera used for the displayed World3D frame.
         if (updated) drawWorldRoute(tx, ty);
         if (dirty && host.getStatus().pendingFrames === 0) submitFrame();
@@ -1944,10 +2100,17 @@ async function openMap(game, destination) {
     );
   }
 
+  async function leaveGame(navigate) {
+    await close().catch(error => console.warn('遊戲資源清理未完成', error));
+    navigate();
+  }
+
   function close() {
     if (closing) return Promise.resolve();
     closing = true;
     cancelAnimationFrame(request);
+    clearTimeout(exitGuideTimer);
+    openingExitGuide.hidden = dialogueTools.hidden = true;
     listeners.abort();
     battleResultPanel.hidden = true;
     menu.close();
@@ -1976,6 +2139,7 @@ async function openMap(game, destination) {
   }
 
   function pressGameKey(code, repeat, consume = () => {}) {
+    if (canvas.dataset.phase !== 'ready' || journal.open) return;
     if (!battle && !trainerActive && !eventActive) startMapMusic();
     if (openingActive) {
       if (moves.has(code) || ['Enter', 'Space', 'Escape'].includes(code)) consume();
@@ -2032,7 +2196,7 @@ async function openMap(game, destination) {
     dirty = true;
   }, { signal: scope.signal });
   engine.stage.on(keyboard.events.cancel, () => { held = undefined; dirty = true; }, { signal: scope.signal });
-  attachGamepadInput(canvas, { keyboard, signal: listeners.signal, getMode() {
+  attachGamepadInput(canvas, { keyboard, createInput: createBrowserGamepadInput, signal: listeners.signal, getMode() {
     if (closing) return undefined;
     if (canvas.dataset.trainer === 'team' && menu.active) return 'team';
     if (battle && battle.model.state.result === null && !canvas.dataset.battlePrompt) return 'battle';
@@ -2067,6 +2231,18 @@ async function openMap(game, destination) {
     canvas.focus({ preventScroll: true });
     pressGameKey(command, false);
     if (moves.has(command)) held = undefined;
+  }, { signal: listeners.signal });
+  journalButton.addEventListener('click', () => journal.show(), { signal: listeners.signal });
+  skipReadOpening.addEventListener('click', () => {
+    if (!openingActive || !dialogue.waiting || !openingReading.start(openingCommand)) return;
+    dialogueTools.hidden = true;
+    canvas.focus({ preventScroll: true });
+    if (dialogue.skip()) canvas.dataset.opening = 'running';
+  }, { signal: listeners.signal });
+  openingExitGuide.addEventListener('click', () => {
+    if (!openingExit || closing || openingActive || trainerActive || recruitActive || eventActive || worldMenuActive || battle) return;
+    canvas.focus({ preventScroll: true });
+    if (queueWalk({ x: openingExit[0], y: openingExit[1] })) openingExitGuide.hidden = true;
   }, { signal: listeners.signal });
   function restoreMapKeyboardFocus() {
     if (document.activeElement === canvas && document.visibilityState === 'visible') keyboard.focus('map');
@@ -2118,13 +2294,21 @@ async function openMap(game, destination) {
     notice.textContent = `正在載入${isWorld ? '江湖大地图' : scene.name}的 3D 場景…`;
     try {
       const viewport = canvas.parentElement;
-      const createNativeView = await loadNativeView();
       const options = isWorld ? { world: scene, places: scenes, canEnter } : { map: scene, textures, width, height, scale };
+      const prepared = await takePreparedHome?.();
+      const createNativeView = prepared?.create ?? await loadNativeView();
       map3dView = await createNativeView(viewport, canvas, options);
       if (closing) { map3dView.dispose(); return; }
+      if (map3dView.prepareFirstFrame) {
+        await map3dView.prepareFirstFrame(nativeMapFrame(x, y, performance.now()));
+        if (closing) return;
+      }
       ground.visible = objects.visible = false;
       if (atmosphere) atmosphere.light.visible = false;
     } catch (error) {
+      if (closing) return;
+      map3dView?.dispose();
+      map3dView = undefined;
       console.warn(`${isWorld ? '江湖大地图' : scene.name} 3D 素材無法載入，沿用原作畫面`, error);
     }
   }

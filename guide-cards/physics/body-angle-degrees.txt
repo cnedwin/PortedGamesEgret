@@ -1,0 +1,26 @@
+---
+id: body-angle-degrees
+title: A 2D physics body's angle is in degrees
+applies: [engine, web]
+triggers: [addBody, angle, "PhysicsBody.angle", "rotated box", "kinematic platform", "wheel stuck", "角度", "弧度", "旋转的盒子", "卡住"]
+local: [plank, ramp]
+evidence:
+  - { repo: cnedwin/PortedGamesEgret, path: LubanBridge/src/sim/run.mjs, line: 118, commit: d69caa88e6e17d6c3dff0de03db96d720ba81282, pin: a7be833b09ddad1936c79ff148c909cf452bea7f }
+  - { repo: cnedwin/PortedGamesEgret, path: LubanBridge/ENGINE-NOTES.md, line: 14, commit: d69caa88e6e17d6c3dff0de03db96d720ba81282, pin: a7be833b09ddad1936c79ff148c909cf452bea7f }
+engine: a7be833b09ddad1936c79ff148c909cf452bea7f
+---
+
+# A 2D physics body's angle is in degrees
+
+`PhysicsBodyOptions.angle` and `PhysicsBody.angle` are degrees, as a display object's `rotation` is. Given radians, a sloped platform turns by less than a degree: a wheel driven toward it meets the end face of a box that never turned and stops dead, which looks like a fault in the contacts.
+
+```js
+// A kinematic plank whose top edge runs from (ax, ay) to (bx, by).
+plank.angle = (Math.atan2(by - ay, bx - ax) * 180) / Math.PI;
+```
+
+Rules:
+
+- Convert once where the angle is set; keep radians in your own maths.
+- The same holds for debris you spin by hand: add degrees a step.
+- Bodies do not turn by themselves yet (no angular speed or torque): a wheel slides, so drive it along the surface it stands on.

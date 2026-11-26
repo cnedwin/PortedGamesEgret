@@ -4,6 +4,10 @@ export type SharedEffectPass = 'horizontal' | 'vertical' | 'spread' | 'composite
 export declare const EFFECT_PASSES: readonly SharedEffectPass[];
 /** The bytes of one group's uniform, as prepareEffects2D fills it. */
 export declare const EFFECT_UNIFORM_BYTES: number;
-export declare function sharedEffectGLSL(mode: SharedEffectPass): string;
-export declare function createSharedEffectPipeline(shader: (d: GPUShaderModuleDescriptor) => GPUShaderModule, pipeline: (d: GPURenderPipelineDescriptor) => Promise<GPURenderPipeline>, mode: SharedEffectPass): Promise<GPURenderPipeline>;
+/**
+ * In a target that mixes stored codes the colour already is as it is seen, so the matrix reads and writes it
+ * without the transfer.
+ */
+export declare function sharedEffectGLSL(mode: SharedEffectPass, srgb?: boolean): string;
+export declare function createSharedEffectPipeline(shader: (d: GPUShaderModuleDescriptor) => GPUShaderModule, pipeline: (d: GPURenderPipelineDescriptor) => Promise<GPURenderPipeline>, mode: SharedEffectPass, srgb?: boolean): Promise<GPURenderPipeline>;
 //# sourceMappingURL=sharedEffectShaders.d.ts.map

@@ -1,3 +1,4 @@
+/** The largest snapshot a ByteReader reads, in bytes. */
 export const BYTE_READER_LIMITS = Object.freeze({ maxBytes: 16777216 });
 // Capture intrinsic operations, rather than consulting source properties,
 // iterators, constructors or species during admission and interpretation.

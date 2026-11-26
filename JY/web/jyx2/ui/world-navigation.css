@@ -57,3 +57,13 @@
   pointer-events: auto;
   touch-action: manipulation;
 }
+
+.explore-controls > .world-navigation {
+  position: static;
+  grid-column: 1 / -1;
+  display: grid;
+  gap: 4px;
+  max-width: none;
+  padding: 6px 8px;
+}
+.explore-controls > .world-navigation[hidden] { display: none; }

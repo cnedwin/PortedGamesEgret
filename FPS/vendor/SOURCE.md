@@ -1,6 +1,7 @@
-# Vendored browser runtime
+# Vendored engine
 
-- Egret Engine community rebuild, branch `main`, pinned commit [`9cdd47e96b223622cb45ab63085984d420a9afcd`](https://github.com/cnedwin/Egret_rebuild/tree/9cdd47e96b223622cb45ab63085984d420a9afcd).
-- Built from `packages/engine`, `packages/runtime` and `packages/contracts` with `node tools/build.mjs`, using Node.js 22.23.4 and TypeScript 7.0.2. Source tree: 6c8e86f65903092399301ea8c8a8dd0431b7f10f.
-- Only the JavaScript files the game loads are kept: the import closure of `@egret/engine`, `@egret/engine/world3d`, `@egret/engine/webgl2/world3d` and `@egret/engine/webgpu/world3d`. Source maps and type declarations are left out, and the source-map comment at the end of each file is removed; the code is otherwise unchanged.
-- License: Apache-2.0, see `LICENSE` and `NOTICE`.
+- Egret Engine community rebuild, commit `b5628eb9997b67cf6163a388f5aa06f321f3833a`, copied by `tools/vendor-game.mjs`.
+- Entries: `@egret/engine`, `@egret/engine/world3d`, `@egret/engine/webgl2/world3d`, `@egret/engine/webgpu/world3d`, `@egret/engine/web/kit`. Only the JavaScript files they import are kept; source maps and declarations are left out.
+- Third-party packages, copied with their own licences: `robust-predicates` (Unlicense).
+- First-party engine code: Apache-2.0, see `LICENSE` and `NOTICE`.
+- In a page: add `vendor/importmap.json` to the import map, or load `vendor/importmap.js` first. In Node: `node --import ./vendor/node-register.mjs`.

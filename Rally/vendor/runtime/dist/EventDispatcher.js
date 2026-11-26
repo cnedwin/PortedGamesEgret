@@ -11,7 +11,8 @@ function stateOf(dispatcher) {
     return state;
 }
 function candidatesOf(dispatcher, type, capture) {
-    return [...stateOf(dispatcher).subscriptions].filter((entry) => entry.type === type && entry.capture === capture)
+    return [...stateOf(dispatcher).subscriptions]
+        .filter(entry => entry.type === type && entry.capture === capture)
         .sort((a, b) => b.priority - a.priority || a.sequence - b.sequence);
 }
 function isCancelled(signal) {
@@ -29,7 +30,11 @@ function executeDispatch(target, event, route, select) {
                 visits.push({ node, phase: "capturing", candidates: select(node, event.type, true) });
         }
         // Target groups share one visit so stopPropagation preserves both groups.
-        visits.push({ node: target, phase: "atTarget", candidates: [...select(target, event.type, true), ...select(target, event.type, false)] });
+        visits.push({
+            node: target,
+            phase: "atTarget",
+            candidates: [...select(target, event.type, true), ...select(target, event.type, false)]
+        });
         if (event.type.bubbles) {
             for (const node of ancestors)
                 visits.push({ node, phase: "bubbling", candidates: select(node, event.type, false) });
@@ -45,10 +50,18 @@ function executeDispatch(target, event, route, select) {
                 if (candidate.once)
                     candidate.unsubscribe();
                 const returned = candidate.invoke(event);
-                if (returned !== null && (typeof returned === "object" || typeof returned === "function") && "then" in returned && typeof returned.then === "function") {
+                if (returned !== null &&
+                    (typeof returned === "object" || typeof returned === "function") &&
+                    "then" in returned &&
+                    typeof returned.then === "function") {
                     // Invalid asynchronous handlers must not create an unhandled rejection.
                     void Promise.resolve(returned).catch((cause) => {
-                        engineOf(target)?.report({ code: "ASYNC_EVENT_HANDLER_REJECTED", phase: "engine", severity: "error", cause });
+                        engineOf(target)?.report({
+                            code: "ASYNC_EVENT_HANDLER_REJECTED",
+                            phase: "engine",
+                            severity: "error",
+                            cause
+                        });
                     });
                     throw new EgretError("ASYNC_EVENT_HANDLER");
                 }
@@ -72,7 +85,9 @@ export class EventDispatcher {
         dispatcherStates.set(this, { subscriptions: new Set(), nextSequence: 0 });
     }
     assertUsable() { }
-    eventParent() { return undefined; }
+    eventParent() {
+        return undefined;
+    }
     /** Async handlers are excluded by types and rejected if returned at runtime. */
     on(type, handler, options = {}) {
         this.assertUsable();
@@ -98,7 +113,7 @@ export class EventDispatcher {
                 subscription.active = false;
                 state.subscriptions.delete(subscription);
                 signal?.removeEventListener("abort", subscription.unsubscribe);
-            },
+            }
         };
         if (isDisplayNode(this))
             assertLive(this);

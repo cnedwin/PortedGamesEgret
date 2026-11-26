@@ -21,12 +21,13 @@ export async function showWorldMenu({ menu, signal, game, catalog, actions, bagO
   });
   const command = bagOnly ? 'bag' : await choose('江湖選單', [
     option('查看背包', 'bag', { worldAction: 'bag' }), option('查看隊伍與武學', 'party', { worldAction: 'party' }),
+    ...(actions.history ? [option('回看對話', 'history', { worldAction: 'history' })] : []),
     option('儲存進度', 'save', { worldAction: 'save' }), option('讀取存檔', 'load', { worldAction: 'load' }),
     option('匯入桌面存檔', 'import', { worldAction: 'import' }), option('匯出桌面存檔', 'export', { worldAction: 'export' }),
     option('開始新遊戲', 'new', { worldAction: 'new' }),
     option('返回主選單', 'title', { worldAction: 'title' }),
   ], { variant: 'world' });
-  if (['save', 'load', 'import', 'export', 'new', 'title'].includes(command)) return actions[command]();
+  if (['save', 'load', 'import', 'export', 'new', 'title', 'history'].includes(command)) return actions[command]();
 
   if (command === 'party') {
     const id = await choose('隊伍', roleRows(game.party.map(role), true), { variant: 'roster' });

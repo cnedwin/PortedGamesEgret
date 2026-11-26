@@ -14,8 +14,11 @@ import { Bone3D, InstancedMesh3D, Mesh3D, Skeleton3D } from './Mesh3D.js';
 import { Object3D, Scene3D } from './Object3D.js';
 import { ParticleEmitter3D } from './Particles3D.js';
 import { RenderTarget3D, Texture3D, isCompressedPixels3D, isTexturePixels3D } from './Texture3D.js';
+/** The format name of a saved scene document. */
 export const SCENE_DOCUMENT_FORMAT_3D = 'egret.world3d.scene';
+/** The version of the scene document format. */
 export const SCENE_DOCUMENT_VERSION_3D = 1;
+/** The most nodes, embedded texture bytes and document bytes a scene document has. */
 export const SERIALIZE3D_LIMITS = Object.freeze({
     maxNodes: 65536,
     maxEmbeddedTextureBytes: 1048576,
@@ -218,6 +221,12 @@ export function serializeScene3D(root, options = {}) {
         const known = geometryIds.get(value);
         if (known !== undefined)
             return known;
+        const key = options.geometryKey?.(value);
+        if (typeof key === 'string' && key.length > 0) {
+            geometryIds.set(value, geometries.length);
+            geometries.push({ key });
+            return geometries.length - 1;
+        }
         const attributes = {};
         for (const [name, attribute] of value.attributes)
             attributes[name] = {
@@ -435,6 +444,19 @@ export function deserializeScene3D(saved, options = {}) {
                     material[field] = textures[entry[field]];
         }
         for (const entry of doc['geometries']) {
+            if (typeof entry['key'] === 'string') {
+                const resolved = options.resolveGeometry?.(entry['key']);
+                if (resolved instanceof Geometry3D) {
+                    geometries.push(resolved);
+                    continue;
+                }
+                // A missing reference gives an empty geometry instead of failing the whole scene.
+                const empty = new Geometry3D();
+                empty.name = entry['key'];
+                created.push(empty);
+                geometries.push(empty);
+                continue;
+            }
             const geometry = new Geometry3D();
             created.push(geometry);
             geometries.push(geometry);

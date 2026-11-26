@@ -3,6 +3,7 @@
 // rectangles of it can be tapped. Painter holds the game's visual style.
 import { W, H } from './stage.mjs';
 import { rrect, rgba, shade, heart, star, poly } from '../art/draw.mjs';
+import { createPanelSemantics, describePaintedHit } from './ui-semantics.mjs';
 
 export const FONT = '"PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Noto Sans CJK SC", "Source Han Sans SC", system-ui, sans-serif';
 export const SERIF = '"Noto Serif SC", "Songti SC", "Noto Serif CJK SC", "Source Han Serif SC", "STSong", Georgia, serif';
@@ -50,6 +51,8 @@ export class Painter {
     g.textBaseline = 'top';
     const lines = maxW ? wrapText(g, str, maxW) : String(str).split('\n');
     const lh = lineH ?? Math.round(size * 1.45);
+    const width = Math.max(0, ...lines.map(line => g.measureText(line).width));
+    this.panel.words.push({ text: String(str), x: x - (align === 'center' ? width / 2 : align === 'right' ? width : 0), y, w: width, h: lines.length * lh, size });
     g.save();
     g.globalAlpha *= alpha;
     lines.forEach((line, i) => {
@@ -124,7 +127,7 @@ export class Painter {
       g.fillStyle = '#eda4ad';
       g.fill(rrect(x + w / 2 - 11, y + h - 3, 22, 2, 1));
     }
-    this.hit(x, y, w, h, tap, { r: 9 });
+    this.hit(x, y, w, h, tap, { r: 9, label, role: 'tab', selected: Boolean(on) });
   }
 
   /** Left-to-right gradient fill for accents. */
@@ -136,12 +139,19 @@ export class Painter {
   }
 
   /** Register a tappable rectangle; tap(x, y) receives where inside it the tap landed. */
-  hit(x, y, w, h, tap, { hover = true, r = 12 } = {}) {
-    this.panel.hits.push({ x, y, w, h, tap, hover, r });
+  hit(x, y, w, h, tap, { hover = true, r = 12, label, role = 'button', selected, disabled = false } = {}) {
+    const hit = { x, y, w, h, tap, hover, r, disabled };
+    // Keep disabled controls in hit testing so a tap cannot fall through to panel.blank.
+    if (tap) this.panel.hits.push(hit);
+    this.panel.controls.push({
+      hit, role, selected, disabled,
+      label: label ?? describePaintedHit(this.panel.words, hit, this.g.fillStyle),
+      key: `${role}:${x}:${y}:${w}:${h}`,
+    });
   }
 
   /** Button styles used by titles, dialogue and transaction panels. */
-  button(x, y, w, h, label, tap, { kind = 'plain', disabled = false, size = 18, sub, icon, r = 10, color } = {}) {
+  button(x, y, w, h, label, tap, { kind = 'plain', disabled = false, size = 18, sub, icon, r = 10, color, accessibleName } = {}) {
     const g = this.g;
     const radius = Math.min(r, h / 2, 12);
     const path = rrect(x, y, w, h, radius);
@@ -173,7 +183,7 @@ export class Painter {
     this.text(label, tx, top, { size, weight: 750, color: ink, align: 'center' });
     if (sub) this.text(sub, x + w / 2, y + h / 2 + 5, { size: size * .68, color: ink, align: 'center', alpha: .82 });
     g.restore();
-    if (!disabled && tap) this.hit(x, y, w, h, tap, { r: radius });
+    this.hit(x, y, w, h, tap, { r: radius, label: accessibleName ?? (sub ? `${label} · ${sub}` : label), disabled });
   }
 
   /** A small rounded label. */
@@ -208,6 +218,7 @@ export class Painter {
 
   /** Section heading with a small editorial rule. */
   title(str, x, y, { size = 29, color = THEME.ink } = {}) {
+    this.panel.label ??= String(str);
     this.text(str, x, y, { size, weight: 750, family: SERIF, color });
     const base = y + size * 1.34;
     this.g.fillStyle = THEME.rose;
@@ -236,13 +247,17 @@ export class Painter {
  *   panel.dismiss = fn    called when a pop-up is tapped beside, or Escape is pressed
  */
 export class Panel {
-  constructor(ui, { x = 0, y = 0, w = W, h = H, res = 1.25, parent, modal = false }) {
+  constructor(ui, { x = 0, y = 0, w = W, h = H, res = 1.25, parent, modal = false, title }) {
     this.ui = ui;
     this.w = w;
     this.h = h;
     this.res = res;
     this.modal = modal;
+    this.title = title;
     this.hits = [];
+    this.controls = [];
+    this.words = [];
+    this.paintRevision = 0;
     this.pic = ui.stage.pic(parent ?? ui.layer);
     this.node = this.pic.node;
     this.node.x = x;
@@ -253,9 +268,14 @@ export class Panel {
 
   /** Repaint the panel: draw(painter) lays out its content and tappable areas. */
   paint(draw) {
+    this.paintRevision++;
     this.hits = [];
+    this.controls = [];
+    this.words = [];
+    this.label = this.title;
     const canvas = this.ui.stage.canvas(this.w, this.h, this.res, g => draw(new Painter(g, this)));
     this.pic.show(canvas, canvas.res);
+    this.ui.accessibility?.invalidate();
     return this;
   }
 
@@ -264,6 +284,7 @@ export class Panel {
     if (i >= 0) this.ui.panels.splice(i, 1);
     if (this.ui.hovered?.panel === this) this.ui.setHover(null);
     this.pic.destroy();
+    this.ui.accessibility?.invalidate();
   }
 }
 
@@ -295,7 +316,7 @@ export function createUI(stage, layer) {
 
   ui.setHover = found => {
     ui.hovered = found;
-    if (!found?.hit?.hover) {
+    if (!found?.hit?.hover || found.hit.disabled) {
       glow.alpha = 0;
       return;
     }
@@ -314,7 +335,7 @@ export function createUI(stage, layer) {
     if (ui.locked || e?.pointerType === 'touch') return;
     const found = find(x, y);
     if (found?.hit !== ui.hovered?.hit) ui.setHover(found);
-    stage.canvasElement.style.cursor = found?.hit ? 'pointer' : 'default';
+    stage.canvasElement.style.cursor = found?.hit && !found.hit.disabled ? 'pointer' : 'default';
   });
   stage.on('down', (x, y) => {
     if (ui.locked) return;
@@ -329,7 +350,8 @@ export function createUI(stage, layer) {
     ui.setHover(e?.pointerType === 'touch' ? null : found);
     if (x < 0) return;
     if (pressed?.hit) {
-      if (found?.hit === pressed.hit) {
+      if (found?.hit === pressed.hit && !pressed.hit.disabled) {
+        ui.accessibility.pointerFocus(pressed.panel, pressed.hit);
         glow.alpha = 0;
         ui.onTap?.();
         pressed.hit.tap(found.lx, found.ly);
@@ -345,6 +367,7 @@ export function createUI(stage, layer) {
   });
   stage.on('key', (key, e) => {
     if (ui.locked) return;
+    if (ui.accessibility.key(key, e)) return;
     // Escape closes the top-most pop-up that can be dismissed.
     const top = [...ui.panels].reverse().find(panel => panel.modal);
     if (key === 'Escape' && top?.dismiss) top.dismiss();
@@ -352,5 +375,6 @@ export function createUI(stage, layer) {
   });
 
   ui.panel = options => new Panel(ui, options);
+  ui.accessibility = createPanelSemantics(ui, stage, { width: W, height: H });
   return ui;
 }

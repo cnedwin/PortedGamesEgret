@@ -12,6 +12,7 @@ export declare class Texture {
     /** Drop only the wrapper reference; saved image values keep their own pixels. */
     dispose(): void;
 }
+/** A texture of a whole image or of a rectangle of it. */
 export declare function createTexture(image: ImageData2D, sourceRect?: TextureRegion2D): Texture;
 /** Create an explicit logical view over an authentic straight CPU image. */
 export declare function createTextureView(image: ImageData2D, region: TextureViewRegionInput2D): Texture;

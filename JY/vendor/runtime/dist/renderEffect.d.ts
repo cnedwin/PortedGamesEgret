@@ -9,6 +9,14 @@ export interface RenderEffect2D {
     readonly alphaMask?: Bitmap;
     readonly maskRect?: Rectangle2D;
     /**
+     * A mask of vector shapes, as Egret's `mask = displayObject`: what the node draws shows only where this Sprite's
+     * Graphics covers, faded where they are translucent. On the stage with the node it masks where it is, as in Egret;
+     * off the stage it is placed as if it were a child of the node. Only its own drawing counts, not its children's, and
+     * its alpha and visibility do not. On the stage it is not drawn while it masks, as in Egret. One effect has an alpha
+     * mask or a shape mask.
+     */
+    readonly shapeMask?: DisplayObject;
+    /**
      * Twenty numbers, as Egret's ColorMatrixFilter: four rows of red, green, blue and alpha, each four factors and an
      * offset from 0 to 255. Applied to colour as it is seen, without its alpha multiplied in, after the blur.
      */
@@ -18,6 +26,7 @@ export interface RenderEffect2D {
     /** A hard line of a colour around what is drawn, a few pixels wide. One effect has a glow or an outline. */
     readonly outline?: RenderOutline2D;
 }
+/** A glow around a node's picture, or, moved by an offset, a drop shadow. */
 export interface RenderGlow2D {
     /** 0xRRGGBB. */
     readonly color: number;
@@ -35,6 +44,7 @@ export interface RenderGlow2D {
     readonly offsetX?: number;
     readonly offsetY?: number;
 }
+/** An outline around a node's picture: its color, width and alpha. */
 export interface RenderOutline2D {
     /** 0xRRGGBB. */
     readonly color: number;

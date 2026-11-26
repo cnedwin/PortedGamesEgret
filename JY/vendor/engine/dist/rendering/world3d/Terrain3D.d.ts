@@ -5,6 +5,7 @@ import { Mesh3D } from './Mesh3D.js';
 import { Object3D } from './Object3D.js';
 import { TriangleMeshShape3D } from './PhysicsMesh3D.js';
 import type { Camera3D } from './Camera3D.js';
+/** The largest height field, chunk and number of levels and chunks terrain has, and the most streamed tiles. */
 export declare const TERRAIN3D_LIMITS: Readonly<{
     readonly maxSamplesPerSide: 4097;
     readonly maxChunkCells: 254;
@@ -14,6 +15,7 @@ export declare const TERRAIN3D_LIMITS: Readonly<{
     readonly maxStreamTiles: 256;
     readonly maxStreamPending: 32;
 }>;
+/** A height field to make: its columns and rows, its size, and its heights or a function that gives them. */
 export interface HeightFieldOptions3D {
     /** Samples along X and along Z; a field of n samples has n - 1 cells. */
     readonly columns: number;
@@ -75,7 +77,9 @@ export declare class HeightField3D {
         readonly mesh: TriangleMeshShape3D;
     };
 }
+/** Makes a grid of heights for terrain and physics. */
 export declare function createHeightField3D(options: HeightFieldOptions3D): HeightField3D;
+/** How an image becomes heights: the field's size, its lowest and highest height, and how heights are encoded. */
 export interface HeightImageOptions3D {
     readonly width: number;
     readonly depth: number;
@@ -91,6 +95,7 @@ export declare function createHeightFieldFromPixels3D(pixels: {
     readonly height: number;
     readonly data: ArrayLike<number>;
 }, options: HeightImageOptions3D): HeightField3D;
+/** Terrain to make: its chunks, levels of detail and their distance, its skirts, texture scale and colors. */
 export interface TerrainOptions3D {
     /** Cells along each side of a chunk. Default 32. */
     readonly chunkCells?: number;
@@ -155,7 +160,9 @@ export declare class Terrain3D extends Object3D {
     private use;
     private build;
 }
+/** Makes terrain from a height field, drawn in chunks at levels of detail. */
 export declare function createTerrain3D(field: HeightField3D, material: Material3D, options?: TerrainOptions3D): Terrain3D;
+/** A terrain material's layers, their weights, and how often they repeat. */
 export interface TerrainMaterialOptions3D extends StandardMaterialOptions3D {
     /** One to four tiling ground textures. */
     readonly layers: readonly Texture3D[];
@@ -170,12 +177,19 @@ export interface TerrainMaterialOptions3D extends StandardMaterialOptions3D {
  * with `uvScale` 1 so the weight map covers the terrain once.
  */
 export declare function createTerrainMaterial3D(options: TerrainMaterialOptions3D): Material3D;
+/** One tile of streamed terrain: where it is, its height field and terrain. */
 export interface TerrainTile3D {
     readonly x: number;
     readonly z: number;
     readonly field: HeightField3D;
     readonly terrain: Terrain3D;
+    /**
+     * The world `[x, z]` of the tile's centre, which is the origin of its `field`: read a height at a world point as
+     * `field.heightAt(x - center[0], z - center[1])`.
+     */
+    readonly center: readonly [number, number];
 }
+/** Streamed terrain to make: its tile size and view distance, how a tile is loaded, and what is called as tiles come and go. */
 export interface TerrainStreamOptions3D {
     /** World size of one square tile. Tile (x, z) covers x * size to (x + 1) * size on each axis. */
     readonly tileSize: number;
@@ -201,11 +215,17 @@ type TerrainStreamFailure3D = Readonly<{
     phase: 'load' | 'prepare' | 'onLoad' | 'dispose' | 'onUnload';
     cause: unknown;
 }>;
+/** Terrain loaded in tiles around the camera: read heights, and update it as the camera moves. */
 export declare class TerrainStream3D extends Object3D {
     #private;
     readonly tileSize: number;
     viewDistance: number;
     constructor(options: TerrainStreamOptions3D);
+    /**
+     * How far the viewer of the last `update` is from the nearest point of a tile, in world units: for showing the
+     * things a game scattered on it in more or less detail. 0 inside it; Infinity before the first update.
+     */
+    distanceOf(tile: TerrainTile3D): number;
     get tiles(): readonly TerrainTile3D[];
     /** Outstanding loader calls, including retired requests that have yet to settle. */
     get pendingCount(): number;
@@ -222,6 +242,7 @@ export declare class TerrainStream3D extends Object3D {
     private release;
     private recordFailure;
 }
+/** Makes terrain that loads and unloads tiles around a point. */
 export declare function createTerrainStream3D(options: TerrainStreamOptions3D): TerrainStream3D;
 export {};
 //# sourceMappingURL=Terrain3D.d.ts.map

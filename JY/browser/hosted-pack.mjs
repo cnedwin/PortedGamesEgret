@@ -27,6 +27,7 @@ export async function findHostedPack(signal) {
 }
 
 export async function downloadHostedPack({ url, bytes }, { signal, onProgress }) {
+  onProgress({ phase: 'downloading', done: 0, total: bytes });
   const response = await fetch(url, { ...requestOptions, cache: 'no-store', signal });
   if (!response.ok || !response.body) throw Error('暂时无法下载在线游戏数据。');
 
@@ -34,7 +35,6 @@ export async function downloadHostedPack({ url, bytes }, { signal, onProgress })
   const chunks = [];
   let received = 0;
   try {
-    onProgress({ phase: 'downloading', done: received, total: bytes });
     while (true) {
       const { value, done } = await reader.read();
       if (done) break;

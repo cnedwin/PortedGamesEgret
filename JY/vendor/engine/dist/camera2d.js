@@ -76,7 +76,7 @@ export function createCamera2D(options) {
     const before = read(world);
     const layers = [];
     let width = w0, height = h0, zoom = z0, rotation = r0, bounds = b0 === undefined ? undefined : { ...b0 };
-    let cx = c0?.x ?? width / 2, cy = c0?.y ?? height / 2, trauma = 0, time = 0, closed = false;
+    let cx = c0?.x ?? width / 2, cy = c0?.y ?? height / 2, trauma = 0, shakeScale = 1, time = 0, closed = false;
     let follow, move, zoomMove;
     let shakeX = 0, shakeY = 0, shakeAngle = 0;
     function open() {
@@ -268,6 +268,14 @@ export function createCamera2D(options) {
             height = newHeight;
             settle();
         },
+        get shakeScale() {
+            return shakeScale;
+        },
+        set shakeScale(value) {
+            if (!finite(value) || value < 0 || value > 1)
+                throw new EgretError('CAMERA_OPTIONS_INVALID');
+            shakeScale = value;
+        },
         shake(shakeOptions = {}) {
             if (!record(shakeOptions))
                 throw new EgretError('CAMERA_OPTIONS_INVALID');
@@ -338,7 +346,7 @@ export function createCamera2D(options) {
                 cy += (wantY - cy) * pull;
             }
             trauma = Math.max(0, trauma - shakeDecay * seconds);
-            const strength = trauma * trauma, t = time * shakeFrequency;
+            const strength = trauma * trauma * shakeScale, t = time * shakeFrequency;
             shakeX = shakeOffset * strength * noise(seed, 0, t);
             shakeY = shakeOffset * strength * noise(seed, 1, t);
             shakeAngle = shakeRotation * strength * noise(seed, 2, t);

@@ -135,12 +135,16 @@ test('the files the tool wrote are the ones the manifest names', () => {
 test('the page can find every module it asks for', () => {
   const html = read('index.html').toString(),
     map = JSON.parse(html.match(/<script type="importmap">([\s\S]*?)<\/script>/)[1]).imports;
+  assert.deepEqual(map, JSON.parse(read('vendor/importmap.json')).imports, 'page and official vendor import maps agree');
   for (const [name, target] of Object.entries(map)) assert.ok(fs.existsSync(path.join(ROOT, target)), `${name} → ${target}`);
   const asked = new Set();
   const scan = dir => {
     for (const entry of fs.readdirSync(path.join(ROOT, dir), { withFileTypes: true })) {
       const file = path.join(dir, entry.name);
+      if (file.split(path.sep).join('/') === 'vendor/egret') continue;
       if (entry.isDirectory()) scan(file);
+      // vendor/node-register.mjs and node-resolve.mjs find the engine for Node; the page never loads them.
+      else if (/^vendor\/(?:node-(?:register|resolve)|egret)\.mjs$/.test(file.split(path.sep).join('/'))) continue;
       else if (file.endsWith('.mjs') || file.endsWith('.js')) for (const match of read(file).toString().matchAll(/^\s*(?:import|export)\b[^;'"`]*?\bfrom\s*['"]([^'"\n]+)['"]/gm)) match[1].startsWith('.') ? assert.ok(fs.existsSync(path.join(ROOT, dir, match[1])), `${file} → ${match[1]}`) : asked.add(match[1]);
     }
   };

@@ -1,0 +1,42 @@
+/* 页面只是一块填满窗口的舞台：不滚动、不被下拉刷新或双击缩放打断。
+   The page is one stage filling the window: no scrolling, no pull-to-refresh, no double-tap zoom. */
+html,
+body {
+  margin: 0;
+  height: 100%;
+  background: #0b1222;
+  overflow: hidden;
+  overscroll-behavior: none;
+  touch-action: none;
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+#frame {
+  position: fixed;
+  inset: 0;
+  padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+  display: grid;
+  place-items: center;
+}
+#stage {
+  display: block;
+  outline: none;
+  touch-action: none;
+  /* The night sky behind every screen. The engine clears to transparent and draws only what moves, so the sky costs
+     nothing per frame (as a full-screen gradient in the stage it halved the frame rate under software rendering). */
+  background:
+    radial-gradient(50% 45% at 50% 85%, rgba(240, 184, 90, 0.18), rgba(240, 184, 90, 0)),
+    linear-gradient(#0b1222 0%, #1d2a3e 65%, #2b3a4a 100%);
+}
+#loading {
+  color: #f3ead6;
+  font: 500 16px/1.4 "Noto Sans SC", "PingFang SC", "Microsoft YaHei", sans-serif;
+  opacity: 0.8;
+}
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation: none !important;
+    transition: none !important;
+  }
+}

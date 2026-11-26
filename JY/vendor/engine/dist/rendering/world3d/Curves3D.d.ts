@@ -1,5 +1,8 @@
+/** A point in 3D as x, y and z. */
 export type Point3D = [number, number, number];
+/** A point in 2D as x and y. */
 export type Point2D = [number, number];
+/** The most points and divisions a curve has. */
 export declare const CURVE3D_LIMITS: Readonly<{
     readonly maxPoints: 65536;
     readonly maxDivisions: 16384;
@@ -38,12 +41,14 @@ export declare abstract class Curve3D {
         binormals: Point3D[];
     };
 }
+/** A straight line between two points, as a curve. */
 export declare class LineCurve3D extends Curve3D {
     readonly start: Point3D;
     readonly end: Point3D;
     constructor(start: ArrayLike<number>, end: ArrayLike<number>);
     getPoint(t: number, out?: Point3D): Point3D;
 }
+/** A quadratic Bézier curve through three control points. */
 export declare class QuadraticBezierCurve3D extends Curve3D {
     readonly p0: Point3D;
     readonly p1: Point3D;
@@ -51,6 +56,7 @@ export declare class QuadraticBezierCurve3D extends Curve3D {
     constructor(p0: ArrayLike<number>, p1: ArrayLike<number>, p2: ArrayLike<number>);
     getPoint(t: number, out?: Point3D): Point3D;
 }
+/** A cubic Bézier curve through four control points. */
 export declare class CubicBezierCurve3D extends Curve3D {
     readonly p0: Point3D;
     readonly p1: Point3D;
@@ -59,6 +65,7 @@ export declare class CubicBezierCurve3D extends Curve3D {
     constructor(p0: ArrayLike<number>, p1: ArrayLike<number>, p2: ArrayLike<number>, p3: ArrayLike<number>);
     getPoint(t: number, out?: Point3D): Point3D;
 }
+/** How a Catmull-Rom curve is parameterized between its points. */
 export type CatmullRomKind3D = 'centripetal' | 'chordal' | 'uniform';
 /** Smooth curve through every control point. Centripetal spacing avoids loops and cusps. */
 export declare class CatmullRomCurve3D extends Curve3D {
@@ -98,6 +105,7 @@ export declare class Shape3D extends Path2D3D {
     readonly holes: Path2D3D[];
     constructor(points?: readonly (readonly [number, number])[]);
 }
+/** The signed area of a 2D polygon: positive when its points run counterclockwise. */
 export declare function signedArea2D(points: readonly Point2D[]): number;
 /**
  * Triangulate an outline with holes by ear clipping. Returns the merged

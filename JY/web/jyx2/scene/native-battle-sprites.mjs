@@ -13,8 +13,17 @@ const clipAlpha = (key, cutoff) => createCustomShader3D({ key, glsl: `
 });
 const fadingRole = clipAlpha('kys-battle-role-alpha', '.22');
 const fadingEffect = clipAlpha('kys-battle-effect-alpha', '.035');
+const naturalColor = [1, 1, 1];
+const outdoorColor = [.96, .91, .84];
+const indoorColor = [.89, .85, .79];
+const spriteAlphaCutoff = .22;
 
-export function createNativeBattleSprites(art, units) {
+export function createBattleSpriteMaterial(map, alphaMode = 'blend') {
+  return createUnlitMaterial3D({ map, side: 'double', toneMapped: false, alphaMode,
+    alphaCutoff: spriteAlphaCutoff, fog: false });
+}
+
+export function createNativeBattleSprites(art, units, outdoor) {
   const group = new Object3D();
   const pages = new Map(), pieces = new Map(), slots = new Map();
   const right = new Float32Array(3), toward = new Float32Array(3);
@@ -47,7 +56,7 @@ export function createNativeBattleSprites(art, units) {
     return record;
   }
 
-  function update(frames, facing) {
+  function update(frames, facing, rolePoses) {
     const used = new Set();
     let actors = 0, effects = 0;
     vec3TransformQuat(right, viewRight, facing);
@@ -57,10 +66,12 @@ export function createNativeBattleSprites(art, units) {
       const picture = piece(frame.art);
       if (!picture) continue;
       const effect = Boolean(frame.effect);
+      const legacyActor = !effect && frame.art.startsWith('battle:fight/');
+      const scale = legacyActor ? .92 : 1;
+      const pose = rolePoses?.get(frame.key);
       let slot = slots.get(frame.key);
       if (!slot) {
-        const material = createUnlitMaterial3D({ map: picture.map, side: 'double', toneMapped: false,
-          alphaMode: 'blend', fog: false });
+        const material = createBattleSpriteMaterial(picture.map);
         const mesh = group.addChild(new Mesh3D(picture.geometry, material));
         mesh.receiveShadow = false;
         slot = { mesh, material };
@@ -72,32 +83,36 @@ export function createNativeBattleSprites(art, units) {
       const alphaMode = mask ? 'mask' : 'blend';
       const blending = frame.additive ? 'additive' : 'normal';
       if (material.alphaMode !== alphaMode || material.blending !== blending || slot.effect !== effect) {
-        Object.assign(material, { alphaMode, blending, alphaCutoff: .22,
+        Object.assign(material, { alphaMode, blending, alphaCutoff: spriteAlphaCutoff,
           shader: mask ? undefined : effect ? fadingEffect : fadingRole });
         material.touch();
       }
       slot.effect = effect;
       mesh.geometry = picture.geometry;
-      mesh.castShadow = !effect;
+      // A billboard always faces the camera. Its shadow cannot face the light too.
+      // The arena places the same soft ground contact under sprites and skinned meshes.
+      mesh.castShadow = false;
       mesh.renderOrder = effect ? 1 : 0;
       material.map = picture.map;
+      material.color.set(legacyActor ? outdoor ? outdoorColor : indoorColor : naturalColor);
       material.opacity = opacity;
       material.depthWrite = !effect && opacity > .52;
       const offset = effect ? .035 : .012;
       const shake = (frame.shakeX ?? 0) / units;
-      let x = frame.x + right[0] * shake + toward[0] * offset;
+      let x = frame.x + (pose?.x ?? 0) + right[0] * shake + toward[0] * offset;
       let y = (frame.z ?? 0) / (units * Math.sqrt(.75)) + right[1] * shake + toward[1] * offset;
-      let z = frame.y + right[2] * shake + toward[2] * offset;
-      if (frame.rotation) {
-        quatFromAxisAngle(roll, viewToward, -frame.rotation * Math.PI / 180);
+      let z = frame.y + (pose?.y ?? 0) + right[2] * shake + toward[2] * offset;
+      const angle = (frame.rotation ?? 0) + (pose?.roll ?? 0);
+      if (angle) {
+        quatFromAxisAngle(roll, viewToward, -angle * Math.PI / 180);
         quatMultiply(rotation, facing, roll);
         vec3TransformQuat(beforeRoll, picture.center, facing);
         vec3TransformQuat(afterRoll, picture.center, rotation);
-        x += beforeRoll[0] - afterRoll[0];
-        y += beforeRoll[1] - afterRoll[1];
-        z += beforeRoll[2] - afterRoll[2];
+        x += (beforeRoll[0] - afterRoll[0]) * scale;
+        y += (beforeRoll[1] - afterRoll[1]) * scale;
+        z += (beforeRoll[2] - afterRoll[2]) * scale;
       } else rotation.set(facing);
-      mesh.setPosition(x, y, z).setQuaternion(...rotation);
+      mesh.setPosition(x, y, z).setQuaternion(...rotation).setScale(scale);
       used.add(frame.key);
       if (effect) effects++; else actors++;
     }

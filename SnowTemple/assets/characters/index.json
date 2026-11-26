@@ -1,0 +1,27 @@
+{
+  "hero": [
+    "low",
+    "mid",
+    "high"
+  ],
+  "lu": [
+    "low",
+    "mid",
+    "high"
+  ],
+  "blade": [
+    "low",
+    "mid",
+    "high"
+  ],
+  "shield": [
+    "low",
+    "mid",
+    "high"
+  ],
+  "bow": [
+    "low",
+    "mid",
+    "high"
+  ]
+}

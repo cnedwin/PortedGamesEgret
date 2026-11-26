@@ -60,6 +60,8 @@ export class Engine {
     frameIdle;
     releaseFrame;
     sharedRenderer;
+    /** The space the renderer mixes in, which every frame records; ports may carry it beside their declared members. */
+    #sharedBlendSpace;
     #currentState = 'open';
     scopes = new Set();
     cleanupErrors = [];
@@ -69,6 +71,7 @@ export class Engine {
     onDiagnostic;
     releaseSurface;
     #context;
+    #displayRevisionWatch;
     stage;
     assets;
     sharedFrameProfile;
@@ -78,6 +81,8 @@ export class Engine {
             throw new EgretError('ENGINE_FACTORY_REQUIRED');
         this.host = options.host;
         this.sharedRenderer = ports.shared;
+        this.#sharedBlendSpace =
+            ports.sharedBlendSpace === 'srgb' ? 'srgb' : 'linear';
         this.sharedFrameProfile = ports.sharedProfile;
         this.timeoutMs = timeoutMs;
         this.onDiagnostic = options.onDiagnostic;
@@ -89,6 +94,7 @@ export class Engine {
         const textFields = registerTextFieldEngine(this, assertOpen, (scope) => typeof scope === 'object' && scope !== null && this.#engineScopes.has(scope));
         let preparedDisplayOperations;
         let assetGroupOperations;
+        let displayRevisionWatch;
         // The context is never retained in a named public property by its consumers.
         this.#context = Object.freeze({
             assertOpen: () => {
@@ -101,6 +107,9 @@ export class Engine {
                     this.cleanupErrors.push(cause);
             },
             registerTextFieldCache: textFields.registerCache,
+            registerDisplayRevision: (watch) => {
+                displayRevisionWatch = watch;
+            },
             registerPreparedDisplayOperations: (operations) => {
                 preparedDisplayOperations = operations;
             },
@@ -144,6 +153,7 @@ export class Engine {
         });
         this.clock = this.#gameClockOwner.clock;
         const stage = createStage(this.#context);
+        this.#displayRevisionWatch = displayRevisionWatch;
         this.#uiOwner = registerUiEngine(this, {
             stage,
             assertOpen: this.#context.assertOpen,
@@ -312,8 +322,9 @@ export class Engine {
                 throw new EgretError('FRAME_ID_EXHAUSTED');
             const frame = freezeSharedFrame({
                 profile: SHARED_FRAME_PROFILE_2D,
-                colorRecipe: 'egret.linear-srgb-pma/1',
-                targetRepresentation: 'egret.srgb-pma8-target/1',
+                ...(this.#sharedBlendSpace === 'srgb'
+                    ? { colorRecipe: 'egret.srgb-pma/1', targetRepresentation: 'egret.encoded-srgb-pma8-target/1' }
+                    : { colorRecipe: 'egret.linear-srgb-pma/1', targetRepresentation: 'egret.srgb-pma8-target/1' }),
                 outputRepresentation: outputAlpha === 'opaque' ? 'egret.srgb-opaque-unorm8/1' : 'egret.srgb-premultiplied-unorm8/1',
                 frameId: this.nextFrameId,
                 width,
@@ -365,6 +376,22 @@ export class Engine {
     }
     createTween(scope, options) {
         return this.#tweenOwner.create(scope, options);
+    }
+    /** @internal Browser scheduling reads this scope-owned observation before submitting a frame. */
+    watchDisplayRevision(scope) {
+        this.#context.assertOpen();
+        if (!this.#engineScopes.has(scope))
+            throw new EgretError('ENGINE_MISMATCH');
+        if (scope.state !== 'open')
+            throw new EgretError('SCOPE_CLOSED');
+        const watch = this.#displayRevisionWatch();
+        try {
+            return scope.use(watch);
+        }
+        catch (cause) {
+            watch.dispose();
+            throw cause;
+        }
     }
     /** Create an idle, Scope-owned sequence controller without rendering or ticking. */
     createSequencePlayback(scope, bitmap, clip, options) {

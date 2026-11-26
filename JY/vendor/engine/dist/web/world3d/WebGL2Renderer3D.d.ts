@@ -1,10 +1,14 @@
 import type { Camera3D } from '../../rendering/world3d/Camera3D.js';
+import type { Material3D } from '../../rendering/world3d/Material3D.js';
+import type { Mesh3D } from '../../rendering/world3d/Mesh3D.js';
 import type { Scene3D } from '../../rendering/world3d/Object3D.js';
+import type { PlanarReflectionPass3D } from '../../rendering/world3d/Water3D.js';
 import { RenderTarget3D } from '../../rendering/world3d/Texture3D.js';
 import type { CompressedFormat3D } from '../../rendering/world3d/Texture3D.js';
 import type { PostProcessSettings3D } from './post3D.js';
 import type { Renderer3D, Renderer3DInfo, ToneMapping3D } from './frame3D.js';
 import type { World3DFrameMetrics } from './webGL2FrameMetrics3D.js';
+/** A WebGL2 renderer to make: its canvas and context, its tone mapping and exposure, its shadows, and what is called when the context is lost and restored. */
 export interface WebGL2Renderer3DOptions {
     readonly canvas: HTMLCanvasElement | OffscreenCanvas;
     readonly antialias?: boolean;
@@ -20,6 +24,22 @@ export interface WebGL2Renderer3DOptions {
     readonly onContextLost?: () => void;
     readonly onContextRestored?: () => void;
 }
+/** One material program for an expected draw. Color flags describe the view and its available inputs. */
+export interface WebGL2ProgramVariant3D {
+    readonly mesh: Mesh3D;
+    readonly material: Material3D;
+    readonly pass?: 'color' | 'shadow' | 'depth-prepass';
+    /** The render output target. An enabled post chain uses its own HDR scene target. */
+    readonly target?: RenderTarget3D;
+    /** Reflected output and object selection. The reflection has no post chain. */
+    readonly reflection?: PlanarReflectionPass3D;
+    readonly fog?: boolean;
+    readonly environment?: boolean;
+    readonly receiveShadows?: boolean;
+    readonly softDepth?: boolean;
+    readonly transmission?: boolean;
+}
+/** Draws 3D scenes with WebGL2: set its size, render a scene from a camera, and read what it drew. */
 export declare class WebGL2Renderer3D implements Renderer3D {
     #private;
     readonly canvas: HTMLCanvasElement | OffscreenCanvas;
@@ -33,6 +53,8 @@ export declare class WebGL2Renderer3D implements Renderer3D {
     readonly info: Renderer3DInfo;
     constructor(options: WebGL2Renderer3DOptions);
     get isContextLost(): boolean;
+    /** Link and initialize the specified draw variants without submitting any draws. */
+    preparePrograms(requests: readonly WebGL2ProgramVariant3D[]): Promise<void>;
     /** The underlying context, for advanced interop. Restore any state you change. */
     get context(): WebGL2RenderingContext;
     /** Resize the drawing buffer; `pixelRatio` multiplies the logical size. */
@@ -50,6 +72,14 @@ export declare class WebGL2Renderer3D implements Renderer3D {
      */
     get autoInstancing(): boolean;
     set autoInstancing(value: boolean);
+    /**
+     * Light point lights past the eight a frame lights directly through a tiled list: each pixel visits only the
+     * lights whose range reaches its screen tile, up to 32 a tile and 256 in all. On by default.
+     */
+    get tiledLights(): boolean;
+    set tiledLights(value: boolean);
+    /** Writes the tiled lights for this view and binds their table; an empty table when there are none. */
+    private bindTiledLights;
     /** Measure the WebGL2 renderer calls made synchronously by one application frame. */
     measureFrame(draw: () => void, options?: {
         readonly gpuTiming?: boolean;
@@ -59,6 +89,9 @@ export declare class WebGL2Renderer3D implements Renderer3D {
     render(scene: Scene3D, camera: Camera3D, target?: RenderTarget3D): boolean;
     /** Draw the view prepared by PlanarReflection3D and identify it in frame metrics. */
     renderReflection(scene: Scene3D, camera: Camera3D, target: RenderTarget3D): boolean;
+    /** Draw the mirror directly with its own output, shadows and object selection. */
+    renderReflectionPass(scene: Scene3D, camera: Camera3D, pass: PlanarReflectionPass3D): boolean;
+    private recordReflection;
     /** The retained mirror image must still belong to the live WebGL2 context. */
     reuseReflection(target: RenderTarget3D): boolean;
     private renderMeasuredView;
@@ -78,8 +111,10 @@ export declare class WebGL2Renderer3D implements Renderer3D {
     private readonly depthItem;
     private drawDepth;
     private selectProgram;
+    private programRequest;
     private applyMaterial;
     private applyState;
+    private meshProgramVariant;
     private draw;
     /** Upload the strongest morph influences; the shader blends at most a fixed number. */
     private applyMorph;
@@ -96,5 +131,6 @@ export declare class WebGL2Renderer3D implements Renderer3D {
     /** Release every GPU object and detach from the canvas. Idempotent. */
     dispose(): void;
 }
+/** Makes a renderer that draws 3D scenes with WebGL2. */
 export declare function createWebGL2Renderer3D(options: WebGL2Renderer3DOptions): WebGL2Renderer3D;
 //# sourceMappingURL=WebGL2Renderer3D.d.ts.map

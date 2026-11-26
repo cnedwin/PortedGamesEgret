@@ -1,4 +1,5 @@
-import { enginePackages, makeGameImports } from './src/browser-imports.mjs';
+import { enginePackages, makeGameImports, shippedGameFile } from './src/browser-imports.mjs';
+import { startupModules } from './src/browser-startup-modules.mjs';
 import { createPackData } from './browser/pack-data.mjs';
 import { createPackFetch } from './browser/pack-api.mjs';
 import { openPackStore } from './browser/pack-import.mjs';
@@ -6,8 +7,7 @@ import { openPackStore } from './browser/pack-import.mjs';
 const root = new URL('./', self.location.href);
 const play = new URL('play/', root);
 const library = 'third-party/spessasynth_lib/spessasynth_processor.min.js';
-const rules = new Set(['cifa-opening', 'cifa-trainer', 'cifa-recruit', 'cifa-game',
-  'game-events', 'kys-navigation', 'classic-battle', 'battle-progression'].map(name => name + '.mjs'));
+const preloads = startupModules.map(path => `<link rel="modulepreload" href="${new URL(path, root).href}">`).join('');
 let gameImports;
 let active;
 const sessions = new Map();
@@ -20,7 +20,8 @@ self.addEventListener('message', event => {
 
 function importedModules() {
   gameImports ??= Promise.all(enginePackages.map(async folder => {
-    const response = await fetch(new URL(`vendor/${folder}/package.json`, root));
+    // Revalidate package exports when a worker starts after an engine upgrade.
+    const response = await fetch(new URL(`vendor/${folder}/package.json`, root), { cache: 'no-cache' });
     if (!response.ok) throw Error('Cannot load the engine package manifest.');
     return [folder, await response.json()];
   })).then(manifests => makeGameImports(manifests,
@@ -50,7 +51,10 @@ function responseText(message, status) {
   return new Response(message, { status, headers: { 'Content-Type': 'text/plain; charset=utf-8' } });
 }
 
-async function gameShell(url, clientId) {
+async function gameShell(url, event) {
+  const shellParts = Promise.all([fetch(new URL('web/index.html', root)), importedModules()]);
+  // A missing or outdated pack redirects without waiting for the public shell.
+  void shellParts.catch(() => {});
   const pack = await openActivePack();
   if (!pack || url.searchParams.has('pack') && url.searchParams.get('pack') !== pack.id) {
     const target = new URL(root);
@@ -62,16 +66,20 @@ async function gameShell(url, clientId) {
     url.searchParams.set('pack', pack.id);
     return Response.redirect(url, 302);
   }
-  if (clientId) {
+  if (event.resultingClientId) {
     // Client URLs provide the same generation if the browser restarts this worker.
-    sessions.set(clientId, pack.id);
+    sessions.set(event.resultingClientId, pack.id);
     if (sessions.size > 32) sessions.delete(sessions.keys().next().value);
   }
-  const [shell, imports] = await Promise.all([fetch(new URL('web/index.html', root)), importedModules()]);
+  // The first private request will reuse this handler for the verified generation.
+  event.waitUntil(packHandler(pack).catch(() => {}));
+  const [shell, imports] = await shellParts;
   if (!shell.ok) return responseText('无法载入游戏客户端。', 503);
   const head = '<script type="importmap">' + JSON.stringify({ imports }) + '</script>'
     + '<meta name="jy-music-processor" content="' + new URL(library, root).href + '">';
-  const html = (await shell.text()).replace(/<head\b[^>]*>/i, value => value + head);
+  const html = (await shell.text())
+    .replace(/<head\b[^>]*>/i, value => value + head)
+    .replace(/<\/head>/i, preloads + '</head>');
   return new Response(html, { headers: { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store' } });
 }
 
@@ -95,19 +103,11 @@ function packHandler(pack) {
   return pack.handler;
 }
 
-function shippedPath(path) {
-  if (path === 'idb-keyval.mjs') return 'third-party/idb-keyval/index.mjs';
-  if (rules.has(path)) return 'src/' + path;
-  if (path.startsWith('music-lib/')) return 'third-party/' + path.slice('music-lib/'.length);
-  if (path.startsWith('vendor/')) return path;
-  return 'web/' + path;
-}
-
 async function shippedResponse(path, request) {
   if (!/^[a-z0-9_./-]+$/i.test(path) || path.split('/').some(part => part === '.' || part === '..')) {
     return responseText('Invalid game resource path.', 400);
   }
-  const response = await fetch(new URL(shippedPath(path), root), { method: request.method, signal: request.signal });
+  const response = await fetch(new URL(shippedGameFile(path), root), { method: request.method, signal: request.signal });
   if (!response.ok) return responseText('Game resource not found.', response.status);
   const headers = new Headers(response.headers);
   headers.delete('Content-Encoding');
@@ -127,7 +127,7 @@ self.addEventListener('fetch', event => {
   if (!inGame && !privateData && !gameAsset) return;
   event.respondWith((async () => {
     if (inGame && request.mode === 'navigate' && (route === '' || route === 'index.html')) {
-      return gameShell(url, event.resultingClientId);
+      return gameShell(url, event);
     }
     if (privateData) {
       const pack = await sessionPack(event.clientId, request);

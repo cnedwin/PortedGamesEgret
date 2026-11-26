@@ -1,5 +1,6 @@
 import { World3DError } from '../../rendering/world3d/core3D.js';
 import { TransformGizmo3D } from '../../rendering/world3d/Gizmo3D.js';
+/** Drags a transform gizmo with the mouse and touch to move, turn or scale an object. */
 export class TransformControls3D {
     camera;
     element;
@@ -11,8 +12,9 @@ export class TransformControls3D {
     #pointer = -1;
     #disposed = false;
     /**
-     * Create these before orbit or fly controls on the same element: a press
-     * that lands on a handle is then kept from reaching them.
+     * A press that lands on a handle is kept from orbit, fly and follow controls
+     * on the same element, made before or after these: the handles listen in the
+     * capture phase, which runs first. A press anywhere else reaches them.
      */
     constructor(camera, element, options = {}) {
         if (!camera || !element || typeof element.addEventListener !== 'function')
@@ -59,7 +61,7 @@ export class TransformControls3D {
             ['pointercancel', up]
         ];
         for (const [type, listener] of this.#listeners)
-            element.addEventListener(type, listener);
+            element.addEventListener(type, listener, { capture: true });
     }
     get mode() {
         return this.gizmo.mode;
@@ -115,10 +117,11 @@ export class TransformControls3D {
             return;
         this.#disposed = true;
         for (const [type, listener] of this.#listeners)
-            this.element.removeEventListener(type, listener);
+            this.element.removeEventListener(type, listener, { capture: true });
         this.gizmo.dispose();
     }
 }
+/** Makes transform controls for a camera on an element. */
 export function createTransformControls3D(camera, element, options = {}) {
     return new TransformControls3D(camera, element, options);
 }

@@ -4,6 +4,7 @@ const references = new WeakSet();
 function validIdentity(value) {
     return typeof value === "string" && value.trim().length !== 0;
 }
+/** Makes an asset type from a name and a check that a loaded value is of that type. */
 export function createAssetType(name, is) {
     if (!validIdentity(name) || typeof is !== "function")
         throw new EgretError("ASSET_TYPE_INVALID");

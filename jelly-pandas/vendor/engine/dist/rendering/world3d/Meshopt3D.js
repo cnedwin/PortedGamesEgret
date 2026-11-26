@@ -5,6 +5,7 @@
 // three post-decoding filters. It needs no WebAssembly and no dependency, so
 // glTF files compressed this way load without a decoder hook.
 import { World3DError } from './core3D.js';
+/** The largest stride and count of meshopt data. */
 export const MESHOPT3D_LIMITS = Object.freeze({ maxStride: 256, maxElements: 268435456 });
 const bad = (detail) => new World3DError('WORLD3D_GLTF_INVALID', 'meshopt ' + detail);
 /** Vertex codec: each byte of the element is stored as deltas against the previous element, in groups of sixteen. */
@@ -15,7 +16,7 @@ function decodeVertices(source, count, stride, out) {
         throw bad('vertex header');
     // The stream ends with a tail whose last `stride` bytes are the element before the first one.
     const tail = Math.max(stride, 32), end = source.length, last = source.slice(end - stride, end);
-    const blockMax = Math.min((8192 / stride | 0) & ~15, 256), deltas = new Uint8Array(256);
+    const blockMax = Math.min(((8192 / stride) | 0) & ~15, 256), deltas = new Uint8Array(256);
     let at = 1;
     for (let first = 0; first < count; first += blockMax) {
         const block = Math.min(blockMax, count - first), aligned = (block + 15) & ~15, headerBytes = ((aligned >> 4) + 3) >> 2;
@@ -41,7 +42,7 @@ function decodeVertices(source, count, stride, out) {
                     if (extra > end)
                         throw bad('vertex data ends early');
                     for (let i = 0; i < 16; i++) {
-                        const value = (source[at + (i / perByte | 0)] >> (8 - bits - (i % perByte) * bits)) & sentinel;
+                        const value = (source[at + ((i / perByte) | 0)] >> (8 - bits - (i % perByte) * bits)) & sentinel;
                         if (value !== sentinel) {
                             deltas[group + i] = value;
                             continue;
@@ -93,11 +94,21 @@ function decodeTriangles(source, count, out) {
     const edges = new Uint32Array(32).fill(0xffffffff), vertices = new Uint32Array(16).fill(0xffffffff);
     const limit = source.length - 16, table = limit, state = { at: 1 + triangles }, directLimit = version >= 1 ? 13 : 15;
     let edgeAt = 0, vertexAt = 0, next = 0, last = 0;
-    const pushEdge = (a, b) => { edges[edgeAt * 2] = a; edges[edgeAt * 2 + 1] = b; edgeAt = (edgeAt + 1) & 15; };
+    const pushEdge = (a, b) => {
+        edges[edgeAt * 2] = a;
+        edges[edgeAt * 2 + 1] = b;
+        edgeAt = (edgeAt + 1) & 15;
+    };
     // The slot is always written; it only becomes part of the history when `keep` is set.
-    const pushVertex = (v, keep) => { vertices[vertexAt] = v; if (keep)
-        vertexAt = (vertexAt + 1) & 15; };
-    const readIndex = () => { const v = readVarint(source, state, limit); return last = (last + ((v >>> 1) ^ -(v & 1))) >>> 0; };
+    const pushVertex = (v, keep) => {
+        vertices[vertexAt] = v;
+        if (keep)
+            vertexAt = (vertexAt + 1) & 15;
+    };
+    const readIndex = () => {
+        const v = readVarint(source, state, limit);
+        return (last = (last + ((v >>> 1) ^ -(v & 1))) >>> 0);
+    };
     for (let i = 0; i < triangles; i++) {
         const code = source[1 + i];
         let a, b, c;
@@ -172,12 +183,14 @@ function decodeSequence(source, count, out) {
     if (state.at !== limit)
         throw bad('index data has the wrong length');
 }
-const round = (value) => value >= 0 ? Math.floor(value + 0.5) : Math.ceil(value - 0.5);
+const round = (value) => (value >= 0 ? Math.floor(value + 0.5) : Math.ceil(value - 0.5));
 /** Unit vectors stored as a point on an octahedron; the fourth component is left as it is. */
 function filterOctahedral(data, count, stride) {
     if (stride !== 4 && stride !== 8)
         throw bad('octahedral filter stride');
-    const view = stride === 4 ? new Int8Array(data.buffer, data.byteOffset, count * 4) : new Int16Array(data.buffer, data.byteOffset, count * 4), max = stride === 4 ? 127 : 32767;
+    const view = stride === 4
+        ? new Int8Array(data.buffer, data.byteOffset, count * 4)
+        : new Int16Array(data.buffer, data.byteOffset, count * 4), max = stride === 4 ? 127 : 32767;
     for (let i = 0; i < count * 4; i += 4) {
         let x = view[i], y = view[i + 1];
         const one = view[i + 2], z = one - Math.abs(x) - Math.abs(y), fold = Math.max(-z, 0);
@@ -207,7 +220,7 @@ function filterQuaternion(data, count, stride) {
 function filterExponential(data, count, stride) {
     if (stride % 4 !== 0)
         throw bad('exponential filter stride');
-    const total = count * stride / 4, ints = new Int32Array(data.buffer, data.byteOffset, total), floats = new Float32Array(data.buffer, data.byteOffset, total);
+    const total = (count * stride) / 4, ints = new Int32Array(data.buffer, data.byteOffset, total), floats = new Float32Array(data.buffer, data.byteOffset, total);
     for (let i = 0; i < total; i++) {
         const v = ints[i];
         floats[i] = Math.pow(2, v >> 24) * ((v << 8) >> 8);
@@ -220,7 +233,11 @@ function filterExponential(data, count, stride) {
 export function decodeMeshopt3D(source, count, stride, mode, filter = 'NONE') {
     if (!(source instanceof Uint8Array))
         throw bad('source');
-    if (!Number.isSafeInteger(count) || count < 0 || !Number.isSafeInteger(stride) || stride <= 0 || stride > MESHOPT3D_LIMITS.maxStride)
+    if (!Number.isSafeInteger(count) ||
+        count < 0 ||
+        !Number.isSafeInteger(stride) ||
+        stride <= 0 ||
+        stride > MESHOPT3D_LIMITS.maxStride)
         throw bad('count or stride');
     if (count * stride > MESHOPT3D_LIMITS.maxElements)
         throw new World3DError('WORLD3D_BUDGET', 'meshopt output size');

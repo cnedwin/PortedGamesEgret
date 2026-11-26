@@ -6,6 +6,25 @@ const sceneArt = new Map([
   [70, { filename: 'home.json', replaces: homeReplaces }],
 ]);
 
+export const nativeHomeSource = {
+  sceneId: 70, assetDirectory: '/jyx2/home3d/', manifest: 'scene.json',
+  actorDirectory: '/jyx2/home3d-actors/', modelIds: ['0', 'doll'],
+};
+export const homeExitTextures = {
+  beam: new URL('../home3d/exit-lightbeam.png', import.meta.url).href,
+  rays: new URL('../home3d/exit-rays.png', import.meta.url).href,
+};
+
+export async function readNativeSceneSpec({ sceneId, assetDirectory, manifest }) {
+  const response = await fetch(assetDirectory + manifest);
+  if (!response.ok) throw Error(`Could not load 3D scene ${sceneId}.`);
+  const spec = await response.json();
+  if (spec.scene !== sceneId || !/^[a-z0-9_.-]+\.glb$/i.test(spec.asset) || !spec.camera?.offset) {
+    throw Error(`Invalid 3D scene manifest for ${sceneId}.`);
+  }
+  return spec;
+}
+
 export const hasJyx2Scene = id => sceneArt.has(id);
 
 async function fetchAsset(name) {

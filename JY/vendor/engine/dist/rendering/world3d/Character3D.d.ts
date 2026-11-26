@@ -2,6 +2,7 @@ import type { Camera3D } from './Camera3D.js';
 import type { Object3D } from './Object3D.js';
 import { CharacterController3D } from './Physics3D.js';
 import type { CharacterControllerOptions3D, PhysicsWorld3D, RigidBody3D } from './Physics3D.js';
+/** How a character moves: its jump and gravity, the steps it climbs, its acceleration and air control, and its grace time to jump. */
 export interface CharacterMotorOptions3D extends CharacterControllerOptions3D {
     /** Upward speed given by a jump, in units per second. Defaults to 5. */
     readonly jumpSpeed?: number;
@@ -63,6 +64,7 @@ export declare class CharacterMotor3D {
      */
     update(deltaSeconds: number, wishX: number, wishZ: number, jump?: boolean): void;
 }
+/** How a follow camera keeps behind its target: its distance and height, its angles, and what it keeps clear of. */
 export interface FollowCameraOptions3D {
     /** Distance kept behind the target when nothing is in the way. Defaults to 6. */
     readonly distance?: number;
@@ -118,6 +120,8 @@ export declare class FollowCamera3D {
     /** Place the camera for the current target, angles and distance. */
     update(deltaSeconds?: number): void;
 }
+/** Makes a character motor that walks, jumps and climbs steps in a physics world. */
 export declare function createCharacterMotor3D(world: PhysicsWorld3D, options?: CharacterMotorOptions3D): CharacterMotor3D;
+/** Makes a camera that follows a target and keeps out of walls. */
 export declare function createFollowCamera3D(camera: Camera3D, target: Object3D | ArrayLike<number>, options?: FollowCameraOptions3D): FollowCamera3D;
 //# sourceMappingURL=Character3D.d.ts.map

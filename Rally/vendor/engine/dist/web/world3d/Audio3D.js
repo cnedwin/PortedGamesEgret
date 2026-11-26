@@ -19,10 +19,16 @@ export class AudioListener3D extends Object3D {
         this.output.gain.value = options.volume ?? 1;
         this.output.connect(this.context.destination);
     }
-    get volume() { return this.output.gain.value; }
-    set volume(value) { this.output.gain.value = Math.max(0, value); }
+    get volume() {
+        return this.output.gain.value;
+    }
+    set volume(value) {
+        this.output.gain.value = Math.max(0, value);
+    }
     /** Browsers start audio suspended until a user gesture; call this from one. */
-    resume() { return this.context.state === 'suspended' ? this.context.resume() : Promise.resolve(); }
+    resume() {
+        return this.context.state === 'suspended' ? this.context.resume() : Promise.resolve();
+    }
     /** Fetch and decode a sound file into a buffer that any number of sources can share. */
     async load(url, signal) {
         let response;
@@ -41,8 +47,38 @@ export class AudioListener3D extends Object3D {
             throw new World3DError('WORLD3D_RESOURCE_FAILED', 'audio decode: ' + url, cause);
         }
     }
-    /** @internal */ register(source) { this.#sources.add(source); }
-    /** @internal */ unregister(source) { this.#sources.delete(source); }
+    /**
+     * A buffer of samples made in code, for a sound synthesized rather than loaded: one array per channel, or one array
+     * for mono, each value from -1 to 1, at `sampleRate` samples a second (default: the context's). Share it between
+     * sources as a loaded buffer.
+     */
+    bufferFrom(samples, sampleRate = this.context.sampleRate) {
+        if (this.#disposed)
+            throw new World3DError('WORLD3D_DISPOSED', 'audio');
+        const channels = Array.isArray(samples) && typeof samples[0] === 'object'
+            ? samples
+            : [samples];
+        const length = channels[0]?.length ?? 0;
+        if (channels.length < 1 ||
+            channels.length > 32 ||
+            length < 1 ||
+            !channels.every(channel => channel !== null && typeof channel === 'object' && channel.length === length) ||
+            !(sampleRate >= 3000 && sampleRate <= 768000))
+            throw new World3DError('WORLD3D_INPUT_INVALID', 'audio samples');
+        const buffer = this.context.createBuffer(channels.length, length, sampleRate);
+        channels.forEach((channel, index) => {
+            const target = buffer.getChannelData(index);
+            for (let i = 0; i < length; i++)
+                target[i] = Math.max(-1, Math.min(1, Number(channel[i]) || 0));
+        });
+        return buffer;
+    }
+    /** @internal */ register(source) {
+        this.#sources.add(source);
+    }
+    /** @internal */ unregister(source) {
+        this.#sources.delete(source);
+    }
     /** Copy this node's world pose to the audio listener and every source's to its panner. */
     update() {
         if (this.#disposed)
@@ -88,7 +124,7 @@ export class PositionalAudio3D extends Object3D {
     panner;
     buffer;
     loop;
-    playbackRate;
+    #playbackRate;
     #voices = new Set();
     #disposed = false;
     constructor(listener, options = {}) {
@@ -99,11 +135,11 @@ export class PositionalAudio3D extends Object3D {
         const context = listener.context;
         this.buffer = options.buffer;
         this.loop = options.loop ?? false;
-        this.playbackRate = options.playbackRate ?? 1;
+        this.#playbackRate = options.playbackRate ?? 1;
         this.gain = context.createGain();
         this.gain.gain.value = options.volume ?? 1;
         if (options.spatial ?? true) {
-            const panner = this.panner = context.createPanner();
+            const panner = (this.panner = context.createPanner());
             panner.panningModel = 'HRTF';
             panner.distanceModel = options.distanceModel ?? 'inverse';
             panner.refDistance = options.refDistance ?? 1;
@@ -119,9 +155,46 @@ export class PositionalAudio3D extends Object3D {
             this.gain.connect(listener.output);
         listener.register(this);
     }
-    get volume() { return this.gain.gain.value; }
-    set volume(value) { this.gain.gain.value = Math.max(0, value); }
-    get isPlaying() { return this.#voices.size > 0; }
+    get volume() {
+        return this.gain.gain.value;
+    }
+    set volume(value) {
+        this.gain.gain.value = Math.max(0, value);
+    }
+    get isPlaying() {
+        return this.#voices.size > 0;
+    }
+    /** The speed and pitch of the voices: set, it changes the voices playing now as well as those to come. */
+    get playbackRate() {
+        return this.#playbackRate;
+    }
+    set playbackRate(value) {
+        this.setPlaybackRate(value);
+    }
+    /**
+     * Changes the speed and pitch of every voice, playing or to come, gliding over `rampSeconds` (default 0, at once): an
+     * engine's note following its speed.
+     */
+    setPlaybackRate(rate, rampSeconds = 0) {
+        if (!(typeof rate === 'number' && rate > 0 && rate <= 16))
+            throw new World3DError('WORLD3D_INPUT_INVALID', 'playbackRate');
+        if (!(typeof rampSeconds === 'number' && rampSeconds >= 0 && Number.isFinite(rampSeconds)))
+            throw new World3DError('WORLD3D_INPUT_INVALID', 'rampSeconds');
+        this.#playbackRate = rate;
+        const now = this.listener.context.currentTime;
+        for (const voice of this.#voices) {
+            const param = voice.playbackRate;
+            if (rampSeconds === 0) {
+                param.cancelScheduledValues?.(now);
+                param.setValueAtTime(rate, now);
+            }
+            else {
+                param.cancelScheduledValues?.(now);
+                param.setValueAtTime(param.value, now);
+                param.linearRampToValueAtTime(rate, now + rampSeconds);
+            }
+        }
+    }
     /** Start a voice after `delaySeconds`, from `offsetSeconds` into the buffer. */
     play(delaySeconds = 0, offsetSeconds = 0) {
         if (this.#disposed)
@@ -131,9 +204,12 @@ export class PositionalAudio3D extends Object3D {
         const context = this.listener.context, voice = context.createBufferSource();
         voice.buffer = this.buffer;
         voice.loop = this.loop;
-        voice.playbackRate.value = this.playbackRate;
+        voice.playbackRate.value = this.#playbackRate;
         voice.connect(this.gain);
-        voice.onended = () => { voice.disconnect(); this.#voices.delete(voice); };
+        voice.onended = () => {
+            voice.disconnect();
+            this.#voices.delete(voice);
+        };
         this.#voices.add(voice);
         this.updatePanner();
         voice.start(context.currentTime + Math.max(0, delaySeconds), Math.max(0, offsetSeconds));
@@ -146,7 +222,9 @@ export class PositionalAudio3D extends Object3D {
             try {
                 voice.stop();
             }
-            catch { /* not started yet */ }
+            catch {
+                /* not started yet */
+            }
             voice.disconnect();
         }
         this.#voices.clear();
@@ -182,5 +260,11 @@ export class PositionalAudio3D extends Object3D {
         this.listener.unregister(this);
     }
 }
-export function createAudioListener3D(options = {}) { return new AudioListener3D(options); }
-export function createPositionalAudio3D(listener, options = {}) { return new PositionalAudio3D(listener, options); }
+/** Makes the listener 3D sounds are heard by, usually on the camera. */
+export function createAudioListener3D(options = {}) {
+    return new AudioListener3D(options);
+}
+/** Makes a sound that plays from a place in the scene. */
+export function createPositionalAudio3D(listener, options = {}) {
+    return new PositionalAudio3D(listener, options);
+}

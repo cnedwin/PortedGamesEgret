@@ -13,7 +13,10 @@ export interface SharedWebGL2Configuration extends SharedPreparationOptions2D, S
     readonly enableEffects: boolean;
     readonly outputAlpha: 'premultiplied' | 'opaque';
     readonly restoreTimeoutMs: number;
+    /** Where translucent draws mix: `linear` light (the default) or the stored `srgb` codes, as a 2D canvas does. */
+    readonly blendSpace: 'linear' | 'srgb';
 }
+/** A shared WebGL2 host to make: its canvas, what it reports to, and whether it measures frames. */
 export interface SharedWebGL2HostOptions extends Partial<SharedWebGL2Configuration> {
     readonly canvas: HTMLCanvasElement;
     readonly onDiagnostic?: (diagnostic: WebGL2HostDiagnostic) => unknown;

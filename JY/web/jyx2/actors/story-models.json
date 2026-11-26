@@ -18,8 +18,8 @@
       "exactModel": true,
       "appearance": "original-texture",
       "height": 1.72,
-      "bytes": 1101276,
-      "sha256": "03befccd3c842bf75c2af04ec4300e246a8b15cef3362dfe6c8b2eb22d6c1847",
+      "bytes": 1118240,
+      "sha256": "f7ba02830365d8d02e1fd40fa9769edd4b6145696eba995714427368e4a6eb70",
       "bones": 22,
       "sourceBoneNodes": 46,
       "skinnedMeshes": 1,
@@ -53,6 +53,17 @@
             "gitBlob": "76cf73aae79bae43d562688d42c540d746cf5261",
             "bytes": 482968
           }
+        },
+        "attack": {
+          "name": "attack",
+          "seconds": 0.48,
+          "tracks": 20,
+          "source": {
+            "path": "jyx2/Assets/BuildSource/Animations/HujiaBlade.anim",
+            "gitBlob": "da62af14248cc60da5ab7f41e0cab367a105e42f",
+            "bytes": 1151988
+          },
+          "magicId": 67
         }
       },
       "sources": [
@@ -84,8 +95,8 @@
       "exactModel": true,
       "appearance": "portrait-matched-vertex-colors",
       "height": 1.59,
-      "bytes": 1011708,
-      "sha256": "4a35d094646ecb91dd46f3629f092703e042a035814be0c86afe090bb1574e3f",
+      "bytes": 1028640,
+      "sha256": "ddc535a962eee81e177457c301bf32b7c72481c187e3adb601f200c7a0d0cc1d",
       "bones": 22,
       "sourceBoneNodes": 22,
       "skinnedMeshes": 1,
@@ -119,6 +130,17 @@
             "gitBlob": "76cf73aae79bae43d562688d42c540d746cf5261",
             "bytes": 482968
           }
+        },
+        "attack": {
+          "name": "attack",
+          "seconds": 0.48,
+          "tracks": 20,
+          "source": {
+            "path": "jyx2/Assets/BuildSource/Animations/PingyizhiAttack.anim",
+            "gitBlob": "568a4e289d1709c1f0e5e52d8f3259aaf8746179",
+            "bytes": 690506
+          },
+          "magicId": 90
         }
       },
       "sources": [
@@ -145,8 +167,8 @@
       "exactModel": true,
       "appearance": "original-texture",
       "height": 1.74,
-      "bytes": 933700,
-      "sha256": "0b71faf2d47d13ee7b4bd62f71dd5851e95d01ee49183b203f82022453528540",
+      "bytes": 950500,
+      "sha256": "8d77c2d9bc45b606fbc143b29e152f3ac30434b0a37fd95861a2c341c55eb731",
       "bones": 52,
       "sourceBoneNodes": 65,
       "skinnedMeshes": 1,
@@ -200,6 +222,17 @@
             "gitBlob": "76cf73aae79bae43d562688d42c540d746cf5261",
             "bytes": 482968
           }
+        },
+        "attack": {
+          "name": "attack",
+          "seconds": 0.48,
+          "tracks": 20,
+          "source": {
+            "path": "jyx2/Assets/BuildSource/Animations/MiaojiaSword.anim",
+            "gitBlob": "7cbfe4812b39a8fa33ad0c4c8d855a0f2e3b86eb",
+            "bytes": 526979
+          },
+          "magicId": 55
         }
       },
       "sources": [
@@ -232,8 +265,8 @@
       "exactModel": true,
       "adaptedMaterial": true,
       "appearance": "portrait-matched-vertex-colors",
-      "bytes": 1102524,
-      "sha256": "7c264c1706379370a547929516a28007f7d747090c444afd36221f08519fb82e",
+      "bytes": 1119484,
+      "sha256": "2e101b08fbfbce553d587487fe85e86bba6873733de7e8f1a6e9993b282d6634",
       "bones": 22,
       "clips": {
         "idle": {
@@ -253,6 +286,17 @@
           "seconds": 1,
           "tracks": 20,
           "embedded": false
+        },
+        "attack": {
+          "name": "attack",
+          "seconds": 0.48,
+          "tracks": 20,
+          "source": {
+            "path": "jyx2/Assets/BuildSource/Animations/HujiaBlade.anim",
+            "gitBlob": "da62af14248cc60da5ab7f41e0cab367a105e42f",
+            "bytes": 1151988
+          },
+          "magicId": 67
         }
       },
       "sources": [
@@ -390,8 +434,8 @@
       "exactModel": true,
       "appearance": "original-texture",
       "height": 1.72,
-      "bytes": 1038308,
-      "sha256": "d050e61f6eac6d9162e2c142402e053847c73e4aab6e0a59b6a6a556aa48a9b7",
+      "bytes": 1071792,
+      "sha256": "b7927bb812889c395018cb932daf7c85c31d65b841569c9523d06a2e4b73c383",
       "bones": 52,
       "sourceBoneNodes": 65,
       "skinnedMeshes": 1,
@@ -425,6 +469,28 @@
             "gitBlob": "76cf73aae79bae43d562688d42c540d746cf5261",
             "bytes": 482968
           }
+        },
+        "attack": {
+          "name": "attack",
+          "seconds": 0.48,
+          "tracks": 20,
+          "source": {
+            "path": "jyx2/Assets/BuildSource/Animations/PingyizhiAttack.anim",
+            "gitBlob": "568a4e289d1709c1f0e5e52d8f3259aaf8746179",
+            "bytes": 690506
+          },
+          "magicId": 2
+        },
+        "attack-92": {
+          "name": "attack-92",
+          "seconds": 0.48,
+          "tracks": 20,
+          "source": {
+            "path": "jyx2/Assets/BuildSource/Animations/Jiuyangshengong.anim",
+            "gitBlob": "8e8b899c611dd880a5575e931c0bf8b24186df36",
+            "bytes": 963236
+          },
+          "magicId": 92
         }
       },
       "sources": [
@@ -514,14 +580,201 @@
         }
       ]
     },
+    "22": {
+      "asset": "story-22.glb",
+      "name": "左冷禪",
+      "height": 1.76,
+      "exactModel": true,
+      "adaptedMaterial": false,
+      "bytes": 819024,
+      "sha256": "9301eb40e4c85290f452bf4a272377332fd8d53fdd6045e6359a9d2471abca00",
+      "bones": 22,
+      "clips": {
+        "walk": {
+          "name": "walk",
+          "seconds": 0.70000005,
+          "tracks": 20,
+          "embedded": false,
+          "source": {
+            "path": "jyx2/Assets/BuildSource/Animations/map_Mainrolemove.anim",
+            "gitBlob": "84a996196dc25b94dc9da3d46c786e4a72ed0aa5",
+            "bytes": 473751
+          }
+        },
+        "hit": {
+          "name": "hit",
+          "seconds": 1,
+          "tracks": 20,
+          "embedded": false,
+          "source": {
+            "path": "jyx2/Assets/BuildSource/Animations/StandardBeaten.anim",
+            "gitBlob": "76cf73aae79bae43d562688d42c540d746cf5261",
+            "bytes": 482968
+          }
+        },
+        "idle": {
+          "name": "idle",
+          "seconds": 1.3333334,
+          "tracks": 20,
+          "embedded": false,
+          "source": {
+            "path": "jyx2/Assets/BuildSource/Animations/Hanbingshenzhangstand.anim",
+            "gitBlob": "f9c00206ecbac7af5f182dbcc144b1de4f4133fb",
+            "bytes": 151889
+          }
+        },
+        "attack": {
+          "name": "attack",
+          "seconds": 0.48,
+          "tracks": 20,
+          "embedded": false,
+          "source": {
+            "path": "jyx2/Assets/BuildSource/Animations/Hanbingshenzhang 1.anim",
+            "gitBlob": "0a078306ab099775ee11e4135b55afb106aa1a54",
+            "bytes": 620570
+          }
+        }
+      },
+      "sources": [
+        {
+          "path": "jyx2/Assets/3D/Jyx2RoleModels/Models/左冷禅/ZhuoLengChan.fbx",
+          "gitBlob": "18c910aaba812334b589073a5c49dfad9420ca73",
+          "bytes": 439184
+        },
+        {
+          "path": "jyx2/Assets/3D/Jyx2RoleModels/Models/左冷禅/ZhuoLengChan.fbx.meta",
+          "gitBlob": "7109e52da82cdaac57e9a21e605e9f4c106b548b",
+          "bytes": 17066
+        },
+        {
+          "path": "jyx2/Assets/3D/Jyx2RoleModels/Models/左冷禅/ZhuoLengChan_mat.mat",
+          "gitBlob": "7eccf131cd3b1b45f66b538ad4ad6be5d0882366",
+          "bytes": 2797
+        },
+        {
+          "path": "jyx2/Assets/3D/Jyx2RoleModels/Models/左冷禅/zuolengchan.png",
+          "gitBlob": "737ea62acc01b8b5eb6a777fc32f9e9b0425e9f0",
+          "bytes": 8408155
+        },
+        {
+          "path": "jyx2/Assets/BuildSource/ModelCharacters/BattleNpc/Zuolengchan.prefab",
+          "gitBlob": "18428b4995df28e1ef34daf218d1c658ffee27fc",
+          "bytes": 26957
+        },
+        {
+          "path": "jyx2/Assets/Mods/JYX2/Models/左冷禅.asset",
+          "gitBlob": "594dc2c2d90757be6d7755798b8b5b94e1c8d76f",
+          "bytes": 1793
+        }
+      ]
+    },
+    "26": {
+      "asset": "story-26.glb",
+      "name": "任我行",
+      "height": 1.81,
+      "exactModel": true,
+      "adaptedMaterial": false,
+      "bytes": 900084,
+      "sha256": "4a5b858bb78197ffba9e10c81fb290a7774c8b9c724478d3d40616d219a8d9a9",
+      "bones": 22,
+      "clips": {
+        "walk": {
+          "name": "walk",
+          "seconds": 0.70000005,
+          "tracks": 20,
+          "embedded": false,
+          "source": {
+            "path": "jyx2/Assets/BuildSource/Animations/map_Mainrolemove.anim",
+            "gitBlob": "84a996196dc25b94dc9da3d46c786e4a72ed0aa5",
+            "bytes": 473751
+          }
+        },
+        "hit": {
+          "name": "hit",
+          "seconds": 1,
+          "tracks": 20,
+          "embedded": false,
+          "source": {
+            "path": "jyx2/Assets/BuildSource/Animations/StandardBeaten.anim",
+            "gitBlob": "76cf73aae79bae43d562688d42c540d746cf5261",
+            "bytes": 482968
+          }
+        },
+        "idle": {
+          "name": "idle",
+          "seconds": 1.3333334,
+          "tracks": 20,
+          "embedded": false,
+          "source": {
+            "path": "jyx2/Assets/BuildSource/Animations/Xixingdafastand.anim",
+            "gitBlob": "92020fd7ca4b29280c3fe7c8b3a069bc576fd4e1",
+            "bytes": 198772
+          }
+        },
+        "attack": {
+          "name": "attack",
+          "seconds": 0.48,
+          "tracks": 20,
+          "embedded": false,
+          "source": {
+            "path": "jyx2/Assets/BuildSource/Animations/Xixingdafa.anim",
+            "gitBlob": "37808dd3aead58fbc338774e89fff8de42e8e926",
+            "bytes": 770333
+          }
+        },
+        "attack-13": {
+          "name": "attack-13",
+          "seconds": 1.6666667,
+          "tracks": 20,
+          "embedded": false,
+          "source": {
+            "path": "jyx2/Assets/BuildSource/Animations/Hanbingshenzhang 1.anim",
+            "gitBlob": "0a078306ab099775ee11e4135b55afb106aa1a54",
+            "bytes": 620570
+          }
+        }
+      },
+      "sources": [
+        {
+          "path": "jyx2/Assets/3D/Jyx2RoleModels/Models/任我行/RenWoXing.fbx",
+          "gitBlob": "bbe36b585234a4e4aee2bf8387f6b0b4d367de08",
+          "bytes": 476960
+        },
+        {
+          "path": "jyx2/Assets/3D/Jyx2RoleModels/Models/任我行/RenWoXing.fbx.meta",
+          "gitBlob": "c0583d1677df736e55558ce805f1f506ca3a6b8b",
+          "bytes": 2738
+        },
+        {
+          "path": "jyx2/Assets/3D/Jyx2RoleModels/Models/任我行/RenWoXing.mat",
+          "gitBlob": "688396783467ac8c7ced1357a6632f8446484bd7",
+          "bytes": 2790
+        },
+        {
+          "path": "jyx2/Assets/3D/Jyx2RoleModels/Models/任我行/renwoxing.png",
+          "gitBlob": "bb3aa460a3ec09ccb7b91731d78ccdd0c88f1e02",
+          "bytes": 8405653
+        },
+        {
+          "path": "jyx2/Assets/BuildSource/ModelCharacters/BattleNpc/Renwoxing.prefab",
+          "gitBlob": "a3869a87433caa48e23a1daa00bb1ac205d56e19",
+          "bytes": 26689
+        },
+        {
+          "path": "jyx2/Assets/Mods/JYX2/Models/任我行.asset",
+          "gitBlob": "674484ddac52dc283c6468b884cec5822563931c",
+          "bytes": 1991
+        }
+      ]
+    },
     "35": {
       "asset": "story-35.glb",
       "name": "令狐沖",
       "exactModel": true,
       "appearance": "original-texture",
       "height": 1.73,
-      "bytes": 871992,
-      "sha256": "e8943485eb7a854452568450ac44f5aef60511d04dd761c5a9b4f5eb56050cd5",
+      "bytes": 888948,
+      "sha256": "d691e0639e41a53aa9516d401113ccc94def33fa73e95c5bdfb0c3e2bcb8a1d5",
       "bones": 22,
       "sourceBoneNodes": 22,
       "skinnedMeshes": 1,
@@ -565,6 +818,17 @@
             "gitBlob": "76cf73aae79bae43d562688d42c540d746cf5261",
             "bytes": 482968
           }
+        },
+        "attack": {
+          "name": "attack",
+          "seconds": 0.48,
+          "tracks": 20,
+          "source": {
+            "path": "jyx2/Assets/BuildSource/Animations/JinsheSword.anim",
+            "gitBlob": "7b356060b7c6897d2cd2cefc562f095ed005edeb",
+            "bytes": 410734
+          },
+          "magicId": 37
         }
       },
       "sources": [
@@ -654,8 +918,8 @@
       "height": 1.79,
       "exactModel": true,
       "adaptedMaterial": false,
-      "bytes": 730540,
-      "sha256": "aff3d3c9a9fe3b839b584e2a7b406d41fb1e4ee21c32f5fbf7b0730602e98634",
+      "bytes": 747444,
+      "sha256": "683483dac07ec34f3c778466dbae453cbb276a1fde18ab35800fa486bc46cdd8",
       "bones": 22,
       "clips": {
         "idle": {
@@ -675,6 +939,17 @@
           "seconds": 1,
           "tracks": 20,
           "embedded": false
+        },
+        "attack": {
+          "name": "attack",
+          "seconds": 0.48,
+          "tracks": 20,
+          "source": {
+            "path": "jyx2/Assets/BuildSource/Animations/Xianglong18zhang.anim",
+            "gitBlob": "257c02136e448decc2694525a753be7db7de6804",
+            "bytes": 1173477
+          },
+          "magicId": 25
         }
       },
       "sources": [
@@ -759,8 +1034,8 @@
       "exactModel": true,
       "appearance": "original-texture",
       "height": 1.77,
-      "bytes": 1206412,
-      "sha256": "25d897cd905fced91ba33a9732be625c88e719113d0af6c71799ef3b007992c5",
+      "bytes": 1223392,
+      "sha256": "1adfa224717bb7e55bc2fa3f05e05e0e4cd41c444f3c454e3d9c6378eee0743a",
       "bones": 22,
       "sourceBoneNodes": 22,
       "skinnedMeshes": 1,
@@ -804,6 +1079,17 @@
             "gitBlob": "76cf73aae79bae43d562688d42c540d746cf5261",
             "bytes": 482968
           }
+        },
+        "attack": {
+          "name": "attack",
+          "seconds": 0.48,
+          "tracks": 20,
+          "source": {
+            "path": "jyx2/Assets/BuildSource/Animations/Xianglong18zhang.anim",
+            "gitBlob": "257c02136e448decc2694525a753be7db7de6804",
+            "bytes": 1173477
+          },
+          "magicId": 25
         }
       },
       "sources": [
@@ -835,8 +1121,8 @@
       "exactModel": true,
       "appearance": "portrait-matched-vertex-colors",
       "height": 1.61,
-      "bytes": 1060124,
-      "sha256": "ac885c4be8c9b8c1e4aba4f764cb345e1bdae25d0f70a644c9797698baccb329",
+      "bytes": 1076888,
+      "sha256": "5e0c4b401a17351d957693a4d70288e805a7c57da75eb4f1dca378a4bea13811",
       "bones": 52,
       "sourceBoneNodes": 65,
       "skinnedMeshes": 1,
@@ -880,6 +1166,17 @@
             "gitBlob": "76cf73aae79bae43d562688d42c540d746cf5261",
             "bytes": 482968
           }
+        },
+        "attack": {
+          "name": "attack",
+          "seconds": 0.48,
+          "tracks": 20,
+          "source": {
+            "path": "jyx2/Assets/BuildSource/Animations/Dagoubangfa.anim",
+            "gitBlob": "f7b826813ff06ff47cbfaa5c5c6676e2dd06d720",
+            "bytes": 817910
+          },
+          "magicId": 87
         }
       },
       "sources": [
@@ -897,6 +1194,358 @@
           "path": "jyx2/Assets/3D/Jyx2RoleModels/Models/黄蓉/HuangRong.fbx.meta",
           "gitBlob": "ea0bc422cc18f99c225f8dd106316dc4d84f5bb1",
           "bytes": 30638
+        }
+      ]
+    },
+    "60": {
+      "asset": "story-60.glb",
+      "name": "歐陽鋒",
+      "height": 1.77,
+      "exactModel": true,
+      "adaptedMaterial": false,
+      "bytes": 1095412,
+      "sha256": "d81c2e7028c338b7bebd91be4e5c222171e1a895bfb4b5dc9c07993242f2e65d",
+      "bones": 22,
+      "clips": {
+        "walk": {
+          "name": "walk",
+          "seconds": 0.70000005,
+          "tracks": 20,
+          "embedded": false,
+          "source": {
+            "path": "jyx2/Assets/BuildSource/Animations/map_Mainrolemove.anim",
+            "gitBlob": "84a996196dc25b94dc9da3d46c786e4a72ed0aa5",
+            "bytes": 473751
+          }
+        },
+        "hit": {
+          "name": "hit",
+          "seconds": 1,
+          "tracks": 20,
+          "embedded": false,
+          "source": {
+            "path": "jyx2/Assets/BuildSource/Animations/StandardBeaten.anim",
+            "gitBlob": "76cf73aae79bae43d562688d42c540d746cf5261",
+            "bytes": 482968
+          }
+        },
+        "idle": {
+          "name": "idle",
+          "seconds": 1.3333334,
+          "tracks": 20,
+          "embedded": false,
+          "source": {
+            "path": "jyx2/Assets/BuildSource/Animations/HamagongStand.anim",
+            "gitBlob": "81b668b42bdaf02a9fc71c788a1551cc05d76730",
+            "bytes": 177290
+          }
+        },
+        "attack": {
+          "name": "attack",
+          "seconds": 0.48,
+          "tracks": 20,
+          "embedded": false,
+          "source": {
+            "path": "jyx2/Assets/BuildSource/Animations/Hamagong.anim",
+            "gitBlob": "97c480afd56dcf6ecf12ea2674de92ffcd797a93",
+            "bytes": 1495785
+          }
+        }
+      },
+      "sources": [
+        {
+          "path": "jyx2/Assets/3D/Jyx2RoleModels/Models/欧阳锋/OuYangFeng.fbx",
+          "gitBlob": "0a01c6e103aeff4d06b47b259ec8d47f42a24ded",
+          "bytes": 614000
+        },
+        {
+          "path": "jyx2/Assets/3D/Jyx2RoleModels/Models/欧阳锋/OuYangFeng.fbx.meta",
+          "gitBlob": "76e3d3f15a77ccae86bd6634ffdd80db255cef9e",
+          "bytes": 14234
+        },
+        {
+          "path": "jyx2/Assets/3D/Jyx2RoleModels/Models/欧阳锋/OuYangFeng.mat",
+          "gitBlob": "d61f36d6d7d3809c04d43587246522b357f7c375",
+          "bytes": 2353
+        },
+        {
+          "path": "jyx2/Assets/3D/Jyx2RoleModels/Models/欧阳锋/OuYangFeng.png",
+          "gitBlob": "6867daa5c0c539d1dd0aab21a17e312c7fe9ec53",
+          "bytes": 8405961
+        },
+        {
+          "path": "jyx2/Assets/BuildSource/ModelCharacters/BattleNpc/Ouyangfeng.prefab",
+          "gitBlob": "e0905d4f444195a8a2a14cf5585214ddcbcbfe7a",
+          "bytes": 26967
+        },
+        {
+          "path": "jyx2/Assets/Mods/JYX2/Models/欧阳锋.asset",
+          "gitBlob": "ff05f220ffa797e46931aa8106076aae0bd50378",
+          "bytes": 1689
+        }
+      ]
+    },
+    "62": {
+      "asset": "story-62.glb",
+      "name": "金輪法王",
+      "height": 1.83,
+      "exactModel": true,
+      "adaptedMaterial": false,
+      "bytes": 1171476,
+      "sha256": "cb7f05167b493cc2409f0dfac935b59ff872a3817cce2e3d5b1a85380672ff1f",
+      "bones": 22,
+      "clips": {
+        "walk": {
+          "name": "walk",
+          "seconds": 0.70000005,
+          "tracks": 20,
+          "embedded": false,
+          "source": {
+            "path": "jyx2/Assets/BuildSource/Animations/map_Mainrolemove.anim",
+            "gitBlob": "84a996196dc25b94dc9da3d46c786e4a72ed0aa5",
+            "bytes": 473751
+          }
+        },
+        "hit": {
+          "name": "hit",
+          "seconds": 1,
+          "tracks": 20,
+          "embedded": false,
+          "source": {
+            "path": "jyx2/Assets/BuildSource/Animations/StandardBeaten.anim",
+            "gitBlob": "76cf73aae79bae43d562688d42c540d746cf5261",
+            "bytes": 482968
+          }
+        },
+        "idle": {
+          "name": "idle",
+          "seconds": 1.3333334,
+          "tracks": 20,
+          "embedded": false,
+          "source": {
+            "path": "jyx2/Assets/BuildSource/Animations/JinlunfawangStand.anim",
+            "gitBlob": "7fb5022e5ba446d7c9375e744439939c1225c856",
+            "bytes": 181530
+          }
+        },
+        "attack": {
+          "name": "attack",
+          "seconds": 0.48,
+          "tracks": 20,
+          "embedded": false,
+          "source": {
+            "path": "jyx2/Assets/BuildSource/Animations/JinlunfawangMagic.anim",
+            "gitBlob": "3ed5e4f003b878239b54cbb4095761cd8cb4adbe",
+            "bytes": 596492
+          }
+        }
+      },
+      "sources": [
+        {
+          "path": "jyx2/Assets/3D/Jyx2RoleModels/Models/金轮法王/jinlunfawang.fbx",
+          "gitBlob": "b1184ff053b2d90a70acbc7f7e881a98f8ed7ee1",
+          "bytes": 9107952
+        },
+        {
+          "path": "jyx2/Assets/3D/Jyx2RoleModels/Models/金轮法王/jinlunfawang.fbx.meta",
+          "gitBlob": "4c2bdf594a47d9df4a0e521c804977122b03c35b",
+          "bytes": 14337
+        },
+        {
+          "path": "jyx2/Assets/3D/Jyx2RoleModels/Models/金轮法王/JinLunFaWang.mat",
+          "gitBlob": "aeea5f37d7f60ebfb438bb9f275f7c8023fa12ed",
+          "bytes": 2792
+        },
+        {
+          "path": "jyx2/Assets/3D/Jyx2RoleModels/Models/金轮法王/jinlunfawang.png",
+          "gitBlob": "f8bbc214621a297882895de82b746ad45346933a",
+          "bytes": 8405912
+        },
+        {
+          "path": "jyx2/Assets/BuildSource/ModelCharacters/BattleNpc/Jinlunfawang.prefab",
+          "gitBlob": "c9d7aca00acbb2176b93b8592d9d0a880f06c6ee",
+          "bytes": 26684
+        },
+        {
+          "path": "jyx2/Assets/Mods/JYX2/Models/金轮法王.asset",
+          "gitBlob": "f98a041c6a282a3b09a9ed62328aa1ca34a4a3a0",
+          "bytes": 1695
+        }
+      ]
+    },
+    "67": {
+      "asset": "story-67.glb",
+      "name": "裘千仞",
+      "height": 1.73,
+      "exactModel": true,
+      "adaptedMaterial": false,
+      "bytes": 920144,
+      "sha256": "6e7c2590c50ee2a746369386f52db277a39c57cb9afa50a8f836c5db69385bfe",
+      "bones": 22,
+      "clips": {
+        "walk": {
+          "name": "walk",
+          "seconds": 0.70000005,
+          "tracks": 20,
+          "embedded": false,
+          "source": {
+            "path": "jyx2/Assets/BuildSource/Animations/map_Mainrolemove.anim",
+            "gitBlob": "84a996196dc25b94dc9da3d46c786e4a72ed0aa5",
+            "bytes": 473751
+          }
+        },
+        "hit": {
+          "name": "hit",
+          "seconds": 1,
+          "tracks": 20,
+          "embedded": false,
+          "source": {
+            "path": "jyx2/Assets/BuildSource/Animations/StandardBeaten.anim",
+            "gitBlob": "76cf73aae79bae43d562688d42c540d746cf5261",
+            "bytes": 482968
+          }
+        },
+        "idle": {
+          "name": "idle",
+          "seconds": 1.3333334,
+          "tracks": 20,
+          "embedded": false,
+          "source": {
+            "path": "jyx2/Assets/BuildSource/Animations/Tiezhangstand.anim",
+            "gitBlob": "1137fabae268ba9994a3f73daa20c99377a7ccfa",
+            "bytes": 154496
+          }
+        },
+        "attack": {
+          "name": "attack",
+          "seconds": 0.48,
+          "tracks": 20,
+          "embedded": false,
+          "source": {
+            "path": "jyx2/Assets/BuildSource/Animations/Tiezhang.anim",
+            "gitBlob": "33ad08db36cb4b1c230fe90e6e5b3787e9f9dde3",
+            "bytes": 617434
+          }
+        }
+      },
+      "sources": [
+        {
+          "path": "jyx2/Assets/3D/Jyx2RoleModels/Models/裘千仞/Qiuqianren.fbx",
+          "gitBlob": "e1e03df1341924340ba70991904775e9dd2bc81b",
+          "bytes": 541712
+        },
+        {
+          "path": "jyx2/Assets/3D/Jyx2RoleModels/Models/裘千仞/Qiuqianren.fbx.meta",
+          "gitBlob": "440655703bc876981084d0303ef4abcbb5cd194a",
+          "bytes": 2742
+        },
+        {
+          "path": "jyx2/Assets/3D/Jyx2RoleModels/Models/裘千仞/matQiuqianren.mat",
+          "gitBlob": "a2ee3b425ef4c2018a95b0d5c42e2a363f3ec047",
+          "bytes": 2356
+        },
+        {
+          "path": "jyx2/Assets/3D/Jyx2RoleModels/Models/裘千仞/Qiuqianren.png",
+          "gitBlob": "aab4c636d6af270ce4a231c31dfd968d09731144",
+          "bytes": 8405884
+        },
+        {
+          "path": "jyx2/Assets/BuildSource/ModelCharacters/BattleNpc/Qiuqianren.prefab",
+          "gitBlob": "f221cc6f194beee3d03ff61ed579f18c0f45cea8",
+          "bytes": 26544
+        },
+        {
+          "path": "jyx2/Assets/Mods/JYX2/Models/裘千仞.asset",
+          "gitBlob": "d1d6c1febc613d9c27e7d1fba118f1deb206b2b6",
+          "bytes": 1689
+        }
+      ]
+    },
+    "71": {
+      "asset": "story-71.glb",
+      "name": "洪教主",
+      "height": 1.78,
+      "exactModel": true,
+      "adaptedMaterial": false,
+      "bytes": 862804,
+      "sha256": "8336895967d4c5bed6e49bd782ccc3293c299ba9fd236e77564ba6b8b73537c7",
+      "bones": 22,
+      "clips": {
+        "walk": {
+          "name": "walk",
+          "seconds": 0.70000005,
+          "tracks": 20,
+          "embedded": false,
+          "source": {
+            "path": "jyx2/Assets/BuildSource/Animations/map_Mainrolemove.anim",
+            "gitBlob": "84a996196dc25b94dc9da3d46c786e4a72ed0aa5",
+            "bytes": 473751
+          }
+        },
+        "hit": {
+          "name": "hit",
+          "seconds": 1,
+          "tracks": 20,
+          "embedded": false,
+          "source": {
+            "path": "jyx2/Assets/BuildSource/Animations/StandardBeaten.anim",
+            "gitBlob": "76cf73aae79bae43d562688d42c540d746cf5261",
+            "bytes": 482968
+          }
+        },
+        "idle": {
+          "name": "idle",
+          "seconds": 2,
+          "tracks": 20,
+          "embedded": false,
+          "source": {
+            "path": "jyx2/Assets/BuildSource/Animations/JinhuapopoStand.anim",
+            "gitBlob": "a920a1b2d311993a0e93e41265b051c1bd3b863e",
+            "bytes": 172834
+          }
+        },
+        "attack": {
+          "name": "attack",
+          "seconds": 0.48,
+          "tracks": 20,
+          "embedded": false,
+          "source": {
+            "path": "jyx2/Assets/BuildSource/Animations/JinhuapopoAttack.anim",
+            "gitBlob": "fb79d5a6751140094de83295705d840cecebf032",
+            "bytes": 1051990
+          }
+        }
+      },
+      "sources": [
+        {
+          "path": "jyx2/Assets/3D/Jyx2RoleModels/Models/洪教主/MasterHong.fbx",
+          "gitBlob": "6449b07b49e8b03d66190d8fa0969aacccb95e11",
+          "bytes": 487136
+        },
+        {
+          "path": "jyx2/Assets/3D/Jyx2RoleModels/Models/洪教主/MasterHong.fbx.meta",
+          "gitBlob": "53524a966cb6bb133e88c77718e4418643dc8126",
+          "bytes": 13695
+        },
+        {
+          "path": "jyx2/Assets/3D/Jyx2RoleModels/Models/洪教主/matMasterHong.mat",
+          "gitBlob": "e03c1c98a0ee2b1edd09cdd466b1fb48a7e93272",
+          "bytes": 2356
+        },
+        {
+          "path": "jyx2/Assets/3D/Jyx2RoleModels/Models/洪教主/MasterHong.png",
+          "gitBlob": "c61b94074763ac799187d022ce939f3bec4f7bf6",
+          "bytes": 8405716
+        },
+        {
+          "path": "jyx2/Assets/BuildSource/ModelCharacters/BattleNpc/Hongjiaozhu.prefab",
+          "gitBlob": "9728acde818ae50cafe88fd31edd5fa4947766c4",
+          "bytes": 26630
+        },
+        {
+          "path": "jyx2/Assets/Mods/JYX2/Models/洪教主.asset",
+          "gitBlob": "2eae7bfa4b13995c92b204c4ff15805da0f2be04",
+          "bytes": 1763
         }
       ]
     },

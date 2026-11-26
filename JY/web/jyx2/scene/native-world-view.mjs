@@ -2,7 +2,8 @@ import {
   AnimationMixer3D, Object3D, Raycaster3D, Scene3D, colorFromHex, createDirectionalLight3D,
   createHemisphereLight3D, createPerspectiveCamera3D, createSprite3D, vec3TransformMat4,
 } from '@egret/engine/world3d';
-import { createAtmosphere3D, createWebGL2Renderer3D, loadGltfFromUrl3D } from '@egret/engine/webgl2/world3d';
+import { createAtmosphere3D, loadGltfFromUrl3D } from '@egret/engine/webgl2/world3d';
+import { createWorldRenderer } from './world3d-renderer.mjs';
 import { createWorldTerrainData, worldMist } from './world-map-data.mjs';
 import { createNativeWorldTerrain } from './native-world-terrain.mjs';
 import { createNativeWorldScenery } from './native-world-scenery.mjs';
@@ -20,7 +21,7 @@ const mistColor = Array.from(colorFromHex(new Float32Array(3), worldMist.color))
 
 function createMarker(name) {
   const canvas = document.createElement('canvas');
-  const context = canvas.getContext('2d', { willReadFrequently: true });
+  const context = canvas.getContext('2d');
   const font = '600 26px "Microsoft JhengHei", "Noto Serif CJK TC", serif';
   context.font = font;
   canvas.width = Math.ceil(context.measureText(name).width + 44);
@@ -93,8 +94,8 @@ export async function createNativeWorldView(viewport, overlay, { world, places, 
     if (!point) return [];
     const [x, y] = point;
     const sprite = scene.addChild(createMarker(place.name));
-    sprite.setPosition(x, data.heightAt(x, y) + ([1, 61, 70].includes(place.id) ? 4.35 : 3.45), y);
-    return [{ place, x, y, sprite }];
+    const anchor = [x, data.heightAt(x, y) + ([1, 61, 70].includes(place.id) ? 4.35 : 3.45), y];
+    return [{ place, x, y, sprite, anchor, hit: {} }];
   });
   const scenery = createNativeWorldScenery(world, data, library.scene);
   const vessel = createNativeWorldShip(shipAsset.scene);
@@ -166,6 +167,37 @@ export async function createNativeWorldView(viewport, overlay, { world, places, 
     sun.setPosition(...center.map((value, i) => value + sunDirection[i] * 43)).lookAt(...center);
   }
 
+  function placeLandmarks(x, y, viewportWidth, viewportHeight) {
+    camera.updateViewMatrices();
+    const view = camera.viewMatrix;
+    const horizontal = camera.projectionMatrix[0], vertical = camera.projectionMatrix[5];
+    const marginX = 16 / Math.max(1, viewportWidth), marginY = 16 / Math.max(1, viewportHeight);
+    for (const { x: lx, y: ly, place, sprite, anchor, hit } of landmarks) {
+      sprite.visible = false;
+      const distance = Math.hypot(lx - x, ly - y);
+      if (distance >= 20 || !canEnter(place)) continue;
+      vec3TransformMat4(cameraSpace, anchor, view);
+      const depth = -cameraSpace[2];
+      if (depth <= camera.near || depth >= camera.far) continue;
+      const sx = cameraSpace[0] * horizontal / depth, sy = cameraSpace[1] * vertical / depth;
+      const halfWidth = sprite.scale[0] * horizontal / (depth * 2);
+      const halfHeight = sprite.scale[1] * vertical / (depth * 2);
+      const limitX = 1 - halfWidth - marginX, limitY = 1 - halfHeight - marginY;
+      if (limitX < 0 || limitY < 0 || Math.abs(sx) >= 1 + halfWidth || Math.abs(sy) >= 1 + halfHeight) continue;
+
+      // Keep partially visible names readable. Move in the camera plane so their size stays the same.
+      const clampedX = Math.max(-limitX, Math.min(limitX, sx));
+      const clampedY = Math.max(-limitY, Math.min(limitY, sy));
+      const right = (clampedX - sx) * depth / horizontal;
+      const up = (clampedY - sy) * depth / vertical;
+      sprite.setPosition(anchor[0] + view[0] * right + view[1] * up,
+        anchor[1] + view[4] * right + view[5] * up, anchor[2] + view[8] * right + view[9] * up);
+      sprite.material.opacity = Math.min(1, (20 - distance) / 4);
+      sprite.visible = true;
+      Object.assign(hit, { x: clampedX, y: clampedY, halfWidth, halfHeight, depth });
+    }
+  }
+
   function update({ x, y, direction, moving, elapsedMs, sailing, opacity = 1 }) {
     if (!visible || lost || disposed) return;
     canvas.style.opacity = opacity;
@@ -203,11 +235,7 @@ export async function createNativeWorldView(viewport, overlay, { world, places, 
       activeAction = action?.reset().play();
     }
     mixer.update(delta);
-    for (const { x: lx, y: ly, place, sprite } of landmarks) {
-      const distance = Math.hypot(lx - x, ly - y);
-      sprite.visible = distance < 20 && canEnter(place);
-      sprite.material.opacity = Math.min(1, (20 - distance) / 4);
-    }
+    placeLandmarks(x, y, bounds.width, bounds.height);
     const time = reducedMotion.matches ? 0 : elapsedMs / 1000;
     terrain.tick(time);
     scenery.tick(time);
@@ -239,18 +267,16 @@ export async function createNativeWorldView(viewport, overlay, { world, places, 
   }
 
   function pick(u, v) {
-    if (!visible || disposed || !chunks.size) return;
+    if (!visible || disposed || lost || !chunks.size) return;
     const nx = u * 2 - 1, ny = 1 - v * 2;
-    const [horizontal, , , , , vertical] = camera.projectionMatrix;
-    for (const { x, y, sprite } of landmarks) {
+    let marker;
+    for (const landmark of landmarks) {
+      const { sprite, hit } = landmark;
       if (!sprite.visible) continue;
-      camera.worldToScreenPoint(projected, sprite.position);
-      vec3TransformMat4(cameraSpace, sprite.position, camera.viewMatrix);
-      const depth = -cameraSpace[2];
-      if (depth <= camera.near || projected[2] > 1) continue;
-      if (Math.abs(nx - projected[0]) < sprite.scale[0] * horizontal / (depth * 2)
-        && Math.abs(ny - projected[1]) < sprite.scale[1] * vertical / (depth * 2)) return { x, y };
+      if (Math.abs(nx - hit.x) <= hit.halfWidth && Math.abs(ny - hit.y) <= hit.halfHeight
+        && (!marker || hit.depth < marker.hit.depth)) marker = landmark;
     }
+    if (marker) return { x: marker.x, y: marker.y };
     ray.setFromCamera(nx, ny, camera);
     let hit;
     for (const { land } of chunks.values()) {
@@ -286,7 +312,7 @@ export async function createNativeWorldView(viewport, overlay, { world, places, 
   }
 
   try {
-    renderer = createWebGL2Renderer3D({ canvas, shadowAtlasSize: 4096, toneMapping: 'none',
+    renderer = createWorldRenderer({ canvas, shadowAtlasSize: 4096, toneMapping: 'none',
       onContextLost() { lost = true; }, onContextRestored() { lost = false; } });
     viewport.insertBefore(canvas, overlay);
     viewport.append(overview);

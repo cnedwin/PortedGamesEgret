@@ -2,6 +2,7 @@ import type { Scope } from '@egret/runtime';
 import type { FontContentLoader } from '@egret/engine/resources';
 import type { ParagraphProvider } from '@egret/engine/paragraph';
 import type { CanvasKitParagraphModule } from './CanvasKitParagraphProvider.js';
+/** A set of fonts loaded for paragraphs: its key and families; dispose of it when done. */
 export interface ParagraphFontSet {
     readonly key: string;
     readonly fontFamilies: readonly string[];
@@ -10,6 +11,7 @@ export interface ParagraphFontSet {
     dispose(): void;
     readonly closed: Promise<void>;
 }
+/** Loads font sets for CanvasKit paragraphs. */
 export interface CanvasKitFontSetProvider extends ParagraphProvider {
     load(scope: Scope, loader: FontContentLoader, roots: readonly string[]): Promise<ParagraphFontSet>;
     getStatus(): Readonly<{
@@ -20,6 +22,7 @@ export interface CanvasKitFontSetProvider extends ParagraphProvider {
     }>;
     close(): Promise<void>;
 }
+/** A CanvasKit font set provider to make: its CanvasKit and build identity. */
 export interface CanvasKitFontSetProviderOptions {
     readonly canvasKit: CanvasKitParagraphModule;
     readonly buildIdentity?: string;

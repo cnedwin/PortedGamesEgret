@@ -5,7 +5,7 @@ import { finite, visualOf } from './displayVisualState.js';
 import { composeDisplayTransform } from './displayTransform.js';
 import { bitmapCaptureState, readBitmapImage, readBitmapSource } from './Bitmap.js';
 import { readMeshState } from './meshDisplayState.js';
-import { SHAPE_PAGE, SHAPE_REGION, resolveShape } from './graphicsShape.js';
+import { SHAPE_PAGE, SHAPE_REGION, resolveShape, shapeMaskImage } from './graphicsShape.js';
 import { readMeshCaptureImage } from './meshCaptureSnapshot.js';
 import { assertTextFieldScope, readTextFieldState } from './textDisplayState.js';
 import { EgretError } from './EgretError.js';
@@ -73,7 +73,8 @@ function shapeFillMaterial(base, repeat) {
         addressU: address,
         addressV: address,
         minFilter: base.minFilter,
-        magFilter: base.magFilter
+        magFilter: base.magFilter,
+        mipmapFilter: base.mipmapFilter
     }));
 }
 const glows = new WeakMap();
@@ -110,6 +111,43 @@ function effectGlow(settings) {
     return value;
 }
 const identity = freeze({ a: 1, b: 0, c: 0, d: 1, tx: 0, ty: 0 });
+/** Where a node is on the stage, or undefined when it is not on one. */
+function stagePlacement(node) {
+    const chain = [];
+    let at = node;
+    while (at !== undefined && !isStageRoot(at)) {
+        chain.push(at);
+        at = parentOf(at);
+    }
+    if (at === undefined)
+        return undefined;
+    let matrix = composeDisplayTransform(identity, visualOf(at));
+    for (let i = chain.length - 1; i >= 0; i--)
+        matrix = composeDisplayTransform(matrix, visualOf(chain[i]));
+    return matrix;
+}
+/**
+ * Where a shape mask is in the masked node's units: where it is on the stage when both are on it, as Egret places a
+ * mask on the display list, and otherwise as if it were a child of the node.
+ */
+function maskPlacement(node, mask, maskState) {
+    const own = stagePlacement(mask), of = own === undefined ? undefined : stagePlacement(node);
+    if (own === undefined || of === undefined)
+        return composeDisplayTransform(identity, maskState);
+    const det = of.a * of.d - of.b * of.c;
+    if (det === 0 || !Number.isFinite(det))
+        return composeDisplayTransform(identity, maskState);
+    // The inverse of the node's placement, times the mask's.
+    const a = of.d / det, b = -of.b / det, c = -of.c / det, d = of.a / det, tx = (of.c * of.ty - of.d * of.tx) / det, ty = (of.b * of.tx - of.a * of.ty) / det;
+    return {
+        a: a * own.a + c * own.b,
+        b: b * own.a + d * own.b,
+        c: a * own.c + c * own.d,
+        d: b * own.c + d * own.d,
+        tx: a * own.tx + c * own.ty + tx,
+        ty: b * own.tx + d * own.ty + ty
+    };
+}
 function debit(used, count, limit, code = 'FRAME_BUDGET_EXCEEDED') {
     if (!Number.isSafeInteger(count) || count < 0 || count > limit - used)
         throw new EgretError(code);
@@ -321,7 +359,9 @@ function materialKey(material) {
         ';' +
         material.magFilter +
         ';' +
-        material.maxAnisotropy);
+        material.maxAnisotropy +
+        ';' +
+        material.mipmapFilter);
 }
 /** Two numbers that print the same: equal, or both not a number. Either zero prints as "0". */
 function sameNumber(a, b) {
@@ -476,6 +516,7 @@ function captureSharedContent(stage, readBitmap, tree = liveTree, keeping = fals
             pageIndex = pages.length;
             pages.push(freeze({
                 source: image,
+                ...(image === SHAPE_PAGE ? { builtin: 'solid-white' } : {}),
                 sourceRepresentation: 'egret.srgb-straight-rgba8/1',
                 canonicalRepresentation: 'egret.alpha8-capped-srgb-pma8/1'
             }));
@@ -564,7 +605,8 @@ function captureSharedContent(stage, readBitmap, tree = liveTree, keeping = fals
         const firstOrdinal = commands.length, firstOccurrence = nextOccurrence;
         const explicit = state.renderBoundary === 'isolate' ? open('explicit-enter') : undefined;
         const alpha = parentAlpha * state.alpha;
-        if (!state.visible || state.alpha === 0 || alpha === 0) {
+        // A node that is some node's shape mask is not drawn itself, as Egret hid a mask.
+        if (!state.visible || state.maskUses > 0 || state.alpha === 0 || alpha === 0) {
             close(explicit, undefined);
             return false;
         }
@@ -662,6 +704,21 @@ function captureSharedContent(stage, readBitmap, tree = liveTree, keeping = fals
                 budget.source(image);
                 maskPageIndex = regions[regionIndex(image, region)].pageIndex;
             }
+            // A mask of shapes is drawn as an image of its alpha at the size the node is seen at, twice over for a dense
+            // screen, and then masks as an image does.
+            let maskRect = settings.maskRect;
+            const shapeMask = settings.shapeMask;
+            if (shapeMask !== undefined) {
+                assertLive(shapeMask);
+                if (engineOf(shapeMask) !== engine)
+                    throw new EgretError('ENGINE_MISMATCH');
+                // On the stage it masks where it is, as in Egret; off it, it is placed as if it were a child of the node. Only
+                // its own drawing counts, not its alpha or visibility.
+                const maskState = visualOf(shapeMask), drawn = shapeMaskImage(shapeMask, maskState.primitives, maskState.shape === undefined ? undefined : resolveShape(maskState.shape), maskPlacement(node, shapeMask, maskState), 2 * Math.sqrt(Math.abs(matrix.a * matrix.d - matrix.b * matrix.c)));
+                budget.source(drawn.image);
+                maskPageIndex = regions[regionIndex(drawn.image, drawn.region)].pageIndex;
+                maskRect = drawn.rect;
+            }
             effect = { occurrenceId: nextOccurrence++, boundaryId: nextBoundary++ };
             const glow = effectGlow(settings);
             budget.emission(undefined, true);
@@ -674,7 +731,7 @@ function captureSharedContent(stage, readBitmap, tree = liveTree, keeping = fals
                 effect: freeze({
                     blurRadius: settings.blurRadius ?? 0,
                     maskPageIndex,
-                    maskRect: settings.maskRect,
+                    maskRect,
                     matrix,
                     clips: flattenClips(clips),
                     ...(settings.colorMatrix === undefined ? {} : { colorMatrix: settings.colorMatrix }),
@@ -988,7 +1045,9 @@ function captureSharedContent(stage, readBitmap, tree = liveTree, keeping = fals
         const state = checkNode(node, parent, engine, capture, tree);
         const kept = keeping && drawn && !refused ? state.sharedCapture : undefined;
         // At rest, the node is a sprite or a bitmap as it was, with as many primitives: its units are those it had.
+        // A node masked by shapes is captured anew: its mask may have changed without it.
         const resting = kept !== undefined &&
+            state.renderEffect?.shapeMask === undefined &&
             kept.restChanges === state.changes &&
             kept.parentMatrix === parentMatrix &&
             is(kept.restParentAlpha, parentAlpha) &&

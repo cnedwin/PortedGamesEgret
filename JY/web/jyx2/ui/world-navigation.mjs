@@ -1,6 +1,6 @@
 const svgNS = 'http://www.w3.org/2000/svg';
 
-export function createWorldNavigation(viewport, { cancel, signal }) {
+export function createWorldNavigation(viewport, { controls, cancel, signal }) {
   const guide = document.createElement('div');
   guide.className = 'world-route-guide';
   guide.setAttribute('aria-hidden', 'true');
@@ -28,7 +28,14 @@ export function createWorldNavigation(viewport, { cancel, signal }) {
   stop.textContent = '取消尋路';
   stop.dataset.worldCancel = '';
   panel.append(status, stop);
-  viewport.append(guide, panel);
+  viewport.append(guide);
+  const landscape = matchMedia('(pointer: coarse) and (orientation: landscape) and (max-height: 500px)');
+  function placePanel() {
+    const host = landscape.matches ? controls : viewport;
+    if (panel.parentElement !== host) host.append(panel);
+  }
+  placePanel();
+  landscape.addEventListener('change', placePanel, { signal });
 
   let timer;
   let drawn = '';

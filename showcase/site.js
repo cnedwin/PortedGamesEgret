@@ -1,314 +1,267 @@
-// The showcase page: a strip of every game on the front page, and a page of
-// its own for each game at #/<id>. Words come in Chinese and English; the
-// choice is remembered in this browser when it can be.
-import { GAMES } from './games.js';
+import { FEATURED_ID, GAMES } from './games.js';
+
+const REPO = 'https://github.com/cnedwin/PortedGamesEgret';
+const MEDIA = ['cover.webp', 'detail-1.webp', 'detail-2.webp'];
+const LANG_KEY = 'egret-demos-lang';
 
 const WORDS = {
   zh: {
-    brand: '新白鹭引擎游戏 Demo',
-    engine: '引擎源码',
-    repo: '游戏源码',
-    all: '全部游戏',
-    langButton: 'EN',
-    langLabel: 'Switch to English',
-    details: '了解游戏',
-    play: '开始游玩',
-    back: '全部游戏',
-    guide: '玩法与开发说明',
-    shots: '游戏截图',
-    shotAlt: (name, n) => `${name} 截图 ${n}`,
-    ready: '在浏览器里直接打开，无需下载安装。',
-    more: '其他游戏',
-    close: '关闭',
-    prev: '上一张',
-    next: '下一张',
-    engineTitle: '同一个引擎，七种玩法',
-    engineText:
-      '这里的每一个游戏都运行在新白鹭引擎 Egret Rebuild 上：从三维射击、赛车和动作生存，到回合制角色扮演、门派经营和二维恋爱养成。打开网页就能玩，电脑和手机都能操作，代码全部开源。',
-    engineFacts: [
-      ['WebGL2 与 WebGPU', '同一套场景可以交给两种图形接口绘制'],
-      ['三维与二维', '实时阴影、后期处理、骨骼动画与分层视差'],
-      ['开源', '引擎与每个游戏的源码都在 GitHub 上'],
-    ],
-    foot: '基于新白鹭引擎 Egret Rebuild 开发的游戏 Demo，仅作引擎展示之用。',
-    title: '新白鹭引擎游戏 Demo',
+    brand: '白鹭游戏案例', heroEngine: '新白鹭引擎', heroCases: '游戏案例',
+    heroLead: '浏览可直接试玩的游戏，查看实机画面和背后的引擎实现。',
+    matrix: '能力矩阵', engine: '引擎源码', repo: '游戏源码', browse: '浏览游戏',
+    all: '全部游戏', full: '全部', '3d': '3D', '2d': '2D',
+    count: (count) => `${count} 款游戏`, filterLabel: '按渲染类型筛选', featured: '精选案例',
+    details: '案例详情', play: '开始试玩', back: '全部游戏', capabilities: '引擎能力',
+    gallery: '实机画面', more: '其他游戏', source: '查看实现', skip: '跳到内容',
+    navigation: '站点导航', projectLinks: '项目链接', foot: '新白鹭引擎 · 游戏案例',
+    langButton: 'EN', langLabel: 'Switch to English',
+    close: '关闭', prev: '上一张', next: '下一张',
+    genericShot: (name, index) => `${name}实机画面 ${index}`,
+    viewShot: (caption) => `查看大图：${caption}`,
+    pageTitle: '新白鹭引擎游戏案例',
   },
   en: {
-    brand: 'Egret Rebuild Game Demos',
-    engine: 'Engine source',
-    repo: 'Game source',
-    all: 'All games',
-    langButton: '中文',
-    langLabel: '切换到中文',
-    details: 'About the game',
-    play: 'Play now',
-    back: 'All games',
-    guide: 'Guide and development notes',
-    shots: 'Screenshots',
-    shotAlt: (name, n) => `${name} screenshot ${n}`,
-    ready: 'Opens right in the browser, with nothing to install.',
-    more: 'More games',
-    close: 'Close',
-    prev: 'Previous',
-    next: 'Next',
-    engineTitle: 'One engine, seven kinds of play',
-    engineText:
-      'Every game here runs on the new Egret engine, Egret Rebuild: 3D shooting, racing and action survival, turn-based role-playing, sect management and 2D romance. Each one opens in a web page, plays on a computer or a phone, and is open source.',
-    engineFacts: [
-      ['WebGL2 and WebGPU', 'The same scene can be drawn through either graphics interface'],
-      ['3D and 2D', 'Real-time shadows, post-processing, skeletal animation and layered parallax'],
-      ['Open source', 'The engine and every game are on GitHub'],
-    ],
-    foot: 'Game demos built with the new Egret engine, Egret Rebuild, shown to demonstrate the engine.',
-    title: 'Egret Rebuild Game Demos',
+    brand: 'Egret Showcase', heroEngine: 'Egret Rebuild', heroCases: 'Game Showcase',
+    heroLead: 'Play the demos, see them in action and explore how they use the engine.',
+    matrix: 'Capability matrix', engine: 'Engine source', repo: 'Game source', browse: 'Browse games',
+    all: 'All games', full: 'All', '3d': '3D', '2d': '2D',
+    count: (count) => `${count} games`, filterLabel: 'Filter by rendering type', featured: 'Featured case',
+    details: 'Case study', play: 'Play now', back: 'All games', capabilities: 'Engine capabilities',
+    gallery: 'Gameplay gallery', more: 'More games', source: 'View implementation', skip: 'Skip to content',
+    navigation: 'Site navigation', projectLinks: 'Project links', foot: 'Egret Rebuild · Game Showcase',
+    langButton: '中文', langLabel: '切换到中文',
+    close: 'Close', prev: 'Previous image', next: 'Next image',
+    genericShot: (name, index) => `${name} gameplay ${index}`,
+    viewShot: (caption) => `View larger image: ${caption}`,
+    pageTitle: 'Egret Rebuild Game Showcase',
   },
 };
 
-const REPO = 'https://github.com/cnedwin/PortedGamesEgret/blob/main/';
-const media = (game, file) => `showcase/media/${game.id}/${file}`;
-const $ = (selector, root = document) => root.querySelector(selector);
-const escape = (text) => String(text).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
+const $ = (selector) => document.querySelector(selector);
+const escape = (value) => String(value).replace(/[&<>"]/g, (char) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[char]);
+const media = (game, index = 0) => `showcase/media/${game.id}/${MEDIA[index]}`;
+const caseLink = (game) => `#/${game.id}`;
+const playLink = (game) => `${game.folder}/`;
+const gameById = new Map(GAMES.map((game) => [game.id, game]));
+const filters = ['full', '3d', '2d'];
+const home = $('#home');
+const article = $('#game');
+const viewer = $('.viewer');
+let filter = 'full', viewing = null, returnFocus = null, catalogReturn = null;
 
-// ---- language ---------------------------------------------------------------------------------
-function storedLanguage() {
+function initialLanguage() {
+  const explicit = new URLSearchParams(location.search).get('lang');
+  if (explicit === 'zh' || explicit === 'en') return explicit;
   try {
-    const saved = localStorage.getItem('egret-demos-lang');
+    const saved = localStorage.getItem(LANG_KEY);
     if (saved === 'zh' || saved === 'en') return saved;
   } catch {
-    /* storage can be unavailable; fall back to the browser's language */
+    // Restricted browsing still supports the language switch.
   }
-  return (navigator.language || '').toLowerCase().startsWith('zh') ? 'zh' : 'en';
+  return navigator.language?.toLowerCase().startsWith('zh') ? 'zh' : 'en';
 }
-let lang = new URLSearchParams(location.search).get('lang') ?? storedLanguage();
-if (lang !== 'zh' && lang !== 'en') lang = 'zh';
+let lang = initialLanguage();
 
-function setLanguage(next) {
-  lang = next;
-  try {
-    localStorage.setItem('egret-demos-lang', lang);
-  } catch {
-    /* not remembered this time */
-  }
-  render();
+function caption(game, index) {
+  return game.scenes?.[index]?.[lang] ?? WORDS[lang].genericShot(game[lang], index + 1);
 }
 
-// ---- the front page ---------------------------------------------------------------------------
-const home = $('#home');
-const strip = $('.strip');
-let openId = GAMES[0].id;
+function renderWords() {
+  const words = WORDS[lang];
+  document.documentElement.lang = lang === 'zh' ? 'zh-CN' : 'en';
+  for (const node of document.querySelectorAll('[data-t]')) node.textContent = words[node.dataset.t];
+  for (const node of document.querySelectorAll('[data-t-label]')) node.setAttribute('aria-label', words[node.dataset.tLabel]);
+  for (const link of document.querySelectorAll('.matrix-link')) link.href = `capabilities.html?lang=${lang}`;
+  $('.lang').textContent = words.langButton;
+  $('.lang').setAttribute('aria-label', words.langLabel);
+}
 
-function renderStrip() {
-  const t = WORDS[lang];
-  strip.setAttribute('aria-label', t.all);
-  strip.innerHTML = GAMES.map(
-    (game) => `
-    <article class="panel${game.id === openId ? ' open' : ''}" data-id="${game.id}" style="--panel-accent:${game.accent}">
-      <img class="panel-art" src="${media(game, game.cover)}" alt="" loading="${game.id === openId ? 'eager' : 'lazy'}">
-      <button class="panel-banner" type="button" data-act="open" aria-expanded="${game.id === openId}" lang="zh">${escape(game.zh)}</button>
-      <span class="panel-genre-v" aria-hidden="true">${escape(game.genre[lang])}</span>
-      <div class="panel-body">
-        <p class="panel-genre">${escape(game.genre[lang])}</p>
-        <h2 class="panel-title" lang="zh">${escape(game.zh)}</h2>
-        <p class="panel-en" lang="en">${escape(game.en)}</p>
-        <p class="panel-line">${escape(game.line[lang])}</p>
-        <div class="btn-row">
-          <a class="btn btn-play" href="${game.folder}/">${t.play}</a>
-          <a class="btn btn-quiet" href="#/${game.id}">${t.details}</a>
+function renderFeatured() {
+  const game = gameById.get(FEATURED_ID) ?? GAMES[0];
+  const words = WORDS[lang];
+  $('.featured').innerHTML = `
+    <a class="featured-link" href="${caseLink(game)}" style="--image-focus: ${escape(game.imageFocus ?? 'center')}">
+      <img src="${media(game)}" alt="" width="1600" height="900" fetchpriority="high">
+      <span class="featured-info">
+        <span><span class="featured-kicker">${words.featured}</span><strong>${escape(game[lang])}</strong></span>
+        <span class="feature-arrow" aria-hidden="true">↗</span>
+      </span>
+    </a>`;
+}
+
+function gameCard(game, index) {
+  const words = WORDS[lang];
+  return `
+    <article class="game-card">
+      <a class="card-art" href="${caseLink(game)}" aria-label="${escape(game[lang])} · ${words.details}" style="--image-focus: ${escape(game.imageFocus ?? 'center')}">
+        <img src="${media(game)}" alt="" ${index < 3 ? '' : 'loading="lazy"'} width="1600" height="900">
+      </a>
+      <div class="card-info">
+        <p class="case-meta">${escape(game.genre[lang])} <span aria-hidden="true">·</span> ${words[game.kind]}</p>
+        <h3><a href="${caseLink(game)}">${escape(game[lang])}</a></h3>
+        <p class="card-summary">${escape(game.summary[lang])}</p>
+        <ul class="feature-tags" aria-label="${words.capabilities}">
+          ${game.features.slice(0, 2).map((feature) => `<li>${escape(feature.title[lang])}</li>`).join('')}
+        </ul>
+        <div class="card-links">
+          <a class="text-link" href="${playLink(game)}" aria-label="${escape(game[lang])} · ${words.play}">${words.play} <span aria-hidden="true">↗</span></a>
+          <a class="case-link" href="${caseLink(game)}" aria-label="${escape(game[lang])} · ${words.details}">${words.details} <span aria-hidden="true">→</span></a>
         </div>
       </div>
-    </article>`,
-  ).join('');
+    </article>`;
 }
 
-function openPanel(id) {
-  if (id === openId) return;
-  openId = id;
-  for (const panel of strip.children) {
-    const open = panel.dataset.id === id;
-    panel.classList.toggle('open', open);
-    $('.panel-banner', panel).setAttribute('aria-expanded', String(open));
-    if (open) $('.panel-art', panel).loading = 'eager';
-  }
+function renderCatalog() {
+  const words = WORDS[lang];
+  const games = filter === 'full' ? GAMES : GAMES.filter((game) => game.kind === filter);
+  $('.filters').innerHTML = filters.map((value) =>
+    `<button type="button" data-filter="${value}" aria-pressed="${filter === value}">${words[value]}</button>`).join('');
+  $('.catalog-count').textContent = words.count(games.length);
+  $('.game-grid').innerHTML = games.map(gameCard).join('');
 }
 
-// A closed panel opens when it is chosen; with a mouse, resting on it is enough.
-strip.addEventListener('click', (event) => {
-  const panel = event.target.closest('.panel');
-  if (panel && !event.target.closest('a')) openPanel(panel.dataset.id);
-});
-let hoverTimer = 0;
-const finePointer = matchMedia('(hover: hover) and (pointer: fine)');
-strip.addEventListener('pointerover', (event) => {
-  if (!finePointer.matches) return;
-  const panel = event.target.closest('.panel');
-  clearTimeout(hoverTimer);
-  if (panel) hoverTimer = setTimeout(() => openPanel(panel.dataset.id), 140);
-});
-strip.addEventListener('pointerleave', () => clearTimeout(hoverTimer));
-strip.addEventListener('focusin', (event) => {
-  const panel = event.target.closest('.panel');
-  if (panel) openPanel(panel.dataset.id);
-});
-
-function renderEngine() {
-  const t = WORDS[lang];
-  $('.engine h2').textContent = t.engineTitle;
-  $('.engine p').textContent = t.engineText;
-  $('.engine-facts').innerHTML = t.engineFacts
-    .map(([title, text]) => `<li><strong>${escape(title)}</strong><span>${escape(text)}</span></li>`)
-    .join('');
-}
-
-// ---- one game ---------------------------------------------------------------------------------
-const page = $('#game');
-
-function renderGame(game) {
-  const t = WORDS[lang];
-  const others = GAMES.filter((other) => other !== game);
-  page.style.setProperty('--game-accent', game.accent);
-  page.innerHTML = `
-    <section class="hero">
-      <img class="hero-art" src="${media(game, game.cover)}" alt="">
-      <a class="back" href="#/">${t.back}</a>
-      <div class="hero-inner">
-        <p class="hero-genre">${escape(game.genre[lang])}</p>
-        <h1 class="hero-title" lang="zh">${escape(game.zh)}</h1>
-        <p class="hero-en" lang="en">${escape(game.en)}</p>
-        <div class="btn-row">
-          <a class="btn btn-play" href="${game.folder}/">${t.play}</a>
-          <a class="btn btn-quiet" href="${REPO}${game.folder}/README.md">${t.guide}</a>
+function renderCase(game) {
+  const words = WORDS[lang];
+  const title = escape(game[lang]);
+  article.innerHTML = `
+    <nav class="case-path" aria-label="${words.navigation}"><a href="#/">← ${words.back}</a></nav>
+    <section class="case-hero">
+      <div class="case-intro">
+        <p class="case-meta">${escape(game.genre[lang])} <span aria-hidden="true">·</span> ${words[game.kind]}</p>
+        <h1 tabindex="-1">${title}</h1>
+        <p>${escape(game.summary[lang])}</p>
+        <div class="actions">
+          <a class="btn btn-primary" href="${playLink(game)}">${words.play} <span aria-hidden="true">↗</span></a>
+          <a class="btn btn-secondary" href="${REPO}/tree/main/${game.folder}">${words.repo}</a>
         </div>
       </div>
+      <button class="case-cover" type="button" data-view="0" aria-label="${escape(words.viewShot(caption(game, 0)))}" style="--image-focus: ${escape(game.imageFocus ?? 'center')}">
+        <img src="${media(game)}" alt="${escape(caption(game, 0))}" fetchpriority="high" width="1600" height="900">
+      </button>
     </section>
-    <section class="about">
-      <p class="about-text" lang="${lang}">${escape(game.intro[lang])}</p>
-      <dl class="facts">
-        ${game.facts[lang].map(([name, value]) => `<div><dt>${escape(name)}</dt><dd>${escape(value)}</dd></div>`).join('')}
-      </dl>
-    </section>
-    <section class="gallery">
-      <h2>${t.shots}</h2>
-      <div class="shots" data-count="${game.shots.length}">
-        ${game.shots
-          .map(
-            (file, index) => `
-          <button class="shot" type="button" data-act="view" data-index="${index}">
-            <img src="${media(game, file)}" alt="${escape(t.shotAlt(lang === 'zh' ? game.zh : game.en, index + 1))}" loading="lazy">
-          </button>`,
-          )
-          .join('')}
+    <section class="case-section" aria-labelledby="features-title">
+      <h2 id="features-title">${words.capabilities}</h2>
+      <div class="capability-grid">
+        ${game.features.map((feature) => `
+          <div class="capability">
+            <h3>${escape(feature.title[lang])}</h3>
+            <p>${escape(feature.description[lang])}</p>
+            <a class="text-link" href="${REPO}/blob/main/${game.folder}/${escape(feature.source)}" aria-label="${escape(feature.title[lang])} · ${words.source}">${words.source} <span aria-hidden="true">↗</span></a>
+          </div>`).join('')}
       </div>
     </section>
-    <section class="cta">
-      <p>${t.ready}</p>
-      <div class="btn-row">
-        <a class="btn btn-play" href="${game.folder}/">${t.play}</a>
-        <a class="btn btn-quiet" href="#/">${t.back}</a>
+    <section class="case-section" aria-labelledby="gallery-title">
+      <h2 id="gallery-title">${words.gallery}</h2>
+      <div class="gallery${game.portraitGallery ? ' gallery-portrait' : ''}">
+        ${MEDIA.slice(1).map((_, idx) => {
+          const index = idx + 1;
+          const label = escape(caption(game, index));
+          return `<figure>
+            <button type="button" data-view="${index}" aria-label="${escape(words.viewShot(caption(game, index)))}">
+              <img src="${media(game, index)}" alt="${label}" loading="lazy">
+            </button>
+            <figcaption>${label}</figcaption>
+          </figure>`;
+        }).join('')}
       </div>
     </section>
-    <nav class="more" aria-label="${t.more}">
-      <h2>${t.more}</h2>
-      <div class="more-list">
-        ${others
-          .map(
-            (other) => `
-          <a href="#/${other.id}">
-            <img src="${media(other, other.cover)}" alt="" loading="lazy">
-            <span lang="zh">${escape(other.zh)}<small lang="en">${escape(other.en)}</small></span>
-          </a>`,
-          )
-          .join('')}
-      </div>
+    <nav class="case-section related" aria-labelledby="related-title">
+      <h2 id="related-title">${words.more}</h2>
+      <div>${GAMES.filter((other) => other !== game).map((other) =>
+        `<a href="${caseLink(other)}">${escape(other[lang])} <span aria-hidden="true">→</span></a>`).join('')}</div>
     </nav>`;
 }
 
-// ---- picture viewer ---------------------------------------------------------------------------
-const viewer = $('.viewer');
-let viewing = { game: null, index: 0 };
+function selectedCase() {
+  return location.hash.startsWith('#/') ? gameById.get(location.hash.slice(2)) : null;
+}
+
+function renderRoute({ focus = false } = {}) {
+  const game = selectedCase();
+  home.hidden = Boolean(game);
+  article.hidden = !game;
+  if (game) renderCase(game);
+  else {
+    renderFeatured();
+    renderCatalog();
+  }
+  document.title = game ? `${game[lang]} · ${WORDS[lang].pageTitle}` : WORDS[lang].pageTitle;
+  if (!focus) return;
+  if (game) {
+    article.querySelector('h1').focus({ preventScroll: true });
+    window.scrollTo(0, 0);
+  } else {
+    const link = catalogReturn?.featured
+      ? $('.featured-link')
+      : $(`.card-art[href="${catalogReturn?.href}"]`);
+    const target = link ?? $('#home-title');
+    target.focus({ preventScroll: true });
+    window.scrollTo(0, link ? catalogReturn.scroll : 0);
+  }
+}
 
 function showPicture(game, index) {
-  const count = game.shots.length;
-  viewing = { game, index: (index + count) % count };
-  const img = $('img', viewer);
-  img.src = media(game, game.shots[viewing.index]);
-  img.alt = WORDS[lang].shotAlt(lang === 'zh' ? game.zh : game.en, viewing.index + 1);
+  index = (index + MEDIA.length) % MEDIA.length;
+  viewing = { game, index };
+  const label = caption(game, index);
+  const image = viewer.querySelector('img');
+  image.src = media(game, index);
+  image.alt = label;
+  $('.viewer-caption').textContent = `${label} · ${index + 1}/${MEDIA.length}`;
   if (!viewer.open) viewer.showModal();
 }
-page.addEventListener('click', (event) => {
-  const shot = event.target.closest('[data-act="view"]');
-  if (shot) showPicture(currentGame(), Number(shot.dataset.index));
+
+document.addEventListener('click', (event) => {
+  const target = event.target.closest('a, button');
+  if (!target) return;
+  const act = target.dataset.act;
+  if (act === 'lang') {
+    lang = lang === 'zh' ? 'en' : 'zh';
+    try { localStorage.setItem(LANG_KEY, lang); } catch { /* This tab still switches. */ }
+    const url = new URL(location.href);
+    url.searchParams.set('lang', lang);
+    history.replaceState(null, '', url);
+    renderWords();
+    renderRoute();
+  } else if (act === 'browse' || act === 'skip') {
+    event.preventDefault();
+    const section = act === 'browse' ? $('#catalog-title') : $('#content');
+    section.focus({ preventScroll: true });
+    section.scrollIntoView();
+  } else if (target.dataset.filter && filters.includes(target.dataset.filter)) {
+    filter = target.dataset.filter;
+    renderCatalog();
+    $(`[data-filter="${filter}"]`).focus();
+  } else if (target.dataset.view !== undefined && selectedCase()) {
+    returnFocus = target;
+    showPicture(selectedCase(), Number(target.dataset.view));
+  } else if (act === 'close') {
+    viewer.close();
+  } else if (viewing && (act === 'prev' || act === 'next')) {
+    showPicture(viewing.game, viewing.index + (act === 'prev' ? -1 : 1));
+  }
+  const href = target.getAttribute('href');
+  if (!home.hidden && href?.startsWith('#/') && href !== '#/') {
+    catalogReturn = { href, scroll: window.scrollY, featured: target.matches('.featured-link') };
+  } else if (target.matches('.brand')) {
+    catalogReturn = null;
+  }
 });
-viewer.addEventListener('click', (event) => {
-  const act = event.target.closest('button')?.dataset.act;
-  if (act === 'close' || event.target === viewer) viewer.close();
-  else if (act === 'prev') showPicture(viewing.game, viewing.index - 1);
-  else if (act === 'next') showPicture(viewing.game, viewing.index + 1);
+
+viewer.addEventListener('click', (event) => { if (event.target === viewer) viewer.close(); });
+viewer.addEventListener('close', () => {
+  viewing = null;
+  if (returnFocus?.isConnected) returnFocus.focus();
+  returnFocus = null;
 });
 viewer.addEventListener('keydown', (event) => {
-  if (event.key === 'ArrowLeft') showPicture(viewing.game, viewing.index - 1);
-  if (event.key === 'ArrowRight') showPicture(viewing.game, viewing.index + 1);
+  if (!viewing || !['ArrowLeft', 'ArrowRight'].includes(event.key)) return;
+  event.preventDefault();
+  showPicture(viewing.game, viewing.index + (event.key === 'ArrowLeft' ? -1 : 1));
 });
-
-// ---- addresses and words ----------------------------------------------------------------------
-function currentGame() {
-  const id = location.hash.replace(/^#\/?/, '');
-  return GAMES.find((game) => game.id === id);
-}
-
-function renderChrome() {
-  const t = WORDS[lang];
-  document.documentElement.lang = lang === 'zh' ? 'zh-CN' : 'en';
-  for (const node of document.querySelectorAll('[data-t]')) {
-    const value = t[node.dataset.t];
-    if (typeof value === 'string') node.textContent = value;
-  }
-  const button = $('.lang');
-  button.textContent = t.langButton;
-  button.setAttribute('aria-label', t.langLabel);
-  $('.brand').setAttribute('aria-label', t.all);
-  $('.viewer-close').setAttribute('aria-label', t.close);
-  $('.viewer-step.prev').setAttribute('aria-label', t.prev);
-  $('.viewer-step.next').setAttribute('aria-label', t.next);
-}
-
-let lastHomeScroll = 0;
-function render() {
-  renderChrome();
-  const game = currentGame();
-  const t = WORDS[lang];
-  if (game) {
-    home.hidden = true;
-    page.hidden = false;
-    renderGame(game);
-    document.title = `${game.zh} ${game.en} · ${t.title}`;
-  } else {
-    page.hidden = true;
-    home.hidden = false;
-    renderStrip();
-    renderEngine();
-    document.title = t.title;
-  }
-}
-
-let wasGame = Boolean(currentGame());
-addEventListener('hashchange', () => {
-  const game = currentGame();
-  if (!wasGame) lastHomeScroll = scrollY;
-  if (game) openId = game.id;
-  render();
-  // A game's page starts at the top; coming back restores the front page with that game open.
-  scrollTo(0, game ? 0 : lastHomeScroll);
-  wasGame = Boolean(game);
+window.addEventListener('hashchange', () => {
+  if (viewer.open) viewer.close();
+  renderRoute({ focus: true });
 });
-document.addEventListener('click', (event) => {
-  if (event.target.closest('[data-act="lang"]')) setLanguage(lang === 'zh' ? 'en' : 'zh');
-});
-
-if (currentGame()) openId = currentGame().id;
-render();
-
-// The top bar turns solid once the page scrolls under it.
-const bar = $('.bar');
-const settleBar = () => bar.classList.toggle('solid', scrollY > 40);
-addEventListener('scroll', settleBar, { passive: true });
-settleBar();
+renderWords();
+renderRoute();

@@ -1,0 +1,335 @@
+{
+  "sampleRate": 22050,
+  "cues": {
+    "ui-start": [
+      "foley-intro",
+      0,
+      13010
+    ],
+    "ui-open": [
+      "foley-intro",
+      13010,
+      8820
+    ],
+    "ui-close": [
+      "foley-intro",
+      21830,
+      8379
+    ],
+    "ui-select": [
+      "foley-intro",
+      30209,
+      7056
+    ],
+    "ui-confirm": [
+      "foley-intro",
+      37265,
+      13671
+    ],
+    "ui-back": [
+      "foley-intro",
+      50936,
+      8820
+    ],
+    "gong": [
+      "foley-intro",
+      59756,
+      64827
+    ],
+    "step-snow-a": [
+      "foley-intro",
+      124583,
+      8379
+    ],
+    "step-snow-b": [
+      "foley-intro",
+      132962,
+      8379
+    ],
+    "step-stone-a": [
+      "foley-intro",
+      141341,
+      8379
+    ],
+    "step-stone-b": [
+      "foley-intro",
+      149720,
+      8600
+    ],
+    "weapon-ready": [
+      "foley-intro",
+      158320,
+      7277
+    ],
+    "swing-short": [
+      "foley",
+      0,
+      8379
+    ],
+    "swing-wide": [
+      "foley",
+      8379,
+      10364
+    ],
+    "swing-heavy": [
+      "foley",
+      18743,
+      12128
+    ],
+    "hit-light": [
+      "foley",
+      30871,
+      11025
+    ],
+    "hit-heavy": [
+      "foley",
+      41896,
+      14112
+    ],
+    "hit-riposte": [
+      "foley",
+      56008,
+      18963
+    ],
+    "deflect": [
+      "foley",
+      74971,
+      10364
+    ],
+    "block": [
+      "foley",
+      85335,
+      13230
+    ],
+    "parry": [
+      "foley",
+      98565,
+      21389
+    ],
+    "guard-break": [
+      "foley",
+      119954,
+      15876
+    ],
+    "shield-break": [
+      "foley",
+      135830,
+      15656
+    ],
+    "posture-break": [
+      "foley",
+      151486,
+      24034
+    ],
+    "interrupt": [
+      "foley",
+      175520,
+      11466
+    ],
+    "dodge": [
+      "foley",
+      186986,
+      11246
+    ],
+    "slip": [
+      "foley",
+      198232,
+      14553
+    ],
+    "glide": [
+      "foley",
+      212785,
+      13230
+    ],
+    "hurt-light": [
+      "foley",
+      226015,
+      11687
+    ],
+    "hurt-heavy": [
+      "foley",
+      237702,
+      16758
+    ],
+    "fall": [
+      "foley",
+      254460,
+      25137
+    ],
+    "body-land": [
+      "foley",
+      279597,
+      18302
+    ],
+    "riposte": [
+      "foley",
+      297899,
+      11466
+    ],
+    "riposte-thrust": [
+      "foley",
+      309365,
+      12789
+    ],
+    "stars-ready": [
+      "foley",
+      322154,
+      13451
+    ],
+    "stars": [
+      "foley",
+      335605,
+      14553
+    ],
+    "star-hit": [
+      "foley",
+      350158,
+      10584
+    ],
+    "cut-arrow": [
+      "foley",
+      360742,
+      11907
+    ],
+    "rain": [
+      "foley",
+      372649,
+      34398
+    ],
+    "spear-a": [
+      "foley",
+      407047,
+      9923
+    ],
+    "spear-b": [
+      "foley",
+      416970,
+      10805
+    ],
+    "burst": [
+      "foley",
+      427775,
+      30870
+    ],
+    "warn-guard": [
+      "foley",
+      458645,
+      10584
+    ],
+    "warn-danger": [
+      "foley",
+      469229,
+      18963
+    ],
+    "warn-arrow": [
+      "foley",
+      488192,
+      10805
+    ],
+    "strike-blade": [
+      "foley",
+      498997,
+      11466
+    ],
+    "strike-shield": [
+      "foley",
+      510463,
+      13451
+    ],
+    "strike-arrow": [
+      "foley",
+      523914,
+      11246
+    ],
+    "strike-earth": [
+      "foley",
+      535160,
+      20066
+    ],
+    "strike-fire": [
+      "foley",
+      555226,
+      24696
+    ],
+    "death": [
+      "foley",
+      579922,
+      16097
+    ],
+    "drop-metal": [
+      "foley",
+      596019,
+      12569
+    ],
+    "drop-paper": [
+      "foley",
+      608588,
+      10584
+    ],
+    "drop-bottle": [
+      "foley",
+      619172,
+      11025
+    ],
+    "pick-metal": [
+      "foley",
+      630197,
+      11025
+    ],
+    "pick-paper": [
+      "foley",
+      641222,
+      13451
+    ],
+    "pick-bottle": [
+      "foley",
+      654673,
+      11466
+    ],
+    "drink-start": [
+      "foley",
+      666139,
+      8379
+    ],
+    "drink": [
+      "foley",
+      674518,
+      13892
+    ],
+    "rest": [
+      "foley",
+      688410,
+      26240
+    ],
+    "revive": [
+      "foley",
+      714650,
+      29768
+    ],
+    "party": [
+      "foley",
+      744418,
+      17861
+    ],
+    "alert": [
+      "foley",
+      762279,
+      13451
+    ],
+    "rise": [
+      "foley",
+      775730,
+      14774
+    ],
+    "gate": [
+      "foley",
+      790504,
+      22491
+    ],
+    "rage": [
+      "foley",
+      812995,
+      40793
+    ]
+  }
+}

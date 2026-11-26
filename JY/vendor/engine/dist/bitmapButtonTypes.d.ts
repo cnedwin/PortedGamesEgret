@@ -3,7 +3,9 @@ import type { AssetLease, Bitmap, Scope, Texture } from '@egret/runtime';
 import type { Engine } from './Engine.js';
 import type { MouseInput, MouseInputPayload } from './mouseInputTypes.js';
 declare const BITMAP_BUTTON_BRAND: unique symbol;
+/** Whether a bitmap button is up, pressed, disabled or disposed. */
 export type BitmapButtonState = 'up' | 'pressed' | 'disabled' | 'disposed';
+/** A bitmap button to make: its engine, scope and input, its skins, and what it does when activated. */
 export interface BitmapButtonOptions {
     readonly engine: Engine;
     readonly scope: Scope;

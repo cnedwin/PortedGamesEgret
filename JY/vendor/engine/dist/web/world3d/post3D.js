@@ -1,5 +1,6 @@
 import { World3DError } from '../../rendering/world3d/core3D.js';
 import { mat4Invert } from '../../rendering/world3d/math3D.js';
+/** Makes a post-processing pass of your own shader. */
 export function createCustomPost3D(input) {
     if (!input || typeof input.key !== 'string' || input.key.length === 0 || /[\s|/]/.test(input.key))
         throw new World3DError('WORLD3D_INPUT_INVALID', 'post key');
@@ -44,7 +45,9 @@ export function writePostParams3D(out, a, b, view, aoEnabled, width, height, cus
     }
     out.set(view.inverseProjection, 32);
 }
+/** The most bloom levels. */
 export const POST3D_LIMITS = Object.freeze({ maxBloomLevels: 8 });
+/** Post-processing settings with every effect off. */
 export function createPostProcessSettings3D() {
     return {
         enabled: false,

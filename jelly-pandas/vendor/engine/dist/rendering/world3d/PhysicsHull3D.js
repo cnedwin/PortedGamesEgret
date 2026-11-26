@@ -5,7 +5,9 @@
 // bevels and furniture.
 import { World3DError } from './core3D.js';
 import { Geometry3D } from './Geometry3D.js';
+/** The most points a convex hull keeps and is made from. */
 export const PHYSICS_HULL3D_LIMITS = Object.freeze({ maxPoints: 64, maxInputPoints: 1048576 });
+/** A convex hull as a physics shape. */
 export class ConvexHullShape3D {
     /** Corner points, three floats each, around the body origin. */
     points;
@@ -46,7 +48,7 @@ export class ConvexHullShape3D {
             // Keep the points that reach farthest along directions spread evenly over the sphere.
             const picked = new Set(), directions = PHYSICS_HULL3D_LIMITS.maxPoints;
             for (let k = 0; k < directions; k++) {
-                const y = 1 - (k + 0.5) * 2 / directions, ring = Math.sqrt(1 - y * y), angle = k * 2.399963, dx = Math.cos(angle) * ring, dz = Math.sin(angle) * ring;
+                const y = 1 - ((k + 0.5) * 2) / directions, ring = Math.sqrt(1 - y * y), angle = k * 2.399963, dx = Math.cos(angle) * ring, dz = Math.sin(angle) * ring;
                 let best = 0, reach = -Infinity;
                 for (let i = 0; i < unique.length; i += 3) {
                     const d = unique[i] * dx + unique[i + 1] * y + unique[i + 2] * dz;
@@ -98,7 +100,9 @@ export class ConvexHullShape3D {
                     used.add(c);
                     let known = false;
                     for (let i = 0; i < planes.length && !known; i += 4)
-                        known = planes[i] * nx + planes[i + 1] * ny + planes[i + 2] * nz > 0.99999 && Math.abs(planes[i + 3] - d) < 1e-4;
+                        known =
+                            planes[i] * nx + planes[i + 1] * ny + planes[i + 2] * nz > 0.99999 &&
+                                Math.abs(planes[i + 3] - d) < 1e-4;
                     if (!known)
                         planes.push(nx, ny, nz, d);
                 }
@@ -146,7 +150,10 @@ export class ConvexHullShape3D {
             uy /= size;
             uz /= size;
             const vx = ny * uz - nz * uy, vy = nz * ux - nx * uz, vz = nx * uy - ny * ux;
-            const angle = (i) => { const x = corners[i * 3] - cx, y = corners[i * 3 + 1] - cy, z = corners[i * 3 + 2] - cz; return Math.atan2(x * vx + y * vy + z * vz, x * ux + y * uy + z * uz); };
+            const angle = (i) => {
+                const x = corners[i * 3] - cx, y = corners[i * 3 + 1] - cy, z = corners[i * 3 + 2] - cz;
+                return Math.atan2(x * vx + y * vy + z * vz, x * ux + y * uy + z * uz);
+            };
             on.sort((a, b) => angle(a) - angle(b));
             for (let i = 0; i < on.length; i++) {
                 const a = on[i], b = on[(i + 1) % on.length], key = a < b ? a * 256 + b : b * 256 + a;

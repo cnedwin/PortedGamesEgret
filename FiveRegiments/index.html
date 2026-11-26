@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+  <title>五营争锋 · Five Regiments</title>
+  <meta name="description" content="五营争锋：基于新白鹭引擎独立开发的第三人称冷兵器对决游戏 Demo。 / Five Regiments, a third-person cold-steel duel demo built with Egret Rebuild.">
+  <meta name="theme-color" content="#120d0b">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Crect width='16' height='16' rx='2' fill='%23120d0b'/%3E%3Cpath d='M3 13 13 3' stroke='%23d9d4c8' stroke-width='1.6'/%3E%3Cpath d='M3 3 13 13' stroke='%23b3221c' stroke-width='1.6'/%3E%3C/svg%3E">
+  <link rel="stylesheet" href="style.css">
+  <!-- The engine is a copy inside this folder (vendor/SOURCE.md); this map is vendor/importmap.json, pasted in. -->
+  <script type="importmap">
+{
+  "imports": {
+    "@egret/contracts": "./vendor/contracts/dist/index.js",
+    "@egret/runtime": "./vendor/runtime/dist/index.js",
+    "@egret/contracts/resources": "./vendor/contracts/dist/resources/index.js",
+    "@egret/engine": "./vendor/engine/dist/index.js",
+    "@egret/engine/world3d": "./vendor/engine/dist/rendering/world3d/index.js",
+    "@egret/runtime/text": "./vendor/runtime/dist/text/index.js",
+    "@egret/engine/text": "./vendor/engine/dist/text.js",
+    "@egret/runtime/input": "./vendor/runtime/dist/input/index.js",
+    "#egret-pointer-input": "./vendor/engine/dist/pointerInput.js",
+    "#egret-keyboard-input": "./vendor/engine/dist/keyboardInput.js",
+    "robust-predicates": "./vendor/robust-predicates/index.js",
+    "#egret-textured-frame-state": "./vendor/engine/dist/internal/texturedFrameState.js",
+    "@egret/engine/input/hover": "./vendor/engine/dist/hover.js",
+    "@egret/engine/kit": "./vendor/engine/dist/kit.js",
+    "@egret/engine/audio": "./vendor/engine/dist/audio.js",
+    "@egret/engine/input/gamepad": "./vendor/engine/dist/gamepad.js",
+    "@egret/engine/webgl2/world3d": "./vendor/engine/dist/web/world3d/index.js",
+    "@egret/engine/webgpu/world3d": "./vendor/engine/dist/web/world3d/webgpu.js",
+    "@egret/engine/web/kit": "./vendor/engine/dist/web/kit.js",
+    "@egret/engine/web/audio": "./vendor/engine/dist/web/audio.js"
+  }
+}
+  </script>
+</head>
+<body>
+  <main id="frame">
+    <canvas id="stage" tabindex="0" aria-label="五营争锋：第三人称冷兵器对决。 / Five Regiments: a third-person cold-steel duel."></canvas>
+    <div id="ui"></div>
+    <div id="boot"><b>五营争锋</b><span>Five Regiments</span><i></i></div>
+    <pre id="error" hidden></pre>
+  </main>
+  <noscript>这个游戏需要 JavaScript · This game needs JavaScript.</noscript>
+  <script type="module" src="src/main.mjs"></script>
+</body>
+</html>

@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#272f27">
+  <title>河湾筑家 · Riverside Homestead</title>
+  <link rel="icon" href="data:,">
+  <link rel="stylesheet" href="style.css">
+  <script type="importmap">
+{
+  "imports": {
+    "@egret/contracts": "../../PeachCreek/vendor/contracts/dist/index.js",
+    "@egret/runtime": "../../PeachCreek/vendor/runtime/dist/index.js",
+    "@egret/contracts/resources": "../../PeachCreek/vendor/contracts/dist/resources/index.js",
+    "@egret/engine": "../../PeachCreek/vendor/engine/dist/index.js",
+    "@egret/engine/kit": "../../PeachCreek/vendor/engine/dist/kit.js",
+    "@egret/engine/audio": "../../PeachCreek/vendor/engine/dist/audio.js",
+    "@egret/engine/input/gamepad": "../../PeachCreek/vendor/engine/dist/gamepad.js",
+    "@egret/runtime/text": "../../PeachCreek/vendor/runtime/dist/text/index.js",
+    "@egret/engine/text": "../../PeachCreek/vendor/engine/dist/text.js",
+    "@egret/runtime/input": "../../PeachCreek/vendor/runtime/dist/input/index.js",
+    "#egret-pointer-input": "../../PeachCreek/vendor/engine/dist/pointerInput.js",
+    "#egret-keyboard-input": "../../PeachCreek/vendor/engine/dist/keyboardInput.js",
+    "robust-predicates": "../../PeachCreek/vendor/robust-predicates/index.js",
+    "#egret-textured-frame-state": "../../PeachCreek/vendor/engine/dist/internal/texturedFrameState.js",
+    "@egret/engine/input/hover": "../../PeachCreek/vendor/engine/dist/hover.js",
+    "@egret/runtime/ui": "../../PeachCreek/vendor/runtime/dist/ui/index.js",
+    "@egret/engine/ui": "../../PeachCreek/vendor/engine/dist/ui/index.js",
+    "@egret/runtime/paragraph": "../../PeachCreek/vendor/runtime/dist/paragraph/index.js",
+    "@egret/engine/paragraph": "../../PeachCreek/vendor/engine/dist/paragraph.js",
+    "@egret/engine/play": "../../PeachCreek/vendor/engine/dist/web/play.js",
+    "@egret/engine/web/kit": "../../PeachCreek/vendor/engine/dist/web/kit.js",
+    "@egret/engine/ui/semantics": "../../PeachCreek/vendor/engine/dist/semantics.js",
+    "@egret/engine/ui/testing": "../../PeachCreek/vendor/engine/dist/ui/testing.js",
+    "@egret/engine/web/semantics": "../../PeachCreek/vendor/engine/dist/web/semantics.js"
+  }
+}
+  </script>
+</head>
+<body>
+  <main id="village" aria-labelledby="title" data-state="loading">
+    <div class="world-window">
+      <div class="map">
+        <div id="surface" inert aria-hidden="true"></div>
+        <div id="sites" role="group" hidden></div>
+      </div>
+    </div>
+    <header class="hud">
+      <div class="place"><span id="chapter"></span><h1 id="title"></h1></div>
+      <div class="supplies">
+        <span><span class="log" aria-hidden="true">▰</span> <span id="timberLabel"></span> <b id="timber">12</b></span>
+        <span><span class="people" aria-hidden="true">♙</span> <span id="peopleLabel"></span> <b id="people">0</b></span>
+      </div>
+    </header>
+    <footer class="journal">
+      <div id="message" aria-live="polite" aria-atomic="true">
+        <h2 id="objective"></h2><p id="hint"></p>
+      </div>
+      <div class="actions">
+        <button id="cancel" hidden></button><button id="confirm" class="primary" hidden></button>
+        <button id="again" hidden></button>
+      </div>
+    </footer>
+    <div class="options"><button id="sound" disabled></button><button id="language" disabled></button></div>
+  </main>
+  <script type="module" src="src/main.mjs"></script>
+</body>
+</html>

@@ -1,3 +1,4 @@
+/** The largest snapshot a ByteReader reads, in bytes. */
 export const BYTE_READER_LIMITS = Object.freeze({ maxBytes: 16777216 });
 // Capture intrinsic operations, rather than consulting source properties,
 // iterators, constructors or species during admission and interpretation.
@@ -93,12 +94,26 @@ export class ByteReader {
         const view = new View(apply(bufferGetter, bytes, []));
         apply(weakSet, states, [this, { bytes, view, length, position: 0, endian: order, disposed: false }]);
     }
-    get length() { return stateOf(this).length; }
-    get position() { return stateOf(this).position; }
-    get bytesAvailable() { const state = stateOf(this); return state.length - state.position; }
-    get disposed() { return stateOf(this).disposed; }
-    get endian() { return stateOf(this).endian; }
-    set endian(value) { const state = openState(this); state.endian = byteOrder(value); }
+    get length() {
+        return stateOf(this).length;
+    }
+    get position() {
+        return stateOf(this).position;
+    }
+    get bytesAvailable() {
+        const state = stateOf(this);
+        return state.length - state.position;
+    }
+    get disposed() {
+        return stateOf(this).disposed;
+    }
+    get endian() {
+        return stateOf(this).endian;
+    }
+    set endian(value) {
+        const state = openState(this);
+        state.endian = byteOrder(value);
+    }
     seek(position) {
         const state = openState(this);
         const next = integer(position);
@@ -112,14 +127,30 @@ export class ByteReader {
         requireAvailable(state, width);
         state.position += width;
     }
-    readByte() { return readScalar(this, 1, signedByte); }
-    readUnsignedByte() { return readScalar(this, 1, unsignedByte); }
-    readShort() { return readScalar(this, 2, signedShort); }
-    readUnsignedShort() { return readScalar(this, 2, unsignedShort); }
-    readInt() { return readScalar(this, 4, signedInt); }
-    readUnsignedInt() { return readScalar(this, 4, unsignedInt); }
-    readFloat() { return readScalar(this, 4, float); }
-    readDouble() { return readScalar(this, 8, double); }
+    readByte() {
+        return readScalar(this, 1, signedByte);
+    }
+    readUnsignedByte() {
+        return readScalar(this, 1, unsignedByte);
+    }
+    readShort() {
+        return readScalar(this, 2, signedShort);
+    }
+    readUnsignedShort() {
+        return readScalar(this, 2, unsignedShort);
+    }
+    readInt() {
+        return readScalar(this, 4, signedInt);
+    }
+    readUnsignedInt() {
+        return readScalar(this, 4, unsignedInt);
+    }
+    readFloat() {
+        return readScalar(this, 4, float);
+    }
+    readDouble() {
+        return readScalar(this, 8, double);
+    }
     readBytes(count) {
         const state = openState(this);
         const width = count === undefined ? state.length - state.position : integer(count);

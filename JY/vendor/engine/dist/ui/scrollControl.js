@@ -8,6 +8,7 @@ function displayTarget(value) {
         throw new EgretError('UI_CONTROL_OPTIONS');
     return value;
 }
+/** Scrolls content past a viewport along one axis, by wheel, by dragging a thumb, or by calls. */
 export function createScrollControl(options) {
     if (options === null || typeof options !== 'object' || Array.isArray(options))
         throw new EgretError('UI_CONTROL_OPTIONS');
@@ -34,6 +35,8 @@ export function createScrollControl(options) {
         displayTarget(wheel.target);
         lineLength = wheel.lineLength ?? 40;
         if (!length(lineLength) || lineLength <= 0)
+            throw new EgretError('UI_CONTROL_OPTIONS');
+        if (wheel.crossAxis !== undefined && typeof wheel.crossAxis !== 'boolean')
             throw new EgretError('UI_CONTROL_OPTIONS');
     }
     if (thumb !== undefined) {
@@ -92,7 +95,8 @@ export function createScrollControl(options) {
             // The zoom gesture of the platform is not a scroll.
             if (point.zoom === true)
                 return;
-            const delta = axis === 'y' ? point.deltaY : point.deltaX;
+            const own = axis === 'y' ? point.deltaY : point.deltaX, other = axis === 'y' ? point.deltaX : point.deltaY;
+            const delta = own === 0 && wheel.crossAxis === true ? other : own;
             const step = point.unit === 'pixel' ? delta : point.unit === 'line' ? delta * lineLength : delta * viewportLength;
             // At its end the viewport leaves the wheel to whatever is outside it.
             if (move(offset + step))

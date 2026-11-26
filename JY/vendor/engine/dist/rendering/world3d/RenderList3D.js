@@ -26,6 +26,7 @@ function compareTransparent(a, b) {
 function foldable(material) {
     return !material.billboard && !material.screenSpace && !material.wireframe;
 }
+/** What a camera sees, sorted for drawing: opaque and transparent items, shadow casters and lights. */
 export class RenderList3D {
     opaque = [];
     transparent = [];
@@ -34,11 +35,18 @@ export class RenderList3D {
     directionalLights = [];
     pointLights = [];
     spotLights = [];
+    /**
+     * Point lights past the eight a frame lights directly, nearest first: they are lit through the tiled light
+     * list instead, each only where its range reaches. Lights with no range are not among them.
+     */
+    tiledPointLights = [];
+    /** Whether lights past the eight go to the tiled list (the renderer sets this) or are dropped. */
+    tiledLights = true;
     /** Summed ambient radiance, plus hemisphere sky and ground radiance. */
     ambient = new Float32Array(3);
     hemisphereSky = new Float32Array(3);
     hemisphereGround = new Float32Array(3);
-    stats = { visited: 0, culled: 0 };
+    stats = { visited: 0, culled: 0, lightsDropped: 0 };
     /**
      * Runs of at least this many plain meshes with the same geometry and
      * material are drawn as one instanced draw; shadow casters are grouped the
@@ -60,13 +68,17 @@ export class RenderList3D {
     #kinds = [];
     #sizes = [];
     #casterGroups = new Map();
+    // Every lit point and spot light found this build, before the nearest are kept.
+    #pointFound = [];
+    #spotFound = [];
+    #scores = [];
     #used = 0;
     #frame = 0;
     /** Monotonic frame id, used to update each skeleton once per frame. */
     get frame() {
         return this.#frame;
     }
-    build(scene, camera) {
+    build(scene, camera, filter) {
         this.#override = scene.overrideMaterial && !scene.overrideMaterial.isDisposed ? scene.overrideMaterial : undefined;
         this.#frame++;
         this.#used = 0;
@@ -78,10 +90,14 @@ export class RenderList3D {
         this.ambient.fill(0);
         this.hemisphereSky.fill(0);
         this.hemisphereGround.fill(0);
-        this.stats.visited = this.stats.culled = 0;
+        this.stats.visited = this.stats.culled = this.stats.lightsDropped = 0;
         scene.updateWorldMatrices();
         camera.updateViewMatrices();
-        this.visit(scene, camera);
+        this.#pointFound.length = this.#spotFound.length = 0;
+        this.visit(scene, camera, filter?.layerMask ?? camera.layerMask, filter?.hidden);
+        this.tiledPointLights.length = 0;
+        this.keepLights(this.#pointFound, this.pointLights, LIGHT3D_LIMITS.maxPoint, camera, this.tiledLights ? this.tiledPointLights : undefined);
+        this.keepLights(this.#spotFound, this.spotLights, LIGHT3D_LIMITS.maxSpot, camera);
         // The same items as last frame, in the same roles: last frame's order still groups them by material and geometry.
         if (!this.#same || this.#used !== this.#lastUsed) {
             const sorted = this.#sorted, pool = this.#pool;
@@ -292,20 +308,20 @@ export class RenderList3D {
             if (list.length === 0)
                 this.#casterGroups.delete(key);
     }
-    visit(object, camera) {
-        if (!object.visible)
+    visit(object, camera, layerMask, hidden) {
+        if (!object.visible || hidden?.includes(object))
             return;
         if (object instanceof Lod3D) {
             const eye = camera.matrixWorld;
             object.select(eye[12], eye[13], eye[14]);
         }
         if (object.kind === 'mesh')
-            this.addMesh(object, camera);
+            this.addMesh(object, camera, layerMask);
         else if (object.kind === 'light')
             this.addLight(object);
         const children = object.children;
         for (let i = 0; i < children.length; i++)
-            this.visit(children[i], camera);
+            this.visit(children[i], camera, layerMask, hidden);
     }
     addLight(light) {
         const intensity = light.intensity;
@@ -328,16 +344,59 @@ export class RenderList3D {
                     this.directionalLights.push(light);
                 break;
             case 'point':
-                if (this.pointLights.length < LIGHT3D_LIMITS.maxPoint)
-                    this.pointLights.push(light);
+                this.#pointFound.push(light);
                 break;
             case 'spot':
-                if (this.spotLights.length < LIGHT3D_LIMITS.maxSpot)
-                    this.spotLights.push(light);
+                this.#spotFound.push(light);
                 break;
         }
     }
-    addMesh(mesh, camera) {
+    /**
+     * Keeps at most `limit` of the lights found, the ones that matter most to the camera: a light whose range
+     * reaches the camera before one that does not, then the brightest at the camera's distance. A light that
+     * casts a shadow counts as reaching. Kept lights stay in scene order, so a frame with no more lights than
+     * the limit is unchanged.
+     */
+    keepLights(found, kept, limit, camera, rest) {
+        if (found.length <= limit) {
+            for (let i = 0; i < found.length; i++)
+                kept.push(found[i]);
+            return;
+        }
+        const eye = camera.matrixWorld, scores = this.#scores;
+        scores.length = found.length;
+        for (let i = 0; i < found.length; i++) {
+            const light = found[i], m = light.matrixWorld, dx = m[12] - eye[12], dy = m[13] - eye[13], dz = m[14] - eye[14], distanceSq = dx * dx + dy * dy + dz * dz, c = light.color, brightness = light.intensity * Math.max(c[0], c[1], c[2]), reaches = light.castShadow || light.range <= 0 || distanceSq <= light.range * light.range;
+            // Reaching lights score above every other; within each group, brightness falls off with distance squared.
+            scores[i] = (reaches ? 1 : 0) + Math.min(0.999999, brightness / (1 + distanceSq) / (1 + brightness));
+        }
+        const threshold = scores.slice().sort((a, b) => b - a)[limit - 1];
+        // Keep everything above the threshold, then lights equal to it in scene order until the limit is met.
+        let above = 0;
+        for (let i = 0; i < found.length; i++)
+            if (scores[i] > threshold)
+                above++;
+        let ties = limit - above;
+        const others = [];
+        for (let i = 0; i < found.length; i++) {
+            const score = scores[i];
+            if (score > threshold || (score === threshold && ties-- > 0))
+                kept.push(found[i]);
+            else if (rest && found[i].range > 0)
+                others.push(i);
+        }
+        if (rest) {
+            // The rest, best first, up to what the tiled list holds.
+            others.sort((a, b) => scores[b] - scores[a]);
+            for (const i of others) {
+                if (rest.length >= LIGHT3D_LIMITS.maxTiledPoint)
+                    break;
+                rest.push(found[i]);
+            }
+        }
+        this.stats.lightsDropped += found.length - limit - (rest?.length ?? 0);
+    }
+    addMesh(mesh, camera, layerMask) {
         // Meshes that build their geometry on demand (batches, camera-facing lines) do it here.
         mesh.beforeRender?.(camera);
         const geometry = mesh.geometry;
@@ -348,9 +407,20 @@ export class RenderList3D {
             mesh.skeleton.update(this.#frame);
         if (mesh instanceof ScreenLayer3D && mesh.autoUpdate)
             mesh.refreshSource();
+        // Too far to be seen: neither drawn nor casting a shadow.
+        if (mesh.cullDistance < Infinity) {
+            const bounds = worldRenderSphere3D(mesh);
+            if (bounds && bounds[3] >= 0) {
+                const eye = camera.matrixWorld, away = Math.hypot(bounds[0] - eye[12], bounds[1] - eye[13], bounds[2] - eye[14]) - bounds[3];
+                if (away > mesh.cullDistance) {
+                    this.stats.culled++;
+                    return;
+                }
+            }
+        }
         if (mesh.castShadow)
             this.#casters.push(mesh);
-        if ((mesh.layers & camera.layerMask) === 0)
+        if ((mesh.layers & layerMask) === 0)
             return;
         const sphere = worldRenderSphere3D(mesh);
         if (mesh.frustumCulled && sphere && sphere[3] >= 0 && !frustumIntersectsSphere(camera.frustum, sphere)) {
@@ -425,6 +495,8 @@ export class RenderList3D {
         this.#casterGroups.clear();
         this.opaque.length = this.transparent.length = this.shadowCasters.length = 0;
         this.directionalLights.length = this.pointLights.length = this.spotLights.length = 0;
+        this.tiledPointLights.length = 0;
+        this.#pointFound.length = this.#spotFound.length = 0;
     }
 }
 //# sourceMappingURL=RenderList3D.js.map

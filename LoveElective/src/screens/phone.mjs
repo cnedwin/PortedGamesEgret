@@ -9,6 +9,9 @@ import { HEROINES, HEROINE_IDS, LEVELS, STATS } from '../data/cast.mjs';
 import { PLACES } from '../data/places.mjs';
 import { GIFTS, SUPPLIES, CLOTHES, STYLES } from '../data/items.mjs';
 import * as sim from '../sim.mjs';
+import { BAILU_ZERO_TITLE, BAILU_ZERO_CLUES } from '../data/bailu-zero.mjs';
+import { SOCIAL_IDS } from '../data/social-stories.mjs';
+import { FIRST_EVENING, firstEveningStatus, firstEveningTime, firstEveningAction, markFirstEveningRead } from '../first-evening.mjs';
 
 const TABS = [
   ['girls', ['学姐', 'Seniors']],
@@ -16,16 +19,27 @@ const TABS = [
   ['bag', ['背包', 'Bag']],
   ['me', ['我', 'Me']],
   ['system', ['设置', 'Settings']],
+  ['letter', ['回信', 'Letters']],
+  ['social', ['邀約', 'Invites']],
 ];
 const QUESTS_PER_PAGE = 5;
 
 /** Open the phone on a tab. Resolves with 'quit' if the player returns to the title, otherwise undefined. */
-export function openPhone(game, tab = 'girls') {
+export function openPhone(game, tab) {
   const { ui, stage, L } = game,
     s = game.state;
+  const message = firstEveningStatus(s);
+  const readMessage = () => {
+    if (markFirstEveningRead(s)) {
+      game.save();
+      game.showHud();
+    }
+  };
   return new Promise(resolve => {
-    const view = { tab, page: 0, confirm: false };
-    const panel = ui.panel({ x: 150, y: 80, w: 980, h: 620, res: 1.2, modal: true });
+    const initialTab = tab ?? (message?.read === false ? 'messages' : 'girls');
+    const view = { tab: initialTab === 'messages' && !message ? 'girls' : initialTab, page: 0, confirm: false };
+    if (view.tab === 'messages') readMessage();
+    const panel = ui.panel({ x: 150, y: 80, w: 980, h: 620, res: 1.2, modal: true, title: L(['遊戲手機','In-game phone']) });
     const close = result => {
       panel.close();
       resolve(result);
@@ -43,6 +57,61 @@ export function openPhone(game, tab = 'girls') {
     }
 
     const pages = {
+      messages(p) {
+        p.card(26, 94, 928, 415, { r: 20, fill: '#fff6ee', stroke: '#e5cad0', shadow: .15 });
+        game.avatar(p, FIRST_EVENING.girl, 52, 118, 74);
+        p.text(L(FIRST_EVENING.title), 150, 121, { size: 26, weight: 800, color: THEME.ink });
+        p.text(L(firstEveningTime(message)), 150, 166, { size: 15, color: THEME.soft });
+        p.card(150, 210, 770, 130, { r: 16, fill: '#f4e9f1', stroke: '#e4cedd' });
+        p.text(L(FIRST_EVENING.message), 172, 230, { size: 21, color: THEME.ink, maxW: 725, lineH: 31 });
+        p.text(L(FIRST_EVENING.venue), 54, 371, { size: 20, weight: 750, color: THEME.violet });
+        p.text(L(FIRST_EVENING.task), 54, 411, { size: 17, color: THEME.soft });
+        const action = firstEveningAction(message);
+        if (action) {
+          p.button(657, 409, 263, 54, L(action), () => close('first-evening'), { kind: 'primary', size: 17 });
+          if (message.phase === 'upcoming') {
+            p.text(L(['也可以照常活动，傍晚再从地图赴约。', 'You can keep exploring and meet from the map in the evening.']),
+              54, 452, { size: 14, color: THEME.soft, maxW: 575 });
+          }
+        } else p.text(L(message.phase === 'completed' ? ['已赴约', 'Meeting complete'] : ['约定时间已过', 'The meeting time has passed']),
+          912, 432, { size: 17, weight: 700, color: THEME.soft, align: 'right' });
+      },
+      social(p){
+        SOCIAL_IDS.forEach((id,i)=>{
+          const status=sim.socialStatus(s,id),q=s.socialStories[id],y=96+i*150;
+          p.card(26,y,928,140,{r:16,fill:'#f9f1ec',shadow:.08});game.avatar(p,status.lead,42,y+16,64);
+          p.text(L(status.name),124,y+12,{size:21,weight:750,color:HEROINES[status.lead].color});
+          p.text(`${L(HEROINES[status.lead].name)} · ${L(status.venue)}`,124,y+44,{size:14,color:THEME.soft});
+          if(!status.unlocked)p.text(L([`第二章完成 · 好感 ${status.aff} 後收到邀請`,`Invitation after chapter 2 and ${status.aff} affection`]),124,y+82,{size:16,color:THEME.faint,maxW:600});
+          else{
+            const detail=status.complete?L([`可直接稱呼名字 · 話題：${q.topics.join('、')}`,`First-name familiarity · Topic: ${L(status.topic)}`]):L(status.hint);
+            p.text(detail,124,y+78,{size:15,color:THEME.soft,maxW:570,lineH:22});
+            const playable=!status.complete||status.followupAvailable;
+            p.button(746,y+74,190,44,L(!status.complete?(q.playback?['繼續約定','Resume']:status.stage===0?['接受邀請','Accept invitation']:['穿好了，赴約','Dressed; meet her']):playable?['接續話題／赴約','Continue / meet']:['約定已實現','Promise fulfilled']),()=>close('social:'+id),{kind:'primary',size:15,disabled:!playable});
+            if(status.complete){
+              const label=q.followup==='done'?['已赴約','Fulfilled']:q.invitation?.accepted?['已約好','Planned']:['待回覆','Open invite'];
+              p.text(`${L(label)} · ${L(status.invitation)}`,124,y+110,{size:13,color:THEME.faint,maxW:575});
+            }
+          }
+        });
+      },
+      letter(p){
+        const status=sim.bailuZeroStatus(s),q=s.bailuZero;
+        p.text(L(BAILU_ZERO_TITLE),40,104,{size:29,weight:750,color:THEME.violet});
+        p.text(L(['白露特別篇 · 全員成年 · 獨立保存，不消耗日常時段','Bai Lu interlude · Adult cast · Separately tracked; no daily time spent']),40,148,{size:15,color:THEME.soft,maxW:890});
+        if(!status.unlocked){p.text(L(['讀完白露的第二章後，這封回信會確定出現。','This letter becomes available after Bai Lu’s second chapter.']),40,208,{size:21,color:THEME.ink,maxW:870});return;}
+        if(status.complete){
+          p.text(L(q.ending==='renew'?['已完成：第三個名字','Complete: The Third Name']:['已完成：不再等待的星光','Complete: Starlight Without Waiting']),40,200,{size:24,weight:750,color:THEME.rose});
+          p.text(L(q.distance==='close'?['你們曾明確詢問彼此的意願，牽著手走下天台。','You asked each other clearly and left the roof hand in hand.']:['你們保留舒服的距離，也替下次觀星留了一張椅子。','You kept a comfortable distance and saved a seat for next time.']),40,248,{size:18,maxW:850,lineH:28});
+        }else{
+          p.text(`${status.stage+1}/5 · ${L(status.next.name)}`,40,200,{size:24,weight:750,color:THEME.rose});
+          p.text(L(status.next.hint),40,245,{size:19,maxW:850,lineH:28});
+          p.button(624,520,298,54,L(q.playback?['從保存的對話繼續','Resume saved conversation']:['前往下一段約定','Go to next appointment']),()=>close('bailu-zero'),{kind:'primary',size:18});
+        }
+        p.text(L(['調查紀錄','Investigation notes']),40,324,{size:21,weight:750,color:THEME.violet});
+        (q.clues??[]).forEach((id,i)=>p.text('✓ '+L(BAILU_ZERO_CLUES[id]),40,366+i*40,{size:18,maxW:850}));
+        if(!(q.clues??[]).length)p.text(L(['下一次約定會留下第一條線索。','The next appointment holds your first clue.']),40,366,{size:18,color:THEME.soft});
+      },
       girls(p) {
         HEROINE_IDS.forEach((id, i) => {
           const h = HEROINES[id],
@@ -310,22 +379,45 @@ export function openPhone(game, tab = 'girls') {
           200,
           { size: 14, color: THEME.faint, maxW: 400 },
         );
+        if (game.audio.settings) {
+          const settings = game.audio.settings();
+          const tracks = [['music', ['配樂','Music']], ['voice', ['語音','Voice']], ['effects', ['音效','Effects']]];
+          tracks.forEach(([bus, [zh, en]], i) => {
+            const y = 278 + i * 86, value = settings[bus];
+            const percent = Math.round(value.volume * 100) + '%';
+            const change = options => {
+              game.audio.setBus(bus, options);
+              repaint();
+            };
+            p.text(L([zh,en]), 520, y, { size:18, weight:750, color:THEME.ink });
+            p.text(percent, 716, y, { size:16, color:THEME.soft, align:'right' });
+            p.button(748, y - 6, 174, 36, L(value.muted ? ['已靜音 · 開啟','Muted · enable'] : ['開啟中 · 靜音','Enabled · mute']),
+              () => change({ muted:!value.muted }), { size:13, accessibleName:L(value.muted ? [`開啟${zh}`,`Enable ${en}`] : [`靜音${zh}`,`Mute ${en}`]) });
+            p.button(520, y + 30, 44, 30, '−', () => change({ volume:Math.max(0,value.volume - .1) }),
+              { size:18, accessibleName:L([`調低${zh}，目前 ${percent}`,`Decrease ${en} volume, currently ${percent}`]) });
+            p.bar(578, y + 39, 272, 10, value.volume, 1, { color:THEME.violet, color2:THEME.pink });
+            p.button(878, y + 30, 44, 30, '+', () => change({ volume:Math.min(1,value.volume + .1) }),
+              { size:18, accessibleName:L([`調高${zh}，目前 ${percent}`,`Increase ${en} volume, currently ${percent}`]) });
+          });
+        }
       },
     };
 
     function paint(p) {
       p.sheet(0, 0, 980, 612, { accent: THEME.violet });
-      TABS.forEach(([id, label], i) => {
-        const x = 26 + i * 132;
-        p.segment(x, 26, 122, 46, L(label), view.tab === id, () => {
+      const tabs = message ? [...TABS, ['messages', ['消息', 'Messages']]] : TABS;
+      tabs.forEach(([id, label], i) => {
+        const x = 26 + i * (message ? 102 : 114);
+        p.segment(x, 26, message ? 92 : 104, 46, L(label), view.tab === id, () => {
           view.tab = id;
+          if (id === 'messages') readMessage();
           view.page = 0;
           view.confirm = false;
           repaint();
-        }, { size: 18 });
+        }, { size: 16 });
       });
       const ready = sim.visibleQuests(s).filter(x => x.state === 'ready').length;
-      if (ready) p.chip(String(ready), 26 + 132 + 96, 20, { color: THEME.rose, size: 12, h: 20, padX: 7 });
+      if (ready) p.chip(String(ready), 26 + (message ? 102 + 76 : 114 + 88), 20, { color: THEME.rose, size: 12, h: 20, padX: 7 });
       p.button(858, 28, 96, 42, L(['关闭', 'Close']), () => close(), { kind: 'dark', size: 16 });
       pages[view.tab](p);
     }

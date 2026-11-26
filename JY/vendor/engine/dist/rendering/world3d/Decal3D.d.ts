@@ -1,9 +1,11 @@
 import { Geometry3D } from './Geometry3D.js';
 import type { Material3D } from './Material3D.js';
 import { Mesh3D } from './Mesh3D.js';
+/** The most triangles a decal has. */
 export declare const DECAL3D_LIMITS: Readonly<{
     readonly maxTriangles: 262144;
 }>;
+/** A decal to make: where it goes and which way it faces, its size and depth, its rotation, and the steepest surface it covers. */
 export interface DecalOptions3D {
     /** Center of the decal on the surface, in world space. */
     readonly position: ArrayLike<number>;

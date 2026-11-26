@@ -1,7 +1,11 @@
 import { Resource3D } from './core3D.js';
+/** What a texture does past its edges: repeats, clamps or mirrors. */
 export type TextureWrap3D = 'repeat' | 'clamp' | 'mirror';
+/** How a texture is sampled: the nearest texel, or blended. */
 export type TextureFilter3D = 'nearest' | 'linear';
+/** Whether a texture's values are sRGB colors or linear data. */
 export type TextureColorSpace3D = 'srgb' | 'linear';
+/** The largest texture edge and size. */
 export declare const TEXTURE3D_LIMITS: Readonly<{
     readonly maxEdge: 8192;
     readonly maxBytes: 268435456;
@@ -28,8 +32,11 @@ export interface CompressedPixels3D {
     readonly format: CompressedFormat3D;
     readonly levels: readonly Uint8Array[];
 }
+/** What a texture is made from: pixels, compressed pixels, or an image the browser decoded. */
 export type TextureSource3D = TexturePixels3D | CompressedPixels3D | object;
+/** Whether a value holds compressed pixels. */
 export declare function isCompressedPixels3D(source: unknown): source is CompressedPixels3D;
+/** A texture to make: its name, wrapping and filters, its mipmaps and color space, whether it is flipped, and its anisotropy. */
 export interface TextureOptions3D {
     readonly name?: string;
     readonly wrapS?: TextureWrap3D;
@@ -43,6 +50,7 @@ export interface TextureOptions3D {
     /** Texture coordinate set to sample with: 0 for `uv`, 1 for `uv1`. */
     readonly channel?: 0 | 1;
 }
+/** Whether a value holds plain pixels. */
 export declare function isTexturePixels3D(source: unknown): source is TexturePixels3D;
 declare abstract class TextureBase3D extends Resource3D {
     wrapS: TextureWrap3D;
@@ -68,6 +76,7 @@ declare abstract class TextureBase3D extends Resource3D {
     channel: 0 | 1;
     protected constructor(options: TextureOptions3D);
 }
+/** A texture for 3D materials; set its source to change its picture. */
 export declare class Texture3D extends TextureBase3D {
     #private;
     /** UV transform applied as: uv' = rotate(uv * repeat) + offset. */
@@ -90,6 +99,7 @@ export declare class CubeTexture3D extends TextureBase3D {
 export declare function createSolidTexture3D(r: number, g: number, b: number, a?: number, options?: TextureOptions3D): Texture3D;
 /** Color storage of a render target: 8-bit sRGB, or half-float linear for values above 1. */
 export type RenderTargetFormat3D = 'rgba8' | 'rgba16f';
+/** A render target to make: its format, its depth, and its filters and wrapping. */
 export interface RenderTargetOptions3D {
     readonly name?: string;
     /**
@@ -126,7 +136,12 @@ export declare class RenderTarget3D extends Resource3D {
 }
 /**
  * Procedural sky cube: a vertical gradient from `ground` through `horizon` to
- * `zenith`, in sRGB bytes. Useful as a background and a soft light probe.
+ * `zenith`, in sRGB. Useful as a background and a soft light probe.
+ *
+ * Colours are bytes, 0 to 255. Colours whose nine numbers are all from 0 to 1,
+ * as the other colours of the 3D world are written, are read as fractions of
+ * 255: `[0.4, 0.6, 1]` is the same sky as `[102, 153, 255]`. (Given as
+ * fractions before this, a sky was nearly black.)
  */
 export declare function createGradientCubeTexture3D(zenith: readonly [number, number, number], horizon: readonly [number, number, number], ground: readonly [number, number, number], size?: number): CubeTexture3D;
 export {};

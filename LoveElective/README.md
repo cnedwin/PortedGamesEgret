@@ -1,5 +1,7 @@
 # Love Elective · 心动选修课
 
+## 简介 · Introduction
+
 心动选修课是基于[新白鹭引擎 Egret Rebuild](https://github.com/cnedwin/Egret_rebuild)独立开发的 2D 校园恋爱养成游戏 Demo。你是白鹭学院的大一新生，选了一门只有一份作业的选修课：在三十天后的星空祭之前，真正认识一个人，并把心意告诉她。七位性格各异的学姐分布在校园各处，每人有四章带分支的故事；你要安排每天的四段时间去上课、训练、打工、做任务、买礼物和换装，摸清每个人喜欢的相处距离。画面用分层视差做出纵深感。 [在线试玩](https://cnedwin.github.io/PortedGamesEgret/LoveElective/)
 
 Love Elective is an independently developed 2D campus romance and dress-up demo built with [Egret Rebuild](https://github.com/cnedwin/Egret_rebuild). You are a first-year student at Egret Academy who signs up for an elective with a single assignment: before the Star Festival thirty days from now, truly get to know one person and tell her how you feel. Seven seniors with very different personalities are spread across the campus, each with four branching story chapters. You plan the four parts of every day around classes, training, part-time work, tasks, presents and outfits, and learn how close each of them likes you to stand. Layered parallax gives the flat pictures depth. [Play online](https://cnedwin.github.io/PortedGamesEgret/LoveElective/)
@@ -15,6 +17,7 @@ Love Elective is an independently developed 2D campus romance and dress-up demo 
 | 选择选项 · Pick an option | 点击，或数字键 1–3 · click, or keys 1–3 |
 | 跳过剧情 · Skip a scene | 对话框右上角“跳过”，或 Ctrl · the Skip button on the dialogue box, or Ctrl |
 | 关闭弹窗 · Close a pop-up | Esc，或点“关闭” · Esc, or the Close button |
+| 键盘焦点 · Keyboard focus | Tab / Shift+Tab 移动，Enter / Space 激活，方向键切换页签 · move with Tab / Shift+Tab, activate with Enter / Space, switch tabs with the arrow keys |
 
 - 每天分为上午、下午、傍晚、夜晚。在校园地图上选地点，在那里做一件事会用掉一段时间；教学楼、图书馆等地方夜间关闭。
 - 体力不够时回宿舍小憩或睡觉。第三十天夜晚过后进入星空祭。
@@ -39,6 +42,26 @@ Love Elective is an independently developed 2D campus romance and dress-up demo 
 每位学姐的四章故事在她常在的地点发生：第一次相遇是第一章，之后的章节需要足够的好感和她看重的属性。地图上的金色星星表示有新的故事。手机里可以查看每个人现在在哪、下一章还差什么。
 
 Each senior's four chapters take place where she usually is. The first meeting is chapter one; later chapters need enough affection and enough of the stat she respects. A gold star on the map marks a new story. The phone shows where everyone is and what the next chapter still needs.
+
+### 白露特別篇 · Letters from Member Zero
+
+读完白露第二章后，从校园地图的回信卡或游戏手机的「回信」页进入。五次约定涵盖查找公开线索、一起挑选与染色观星服、决定是否打开来信和两种社团结局。对话中可以保存后稍后继续，特别篇不占用日常时段。
+
+After Bai Lu's second chapter, open the letter card on the campus map or the Letters tab on the in-game phone. Five appointments span public clues, choosing and dyeing a stargazing outfit, deciding when to open the letter, and two endings for the club. Save and resume during a conversation. The episode uses no daily time slots.
+
+内置 22 句台湾国语合成对白和三首原创场景配乐。对白框可以重听，手机设置可分别调整配乐、语音和音效。
+
+The episode includes 22 synthesized Taiwanese Mandarin lines and three original scene tracks. Replay voiced lines in the dialogue box, or adjust music, voice and effects separately in the phone settings. [音讯制作 · Audio credits](assets/audio/README.md)
+
+### 课余邀约 · After-class invitations
+
+校园地图的「查看邀約」会打开游戏手机的「邀約」页。读完林夏第二章且好感达到 20，可参加「泳池晚風」。唐蜜和白露的第二章读完且好感达到 35 后，分别开放「睡衣與不加糖的可可」和「浴衣、茶與窗外的星光」。三场都是成年角色的课余活动。
+
+活动分为试衣和赴约两段。运动泳装、缎面睡衣、浴衣和配件会进对应角色的衣橱，可自由叠穿和染色。赴约时会显示当时选定的服装和配色。靠近、回应和留白有不同的后续对白。新的称呼、话题和下次邀约记在手机，下次普通聊天也能接续。选改天可以之后再约。
+
+Open **Invites** from the campus map. Lin Xia's poolside outing opens after chapter two at 20 affection. Tang Mi's pyjama gathering and Bai Lu's bathhouse tea visit open after their second chapters at 35 affection. The outing first saves both outfits and dyes, then brings them into the meeting. Your choices carry into the next conversation, where you can follow through on the invitation or defer it.
+
+泳池、公共休息室和浴场茶室使用为本作生成的原创背景。邀约补配 15 句台湾国语合成对白，并加入原创校园日常主题。对白期间会自动压低配乐。 [音讯制作 · Audio credits](assets/audio/README.md)
 
 ### 好感与拉扯 · Affection and push-and-pull
 
@@ -92,6 +115,10 @@ Money from work buys clothes, presents and supplies (energy drinks and books tha
 
 "Memories" on the title screen keeps what carries over between terms: fifteen endings (two for each senior and one for going alone), eighteen achievements, and the ten perks they unlock. From the second term on, a new term can begin with one perk, such as every stat +4, seeing the distance she likes from your first talk, ten more energy each morning, or ¥600 more to start with. When a term ends, the endings, achievements and perks it unlocked are listed.
 
+打开回忆册即可进入「名场面回看」。清歌的两条星空祭尾声分别解锁，预算会书签可以用来试另一种回答。完成白露特别篇或林夏首约后，也能从头回看。点「快进已读」会在新对白和选择处停下。退出回看并关闭回忆册后，点「继续学期」即可接着玩当前学期。
+
+Open Memories to replay scenes you have unlocked. Qingge's two festival epilogues unlock separately. Use the budget meeting bookmark to try the other answer. Completing Bai Lu's interlude or Lin Xia's first meeting lets you replay it from the start. Skip read pauses for unread lines and choices. Exit the replay and close Memories to resume your current term.
+
 ### 结局 · Endings
 
 星空祭之夜可以向好感达到 55 的学姐告白。读完她的全部四章且好感达到 88，会进入她的恋爱结局；否则是“未完待续”。也可以谁都不说。每位学姐各有两种结局，另有一个独自的结局。
@@ -100,53 +127,13 @@ On the night of the Star Festival you may confess to any senior at 55 affection 
 
 ## 美术与画面 · Art direction
 
-封面、九位角色的剧情立绘、校园地图、场景、前景装饰和商品图采用为本 Demo 生成的插画。对白使用角色的默认造型插画。换装预览将独立绘制的角色头部与衣服、配饰分层组合，染色和换发型也能即时显示。场景把背景、人物和前景放在不同深度，保留昼夜色调与视差。
+封面、九位角色的立绘、校园地图、场景、前景装饰和商品图采用为本 Demo 生成的插画。对白使用完整立绘。七位学姐的日常装与约会装各有独立插画，泳池练习、睡衣聚会、浴场茶室和观星各有自己的活动立绘。活动图的服装染色只影响布料，保留原有脸部、发色和光影。自由叠穿时，对白选用最接近的完整造型插画，逐件搭配和即时染色可在衣橱查看。场景以分层视差和昼夜光线呈现。
 
-The cover, nine character portraits, campus map, locations, foreground props, and catalogue art were generated for this demo. Dialogue uses the illustrated default looks. The dress-up system layers illustrated heads with clothing and accessories and updates dyes and hairstyles live. Background, characters, and foreground sit on different depth planes with parallax and time-of-day lighting.
+The cover, nine character portraits, campus map, locations, foreground props, and catalogue art were generated for this demo. Dialogue uses full illustrations, with separate casual and date looks for all seven seniors and activity portraits for the pool, pyjama gathering, tea lounge, and stargazing. Activity fabric takes dye without affecting the face or hair. Dialogue picks the closest illustrated silhouette for mixed outfits, and the wardrobe shows each individual piece and dye live. The scene uses layered parallax and time-of-day lighting.
 
 手机使用横屏可完整观看舞台式界面。
 
 On phones, landscape gives the stage layout its full viewing area.
-
-## 引擎用法 · How it uses the engine
-
-游戏使用白鹭的共享帧 2D 配置，默认以 WebGL2 绘制。各部分对应的引擎功能如下。
-
-The game uses Egret's shared-frame 2D profile and draws with WebGL2 by default. Each part maps to an engine feature as follows.
-
-| 部分 · Part | 引擎功能 · Engine feature |
-|---|---|
-| 启动与每帧提交 · Start-up and frame submission | `createEngineForProfile(…, 'egret.shared-frame2d/1')`，`createSharedWebGL2Host` 或 `createSharedWebGPUHost`，`renderSharedFrame`；上一帧完成后才提交下一帧 · the next frame is submitted only when the host has finished the last |
-| 立绘、背景、界面的贴图 · Textures for characters, backgrounds and interface | 画布绘制的像素经 `createImageData2D`、`createTexture` 成为贴图，由 `engine.assets` 以租约管理，换图时释放旧租约 · canvas pixels become textures, held as leases through `engine.assets` and released when a picture is replaced |
-| 画面层次 · Display tree | `DisplayObjectContainer`、`Bitmap`、`Sprite` 的位置、缩放、旋转、透明度和锚点 · position, scale, rotation, alpha and anchors |
-| 伪 2.5D 纵深 · Pseudo-2.5D depth | 背景、角色、近景和粒子分层，以不同幅度平移并整体推近。地图与地点标签分别移动 · background, character, foreground and particle planes shift by different amounts and zoom together. The map and its pins move independently |
-| 昼夜光线 · Time-of-day light | `createSharedMaterial2D` 的线性光色为角色染上黄昏或夜色，并统一使用线性过滤 · the light colour of a shared material tints characters for dusk and night, with linear filtering throughout |
-| 对话逐字显示 · Text writing itself out | 同一张文字贴图放进两个带 `clipRect` 的容器：一个显示已完成的行，一个显示正在出现的行 · one text texture in two containers with `clipRect`: finished lines in one, the growing line in the other |
-| 眨眼 · Blinking | 分层换装人物使用独立的眨眼贴图 · layered dress-up figures use a separate blink texture |
-| 点击判定 · Tap detection | `globalToLocal`、`localToGlobal` 把指针换算到面板坐标 · convert the pointer into panel coordinates |
-| 动画与计时 · Animation and timing | `engine.advanceTime` 驱动 `engine.clock.onTick`，补间、粒子和打字效果都挂在这一个时钟上 · tweens, particles and text all run from this one clock |
-| 淡入淡出、悬停高亮 · Fades and hover highlight | `Sprite.graphics` 的纯色矩形 · solid rectangles |
-
-音乐和音效由 Web Audio 合成。时间、属性、好感、拉扯、心愿、校园事件、任务、结局和回忆规则可脱离页面运行，在 Node 中玩完整个学期。
-
-Music and sound are synthesised with Web Audio. The time, stats, affection, push-and-pull, wish, campus event, task, ending and memory rules can run a whole term in Node without a page.
-
-## 目录 · Layout
-
-| 路径 · Path | 内容 · Contents |
-|---|---|
-| `index.html`, `style.css` | 页面 · the page |
-| `src/main.mjs`, `src/game.mjs` | 启动与流程；各界面共用的状态栏、提示、头像和存档 · start-up and flow; the top bar, messages, portraits and saving shared by all screens |
-| `src/sim.mjs` | 玩法规则，不依赖页面 · the rules, no page needed |
-| `src/engine/` | 引擎接入（`stage`）、分层场景（`world`）、界面面板（`ui`） · the engine connection, the layered scene and the interface panels |
-| `src/screens/` | 标题、剧情、校园、衣橱、商店、手机、结局、回忆册 · title, story, campus, wardrobe, shops, phone, finale, memories |
-| `src/art/` | 人物组合绘制与素材接入 · character compositing and asset loading |
-| `assets/` | 封面、角色、校园、前景装饰、服装和道具插画 · cover, cast, campus, foreground, fashion and item illustrations |
-| `src/data/` | 学姐、服饰与道具、地点、任务、校园事件、成就与天赋 · seniors, clothes and items, places, tasks, campus events, achievements and perks |
-| `src/story/` | 序章、各章剧情、日常台词、结局（中英双语） · prologue, chapters, everyday lines and endings, in Chinese and English |
-| `src/audio.mjs` | 音乐与音效 · music and sound |
-| `tools/`, `test/` | 无页面游玩与规则测试 · headless play and rule tests |
-| `vendor/` | 引擎运行时副本 · the engine runtime copy |
 
 ## 运行与开发 · Run and develop
 
@@ -185,8 +172,76 @@ node tools/headless.mjs wanqing
 node tools/headless.mjs qingge bailu
 ```
 
+## 引擎用法 · How it uses the engine
+
+游戏使用白鹭的共享帧 2D 配置，默认以 WebGL2 绘制。各部分对应的引擎功能如下。
+
+The game uses Egret's shared-frame 2D profile and draws with WebGL2 by default. Each part maps to an engine feature as follows.
+
+| 引擎入口 / API · Entry / API | 在本游戏中的用途 · Use in this game | 文件 · File |
+|---|---|---|
+| `createEngineForProfile(…, 'egret.shared-frame2d/1')`，`createSharedWebGL2Host` 或 `createSharedWebGPUHost`，`renderSharedFrame`；上一帧完成后才提交下一帧 · the next frame is submitted only when the host has finished the last | 启动与每帧提交 · Start-up and frame submission | `src/engine/stage.mjs` |
+| 画布绘制的像素经 `createImageData2D`、`createTexture` 成为贴图，由 `engine.assets` 以租约管理，换图时释放旧租约 · canvas pixels become textures, held as leases through `engine.assets` and released when a picture is replaced | 立绘、背景、界面的贴图 · Textures for characters, backgrounds and interface | `src/engine/stage.mjs` |
+| `DisplayObjectContainer`、`Bitmap`、`Sprite` 的位置、缩放、旋转、透明度和锚点 · position, scale, rotation, alpha and anchors | 画面层次 · Display tree | `src/engine/stage.mjs` |
+| 背景、角色、近景和粒子分层，以不同幅度平移并整体推近。地图与地点标签分别移动 · background, character, foreground and particle planes shift by different amounts and zoom together. The map and its pins move independently | 伪 2.5D 纵深 · Pseudo-2.5D depth | `src/engine/world.mjs` |
+| `createSharedMaterial2D` 的线性光色为角色染上黄昏或夜色，并统一使用线性过滤 · the light colour of a shared material tints characters for dusk and night, with linear filtering throughout | 昼夜光线 · Time-of-day light | `src/engine/stage.mjs` |
+| 同一张文字贴图放进两个带 `clipRect` 的容器：一个显示已完成的行，一个显示正在出现的行 · one text texture in two containers with `clipRect`: finished lines in one, the growing line in the other | 对话逐字显示 · Text writing itself out | `src/screens/story.mjs` |
+| 分层换装人物使用独立的眨眼贴图 · layered dress-up figures use a separate blink texture | 眨眼 · Blinking | `src/art/figure.mjs` |
+| `createBrowserPointerInput`、`createBrowserHoverInput`、`createBrowserKeyboardInput` · Browser pointer, hover and keyboard input | 引擎处理原生输入和失焦取消，游戏按绘制面板的区域和层序分派操作 · Egret handles native input and cancellation; painted panels define targets and order | `src/engine/stage.mjs`、`src/engine/ui.mjs` |
+| `createUiSemantics`、`createBrowserSemantics` · Accessible control semantics | 为画布按钮、页签和弹窗提供名称、焦点、状态和读屏接口 · Names, focus, state and accessibility projection for canvas buttons, tabs and dialogs | `src/engine/ui-semantics.mjs` |
+| `createBrowserFrameLoop`、`engine.createTween`、`after` · Frame loop, tweens and timers | 淡入淡出、演出等待、粒子与逐字显示共用引擎时钟 · Fades, scripted waits, particles and text use the engine clock | `src/engine/stage.mjs` |
+| `createBrowserAudio` · Browser audio | 背景乐循环、提示音、静音和后台暂停交给引擎混音器 · The engine mixer handles music looping, effects, mute and tab suspension | `src/audio.mjs` |
+| `Sprite.graphics` 的纯色矩形 · solid rectangles | 淡入淡出、悬停高亮 · Fades and hover highlight | `src/engine/stage.mjs` |
+
+音乐和音效由游戏的音符生成，再由白鹭混音器播放。时间、属性、好感、拉扯、心愿、校园事件、任务、结局和回忆规则可脱离页面运行，在 Node 中玩完整个学期。
+
+The game synthesises music and effects from its notes and plays them through the Egret mixer. The time, stats, affection, push-and-pull, wish, campus event, task, ending and memory rules can run a whole term in Node without a page.
+
+## 已验证 · Verified
+
+- 2026-11-21 引擎副本升级到 `b5628eb`、改用引擎帧循环后：25 项 Node 测试和无页面一学期通过；无头 Chromium 下标题与升级前逐像素相同，开始新学期、打开手机、切走标签页再回来都无控制台错误。 · After the engine update and the move to the engine's frame loop: 25 tests and a headless term pass; the title is unchanged, and a new term, the phone and a hidden tab run clean.
+- 2026-11-21 在提交 `fc1dacb`、Node 22.23.4 下运行 `node --test test/*.test.mjs`：25 项全部通过（时间、属性、好感、拉扯、心愿、校园事件、任务、结局、回忆和存档规则）。 · `node --test` at commit `fc1dacb` with Node 22.23.4: all 25 tests pass.
+- `tools/headless.mjs` 可以不开页面玩完一个学期，用来检查规则和数值改动；本次没有重新记录它的输出。 · `tools/headless.mjs` plays a whole term without a page; its output was not recorded this time.
+- 2026-11-20 `node tools/quality.mjs LoveElective` 在无头 Chromium + SwiftShader 下测了 16 个自动项，结果见 [QUALITY.md](QUALITY.md)。 · The 16 automatic quality items in headless Chromium, see QUALITY.md.
+- 没有记录在案的真机验收。 · No recorded run on a real device.
+
+## 已知问题 · Known issues
+
+- 手机竖屏时舞台式界面显示不全，要横屏才能完整观看。 · On a phone held upright the stage layout is cut down; it needs landscape.
+- 界面全部画在画布上，读屏读不到按钮名称。 · The whole interface is drawn on the canvas, so screen readers find no named buttons.
+- 品质验收未达标 · Quality items failing（[QUALITY.md](QUALITY.md)，2026-11-21，无头 Chromium + SwiftShader · headless, software rendering）：F1 桌面帧时间 p95 ≤ 16.7 ms（p95 133.4 ms over 34 frames）；I1 中英文全可切换，英文下无中文（html lang "en", Chinese left: 心动选修课 校园恋爱养成游戏 点击或轻触进行操作 空格或回车继续对话 屏幕方向）；A2 读屏读出主要按钮（no named control in the accessibility tree）；A3 尊重 prefers-reduced-motion（prefers-reduced-motion is not read）；E2 资源失败有错误界面和重试（23 files refused; no uncaught error; no error screen with a retry）。
+
+## 已解决 · Solved
+
+- 衣橱里饰边的染色控件和渲染出错（`25aa14e`）；每位角色的服装染色没有记住（`282f651`，存档按角色保存染色）。 · The wardrobe's trim dye controls and drawing; dyes are now remembered per character.
+- 衣橱人物比例和服装贴合重做（`a1aa57b`、`7a6c6d9`）。 · The wardrobe figure's proportions and the fit of the garments were rebuilt.
+- 慢的一帧一次交给引擎时钟会被拒绝（`CLOCK_DELTA_LIMIT`）：拆成几步推进，隐藏标签页回来后时间直接继续；现在由引擎的 `createBrowserFrameLoop` 来做（ENGINE-NOTES 第 1 条）。 · A slow frame given to the clock at once was refused; it is fed in smaller steps (item 1).
+- 每个 `requestAnimationFrame` 都提交一帧会让宿主积压：只在上一帧完成后提交；现在由引擎的帧循环在宿主忙时跳帧（ENGINE-NOTES 第 2 条）。 · Submitting on every animation frame backs the host up; a frame is submitted only when the last has finished (item 2).
+
+## 未完成 · Unfinished
+
+- 英文模式下页面上仍有中文（品质 I1）；没有给读屏用的按钮名称（A2）；不读 `prefers-reduced-motion`（A3）；图片加载失败没有错误界面和重试（E2）。见下方已知问题。 · Chinese left in English mode, no accessible button names, no reduced-motion, no retry when a picture fails.
+- 真机上的帧时间和触屏验收。 · Frame times and touch acceptance on real devices.
+
+## 目录 · Layout
+
+| 路径 · Path | 内容 · Contents |
+|---|---|
+| `index.html`, `style.css` | 页面 · the page |
+| `src/main.mjs`, `src/game.mjs` | 启动与流程；各界面共用的状态栏、提示、头像和存档 · start-up and flow; the top bar, messages, portraits and saving shared by all screens |
+| `src/sim.mjs` | 玩法规则，不依赖页面 · the rules, no page needed |
+| `src/engine/` | 引擎接入（`stage`）、分层场景（`world`）、界面面板（`ui`） · the engine connection, the layered scene and the interface panels |
+| `src/screens/` | 标题、剧情、校园、衣橱、商店、手机、结局、回忆册 · title, story, campus, wardrobe, shops, phone, finale, memories |
+| `src/art/` | 人物组合绘制与素材接入 · character compositing and asset loading |
+| `assets/` | 封面、角色、校园、前景装饰、服装和道具插画 · cover, cast, campus, foreground, fashion and item illustrations |
+| `src/data/` | 学姐、服饰与道具、地点、任务、校园事件、成就与天赋 · seniors, clothes and items, places, tasks, campus events, achievements and perks |
+| `src/story/` | 序章、各章剧情、日常台词、结局（中英双语） · prologue, chapters, everyday lines and endings, in Chinese and English |
+| `src/audio.mjs` | 音乐与音效 · music and sound |
+| `tools/`, `test/` | 无页面游玩与规则测试 · headless play and rule tests |
+| `vendor/` | 引擎运行时副本 · the engine runtime copy |
+
 ## 引擎与许可 · Engine and license
 
-`vendor/` 中是新白鹭引擎的运行时副本，采用 Apache-2.0 许可，来源和版本见 [vendor/SOURCE.md](vendor/SOURCE.md)。
+`vendor/` 中是新白鹭引擎的运行时副本，采用 Apache-2.0 许可，引擎提交 `c1570b0878d1be8716d06320206f51a62f9e3f32`，来源和版本见 [vendor/SOURCE.md](vendor/SOURCE.md)。
 
-`vendor/` holds a copy of the Egret Rebuild runtime under Apache-2.0; see [vendor/SOURCE.md](vendor/SOURCE.md) for its source and version.
+`vendor/` holds a copy of the Egret Rebuild runtime under Apache-2.0. See [vendor/SOURCE.md](vendor/SOURCE.md) for the source and engine commit `c1570b0878d1be8716d06320206f51a62f9e3f32`.

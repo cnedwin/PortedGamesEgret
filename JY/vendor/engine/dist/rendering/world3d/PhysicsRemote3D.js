@@ -306,6 +306,7 @@ export class RemoteBody3D {
         this.#client.forget(this);
     }
 }
+/** A joint of a physics world in a worker; remove it to take it out. */
 export class RemoteJoint3D {
     id;
     #client;
@@ -528,6 +529,7 @@ export class PhysicsClient3D {
         this.#bodies.clear();
     }
 }
+/** Connects to a physics world run in a worker, through a message port. */
 export function connectPhysics3D(port, options) {
     return new PhysicsClient3D(port, options);
 }

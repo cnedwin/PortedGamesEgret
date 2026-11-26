@@ -3,8 +3,12 @@ class Signal {
     cancelled = false;
     cancellationReason = undefined;
     subscriptions = new Map();
-    get aborted() { return this.cancelled; }
-    get reason() { return this.cancellationReason; }
+    get aborted() {
+        return this.cancelled;
+    }
+    get reason() {
+        return this.cancellationReason;
+    }
     addEventListener(_type, listener, options = {}) {
         if (this.cancelled || this.subscriptions.has(listener))
             return;
@@ -36,7 +40,12 @@ class Signal {
                 candidate.listener();
             }
             catch (cause) {
-                reportDiagnostic(onDiagnostic, { code: "CANCELLATION_LISTENER_FAILED", phase: "cancellation", severity: "error", cause });
+                reportDiagnostic(onDiagnostic, {
+                    code: "CANCELLATION_LISTENER_FAILED",
+                    phase: "cancellation",
+                    severity: "error",
+                    cause
+                });
             }
         }
         this.subscriptions.clear();
@@ -47,6 +56,10 @@ export class CancellationController {
     mutableSignal = new Signal();
     onDiagnostic;
     signal = this.mutableSignal;
-    constructor(onDiagnostic) { this.onDiagnostic = onDiagnostic; }
-    abort(reason) { this.mutableSignal.abort(reason, this.onDiagnostic); }
+    constructor(onDiagnostic) {
+        this.onDiagnostic = onDiagnostic;
+    }
+    abort(reason) {
+        this.mutableSignal.abort(reason, this.onDiagnostic);
+    }
 }

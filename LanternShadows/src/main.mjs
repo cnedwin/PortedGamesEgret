@@ -56,6 +56,7 @@ const WORDS = {
 function speak() {
   document.documentElement.lang = lang === 'zh' ? 'zh-CN' : 'en';
   for (const element of document.querySelectorAll('[data-zh]')) element.textContent = element.dataset[lang];
+  for (const element of document.querySelectorAll('[data-label-zh]')) element.setAttribute('aria-label', element.getAttribute('data-label-' + lang));
   $('lang').textContent = lang === 'zh' ? 'EN' : '中文';
   $('keys').innerHTML = KEY_HINTS[lang].map(hint => hint.slice(0, -1).map(key => `<kbd>${key}</kbd>`).join('') + hint.at(-1)).join('');
   if (staged) (showCount(), showRecords(), showResult());

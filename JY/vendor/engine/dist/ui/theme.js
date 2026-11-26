@@ -45,6 +45,7 @@ function tokens(value, capture) {
         result[key] = capture(input[key]);
     return freeze(result);
 }
+/** Checks and freezes a theme from its description. */
 export function createUiTheme(descriptor) {
     const raw = record(descriptor, ['id', 'colors', 'spacing', 'typography', 'skins']);
     const result = freeze({

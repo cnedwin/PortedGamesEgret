@@ -65,6 +65,7 @@ function nonnegativeFinite(value) {
 function positiveZero(value) {
     return value === 0 ? 0 : value;
 }
+/** Checks and freezes a sequence from its atlas size and frames; malformed input is refused. */
 export function createSequenceClip(input, profile) {
     const source = admitObject(input);
     if (profile !== undefined && profile !== 'trim-rotation-v1')

@@ -1,7 +1,8 @@
 import { quatFromAxisAngle, quatMultiply } from '@egret/engine/world3d';
 import { homeOpeningAnimation } from '../home3d-actors/opening-animation.mjs';
 import { createNativeHomeExit } from '../home3d/native-exit-effect.mjs';
-import { createNativeSceneView } from './native-inn-view.mjs';
+import { createNativeSceneView, loadNativeSceneAssets } from './native-inn-view.mjs';
+import { nativeHomeSource } from './home.mjs';
 
 const axes = { x: [1, 0, 0], y: [0, 1, 0], z: [0, 0, 1] };
 
@@ -58,10 +59,24 @@ function prepareProps(environment, spec) {
   };
 }
 
+const homeView = {
+  ...nativeHomeSource, classKey: 'home3d',
+  terrainEdge: false, requireInstancing: true, prepareFirstFrame: true,
+  resolveActor, prepareProps, createExitEffect: createNativeHomeExit,
+};
+
 export function createNativeHomeView(viewport, overlay, options) {
-  return createNativeSceneView(viewport, overlay, options, {
-    sceneId: 70, classKey: 'home3d', assetDirectory: '/jyx2/home3d/', manifest: 'scene.json',
-    actorDirectory: '/jyx2/home3d-actors/', modelIds: ['0', 'doll'], terrainEdge: false, requireInstancing: true,
-    resolveActor, prepareProps, createExitEffect: createNativeHomeExit,
-  });
+  return createNativeSceneView(viewport, overlay, options, homeView);
+}
+
+// Decode the home assets while the selected game's original data and 2D fallback are prepared.
+export async function prepareNativeHomeView(spec) {
+  const assets = await loadNativeSceneAssets(homeView, spec);
+  return {
+    async create(viewport, overlay, options) {
+      try { return await createNativeSceneView(viewport, overlay, options, homeView, assets); }
+      catch (error) { assets.dispose(); throw error; }
+    },
+    dispose: assets.dispose,
+  };
 }

@@ -5,11 +5,14 @@
 /** The areas, longest names first where one begins with another. */
 const AREAS = [
     ['ANIMATION', 'the animation coordinator'],
+    ['ASSET_BUNDLE', 'an asset bundle'],
     ['ASSET_GROUP', 'an asset group'],
     ['ASSET_LEASE', 'an asset lease'],
     ['ASSET_MANAGER', 'the asset manager'],
     ['ASSET_PROVIDER', 'an asset provider'],
     ['ASSET', 'the asset manager'],
+    ['AUDIO_CUES', 'the sound cues'],
+    ['AUDIO_WAV', 'the WAV encoder'],
     ['AUDIO', 'the audio mixer'],
     ['BITMAP_BINDING', 'a bitmap binding'],
     ['BITMAP_BUTTON', 'a bitmap button'],
@@ -19,7 +22,9 @@ const AREAS = [
     ['BITMAP', 'a bitmap'],
     ['BOUNDS', 'a bounds query'],
     ['BROWSER_GAME', 'the browser game'],
+    ['BROWSER_IMAGE', 'the browser image reader'],
     ['BROWSER_STATS', 'the stats panel'],
+    ['BROWSER_STORAGE', 'the browser storage'],
     ['BROWSER_TEXT_EDITOR', 'the browser text editor'],
     ['BROWSER_TEXT_INPUT', 'the browser text input'],
     ['CAMERA', 'the camera'],
@@ -39,8 +44,10 @@ const AREAS = [
     ['FRAME', 'a frame'],
     ['GAMEPAD', 'gamepad input'],
     ['GRAPHICS', 'graphics'],
+    ['HEADLESS_RUN', 'a headless run'],
     ['HIT_TEST', 'a hit test'],
     ['HOVER_INPUT', 'hover input'],
+    ['INPUT_ACTIONS', 'the input actions'],
     ['KEYBOARD_FOCUS_SCOPE', 'a keyboard focus scope'],
     ['KEYBOARD_INPUT', 'keyboard input'],
     ['KEYBOARD', 'the keyboard'],
@@ -59,7 +66,11 @@ const AREAS = [
     ['PARAGRAPH', 'a paragraph'],
     ['PARTICLE', 'a particle emitter'],
     ['PHYSICS', 'the physics world'],
+    ['PLAY', 'play'],
     ['POINTER_INPUT', 'pointer input'],
+    ['QUALITY_VARIANT', 'the quality variants'],
+    ['RANDOM', 'the random number generator'],
+    ['SAVE_STORE', 'the save store'],
     ['SCOPE', 'a scope'],
     ['SEQUENCE_RESET', 'a sequence reset slot'],
     ['SEQ_PLAYBACK', 'a sequence playback'],
@@ -79,6 +90,7 @@ const AREAS = [
     ['TEXT_PLAN', 'a text plan'],
     ['TEXT', 'text'],
     ['TILEMAP', 'a tile map'],
+    ['TIMER', 'a timer'],
     ['TWEEN', 'a tween'],
     ['UI_CONTROL', 'a UI control'],
     ['UI_KEYBOARD', 'UI keyboard navigation'],
@@ -98,7 +110,8 @@ const AREAS = [
     ['WEBGPU', 'the WebGPU Host'],
     ['WEB_PNG', 'the browser image provider'],
     ['WEB_RESOURCE', 'the browser resource source'],
-    ['WEB_TEXT', 'the browser text provider']
+    ['WEB_TEXT', 'the browser text provider'],
+    ['WORLD3D_OVERLAY', 'the World3D overlay']
 ];
 /** What went wrong, by ending, longest first. `{a}` is the area, `{o}` what stands between the area and the ending. */
 const ENDINGS = [
@@ -247,6 +260,7 @@ const WRITTEN = {
     UI_LAYER_MANAGER_OWNED: 'This Engine already has a UI layer manager. An Engine has one.',
     UI_LAYER_ROOT_OWNED: 'This UI root already belongs to a layer.',
     UI_LAYOUT_UNSTABLE: 'The layout of the UI did not settle in eight rounds: a size keeps changing something it depends on.',
+    UI_CONTENT_INVALID: 'What a UI leaf or row gave as its content cannot be shown there. The leaf or row, and the reason, are in cause.',
     UI_ROW_NOT_REALIZED: 'The row is not on screen now, so there is nothing of it to act on. Scroll it into view first.',
     UI_ROW_RETAINED: 'A row that is in use was removed from its list or changed under it.',
     UI_SEMANTICS_DESCRIPTION: 'A field of a UI semantics entry is not valid. The entry and the field are in cause.',
@@ -279,7 +293,7 @@ const WRITTEN = {
     INVALID_RENDERER: 'The Host given to the Engine does not draw this kind of frame.',
     RENDERER_REQUIRED: 'The Engine was asked to draw and was created without a Host that draws. Give createEngine a Host from createSharedWebGL2Host or createSharedWebGPUHost.',
     OWNERSHIP_CONFLICT: 'The object already belongs to another scope. An object is given to one scope with scope.use, once.',
-    DISPLAY_VALUE_INVALID: 'A value given to a display object is not valid: positions, scales and rotation are finite numbers, alpha is 0 to 1 and visible is a boolean.',
+    DISPLAY_VALUE_INVALID: 'A value given to a display object is not valid: positions, scales, rotation and alpha are finite numbers (an alpha is held to 0 and 1) and visible is a boolean.',
     DISPLAY_SIZE_UNAVAILABLE: 'The object draws nothing, so it has no width or height to scale to a size. Draw it first, or set scaleX and scaleY.',
     DISPLAY_CYCLE: 'A container cannot be added to itself or to one of its own descendants.',
     DISPLAY_TREE_INVARIANT: 'The display tree changed while it was being walked, or a node was reached twice. Do not change the tree from inside a capture or a query.',
@@ -288,7 +302,7 @@ const WRITTEN = {
     INVALID_INDEX: 'The child index is not a whole number within the container.',
     INVALID_DISPLAY_OBJECT: 'What was given is not a display object made by this SDK.',
     INVALID_DISPLAY_CONTAINER: 'What was given is not a display container made by this SDK.',
-    GRAPHICS_VALUE_INVALID: 'A value given to graphics is not valid: coordinates are finite numbers, sizes are not negative, a colour is 0 to 0xffffff and an alpha is 0 to 1.',
+    GRAPHICS_VALUE_INVALID: 'A value given to graphics is not valid: coordinates are finite numbers, sizes are not negative, a colour is 0 to 0xffffff and an alpha is a finite number (held to 0 and 1).',
     GRAPHICS_FILL_REQUIRED: 'A shape needs a fill or a line. Call beginFill or lineStyle before drawing it.',
     GRAPHICS_BUDGET: 'The drawing is more than one sprite holds: a path of 8,192 points, a line of 16,384 dashes, a fill with holes or crossings of 16,384 triangles, 16 meshes, or an image repeated beyond 8,192 of its pixels. What the sprite had drawn before stays. Draw the rest into another sprite.',
     CLOCK_DELTA_LIMIT: 'The time given to engine.advanceTime is further from the last one than the clock takes in one step. Give it smaller steps, as the frame loop of @egret/engine/web/loop does after a tab was hidden.',
@@ -371,6 +385,7 @@ export function setErrorLanguage(value) {
         throw new TypeError('The language of errors is "en" or "zh".');
     language = value;
 }
+/** The language error messages are written in. */
 export function getErrorLanguage() {
     return language;
 }

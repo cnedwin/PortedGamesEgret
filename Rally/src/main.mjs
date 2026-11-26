@@ -11,6 +11,7 @@
 //   hud.mjs              the page around the canvas
 //   input.mjs, audio.mjs devices and sound
 import { createEngine } from '@egret/engine';
+import { prefersReducedMotion, watchReducedMotion } from '@egret/engine/web/kit';
 import { Scene3D, createPerspectiveCamera3D } from '@egret/engine/world3d';
 import { createAudio } from './audio.mjs';
 import { LAP_CHOICES, RACERS } from './data.mjs';
@@ -18,6 +19,7 @@ import { createHud } from './hud.mjs';
 import { createInput } from './input.mjs';
 import { createRace } from './sim.mjs';
 import { createTrack } from './track.mjs';
+import { loadTrackModels } from './track-models.mjs';
 import { createView } from './view.mjs';
 
 // ---- address options ------------------------------------------------------------------
@@ -26,6 +28,7 @@ import { createView } from './view.mjs';
 //   ?quality=low     start at a picture quality: high, medium or low
 //   ?ratio=1         cap on the device pixel ratio (default 1.5)
 //   ?seed=123        replay the same race
+//   ?models=original keep the original model artwork for comparison
 const params = new URLSearchParams(location.search);
 const useWebGPU = params.get('backend') === 'webgpu';
 const backend = await (useWebGPU ? import('@egret/engine/webgpu/world3d') : import('@egret/engine/webgl2/world3d'));
@@ -87,6 +90,11 @@ async function main() {
     : backend.createWebGL2Renderer3D({ canvas, antialias: true, toneMapping: 'aces' });
   scope.use(renderer);
   status.renderer = renderer;
+  const gl = useWebGPU ? null : canvas.getContext('webgl2');
+  const debugRenderer = gl?.getExtension('WEBGL_debug_renderer_info');
+  const adapter = debugRenderer ? gl.getParameter(debugRenderer.UNMASKED_RENDERER_WEBGL) : '';
+  // This D3D11 adapter loses the context on the first frame with f1fbd909 shadow maps.
+  const shadowCompatible = !/ANGLE .*RTX 5090 Laptop GPU \(0x00002C58\) Direct3D11\b/i.test(adapter);
   Object.assign(renderer.postProcess, {
     bloom: true,
     bloomThreshold: 1.25,
@@ -105,7 +113,12 @@ async function main() {
 
   const settings = loadSettings();
   const track = createTrack();
-  const view = createView(scene, camera, track);
+  const bundle = params.get('models') === 'original' ? null : scope.use(await loadTrackModels(backend.loadGltfFromUrl3D));
+  status.models = { loaded: Object.keys(bundle?.models ?? {}), failures: bundle?.failures ?? {} };
+  const view = createView(scene, camera, track, { trackModels: bundle?.models });
+  // Less motion when the system asks for it, and again whenever the player changes the setting.
+  view.reducedMotion = prefersReducedMotion();
+  scope.use({ dispose: watchReducedMotion((reduced) => (view.reducedMotion = reduced)) });
   const hud = createHud(document.querySelector('#ui'), track, {
     lang: settings.lang,
     stage: canvas,
@@ -129,7 +142,7 @@ async function main() {
       low = settings.quality === 'low';
     renderer.postProcess.enabled = !low;
     renderer.postProcess.ssao = high;
-    renderer.shadowsEnabled = !low;
+    renderer.shadowsEnabled = !low && shadowCompatible;
     view.scenery.setReflect(high);
     audio.setMuted(settings.muted);
     saveSettings(settings);

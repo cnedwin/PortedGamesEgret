@@ -1,1 +1,1 @@
-{"version":3,"file":"physics2dWorld.d.ts","sourceRoot":"","sources":["../src/physics2dWorld.ts"],"names":[],"mappings":"AAIA,OAAO,KAAK,EAWV,YAAY,EACZ,mBAAmB,EACpB,MAAM,qBAAqB,CAAC;AA6D7B,oGAAoG;AACpG,wBAAgB,kBAAkB,CAAC,OAAO,GAAE,mBAAwB,GAAG,YAAY,CAwoBlF"}
+{"version":3,"file":"physics2dWorld.d.ts","sourceRoot":"","sources":["../src/physics2dWorld.ts"],"names":[],"mappings":"AAIA,OAAO,KAAK,EAaV,YAAY,EACZ,mBAAmB,EACpB,MAAM,qBAAqB,CAAC;AA6E7B,oGAAoG;AACpG,wBAAgB,kBAAkB,CAAC,OAAO,GAAE,mBAAwB,GAAG,YAAY,CAo1BlF"}

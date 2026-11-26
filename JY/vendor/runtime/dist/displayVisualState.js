@@ -65,6 +65,7 @@ export function registerVisual(node) {
         anchorOffsetY: 0,
         visible: true,
         renderEffect: undefined,
+        maskUses: 0,
         sharedMaterial: null,
         renderBoundary: "none",
         clipRect: undefined,
@@ -102,11 +103,31 @@ export function assertVisualMutable(node) {
     assertLive(node);
     engineOf(node)?.assertOpen();
 }
+/** A refused display value: the error says which property was set and what it was given. */
+export function invalidDisplayValue(property, value) {
+    // An object is named by its kind alone: a refused value is never read.
+    const given = typeof value === "string"
+        ? JSON.stringify(value.length > 40 ? value.slice(0, 40) + "…" : value)
+        : value === null || (typeof value !== "object" && typeof value !== "function" && typeof value !== "symbol")
+            ? String(value)
+            : typeof value === "object"
+                ? "an object"
+                : "a " + typeof value;
+    return new EgretError("DISPLAY_VALUE_INVALID", { cause: new RangeError(`${property} was given ${given}`) });
+}
 export function finite(value) {
     return typeof value === "number" && Number.isFinite(value);
 }
 export function color(value) {
     return finite(value) && Number.isInteger(value) && value >= 0 && value <= 0xffffff;
+}
+/**
+ * An alpha as it is kept: a finite number, held to 0 and 1. A game's arithmetic often lands a hair outside (a fade
+ * that runs one step long, an easing that overshoots), and that is not worth stopping a frame for. What is not a
+ * finite number gives undefined, for the caller to refuse.
+ */
+export function alphaOf(value) {
+    return finite(value) ? (value < 0 ? 0 : value > 1 ? 1 : value) : undefined;
 }
 export function unit(value) {
     return finite(value) && value >= 0 && value <= 1;

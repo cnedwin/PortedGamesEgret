@@ -17,7 +17,9 @@ const pair = (value, fallback, field) => {
         return [fallback, fallback];
     if (typeof value === 'number')
         return [requireFinite3D(value, field), value];
-    if (!Array.isArray(value) || value.length !== 2 || !(requireFinite3D(value[1], field) >= requireFinite3D(value[0], field)))
+    if (!Array.isArray(value) ||
+        value.length !== 2 ||
+        !(requireFinite3D(value[1], field) >= requireFinite3D(value[0], field)))
         throw new World3DError('WORLD3D_INPUT_INVALID', field);
     return [value[0], value[1]];
 };
@@ -41,7 +43,9 @@ export class GpuParticles3D extends InstancedMesh3D {
             this.arrange(camera);
     };
     /** Sort far to near before drawing. Disabling restores the logical instance order. */
-    get sorted() { return this.#sorted; }
+    get sorted() {
+        return this.#sorted;
+    }
     set sorted(value) {
         if (value === this.#sorted)
             return;
@@ -71,7 +75,11 @@ export class GpuParticles3D extends InstancedMesh3D {
     #worldSphere = new Float32Array(4);
     constructor(options = {}) {
         const count = requireCount3D(options.count ?? 10000, 'count', MESH3D_LIMITS.maxInstances);
-        const material = createSpriteMaterial3D({ ...(options.map ? { map: options.map } : {}), blending: options.blending ?? 'additive', depthWrite: false });
+        const material = createSpriteMaterial3D({
+            ...(options.map ? { map: options.map } : {}),
+            blending: options.blending ?? 'additive',
+            depthWrite: false
+        });
         super(createQuadGeometry3D(), material, count, 4);
         this.name = 'gpu-particles';
         this.pickable = false;
@@ -105,10 +113,20 @@ export class GpuParticles3D extends InstancedMesh3D {
             setColor3D(end, options.endColor);
         const startOpacity = requireFinite3D(options.startOpacity ?? 1, 'startOpacity'), endOpacity = requireFinite3D(options.endOpacity ?? 1, 'endOpacity');
         let seed = (options.seed ?? 0x9e3779b9) >>> 0;
-        const random = () => { seed = (Math.imul(seed, 1664525) + 1013904223) >>> 0; return seed / 4294967296; };
-        const data = this.instanceMatrices, colors = this.instanceColors = new Float32Array(count * 4);
+        const random = () => {
+            seed = (Math.imul(seed, 1664525) + 1013904223) >>> 0;
+            return seed / 4294967296;
+        };
+        const data = this.instanceMatrices, colors = (this.instanceColors = new Float32Array(count * 4));
         let minX = Infinity, minY = Infinity, minZ = Infinity, maxX = -Infinity, maxY = -Infinity, maxZ = -Infinity, largest = 0;
-        const grow = (x, y, z) => { minX = Math.min(minX, x); minY = Math.min(minY, y); minZ = Math.min(minZ, z); maxX = Math.max(maxX, x); maxY = Math.max(maxY, y); maxZ = Math.max(maxZ, z); };
+        const grow = (x, y, z) => {
+            minX = Math.min(minX, x);
+            minY = Math.min(minY, y);
+            minZ = Math.min(minZ, z);
+            maxX = Math.max(maxX, x);
+            maxY = Math.max(maxY, y);
+            maxZ = Math.max(maxZ, z);
+        };
         for (let i = 0; i < count; i++) {
             const o = i * 16;
             let px = 0, py = 0, pz = 0;
@@ -133,7 +151,7 @@ export class GpuParticles3D extends InstancedMesh3D {
             data[o] = px;
             data[o + 1] = py;
             data[o + 2] = pz;
-            data[o + 3] = emitOver > 0 ? (i + random()) / count * emitOver : 0;
+            data[o + 3] = emitOver > 0 ? ((i + random()) / count) * emitOver : 0;
             data[o + 4] = wx;
             data[o + 5] = wy;
             data[o + 6] = wz;
@@ -163,7 +181,7 @@ export class GpuParticles3D extends InstancedMesh3D {
             else {
                 // Sample the ordinary drag path as before.
                 for (let step = 0; step <= 4; step++) {
-                    const t = lifetime * step / 4, travel = drag > 1e-4 ? (1 - Math.exp(-drag * t)) / drag : t;
+                    const t = (lifetime * step) / 4, travel = drag > 1e-4 ? (1 - Math.exp(-drag * t)) / drag : t;
                     grow(px + wx * travel + gravity[0] * 0.5 * t * t, py + wy * travel + gravity[1] * 0.5 * t * t, pz + wz * travel + gravity[2] * 0.5 * t * t);
                 }
             }
@@ -191,16 +209,39 @@ export class GpuParticles3D extends InstancedMesh3D {
             this.frustumCulled = false;
         const fadeIn = requireFinite3D(options.fadeIn ?? 0.1, 'fadeIn'), fadeOut = requireFinite3D(options.fadeOut ?? 0.3, 'fadeOut');
         // time, loop flag, fade in, fade out | gravity, drag | end color and opacity.
-        this.#uniforms = new Float32Array([0, this.loop ? 1 : 0, fadeIn, fadeOut, gravity[0], gravity[1], gravity[2], drag, end[0], end[1], end[2], endOpacity, this.space === 'world' ? 1 : 0, hasFloor ? 1 : 0, floor, bounce]);
+        this.#uniforms = new Float32Array([
+            0,
+            this.loop ? 1 : 0,
+            fadeIn,
+            fadeOut,
+            gravity[0],
+            gravity[1],
+            gravity[2],
+            drag,
+            end[0],
+            end[1],
+            end[2],
+            endOpacity,
+            this.space === 'world' ? 1 : 0,
+            hasFloor ? 1 : 0,
+            floor,
+            bounce
+        ]);
         const shader = Object.freeze({ key: 'world3d-gpu-particles', uniforms: this.#uniforms });
         material.shader = shader;
         material.softness = requireFinite3D(options.softness ?? 0, 'softness');
     }
     /** Seconds since the emitter started. */
-    get time() { return this.#uniforms[0]; }
-    set time(value) { this.#uniforms[0] = requireFinite3D(value, 'time'); }
+    get time() {
+        return this.#uniforms[0];
+    }
+    set time(value) {
+        this.#uniforms[0] = requireFinite3D(value, 'time');
+    }
     /** True once every particle of a burst has died. */
-    get isFinished() { return this.#uniforms[0] > this.duration; }
+    get isFinished() {
+        return this.#uniforms[0] > this.duration;
+    }
     update(deltaSeconds) {
         this.#uniforms[0] = this.#uniforms[0] + requireFinite3D(deltaSeconds, 'deltaSeconds');
         if (this.#cycle)
@@ -237,7 +278,7 @@ export class GpuParticles3D extends InstancedMesh3D {
                 if (discriminant > 0) {
                     // Use the downward crossing, with the equivalent form that avoids cancellation.
                     const root = Math.sqrt(discriminant);
-                    hit = b < 0 ? 2 * c / (root - b) : (-b - root) / (2 * a);
+                    hit = b < 0 ? (2 * c) / (root - b) : (-b - root) / (2 * a);
                 }
             }
             else if (b < 0)
@@ -254,8 +295,13 @@ export class GpuParticles3D extends InstancedMesh3D {
         return alive;
     }
     /** Start a burst again from its first particle. */
-    restart() { this.#uniforms[0] = 0; this.#cycle?.fill(NaN); }
-    slotOf(index) { return this.#slots ? this.#slots[index] : index; }
+    restart() {
+        this.#uniforms[0] = 0;
+        this.#cycle?.fill(NaN);
+    }
+    slotOf(index) {
+        return this.#slots ? this.#slots[index] : index;
+    }
     // Once sorted: the slot each particle currently sits in.
     #slots;
     /** World mode: a particle starting a new life takes the emitter's place and heading of this moment. */
@@ -310,7 +356,7 @@ export class GpuParticles3D extends InstancedMesh3D {
         for (let to = 0; to < n; to++)
             slots[to] = order[slots[to]];
         order.set(scratch.next);
-        const where = this.#slots ??= new Uint32Array(n);
+        const where = (this.#slots ??= new Uint32Array(n));
         for (let slot = 0; slot < n; slot++)
             where[order[slot]] = slot;
         this.instanceVersion++;
@@ -342,7 +388,13 @@ export class GpuParticles3D extends InstancedMesh3D {
         return sphereTransform(this.#worldSphere, this.#sphere, this.matrixWorld);
     }
     /** Release the geometry and the material. */
-    dispose() { this.geometry.dispose(); if (!Array.isArray(this.material))
-        this.material.dispose(); }
+    dispose() {
+        this.geometry.dispose();
+        if (!Array.isArray(this.material))
+            this.material.dispose();
+    }
 }
-export function createGpuParticles3D(options = {}) { return new GpuParticles3D(options); }
+/** Makes particles simulated on the GPU. */
+export function createGpuParticles3D(options = {}) {
+    return new GpuParticles3D(options);
+}

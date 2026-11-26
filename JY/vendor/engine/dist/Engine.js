@@ -60,6 +60,8 @@ export class Engine {
     frameIdle;
     releaseFrame;
     sharedRenderer;
+    /** The space the renderer mixes in, which every frame records; ports may carry it beside their declared members. */
+    #sharedBlendSpace;
     #currentState = 'open';
     scopes = new Set();
     cleanupErrors = [];
@@ -78,6 +80,8 @@ export class Engine {
             throw new EgretError('ENGINE_FACTORY_REQUIRED');
         this.host = options.host;
         this.sharedRenderer = ports.shared;
+        this.#sharedBlendSpace =
+            ports.sharedBlendSpace === 'srgb' ? 'srgb' : 'linear';
         this.sharedFrameProfile = ports.sharedProfile;
         this.timeoutMs = timeoutMs;
         this.onDiagnostic = options.onDiagnostic;
@@ -312,8 +316,9 @@ export class Engine {
                 throw new EgretError('FRAME_ID_EXHAUSTED');
             const frame = freezeSharedFrame({
                 profile: SHARED_FRAME_PROFILE_2D,
-                colorRecipe: 'egret.linear-srgb-pma/1',
-                targetRepresentation: 'egret.srgb-pma8-target/1',
+                ...(this.#sharedBlendSpace === 'srgb'
+                    ? { colorRecipe: 'egret.srgb-pma/1', targetRepresentation: 'egret.encoded-srgb-pma8-target/1' }
+                    : { colorRecipe: 'egret.linear-srgb-pma/1', targetRepresentation: 'egret.srgb-pma8-target/1' }),
                 outputRepresentation: outputAlpha === 'opaque' ? 'egret.srgb-opaque-unorm8/1' : 'egret.srgb-premultiplied-unorm8/1',
                 frameId: this.nextFrameId,
                 width,

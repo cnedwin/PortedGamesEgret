@@ -1,9 +1,11 @@
 import type { Camera3D } from '../../rendering/world3d/Camera3D.js';
 import type { Scene3D } from '../../rendering/world3d/Object3D.js';
+import type { PlanarReflectionPass3D } from '../../rendering/world3d/Water3D.js';
 import { RenderTarget3D } from '../../rendering/world3d/Texture3D.js';
 import type { CompressedFormat3D } from '../../rendering/world3d/Texture3D.js';
 import type { PostProcessSettings3D } from './post3D.js';
 import type { Renderer3D, Renderer3DInfo, ToneMapping3D } from './frame3D.js';
+/** A WebGPU renderer to make: its canvas and device, its tone mapping and exposure, its shadows, and what is called when the device is lost. */
 export interface WebGPURenderer3DOptions {
     readonly canvas: HTMLCanvasElement | OffscreenCanvas;
     /** Four-sample multisampling of the canvas pass. Defaults to true. */
@@ -21,6 +23,7 @@ export interface WebGPURenderer3DOptions {
     /** Called once when the device is lost. Create a new renderer to continue. */
     readonly onDeviceLost?: (message: string) => void;
 }
+/** Draws 3D scenes with WebGPU: set its size, render a scene from a camera, and read what it drew. */
 export declare class WebGPURenderer3D implements Renderer3D {
     #private;
     readonly canvas: HTMLCanvasElement | OffscreenCanvas;
@@ -59,6 +62,7 @@ export declare class WebGPURenderer3D implements Renderer3D {
     private geometry;
     private wireframe;
     private releaseGeometry;
+    private uploadInstances;
     private instances;
     /** Bind group holding the bone matrices and morph deltas for a mesh. */
     private skin;
@@ -83,9 +87,17 @@ export declare class WebGPURenderer3D implements Renderer3D {
      * instanced draw each, in the main view and in shadow maps. On by default;
      * the meshes themselves are untouched.
      */
+    /** Point lights past the eight nearest are lit by screen tile, up to 256; false drops them instead. */
+    get tiledLights(): boolean;
+    set tiledLights(value: boolean);
     get autoInstancing(): boolean;
     set autoInstancing(value: boolean);
     render(scene: Scene3D, camera: Camera3D, target?: RenderTarget3D): boolean;
+    /** Draw the mirror directly with its own output, shadows and object selection. */
+    renderReflectionPass(scene: Scene3D, camera: Camera3D, pass: PlanarReflectionPass3D): boolean;
+    /** The retained mirror image must still belong to the live WebGPU device. */
+    reuseReflection(target: RenderTarget3D): boolean;
+    private renderView;
     /** Draw the scene into the half-float chain target, then post-process into the output. */
     private renderPost;
     /** Retire per-mesh and per-skeleton buffers that have not been drawn recently. */

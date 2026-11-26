@@ -1,5 +1,5 @@
 /** Integer target loads and one explicit output transfer; the canvas view is ordinary UNORM. */
-export function createSharedResolvePipeline(shader, pipeline, format, opaque) {
+export function createSharedResolvePipeline(shader, pipeline, format, opaque, srgb = false) {
     const module = shader({
         code: `@group(0) @binding(0) var workingTexture: texture_2d<f32>;
 fn encoded(c: vec3<f32>) -> vec3<f32> {
@@ -13,9 +13,14 @@ fn encoded(c: vec3<f32>) -> vec3<f32> {
     let value = textureLoad(workingTexture, vec2<i32>(position.xy), 0);
     let a = clamp(value.a, 0.0, 1.0); let c = clamp(value.rgb, vec3<f32>(0.0), vec3<f32>(a));
     ` +
-            (opaque
-                ? 'return vec4<f32>(encoded(clamp(value.rgb, vec3<f32>(0.0), vec3<f32>(1.0))), 1.0);'
-                : 'if (a == 0.0) { return vec4<f32>(0.0); } return vec4<f32>(a * encoded(c / a), a);') +
+            // A target that mixes codes already holds the canvas's codes.
+            (srgb
+                ? opaque
+                    ? 'return vec4<f32>(clamp(value.rgb, vec3<f32>(0.0), vec3<f32>(1.0)), 1.0);'
+                    : 'if (a == 0.0) { return vec4<f32>(0.0); } return vec4<f32>(c, a);'
+                : opaque
+                    ? 'return vec4<f32>(encoded(clamp(value.rgb, vec3<f32>(0.0), vec3<f32>(1.0))), 1.0);'
+                    : 'if (a == 0.0) { return vec4<f32>(0.0); } return vec4<f32>(a * encoded(c / a), a);') +
             '\n}'
     });
     return pipeline({

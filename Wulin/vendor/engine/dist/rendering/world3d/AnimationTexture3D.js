@@ -16,6 +16,7 @@ function affineScaleBound(m, o) {
     const columns = Math.max(a + d + g, b + e + h, c + f + i);
     return Math.sqrt(rows) * Math.sqrt(columns);
 }
+/** The most bone matrices, clips and frames a second an animation texture holds. */
 export const ANIMATION_TEXTURE3D_LIMITS = Object.freeze({ maxMatrices: 2097152, maxClips: 256, maxFps: 240 });
 /**
  * Bone matrices of one skinned mesh for every frame of a set of clips. The
@@ -595,6 +596,7 @@ export class SkinnedInstancedMesh3D extends InstancedMesh3D {
 export function worldRenderSphere3D(mesh) {
     return mesh instanceof SkinnedInstancedMesh3D ? undefined : mesh.worldBoundingSphere;
 }
+/** Makes many skinned instances of one mesh, each playing baked clips from an animation texture. */
 export function createSkinnedInstancedMesh3D(geometry, material, animations, capacity, instanceColorSize = 3) {
     return new SkinnedInstancedMesh3D(geometry, material, animations, capacity, instanceColorSize);
 }
