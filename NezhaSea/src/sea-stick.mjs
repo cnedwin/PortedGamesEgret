@@ -130,3 +130,4 @@ export function createSeaStick(game, canMove, isUiPoint = () => false) {
     reset, retire, arrange
   };
 }
+

@@ -10,6 +10,8 @@ The reference interface is PortedGamesEgret `e85f81ca` with engine `b5628eb`. Th
 
 At `95897d78`, the engine owns market text, keyboard and gamepad focus, paused pad navigation, on-demand drawing and WebP loading. The offscreen text bitmap, custom focus indicator and Tab handler, custom pad polling and portrait canvas upload are removed. Dynamic accessible names, the floating field stick, the compact confirmation and the portrait crop remain.
 
+最新副本为 0728eccc，改用 view.focus 指定重建视图的焦点，使用可复现的首屏模块包；保持规则与旧档。三种主角形态的待机/滑行透明画集已更新。WebGPU 预热交给正常帧循环而非独立提交。 · The latest copy is 0728eccc, with native focus, a reproducible startup bundle and updated battle sprites. Warm-up uses the normal frame loop.
+
 以下元素对照、截图和物理行数记录初次迁移。当前版本的验证见 [QUALITY.md](QUALITY.md)。 · The mapping, screenshot matrices and line counts below document the first migration. See the quality report for the current build.
 
 ## 旧元素与新实现 · Element mapping

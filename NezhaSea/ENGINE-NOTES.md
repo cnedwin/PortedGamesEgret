@@ -45,7 +45,7 @@ SwiftShader. Sections 4 and 5 use Chrome with hardware acceleration.
 <!-- engine-note: {"id": "NezhaSea#5", "status": "open", "topic": "webgpu-cold-atlas-upload"} -->
 
 - 现象：在三星 Fold7 的 Chrome 157 WebGPU 上，让冷图集在「出海」后首次绘制。连续两帧分别向新纹理写入同一张 1024×1700 RGBA 图集（每次 6,963,200 字节）。同机、同服务器、同一依赖延迟 5 秒的样本中，前两帧同步渲染调用耗时 22.1 和 15.6 毫秒，其中提交前的 Host 准备为 17.7 和 12.0 毫秒。原生 queue.submit 调用不超过 0.1 毫秒。浏览器的帧间隔还包含输入和呈现，另行记录。 · On Fold7 Chrome 157 WebGPU, the same cold 1024×1700 RGBA image was written to two textures over consecutive frames. With the same local dependency delayed five seconds, the first two synchronous render calls took 22.1 and 15.6 ms, including 17.7 and 12.0 ms of pre-submit Host preparation. Native queue.submit took no more than 0.1 ms. Browser transition timings are separate.
-- 绕过办法：标题可操作前，在隐藏的画布提交一个使用同一图集的帧。只在常规帧循环启动前等该帧退役，最多等 100 毫秒。慢加载样本中只预上传一次，进入游戏前四帧无需再上传角色图集。 · Submit one frame using the atlas on a hidden canvas before making the title interactive, and wait at most 100 ms for retirement before starting the ordinary frame loop. The slowed comparison moved the sole upload before the title.
+- 绕过办法：历史版本在标题前主动预热图集，慢加载样本只预上传一次。原生 UI 迁移后加载页本身也绘制帧，不能再直接提交：`src/view.mjs` 在加载层后临时展示图集，交给常规帧循环，最多等待 120 毫秒。见第 14 条。 · The historical workaround prewarmed the atlas before the title and avoided repeat upload in the slowed sample. The native loading view also submits frames, so the current game keeps a pooled sprite behind it for the ordinary loop and bounds the wait to 120 ms. See item 14.
 - 复现：从 PortedGamesEgret 提交 `c72a437` 开始，用本地 HTTP 服务打开 `NezhaSea/`，对 `vendor/robust-predicates/esm/util.js` 可加 5 秒响应延迟。用全新配置打开页面，点「出海」，比较第一次出现 Bitmap 后前两帧的纹理标识、`GPUQueue.writeTexture` 尺寸和待完成帧。 · Serve NezhaSea from commit c72a437, optionally delay the same module response by five seconds, and click Set out from a cold profile. Compare texture identity, native write dimensions and pending frame counts for the first two Bitmap frames.
 - 建议：在首份上传提交后、准备完成前，让后续同资源的帧复用已上传的纹理，或提供可等待完成的纹理预热接口。验收时同一图集在连续两帧只产生一个原生分配和一次全量写入，并覆盖待完成帧中的取消、资源释放和设备丢失。 · Allow a subsequent frame to reuse the pending upload safely, or expose an awaitable texture warmup API. Verify one allocation and full write for the same atlas across two frames, including cancellation, release and device loss.
 
@@ -57,9 +57,9 @@ SwiftShader. Sections 4 and 5 use Chrome with hardware acceleration.
 <!-- engine-note: {"id": "NezhaSea#6", "status": "resolved", "topic": "play-view-input-focus", "workaround": ["src/ui-input.mjs"]} -->
 
 - 现象：`51b6175d` 的声明式视图需要应用维护 Tab 导航、焦点框和暂停手柄轮询。 · At `51b6175d`, the application managed Tab navigation, the focus indicator and polling in the paused game.
-- 绕过办法：在 `95897d78` 删掉这些绕过。白鹭接管焦点、原生焦点框和模态的 Escape、B、Start。应用在重建视图时使用语义树的 focus 操作指定初始控件。 · The updated engine owns navigation, the visible mark and Escape, B and Start on modals. The game uses semantic focus to set the initial target when rebuilding a view.
+- 绕过办法：在 `95897d78` 删掉这些绕过。白鹭接管焦点、原生焦点框和模态的 Escape、B、Start。重建后的初始焦点在 0728eccc 中使用原生 view.focus；仅原生确认框的取消按钮仍使用语义焦点适配。 · The engine owns navigation, focus indication and modal Escape, B and Start. On 0728eccc the app uses native view.focus for rebuilt views; semantic focus remains for the cancel action in the built-in confirmation.
 - 建议：保留这套输入仲裁与按住 Start 恢复的回归覆盖。 · Keep coverage for the input arbitration and resume while Start remains held.
-- 状态：`253bd197` 下原生导航及暂停恢复浏览器验收通过；应用仍通过语义树指定重建视图的初始控件。 · Native navigation and resume pass on `253bd197`; the app still uses semantics to choose the opening focus of a rebuilt view.
+- 状态：`0728eccc` 的键盘、模拟手柄导航及暂停恢复浏览器验收通过。 · Native keyboard, simulated gamepad navigation and pause recovery pass on `0728eccc`.
 
 ### 7. 浮动摇杆要从整块战场任意点起手 · Floating stick needs the full battlefield as its start area — 已在 `253bd197` 解决 / resolved in `253bd197`
 <!-- engine-note: {"id": "NezhaSea#7", "status": "resolved", "topic": "play-floating-stick", "workaround": ["src/sea-stick.mjs"]} -->
@@ -115,3 +115,11 @@ SwiftShader. Sections 4 and 5 use Chrome with hardware acceleration.
 - 绕过办法：`95897d78` 由 [Play 的 `renderMode: 'on-demand'`](src/main.mjs) 跳过静止标题重复提交。保留输入轮询，无需 Demo 启停循环或自行监听手柄唤醒。限速首屏另测。 · Native on-demand Play skips redundant title submissions while retaining input polling. The demo's loop suspension and controller wake code are removed. Cold startup is measured separately.
 - 建议：保留按需绘制的输入回归。冷启动仍可继续优化模块依赖调度。 · Retain on-demand input regressions and continue profiling startup dependency scheduling.
 - 状态：`253bd197` 通用品质复测 F1 静置标题 p95 4.2 ms，L1 3.7 s / 2.6 MB，仍超 3 秒门槛。 · On-demand title F1 passes; throttled L1 still exceeds the 3-second target.
+
+### 14. WebGPU 加载页与主动预热共享存储竞争 · WebGPU loading and manual warm-up compete for shared storage — 已在游戏侧绕过 / worked around
+<!-- engine-note: {"id": "NezhaSea#14", "status": "worked-around", "topic": "webgpu-loading-atlas-prewarm", "workaround": ["src/main.mjs", "src/view.mjs"]} -->
+
+- 现象：Fold7（SM-F966U1、Android 17、Chrome 157、Adreno 830）使用 `0728eccc` WebGPU 冷启动，所有资源请求成功，但在白鹭原生加载视图提交帧时主动调用 `engine.renderSharedFrame`，抛出 `FRAME_RENDER_FAILED`，cause 为 `WEBGPU_BACKPRESSURE: Shared storage backpressure`。加载页因此进入错误界面。重复真机采样定位到调用点。 · On a Fold7 cold start, all resources loaded, but a direct frame submission while the native loading view was rendering raised FRAME_RENDER_FAILED with cause WEBGPU_BACKPRESSURE. The loading flow treated it as an asset failure; device capture identified the call site.
+- 绕过办法：`src/main.mjs` 与 `src/view.mjs` 使用已有浏览器帧循环展示预热用的临时角色，最多 120 ms；不存在独立帧提交。普通启动不依赖预热完成。 · Use the existing browser frame loop to show the warm-up actor under the loading layer, for at most 120 ms. Do not submit directly or make successful startup depend on optional warm-up.
+- 建议：提供可安全排队的无显示纹理预热接口，等待 GPU 资源可用、提交和退役，支持超时、取消和设备丢失。不要将可恢复的共享存储压力报告为资源下载失败。 · Provide an awaitable, cancellable off-screen texture warm-up, coordinated with normal frame reservations and retirement. Distinguish recoverable shared-storage pressure from a resource-load error.
+- 状态：Demo 修复后同一 Fold7 WebGPU 冷启动、标题与竖屏出海均通过；引擎未改动。 · Demo fix passes a cold start, title and portrait battle on the same Fold7. No engine change.

@@ -1,6 +1,6 @@
 # Vendored engine
 
-- Egret Engine community rebuild, commit `253bd197febfff80608fa4b313b4026e5694e23f`, copied by `tools/vendor-game.mjs`.
+- Egret Engine community rebuild, commit `0728eccc8ee5340f786fdeacd375927d3d8e315a`, copied by `tools/vendor-game.mjs`.
 - Entries: `@egret/engine`, `@egret/engine/play`, `@egret/engine/kit`, `@egret/engine/web/kit`, `@egret/engine/ui`, `@egret/engine/ui/semantics`, `@egret/engine/ui/testing`, `@egret/engine/web/semantics`. Only the JavaScript files they import are kept; source maps and declarations are left out.
 - Third-party packages, copied with their own licences: `robust-predicates` (Unlicense).
 - First-party engine code: Apache-2.0, see `LICENSE` and `NOTICE`.

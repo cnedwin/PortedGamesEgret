@@ -39,9 +39,7 @@
       }
     }
   </script>
-  <link rel="modulepreload" href="./src/main.mjs">
-  <link rel="modulepreload" href="./vendor/engine/dist/web/play.js">
-  <link rel="modulepreload" href="./vendor/engine/dist/ui/index.js">
+  <link rel="modulepreload" href="./bundle/main.mjs">
 </head>
 <body>
   <main id="frame" data-screen="loading">
@@ -72,7 +70,7 @@
       document.getElementById('bootReload').textContent = '重新载入';
     }
     try {
-      await import('./src/main.mjs');
+      await import('./bundle/main.mjs');
     } catch (cause) {
       document.getElementById('boot')?.remove();
       document.getElementById('bootError').hidden = false;

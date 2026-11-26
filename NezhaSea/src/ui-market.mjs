@@ -240,9 +240,9 @@ export function createMarketUi({ game, app, rules, sound, say, present, chooseLe
           button('sellCancel', no, 14, height - 58, (width - 36) / 2, 44, 14, () => answer(false)),
           button('sellConfirm', yes, width / 2 + 4, height - 58, (width - 36) / 2, 44, 14, () => answer(true), { color: CTA, textColor: CTA_TEXT })
         ], { color: INK }), anchor: 'center' }
-      }, { bind, dismiss: dismissSale });
+      }, { bind, dismiss: dismissSale, initialFocus: 'sellCancel' });
       sale = { view, answer };
-      focusPart?.('sellCancel');
+      focusPart?.('sellCancel', view);
     });
   }
 

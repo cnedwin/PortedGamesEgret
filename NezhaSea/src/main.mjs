@@ -73,7 +73,7 @@ function clearPage() {
 
 function present(name, next, focus) {
   if (active?.view === next) {
-    ui.pick(focus);
+    ui.pick(focus, next);
     return;
   }
   const closing = clearPage();
@@ -88,7 +88,7 @@ function present(name, next, focus) {
   };
   active = { definition, view: next };
   void closing.then(() => active?.definition === definition && stack.open(definition)).catch(console.error);
-  ui.pick(focus);
+  ui.pick(focus, next);
 }
 
 function renderScreen(name, focus) {
@@ -325,13 +325,10 @@ const loading = game.loading([async () => {
   sound = createSound(game, { on: settings().sound, music: settings().music });
   await view.ready;
   if (game.browser.backend === 'webgpu') {
-    // Submit the atlas before the live loop can request it on consecutive frames.
+    // Let the browser frame loop reserve shared storage for the optional atlas warm-up.
+    // A busy GPU may skip this frame; it must not turn successful asset loading into an error.
     await yieldStartup();
-    view.primeActorAtlas();
-    const deadline = performance.now() + 100;
-    while (game.browser.host.getStatus().pendingFrames > 0 && performance.now() < deadline) {
-      await new Promise((resolve) => setTimeout(resolve, 4));
-    }
+    await view.primeActorAtlas();
   }
 }], { label: t('loading') });
 requestAnimationFrame(() => document.querySelector('#boot')?.remove());

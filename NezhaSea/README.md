@@ -78,7 +78,7 @@ Nezha Stirs the Sea is a survival action game built with [Egret Rebuild](https:/
 
 ## 美术与玩法界面 · Art and interface
 
-- `assets/` 的陈塘关封面、战场、龙宫集市和三张形态立绘为本 Demo 生成的原创插画。绘制角色画集、配乐和音效的源码一并收录。 · The cover, battlefield, market and three form portraits in `assets/` are original illustrations generated for this demo. The source for the actor atlas, score and sound effects ships with the game.
+- `assets/` 的陈塘关封面、战场、龙宫集市和三张形态立绘为本 Demo 生成的原创插画。三种哪吒战斗形态各有透明待机与滑行动作，合入共享角色图集；配乐、音效及图集源码一并收录。 · The cover, battlefield, market and three form portraits in `assets/` are original illustrations generated for this demo. The three battle forms each have transparent idle and glide poses on the shared actor atlas. Atlas, score and effect sources ship with the game.
 - 手机集市可切换「货架」和「我的法宝」。珍珠余额和「下一波」始终可见，选中法宝后可查看合成结果，也可直接将它拖到可合成的另一件上。 · On mobile, switch between stock and your treasures. The wallet and Next wave stay visible. Select a treasure to preview a merge, or drag it onto a matching treasure.
 
 ## 已验证 · Verified
@@ -120,13 +120,22 @@ Nezha Stirs the Sea is a survival action game built with [Egret Rebuild](https:/
 | `src/i18n.mjs`, `src/saves.mjs` | 文字表、存档 · the words, the save |
 | `test/` | Node 测试、浏览器验收和截图基线 · tests, acceptance and baselines |
 | `vendor/` | 引擎副本 · the engine copy |
+| `bundle/`, `tools/launch-bundle/` | 可复现的首屏入口与构建脚本 · reproducible browser entry and build recipe |
 
 ## 引擎副本 · Engine copy
 
-引擎副本取自 [Egret_rebuild](https://github.com/cnedwin/Egret_rebuild) 的 main 提交 `253bd197febfff80608fa4b313b4026e5694e23f`，生成记录见 [vendor/SOURCE.md](vendor/SOURCE.md)。
+引擎副本取自 [Egret_rebuild](https://github.com/cnedwin/Egret_rebuild) 的 main 提交 `0728eccc8ee5340f786fdeacd375927d3d8e315a`，生成记录见 [vendor/SOURCE.md](vendor/SOURCE.md)。
 
 The runtime is from Egret Rebuild main at the commit above. Run the following command in the engine checkout to reproduce it.
 
 ```sh
 node tools/vendor-game.mjs ../PortedGamesEgret/NezhaSea @egret/engine @egret/engine/play @egret/engine/kit @egret/engine/web/kit @egret/engine/ui @egret/engine/ui/semantics @egret/engine/ui/testing @egret/engine/web/semantics
+```
+
+游戏入口使用可复现的模块打包以减少首屏请求；引擎副本保持原样，规则与音频 Worker 保持独立源文件。更新源码或引擎后，在本目录重新生成并校验入口。 · The release uses a reproducible module bundle to reduce startup requests without modifying the vendored engine. Rebuild and verify it after source or engine changes.
+
+```sh
+npm ci --ignore-scripts --prefix tools/launch-bundle
+node tools/launch-bundle/build.mjs
+node --test test/bundle.test.mjs
 ```
