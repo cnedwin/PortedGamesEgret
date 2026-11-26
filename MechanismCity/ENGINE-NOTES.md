@@ -223,7 +223,7 @@ the upgrade.
 
 ## 升级时新发现 · Found during the upgrade
 
-### 18. 被拒的 `update` 仍改动了内存里的存档 · A refused `update` still changes the save in memory — 未解决 / open
+### 18. 被拒的 `update` 仍改动了内存里的存档 · A refused `update` still changes the save in memory — 已在 `1e60300` 解决 / resolved in `1e60300`
 
 - 现象：`update(change)` 把实时数据交给回调。像 `data => (data.open = 5)` 这样先原地改、再返回值的回调，会被拒绝且不写盘，但 `save.data.open` 已经是 5 了；文档说的是"内存中保持原样"。原地修改后不通过 `validate` 的情况也一样。
 - 本作：回调都是块体，不受影响；测试里记下了现在的行为（不写盘，但内存已变）。
@@ -236,8 +236,9 @@ the upgrade.
   changed in memory).
 - Suggestion: give the callback a copy (such as `structuredClone`) and take it only once it passes, or say in the
   documentation that a refused change may already have altered the data in memory.
+- 状态 · Status：已在 `1e60300` 解决（引擎 #424）：`save.update` 把副本交给回调，被拒时内存里的存档不变。 · Resolved in `1e60300` (engine #424): `save.update` gives the callback a copy, so a refused update leaves the save in memory as it was.
 
-### 19. 输入分发期间不能新建 UI 根 · A UI root cannot be made while input is delivered — 未解决 / open
+### 19. 输入分发期间不能新建 UI 根 · A UI root cannot be made while input is delivered — 已在 `1e60300` 解决 / resolved in `1e60300`
 
 - 现象：687037a 让 `root.prepare()` 在输入分发期间推迟执行，但 `createUiRoot()` 本身仍调用 `assertIdle()`，在按钮的 `onActivate` 里直接新建根会抛 `UI_BUSY`（cause：input is being delivered）。对"每次打开新建一个根"的用法（第 11 条说这是预期用法）来说，修复没有生效。
 - 本作：打开设置前先 `await Promise.resolve()`，等这次分发结束，正如错误信息建议的那样。
@@ -249,8 +250,9 @@ the upgrade.
 - This game: before opening the settings it awaits `Promise.resolve()` so that the delivery is over, as the error
   suggests.
 - Suggestion: let `createUiRoot()` be made during delivery as well, or say that only `prepare()` waits.
+- 状态 · Status：已在 `1e60300` 解决（引擎 #424）：按钮回调里可以新建 UI 根。 · Resolved in `1e60300` (engine #424): a UI root can be made from a button callback.
 
-### 20. 横向滚动控件不读竖向滚轮 · A sideways scroll control ignores an ordinary wheel — 未解决 / open
+### 20. 横向滚动控件不读竖向滚轮 · A sideways scroll control ignores an ordinary wheel — 已在 `1e60300` 解决 / resolved in `1e60300`
 
 - 现象：`createScrollControl({ axis: 'x', wheel })` 只读 `deltaX`。普通鼠标滚轮只有 `deltaY`，所以横向列表只能用触控板或横向滚轮滚动。另外 `wheel.target` 必须是视口本身（滚轮在视口或其子孙上才算），一开始把它设成视口里一块背板时，鼠标落在卡片上就不滚了。
 - 本作：`wheel.target` 设为视口容器；再在视口上听 `game.hover` 的滚轮事件，没有 `deltaX` 时把 `deltaY` 交给控件自己的 `scrollBy()`。已在浏览器里确认滚轮能滚动选关列表。
@@ -266,6 +268,7 @@ the upgrade.
   no `deltaX`, as most platforms do for sideways lists.
 
 ---
+- 状态 · Status：已在 `1e60300` 解决（引擎 #424）：横向滚动控件读普通的竖向滚轮（`wheel.crossAxis`）。 · Resolved in `1e60300` (engine #424): a sideways scroll control reads the ordinary wheel (`wheel.crossAxis`).
 
 ## 用得顺手的地方 · What worked well
 

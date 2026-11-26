@@ -25,12 +25,12 @@ The faults found in the new Egret engine (commit `a7be833`) while making this ga
 - **建议 · Suggestion**：加角速度、转动惯量、`applyTorque`，以及 `revolute`（铰链，可带马达和限位）、`wheel` 关节。 · Add angular speed, inertia and `applyTorque`, and `revolute` (a hinge, with a motor and limits) and `wheel` joints.
 - **状态 · Status**：未解决 · Open.
 
-### 4. 软件渲染下每一帧都画全部静止的背景 · Under software rendering every frame draws the whole still background — 未解决 / open
+### 4. 软件渲染下每一帧都画全部静止的背景 · Under software rendering every frame draws the whole still background — 已写入文档 / documented
 
 - **现象 · What happens**：试通时画面每帧都要变，`renderMode: 'on-demand'` 帮不上；无头 Chromium + SwiftShader、1280×720 下，一关的帧时间 p50 66.7 ms。逐层隐藏量出：只提交、什么都不改时也是 66 ms；隐藏整个世界层后 33 ms，隐藏背景（山水、岸）后 50 ms。也就是静止的背景和界面每帧都完整重画。 · During a test crossing the picture changes each frame, so `renderMode: 'on-demand'` cannot help; in headless Chromium with SwiftShader at 1280 × 720 a level ran at a p50 of 66.7 ms. Hiding layers in turn: 66 ms with nothing changed but a submit; 33 ms with the world layer hidden; 50 ms with the background (hills, water, banks) hidden. The still background and interface are drawn whole every frame.
 - **绕过办法 · Workaround**：检测到软件渲染时 `play({ pixelRatio: 0.75 })`；天空改成不透明的色带（半透明的整屏叠层最贵）；网格单独一层，试通时隐藏（`src/main.mjs`、`src/view/paint.mjs`）。之后 p50 33.4 ms（第 1-5 关）到 49.9 ms（第 5-5 关）。 · `play({ pixelRatio: 0.75 })` when software rendering is found; the sky painted as opaque bands (translucent full-screen layers cost most); the grid on a layer of its own, hidden while testing (`src/main.mjs`, `src/view/paint.mjs`). After that, p50 33.4 ms (level 1-5) to 49.9 ms (level 5-5).
 - **建议 · Suggestion**：同 CanalWatch 第 3 条、SandScroll 第 7 条：一个「静止层」，子树烘成一张纹理，内容不变时只合成，变了再烘；或者在只有部分节点变化时只重画脏区域。 · As CanalWatch item 3 and SandScroll item 7: a still layer whose subtree is baked to a texture and only composited until it changes, or redrawing only the dirty part when a few nodes change.
-- **状态 · Status**：未解决 · Open.
+- **状态 · Status**：已写入文档（引擎 #485，`8637ace`）：与 CanalWatch 第 3 条同一个问题，已写进 guide 卡片 still-background；静止层本身还没有。 · Documented (engine #485, `8637ace`): the same as CanalWatch item 3, in the still-background guide card; a still layer itself is not there yet.
 
 ### 5. `web/input` 的鼠标输入只认左键 · The mouse input of `web/input` knows only the left button — 未解决 / open
 

@@ -39,12 +39,12 @@ This integration uses Egret main at `95897d78095ae8fda9e34dbc13bbbd15db8eaa12`. 
 - 建议：调整分辨率时对同一真机的字形、命中和渲染开销做一并对照。 · Compare readability, hit targets and rendering cost on the same device when changing pixel density.
 - 状态：引擎已提供独立倍率。 · The engine exposes the independent multiplier.
 
-### 6. 存档更新与预制绘图对象 · Save updates and convenience drawing objects — 未解决 / open
+### 6. 存档更新与预制绘图对象 · Save updates and convenience drawing objects — 部分解决 / partly resolved
 
 - 现象：存档 `update` 会把意外返回的值用作新数据。`game.rect` 的颜色在构造时写入绘图，季节变化时要重画。`game.burst` 使用世界坐标。 · Save `update` treats an incidental callback return value as replacement data. A `game.rect` stores its colour in its initial drawing. `game.burst` accepts world coordinates.
 - 绕过办法：存档原地修改回调不返回值。会变色的天气图形和选框用 Sprite 的 graphics 重画，粒子通过 `toWorld` 传入换算后的坐标。 · In-place save callbacks return nothing. Sprite graphics redraw changing weather and focus visuals. `toWorld` converts coordinates for particles.
 - 建议：区分可变更新和全量替换 API，补充可变形状的填充属性和局部坐标版粒子入口。 · Separate mutation from replacement, add mutable fill for convenience shapes, and accept a local coordinate layer for particles.
-- 状态：未解决。 · Status: open.
+- 状态：部分解决（引擎 #424，`1e60300`）：`save.update` 改的是副本，被拒时不动内存；可变形状的填充和局部坐标粒子入口还没有。 · Partly resolved (engine #424, `1e60300`): `save.update` changes a copy and a refused update leaves memory alone; fills for mutable shapes and a local-space particle entry are not there yet.
 
 ### 7. 浏览器常用图像格式与封面重试 · Browser image formats and cover retry — 已在 95897d78 解决 / resolved in 95897d78
 
@@ -60,10 +60,10 @@ This integration uses Egret main at `95897d78095ae8fda9e34dbc13bbbd15db8eaa12`. 
 - 建议：继续覆盖密度调整、异步图文就绪和后台恢复。 · Keep density changes, asynchronous artwork/text and foreground restoration in coverage.
 - 状态：标题旧的启停循环已移除。 · The old title loop controls were removed.
 
-### 9. 滚动裁剪外的文字仍计入帧图片预算 · Clipped labels still debit the frame image budget — 未解决 / open
+### 9. 滚动裁剪外的文字仍计入帧图片预算 · Clipped labels still debit the frame image budget — 已在 `a7be833` 解决 / resolved in `a7be833`
 
 - 现象：用白鹭原生垂直滚动面板挂载完整英文建造清单，在 Edge 上打开空地单子会报 `FRAME_IMAGE_BUDGET`。当时视区只显示约六个选项，完全裁掉的内容也进入共享帧捕获的纹理预算。 · In Edge, opening a full English construction list with native vertical scrolling hit `FRAME_IMAGE_BUDGET`. About six actions were visible. Fully clipped descendants still entered the shared-frame image budget.
 - 复现：让原生滚动面板保持固定高度，放入足够多的不同文字项以越过 64 个图片页，再在顶部绘制。 · Put enough distinct text items to exceed 64 image pages into a fixed-height native scroll viewport and render at the top.
 - 绕过办法：保留全部行的原生布局、焦点和语义，捕获前把完全离屏的条目设为透明。滚入视区后立即恢复。 · Keep rows in native layout, focus and semantics, while setting fully offscreen display rows transparent before capture. Restore them as they scroll into view.
 - 建议：在纹理计入预算前剔除与裁剪交集为空的显示项，覆盖长列表和滚入视区的首帧。 · Cull empty clipped intersections before charging texture pages, with tests for long lists and the first frame after a row scrolls into view.
-- 状态：Demo 浏览器复测未再出现该错误。引擎的捕获顺序还需修复。 · The integrated workaround no longer hit the error in the browser retest. The engine capture order remains open.
+- 状态：已在 `a7be833` 解决（引擎 #480）：完全在裁剪区外的位图和文字不计入帧图片预算。 · Resolved in `a7be833` (engine #480): bitmaps and text wholly outside the clip no longer count toward the frame image budget.
