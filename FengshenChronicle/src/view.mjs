@@ -26,8 +26,8 @@ const FX_FALLBACKS = {
   'fx-flare': 'impact', 'fx-streak': 'slash', 'fx-shock': 'level'
 };
 
-export async function createView(game, scope, { width = 1280, height = 720, reducedMotion = false } = {}) {
-  const art = await buildArt(game, scope, MAPS);
+export async function createView(game, scope, { width = 1280, height = 720, reducedMotion = false, onProgress } = {}) {
+  const art = await buildArt(game, scope, MAPS, { onProgress });
   const use = object => scope.use(object);
   const container = parent => parent.addChild(use(new DisplayObjectContainer()));
   const root = use(new DisplayObjectContainer()), world = container(root);

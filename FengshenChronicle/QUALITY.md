@@ -1,5 +1,17 @@
 # 验收记录 · Quality
 
+
+## 2026-11-26 · 最新引擎、原生 RPG 界面与清晰度 / Latest engine, RPG views and visual density
+
+- **版本 / Version:** Egret main `8e70dcb3a8a0b40c9966483c92cb9f691a1cefd8`，官方 vendor-game 生成并逐文件校对。引擎原生 image 队列、命名焦点与旋转触控滚动；移除语义焦点查找，动态列表与滚动状态保留。规则、伤害、数值、存档、美术和原截图基线均未修改。 · Official engine copy, native image queue, named focus and rotated scrolling. Rules, saves, art and approved references are unchanged.
+- **自动 / Automated:** 当前最终版本 Node 54/54，桌面 Chromium 浏览器 17/17（真实延迟素材的可见加载进度、禁用开始、失败重试、画布物理像素、页签及交易）；标题截图差异 0.24%，西岐城 1.38%，原基线阈值内。引擎定向 Node 42/42、原生 view 浏览器 3/3。项目严格规范通过；独立从主干真实文件构建的展示站校验 24 案例、72 WebP 全过。 · All final automated checks passed without rewriting the baselines.
+- **原生 UI 完整首章 / Natural chapter & commerce:** 在视觉密度增量前，实际 PC Edge 158 与 Fold7 Chrome 157 WebGL2 从新档领取姜尚任务，古道实际击败六敌与首领、取得玉符，回城交易、出售、购买两件材料、合成 fine-ranger-1 及保存刷新。PC/手机分别正常结算至游侠 Lv3、攻击 37，真机冷行囊八种独立图标均像素匹配，首次可操作观测上界 PC 153.6 ms / Fold7 139.3 ms。两机古道与首领各 90 rAF，PC p95 4.3 ms、最大 4.5，手机 p95/max 16.7 ms，无 >50 ms 间隔。 · Real input and natural drops/resources; no gameplay fixture was used as a chapter completion.
+- **最终加载 / Final startup:** 标题自 HTML 显示进度，按实际原画读取、六页图集及地图纹理完成更新，不以计时器模拟。Fold7 实际冷启动 73 个可见状态，约 25.7 ms 第一次显示、2466.9 ms 就绪，98% 时开始仍禁用。PC 人为延迟一份实际资源 1200 ms 的诊断亦验证 98% 仍禁用、4752.8 ms 真正就绪；该时间不是正常网络启动速度。拒绝素材的自动回归中有可用重试，重新加载可正常开局。 · Real work progress, failure recovery and readiness gating; the delayed-PC measurement is not a natural startup benchmark.
+- **最终中文与触屏 / Final Chinese text & touch:** 原生 UI 与地图逻辑尺寸独立于实际显示密度。Fold7 竖屏商店旧/新同构截图的正文笔画明显改善。真实 Android 方向切换 4 次、6 次列表滚动、选配方及判定禁用合成通过，未移动网页、未误交易；PC 原生控件及键盘回归通过。保留已选材料的文字、开关和实际触控目标。 · Same-layout hardware screenshots show sharper Chinese body copy. Physical rotation, scrolling and recipe selection remain usable.
+- **最终战场 / Final map backing:** PC 1440×850 CSS、DPR1 由旧约 915×540 提升至 1441×850，实际古道键盘移动 408 帧 p95/max 4.3 ms，>50 ms 0。Fold7 竖屏画布由旧 878×1740 增至 1079×2137，横屏原有 2902×1080 不降低；实际古道触控移动 103 帧 p95/max 16.7 ms，>50 ms 0。两设备静止与移动均有实拍，分辨率恒定，真实受敌攻击，错误/警告/资源失败均零。 · Backing dimensions remain fixed through real movement. These are sampled browser rAF intervals, not direct GPU execution time. A short sample cannot prove that residual motion-only blur never occurs in all scenes.
+- **覆盖限制 / Limits:** 最终视觉补丁采用针对性真机回归而非重复整章；未覆盖第四章自然通关、Safari、物理手柄或长时间高密度压测。引擎能力反馈见第 4、5 条笔记。 · Final visual changes were retested on hardware; the complete earlier chapter route and targeted final tests are distinguished.
+
+
 2026-11-22 · Egret v7.0.2 · WebGL2
 
 | 真机 · Device | 浏览器 · Browser | 验收输入 · Input |
@@ -146,3 +158,23 @@ PC 候选在同一站位进入内圈和退外缘，气血均为 116 → 116。�
 Fold7 候选的内圈测试用真实触控摇杆，方向输入送达时距结算约 0.817 秒，气血 116 → 116。同站位原地承受潮环仍为 21 点。另一次外撤的方向输入到达时只剩约 0.750 秒，该次受 21 点伤害，此时屏内指引已切换为进内圈。
 
 Fold7 另从同一个战前档和站位重跑，首发预警总长为 1.35 秒。在剩 1.15 秒时用摇杆沿屏内箭头向左下外撤，气血 116 → 116，无受击事件。测试后的设备与浏览器设置顺利恢复。
+
+## 原生行囊、商店与铁匠铺 · Native inventory, shop and forge
+
+2026-11-26。Demo 基线为 `b0e1fba2`，引擎主干副本为 `a7be833b`。游戏规则、存档读写和资源文件与基线逐字节一致。 · Demo baseline `b0e1fba2`, refreshed to Egret `a7be833b`. Simulation, save code and art assets match the original files.
+
+- PC 实机 · Windows Edge 158.0.4370.33，WebGL2，1440 × 850 CSS px。新档游侠从首章开场打到古道首领并拾取镇邪印。用原生行囊换装、查看属性、核对药品数量，回城买卖并合成精筋追影弓。用 Tab 和 Shift+Tab 改页签，Esc 关行囊，面板内战斗计时静止。锻造实扣 44 文、2 片甲片和选中的两件装备，得到「移速 +5」。实际刷新后保留 125 文和新武器。控制台与失败请求均为零。 · Fresh Ranger run on physical Windows PC, keyboard and mouse in Edge WebGL2. It completed the boss, gear, shop, forge and real reload. The forge charged 44 coins and two scraps and consumed both selected gear pieces, then rolled movement speed +5. No console or request errors.
+- Fold7 实机 · Android 17、Chrome 157.0.8103.78、WebGL2，横屏 873 × 325 CSS px。游侠从新档打到古道首领，拾取镇邪印、回西岐复命、执行原生换装和药铺购买。装备首领掉落后攻击 33 → 37。战斗短采样两窗各 90 帧，P95 均为 16.7 ms，最高为 49.6 ms。 · The physical Fold7 completed the opening, boss, loot, town hand-in, native gear and medicine purchase. The boss drop raised attack from 33 to 37. Two 90-frame samples had a 16.7 ms P95 and a 49.6 ms maximum.
+- 设备占用 · Fold7 后续商店出售、实际锻造和刷新续档待真机确认。同一运行文件在 873 × 325 的触屏模拟内跑通完整流程，也从本次 Fold7 实玩所得进度单独跑通剩余步骤。 · The Fold7 became unavailable before selling, crafting and reloading on device. Touch emulation passed both the full route and a separate continuation from the state earned on the real phone.
+- 旧档 · 同一 PC 读取旧发行版 `1475123a` 的实际游玩存档并打开原生行囊，保留游侠 Lv.4、146 文与原武器。 · A genuine earlier-version save loaded and retained the Ranger, level, coins and weapon.
+- 窄屏压力检查 · 411 × 813 的 Chromium 触屏模拟从独立测试存档载入 30 件装备，滚动至末行、切换页签和关闭均成功，控制台与资源请求零错误。 · A separate 411 × 813 Chromium touch emulation with 30 seeded items reached the last row, switched tabs and closed without errors.
+- 自动回归 · 50 项 Node 测试通过，桌面浏览器回归 13 项通过，原截图基线沿用。测试查询原生控件坐标，经实际浏览器输入走了页签、换装、属性对比、滚动、出售限制、商店购买、锻造配方限制和续档。 · 50 Node and 13 browser checks passed, with the existing screenshot baselines. The browser tests use actual control input.
+
+## 原生装备图片冷加载 · Native equipment image cold load
+
+引擎 [PR #482](https://github.com/cnedwin/Egret_rebuild/pull/482) 合入主干 `5d7a0a92a7fcecba8a857a0d8c901272995f6fd4`。游戏使用官方工具重新复制引擎，拆除原生行囊面板的临时分批预热代码。原本装备图片的显示、游戏规则、存档及美术资产保留。 · Refreshed the game to the merged engine commit and removed its temporary native equipment image warm-up. Equipment art, simulation and save code are preserved.
+
+- 主干引擎 · Merged engine: Chromium 157 软件 WebGL2 的三个 Play UI 浏览器用例全部通过。六张冷 WebP 全部挂载，读取并发峰值为四，关闭视图的未开始请求被跳过，真实 404 错误正常上报。 · All three Play UI browser cases passed on the merged commit. Six cold WebP images attached, peak reads were four, a closed view's queued read was skipped, and a genuine 404 remained visible.
+- 游戏自动回归 · Demo regression: 50 项 Node 测试、13 项桌面浏览器检查及严格项目标准全部通过。标题和西岐城与原截图基线差异分别为 0.24% 和 0.91%，无需更换基线。测试先走新档开场、接受姜尚任务和使用法宝，再首次开启行囊、卸下和重新装备武器，核对攻击属性变化，继续验证商店、锻造入口与存读档。 · All 50 Node tests and 13 browser checks passed; title and city changed 0.24% and 0.91% respectively against the untouched reference images. The browser used actual controls to open the first bag, unequip and equip the weapon, check attack, shop, forge gating and reload.
+- PC 与 Fold7 实机 · Physical devices: Windows Edge 158（1440 × 850）与 Galaxy Z Fold7、Android 17、Chrome 157（横屏 873 × 325）均使用同一个旧发行版实际游玩存档，独立新页面加载游戏并禁用该页 HTTP 缓存。首次点击行囊后每台设备都完成八种图标的独立 HTTP 200 读取，无缓存命中，网络读取重叠峰值四。逐项滚动至可见区拍摄，八种图标均通过原资源像素匹配。地图美术启动时也会请求部分相同 URL，因此这里的“冷”指首次原生面板纹理加载。 · Both devices reopened a real earlier-version save in a new document with the HTTP cache disabled. The first bag requested eight unique gear images (HTTP 200, not cached), peaked at four overlapping transfers, and all eight matched the original art in screenshots. The field artwork path may request those URLs during startup, so this is a cold native panel load.
+- 首开与换装 · First opening and equipment: 从点击行囊到观察到可用的控件，旧版 PC 上限观测 585.7 ms，新版 PC 149.3 ms，Fold7 135.5 ms。该对照使用相同存档、相同 PC 浏览器，只是单次配对观测，计时不代表全部图标绘制结束。两台设备的攻击值均从 41 卸装至 13、穿回恢复 41、换另一件武器后变为 39，常规保存及实际刷新续档仍为 39。控制台错误、警告及请求失败均为零。 · The observed upper bound from the trusted click to actionable controls was 585.7 ms on the previous PC build, 149.3 ms on the updated PC and 135.5 ms on the Fold7. This is one matched PC pair, not complete icon rendering time. Both devices recorded the attack sequence 41 → 13 → 41 → 39, and normal save/reload preserved 39. There were no console errors, warnings or failed requests.

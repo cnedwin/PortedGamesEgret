@@ -209,12 +209,20 @@ async function atlasPage(game, scope, entries, frames, page, sizes) {
   return lease;
 }
 
-export async function buildArt(game, scope, maps) {
+export async function buildArt(game, scope, maps, { onProgress = () => {} } = {}) {
+  // Count real completed inputs, atlas pages and ground/structure textures, not elapsed time.
+  const total = 2 + ACTOR_FILES.length + gearArtFiles.length + 6
+    + Object.values(maps).reduce((n, map) => n + 1 + map.obstacles.length, 0);
+  let completed = 0;
+  const describe = (phase, mapId) => onProgress({ completed, total, phase, mapId });
+  const finish = (phase, mapId) => { completed++; describe(phase, mapId); };
+  const tracked = async (work) => { const value = await work; finish('decode'); return value; };
+  describe('decode');
   const [landscape, actorSheets, gearSheets, professionArt] = await Promise.all([
-    loadLandscape(),
-    Promise.all(ACTOR_FILES.map(name => loadImage('actors/' + name))),
-    Promise.all(gearArtFiles.map(name => loadImage('gear/' + name))),
-    loadProfessionArt(loadImage)
+    tracked(loadLandscape()),
+    Promise.all(ACTOR_FILES.map(name => tracked(loadImage('actors/' + name)))),
+    Promise.all(gearArtFiles.map(name => tracked(loadImage('gear/' + name)))),
+    tracked(loadProfessionArt(loadImage))
   ]);
   const gear = Object.fromEntries(gearArtFiles.map((key, i) => [key,gearSheets[i]]));
   const [standard, elite, cast, actions, standardWalk, eliteWalk,town] = actorSheets;
@@ -310,8 +318,11 @@ export async function buildArt(game, scope, maps) {
   const frames = {}, atlases = [], atlasSizes=[];
   const plainHero = entry => entry.key.startsWith('hero') && !entry.key.startsWith('heroElite');
   atlases.push(await atlasPage(game, scope, entries.filter(plainHero), frames, 0,atlasSizes));
+  finish('atlas');
   atlases.push(await atlasPage(game, scope, entries.filter(entry => entry.key.startsWith('heroElite')), frames, 1,atlasSizes));
+  finish('atlas');
   atlases.push(await atlasPage(game, scope, entries.filter(entry => !entry.key.startsWith('hero') && !entry.group), frames, 2,atlasSizes));
+  finish('atlas');
   const boots = entries.filter(entry => entry.key.startsWith('hero') || entry.group==='profession').map(entry => ({
     key:'boots:'+entry.key, w:90, h:56, pivotY:48,
     draw(g) {
@@ -332,8 +343,11 @@ export async function buildArt(game, scope, maps) {
     }
   }));
   atlases.push(await atlasPage(game,scope,boots,frames,3,atlasSizes));
+  finish('atlas');
   atlases.push(await atlasPage(game,scope,entries.filter(entry=>entry.group==='profession'),frames,4,atlasSizes));
+  finish('atlas');
   atlases.push(await atlasPage(game,scope,entries.filter(entry=>entry.group==='campaignEnemy'),frames,5,atlasSizes));
+  finish('atlas');
   for (const [alias,source] of Object.entries(aliases)) frames[alias] = frames[source];
   for (const [alias,source] of Object.entries(aliases)) {
     if (frames['boots:'+source]) frames['boots:'+alias] = frames['boots:'+source];
@@ -348,6 +362,7 @@ export async function buildArt(game, scope, maps) {
     const lease=await texture(game,scope,ground);
     await yieldArtPreparation();
     grounds[id]={lease,width:ground.width,height:ground.height};
+    finish('map', id);
     structures[id]=[];
     for (const [i,obstacle] of map.obstacles.entries()) {
       const {width,height,kind}=obstacle, extra=kind==='tree' ? Math.max(130,height) : 100;
@@ -358,6 +373,7 @@ export async function buildArt(game, scope, maps) {
       landscape.paintStructure(context,kind,width,height,i,id);
       const propLease=await texture(game,scope,canvas);
       structures[id].push({lease:propLease,x:obstacle.x+width/2,y:obstacle.y+height,pivotX,pivotY,kind});
+      finish('map', id);
       if(i%3===2)await yieldArtPreparation();
     }
   }
