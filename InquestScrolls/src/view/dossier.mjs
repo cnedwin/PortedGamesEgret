@@ -32,8 +32,10 @@ export async function openDossier(layer, c, app, startPage) {
   const W = game.width - 24,
     H = game.height - 24;
   const panel = kit.panel(root, 12, 12, W, H, { fill: 0xf3ead4 });
-  hitBox(panel, 0, 0, W, H);
-  game.onTap(panel, () => select(null));
+  const backdrop = new Sprite();
+  panel.addChild(backdrop);
+  hitBox(backdrop, 0, 0, W, H);
+  game.onTap(backdrop, () => select(null));
 
   // Areas: the page on the left (or top), the pouch on the right (or bottom).
   const page = portrait ? { x: 22, y: 128, w: W - 44, h: Math.round(H * 0.5) } : { x: 26, y: 104, w: 760, h: H - 196 };
@@ -93,12 +95,11 @@ export async function openDossier(layer, c, app, startPage) {
   let scrollY = 0,
     chipsHeight = 0;
   hitBox(chipsView, 0, 0, pouch.w, pouch.h - 40);
-  game.gestures(chipsView, {
-    drag: (d) => {
-      scrollY = Math.max(Math.min(0, pouch.h - 40 - chipsHeight), Math.min(0, scrollY + d.dy));
-      chips.y = scrollY;
-    }
-  });
+  const scrollTo = (y) => {
+    scrollY = Math.max(Math.min(0, pouch.h - 40 - chipsHeight), Math.min(0, y));
+    chips.y = scrollY;
+  };
+  game.gestures(chipsView, { drag: (d) => scrollTo(scrollY + d.dy) });
 
   const dnd = game.dragAndDrop();
   let selected = null;
@@ -108,7 +109,7 @@ export async function openDossier(layer, c, app, startPage) {
   function select(wordId) {
     selected = wordId === selected ? null : wordId;
     for (const [id, s] of chipSprites) s.alpha = !selected || id === selected ? 1 : 0.55;
-    drawTargets();
+    paintTargets();
   }
   function buildPouch() {
     for (const ch of kids(chips)) type.discard(ch);
@@ -160,7 +161,8 @@ export async function openDossier(layer, c, app, startPage) {
 
   // ---- the page ----
   let targets = [];
-  let targetSprites = [];
+  const targetSprites = [];
+  const targetRemovers = [];
   const targetsLayer = new Sprite();
   const decor = new Sprite();
   let sealSprite = null;
@@ -169,8 +171,7 @@ export async function openDossier(layer, c, app, startPage) {
   const render = () => (rendering = rendering.then(renderNow, renderNow));
   async function renderNow() {
     for (const r of removers.splice(0)) r?.();
-    for (const s of targetSprites) type.discard(s);
-    targetSprites = [];
+    clearTargets();
     for (const ch of kids(pageLayer)) if (ch !== decor && ch !== targetsLayer) type.discard(ch);
     targets = [];
     const p = c.pages.find((x) => x.id === current);
@@ -187,7 +188,8 @@ export async function openDossier(layer, c, app, startPage) {
     checkBtn.setEnabled(!sealed);
     result.setText(sealed ? app.say('pageSealed') : '');
     buildPouch();
-    drawTargets();
+    scrollTo(scrollY);
+    buildTargets();
     refreshFocus();
   }
   async function renderText(p, filled, sealed) {
@@ -243,11 +245,13 @@ export async function openDossier(layer, c, app, startPage) {
       })
     );
   }
-  function drawTargets() {
+  function clearTargets() {
+    for (const remove of targetRemovers.splice(0)) remove();
+    for (const sprite of targetSprites.splice(0)) type.discard(sprite);
+  }
+  function paintTargets() {
     const g = decor.graphics;
     g.clear();
-    for (const s of targetSprites) type.discard(s);
-    targetSprites = [];
     for (const t of targets) {
       const colour = KINDS[t.kind].colour;
       const want = selected && kindOf(selected) === t.kind && !t.sealed;
@@ -255,24 +259,34 @@ export async function openDossier(layer, c, app, startPage) {
         g.beginFill(colour, t.word ? 0.08 : want ? 0.3 : 0.16).drawRect(r.x - 2, r.y + 2, r.w + 4, r.h - 2).endFill();
         g.beginFill(colour, 1).drawRect(r.x - 2, r.y + r.h - 3, r.w + 4, 3).endFill();
       }
-      const s = new Sprite();
-      s.x = t.box.x;
-      s.y = t.box.y;
-      targetsLayer.addChild(s);
-      hitBox(s, -4, 0, t.box.w + 8, t.box.h);
-      targetSprites.push(s);
+    }
+  }
+  function buildTargets() {
+    paintTargets();
+    for (const t of targets) {
+      const colour = KINDS[t.kind].colour;
+      const sprite = at(new Sprite(), t.box.x, t.box.y);
+      targetsLayer.addChild(sprite);
+      const regions = !t.plate && t.rects.length > 1 ? t.rects : [t.box];
+      for (const r of regions) hitBox(sprite, r.x - t.box.x - 4, r.y - t.box.y, r.w + 8, r.h);
+      targetSprites.push(sprite);
       if (t.plate) {
-        const words = t.word ? c.words[t.word][lang] : KINDS.person[lang === 'zh' ? 'zh' : 'en'];
-        at(type.label(s, words, { size: 21, colour: t.word ? colour : FAINT, align: 'center', middle: true, brush: !t.word }), t.box.w / 2, t.box.h / 2);
+        const words = t.word ? c.words[t.word][lang] : KINDS.person[lang];
+        at(type.label(sprite, words, { size: 21, colour: t.word ? colour : FAINT, align: 'center', middle: true, brush: !t.word }), t.box.w / 2, t.box.h / 2);
       } else if (!t.word) {
-        at(type.label(s, KINDS[t.kind].zh, { size: 17, colour: colour, align: 'center', middle: true, brush: true }), t.box.w / 2, t.box.h / 2 + 2);
+        at(type.label(sprite, KINDS[t.kind].zh, { size: 17, colour, align: 'center', middle: true, brush: true }), t.box.w / 2, t.box.h / 2 + 2);
       }
       if (t.sealed) continue;
-      game.onTap(s, () => tapTarget(t));
-      removers.push(dnd.target(s, { accepts: (wordId) => kindOf(wordId) === t.kind, drop: (wordId) => put(t, wordId), hover: (wordId, inside) => (s.alpha = inside ? 0.6 : 1) }));
+      game.onTap(sprite, () => tapTarget(t));
+      targetRemovers.push(dnd.target(sprite, {
+        accepts: (wordId) => !t.sealed && kindOf(wordId) === t.kind,
+        drop: (wordId) => put(t, wordId),
+        hover: (_, inside) => (sprite.alpha = inside ? 0.6 : 1)
+      }));
     }
   }
   function tapTarget(t) {
+    if (t.sealed) return;
     if (selected && kindOf(selected) === t.kind) put(t, selected);
     else if (t.word) put(t, null);
     else kit.toast(st.found.some((w) => kindOf(w) === t.kind) ? app.say('pickWord') : app.say('noWordOfKind'));
@@ -300,8 +314,8 @@ export async function openDossier(layer, c, app, startPage) {
       tabButtons[c.pages.findIndex((p) => p.id === current)].setText('✓ ' + c.pages.find((p) => p.id === current).title[lang]);
       checkBtn.setEnabled(false);
       for (const t of targets) t.sealed = true;
-      drawTargets();
-      game.after(game.reducedMotion ? 0.3 : 1.2, () => app.onSealed(current));
+      paintTargets();
+      game.after(game.reducedMotion ? 0.3 : 1.2, app.onSealed);
       return;
     }
     app.sound?.play(r.result === 'near' ? 'near' : 'wrong');
@@ -323,7 +337,14 @@ export async function openDossier(layer, c, app, startPage) {
       ...tabButtons.map((b) => b.focusRecord),
       ...targets.map((t, i) => ({ sprite: targetSprites[i] ?? pageLayer, ox: -4, oy: 0, w: t.box.w + 8, h: t.box.h, activate: () => tapTarget(t) })),
       checkBtn.focusRecord,
-      ...[...chipSprites.entries()].map(([wordId, s]) => ({ sprite: s, ox: 0, oy: 0, w: s.slipWidth, h: s.slipHeight, activate: () => select(wordId) })),
+      ...[...chipSprites.entries()].map(([wordId, s]) => ({
+        sprite: s, ox: 0, oy: 0, w: s.slipWidth, h: s.slipHeight, activate: () => select(wordId),
+        onFocus() {
+          const top = s.y + scrollY, height = pouch.h - 40;
+          if (top < 0) scrollTo(-s.y);
+          else if (top + s.slipHeight > height) scrollTo(height - s.y - s.slipHeight);
+        }
+      })),
       hintBtn.focusRecord,
       closeBtn.focusRecord
     ];
@@ -335,6 +356,7 @@ export async function openDossier(layer, c, app, startPage) {
     if (closed) return;
     closed = true;
     for (const r of removers.splice(0)) r?.();
+    clearTargets();
     type.discard(root);
     scope.dispose();
     app.onClose?.();

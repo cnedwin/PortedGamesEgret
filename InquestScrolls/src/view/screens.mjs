@@ -62,11 +62,15 @@ export async function titleScreen(app, layer) {
   t.holder.y = 30;
   strip.addChild(t.holder);
   kit.seal(strip, size + 60 - 8, stripH + 10, 64, '洗冤');
-  const sub = type.label(layer, lang === 'zh' ? 'The Inquest Scrolls' : app.say('subtitle'), { size: 24, colour: PAPER, align: 'center' });
-  sub.x = strip.x + (size + 60) / 2;
+  const englishTitle = 'The Inquest Scrolls';
+  const subtitle = lang === 'zh' ? englishTitle : app.say('subtitle');
+  const captionCentre = strip.x + (size + 60) / 2;
+  const halfCaption = Math.max(type.measure(subtitle, 24), type.measure(englishTitle, 40)) / 2;
+  const sub = type.label(layer, subtitle, { size: 24, colour: PAPER, align: 'center' });
+  sub.x = lang === 'en' ? Math.min(captionCentre, game.width - halfCaption - 20) : captionCentre;
   sub.y = strip.y + stripH + 40;
   if (lang === 'en') {
-    const en = type.label(layer, 'The Inquest Scrolls', { size: 40, colour: PAPER, brush: false, align: 'center' });
+    const en = type.label(layer, englishTitle, { size: 40, colour: PAPER, brush: false, align: 'center' });
     en.x = sub.x;
     en.y = strip.y + stripH + 74;
   }
@@ -79,10 +83,10 @@ export async function titleScreen(app, layer) {
     [app.say('settings'), () => app.overlay('settings')],
     [app.say('help'), () => app.overlay('help')]
   ];
-  // On a phone held upright one stage unit is about half a CSS pixel: buttons there are made tall enough for a finger.
-  const bh = portrait ? 84 : 58;
+  // A short landscape viewport scales the entire stage down. Keep the opening menu usable by touch there too.
+  const bh = portrait ? 84 : globalThis.matchMedia?.('(pointer: coarse)').matches ? 100 : 58;
   const bx = portrait ? game.width / 2 - 180 : 120,
-    by = portrait ? game.height - 4 * (bh + 14) - 40 : game.height - 4 * 72 - 70;
+    by = game.height - items.length * (bh + 14) - (portrait ? 40 : 70);
   const buttons = buttonColumn(app, menu, items, { x: bx, y: by, w: portrait ? 360 : 260, h: bh, size: portrait ? 32 : 26 });
   const langBtn = kit.button(layer, lang === 'zh' ? 'English' : '中文', { x: game.width - (portrait ? 110 : 90), y: portrait ? 56 : 42, w: portrait ? 180 : 140, h: portrait ? 84 : 46, size: portrait ? 26 : 20, brush: false }, () => app.setLanguage(lang === 'zh' ? 'en' : 'zh'));
   if (app.notice) {
@@ -112,7 +116,12 @@ async function storyPage(app, layer, { art, heading, paragraphs, buttons: given,
   para.holder.x = 50;
   para.holder.y = 104;
   sheet.addChild(para.holder);
-  await para.ready;
+  try {
+    await para.ready;
+  } catch (error) {
+    scope.dispose();
+    throw error;
+  }
   if (seal) kit.stamp(sheet, W - 80, 70, 84, seal);
   const row = new Sprite();
   sheet.addChild(row);

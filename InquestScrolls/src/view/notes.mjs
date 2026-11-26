@@ -1,150 +1,157 @@
-// 笔录：玩家自己的推想，随存档留着。用引擎的托管界面和原生文字编辑：平时由 CanvasKit 按段落画出已写下的字，
-// 点一下就在原处换成浏览器自己的多行文本框（输入法、选区、撤销都由平台负责），写完再换回段落。
-// 字体集合用不了的生僻字换成方框，免得段落排版拒绝整段文字。
-// The notes: the player's own thoughts, kept with the save. Built on the engine's managed UI and native text editing:
-// at rest the text is drawn as a CanvasKit paragraph; a tap swaps in the browser's own multi-line field in place
-// (input methods, selection and undo are the platform's), and finishing swaps the paragraph back. Characters the font
-// set cannot draw become squares, so the layout never refuses the whole text.
+// 笔录随案件自动存档。宣纸用引擎段落绘制，编辑时在原处打开浏览器的多行输入框。
+// Notes are autosaved per case. An engine paragraph draws the paper, and a native multiline field opens over it.
 import { Sprite } from '@egret/engine';
-import { createUiRoot } from '@egret/engine/ui';
-import { createUiTextEditor } from '@egret/engine/ui/editing';
-import { createBrowserTextEditor } from '@egret/engine/web/editing';
+import { semanticBoundsOf } from '@egret/engine/ui/semantics';
+import { createBrowserTextInput } from '@egret/engine/web/text-input';
 import { KINDS } from '../sim/kinds.mjs';
 import { WORDS } from '../words.mjs';
 import { buildBoard } from './board.mjs';
 import { INK } from './type.mjs';
 import { FAINT, hitBox } from './ui.mjs';
 
-/**
- * Open the notes of the current case over `layer`. `app` gives game, type, kit, lang(), say(key), st, save(),
- * onClose(). Resolves to { close, edit, finish, value() }.
- */
-export async function openNotes(layer, app) {
-  if (app.board || !app.type.cache) return openBoardNotes(layer, app);
-  const { game, type, kit } = app;
-  const st = app.st;
+export function openNotes(layer, app) {
+  const { game, type, kit, st } = app;
+  if (app.board || !type.cache) return openBoardNotes(layer, app);
   const portrait = game.height > game.width;
+  const touch = globalThis.matchMedia?.('(pointer: coarse)').matches;
+  const fontSize = portrait ? 22 : 24;
+  const lineHeight = portrait ? 36 : 40;
+  const paperColor = 0xfbf6ea;
+  const padding = 14;
+  let closed = false;
+
+  const input = createBrowserTextInput({
+    canvas: game.canvas,
+    logicalWidth: game.width,
+    logicalHeight: game.height,
+    onError: (cause) => console.warn('notes', cause)
+  });
   const root = new Sprite();
   layer.addChild(root);
-  kit.veil(root, 0.45, () => close());
+  kit.veil(root, 0.45, close);
   const W = portrait ? game.width - 30 : 760,
     H = portrait ? Math.round(game.height * 0.62) : game.height - 110;
   const X = (game.width - W) / 2,
     Y = portrait ? 40 : 55;
   const panel = kit.panel(root, X, Y, W, H);
-  hitBox(panel, 0, 0, W, H);
   game.onTap(panel, () => {});
   const head = type.label(panel, app.say('notes'), { size: 34, brush: true });
   head.x = 30;
   head.y = 24;
+
+  const buttonHeight = touch ? (portrait ? 84 : 100) : 46;
+  const buttonY = touch ? 12 + buttonHeight / 2 : 46;
   const tip = type.label(panel, app.say('notesEmpty'), { size: 18, colour: FAINT });
   tip.x = 30;
-  tip.y = 74;
-  const editBtn = kit.button(panel, app.say('edit'), { x: W - 210, y: 46, w: 120, h: 46, size: 22 }, () => edit());
-  const closeBtn = kit.button(panel, app.say('close'), { x: W - 78, y: 46, w: 120, h: 46, size: 22, primary: true }, () => close());
+  tip.y = touch ? buttonY + buttonHeight / 2 + 8 : 74;
+  const editBtn = kit.button(panel, app.say('edit'), { x: W - 210, y: buttonY, w: 120, h: buttonHeight, size: 22 }, edit);
+  const closeBtn = kit.button(panel, app.say('close'), { x: W - 78, y: buttonY, w: 120, h: buttonHeight, size: 22, primary: true }, close);
 
-  // The editor lives in its own scope and UI root, placed over the panel's writing area in stage units.
-  const scope = game.engine.createScope();
-  const area = { x: X + 28, y: Y + 108, w: W - 56, h: H - 136 };
-  const style = {
-    fontSet: app.type.fonts.key,
-    fontFamilies: [app.type.families.song],
-    fontSize: portrait ? 22 : 24,
-    lineHeight: portrait ? 36 : 40,
-    locale: app.lang(),
-    direction: 'ltr',
-    fillColor: INK,
-    backgroundColor: 0xfbf6ea
-  };
-  const editor = createUiTextEditor({
-    engine: game.engine,
-    scope,
-    cache: app.type.cache,
-    mode: 'multiline',
-    value: st.notes,
-    maxLength: 2000,
-    style,
-    padding: 14,
-    minHeight: area.h - 28,
-    onChange: (change) => {
-      if (change.kind !== 'value') return;
-      const kept = app.type.keepDrawable(change.value);
-      if (kept !== change.value) editor.setValue(kept);
-      st.notes = kept;
-      app.save();
-      void publish();
-    }
-  });
-  const ui = createUiRoot({
-    engine: game.engine,
-    scope,
-    id: 'notes',
-    viewport: { width: area.w, height: area.h },
-    origin: { x: area.x, y: area.y },
-    density: app.type.density(),
-    tree: { kind: 'column', id: 'notes-column', explicitWidth: area.w, children: [{ kind: 'leaf', id: 'notes-text', content: editor.content }] }
-  });
-  let binding = null,
-    busy = Promise.resolve();
-  async function publish() {
-    busy = busy.then(async () => {
-      for (let i = 0; i < 40; i++) {
-        const prep = await ui.prepare();
-        if (prep.status === 'pending') {
-          await new Promise((r) => setTimeout(r, 0));
-          continue;
-        }
-        ui.commit(prep);
-        binding?.sync();
-        game.invalidate?.();
-        return;
-      }
-    });
-    return busy;
+  const doc = game.canvas.ownerDocument;
+  const viewport = doc.defaultView.visualViewport;
+  let closePress = null;
+  // Preserve a tap on Close when native input blurs or moves the viewport before the finger lifts.
+  function rememberClose(event) {
+    if (event.pointerType !== 'touch' || !event.isPrimary || event.target !== game.canvas || input.getSnapshot().state !== 'open') return;
+    const r = game.canvas.getBoundingClientRect();
+    const b = semanticBoundsOf(closeBtn);
+    const x = (event.clientX - r.left) * game.width / r.width;
+    const y = (event.clientY - r.top) * game.height / r.height;
+    if (x < b.x || x > b.x + b.width || y < b.y || y > b.y + b.height) return;
+    closePress = { id: event.pointerId, x: event.clientX, y: event.clientY, left: viewport.offsetLeft, top: viewport.offsetTop };
   }
-  await publish();
-  binding = createBrowserTextEditor({
-    editor,
-    root: ui,
-    target: { kind: 'leaf', id: 'notes-text' },
-    canvas: game.canvas,
-    fonts: app.type.fonts,
-    logicalWidth: game.width,
-    logicalHeight: game.height,
-    label: app.say('notes'),
-    onInvalidate() {},
-    onError: (cause) => console.warn('notes', cause)
-  });
-  // A tap on the writing area starts editing where it landed.
-  const hit = new Sprite();
-  hitBox(hit, area.x, area.y, area.w, area.h);
-  root.addChild(hit);
-  game.onTap(hit, () => edit({ x: game.pointer.x, y: game.pointer.y }));
+  function releaseClose(event) {
+    if (event.pointerId !== closePress?.id) return;
+    const press = closePress;
+    closePress = null;
+    const dx = viewport.offsetLeft - press.left, dy = viewport.offsetTop - press.top;
+    if (event.type === 'pointerup' && Math.hypot(event.clientX - press.x - dx, event.clientY - press.y - dy) <= 12) {
+      queueMicrotask(close);
+    }
+  }
+  if (viewport) {
+    doc.addEventListener('pointerdown', rememberClose, true);
+    doc.addEventListener('pointerup', releaseClose, true);
+    doc.addEventListener('pointercancel', releaseClose, true);
+  }
 
-  function edit(at) {
-    if (closed || !binding) return;
-    app.editing = true;
-    binding.activate(at ?? { x: area.x + area.w - 20, y: area.y + area.h - 20 });
+  const x = 28, y = tip.y + 34, width = W - 2 * x, height = H - y - 28;
+  const paper = new Sprite();
+  paper.x = x;
+  paper.y = y;
+  paper.graphics.beginFill(paperColor).drawRect(0, 0, width, height).endFill();
+  paper.mask = { x: 0, y: 0, width, height };
+  panel.addChild(paper);
+  const scope = game.engine.createScope();
+  const notes = type.paragraph(scope, {
+    text: type.keepDrawable(st.notes),
+    width: width - padding * 2,
+    size: fontSize,
+    lineHeight,
+    locale: app.lang(),
+    colour: INK
+  });
+  notes.holder.x = padding;
+  notes.holder.y = padding;
+  paper.addChild(notes.holder);
+  game.onTap(paper, edit);
+  function reportLayout(cause) {
+    if (!closed) console.warn('notes layout', cause);
+  }
+  void notes.ready.catch(reportLayout);
+
+  function save(value) {
+    if (value === st.notes) return;
+    st.notes = value;
+    app.save();
+  }
+  function redraw() {
+    if (!closed) void notes.set({ text: type.keepDrawable(st.notes) }).catch(reportLayout);
+  }
+  function edit() {
+    if (closed || input.getSnapshot().state === 'open') return;
+    input.open({
+      x: X + x, y: Y + y, width, height,
+      value: st.notes,
+      multiline: true,
+      maxLength: 2000,
+      fontFamily: `${type.families.song}, serif`,
+      fontSize,
+      lineHeight,
+      color: INK,
+      backgroundColor: paperColor,
+      padding,
+      label: app.say('notes'),
+      locale: app.lang() === 'zh' ? 'zh-CN' : 'en',
+      onChange({ value, composing }) {
+        if (!composing) save(value);
+      },
+      onCommit(value) {
+        save(value);
+        redraw();
+      },
+      onCancel: redraw
+    });
     app.sound?.play('brush');
   }
   function finish() {
-    binding?.finish();
-    app.editing = false;
+    input.commit();
   }
-  let closed = false;
   function close() {
     if (closed) return;
     closed = true;
+    if (viewport) {
+      doc.removeEventListener('pointerdown', rememberClose, true);
+      doc.removeEventListener('pointerup', releaseClose, true);
+      doc.removeEventListener('pointercancel', releaseClose, true);
+    }
     finish();
-    void busy.then(() => {
-      binding?.dispose();
-      ui.dispose();
-      scope.dispose();
-    });
+    input.dispose();
     type.discard(root);
+    scope.dispose();
     app.onClose?.();
   }
-  return { close, edit, finish, value: () => editor.snapshot().value, focus: [editBtn.focusRecord, closeBtn.focusRecord], root };
+  return { close, edit, finish, value: () => st.notes, focus: [editBtn.focusRecord, closeBtn.focusRecord], root };
 }
 
 /**

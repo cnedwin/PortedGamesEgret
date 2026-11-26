@@ -26,6 +26,18 @@ const check = (ok, words) => {
 };
 const view = (page, fn, arg) => page.evaluate(fn, arg);
 const settle = (page, ms = 700) => page.waitForTimeout(ms);
+const pointOfButton = (page, name) => view(page, (name) => {
+  const { app } = window.egretGame;
+  const { game } = app;
+  const b = app.semantics.publish().nodes.find(node => node.role === 'button' && node.name === name)?.bounds;
+  if (!b) throw Error('Missing button: ' + name);
+  const r = game.canvas.getBoundingClientRect();
+  return {
+    x: r.left + (b.x + b.width / 2) * r.width / game.width,
+    y: r.top + (b.y + b.height / 2) * r.height / game.height,
+    height: b.height * r.height / game.height
+  };
+}, name);
 const url = (q) => `${server.url}${path}/index.html?seed=1&quality=low&${q}`;
 const ready = (page) => until(page, () => window.egretGame?.ready && !!window.egretGame.view, 240);
 // The stack of a page error goes to the log, so a failure says where it came from.
@@ -98,12 +110,20 @@ try {
   await view(page, () => window.egretGame.view.overlay.settled());
   await settle(page, 600);
   const drag = await view(page, () => window.egretGame.view.overlay.dragPoints('sash', 'b2'));
+  await page.mouse.click(drag.from.x, drag.from.y);
+  check(await view(page, () => window.egretGame.view.overlay.focus.every(item => !item.sprite.isDisposed)), 'selecting a slip keeps the blanks in the focus order alive');
+  await page.mouse.click(drag.from.x, drag.from.y);
   await page.mouse.move(drag.from.x, drag.from.y);
   await page.mouse.down();
   for (let i = 1; i <= 8; i++) await page.mouse.move(drag.from.x + ((drag.to.x - drag.from.x) * i) / 8, drag.from.y + ((drag.to.y - drag.from.y) * i) / 8);
   await page.mouse.up();
   await view(page, () => window.egretGame.view.overlay.settled());
   check((await view(page, () => window.egretGame.app.progress().cases.c1.place.p1?.b2)) === 'sash', 'a word slip dragged onto a blank stays there');
+  const tap = await view(page, () => window.egretGame.view.overlay.dragPoints('aman', 'b1'));
+  await page.mouse.click(tap.from.x, tap.from.y);
+  await page.mouse.click(tap.to.x, tap.to.y);
+  await view(page, () => window.egretGame.view.overlay.settled());
+  check(await view(page, () => window.egretGame.app.progress().cases.c1.place.p1?.b1 === 'aman'), 'clicking a slip and then its blank also places it');
   await view(page, async () => {
     const d = window.egretGame.view.overlay;
     for (const [b, w] of [['b1', 'aman'], ['b3', 'sunda'], ['b4', 'skin']]) {
@@ -153,16 +173,37 @@ try {
   check(levels.join() === '1,2,3', `three hints go area, evidence, question (${levels.join()})`);
 
   // Notes: the native editor, written into and kept.
-  await page.keyboard.press('n');
-  await until(page, () => window.egretGame.view.overlay?.kind === 'notes', 60);
-  await view(page, () => window.egretGame.view.overlay.edit());
-  await until(page, () => !!document.querySelector('textarea'), 30);
+  const notesPoint = await pointOfButton(page, '笔录');
+  await page.mouse.click(notesPoint.x, notesPoint.y);
+  await until(page, () => typeof window.egretGame.view.overlay?.edit === 'function', 60);
+  const writePoint = await pointOfButton(page, '书写');
+  await page.mouse.click(writePoint.x, writePoint.y);
+  await until(page, () => document.activeElement?.tagName === 'TEXTAREA', 30);
+  const writingArea = await view(page, () => {
+    const r = document.activeElement.getBoundingClientRect();
+    return { x: r.left + 20, y: r.top + 20 };
+  });
+  await page.keyboard.type('test');
+  await page.keyboard.press('Enter');
   await page.keyboard.insertText('钱五的鞋是湿的');
-  await view(page, () => window.egretGame.view.overlay.finish());
-  await settle(page, 800);
-  check((await view(page, () => window.egretGame.app.progress().cases.c2.notes)).includes('钱五的鞋是湿的'), 'notes written in the native field are kept');
-  await page.keyboard.press('Escape');
-  await settle(page, 300);
+  const note = 'test\n钱五的鞋是湿的';
+  await page.waitForFunction((value) => window.egretGame.app.progress().cases.c2.notes === value, note, { timeout: 20_000 });
+  check(true, 'mouse-opened notes handle regular keys, line breaks, and committed Chinese text');
+  await page.keyboard.press('Tab');
+  await until(page, () => !document.querySelector('textarea'), 10);
+  await page.mouse.click(writingArea.x, writingArea.y);
+  await until(page, () => document.activeElement?.tagName === 'TEXTAREA', 10);
+  check(await view(page, (value) => document.activeElement.value === value, note), 'leaving notes with Tab then clicking the paper restores editing');
+  const closeNote = await pointOfButton(page, '合上');
+  await page.mouse.click(closeNote.x, closeNote.y);
+  await until(page, () => !window.egretGame.view.overlay && !document.querySelector('textarea'), 20);
+  await page.mouse.click(notesPoint.x, notesPoint.y);
+  await until(page, () => typeof window.egretGame.view.overlay?.edit === 'function', 60);
+  await page.mouse.click(writingArea.x, writingArea.y);
+  await until(page, () => document.activeElement?.tagName === 'TEXTAREA', 30);
+  check(await view(page, (value) => document.activeElement.value === value, note), 'clicking the writing area reopens the saved text');
+  await page.mouse.click(closeNote.x, closeNote.y);
+  await until(page, () => !window.egretGame.view.overlay && !document.querySelector('textarea'), 20);
 
   // Settings: music off, then English.
   await view(page, () => window.egretGame.app.overlay('settings'));
@@ -171,6 +212,18 @@ try {
   await view(page, () => window.egretGame.app.setLanguage('en'));
   await until(page, () => !window.egretGame.busy && window.egretGame.view?.caseId === 'c2' && document.documentElement.lang === 'en', 120);
   check((await page.title()) === 'The Inquest Scrolls', 'the language switch turns the page to English');
+  await until(page, () => window.egretGame.overlay === 'settings', 15);
+  await page.keyboard.press('j');
+  await settle(page, 300);
+  check(await view(page, () => !window.egretGame.view.overlay), 'settings blocks dossier shortcuts behind its modal');
+  const reset = await pointOfButton(page, 'Start over');
+  await page.mouse.click(reset.x, reset.y);
+  await until(page, () => window.egretGame.app.semantics.publish().nodes.some(node => node.name === 'Yes'), 10);
+  await page.keyboard.press('Escape');
+  await settle(page, 300);
+  check(await view(page, () => window.egretGame.overlay === 'settings' && !window.egretGame.app.semantics.publish().nodes.some(node => node.name === 'Yes')),
+    'Escape dismisses the reset confirmation before closing settings');
+  check(await view(page, () => window.egretGame.app.progress().cases.c1.solved), 'canceling reset leaves the solved case in the save');
 
   // The last case: pages sealed, the verdict written with the canvas text input.
   await view(page, async () => {
@@ -258,6 +311,67 @@ try {
   check(true, 'a case opens in the tall layout');
   problems.push(...tall.problems);
   await tall.close();
+
+  // Two already-filled pages can be sealed in quick succession. Their animations must lead to one closing only.
+  const rapid = await openPage(browser, url('lang=zh&case=c4'), { width: 1280, height: 720 });
+  watch(rapid);
+  await ready(rapid);
+  await gather(rapid, 'c4');
+  await view(rapid, async () => {
+    const { app } = window.egretGame;
+    const { caseById } = await import(new URL('./src/sim/cases/index.mjs', location.href));
+    const { blanksOfPage, placeWord, checkPage } = await import(new URL('./src/sim/rules.mjs', location.href));
+    const c = caseById('c4'), st = app.progress().cases.c4;
+    for (const { id } of c.pages) {
+      for (const blank of blanksOfPage(c, id)) placeWord(st, c, id, blank.id, blank.answer);
+    }
+    checkPage(st, c, 'names');
+    window.caseClosingRequests = 0;
+    const go = app.go;
+    app.go = (name, id) => {
+      if (name === 'outro' && id === 'c4') window.caseClosingRequests++;
+      return go(name, id);
+    };
+  });
+  await rapid.keyboard.press('j');
+  await until(rapid, () => typeof window.egretGame.view.overlay?.settled === 'function', 30);
+  await settle(rapid, 280);
+  const checkPagePoint = await pointOfButton(rapid, '核验');
+  await rapid.mouse.click(checkPagePoint.x, checkPagePoint.y);
+  await view(rapid, async () => {
+    const dossier = window.egretGame.view.overlay;
+    dossier.show('p2');
+    await dossier.settled();
+  });
+  await rapid.mouse.click(checkPagePoint.x, checkPagePoint.y);
+  await until(rapid, () => window.egretGame.screen === 'outro' && window.egretGame.view.arg === 'c4', 10);
+  await settle(rapid, 1400);
+  check(await view(rapid, () => window.caseClosingRequests === 1), 'two quick page seals request the case closing only once');
+  problems.push(...rapid.problems);
+  await rapid.close();
+
+  const short = await openPage(browser, url('lang=zh'), { width: 873, height: 325, touch: true, scale: 2.625 });
+  watch(short);
+  await ready(short);
+  const begin = await pointOfButton(short, '开卷');
+  check(begin.height >= 44, 'the title button is at least 44 CSS pixels tall on a short touch viewport');
+  await short.touchscreen.tap(begin.x, begin.y);
+  await until(short, () => window.egretGame.screen === 'prologue' && !window.egretGame.failed, 25);
+  check(true, 'the high-DPR landscape touch opens the complete prologue');
+  await view(short, () => window.egretGame.app.go('case', 'c1'));
+  await until(short, () => window.egretGame.view?.caseId === 'c1' && !!window.egretGame.view.teachPoint(), 30);
+  for (const name of ['笔录', '书写']) {
+    const pt = await pointOfButton(short, name);
+    await short.touchscreen.tap(pt.x, pt.y);
+  }
+  await until(short, () => document.activeElement?.tagName === 'TEXTAREA', 10);
+  await short.keyboard.type('note');
+  const closeTouchNote = await pointOfButton(short, '合上');
+  await short.touchscreen.tap(closeTouchNote.x, closeTouchNote.y);
+  await until(short, () => !window.egretGame.view.overlay && !document.querySelector('textarea'), 10);
+  check(await view(short, () => window.egretGame.app.progress().cases.c1.notes === 'note'), 'one touch closes active notes and retains the text');
+  problems.push(...short.problems);
+  await short.close();
 } catch (error) {
   check(false, `the walk stopped: ${error.message.split('\n')[0]}`);
   problems.push(...(page?.problems ?? []));
