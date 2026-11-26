@@ -1,6 +1,6 @@
 import { DisplayObjectContainer } from "./DisplayObjectContainer.js";
 import { queryDisplayHit } from "./displayHitTest.js";
-import { ASSERT_ATTACHABLE, bind } from "./ownership.js";
+import { ASSERT_ATTACHABLE, bind, registerStageDisplayRevision } from "./ownership.js";
 import { EgretError } from "./EgretError.js";
 import { markStageRoot } from "./displayTreeState.js";
 import { createPreparedDisplayOperations } from "./preparedDisplaySubtree.js";
@@ -14,6 +14,7 @@ export class Stage extends DisplayObjectContainer {
             throw new EgretError("STAGE_FACTORY_REQUIRED");
         markStageRoot(this);
         bind(this, engine);
+        registerStageDisplayRevision(engine);
         engine.registerPreparedDisplayOperations?.(createPreparedDisplayOperations(this));
     }
     static {

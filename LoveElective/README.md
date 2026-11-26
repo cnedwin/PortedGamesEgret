@@ -131,7 +131,7 @@ On the night of the Star Festival you may confess to any senior at 55 affection 
 
 The cover, nine character portraits, campus map, locations, foreground props, and catalogue art were generated for this demo. Dialogue uses full illustrations, with separate casual and date looks for all seven seniors and activity portraits for the pool, pyjama gathering, tea lounge, and stargazing. Activity fabric takes dye without affecting the face or hair. Dialogue picks the closest illustrated silhouette for mixed outfits, and the wardrobe shows each individual piece and dye live. The scene uses layered parallax and time-of-day lighting.
 
-手机使用横屏可完整观看舞台式界面。
+手机建议横屏完整观看舞台式界面；竖屏保留原版横向画面和全屏入口。主游戏交互、文本、按钮、分页、进度条及弹窗均使用原生白鹭 UI，角色、服饰合成与插画仍作为装饰纹理。
 
 On phones, landscape gives the stage layout its full viewing area.
 
@@ -155,12 +155,18 @@ npx serve .
 
 ### 测试 · Tests
 
+浏览器验收（在仓库安装 Playwright 后运行）· Browser acceptance (after installing the repository Playwright dependency):
+
+```sh
+node test/accept.mjs
+```
+
 使用 Node.js 22 或更新版本，在本目录运行：
 
 Use Node.js 22 or later and run from this folder:
 
 ```sh
-node --test
+node --import ./vendor/node-register.mjs --test test/*.test.mjs
 ```
 
 不开页面玩完一个学期：按给定的学姐安排每天的行动，输出各章故事的进度和最终结局，适合检查规则和数值改动。
@@ -181,7 +187,7 @@ The game uses Egret's shared-frame 2D profile and draws with WebGL2 by default. 
 | 引擎入口 / API · Entry / API | 在本游戏中的用途 · Use in this game | 文件 · File |
 |---|---|---|
 | `createEngineForProfile(…, 'egret.shared-frame2d/1')`，`createSharedWebGL2Host` 或 `createSharedWebGPUHost`，`renderSharedFrame`；上一帧完成后才提交下一帧 · the next frame is submitted only when the host has finished the last | 启动与每帧提交 · Start-up and frame submission | `src/engine/stage.mjs` |
-| 画布绘制的像素经 `createImageData2D`、`createTexture` 成为贴图，由 `engine.assets` 以租约管理，换图时释放旧租约 · canvas pixels become textures, held as leases through `engine.assets` and released when a picture is replaced | 立绘、背景、界面的贴图 · Textures for characters, backgrounds and interface | `src/engine/stage.mjs` |
+| 画布绘制的像素经 `createImageData2D`、`createTexture` 成为贴图，由 `engine.assets` 以租约管理，换图时释放旧租约 · canvas pixels become textures, held as leases through `engine.assets` and released when a picture is replaced | 立绘、换装图标、背景与纯装饰纹理 · Textures for characters, generated clothing icons, scenes and decorative artwork | `src/engine/stage.mjs` |
 | `DisplayObjectContainer`、`Bitmap`、`Sprite` 的位置、缩放、旋转、透明度和锚点 · position, scale, rotation, alpha and anchors | 画面层次 · Display tree | `src/engine/stage.mjs` |
 | 背景、角色、近景和粒子分层，以不同幅度平移并整体推近。地图与地点标签分别移动 · background, character, foreground and particle planes shift by different amounts and zoom together. The map and its pins move independently | 伪 2.5D 纵深 · Pseudo-2.5D depth | `src/engine/world.mjs` |
 | `createSharedMaterial2D` 的线性光色为角色染上黄昏或夜色，并统一使用线性过滤 · the light colour of a shared material tints characters for dusk and night, with linear filtering throughout | 昼夜光线 · Time-of-day light | `src/engine/stage.mjs` |
@@ -191,7 +197,7 @@ The game uses Egret's shared-frame 2D profile and draws with WebGL2 by default. 
 | `createUiSemantics`、`createBrowserSemantics` · Accessible control semantics | 为画布按钮、页签和弹窗提供名称、焦点、状态和读屏接口 · Names, focus, state and accessibility projection for canvas buttons, tabs and dialogs | `src/engine/ui-semantics.mjs` |
 | `createBrowserFrameLoop`、`engine.createTween`、`after` · Frame loop, tweens and timers | 淡入淡出、演出等待、粒子与逐字显示共用引擎时钟 · Fades, scripted waits, particles and text use the engine clock | `src/engine/stage.mjs` |
 | `createBrowserAudio` · Browser audio | 背景乐循环、提示音、静音和后台暂停交给引擎混音器 · The engine mixer handles music looping, effects, mute and tab suspension | `src/audio.mjs` |
-| `Sprite.graphics` 的纯色矩形 · solid rectangles | 淡入淡出、悬停高亮 · Fades and hover highlight | `src/engine/stage.mjs` |
+| `Sprite.graphics` 的纯色矩形 · solid rectangles | 淡入淡出和场景视觉效果 · Fades and scene effects | `src/engine/stage.mjs` |
 
 音乐和音效由游戏的音符生成，再由白鹭混音器播放。时间、属性、好感、拉扯、心愿、校园事件、任务、结局和回忆规则可脱离页面运行，在 Node 中玩完整个学期。
 
@@ -199,18 +205,14 @@ The game synthesises music and effects from its notes and plays them through the
 
 ## 已验证 · Verified
 
-- 2026-11-21 引擎副本升级到 `b5628eb`、改用引擎帧循环后：25 项 Node 测试和无页面一学期通过；无头 Chromium 下标题与升级前逐像素相同，开始新学期、打开手机、切走标签页再回来都无控制台错误。 · After the engine update and the move to the engine's frame loop: 25 tests and a headless term pass; the title is unchanged, and a new term, the phone and a hidden tab run clean.
-- 2026-11-21 在提交 `fc1dacb`、Node 22.23.4 下运行 `node --test test/*.test.mjs`：25 项全部通过（时间、属性、好感、拉扯、心愿、校园事件、任务、结局、回忆和存档规则）。 · `node --test` at commit `fc1dacb` with Node 22.23.4: all 25 tests pass.
-- `tools/headless.mjs` 可以不开页面玩完一个学期，用来检查规则和数值改动；本次没有重新记录它的输出。 · `tools/headless.mjs` plays a whole term without a page; its output was not recorded this time.
-- 2026-11-20 `node tools/quality.mjs LoveElective` 在无头 Chromium + SwiftShader 下测了 16 个自动项，结果见 [QUALITY.md](QUALITY.md)。 · The 16 automatic quality items in headless Chromium, see QUALITY.md.
-- 没有记录在案的真机验收。 · No recorded run on a real device.
-
+- 旧版 64/64 Node；仅更新至 `f0dfde36` 后 64/64，桌面和竖屏旧界面流程均通过；迁移后的 65/65 包含原生逐字文本生命周期、剧情阅读和存档回归。· Old and engine-only Node suites passed 64/64; both old UI browser routes passed. The native migration adds a retained dialogue text lifecycle test (65/65).
+- UI 使用一个白鹭宿主，而非在原场景上启动第二个渲染器。原有规则、故事、服饰几何和存档格式保留。· One Egret host, unchanged rules, stories, garment geometry and save format.
+- 自动浏览器与实际设备结果分列于 [QUALITY.md](QUALITY.md)。· Browser automation and physical-device results are recorded separately in QUALITY.md.
 ## 已知问题 · Known issues
 
-- 手机竖屏时舞台式界面显示不全，要横屏才能完整观看。 · On a phone held upright the stage layout is cut down; it needs landscape.
-- 界面全部画在画布上，读屏读不到按钮名称。 · The whole interface is drawn on the canvas, so screen readers find no named buttons.
-- 品质验收未达标 · Quality items failing（[QUALITY.md](QUALITY.md)，2026-11-21，无头 Chromium + SwiftShader · headless, software rendering）：F1 桌面帧时间 p95 ≤ 16.7 ms（p95 133.4 ms over 34 frames）；I1 中英文全可切换，英文下无中文（html lang "en", Chinese left: 心动选修课 校园恋爱养成游戏 点击或轻触进行操作 空格或回车继续对话 屏幕方向）；A2 读屏读出主要按钮（no named control in the accessibility tree）；A3 尊重 prefers-reduced-motion（prefers-reduced-motion is not read）；E2 资源失败有错误界面和重试（23 files refused; no uncaught error; no error screen with a retry）。
-
+- 手机原版为 16:9 横向舞台；竖屏可玩、保留横屏提示与全屏入口，但部分操控区不足 44 CSS px。· The original landscape-first stage is preserved; portrait is playable with an orientation hint, but some targets are below 44 CSS pixels.
+- 原生语义树与键盘焦点已实测，未使用系统读屏器完成一个学期。· Native semantic names and key focus were verified; a full system screen-reader session was not performed.
+- 无头软件渲染低密度文字及 F1、I1、A3、E2 自动项的限制详见 [QUALITY.md](QUALITY.md)，实际 GPU 结果不混用。· See QUALITY.md for software-rendered text, performance and remaining quality-check limits.
 ## 已解决 · Solved
 
 - 衣橱里饰边的染色控件和渲染出错（`25aa14e`）；每位角色的服装染色没有记住（`282f651`，存档按角色保存染色）。 · The wardrobe's trim dye controls and drawing; dyes are now remembered per character.
@@ -220,8 +222,8 @@ The game synthesises music and effects from its notes and plays them through the
 
 ## 未完成 · Unfinished
 
-- 英文模式下页面上仍有中文（品质 I1）；没有给读屏用的按钮名称（A2）；不读 `prefers-reduced-motion`（A3）；图片加载失败没有错误界面和重试（E2）。见下方已知问题。 · Chinese left in English mode, no accessible button names, no reduced-motion, no retry when a picture fails.
-- 真机上的帧时间和触屏验收。 · Frame times and touch acceptance on real devices.
+- 进一步验证低/中端设备、完整学期真机、系统读屏和资源失败重试；当前品牌双语保留。· Broader low/mid-range device testing, a full term, system screen reader and resource failure retry remain to be checked.
+- 小屏独立重排、真实手指目标面积和更多设备。· Dedicated narrow-screen layout and target sizing on more devices.
 
 ## 目录 · Layout
 
@@ -237,11 +239,11 @@ The game synthesises music and effects from its notes and plays them through the
 | `src/data/` | 学姐、服饰与道具、地点、任务、校园事件、成就与天赋 · seniors, clothes and items, places, tasks, campus events, achievements and perks |
 | `src/story/` | 序章、各章剧情、日常台词、结局（中英双语） · prologue, chapters, everyday lines and endings, in Chinese and English |
 | `src/audio.mjs` | 音乐与音效 · music and sound |
-| `tools/`, `test/` | 无页面游玩与规则测试 · headless play and rule tests |
+| `tools/`, `test/` | 无页面游玩、规则测试、浏览器验收及截图基线 · headless play, rule tests, browser acceptance and screenshot baselines |
 | `vendor/` | 引擎运行时副本 · the engine runtime copy |
 
 ## 引擎与许可 · Engine and license
 
-`vendor/` 中是新白鹭引擎的运行时副本，采用 Apache-2.0 许可，引擎提交 `c1570b0878d1be8716d06320206f51a62f9e3f32`，来源和版本见 [vendor/SOURCE.md](vendor/SOURCE.md)。
+`vendor/` 中是新白鹭引擎的运行时副本，采用 Apache-2.0 许可，引擎提交 `f0dfde367431713578e23fb3931544177b443c3c`，来源和版本见 [vendor/SOURCE.md](vendor/SOURCE.md)。
 
-`vendor/` holds a copy of the Egret Rebuild runtime under Apache-2.0. See [vendor/SOURCE.md](vendor/SOURCE.md) for the source and engine commit `c1570b0878d1be8716d06320206f51a62f9e3f32`.
+`vendor/` holds a copy of the Egret Rebuild runtime under Apache-2.0. See [vendor/SOURCE.md](vendor/SOURCE.md) for the source and engine commit `f0dfde367431713578e23fb3931544177b443c3c`.
