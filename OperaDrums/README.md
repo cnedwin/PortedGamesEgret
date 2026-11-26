@@ -146,10 +146,10 @@ gong pull, torn edge, a drum figure, and the bridge. Each piece has a written pe
 
 ## 引擎副本 · Engine copy
 
-引擎副本取自 [Egret_rebuild](https://github.com/cnedwin/Egret_rebuild) 提交 `aab331d617241c967e71c323775cb3006c6ea5a2`，由引擎仓库的 `tools/vendor-game.mjs` 复制，见 [vendor/SOURCE.md](vendor/SOURCE.md)。用到的入口：`@egret/engine/play`、`@egret/engine/kit`、`@egret/engine/web/kit`、`@egret/engine/web/audio`（连同它的混音器 `@egret/engine/audio`）、`@egret/engine/ui`、`@egret/engine/ui/semantics`、`@egret/engine/web/semantics`、`@egret/engine/web/view`。
+引擎副本取自 [Egret_rebuild](https://github.com/cnedwin/Egret_rebuild) 提交 `94bd70fb26b1f81794c9c6fbbb258c655fcd19df`，由引擎仓库的 `tools/vendor-game.mjs` 复制，见 [vendor/SOURCE.md](vendor/SOURCE.md)。用到的入口：`@egret/engine/play`、`@egret/engine/kit`、`@egret/engine/web/kit`、`@egret/engine/web/audio`（连同它的混音器 `@egret/engine/audio`）、`@egret/engine/ui`、`@egret/engine/ui/semantics`、`@egret/engine/web/semantics`、`@egret/engine/web/view`。
 
 The engine copy is from [Egret_rebuild](https://github.com/cnedwin/Egret_rebuild) commit
-`aab331d617241c967e71c323775cb3006c6ea5a2`, copied by the engine's `tools/vendor-game.mjs`; see
+`94bd70fb26b1f81794c9c6fbbb258c655fcd19df`, copied by the engine's `tools/vendor-game.mjs`; see
 [vendor/SOURCE.md](vendor/SOURCE.md). Entries used: `@egret/engine/play`, `@egret/engine/kit`, `@egret/engine/web/kit`,
 `@egret/engine/web/audio` with its mixer `@egret/engine/audio`, `@egret/engine/ui`, `@egret/engine/ui/semantics`,
 `@egret/engine/web/semantics` and `@egret/engine/web/view`.

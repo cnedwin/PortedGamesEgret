@@ -220,38 +220,34 @@ export class Panel {
   }
   partName(kind) { return this.id+'-'+kind+'-'+(this.counts[kind]=(this.counts[kind]??0)+1); }
   active() {return this.enabled&&!this.closed&&!this.ui.locked&&this.node.visible;}
-  activation(x,y,w,h,fn) {
+  activation(w,h,fn,event) {
     if(!this.active()||!fn)return;
-    let lx=w/2,ly=h/2;
-    const input=this.ui.input;
-    if(input.pointer && performance.now()-input.time<1500){
-      try{
-        const local=this.node.globalToLocal(input.x,input.y);
-        lx=Math.max(0,Math.min(w,local.x-x));ly=Math.max(0,Math.min(h,local.y-y));
-      }catch{}
-    }
+    const lx=Number.isFinite(event.localX)?Math.max(0,Math.min(w,event.localX)):w/2;
+    const ly=Number.isFinite(event.localY)?Math.max(0,Math.min(h,event.localY)):h/2;
+    event.stopPropagation();
     this.ui.onTap?.();
     fn(lx,ly);
   }
-  pointerInside() {
-    const input=this.ui.input;
-    if(!input.pointer||performance.now()-input.time>1500)return null;
-    try{return this.node.globalToLocal(input.x,input.y);}catch{return null;}
+  pointerInside(event) {
+    if(!Number.isFinite(event.stageX)||!Number.isFinite(event.stageY))return null;
+    try{return this.node.globalToLocal(event.stageX,event.stageY);}catch{return null;}
   }
   inside(p) {return p&&p.x>=0&&p.y>=0&&p.x<=this.w&&p.y<=this.h;}
   control(x,y,w,h,tap,options) {
     const name=this.partName('control'), box=rect(x,y,w,h), opts=options??{};
     this.controlBoxes.push({...box,name,hover:!opts.disabled&&!opts.coordinate});
-    this.ui.stage.semanticMeta.set(name,{role:'button',label:String(opts.label??opts.display??''),disabled:Boolean(opts.disabled)});
-    this.metaNames.push(name);
+    const words=String(opts.label??opts.display??'');
+    // Ordinary button roles cannot publish a selected field. Keep the visual
+    // segment unchanged, and speak the chosen state in its native label.
+    const label=opts.selected?words+(document.documentElement.lang==='en'?' · Selected':' · 已选'):words;
     if(opts.type==='button'){
       this.parts.push({type:'button',name,...box,text:String(opts.display??opts.label??''),size:opts.size??18,
         color:opts.color??SKIN.button,textColor:opts.textColor??SKIN.buttonText,...(opts.border?{border:opts.border}:{})});
-      this.bind[name]={disabled:()=>Boolean(opts.disabled)||!this.active(),tap:()=>this.activation(x,y,w,h,tap)};
+      this.bind[name]={label:()=>label,disabled:()=>Boolean(opts.disabled)||!this.active(),tap:(_state,event)=>this.activation(w,h,tap,event)};
     }else{
-      this.parts.push({type:'panel',name,...box,children:[]});
+      this.parts.push({type:'panel',name,...box,...(!opts.coordinate?{role:'button'}:{}),children:[]});
       // A painted illustration remains the visual for this target; Egret supplies the actual hit and focus.
-      this.bind[name]={tap:()=>{if(!opts.disabled)this.activation(x,y,w,h,tap);},...(opts.disabled||opts.coordinate?{pointerOnly:true}:{})};
+      this.bind[name]={label:()=>label,disabled:()=>Boolean(opts.disabled)||!this.active(),tap:(_state,event)=>this.activation(w,h,tap,event),...(opts.coordinate?{pointerOnly:true}:{})};
     }
   }
   clearHover() {
@@ -294,7 +290,6 @@ export class Panel {
     if(this.proxy&&!this.proxy.isDisposed)this.proxy.dispose();
     this.view.close();
     this.view=null;this.proxy=null;this.shell=null;this.screenNode=null;
-    for(const name of this.previousMeta??[])this.ui.stage.semanticMeta.delete(name);
   }
   syncTransform() {
     if(!this.proxy||!this.screenNode||this.parentRef.isDisposed)return;
@@ -330,20 +325,20 @@ export class Panel {
   paint(draw) {
     if(this.closed)return this;
     this.unmount();
-    this.parts=[];this.bind={};this.words=[];this.counts={};this.alphas=new Map();this.metaNames=[];this.controlBoxes=[];
+    this.parts=[];this.bind={};this.words=[];this.counts={};this.alphas=new Map();this.controlBoxes=[];
     this.label=this.title;
     const canvas=this.ui.stage.canvas(this.w,this.h,this.res,g=>draw(new Painter(g,this)));
     this.pic.show(canvas,canvas.res);
     const surface={type:'panel',name:this.id+'-surface',...rect(0,0,this.w,this.h),children:this.parts};
-    if(this.modal||this.solid||this.blank)this.bind[surface.name]={pointerOnly:true,tap:()=>{
-            // Native tap events can bubble from a child. A blank surface is not an additional activation.
-      const p=this.pointerInside();
+    if(this.modal||this.solid||this.blank)this.bind[surface.name]={pointerOnly:true,tap:(_state,event)=>{
+      // A blank surface is not an additional control activation.
+      const p=this.pointerInside(event);
       if(this.active()&&this.inside(p)&&!this.controlBoxes.some(b=>p.x>=b.x&&p.x<=b.x+b.width&&p.y>=b.y&&p.y<=b.y+b.height))this.blank?.();
     }};
     const screen={type:'panel',name:this.id+'-screen',...rect(0,0,W,H),children:[surface]};
-    if(this.modal)this.bind[screen.name]={pointerOnly:true,tap:()=>{
-            // Only the part genuinely outside the illustrated modal dismisses it, not a child button.
-      const p=this.pointerInside();
+    if(this.modal)this.bind[screen.name]={pointerOnly:true,tap:(_state,event)=>{
+      // Only a press outside the illustration dismisses the modal.
+      const p=this.pointerInside(event);
       if(this.active()&&p&&!this.inside(p))this.dismiss?.();
     }};
     const description={label:this.label??'Love Elective',area:'screen',modal:this.modal,skin:SKIN,root:screen};
@@ -352,7 +347,6 @@ export class Panel {
       bind:this.bind,built:view=>this.mount(view),
       ...(this.modal?{dismiss:()=>{if(this.active()&&this.dismiss)this.dismiss();else this.ui.keys?.('Escape');}}:{})
     });
-    this.previousMeta=this.metaNames.slice();
     if(this.oldFocus&&this.parts.some(p=>p.name===this.oldFocus)){
       try{this.view.focus(this.oldFocus);}catch{}
     }
@@ -408,23 +402,13 @@ export class Panel {
 
 /** The native view manager owns activation and focus; game shortcuts and coordinate dye input are adapters only. */
 export function createUI(stage,layer) {
-  const ui={stage,layer,panels:[],serial:0,background:null,keys:null,locked:0,input:{pointer:false,time:0},
+  const ui={stage,layer,panels:[],serial:0,background:null,keys:null,locked:0,
     semantics:stage.semantics};
   const canvas=stage.canvasElement;
   // Hover is another native input authority on the same host, not a game-side hit router.
   ui.hovered=new Set();
   ui.updateCursor=()=>{canvas.style.cursor=ui.hovered.size?'pointer':'default';};
   ui.hover=createBrowserHoverInput({canvas,engine:stage.engine,scope:stage.native.browser.scope,width:W,height:H,onError:stage.fail});
-  const track=event=>{
-    if(event.target!==canvas)return;
-    const bounds=canvas.getBoundingClientRect();
-    if(!bounds.width||!bounds.height)return;
-    ui.input={pointer:true,time:performance.now(),x:(event.clientX-bounds.left)*W/bounds.width,
-      y:(event.clientY-bounds.top)*H/bounds.height};
-  };
-  window.addEventListener('pointerdown',track,true);
-  window.addEventListener('pointerup',track,true);
-  window.addEventListener('keydown',()=>{ui.input={pointer:false,time:performance.now()};},true);
   stage.on('up',(x,y)=>{if(!ui.locked&&x>=0)ui.background?.(x,y);});
   stage.on('key',(key,event)=>{if(!ui.locked)ui.keys?.(key,event);});
   stage.onTick(()=>{

@@ -42,3 +42,15 @@ Android 17、Chrome 157、硬件 WebGPU。使用 CDP 向真机浏览器注入触
 通用品质检查通过 14 项，限速首屏 1.6 秒（3.1 MB）。I3 仍会将旋转后的透明语义节点判为裁切；有意增大的字号曾导致英文难度说明越界，局部收紧英文窄卡片后，1280×720 与 390×844 复查均无实际溢出。E2 的繁体「重試」误报也已复核：首次阻断两张插画，实际点选「重試載入插畫」后均返回 HTTP 200，游戏可正常开局，无未捕获异常。 · Fourteen generic checks passed, with a throttled start-up of 1.6 s (3.1 MB). I3 still flags the projected semantic nodes that rotate; a real English difficulty-caption overflow was fixed by sizing compact English cards separately and rechecked visually at 1280×720 and 390×844. E2 misses Traditional Chinese retry wording; blocking each title image once and clicking the native retry recovered both with HTTP 200 and no uncaught exception.
 
 本轮实机为专项回归，未重新打完一将，也未验证真人手指输入、扬声器主观听感或真人读屏。 · The hardware runs were focused regressions. A fresh full four-wind match, unaided finger input, subjective speaker listening and live screen-reader speech are not covered by this round.
+
+
+## 2026-11-27 官方主干同步 · Official main integration
+
+- 引擎 · Engine: 94bd70fb26b1f81794c9c6fbbb258c655fcd19df；预发布 CI 候选 b1f275d7 实测，正式副本的运行时代码逐文件哈希核对一致。 · Tested the complete CI candidate, then verified the official runtime payload byte for byte.
+- 自动 · Automated: Node 32/32; existing Chromium browser acceptance passed, reviewed screenshot baselines were not overwritten.
+- 实机 · Physical devices: Windows Edge 158 / RTX 5090 Laptop GPU; Samsung Fold7 Android 17 / Chrome 157 / Adreno 830, actual trusted mouse/keyboard and touch input through the respective browser control, isolated game saves.
+- 代表路线 · Representative route: 规则滚动、开局、真实出牌、暂停恢复、横竖投影。 · rules scroll, deal, real discard, pause and resume, rotated projection.
+- PC: round rAF p95 4.3 → 4.3 ms; title 180 rAF engine submissions 0 → 1.
+- Fold7: 121/121 rAF: p95/max 16.7/16.7 → 16.7/16.7 ms.
+- 同一竖屏旋转列表 offset −115.62，默认 WebGPU/按需。原静态 felt 保留，#505 WebGL2 捕获不是等价替代。 / Same rotated scroll offset on physical Fold7; default WebGPU/on-demand; keep the already rasterized felt rather than a redundant WebGL2 bake.
+- 限制 · Limits: 短前台 rAF 不是独立 GPU 时间，也不是整局、所有设备或中端手机验收。未跑真实读屏、物理手柄、Safari 或整局声学测试。 · Short foreground rAF samples are not isolated GPU time or a whole-game/device matrix. No physical screen reader, controller, Safari or speaker/acoustic certification.

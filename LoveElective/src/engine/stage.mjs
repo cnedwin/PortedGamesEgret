@@ -102,35 +102,13 @@ export class Pic {
 /** Start the engine on a canvas. backend is 'webgl2' or 'webgpu'. */
 export async function createStage(canvas, { backend = 'webgl2', pixelRatio = 1, onError } = {}) {
   const semantics = createUiSemantics({ maxNodes: 4096 });
-  const semanticMeta = new Map();
-  // Native views own actions/bounds/focus. This small metadata extension gives
-  // artwork-backed controls their descriptive names and roles without a second
-  // input or focus system.
-  const semanticBridge = Object.create(semantics, {
-    add: { value(definition) {
-      const part = definition.id.split(':').at(-1);
-      const meta = semanticMeta.get(part);
-      if (!meta) return semantics.add(definition);
-      return semantics.add({
-        ...definition,
-        ...(meta.role ? { role: meta.role } : {}),
-        describe: () => ({
-          ...definition.describe(),
-          ...(meta.label ? { name: meta.label } : {}),
-          ...(meta.disabled ? { disabled: true } : {}),
-          ...(meta.selected !== undefined ? { selected: meta.selected } : {}),
-        }),
-      });
-    } },
-  });
-
   let stage;
   let processInput = () => {};
   const native = await play({
     canvas, width: W, height: H, fit: 'contain',
     backend, pixelRatio, background: 0x14122a,
     // The existing game mixer owns music/voices. Do not create a second one.
-    audio: false, blendSpace: 'linear', semantics: semanticBridge,
+    audio: false, blendSpace: 'linear', semantics,
     onError(error) { if (stage) stage.fail(error); else onError?.(error); },
     update() { processInput(); },
   });
@@ -170,7 +148,6 @@ export async function createStage(canvas, { backend = 'webgl2', pixelRatio = 1, 
     canvasElement: canvas,
     native,
     semantics,
-    semanticMeta,
     root: native.world,
     overlay,
     pointer: native.pointer,

@@ -112,7 +112,7 @@ export function openPlayPage(game, { t, app, act, onBuilt }) {
   };
   for (const p of PADS) {
     bind[p.name] = {
-      tap: () => act.padActivated(p),
+      tap: (_state, activation) => act.padActivated(p, activation),
       color: () => {
         const down = h().padsDown[p.hand] > 0;
         if (p.kind === 'drum') return down ? C.drumLit : C.drum;

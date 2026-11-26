@@ -257,7 +257,6 @@ function strikeAt(kind, hand, ms) {
 // contact holds it. A tap that follows such a press is the same stroke; one with no press before it is a key or
 // assistive technology, and strikes then.
 const contacts = new Map(PADS.map((p) => [p.hand, new Set()]));
-const lastPress = new Map();
 function padBuilt(made) {
   // Told while the view is being made, before `openPlayPage` has given it back.
   playPage = made;
@@ -272,7 +271,6 @@ function padBuilt(made) {
       if (app.screen !== 'play') return;
       held.add(contact.session.pointerId);
       app.hud.padsDown[p.hand] = held.size;
-      lastPress.set(p.hand, performance.now());
       app.padPresses++;
       strikeAt(p.kind, `${p.hand}${contact.session.pointerId}`, contact.timestamp);
     });
@@ -285,8 +283,8 @@ function padBuilt(made) {
   }
   arrange();
 }
-function padActivated(p) {
-  if (performance.now() - (lastPress.get(p.hand) ?? -Infinity) < 1500) return;
+function padActivated(p, activation) {
+  if (['mouse', 'touch', 'pen'].includes(activation.source)) return;
   strikeAt(p.kind, p.hand, performance.now());
 }
 function releasePads() {
@@ -605,12 +603,11 @@ function openCalibration() {
 function calBuilt(made) {
   const node = made.get('tap');
   node.on(game.browser.pointer.events.begin, (event) => {
-    lastPress.set('cal', performance.now());
     calTap(event.payload.timestamp, 'drum');
   });
 }
-function calKey() {
-  if (performance.now() - (lastPress.get('cal') ?? -Infinity) < 1500) return;
+function calKey(activation) {
+  if (['mouse', 'touch', 'pen'].includes(activation.source)) return;
   calTap(performance.now(), 'drum');
 }
 async function startCalibration() {

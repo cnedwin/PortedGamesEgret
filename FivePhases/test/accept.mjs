@@ -187,13 +187,22 @@ try {
 
     // Starting elemental energy is zero; attempting to play a visible card
     // must not spend energy or alter the hand.
-    await tap(desktop,'hand-0');
+    const firstHand=await desktop.evaluate(()=>fivephases.ui.buttons().find(button=>button.uid)?.name);
+    assert(firstHand);await tap(desktop,firstHand);
     assert.deepEqual((await status(desktop)).energy,initial.energy);
     assert.deepEqual((await status(desktop)).hand,initial.hand);
     ok('unaffordable native card is not consumed');
     await twoTaps(desktop);
     await drag(desktop);
     ok('mouse two-tap and drag board swaps');
+    // A real affordable card changes membership without replacing the collection.
+    const collection=await desktop.evaluate(()=>fivephases.ui.tester.find('group:当前手牌').id);
+    const affordable=await desktop.evaluate(()=>fivephases.ui.buttons().find(b=>b.uid&&fivephases.battle.energy[b.card.element]>=b.card.cost));
+    assert(affordable,'fixed-seed board should have earned enough energy for a card');
+    await tap(desktop,affordable.name);await idle(desktop);
+    assert(!(await status(desktop)).hand.includes(affordable.uid));
+    assert.equal(await desktop.evaluate(()=>fivephases.ui.tester.find('group:当前手牌').id),collection);
+    ok('native keyed hand retains collection while a real card is played');
 
     await settleFixture(desktop,10);
     assert.equal((await status(desktop)).lock,'reward');

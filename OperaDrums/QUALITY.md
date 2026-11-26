@@ -48,3 +48,15 @@ this file; items by hand or on a device are marked not run until someone runs th
 - I2：画布上的字是音符上的谱字（中文下是汉字，英文下是拼音）、判定字（好 / 可 / 失 或 Bravo / Good / Miss）、连击和「彩」槽的名字，都取自文字表或谱字表；语言只在标题和暂停菜单里切换，下一首曲子开演时画布上的字按新语言重画。戏台门上的「出将」「入相」是画，不随语言变。没有另做人工检查。 · The canvas words — the syllables (pinyin in English), the judgement, the combo and the gauge — come from the word tables; the language is switched on the title and in the pause menu, and a song started after it draws its words in the new language. The plaques over the doors are part of the picture. Not checked by hand.
 - 另量 · Also measured：最密的谱（《急急风》难）演奏中，帧时间 p95 16.7 ms（无头 SwiftShader，1280×800）。 · On the densest chart, 16.7 ms p95 while playing.
 - T1、F2、E4：未运行 · not run.
+
+
+## 2026-11-27 官方主干同步 · Official main integration
+
+- 引擎 · Engine: 94bd70fb26b1f81794c9c6fbbb258c655fcd19df；预发布 CI 候选 b1f275d7 实测，正式副本的运行时代码逐文件哈希核对一致。 · Tested the complete CI candidate, then verified the official runtime payload byte for byte.
+- 自动 · Automated: Node 38/38; existing Chromium browser acceptance passed, reviewed screenshot baselines were not overwritten.
+- 实机 · Physical devices: Windows Edge 158 / RTX 5090 Laptop GPU; Samsung Fold7 Android 17 / Chrome 157 / Adreno 830, actual trusted mouse/keyboard and touch input through the respective browser control, isolated game saves.
+- 代表路线 · Representative route: 选择曲目、校准、实际 F/D 与鼓锣触点、暂停恢复。 · song selection, calibration, real F/D and drum/gong contacts, pause and resume.
+- PC: three 180 rAF windows: p95 4.3 → 4.3 ms.
+- Fold7: 121/121 rAF: p95/max 16.7/16.7 → 16.7/16.7 ms.
+- 手机短路线记录触点两次，不是完整曲目的人工命中成绩；自动验收保留结算和校准。 / Two actual handset contacts, not a human-played full-chart hit score; browser acceptance also covers settlement and calibration.
+- 限制 · Limits: 短前台 rAF 不是独立 GPU 时间，也不是整局、所有设备或中端手机验收。未跑真实读屏、物理手柄、Safari 或整局声学测试。 · Short foreground rAF samples are not isolated GPU time or a whole-game/device matrix. No physical screen reader, controller, Safari or speaker/acoustic certification.

@@ -180,7 +180,7 @@ try {
   await page.keyboard.press('Enter');
   check(await tabTo(/^Measure it by tapping$/), 'Tab reaches the delay measure');
   await page.keyboard.press('Enter');
-  await until(page, () => window.operaDrums.screen === 'calIdle' && window.operaDrums.focused() !== '');
+  await until(page, () => window.operaDrums.screen === 'calIdle' && window.operaDrums.focused().trim() === 'Start');
   check(await focused() === 'Start', `the measure opens on Start (${await focused()})`);
   await unnamed();
   await page.keyboard.press('Enter');

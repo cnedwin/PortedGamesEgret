@@ -197,7 +197,11 @@ function getStatus() {
 function dispose() {
     close(stateOf(this));
 }
-/** A fixed optional profile shares Engine/AssetManager leases and their shutdown authority. */
+/**
+ * A fixed optional profile shares Engine/AssetManager leases and their shutdown authority. An asset manager has one
+ * paragraph cache for its whole life: a second is refused with PARAGRAPH_CACHE_ALREADY_CREATED. Make it once and pass
+ * it to every paragraph, UI leaf and text editor of the Engine.
+ */
 export function createParagraphCache(assets, options) {
     const owner = requireAssetManagerOwner(assets), finish = beginParagraphCacheCreation(assets);
     try {

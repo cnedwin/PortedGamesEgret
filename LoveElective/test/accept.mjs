@@ -1,7 +1,6 @@
 // Browser acceptance of the native interface using actual keyboard, mouse and emulated touch.
 // No gameplay state is injected; a new term goes through the real prologue, campus, wardrobe and shops.
-// Desktop visual goldens explicitly use ratio=2: software SwiftShader's ratio=1 text has a known fragmentation
-// artifact that does not appear at ratio=2 or on the separately tested hardware. Touch behavior uses normal ratio.
+// Desktop ratio-2 goldens retain the reviewed image comparison; the old ratio-1 fragmentation is fixed by the engine. The ordinary desktop and touch routes still use the default density.
 // --capture-only collects review screenshots without writing a golden baseline; --update writes reviewed goldens.
 import { mkdir } from 'node:fs/promises';
 import { dirname, join, relative, resolve } from 'node:path';
@@ -29,13 +28,15 @@ const allWords = async page => (await visibleNodes(page)).map(n => n.name).join(
 const actions = async page => (await visibleNodes(page)).filter(n => !n.disabled && ['button', 'tab', 'radio', 'switch', 'group'].includes(n.role));
 const normalize = value => String(value ?? '').replace(/\s+/ug, ' ').trim();
 
+const controlName=value=>normalize(value).replace(/ · (?:Selected|已选)$/u, '');
+
 async function find(page, pattern, timeout = 18000) {
   const end = Date.now() + timeout;
   let controls = [];
   while (Date.now() < end) {
     try {
       controls = await actions(page);
-      const found = controls.find(n => pattern.test(normalize(n.name)) && n.role !== 'group') ?? controls.find(n => pattern.test(normalize(n.name)));
+      const found = controls.find(n => pattern.test(controlName(n.name)) && n.role !== 'group') ?? controls.find(n => pattern.test(controlName(n.name)));
       if (found) return found;
     } catch { /* The next screen's asynchronous native view is not present yet. */ }
     await page.waitForTimeout(100);
@@ -116,7 +117,8 @@ async function begin(page, prefix, touch, baseline = false) {
 async function phone(page, prefix, touch, baseline) {
   await activate(page, /^Phone/, touch); await find(page, /^Close$/); await settleMap(page, touch);
   const available = await actions(page);
-  check(['Seniors','Tasks','Bag','Me','Settings','Letters','Invites'].every(name => available.some(node => normalize(node.name) === name)),
+  check(available.some(node=>normalize(node.name)==='Seniors · Selected'), prefix+' selected segment is named natively');
+  check(['Seniors','Tasks','Bag','Me','Settings','Letters','Invites'].every(name => available.some(node => controlName(node.name) === name)),
     `${prefix} all seven main phone pages are native and reachable`);
   check(/Not met yet/.test(await allWords(page)), `${prefix} unintroduced seniors retain their original profile hints`);
   await shot(page, prefix, 'phone', baseline);

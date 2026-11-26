@@ -692,25 +692,19 @@ function describe(cause) {
   return parts.join(' ← ');
 }
 
-let recoveries = 0;
-
-/**
- * 帧循环一旦报错就会停在 failed，整局就此冻结——画面还在，但什么都不动了。
- * 这比崩溃更难查，所以：把真正的原因打出来，并且有限次地把循环重新拉起来。
- * 上限 5 次，是真的坏了就别再空转。
- */
+// Keep unknown/update failures strict. Only a specifically observed transient
+// WebGL2 geometry-budget preparation refusal can retry the render.
 function report(cause) {
   console.error(`引擎报错：${describe(cause)}`, cause);
-  if (runtime?.loop.state === 'failed' && recoveries < 5) {
-    recoveries += 1;
-    setTimeout(() => {
-      try {
-        runtime.loop.start();
-      } catch {
-        /* 起不来就认了，控制台里已经有原因 */
-      }
-    }, 120);
+}
+function retryGeometry(cause, attempt) {
+  for(let error=cause, depth=0;error&&depth<8;error=error.cause,depth++){
+    if(error.code==='WEBGL2_GEOMETRY_RANGE' && /Geometry preparation budget/i.test(String(error.cause?.message??error.cause??''))){
+      console.warn(`渲染准备预算拒绝，重试第 ${attempt} 次`);
+      return true;
+    }
   }
+  return false;
 }
 
 async function boot() {
@@ -736,6 +730,7 @@ async function boot() {
       document.querySelector('#boot')?.remove();
     },
     update,
+    renderRetry:{maxConsecutive:5,shouldRetry:retryGeometry},
     onError: report
   });
 

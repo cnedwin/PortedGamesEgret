@@ -41,4 +41,4 @@ The ferry family waits on the path by the bridge. Choose a marked site with a mo
 
 ## 引擎副本 · Engine copy
 
-模板预览共享桃溪的公开引擎副本。生成工程会获得独立副本和来源说明。The preview shares the Peach Creek engine copy. Generated games have their own vendor directory and provenance. Baseline commit `95897d78095ae8fda9e34dbc13bbbd15db8eaa12`.
+模板预览共享桃溪的公开引擎副本。生成工程会获得独立副本和来源说明。The preview shares the Peach Creek engine copy. Generated games have their own vendor directory and provenance. Baseline commit `94bd70fb26b1f81794c9c6fbbb258c655fcd19df`.
