@@ -666,6 +666,11 @@ export const GAMES = [
         description: { zh: "锣鼓经的点子按难度排谱，判定、连击和彩槽都能在 Node 里由电脑玩家整首打完。", en: "Patterns become charts by difficulty, judged with combo and gauge, all playable by a bot in Node." },
         source: 'src/sim/judge.mjs',
       },
+      {
+        title: { zh: "数据界面与读屏", en: "Views as data, read aloud" },
+        description: { zh: "标题、设置、校准、暂停、结算和四块敲击区都是引擎的数据界面，横竖屏各一套部件，经屏幕栈开关，语义树给读屏和 Tab 用；敲击区另听指针按下，按事件时间戳判定。", en: "The title, settings, delay, pause, curtain call and the four pads are engine views with a wide and a tall set of parts, opened through the screen stack and published to the semantic tree for screen readers and Tab; the pads also hear the pointer go down and are judged by its time stamp." },
+        source: 'src/ui/screens.mjs',
+      },
     ],
   },
   {

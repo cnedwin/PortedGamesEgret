@@ -8,6 +8,11 @@
 import { EgretError } from '@egret/runtime';
 const isObject = (value) => typeof value === 'object' && value !== null;
 /** Opens the save under `options.key`, migrating an older one. */
+/** A deep copy: by `structuredClone` where the platform has it, else through JSON, as the save is stored. */
+function copyOf(value) {
+    const clone = globalThis.structuredClone;
+    return typeof clone === 'function' ? clone(value) : JSON.parse(JSON.stringify(value));
+}
 export function createSaveStore(options) {
     if (!isObject(options))
         throw new EgretError('SAVE_STORE_OPTIONS_INVALID');
@@ -126,14 +131,13 @@ export function createSaveStore(options) {
         update(change) {
             if (typeof change !== 'function')
                 throw new EgretError('SAVE_STORE_OPTIONS_INVALID');
-            const result = change(data);
-            if (result !== undefined) {
-                if (!validate(result))
-                    return refuse(result);
-                data = result;
-            }
-            else if (!validate(data))
-                return refuse(data);
+            // A copy, so that a change refused, or one that throws halfway, does not reach the data.
+            const draft = copyOf(data);
+            const result = change(draft);
+            const next = result === undefined ? draft : result;
+            if (!validate(next))
+                return refuse(next);
+            data = next;
             return write();
         },
         reset() {

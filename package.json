@@ -8,6 +8,7 @@
     "check": "node tools/check-standard.mjs",
     "check:showcase": "node tools/check-showcase.mjs",
     "notes": "node tools/engine-notes.mjs",
+    "duplication": "node tools/duplication.mjs",
     "test:template": "cd templates/egret-game && node --test test/*.test.mjs && node test/accept.mjs"
   },
   "devDependencies": {

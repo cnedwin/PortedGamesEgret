@@ -1,10 +1,10 @@
 # 引擎能力矩阵 · Engine capability matrix
 
-由 `node tools/capability-matrix.mjs` 生成，不要手改；`--check` 检查它是否过期。行是引擎能力，列是游戏，✔ 链接到用这项能力的文件（游戏 README 能力对照表写了文件的，用 README 写的）。入口的全列表取自引擎 `packages/engine/package.json` 的 `exports`（引擎提交 `8637ace`），没有游戏用到的也列出；只统计游戏自己的代码，不含 `vendor/`、测试和工具。
+由 `node tools/capability-matrix.mjs` 生成，不要手改；`--check` 检查它是否过期。行是引擎能力，列是游戏，✔ 链接到用这项能力的文件（游戏 README 能力对照表写了文件的，用 README 写的）。入口的全列表取自引擎 `packages/engine/package.json` 的 `exports`（引擎提交 `aab331d`），没有游戏用到的也列出；只统计游戏自己的代码，不含 `vendor/`、测试和工具。
 
 Made by `node tools/capability-matrix.mjs`; do not edit by hand, and `--check` says whether it is out of date. Rows are
 engine capabilities and columns games; each ✔ links the file that uses it (the one named in the game's README
-capability table, when it names one). The entries are the `exports` of the engine's `packages/engine/package.json` (engine commit `8637ace`),
+capability table, when it names one). The entries are the `exports` of the engine's `packages/engine/package.json` (engine commit `aab331d`),
 used or not; only each game's own code is read, not `vendor/`, tests or tools. The same table is on the showcase site
 (`capabilities.html`).
 
@@ -29,7 +29,7 @@ used or not; only each game's own code is read, not `vendor/`, tests or tools. T
 | `@egret/engine/web/gestures` | 1 |  |  |  |  |  |  |  |  |  |  | [✔](LubanBridge/src/view/build.mjs) |  |  |  |  |  |  |  |  |  |  |  |  |  |
 | `@egret/engine/web/view` | 1 |  |  |  |  |  |  |  |  |  |  | [✔](LubanBridge/src/view/screens.mjs) |  |  |  |  |  |  |  |  |  |  |  |  |  |
 | `@egret/engine/web/pointer` | 1 |  |  |  |  |  |  |  |  |  | [✔](LoveElective/src/engine/stage.mjs) |  |  |  |  |  |  |  |  |  |  |  |  |  |  |
-| `@egret/engine/ui` | 5 |  |  |  |  |  |  |  |  |  |  |  | [✔](MechanismCity/src/screens.mjs) |  | [✔](NightWardens/src/screens.mjs) |  |  | [✔](PeachCreek/src/main.mjs) |  | [✔](SandScroll/src/ui/kit.mjs) |  |  |  | [✔](TeaHorseRoad/src/ui/card.mjs) |  |
+| `@egret/engine/ui` | 6 |  |  |  |  |  |  |  |  |  |  |  | [✔](MechanismCity/src/screens.mjs) |  | [✔](NightWardens/src/screens.mjs) |  | [✔](OperaDrums/src/ui/screens.mjs) | [✔](PeachCreek/src/main.mjs) |  | [✔](SandScroll/src/ui/kit.mjs) |  |  |  | [✔](TeaHorseRoad/src/ui/card.mjs) |  |
 | `@egret/engine/animation` | 1 |  |  |  |  |  |  |  |  |  |  |  |  |  | [✔](NightWardens/src/view/field.mjs) |  |  |  |  |  |  |  |  |  |  |
 | `@egret/engine/paragraph` | 1 |  |  |  |  |  | [✔](InquestScrolls/src/view/type.mjs) |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |
 | `@egret/engine/web/paragraph` | 1 |  |  |  |  |  | [✔](InquestScrolls/src/view/type.mjs) |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |
@@ -57,9 +57,9 @@ used or not; only each game's own code is read, not `vendor/`, tests or tools. T
 | `@egret/engine/play` | 7 | [✔](CanalWatch/src/main.mjs) |  |  |  |  | [✔](InquestScrolls/src/main.mjs) |  |  |  |  | [✔](LubanBridge/src/main.mjs) |  | [✔](NezhaSea/src/main.mjs) |  |  | [✔](OperaDrums/src/main.mjs) | [✔](PeachCreek/src/main.mjs) |  |  |  |  | [✔](TaiwanMahjong/src/sound.mjs) |  |  |
 | `@egret/engine/audio` | 2 |  |  |  |  |  |  |  |  |  |  | [✔](LubanBridge/src/audio/sound.mjs) |  |  | [✔](NightWardens/src/audio/sound.mjs) |  |  |  |  |  |  |  |  |  |  |
 | `@egret/engine/web/audio` | 12 |  |  |  | [✔](FiveRegiments/src/audio.mjs) |  | [✔](InquestScrolls/src/audio/sound.mjs) |  | [✔](JY/web/wav-effects.mjs) | [✔](LanternShadows/src/sound.mjs) | [✔](LoveElective/src/audio.mjs) | [✔](LubanBridge/src/audio/sound.mjs) | [✔](MechanismCity/src/audio/sound.mjs) |  | [✔](NightWardens/src/audio/sound.mjs) | [✔](NineProvinces/src/audio/sound.mjs) | [✔](OperaDrums/src/audio/sound.mjs) |  |  | [✔](SandScroll/src/audio/sound.mjs) |  | [✔](StarBanner/src/audio/sound.mjs) |  |  |  |
-| `@egret/engine/ui/semantics` | 9 |  |  |  |  |  | [✔](InquestScrolls/src/main.mjs) |  |  |  | [✔](LoveElective/src/engine/ui-semantics.mjs) | [✔](LubanBridge/src/view/kit.mjs) | [✔](MechanismCity/src/main.mjs) |  | [✔](NightWardens/src/main.mjs) |  |  | [✔](PeachCreek/src/main.mjs) |  | [✔](SandScroll/src/main.mjs) |  |  | [✔](TaiwanMahjong/src/main.mjs) | [✔](TeaHorseRoad/src/main.mjs) |  |
+| `@egret/engine/ui/semantics` | 10 |  |  |  |  |  | [✔](InquestScrolls/src/main.mjs) |  |  |  | [✔](LoveElective/src/engine/ui-semantics.mjs) | [✔](LubanBridge/src/view/kit.mjs) | [✔](MechanismCity/src/main.mjs) |  | [✔](NightWardens/src/main.mjs) |  | [✔](OperaDrums/src/main.mjs) | [✔](PeachCreek/src/main.mjs) |  | [✔](SandScroll/src/main.mjs) |  |  | [✔](TaiwanMahjong/src/main.mjs) | [✔](TeaHorseRoad/src/main.mjs) |  |
 | `@egret/engine/ui/testing` | 1 |  |  |  |  |  |  |  |  |  |  | [✔](LubanBridge/src/check.mjs) |  |  |  |  |  |  |  |  |  |  |  |  |  |
-| `@egret/engine/web/semantics` | 9 |  |  |  |  |  | [✔](InquestScrolls/src/main.mjs) |  |  |  | [✔](LoveElective/src/engine/ui-semantics.mjs) | [✔](LubanBridge/src/view/kit.mjs) | [✔](MechanismCity/src/main.mjs) |  | [✔](NightWardens/src/main.mjs) |  |  | [✔](PeachCreek/src/main.mjs) |  | [✔](SandScroll/src/main.mjs) |  |  | [✔](TaiwanMahjong/src/main.mjs) | [✔](TeaHorseRoad/src/main.mjs) |  |
+| `@egret/engine/web/semantics` | 10 |  |  |  |  |  | [✔](InquestScrolls/src/main.mjs) |  |  |  | [✔](LoveElective/src/engine/ui-semantics.mjs) | [✔](LubanBridge/src/view/kit.mjs) | [✔](MechanismCity/src/main.mjs) |  | [✔](NightWardens/src/main.mjs) |  | [✔](OperaDrums/src/main.mjs) | [✔](PeachCreek/src/main.mjs) |  | [✔](SandScroll/src/main.mjs) |  |  | [✔](TaiwanMahjong/src/main.mjs) | [✔](TeaHorseRoad/src/main.mjs) |  |
 | `@egret/spine` | 1 |  |  |  |  |  |  |  |  | [✔](LanternShadows/src/puppets.mjs) |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |
 | `@egret/spine/web` | 0 |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |
 | `@egret/contracts/resources` | 2 |  |  |  |  |  | [✔](InquestScrolls/src/view/type.mjs) |  |  | [✔](LanternShadows/src/puppets.mjs) |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |
