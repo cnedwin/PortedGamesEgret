@@ -218,19 +218,23 @@ button:focus-visible { outline: 2px solid var(--gold); outline-offset: 3px; }
   #stick.on i { opacity: 1; }
   #pads { --pad-unit: 1px; position: absolute; right: max(14px, env(safe-area-inset-right)); bottom: max(14px, env(safe-area-inset-bottom)); width: calc(250 * var(--pad-unit)); height: calc(240 * var(--pad-unit)); }
   .pad { --pad-size: 58; --pad-rim: #d8ecff73; position: absolute; right: calc(var(--pad-right) * var(--pad-unit)); bottom: calc(var(--pad-bottom) * var(--pad-unit)); width: calc(var(--pad-size) * var(--pad-unit)); height: calc(var(--pad-size) * var(--pad-unit)); border-radius: 50%; background: radial-gradient(ellipse at 50% 25%, #1a2d40ed, #09101bea 74%); box-shadow: inset 0 0 0 1px var(--pad-rim), 0 3px 7px #0006; }
+  /* Give the touch buttons their own compositing layers for the HUD fade. */
+  .pad { transform: translateZ(0); }
   .pad svg { position: absolute; width: 54%; height: 54%; left: 23%; top: 7%; pointer-events: none; }
   .pad .action-label { bottom: 13%; font-size: max(10px, calc(12 * var(--pad-unit))); }
   .pad.main { --pad-size: 84; --pad-rim: #ebd4a5b0; background: radial-gradient(ellipse at 50% 25%, #49362aee, #171321f2 74%); }
   .pad.main .action-label { font-size: calc(16 * var(--pad-unit)); }
   .pad[data-deed="guard"], .pad[data-deed="dodge"] { --pad-rim: #a5d0f2c2; }
-  .pad.off svg { opacity: .52; }
+  .pad.off svg:not(.pad-meter) { opacity: .52; }
   .pad.off .action-label { color: #c1ccd9; }
   .pad.now { box-shadow: inset 0 0 0 2px var(--frost), inset 0 0 14px #9cc8f25c, 0 3px 7px #0006; }
   .pad.ready { box-shadow: inset 0 0 0 2px var(--gold), 0 0 12px #e2b866ad; }
   .pad.main.ready { background: radial-gradient(ellipse at 50% 25%, #6b441de8, #21170e 78%); }
   .pad.ready, .pad.ready .action-label { color: #ffe7b7; }
-  .pad[data-deed="stars"]::after, .pad[data-deed="rain"]::after, .pad.main.ready::after { content: ""; position: absolute; inset: -1px; border-radius: inherit; background: conic-gradient(var(--meter, var(--frost)) calc(var(--charge, 0) * 100%), transparent 0); mask: radial-gradient(farthest-side, transparent calc(100% - 3px), #000 calc(100% - 2px)); pointer-events: none; }
-  .pad.ready::after { --meter: var(--gold); }
+  /* A stroke represents the cooldown without rasterizing a gradient mask. */
+  .pad .pad-meter { inset: -1px; width: calc(100% + 2px); height: calc(100% + 2px); stroke: var(--frost); stroke-width: 2.5px; stroke-linecap: butt; overflow: visible; }
+  .pad.ready .pad-meter { stroke: var(--gold); }
+  .pad.main:not(.ready) .pad-meter { display: none; }
   .pad em { position: absolute; right: 0; top: -4px; font: 600 14px var(--plain); color: var(--gold); font-style: normal; pointer-events: none; }
   /* On glass the row under the bars has to stay one line, above the bag: the purse is its number alone, the
      chips are small and never wrap, and the bag lists what has been learned. */

@@ -2,7 +2,7 @@ import { World3DError } from '../../rendering/world3d/core3D.js';
 import { linearToSrgb, mat3NormalFromMat4, mat4Invert } from '../../rendering/world3d/math3D.js';
 import { SkinnedInstancedMesh3D } from '../../rendering/world3d/AnimationTexture3D.js';
 import { GpuParticles3D } from '../../rendering/world3d/GpuParticles3D.js';
-import { RenderList3D } from '../../rendering/world3d/RenderList3D.js';
+import { AutoBatchMesh3D, canAutoInstance3D, RenderList3D } from '../../rendering/world3d/RenderList3D.js';
 import { CubeTexture3D, RenderTarget3D } from '../../rendering/world3d/Texture3D.js';
 import { FRAME_BLOCK_FLOATS_3D, FRAME_OFFSETS_3D, outputToneMapping3D, planShadows3D, TILED_LIGHTS_3D, writeFrameBlock3D, writeTiledLights3D } from './frame3D.js';
 import { createPostProcessSettings3D, outlineActive3D, postViewFromCamera3D } from './post3D.js';
@@ -144,8 +144,11 @@ export class WebGL2Renderer3D {
     get isContextLost() {
         return this.#lost || this.#gl.isContextLost();
     }
-    /** Link and initialize the specified draw variants without submitting any draws. */
-    async preparePrograms(requests) {
+    /**
+     * Link the requested draws without rendering. With includeAutoInstancing, also warm the
+     * matrix-only batch program that eligible plain meshes may use once enough are visible.
+     */
+    async preparePrograms(requests, options = {}) {
         if (this.#disposed)
             throw new World3DError('WORLD3D_DISPOSED', 'renderer');
         if (this.isContextLost)
@@ -177,7 +180,19 @@ export class WebGL2Renderer3D {
                 : V.depthOnly;
             const morphs = geometry.morphTargets;
             const morphAttributes = !morphs.length ? 0 : morphs.some(morph => morph.normal) ? 2 : 1;
-            programs.push(this.programRequest(material, this.meshProgramVariant(mesh, geometry, material, flags, morphAttributes)));
+            const variant = this.meshProgramVariant(mesh, geometry, material, flags, morphAttributes);
+            programs.push(this.programRequest(material, variant));
+            if (options.includeAutoInstancing && this.autoInstancing) {
+                // Match the render list's winding test even before the scene's first frame.
+                mesh.updateWorldMatrix();
+                const shadow = pass === 'shadow';
+                if (canAutoInstance3D(mesh, material, shadow) &&
+                    (!shadow || (shadows && mesh.castShadow)) &&
+                    (pass === 'color' || geometry.topology === 'triangles') &&
+                    (pass !== 'depth-prepass' || material.depthWrite)) {
+                    programs.push(this.programRequest(material, variant | V.instancing));
+                }
+            }
         }
         await this.#resources.preparePrograms(programs);
     }
@@ -905,7 +920,7 @@ export class WebGL2Renderer3D {
         }
         return variant;
     }
-    draw(item, frameFlags, depthPass) {
+    draw(item, frameFlags, depthPass, memberWorld) {
         const depthOnly = depthPass !== undefined, shadow = depthPass === 'shadow';
         const gl = this.#gl, { mesh, geometry, material } = item, resources = this.#resources;
         const gpu = resources.geometry(geometry);
@@ -915,7 +930,19 @@ export class WebGL2Renderer3D {
                 (this.#sceneDepthReady ? V.softDepth : 0) |
                 (this.#shadowCount > 0 ? V.receiveShadow : 0) |
                 (this.#grabbed ? V.transmission : 0);
-        const variant = this.meshProgramVariant(mesh, geometry, material, flags, gpu.morph?.attributes ?? 0);
+        let variant = this.meshProgramVariant(mesh, geometry, material, flags, gpu.morph?.attributes ?? 0);
+        if (memberWorld)
+            variant &= ~V.instancing;
+        else if (resources.hasPendingPrograms &&
+            mesh instanceof AutoBatchMesh3D &&
+            material.shader === undefined &&
+            resources.canUsePreparedAlternative(this.programRequest(material, variant).key, this.programRequest(material, variant & ~V.instancing).key)) {
+            // A linked ordinary program can draw these same transforms while the batch program is pending.
+            // Authored instance meshes and custom shaders may rely on per-instance attributes or gl_InstanceID.
+            for (let i = 0; i < mesh.count; i++)
+                this.draw(item, frameFlags, depthPass, mesh.instanceMatrices.subarray(i * 16, i * 16 + 16));
+            return;
+        }
         const instanced = (variant & V.instancing) !== 0, skinned = (variant & V.skin) !== 0;
         const crowd = (variant & V.skinInstancing) !== 0 ? mesh : undefined;
         const program = this.selectProgram(material, variant), u = program.uniforms, frame = this.#list.frame;
@@ -935,7 +962,7 @@ export class WebGL2Renderer3D {
         }
         if (depthOnly && u['uDepthViewProjection'])
             gl.uniformMatrix4fv(u['uDepthViewProjection'], false, this.#lightMatrix);
-        const world = mesh.matrixWorld;
+        const world = memberWorld ?? mesh.matrixWorld;
         const determinant = world[0] * (world[5] * world[10] - world[6] * world[9]) -
             world[4] * (world[1] * world[10] - world[2] * world[9]) +
             world[8] * (world[1] * world[6] - world[2] * world[5]);
@@ -958,8 +985,17 @@ export class WebGL2Renderer3D {
             }
             if (u['uModel'])
                 gl.uniformMatrix4fv(u['uModel'], false, world);
-            if (u['uNormalMatrix'])
-                gl.uniformMatrix3fv(u['uNormalMatrix'], false, mat3NormalFromMat4(this.#scratch9, world));
+            if (u['uNormalMatrix']) {
+                if (memberWorld) {
+                    // Reproduce the instanced shader's mat3(aInstanceMatrix), including non-uniform scale.
+                    for (let column = 0; column < 3; column++)
+                        for (let row = 0; row < 3; row++)
+                            this.#scratch9[column * 3 + row] = world[column * 4 + row];
+                }
+                else
+                    mat3NormalFromMat4(this.#scratch9, world);
+                gl.uniformMatrix3fv(u['uNormalMatrix'], false, this.#scratch9);
+            }
         }
         if (gpu.morph)
             this.applyMorph(program, mesh, gpu);

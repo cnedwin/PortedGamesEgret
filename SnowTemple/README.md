@@ -80,7 +80,7 @@ The dice fall differently every time, and these make each run play differently t
 - 地面：重击、落枪和砸地会留下一阵子才淡掉的裂痕；雪地上有会被雪填平的脚印；最高画质下山门甬道和庙前的湿石板会映出场景。贴地有三层随风漂移的薄雾，有横掠画面的风线，每盏灯火周围有一圈被照亮的雪雾；石板和路上有结了冰的积水。
 - 规则（`src/rules`）与画面分开，不依赖浏览器，可以直接用 Node 测试；`test/bot.mjs` 是一个按规则出招的玩家，测试用它通关，地址加 `?auto` 可以看它打。
 - 声音：六段原创配乐随剧情转换，风雪、余火和山门环境独立混音。脚步、兵刃、格挡和回马枪使用专门制作的音效。`tools/render-audio.mjs` 可重建声音素材。
-- 设置里可调画质（自动、低、中、高）、粒子数量、声音和全部按键；自动画质会按帧率升降绘制分辨率。
+- 设置里可调画质（自动、低、中、高）、模型档次、粒子数量、声音和全部按键；画质、模型与粒子档次重新载入后生效。自动画质使用白鹭 `createDynamicResolution3D`，以设备像素比和画质档上限中的较小值为实际绘制比例上限，按帧率降升，不让设备像素比限制抵消自动降档。方向光阴影在中、高画质照常开启；`?noshadows` 仅用于关闭阴影的对照诊断。
 
 - Everything is drawn with the engine's 3D module (`@egret/engine/world3d`) and its WebGL 2 renderer: shadowed moonlight, the six nearest lamps lit at a time, bloom, ambient occlusion and low-lying height fog. Fire on the ground and men alight cast light of their own: the renderer lights point lights past the eighth by screen tile, so only the pixels a fire reaches pay for it, and with nothing burning it costs nothing (off at the lowest quality).
 - The character meshes were generated in Tripo Studio from original concept art for this project, optimized at three detail levels and skinned to the game's existing rig. Desktop defaults to high detail and phones to low. The articulated hands, grip anchors and combat motions use the existing bindings. Weapons, stone lions, the censer, lanterns, halls and burnt-yard props use geometry and materials made for this game. See the [Tripo terms](https://www.tripo3d.ai/terms) for the generated character assets.
@@ -90,7 +90,7 @@ The dice fall differently every time, and these make each run play differently t
 - The ground: heavy cuts, falling spears and slams leave scars that fade after a while; snow keeps footprints until it drifts back into them; at the highest picture quality the wet flags of the gate road and the forecourt mirror the scene. Three layers of thin mist drift over the ground, streaks of blown snow cross the picture, every flame has a halo of lit snow round it, and meltwater has frozen in patches on the flags and along the road.
 - The rules (`src/rules`) are kept apart from the picture and do not need a browser, so Node tests them directly; `test/bot.mjs` is a player made of rules that the tests finish the chapter with, and `?auto` in the address lets it play.
 - Six original pieces follow the chapter, with separate wind, ember and temple ambience. Footsteps, weapons, blocks and ripostes have dedicated sound cues. Regenerate the audio assets with `tools/render-audio.mjs`.
-- Settings cover picture quality (automatic, low, medium, high), particle amount, sound and every key; automatic quality moves the drawing resolution with the frame rate.
+- Settings cover picture quality (automatic, low, medium, high), model detail, particle amount, sound and every key. Picture, model and particle presets take effect after reload. Automatic quality uses Egret's `createDynamicResolution3D`, stepping the effective render scale under the lesser of the device pixel ratio and the preset ceiling, so the display cap does not swallow downscaling steps. Directional shadows remain enabled at medium and high quality; `?noshadows` is an explicit shadows-off diagnostic only.
 
 ## Staged character loading · 角色分阶段加载
 
@@ -135,7 +135,7 @@ python3 -m http.server 4180      # 模型查看器 · model viewer: /SnowTemple/
 # 在仓库根目录运行，然后打开 /SnowTemple/ · run at the repository root, then open /SnowTemple/
 ```
 
-地址参数 · Address options: `?auto`（规则玩家代打 · a rule-driven player takes over），`?at=yard|gate|boss|rage`（从后面开始 · begin further in），`?quality=low|mid|high`，`?models=low|mid|high`，`?tier=3`（这一次按第几重打 · play this visit at a tier），`?mode=yard`（配合 `?auto` 守草料场 · with `?auto`, hold the yard），`?seed=7`（固定骰子 · fix the dice），`?lights=direct|tiled`（不给或给火自己的光，不管画质 · leave fires without light of their own, or give it them, whatever the quality），`?debug`（状态面板和引擎的性能读数，F3 开关 · state panel and the engine's performance readout, F3 toggles）。
+地址参数 · Address options: `?auto`（规则玩家代打 · a rule-driven player takes over），`?at=yard|gate|boss|rage`（从后面开始 · begin further in），`?quality=low|mid|high`，`?models=low|mid|high`，`?tier=3`（这一次按第几重打 · play this visit at a tier），`?mode=yard`（配合 `?auto` 守草料场 · with `?auto`, hold the yard），`?seed=7`（固定骰子 · fix the dice），`?lights=direct|tiled`（不给或给火自己的光，不管画质 · leave fires without light of their own, or give it them, whatever the quality），`?noshadows`（关闭方向光阴影作对照诊断 · disable directional shadows for comparison），`?debug`（状态面板和引擎的性能读数，F3 开关 · state panel and the engine's performance readout, F3 toggles）。
 
 | 路径 · Path | 内容 · Contents |
 |---|---|
@@ -158,19 +158,21 @@ python3 -m http.server 4180      # 模型查看器 · model viewer: /SnowTemple/
 | `@egret/engine` `createEngine` | 引擎和时钟 · the engine and its clock | `src/main.mjs` |
 | `@egret/engine/webgl2/world3d` `createWebGL2Renderer3D`、`createWorld3DView`、`startWorld3DLoop` | WebGL2 绘制和由引擎时钟驱动的帧循环 · WebGL2 drawing and the frame loop driven by the engine clock | `src/main.mjs` |
 | `renderer.tiledLights` | 地上的火和烧着的人按屏幕分块照亮（八盏以外的点光） · fire on the ground and burning men lit by screen tile | `src/main.mjs` |
-| `renderer.preparePrograms` | 加载画面下预编译淡出的屋顶、法阵、脚印、落枪等迟出现的着色器 · late programs prepared under the loading screen | `src/view/view.mjs` |
-| `createDynamicResolution3D` | 自动画质按帧率升降绘制分辨率 · automatic quality moves the drawing scale with the frame rate | `src/main.mjs` |
-| `createWorld3DStats` | `?debug` 的引擎性能读数 · the engine's performance readout under `?debug` | `src/main.mjs` |
+| `renderer.preparePrograms`、`includeAutoInstancing` | 加载画面下准备淡出的屋顶、法阵、脚印、落枪等迟出现的着色程序，并由普通弓弦、铜钱网格生成自动实例化的伴随程序；角色模型仍分阶段准备 · prepare late fade and effect programs and the automatic instance variants of ordinary bowstrings and coins; character programs remain staged | `src/view/view.mjs`, `src/main.mjs` |
+| `createDynamicResolution3D` | 自动画质在实际设备／画质比例上限内按帧率升降绘制分辨率 · automatic quality moves the effective drawing scale within the device and preset ceiling | `src/main.mjs` |
+| `createWorld3DStats` | `?debug` 的引擎性能读数，细分规则、视图、叠层、反射及呈现准备 · the engine's performance readout under `?debug`, with rule, view, overlay, reflection and presentation-preparation laps | `src/main.mjs` |
 | `PlanarReflection3D` | 最高画质下湿石板的倒影 · the wet flagstones' mirror at the highest quality | `src/view/view.mjs` |
 | `loadGltf3D`、`Skeleton3D` | 林冲、陆谦和庄客的蒙皮模型 · the skinned characters | `src/view/characters.mjs`、`src/view/figures.mjs` |
 | `InstancedMesh3D`、`createCustomShader3D` | 随风起伏、会被拨开的成片枯草；枪光、法阵和预警的片元着色器 · grass swaying and parting; the spear light, formation and warnings | `src/view/figures.mjs`、`src/view/effects.mjs` |
 | `createCustomPost3D` | 自定义后期处理 · custom post-processing | `src/view/look.mjs` |
 | `@egret/engine/kit` `createSaveStore` | 带版本号的进度和设置存档 · versioned progress and settings | `src/saves.mjs` |
-| `@egret/engine/web/kit` `browserSaveStorage` | 浏览器存储，写不进去也不报错 · the browser's storage, a refused write never throws | `src/main.mjs` |
+| `@egret/engine/kit` `createMemorySaveStorage` | 页面存储无法读取时用本次会话的内存；可读取但拒绝写入时仍保留已存进度 · session memory when page storage cannot be read; existing progress remains readable if writes are refused | `src/saves.mjs` |
 | `@egret/engine/kit` `runHeadless` | `tools/balance.mjs` 用规则玩家无页面打各重 · the rule-driven player runs every tier without a page | `tools/balance.mjs` |
 
 ## 已验证 · Verified
 
+- 2026-11-26 引擎 `8e70dcb3`：Node 92/92；Windows Edge 158 RTX 5090 Laptop 与 Galaxy Z Fold7 Android 17 Chrome 157 的硬件 WebGL2 均走完完整章节、结算、重战与刷新读档。实机阴影与分块灯光正常，手机章节采样 P95 17.2–17.4 ms，最大 37 ms。详见 [QUALITY.md](QUALITY.md)。 · Node 92/92 and the full chapter, result, rematch and reload on both physical devices; hardware shadows and tiled lights enabled. Fold7 chapter p95 17.2–17.4 ms, maximum 37 ms.
+- `node test/accept.mjs`：固定种子低档无头浏览器冒烟 7/7，标题截图基线差异 0.77%，进入章节且开场时钟正常推进。 · Fixed-seed low-detail headless smoke 7/7, title baseline difference 0.77%, Chapter entry and opening clock verified.
 - 2026-11-21 引擎副本升级到 `b5628eb` 后：87 项 Node 测试通过；无头 Chromium 下 `?auto` 自动游玩 60 秒无控制台错误。 · After the engine update: 87 tests pass and 60 s of automatic play run clean.
 - 2026-11-21 在提交 `fc1dacb`、Node 22.23.4 下运行 `node --test test/*.test.mjs`：87 项全部通过（规则、数值、规则玩家通关、存档、输入、动作、角色加载、声音、引擎副本）。 · `node --test` at commit `fc1dacb` with Node 22.23.4: all 87 tests pass, including the rule-driven player finishing the chapter.
 - 2026-11-20 `node tools/quality.mjs SnowTemple` 在无头 Chromium + SwiftShader 下测了 16 个自动项，结果见 [QUALITY.md](QUALITY.md)；软件渲染下 3D 场景几乎画不动，帧时间一项不代表真机。 · The 16 automatic quality items in headless Chromium; its frame time says nothing of real devices.
@@ -184,9 +186,10 @@ python3 -m http.server 4180      # 模型查看器 · model viewer: /SnowTemple/
 
 ## 已解决 · Solved
 
-- 淡出的屋顶和松树、法阵、脚印、落枪等第一次出现时链接着色器卡顿：先是在加载时把隐藏网格画一帧（`43466ba`、`8e152a4`），引擎 `8b634fe` 之后改用 `renderer.preparePrograms`（`58554b3`，ENGINE-NOTES 第 1 条）。 · Late programs stalled on first use; first a hidden frame, then the engine's `preparePrograms` (item 1).
+- 淡出的屋顶和松树、法阵、脚印、落枪等第一次出现时链接着色器卡顿：先是在加载时把隐藏网格画一帧（`43466ba`、`8e152a4`），引擎 `8b634fe` 之后改用 `renderer.preparePrograms`（`58554b3`）。现用普通弓弦、铜钱网格描述符与 `includeAutoInstancing: true` 准备自动实例化变体，同时保留透明淡出和自带 RGBA 实例颜色的足迹／落枪等请求（ENGINE-NOTES 第 1 条）。 · Late programs stalled on first use; first a hidden frame, then the engine's `preparePrograms`. The current descriptors use ordinary bowstrings and coins with `includeAutoInstancing: true`, preserving translucent fades and the effects' authored RGBA instance requests (item 1).
 - 湿石板倒影要在每次镜像绘制前后切换渲染器的色调映射：改为给镜像单独设色调映射（`58554b3`，ENGINE-NOTES 第 2 条）。 · The mirror switched the renderer's tone mapping around each draw; it now has its own (item 2).
 - 地上的火只能和灯争八盏点光：改用分块照明，火光只让被照到的像素付出代价（`e99e4e4`，ENGINE-NOTES 第 3 条）。 · Fires competed with the lamps for eight lights; they are now lit by screen tile (item 3).
+- 旧引擎在 Windows ANGLE D3D11 的 RTX 5090 Laptop 上绘制方向光阴影时丢失上下文：引擎 [#375](https://github.com/cnedwin/Egret_rebuild/pull/375) 修正阴影接收着色器的级联选择。本 Demo 已移除针对该显卡的临时禁阴影逻辑，并保留手动诊断参数（ENGINE-NOTES 第 4 条）。 · Engine #375 fixes directional-shadow cascade selection after context loss on Windows ANGLE D3D11. The Demo removes its former GPU-specific shadows-off workaround and retains an explicit diagnostic option (item 4).
 - 首屏太慢：角色分阶段加载（`87f213a`、`491d29a`、`d6da5ce`）。上面表里第 1 对冷启动到首次移动从 3485 ms 降到 996 ms，第 2 对差别很小（702 → 674 ms）。 · A slow start; characters load in stages (see the table above for the measured pairs).
 - 组合键只在最后一个键松开时收到 `pointerup`，按住的动作卡住：按真实按键位掩码对账（`b26ad51`）；窄屏和触屏上目标第二行压住角落按钮、桌面 HUD 淡入淡出时闪烁（`1c47df4`、`f26f5a2`）。 · Chorded mouse buttons stuck; the goal line ran into the corner buttons on narrow screens; the desktop HUD flickered in fades.
 
@@ -194,7 +197,7 @@ python3 -m http.server 4180      # 模型查看器 · model viewer: /SnowTemple/
 
 - 只有中文界面，没有英文切换（品质 I1）。 · Chinese only.
 - 资源加载失败时没有错误界面和重试（E2）。新版角色模型拿不到时会改用旧身体包，其他文件失败没有提示。 · No error screen with a retry when a file fails; only a missing character model falls back to the stock bodies.
-- 真机上的帧时间和整局触屏验收。 · Frame times and a whole run by touch on real devices.
+- 低端手机、更多显卡和长时间游戏的性能覆盖；真人手指操作与扬声器主观听感仍待验证。 · Wider hardware and long-session coverage, unaided human touch and subjective speaker listening remain to be verified.
 
 ## 目录结构 · Layout
 
@@ -202,8 +205,8 @@ python3 -m http.server 4180      # 模型查看器 · model viewer: /SnowTemple/
 
 ## 引擎副本 · Engine copy
 
-引擎副本取自 [Egret_rebuild](https://github.com/cnedwin/Egret_rebuild) 提交 `b5628eb9997b67cf6163a388f5aa06f321f3833a`，由引擎仓库的 `tools/vendor-game.mjs` 复制，见 [vendor/SOURCE.md](vendor/SOURCE.md)。
+引擎副本取自 [Egret_rebuild](https://github.com/cnedwin/Egret_rebuild) 提交 `8e70dcb3a8a0b40c9966483c92cb9f691a1cefd8`，由引擎仓库的 `tools/vendor-game.mjs` 复制，见 [vendor/SOURCE.md](vendor/SOURCE.md)。
 
-The engine copy is from [Egret_rebuild](https://github.com/cnedwin/Egret_rebuild) commit `b5628eb9997b67cf6163a388f5aa06f321f3833a`, copied by the engine's `tools/vendor-game.mjs`; see [vendor/SOURCE.md](vendor/SOURCE.md).
+The engine copy is from [Egret_rebuild](https://github.com/cnedwin/Egret_rebuild) commit `8e70dcb3a8a0b40c9966483c92cb9f691a1cefd8`, copied by the engine's `tools/vendor-game.mjs`; see [vendor/SOURCE.md](vendor/SOURCE.md).
 
 入口 · Entries: `@egret/engine`, `@egret/engine/world3d`, `@egret/engine/webgl2/world3d`, `@egret/engine/kit`, `@egret/engine/web/kit`.

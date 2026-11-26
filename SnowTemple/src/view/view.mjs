@@ -1,7 +1,6 @@
 // The picture of the fight: it reads the game each frame, moves the figures, the camera and the lamps,
 // and answers the game's events with light, sparks and dust.
 import {
-  InstancedMesh3D,
   Mesh3D,
   Object3D,
   PlanarReflection3D,
@@ -731,9 +730,9 @@ export function createView(scene, camera, models, { density = 1, particles = 1, 
     // What is first drawn after the game has started would link its program in the middle of play. The
     // bowmen's strings are such a thing; so are the instanced batches the renderer makes of eight like
     // things in view, which a crowded yard reaches with four bowmen's strings or with coins left lying.
-    const batches = [...bowstringDraws(), new InstancedMesh3D((lootGeometry.coin ??= lootShape('coin')), lootMaterial, 1)].map((mesh) => ({ mesh, material: mesh.material, ...seen }));
+    const representatives = [...bowstringDraws(), new Mesh3D((lootGeometry.coin ??= lootShape('coin')), lootMaterial)].map((mesh) => ({ mesh, material: mesh.material, ...seen }));
     try {
-      await renderer.preparePrograms([...faded, ...batches, ...fx.programs().map((request) => ({ ...request, ...seen }))]);
+      await renderer.preparePrograms([...faded, ...representatives, ...fx.programs().map((request) => ({ ...request, ...seen }))], { includeAutoInstancing: true });
     } finally {
       for (const { material } of faded) material.dispose();
     }

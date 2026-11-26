@@ -11,11 +11,11 @@
 //   ?mode=yard   with ?auto: hold the fodder yard instead of walking the chapter
 //   ?seed=7      fix the dice (they are fixed anyway under ?auto)
 //   ?lights=direct | tiled   leave fires without light of their own, or give it them, whatever the quality
+//   ?noshadows   open with realtime shadows disabled
 //   ?debug       show the state panel and the engine's performance readout (F3 toggles them)
 import { createEngine } from '@egret/engine';
 import { Scene3D, createPerspectiveCamera3D } from '@egret/engine/world3d';
 import { createDynamicResolution3D, createWebGL2Renderer3D, createWorld3DHost, createWorld3DStats, createWorld3DView, startWorld3DLoop } from '@egret/engine/webgl2/world3d';
-import { browserSaveStorage } from '@egret/engine/web/kit';
 import { createAudio } from './audio.mjs';
 import { DIALOGUE } from './dialogue.mjs';
 import { captureTempleLoadout, createTempleReplay } from './chapter.mjs';
@@ -23,7 +23,7 @@ import { createHud } from './hud.mjs';
 import { DEFAULT_KEYS, createInput } from './input.mjs';
 import { createLessons } from './lessons.mjs';
 import { openProgress, recordClear, recordStand } from './progress.mjs';
-import { openSave } from './saves.mjs';
+import { openSave, snowSaveStorage } from './saves.mjs';
 import { PLACES } from './rules/arena.mjs';
 import { begin, createGame, quiet, step } from './rules/game.mjs';
 import { TIERS, grade, tierName } from './rules/tiers.mjs';
@@ -50,7 +50,7 @@ function fail(cause) {
 
 // Choices and progress are kept by the engine's save store in the page's storage. Where the page has none
 // (a private window, a blocked site) they are kept in memory and last for this visit only.
-const storage = browserSaveStorage(),
+const storage = snowSaveStorage(),
   settingsSave = openSave(storage, 'snow-temple-settings', { defaults: () => ({}) });
 function loadSettings() {
   const defaults = { quality: 'auto', models: 'auto', particles: 'some', sound: 'on', keys: { ...DEFAULT_KEYS } },
@@ -81,7 +81,10 @@ async function main() {
     camera = createPerspectiveCamera3D({ fov: 36, near: 0.5, far: 260 });
   scene.addChild(camera);
   const updateLook = createSnowLook(renderer, level.ssao);
-  renderer.shadowsEnabled = !!level.shadows;
+  // The engine now fixes the directional-shadow receiver on Windows WebGL2.
+  // Keep a manual switch for an otherwise identical shadows-off diagnostic.
+  const shadowDiagnostic = params.has('noshadows');
+  renderer.shadowsEnabled = !!level.shadows && !shadowDiagnostic;
   // Past the eight point lights every pixel is lit by, the renderer lights more by screen tile, and only
   // the pixels near them pay. That is where fire on the ground and burning men get their light, and the
   // flashes of a crowded fight; with nothing burning it costs nothing. The lowest quality keeps to the eight.
@@ -222,7 +225,6 @@ async function main() {
     clock = 0,
     carry = 0,
     pick = -1, // the lesson chosen from an open page, until the rules have taken it
-    ratio = level.ratio,
     debug = params.has('debug');
   const hud = createHud(ui, input, settings, {
     onSettings(next) {
@@ -243,8 +245,9 @@ async function main() {
   // The engine's readout: frame time, this game's share of it, and what the renderer drew. The numbers are
   // gathered either way; they are shown with the state panel.
   let stats = createWorld3DStats(renderer, debug ? { container: document.querySelector('#game') } : {});
-  input.on('any', (code) => {
-    if (code !== 'F3') return;
+  input.on('any', (code, event) => {
+    if (code !== 'F3' || hud.settingsOpen() || Object.values(input.keys).includes(code)) return;
+    event?.preventDefault();
     debug = !debug;
     stats.dispose();
     stats = createWorld3DStats(renderer, debug ? { container: document.querySelector('#game') } : {});
@@ -552,14 +555,22 @@ async function main() {
   // ---- one frame ----------------------------------------------------------------------------
   const STEP = 1 / 60,
     none = [];
-  // Automatic quality lets the drawing scale follow the frame rate: down a quarter after 2.5 slow seconds,
-  // back up after 8 good ones, never below 0.7.
-  const pace = createDynamicResolution3D({ min: 0.7 / level.ratio, step: 0.25 / level.ratio, lowFps: 42, highFps: 57, downAfter: 2.5, upAfter: 8 });
-  let slowFor = 0;
+  // Step the scale the canvas actually uses. A DPR cap must not absorb early downscales.
+  const displayScale = () => Math.min(devicePixelRatio || 1, level.ratio);
+  const resolutionPace = (max) => createDynamicResolution3D({
+    min: Math.min(0.7, max), max, step: 0.25, lowFps: 42, highFps: 57, downAfter: 2.5, upAfter: 8
+  });
+  const autoResolution = settings.quality === 'auto';
+  let scaleCap = displayScale(), ratio = scaleCap, pace = resolutionPace(scaleCap), slowFor = 0;
   function frame(dt) {
     stats.end();
     stats.begin();
-    if (settings.quality === 'auto' && mode === 'play') ratio = level.ratio * pace.update(dt);
+    const nextCap = displayScale();
+    if (nextCap !== scaleCap) {
+      scaleCap = ratio = nextCap;
+      pace = resolutionPace(scaleCap);
+    }
+    if (autoResolution && mode === 'play') ratio = pace.update(dt);
     status.frames++;
     if (status.frames === 2) {
       boot.classList.add('done');
@@ -571,7 +582,7 @@ async function main() {
     dt = Math.min(dt, 0.1);
     clock += dt;
     // Keep the drawing size to the window, at the scale the quality asks for.
-    if (renderer.resizeToDisplaySize(Math.min(devicePixelRatio || 1, ratio))) {
+    if (renderer.resizeToDisplaySize(ratio)) {
       camera.aspect = canvas.width / canvas.height;
       camera.updateProjectionMatrix();
     }
@@ -630,12 +641,14 @@ async function main() {
       hud.hint(pendingHint.text, pendingHint.action);
       pendingHint = null;
     }
+    stats.lap('overlay');
     view.mirror?.(renderer, game);
+    stats.lap('reflection');
     if (mode === 'title') titleCamera();
     updateLook(camera, view.fogLights, mode === 'title' || !!view.cine, game.stage === 'boss' && !view.cine, dt);
     hud.update(game, view);
     audio.update();
-    stats.lap('hud');
+    stats.lap('present');
 
     hud.debug(debug ? `状态: ${game.hero.state}  关: ${game.stage}  重: ${game.tier}  拨: ${game.wave}  过场: ${game.cine > 0 ? '是' : '否'}  所学: ${game.boons.join(' ') || '无'}\n位置: ${game.hero.x.toFixed(1)}, ${game.hero.z.toFixed(1)}  气血: ${game.hero.hp | 0}  枪意: ${game.hero.will | 0}\n帧率: ${stats.fps.toFixed(0)}  绘制比例: ${ratio.toFixed(2)}  灯: 分块 ${renderer.info.lightsTiled} 弃 ${renderer.info.lightsDropped}  陆谦: ${game.boss.state} ${game.boss.hp | 0}` : null);
   }
@@ -651,8 +664,18 @@ async function main() {
     }
   }
 
-  await view.preparePrograms(renderer);
-  createWorld3DView(engine, scope, { renderer, scene, camera, autoResize: false, onUpdate: frame, onError: fail });
+  function renderFailed(cause) {
+    loop?.dispose();
+    fail(cause);
+  }
+
+  try {
+    await view.preparePrograms(renderer);
+  } catch (cause) {
+    renderFailed(cause);
+    return;
+  }
+  createWorld3DView(engine, scope, { renderer, scene, camera, autoResize: false, onUpdate: frame, onError: renderFailed });
   // For the console and for automated checks.
   window.__snow = {
     get game() {
@@ -682,8 +705,8 @@ async function main() {
       return false;
     }
   };
-  progress(1, '起风');
-  loop = startWorld3DLoop(engine, fail);
+  progress(1, shadowDiagnostic ? '起风 · 无阴影诊断' : '起风');
+  loop = startWorld3DLoop(engine, renderFailed);
 }
 
 main().catch(fail);
