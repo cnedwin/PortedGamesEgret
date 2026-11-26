@@ -7,11 +7,11 @@ Gaps, awkward spots, unclear documentation and suggestions found in the new Egre
 engine offers is done through its API; where it offers nothing, the effect is built from parts the engine does have
 and written down here, rather than replaced by code of the game's own.
 
-第 1–17 条最初记于提交 `0e72ffb`。引擎在 `687037a`（PR #419–#422）按这些笔记做了修改，游戏随之升级；每条注明现在的状态和这边的改法。第 18–20 条是升级时新发现的。
+第 1–17 条最初记于提交 `0e72ffb`。引擎在 `687037a`（PR #419–#422）按这些笔记做了修改，游戏随之升级；每条注明现在的状态和这边的改法。第 18–20 条是升级时新发现的。游戏后来升级到 `8637ace`（引擎 #424–#485），第 18–20 条的绕过办法随之去掉。
 
 Items 1–17 were first written at commit `0e72ffb`. The engine changed after them in `687037a` (PRs #419–#422) and the
 game was upgraded with it; each item now says where it stands and what the game does. Items 18–20 were found during
-the upgrade.
+the upgrade. The game later moved to `8637ace` (engine #424–#485) and dropped its workarounds for items 18–20.
 
 状态 · Status: **已解决 / resolved** · **部分解决 / partly resolved** · **未解决 / open** · **已写入文档 / documented**
 
@@ -244,14 +244,14 @@ the upgrade.
 <!-- engine-note: {"id": "MechanismCity#18", "status": "resolved", "topic": "save-refused-update-memory"} -->
 
 - 现象：`update(change)` 把实时数据交给回调。像 `data => (data.open = 5)` 这样先原地改、再返回值的回调，会被拒绝且不写盘，但 `save.data.open` 已经是 5 了；文档说的是"内存中保持原样"。原地修改后不通过 `validate` 的情况也一样。
-- 本作：回调都是块体，不受影响；测试里记下了现在的行为（不写盘，但内存已变）。
+- 本作：回调都是块体，不受影响。升级到 `8637ace` 后，测试改为记下修好后的行为：被拒时不写盘，内存里的存档也不变。
 - 建议：把数据的副本交给回调（如 `structuredClone`），通过后再替换；或者改文档，写明被拒时内存可能已被回调改动。
 
 - What happens: `update(change)` gives the callback the live data. A callback that edits in place and then returns a
   value, such as `data => (data.open = 5)`, is refused and nothing is written, yet `save.data.open` is already 5; the
   documentation says the save is left as it was in memory. An edit in place that fails `validate` is the same.
-- This game: its callbacks are blocks and are not affected; the tests record the behaviour as it is (not written, but
-  changed in memory).
+- This game: its callbacks are blocks and are not affected. Since the move to `8637ace` the tests record the fixed
+  behaviour: a refused change is not written, and the save in memory is left as it was.
 - Suggestion: give the callback a copy (such as `structuredClone`) and take it only once it passes, or say in the
   documentation that a refused change may already have altered the data in memory.
 - 状态 · Status：已在 `1e60300` 解决（引擎 #424）：`save.update` 把副本交给回调，被拒时内存里的存档不变。 · Resolved in `1e60300` (engine #424): `save.update` gives the callback a copy, so a refused update leaves the save in memory as it was.
@@ -260,14 +260,14 @@ the upgrade.
 <!-- engine-note: {"id": "MechanismCity#19", "status": "resolved", "topic": "ui-root-during-input"} -->
 
 - 现象：687037a 让 `root.prepare()` 在输入分发期间推迟执行，但 `createUiRoot()` 本身仍调用 `assertIdle()`，在按钮的 `onActivate` 里直接新建根会抛 `UI_BUSY`（cause：input is being delivered）。对"每次打开新建一个根"的用法（第 11 条说这是预期用法）来说，修复没有生效。
-- 本作：打开设置前先 `await Promise.resolve()`，等这次分发结束，正如错误信息建议的那样。
+- 本作：原先打开设置前先 `await Promise.resolve()`，等这次分发结束；升级到 `8637ace` 后去掉了这一步，按钮回调里直接打开设置卡，已在浏览器里确认。
 - 建议：`createUiRoot()` 也推迟或允许在分发中创建；或在文档里写明只有 `prepare()` 会推迟。
 
 - What happens: 687037a lets `root.prepare()` wait until the delivery is over, but `createUiRoot()` itself still calls
   `assertIdle()`, so making a root straight from a button's `onActivate` throws `UI_BUSY` (cause: input is being
   delivered). For a panel made anew on each open, which item 11 calls intended, the fix does not reach.
-- This game: before opening the settings it awaits `Promise.resolve()` so that the delivery is over, as the error
-  suggests.
+- This game: it used to await `Promise.resolve()` before opening the settings so that the delivery was over; since the
+  move to `8637ace` that step is gone and the card opens straight from the button's callback, checked in a browser.
 - Suggestion: let `createUiRoot()` be made during delivery as well, or say that only `prepare()` waits.
 - 状态 · Status：已在 `1e60300` 解决（引擎 #424）：按钮回调里可以新建 UI 根。 · Resolved in `1e60300` (engine #424): a UI root can be made from a button callback.
 
@@ -275,15 +275,17 @@ the upgrade.
 <!-- engine-note: {"id": "MechanismCity#20", "status": "resolved", "topic": "sideways-scroll-wheel"} -->
 
 - 现象：`createScrollControl({ axis: 'x', wheel })` 只读 `deltaX`。普通鼠标滚轮只有 `deltaY`，所以横向列表只能用触控板或横向滚轮滚动。另外 `wheel.target` 必须是视口本身（滚轮在视口或其子孙上才算），一开始把它设成视口里一块背板时，鼠标落在卡片上就不滚了。
-- 本作：`wheel.target` 设为视口容器；再在视口上听 `game.hover` 的滚轮事件，没有 `deltaX` 时把 `deltaY` 交给控件自己的 `scrollBy()`。已在浏览器里确认滚轮能滚动选关列表。
+- 本作：`wheel.target` 设为视口容器。原先还在视口上听 `game.hover` 的滚轮事件，没有 `deltaX` 时把 `deltaY` 交给控件的 `scrollBy()`；升级到 `8637ace` 后改用 `wheel.crossAxis: true`，自己的监听去掉了。已在浏览器里确认竖向和横向滚轮都能滚动选关列表。
 - 建议：给 `wheel` 一个选项（如 `crossAxis: true`），横向控件在没有 `deltaX` 时读 `deltaY`；大多数平台的横向列表都这样做。
 
 - What happens: `createScrollControl({ axis: 'x', wheel })` reads only `deltaX`. An ordinary mouse wheel gives only
   `deltaY`, so a sideways list scrolls only with a trackpad or a sideways wheel. Also, `wheel.target` must be the
   viewport itself (a wheel over it or its descendants counts); set first to a backing sprite inside the viewport, it
   did not scroll while the mouse was over a card.
-- This game: `wheel.target` is the viewport container, and a listener on the viewport for the wheel of `game.hover`
-  hands `deltaY`, when there is no `deltaX`, to the control's own `scrollBy()`. Checked in a browser.
+- This game: `wheel.target` is the viewport container. It used to listen on the viewport for the wheel of
+  `game.hover` and hand `deltaY`, when there was no `deltaX`, to the control's `scrollBy()`; since the move to
+  `8637ace` it sets `wheel.crossAxis: true` and that listener is gone. Checked in a browser with an up-and-down and a
+  sideways wheel.
 - Suggestion: an option of `wheel` (such as `crossAxis: true`) so that a sideways control reads `deltaY` when there is
   no `deltaX`, as most platforms do for sideways lists.
 
