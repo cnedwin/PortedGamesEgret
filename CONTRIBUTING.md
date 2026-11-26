@@ -22,3 +22,7 @@ Every game folder follows [docs/GAME-STANDARD.md](docs/GAME-STANDARD.md): the ni
 QUALITY, Node tests, browser acceptance with screenshot baselines, and the engine copy. Start a new game from the
 template with `npm run create -- <folder> --title "中文名 · English name"`; `node tools/check-standard.mjs` checks every
 game, and [docs/STANDARD-STATUS.md](docs/STANDARD-STATUS.md) shows where each one stands.
+
+用 Codex、Claude Code 等编程智能体开发时，新游戏自带的 `AGENTS.md`（Claude Code 通过 `CLAUDE.md` 读它）写明命令和做法；引擎副本里的 `node vendor/egret.mjs` 可以查引擎指南、检查引擎名字、在浏览器里验证游戏。
+
+When a coding agent such as Codex or Claude Code works on a game, the new game's `AGENTS.md` (which Claude Code reads through `CLAUDE.md`) gives the commands and the way through; `node vendor/egret.mjs` in the engine copy asks the engine's guide, checks engine names and verifies the game in a browser.

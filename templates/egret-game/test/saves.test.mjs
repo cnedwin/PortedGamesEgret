@@ -1,11 +1,11 @@
-// 存档：新档、设置写入、最好成绩、坏档另存后重新开始、版本过新时重新开始、存储拒绝写入时不报错。
+// 存档：新档、设置写入、最好成绩、坏档另存后重新开始、版本过新时重新开始、旧档补上后加的字段、存储拒绝写入时不报错。
 // The save: a fresh one, settings written, the best time, an unreadable save set aside and started again, a save too
-// new started again, and a storage that refuses writes without an error.
+// new started again, an older save given the fields added since, and a storage that refuses writes without an error.
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import '../vendor/node-register.mjs';
 
-const { SAVE_KEY, freshSave, openSave, recordRound } = await import('../src/saves.mjs');
+const { SAVE_KEY, freshSave, openSave, recordRound, saveShape } = await import('../src/saves.mjs');
 
 function memory(initial = {}, { refuse = false } = {}) {
   const items = new Map(Object.entries(initial));
@@ -66,6 +66,18 @@ test('a save of another shape or from a newer build is started again', () => {
     newer = openSave(memory({ [SAVE_KEY]: JSON.stringify({ version: 99, savedAt: '', data: freshSave() }) }), 'zh', (problem) => problems.push(problem.kind));
   assert.equal(newer.data.plays, 0);
   assert.ok(problems.includes('too-new'));
+});
+
+test('a save from before a setting existed keeps what it has and gets the new setting', () => {
+  const old = { best: 10, plays: 2, settings: { language: 'en', sound: false } },
+    problems = [],
+    save = openSave(memory({ [SAVE_KEY]: JSON.stringify({ version: 1, savedAt: '', data: old }) }), 'zh', (problem) => problems.push(problem.kind));
+  assert.deepEqual(save.data, { best: 10, plays: 2, settings: { language: 'en', sound: false, reducedMotion: false } });
+  assert.deepEqual(problems, []);
+  assert.deepEqual(saveShape.problems({ ...freshSave(), plays: 1.5, settings: { language: 'fr', sound: true, reducedMotion: false } }), [
+    'plays: a whole number from 0',
+    'settings.language: one of "zh", "en"'
+  ]);
 });
 
 test('a storage that refuses to write does not stop the game', () => {

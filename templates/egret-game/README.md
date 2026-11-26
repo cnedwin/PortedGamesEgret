@@ -36,7 +36,7 @@ motion (reduced already when the system asks for it) and switch the language.
 | `createActionControl` | 所有按钮；触屏的四个方向键（按住算按下） · every button; the four touch arrows, held while pressed | `src/ui/kit.mjs`, `src/screens.mjs` |
 | `createToggleControl` + `createSelectionGroup` + `createControlKeys` | 设置里的开关和语言单选，都能用键盘操作 · the switches and the language choice, all working from the keyboard | `src/ui/kit.mjs`, `src/screens.mjs` |
 | `createUiSemantics` + `createBrowserSemantics` | 语义树投影到页面，读屏器能读出按钮、开关和单选 · the semantic tree projected into the page for screen readers | `src/main.mjs`, `src/ui/kit.mjs` |
-| `createSaveStore` + `browserSaveStorage` | 设置和最好成绩；坏档另存后重新开始，存储拒绝写入时提示 · settings and the best time; a broken save set aside, a refusing storage reported | `src/saves.mjs`, `src/main.mjs` |
+| `createSaveStore` + `shapeOf` + `browserSaveStorage` | 设置和最好成绩；存档检查由新档的形状给出，旧档补上后加的字段；坏档另存后重新开始，存储拒绝写入时提示 · settings and the best time; the save's check read from the shape of a fresh one, an older save given the fields added since; a broken save set aside, a refusing storage reported | `src/saves.mjs`, `src/main.mjs` |
 | `createBrowserAudio` + `encodeWav` | 合成的按键声和拾取声交给引擎混音器 · synthesized taps and pick-ups through the engine's mixer | `src/audio/sound.mjs` |
 | `animate` | 标题上角色的轻微浮动，减弱动画时关闭 · the title figure's slow bob, off when motion is reduced | `src/screens.mjs` |
 | `createLabel`（`game.createLabel`） | 所有文字，按当前语言排版 · every word, laid out for the current language | `src/ui/kit.mjs` |
@@ -75,10 +75,10 @@ motion (reduced already when the system asks for it) and switch the language.
 
 ## 引擎副本 · Engine copy
 
-引擎副本取自 [Egret_rebuild](https://github.com/cnedwin/Egret_rebuild) 提交 `687037ac462c48dbfe00523312125b94072ffea4`，由引擎仓库的 `tools/vendor-game.mjs` 复制，见 [vendor/SOURCE.md](vendor/SOURCE.md)。
+引擎副本取自 [Egret_rebuild](https://github.com/cnedwin/Egret_rebuild) 提交 `7af25f8b368de9a76594803052690e715ac7df22`，由引擎仓库的 `tools/vendor-game.mjs` 复制，见 [vendor/SOURCE.md](vendor/SOURCE.md)。
 
 The engine copy is from [Egret_rebuild](https://github.com/cnedwin/Egret_rebuild) commit
-`687037ac462c48dbfe00523312125b94072ffea4`, copied by the engine's `tools/vendor-game.mjs`; see
+`7af25f8b368de9a76594803052690e715ac7df22`, copied by the engine's `tools/vendor-game.mjs`; see
 [vendor/SOURCE.md](vendor/SOURCE.md).
 
 ```sh
