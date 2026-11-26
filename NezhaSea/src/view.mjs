@@ -88,7 +88,9 @@ export function createView(game) {
     cast = Math.max(0, cast - seconds * 5.6);
     const hover = reduced ? 0 : Math.sin(run.time * (moving ? 17 : 6)) * (moving ? 1.7 : 1);
     const lean = moving && !reduced ? Math.sin(run.time * 15) * 4 + avatar.flip * 5 : 0;
-    if (!reduced) avatar.frame(Math.floor(run.time * (moving ? 11 : 4)));
+    // The illustrated frames are an upright stance and a forward glide.
+    // Switch on movement instead of rapidly alternating the two silhouettes.
+    avatar.frame(moving && !reduced ? 1 : 0);
     const lift = 1 + cast * 0.09;
     pose(avatar.node, p.x, p.y + hover, avatar.flip * lift, 1 - cast * 0.045, lean);
     avatar.node.alpha = p.guard > 0 ? 0.76 + 0.24 * clamp(1 - p.guard / PLAYER.guard) : 1;
@@ -354,11 +356,20 @@ export function createView(game) {
   return {
     ready,
     clear,
-    primeActorAtlas() {
+    async primeActorAtlas() {
+      const loop = game.browser.loop;
+      if (loop.state !== 'running') return;
+      const submitted = loop.snapshot().frames;
       const entry = take('boy', 'hero');
       pose(entry.node, game.width / 2, game.height / 2, 1);
       try {
-        game.engine.renderSharedFrame(game.browser.frame);
+        // Keep the pooled sprite available for a regular frame behind the loading overlay.
+        // Never submit a second frame directly or wait indefinitely for a busy host.
+        const deadline = performance.now() + 120;
+        while (loop.state === 'running' && performance.now() < deadline) {
+          if (loop.snapshot().frames > submitted && !game.browser.host.getStatus().pendingFrames) break;
+          await new Promise((resolve) => setTimeout(resolve, 4));
+        }
       } finally {
         give(entry);
       }
