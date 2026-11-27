@@ -1,8 +1,8 @@
 # 引擎笔记 · Engine notes
 
-本游戏发现的新白鹭引擎（最初为提交 `db9772e`，2026-11-21 升级到 `b5628eb`）的缺陷与建议，格式见 [docs/GAME-STANDARD.md](../docs/GAME-STANDARD.md) 第 3 节。
+本游戏发现的新白鹭引擎（最初为提交 `db9772e`，2026-11-21 升级到 `b5628eb`，2026-11-27 更新为 `2fbe5563`）的缺陷与建议，格式见 [docs/GAME-STANDARD.md](../docs/GAME-STANDARD.md) 第 3 节。
 
-The faults found in the new Egret engine (first `db9772e`, `b5628eb` since 2026-11-21) while making this game, and suggestions,
+The faults found in the new Egret engine (first `db9772e`, `b5628eb` since 2026-11-21, `2fbe5563` from 2026-11-27) while making this game, and suggestions,
 written as in part 3 of [docs/GAME-STANDARD.md](../docs/GAME-STANDARD.md).
 
 ### 1. 顶点布局不同就要另编一条管线 · A different vertex layout needs a pipeline of its own — 未解决 / open

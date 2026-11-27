@@ -105,6 +105,8 @@ The game uses Egret World3D and draws with WebGL2 by default. Each part maps to 
 
 ## 已验证 · Verified
 
+- 2026-11-27：仅刷新引擎至 `2fbe5563`、保留 DOM 界面。原 24 项 Node 测试全部通过，官方浏览器 verify 7/7；同一种子既有规则推进至首个 Boss，实际选角、移动、暂停、升级重抽和选卡正常，首领在 300 秒生成并击败。SwiftShader 软件浏览器，长路线使用固定输入规则步进，不代表真机自然游玩。 · Engine-only baseline: 24/24 Node, 7/7 browser checks; same-seed rule-step route reached and defeated the first boss, with actual menu and keyboard actions. Headless software Chromium, not physical play.
+
 - 2026-11-21 引擎副本升级到 `b5628eb` 后：24 项 Node 测试和无页面整局通过；无头 Chromium 下开局后移动、跳跃 35 秒无控制台错误。 · After the engine update: 24 tests and a headless run pass, and 35 s of play run clean.
 - 2026-11-21 在提交 `fc1dacb`、Node 22.23.4 下运行 `node --test test/*.test.mjs`：24 项全部通过（规则、熊猫、输入）。 · `node --test` at commit `fc1dacb` with Node 22.23.4: all 24 tests pass.
 - 提交 `ddd18ce` 记录的测量：高画质、约 190 个敌人的忙碌时刻，每帧三角形从 480 万降到 100 万以下，绘制次数从约 500 降到约 340；四只熊猫无页面整局的规则每步从 1.59 ms 降到 1.28 ms。测量的设备和浏览器没有记录。 · Recorded in `ddd18ce`: triangles a frame from 4.8 million to under 1 million and draw calls from about 500 to 340 in a busy moment; a rules step from 1.59 to 1.28 ms. The device used was not recorded.
@@ -143,6 +145,6 @@ The game uses Egret World3D and draws with WebGL2 by default. Each part maps to 
 
 ## 引擎与许可 · Engine and license
 
-`vendor/` 中是新白鹭引擎的运行时副本，采用 Apache-2.0 许可，引擎提交 `b5628eb9997b67cf6163a388f5aa06f321f3833a`，来源和版本见 [vendor/SOURCE.md](vendor/SOURCE.md)。
+`vendor/` 中是新白鹭引擎的运行时副本，采用 Apache-2.0 许可，引擎提交 `2fbe55630b1f67c6b1584d73290c19cb0aa0ae24`，来源和版本见 [vendor/SOURCE.md](vendor/SOURCE.md)。
 
-`vendor/` holds a copy of the Egret Rebuild runtime under Apache-2.0; engine commit `b5628eb9997b67cf6163a388f5aa06f321f3833a`; see [vendor/SOURCE.md](vendor/SOURCE.md) for its source and version.
+`vendor/` holds a copy of the Egret Rebuild runtime under Apache-2.0; engine commit `2fbe55630b1f67c6b1584d73290c19cb0aa0ae24`; see [vendor/SOURCE.md](vendor/SOURCE.md) for its source and version.

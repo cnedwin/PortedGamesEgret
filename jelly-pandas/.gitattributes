@@ -1,0 +1,5 @@
+# The generated engine copy and guide retain the generator's LF bytes on Windows.
+vendor/** text eol=lf
+vendor/**/*.png -text
+vendor/**/*.webp -text
+vendor/**/*.woff2 -text
