@@ -21,7 +21,7 @@ import { EVENT_LINES, ROAD_LINES, STATION_LINES, ending } from './play/story.mjs
 import { createThreats } from './play/threats.mjs';
 import { better, freshJourney, openSave } from './saves.mjs';
 import { openCard } from './ui/card.mjs';
-import { STAGE, createScreenKit } from './ui/kit.mjs';
+import { createScreenKit } from './ui/kit.mjs';
 import { HUD_SEMANTICS, createHud } from './ui/hud.mjs';
 import { createMarkers } from './ui/markers.mjs';
 import { filmScreen, openingScreen, titleScreen } from './ui/screens.mjs';
@@ -148,36 +148,43 @@ const sound = createSoundscape(scene, camera, { waters: waterPlaces, volume: set
 sound.attach(convoy);
 
 // ---- the 2D interface over it -------------------------------------------------------------------------------------
-// A short screen (a phone on its side) gets a shorter stage, so the words and the controls come out larger on it.
-const stageHeight = () => (frame.clientHeight < 520 ? 600 : 720);
-const uiWidth = () => Math.max(Math.round(stageHeight() * 1.333), Math.min(1720, Math.round((stageHeight() * frame.clientWidth) / Math.max(1, frame.clientHeight))));
+// One fixed landscape design. At 844 × 390 its .65 scale matches the former 600-unit short-screen stage.
+// The engine extends the stage to the 3D canvas; every screen owns its responsive layout.
 const painted = paintGaugeFont(),
   gaugeFont = parseBitmapFont(painted.font);
-const ui = { game: null, width: 0, semantics: createUiSemantics(), sound, overlay: null, projection: null, pages: null };
+const ui = { game: null, semantics: createUiSemantics(), sound, overlay: null, projection: null, pages: null };
 let hud = null,
   screen = null,
   card = null,
   markers = null;
 
-async function buildOverlay() {
-  STAGE.height = ui.height = stageHeight();
-  ui.width = uiWidth();
-  // The stage's width follows the screen's shape when it is made. Between rebuilds a small change of shape keeps the
-  // interface's proportions (`fit: 'contain'`) instead of squashing it; a change of more than a tenth makes the
-  // overlay again at the new width, so the HUD still reaches both edges (ENGINE-NOTES.md, item 17).
-  ui.overlay = await createWorld3DOverlay(canvas, { width: ui.width, height: STAGE.height, fit: 'contain', update: (seconds) => uiFrame(Math.min(seconds, 1 / 20)), onError: (cause) => console.error('ui', cause) });
-  ui.game = ui.overlay.game;
-  ui.pages = [await ui.game.textureFromCanvas(painted.canvas)];
-  ui.projection = ui.game.scope.use(
-    createBrowserSemantics({ semantics: ui.semantics, canvas: ui.overlay.canvas, width: ui.width, height: STAGE.height, label: '茶马古道 · Tea Horse Road', onError: (cause) => console.warn('semantics', cause) })
-  );
-}
-await buildOverlay();
+ui.overlay = await createWorld3DOverlay(canvas, { width: 1066, height: 600, fit: 'expand', update: (seconds) => uiFrame(Math.min(seconds, 1 / 20)), onError: (cause) => console.error('ui', cause) });
+ui.game = ui.overlay.game;
+ui.pages = [await ui.game.textureFromCanvas(painted.canvas)];
+ui.projection = ui.game.scope.use(createBrowserSemantics({
+  semantics: ui.semantics, canvas: ui.overlay.canvas, width: ui.game.screen.width, height: ui.game.screen.height,
+  label: '茶马古道 · Tea Horse Road', onError: (cause) => console.warn('semantics', cause)
+}));
 markers = createMarkers(document.querySelector('#markers'), camera, {
   stations: landmarks.stations.map((station, index) => ({ x: station.x, y: station.y, z: station.z, s: STATIONS[index].s, zh: station.name })),
   followers: convoy.trucks.slice(1).map((truck, i) => ({ node: truck.model.root, zh: ['卓玛', '老马锅头'][i] }))
 });
 markers.visible = false;
+
+function syncScreen() {
+  const { width, height, safe, scale } = ui.game.screen;
+  // ScreenMarkers3D takes one CSS-pixel margin, not one per edge. Use the largest inset.
+  const margin = Math.max(54, Math.ceil(Math.max(safe.x, safe.y, width - safe.x - safe.width, height - safe.y - safe.height) * scale));
+  markers.setMargin(margin);
+  // Wait for all screen-owned layout listeners before publishing their new bounds.
+  queueMicrotask(() => {
+    const { width, height } = ui.game.screen;
+    ui.semantics.publish();
+    ui.projection.sync({ width, height });
+  });
+}
+ui.game.scope.use({ dispose: ui.game.onScreenChange(syncScreen) });
+syncScreen();
 
 // ---- the state of play ----------------------------------------------------------------------------------------------
 let state = 'title',
@@ -190,8 +197,7 @@ let state = 'title',
   said = new Set(),
   lineTurn = {},
   orbitAngle = 0,
-  campStation = -1,
-  endingRecord = null;
+  campStation = -1;
 
 /** The journey in the save, made fresh or carried on. */
 function cargoOf() {
@@ -212,23 +218,11 @@ function placeConvoy(s) {
   said = new Set(ROAD_LINES.filter((line) => line.s < s).map((line) => line.s));
 }
 
-// Building a screen takes a few awaits (labels are made asynchronously). The interface is rebuilt for a new screen
-// shape only between such builds, never in the middle of one.
-let building = 0;
-async function busy(work) {
-  building++;
-  try {
-    return await work();
-  } finally {
-    building--;
-  }
-}
-
 let pendingHud = null;
 function buildHud() {
   if (pendingHud) return pendingHud;
   if (hud) return Promise.resolve(hud);
-  pendingHud = busy(buildHudNow).finally(() => { pendingHud = null; });
+  pendingHud = buildHudNow().finally(() => { pendingHud = null; });
   return pendingHud;
 }
 
@@ -239,7 +233,6 @@ async function buildHudNow() {
   let overlay;
   try {
     overlay = await createHud(ui.game, scope, kit, {
-      width: ui.width,
       font: gaugeFont,
       fontPages: ui.pages,
       stations: STATIONS.map((station) => ({ s: station.s })),
@@ -321,8 +314,7 @@ async function closeScreen() {
   card = null;
 }
 
-const showTitle = (...args) => busy(() => showTitleNow(...args));
-async function showTitleNow() {
+async function showTitle() {
   await closeScreen();
   state = 'title';
   paused = false;
@@ -341,8 +333,7 @@ async function showTitleNow() {
   if (startupReady) screen.focusFirst();
 }
 
-const startJourney = (fresh) => busy(() => startJourneyNow(fresh));
-async function startJourneyNow(fresh) {
+async function startJourney(fresh) {
   if (state !== 'title' || !startupReady) return;
   state = 'opening';
   void sound.start();
@@ -368,8 +359,7 @@ async function showOpening(startAt) {
   void buildHud().catch((cause) => console.warn('Driving HUD preparation', cause));
 }
 
-const beginDriving = (...args) => busy(() => beginDrivingNow(...args));
-async function beginDrivingNow() {
+async function beginDriving() {
   // Let a failed speculative build finish cleaning up before retrying the normal path.
   if (pendingHud) await pendingHud.catch(() => {});
   await buildHud();
@@ -407,7 +397,6 @@ function pause(on) {
     if (!paused || pauseVersion !== version) return;
     ui.game.pointer.cancelAll('suspended');
     return openCard(ui.game, {
-      width: ui.width,
       semantics: ui.semantics,
       sound,
       name: '暂停',
@@ -433,12 +422,10 @@ function restartFromStation() {
   placeConvoy(startS(journey.station));
 }
 
-const openSettings = (...args) => busy(() => openSettingsNow(...args));
-async function openSettingsNow() {
+async function openSettings() {
   const previous = card;
   const initialTouch = settings.touch;
   const made = await openCard(ui.game, {
-    width: ui.width,
     semantics: ui.semantics,
     sound,
     name: '设置',
@@ -510,7 +497,7 @@ async function openSettingsNow() {
     onClose: () => {
       if (card === made) card = previous;
       previous?.focusFirst?.();
-      if (!rebuilding && hud && initialTouch !== settings.touch) {
+      if (hud && initialTouch !== settings.touch) {
         const wasVisible = hud.root.visible;
         hud.dispose();
         void buildHud().then((overlay) => {
@@ -554,15 +541,13 @@ async function arrive(index) {
   stationCard(index);
 }
 
-const stationCard = (...args) => busy(() => stationCardNow(...args));
-async function stationCardNow(index) {
+async function stationCard(index) {
   const station = landmarks.stations[index],
     line = STATION_LINES[index],
     cargo = convoy.cargo;
   card?.close();
   ui.game.pointer.cancelAll('suspended');
   card = await openCard(ui.game, {
-    width: ui.width,
     semantics: ui.semantics,
     sound,
     name: station.name,
@@ -587,8 +572,7 @@ function leaveStation() {
   hud?.focusFirst();
 }
 
-const makeCamp = (...args) => busy(() => makeCampNow(...args));
-async function makeCampNow(index) {
+async function makeCamp(index) {
   card?.close();
   card = null;
   state = 'camp';
@@ -599,7 +583,6 @@ async function makeCampNow(index) {
   camp.edit();
   let selectedKey = CAMP_PIECES[0].key;
   card = await openCard(ui.game, {
-    width: ui.width,
     semantics: ui.semantics,
     sound,
     name: '扎营',
@@ -652,15 +635,13 @@ function saveCamp(index) {
 }
 
 // ---- the end --------------------------------------------------------------------------------------------------------
-const finish = () => busy(finishNow);
-async function finishNow() {
+async function finish() {
   state = 'film';
   markers.visible = false;
   hud?.dispose();
   sound.setMood(-1);
   const delivered = convoy.cargo,
     record = { delivered, seconds: Math.round(journey.seconds), stolen: journey.stolen, recovered: journey.recovered, knocked: journey.knocked };
-  endingRecord = record;
   save.update((data) => {
     data.best = better(data.best, record);
     data.journey = null;
@@ -680,14 +661,12 @@ async function finishNow() {
   screen.focusFirst();
 }
 
-const results = (...args) => busy(() => resultsNow(...args));
-async function resultsNow(record) {
+async function results(record) {
   await closeScreen();
   state = 'end';
   sound.setMood(0);
   const story = ending(record.delivered / convoy.capacity);
   card = await openCard(ui.game, {
-    width: ui.width,
     semantics: ui.semantics,
     sound,
     name: story.title.zh,
@@ -869,47 +848,6 @@ function showWorld() {
   });
 }
 
-// The interface is laid out for the shape of the screen; when that changes much (a phone turned), it is laid out again.
-let relayout = null;
-let rebuilding = false;
-async function rebuildOverlay() {
-  if (rebuilding) return;
-  rebuilding = true;
-  while (building > 0) await new Promise((resolve) => setTimeout(resolve, 50));
-  const hudShown = state === 'drive' || state === 'station';
-  const openingIndex = state === 'opening' ? screen?.index : undefined;
-  await closeScreen();
-  hud?.dispose();
-  await ui.overlay.dispose();
-  await buildOverlay();
-  if (state === 'drive' || state === 'station' || state === 'camp') {
-    await buildHud();
-    hud.root.visible = hudShown;
-  }
-  if (state === 'title') await showTitle();
-  else if (state === 'opening') await showOpening(openingIndex);
-  else if (state === 'station') await stationCard(journey.station);
-  else if (state === 'camp') {
-    camps[campStation].finish();
-    await stationCard(campStation);
-    state = 'station';
-  } else if (state === 'film' || state === 'end') await results(endingRecord);
-  if (paused) {
-    pauseCard = null;
-    paused = false;
-    pause(true);
-  }
-  rebuilding = false;
-  // The screen may have changed shape again while this was being built.
-  if (Math.abs(uiWidth() - ui.width) > ui.width * 0.1 || stageHeight() !== STAGE.height) void rebuildOverlay();
-}
-window.addEventListener('resize', () => {
-  clearTimeout(relayout);
-  relayout = setTimeout(() => {
-    if (Math.abs(uiWidth() - ui.width) > ui.width * 0.1 || stageHeight() !== STAGE.height) void rebuildOverlay();
-  }, 300);
-});
-
 const rotateButton = document.querySelector('#rotate-button'),
   orientation = window.screen.orientation;
 if (document.documentElement.requestFullscreen && typeof orientation?.lock === 'function') {
@@ -1030,7 +968,6 @@ if (params.has('film')) {
 } else {
   await worldReady;
   await waitForPaint();
-  while (rebuilding) await waitForPaint();
   startupReady = true;
   screen.focusFirst();
   ui.semantics.publish();
@@ -1055,6 +992,9 @@ window.teaHorseRoad = {
   ui,
   get state() {
     return state;
+  },
+  get paused() {
+    return paused;
   },
   get card() {
     return card;

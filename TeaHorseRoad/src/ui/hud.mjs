@@ -11,36 +11,34 @@ import { DisplayObjectContainer, Sprite, animate } from '@egret/engine';
 import { createBitmapText } from '@egret/engine/bitmapfont';
 import { createActionControl, createControlKeys, createRangeControl } from '@egret/engine/ui';
 import { semanticBoundsOf } from '@egret/engine/ui/semantics';
-import { FLAG_RED, FONT, INK, PAPER, SAFFRON, SANS, STAGE, TURQUOISE } from './kit.mjs';
+import { FLAG_RED, FONT, INK, PAPER, SAFFRON, SANS, CONTROL, TURQUOISE, controlScale } from './kit.mjs';
 import { SPEAKERS } from '../play/story.mjs';
 
 const stops = (...pairs) => pairs.map(([offset, color, alpha = 1]) => ({ offset, color, alpha }));
 export const HUD_SEMANTICS = 'driving-hud';
 
 /**
- * Build the HUD on `game.stage` (`width` × `STAGE.height`). `stations` are `{ s, name }` along the road of `length` metres.
+ * Build the HUD on the engine's live stage. `stations` are `{ s, name }` along the road of `length` metres.
  * `touch` adds the on-screen controls, which write into `controls` (`steer`, `throttle`, `brake`). The callbacks are
  * for the buttons.
  */
-export async function createHud(game, scope, kit, { width, font, fontPages, stations, length, touch, controls, semantics, onPause, onHorn, onCamera, onRecover }) {
-  const H = STAGE.height,
-    root = scope.use(new DisplayObjectContainer()),
+export async function createHud(game, scope, kit, { font, fontPages, stations, length, touch, controls, semantics, onPause, onHorn, onCamera, onRecover }) {
+  const root = scope.use(new DisplayObjectContainer()),
     keyboard = game.keyboard;
   root.visible = false;
   game.stage.addChild(root);
   kit.own(semantics.add({
     id: HUD_SEMANTICS,
     role: 'group',
-    describe: () => ({ hidden: !root.visible, bounds: { x: 0, y: 0, width, height: H } })
+    describe: () => ({ hidden: !root.visible, bounds: { x: 0, y: 0, width: game.screen.width, height: game.screen.height } })
   }));
 
   // ---- top left: where we are -----------------------------------------------------------------------------------
-  const route = root.addChild(scope.use(new Sprite()));
-  route.x = 26;
-  route.y = 20;
-  const routeWidth = Math.min(310, width * 0.35);
-  const place = await kit.label(root, '', { x: 36, y: 26, size: 23, color: PAPER, weight: 700 });
-  const next = await kit.label(root, '', { x: 36, y: 58, size: 17, color: SAFFRON, family: SANS });
+  const routeHolder = root.addChild(scope.use(new DisplayObjectContainer())),
+    route = routeHolder.addChild(scope.use(new Sprite()));
+  const routeWidth = 260;
+  const place = await kit.label(routeHolder, '', { x: 10, y: 6, size: 23, color: PAPER, weight: 700 });
+  const next = await kit.label(routeHolder, '', { x: 10, y: 38, size: 17, color: SAFFRON, family: SANS });
   function paintRoute(s) {
     const g = route.graphics;
     g.clear();
@@ -59,41 +57,37 @@ export async function createHud(game, scope, kit, { width, font, fontPages, stat
   }
 
   // ---- top right: the tea and the pause key -------------------------------------------------------------------
-  const teaPanel = root.addChild(scope.use(new Sprite()));
-  teaPanel.x = width - 254;
-  teaPanel.y = 20;
+  const teaHolder = root.addChild(scope.use(new DisplayObjectContainer())),
+    teaPanel = teaHolder.addChild(scope.use(new Sprite()));
   teaPanel.graphics.lineStyle(1, SAFFRON, 0.25).beginFill(INK, 0.8).drawRoundRect(0, 0, 160, 64, 12, 12).endFill();
   // The bamboo parcel and its lacquer label echo the load visible on the truck.
-  const bundle = root.addChild(scope.use(new Sprite()));
-  bundle.x = width - 229;
-  bundle.y = 52;
+  const bundle = teaHolder.addChild(scope.use(new Sprite()));
+  bundle.x = 25;
+  bundle.y = 32;
   bundle.graphics.lineStyle(2, INK, 1).beginFill(0xbda578, 1).drawRoundRect(-15, -12, 30, 24, 7, 7).endFill().lineStyle(0);
   bundle.graphics.beginFill(0x716447).drawRect(-9, -11, 4, 22).drawRect(5, -11, 4, 22).endFill();
   bundle.graphics.beginFill(FLAG_RED).drawRoundRect(-4, -5, 8, 10, 2, 2).endFill();
   const tea = scope.use(createBitmapText({ font, pages: fontPages, text: '72/72', align: 'left', maxWidth: 160 }));
-  root.addChild(tea.display);
-  tea.display.x = width - 205;
-  tea.display.y = 21;
+  teaHolder.addChild(tea.display);
+  tea.display.x = 49;
+  tea.display.y = 1;
   tea.display.scaleX = tea.display.scaleY = 0.68;
-  await kit.label(root, '捆茶 · Tea cargo', { x: width - 204, y: 59, size: 13, color: 0xddc9a4, family: SANS });
-  const pause = await kit.button({ x: width - 84, y: 20, width: 64, height: 60, text: 'Ⅱ', name: '暂停 Pause', onActivate: onPause, container: root, small: true });
+  await kit.label(teaHolder, '捆茶 · Tea cargo', { x: 50, y: 39, size: 13, color: 0xddc9a4, family: SANS });
+  const pause = await kit.button({ x: 0, y: 0, width: CONTROL, height: CONTROL, text: 'Ⅱ', name: '暂停 Pause', onActivate: onPause, container: root, small: true });
 
   // ---- bottom right: the gauges ---------------------------------------------------------------------------------
-  const dial = root.addChild(scope.use(new Sprite()));
-  const dialX = touch ? width / 2 : width - 136,
-    dialY = H - (touch ? 56 : 112);
-  dial.x = dialX;
-  dial.y = dialY;
+  const gauge = root.addChild(scope.use(new DisplayObjectContainer())),
+    dial = gauge.addChild(scope.use(new Sprite()));
   const speed = scope.use(createBitmapText({ font, pages: fontPages, text: '0', align: 'center', maxWidth: 140 }));
-  root.addChild(speed.display);
-  speed.display.x = dialX - 70;
-  speed.display.y = dialY - 33;
-  await kit.label(root, 'km/h', { x: dialX - 40, y: dialY + 15, size: 14, color: 0xcfc2a0, family: SANS, align: 'center', width: 80 });
+  gauge.addChild(speed.display);
+  speed.display.x = -70;
+  speed.display.y = -33;
+  await kit.label(gauge, 'km/h', { x: -40, y: 15, size: 14, color: 0xcfc2a0, family: SANS, align: 'center', width: 80 });
   const odometer = scope.use(createBitmapText({ font, pages: fontPages, text: '0.00 km', align: 'center', maxWidth: 220 }));
-  root.addChild(odometer.display);
+  gauge.addChild(odometer.display);
   odometer.display.scaleX = odometer.display.scaleY = 0.5;
-  odometer.display.x = dialX - 55;
-  odometer.display.y = dialY + 43;
+  odometer.display.x = -55;
+  odometer.display.y = 43;
   odometer.display.visible = !touch;
   function paintDial(kmh) {
     const g = dial.graphics,
@@ -126,24 +120,25 @@ export async function createHud(game, scope, kit, { width, font, fontPages, stat
 
   // ---- subtitles ------------------------------------------------------------------------------------------------
   const subtitle = root.addChild(scope.use(new DisplayObjectContainer()));
-  subtitle.y = H - (touch ? 219 : 178);
   const subtitleBack = subtitle.addChild(scope.use(new Sprite()));
   const who = await kit.label(subtitle, '', { x: 0, y: 0, size: 16, color: SAFFRON, family: SANS, weight: 700 });
   const said = await kit.label(subtitle, '', { x: 0, y: 24, size: 24, color: PAPER, family: FONT });
   const saidEn = await kit.label(subtitle, '', { x: 0, y: 60, size: 15, color: 0xc8c0aa, family: SANS });
   subtitle.alpha = 0;
   let subtitleTween = null,
-    subtitleFor = 0;
+    subtitleFor = 0,
+    subtitleWidth = 48,
+    upset = false;
   async function say(line, seconds = 5) {
     const speaker = SPEAKERS[line.who ?? 'road'];
     await who.set(speaker.zh ? `${speaker.zh} · ${speaker.en}` : '');
     await said.set(line.zh);
     await saidEn.set(line.en ?? '');
-    const w = Math.max(said.display.width, saidEn.display.width, who.display.width) + 48;
-    subtitle.x = (width - w) / 2 + 24;
-    for (const part of [who, said, saidEn]) part.display.x = (w - 48 - part.display.width) / 2;
+    const w = subtitleWidth = Math.max(said.display.width, saidEn.display.width, who.display.width) + 48;
+    for (const part of [who, said, saidEn]) part.display.x = -part.display.width / 2;
     subtitleBack.graphics.clear();
-    subtitleBack.graphics.lineStyle(1, SAFFRON, 0.28).beginFill(INK, 0.84).drawRoundRect(-24, -12, w, 98, 12, 12).endFill();
+    subtitleBack.graphics.lineStyle(1, SAFFRON, 0.28).beginFill(INK, 0.84).drawRoundRect(-w / 2, -12, w, 98, 12, 12).endFill();
+    layout(game.screen);
     subtitleTween?.stop?.();
     subtitle.alpha = 0;
     subtitleTween = animate(game.engine, scope, subtitle).to({ alpha: 1 }, 0.25).start();
@@ -156,23 +151,22 @@ export async function createHud(game, scope, kit, { width, font, fontPages, stat
   let hint = null,
     hintFor = 14;
   if (!touch) {
-    hint = await kit.label(root, 'W/S 油门·刹车　A/D 转向　H 喇叭　C 视角　R 扶正　Esc 暂停 · 手柄：RT/LT 油门刹车，左摇杆转向，Y 喇叭', { x: 24, y: H - 40, size: 14, color: 0xd8cca8, family: SANS });
+    hint = await kit.label(root, 'W/S 油门·刹车　A/D 转向　H 喇叭　C 视角　R 扶正　Esc 暂停 · 手柄：RT/LT 油门刹车，左摇杆转向，Y 喇叭', { size: 14, color: 0xd8cca8, family: SANS });
   }
 
   // ---- touch controls -------------------------------------------------------------------------------------------
   const touchParts = [];
   const driveControls = [];
-  let recover = null;
+  let recover = null, wheel, throttle, brake, horn, camera;
+  const steerLength = 210, steerPad = 32, pedalHeight = 126, brakeWidth = 100, throttleWidth = 119, pedalGap = 12;
   if (touch) {
     // Steering: a wide slider on the left, from full left to full right; it springs back to the middle.
-    const length = Math.min(270, width * 0.24),
-      wheel = root.addChild(scope.use(new DisplayObjectContainer())),
-      track = wheel.addChild(scope.use(new Sprite())),
+    const length = steerLength;
+    wheel = root.addChild(scope.use(new DisplayObjectContainer()));
+    const track = wheel.addChild(scope.use(new Sprite())),
       knob = wheel.addChild(scope.use(new Sprite()));
-    wheel.x = 68;
-    wheel.y = H - 66;
     track.touchEnabled = true;
-    track.hitArea = { x: -46, y: -58, width: length + 92, height: 108 };
+    track.hitArea = { x: -steerPad, y: -58, width: length + 2 * steerPad, height: 108 };
     const steer = kit.own(
       createRangeControl({
         input: game.pointer,
@@ -200,8 +194,8 @@ export async function createHud(game, scope, kit, { width, font, fontPages, stat
     function paintWheel() {
       const g = track.graphics;
       g.clear();
-      g.beginFill(0x000000, 0.001).drawRect(-46, -58, length + 92, 108).endFill();
-      g.lineStyle(1.5, SAFFRON, 0.54).beginFill(INK, 0.75).drawRoundRect(-35, -35, length + 70, 70, 35, 35).endFill();
+      g.beginFill(0x000000, 0.001).drawRect(-steerPad, -58, length + 2 * steerPad, 108).endFill();
+      g.lineStyle(1.5, SAFFRON, 0.54).beginFill(INK, 0.75).drawRoundRect(-30, -35, length + 60, 70, 35, 35).endFill();
       g.lineStyle(3, SAFFRON, 0.4).moveTo(0, 0).lineTo(length, 0);
       g.lineStyle(2, PAPER, 0.35).moveTo(length / 2, -26).lineTo(length / 2, 26).lineStyle(0);
       const k = knob.graphics;
@@ -221,7 +215,7 @@ export async function createHud(game, scope, kit, { width, font, fontPages, stat
       holder.x = x;
       holder.y = y;
       face.touchEnabled = true;
-      face.hitArea = { x: -10, y: -10, width: w + 20, height: h + 20 };
+      face.hitArea = { x: 0, y: 0, width: w, height: h };
       await kit.label(holder, text, { x: 0, y: h / 2 - 20, size: 24, color: PAPER, weight: 700, align: 'center', width: w });
       await kit.label(holder, sub, { x: 0, y: h / 2 + 10, size: 12, color: 0xd8cca8, family: SANS, align: 'center', width: w });
       const action = kit.own(createActionControl({ input: game.pointer, target: face, onPressChange: (down) => (onHold(down), paint()) }));
@@ -242,22 +236,22 @@ export async function createHud(game, scope, kit, { width, font, fontPages, stat
       } });
       return { holder, action };
     };
-    await pedal(width - 146, H - 149, 119, 126, '油门', 'Throttle', TURQUOISE, (down) => (controls.throttle = down ? 1 : 0), 'throttle');
-    await pedal(width - 274, H - 116, 100, 93, '刹车', 'Brake', FLAG_RED, (down) => (controls.brake = down ? 1 : 0), 'brake');
+    throttle = await pedal(0, 0, throttleWidth, pedalHeight, '油门', 'Throttle', TURQUOISE, (down) => (controls.throttle = down ? 1 : 0), 'throttle');
+    brake = await pedal(0, 0, brakeWidth, 93, '刹车', 'Brake', FLAG_RED, (down) => (controls.brake = down ? 1 : 0), 'brake');
     const small = async (x, y, text, sub, onActivate) => {
-      const made = await kit.button({ x, y, width: 94, height: 62, text, sub, onActivate, name: `${text} ${sub}`, container: root, small: true });
+      const made = await kit.button({ x, y, width: 94, height: CONTROL, text, sub, onActivate, name: `${text} ${sub}`, container: root, small: true });
       driveControls.push(made.action);
       return made;
     };
-    await small(width - 254, H - 191, '喇叭', 'Horn', onHorn);
-    await small(width - 146, H - 221, '视角', 'View', onCamera);
-    recover = await small(width / 2 - 47, H - 160, '扶正', 'Recover', onRecover);
+    horn = await small(0, 0, '喇叭', 'Horn', onHorn);
+    camera = await small(0, 0, '视角', 'View', onCamera);
+    recover = await small(0, 0, '扶正', 'Recover', onRecover);
     recover.root.visible = false;
   }
 
   // The semantic nodes of what the HUD shows: the place, the tea, the speed and the subtitle.
   const status = { place: '', tea: '', speed: 0 };
-  kit.own(semantics.add({ id: 'hud-status', parent: HUD_SEMANTICS, role: 'status', describe: () => ({ name: `${status.place}。茶 ${status.tea}。时速 ${status.speed} 公里。${lastLine}`, bounds: { x: 24, y: 20, width: routeWidth, height: 120 } }) }));
+  kit.own(semantics.add({ id: 'hud-status', parent: HUD_SEMANTICS, role: 'status', describe: () => ({ name: `${status.place}。茶 ${status.tea}。时速 ${status.speed} 公里。${lastLine}`, bounds: semanticBoundsOf(route) }) }));
   for (const part of touchParts)
     kit.own(
       semantics.add({
@@ -273,6 +267,44 @@ export async function createHud(game, scope, kit, { width, font, fontPages, stat
     lastTea = '',
     lastOdo = '',
     lastS = -1;
+  function layout(screen) {
+    const { safe, scale } = screen,
+      f = controlScale(screen), margin = 12 / scale,
+      left = safe.x + margin, right = safe.x + safe.width - margin,
+      top = safe.y + margin, bottom = safe.y + safe.height - margin,
+      middle = (left + right) / 2,
+      size = (node, x, y, sx = f, sy = sx) => {
+        node.x = x; node.y = y; node.scaleX = sx; node.scaleY = sy;
+      };
+    size(routeHolder, left + 8 * f, top + 3 * f);
+    size(pause.root, right - CONTROL * f, top);
+    const narrowTop = right - left < (routeWidth + 36 + 160 + CONTROL + 28) * f;
+    size(teaHolder, narrowTop ? right - 160 * f : right - (CONTROL + 170) * f, narrowTop ? top + (CONTROL + 12) * f : top);
+    let textY = bottom - 178 * f;
+    if (touch) {
+      size(wheel, left + steerPad * f, bottom - 50 * f);
+      size(throttle.holder, right - throttleWidth * f, bottom - pedalHeight * f);
+      size(brake.holder, right - (throttleWidth + pedalGap + brakeWidth) * f, bottom - 93 * f);
+      const accessoriesY = bottom - (pedalHeight + pedalGap + CONTROL) * f;
+      size(camera.root, right - 94 * f, accessoriesY);
+      size(horn.root, right - (188 + pedalGap) * f, accessoriesY);
+      const narrowBottom = right - left < (steerLength + 2 * steerPad + brakeWidth + throttleWidth + pedalGap + 132 + 28) * f;
+      const gaugeY = narrowBottom ? accessoriesY - 56 * f : bottom - 43 * f;
+      size(gauge, middle, gaugeY);
+      const recoverY = gaugeY - (CONTROL + 50) * f;
+      size(recover.root, middle - 47 * f, recoverY);
+      textY = Math.min(accessoriesY, upset ? recoverY : gaugeY - 48 * f) - 100 * f;
+    } else {
+      size(gauge, right - 108 * f, bottom - 108 * f);
+      if (hint) {
+        const hintScale = Math.min(f, (right - left - 220 * f) / Math.max(1, hint.display.width));
+        size(hint.display, left, bottom - Math.max(1, hint.display.height) * Math.max(0.2, hintScale), Math.max(0.2, hintScale));
+      }
+    }
+    const subtitleScale = Math.min(f, (right - left) / Math.max(1, subtitleWidth));
+    size(subtitle, middle, Math.max(top + 120 * f, textY), subtitleScale);
+  }
+  kit.onScreenChange(layout);
   return {
     root,
     say,
@@ -287,7 +319,8 @@ export async function createHud(game, scope, kit, { width, font, fontPages, stat
     setUpset(on) {
       if (recover && recover.root.visible !== on) {
         recover.root.visible = on;
-        subtitle.y = H - (on ? 253 : 219);
+        upset = on;
+        layout(game.screen);
       }
     },
     update(seconds, { s, kmh, cargo, capacity, odometerKm }) {

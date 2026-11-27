@@ -411,6 +411,17 @@ export function overlap3D(a, b, shrink = 0) {
     ];
 }
 /**
+ * The angle from top to bottom, in degrees, that a camera of `fov` shows on a view of `aspect` (width over height) when
+ * it keeps, on a view narrower than `keepWidthBelow`, the angle from side to side it has at that shape: `fov` itself on
+ * a view as wide or wider, or with `keepWidthBelow` 0. At most 170 degrees.
+ */
+export function fovForAspect3D(fov, aspect, keepWidthBelow) {
+    if (!(keepWidthBelow > 0) || !(aspect > 0) || aspect >= keepWidthBelow)
+        return fov;
+    const across = Math.tan((fov * Math.PI) / 360) * keepWidthBelow;
+    return Math.min(170, (360 / Math.PI) * Math.atan(across / aspect));
+}
+/**
  * The box of a model, in its own units and about its own place: half its size and where its middle is. Every mesh
  * under it counts, placed as it is under it; the model's own place, turn and scale do not.
  */
@@ -617,6 +628,11 @@ export async function createPlay3DSession(options, startFlat, attach) {
     };
     // The camera: where the game put it, what it looks at, and how far a shake has it out of place.
     const base = [0, 6, 12], aim = [0, 0, 0], shaken = [0, 0, 0];
+    // The angle the game asked for, and the shape below which the camera keeps its width instead of its height.
+    let fov = 55, keepWidthBelow = 0;
+    const fitEye = () => {
+        eye.fov = fovForAspect3D(fov, eye.aspect, keepWidthBelow);
+    };
     let followed, turning = false, lookAbove = 0, offset = [0, 4, 8], smooth = 6, shakeAmount = 0, shakeLeft = 0, shakeSpan = 1;
     // The side the sun shines from; a look changes it.
     const sunFrom = [8, 16, 10];
@@ -664,6 +680,7 @@ export async function createPlay3DSession(options, startFlat, attach) {
         settle();
     };
     const settle = () => {
+        fitEye();
         eye.setPosition(base[0] + shaken[0], base[1] + shaken[1], base[2] + shaken[2]);
         eye.lookAt(aim[0], aim[1], aim[2]);
         // The sun keeps its direction and stays over what is looked at, so its shadows are there.
@@ -693,11 +710,22 @@ export async function createPlay3DSession(options, startFlat, attach) {
                 base[2] = value;
         },
         get fov() {
-            return eye.fov;
+            return fov;
         },
         set fov(value) {
-            if (finite(value) && value > 1 && value < 170)
-                eye.fov = value;
+            if (finite(value) && value > 1 && value < 170) {
+                fov = value;
+                fitEye();
+            }
+        },
+        get keepWidthBelow() {
+            return keepWidthBelow;
+        },
+        set keepWidthBelow(value) {
+            if (finite(value) && value >= 0) {
+                keepWidthBelow = value;
+                fitEye();
+            }
         },
         lookAt(x, y, z) {
             if (!finite(x) || !finite(y) || !finite(z))
@@ -1188,7 +1216,8 @@ export async function createPlay3DSession(options, startFlat, attach) {
                 scene.addChild(sky);
                 scene.addChild(sun);
                 settle();
-                app?.show(scene, eye);
+                // The app sets the camera's shape from the canvas before each frame it draws; the angle follows it there.
+                app?.show(scene, eye, { onUpdate: fitEye });
                 surface.show?.(scene, eye);
                 game = extend(given);
             }
