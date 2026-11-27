@@ -76,22 +76,20 @@ SwiftShader. Sections 4 and 5 use Chrome with hardware acceleration.
 - 建议：继续覆盖反复更新文字的高密度场景。768×1024 的测试录到 3 次缓存拒绝，最终显示恢复；保留预算观察与回收验收。 · Keep coverage for densely changing copy and budget recovery. The 768×1024 fixture reported three refusals, with all text ready at the final check.
 - 状态：`253bd197` 下集市原生文字、购买、刷新及合成的自动流程仍通过。 · The market's native labels, purchase, restocking and merging still pass the browser flow at `253bd197`.
 
-### 9. 确认框按舞台单位固定大小 · Confirmation sizes are fixed in design units — 尺寸已在 #510 解决，文案与主题部分解决 / sizing resolved in #510, copy and theme partly resolved
-<!-- engine-note: {"id": "NezhaSea#9", "status": "partly", "topic": "play-confirm-css-targets", "workaround": ["src/ui-market.mjs"]} -->
+### 9. 确认框尺寸、长文案与主题 · Confirmation sizing, long copy and theme — 已解决 / resolved
+<!-- engine-note: {"id": "NezhaSea#9", "status": "resolved", "topic": "play-confirm-css-targets"} -->
 
-- 现象：旧 game.confirm 的按钮高 48 舞台单位，844×390 横屏约 19.5 CSS px。引擎 [#510](https://github.com/cnedwin/Egret_rebuild/pull/510) 后确认框遵循 uiScale，普通台词无需手动适配。当前 PlayConfirmOptions 仍只提供 yes/no/title、问题与按钮文字仍为单行，没有主题选项。 · Formerly a 48-design-unit button measured 19.5 CSS px in a landscape phone. #510 makes confirm follow uiScale. The current options still do not expose skins or paragraph wrapping.
-- 最小复现：540×960 的 play({ fit: 'expand', uiScale: {min:1,max:1.15} })，在 393×852 用 game.confirm 显示短问句和很长的问句，前者原生按钮进入安全区，长句无自动换行。 · With that Play configuration, show a short and a long question at 393×852; the short confirmation fits the safe area but long copy has no automatic paragraph layout.
-- 绕过办法：[src/ui-market.mjs](src/ui-market.mjs) 的普通出售使用 game.confirm，仅当长问句或按钮超宽时使用同样原生的 game.show 换行模态，保留取消焦点、Esc 和 B；没有手算 CSS 点击区，没有 HTML 对话框。 · Normal sales use game.confirm. Only text that cannot fit its native single lines uses an Egret wrapped view, with cancel focus, Esc and B; no CSS-sized targets or HTML dialog.
-- 建议：确认框提供主题和段落布局选项，按钮较长时可自动适应，避免每款游戏重建确认视图。 · Accept a skin and paragraph/long-label layout in confirm.
-- 状态：点击区缩放问题已在 #510 解决；文案/主题能力仍部分缺失。 · The sizing issue is solved by #510; long copy and theme options remain outstanding.
+- 现象：旧确认框在横屏约 19.5 CSS px；#510 解决缩放，但长问题和按钮不能自动换行，也没有独立主题。 · The old confirmation measured about 19.5 CSS px in landscape. #510 fixed scaling, while long questions, labels and theming were still limited.
+- 本作解决：[引擎 #519](https://github.com/cnedwin/Egret_rebuild/pull/519) 增加原生主题和长文字处理；[集市](src/ui-market.mjs) 统一使用 game.confirm，删除手工量宽与备用出售视图。取消仍是默认焦点，Esc/B 及点确认继续按原规则处理。 · Native themed confirm handles long content; the local text measurement and backup dialog are gone. Cancel-first focus, Esc/B and confirmed sale remain unchanged.
+- 复现：393×852 竖屏英文出售长名称法宝，打开确认后旋转横屏、再回竖屏；确认与取消仍只作用于最上层。 · On a 393×852 English screen, sell a long-named treasure, open confirmation, rotate to landscape and back; only the top dialog receives confirmation and cancellation.
+- 状态：尺寸由 #510 解决，文案、主题及重排由 #519 解决；结果以 QUALITY 中的独立屏幕/设备记录为准。 · Sizing was resolved by #510; long text, skin and relayout by #519. See QUALITY for the independent screen and device checks.
 
-### 10. 声明式视图的集市组件 · Market building blocks in declarative views — 部分解决 / partly resolved
-<!-- engine-note: {"id": "NezhaSea#10", "status": "partly", "topic": "play-view-market-building-blocks", "workaround": ["src/ui-market.mjs"]} -->
+### 10. 声明式视图的集市组件 · Market building blocks in declarative views — 已解决 / resolved
+<!-- engine-note: {"id": "NezhaSea#10", "status": "resolved", "topic": "play-view-market-building-blocks"} -->
 
-- 现象：原集市根据画布 CSS 大小手动分页。新版引擎扩充了原生视图能力。 · The previous market chose pages from hand-measured CSS dimensions; the new main expands native view facilities.
-- 游戏里：[src/ui-market.mjs](src/ui-market.mjs) 用原生不同布局、原生滚动面板、标签绑定、叶子按钮、多语言文字和引擎拖放，手机货架/法宝分页与平板同时可见的双栏布局共享命名控件和逻辑。下一波固定底部；没有手写 CSS 舞台投影。 · Native variants, scrolling, bound names, leaf buttons and drag-and-drop share the same controls between phone pages and tablet panes. The Next action stays at the bottom.
-- 建议：原生选中语义页签仍能减少应用绑定；带段落和主题的原生确认见第 9 条。 · Selected-tab semantics and a themed, wrapped native confirm would reduce application code further.
-- 状态：原生屏幕适配和视图缩放已接管原来手写部分；货架、法宝合成、统计和配方的选择是游戏自身逻辑，不是引擎绕过。 · Screen variants and independent scaling now replace the manual adaptation; stock, merge, stats and recipe selection remain application logic.
+- 现象：早期集市根据画布 CSS 大小手工分页，选中页的无障碍语义也需应用补充。 · The early market used hand-measured CSS layouts and lacked native selected-tab semantics.
+- 游戏里：[集市](src/ui-market.mjs) 使用原生安全区、变体、滚动面板、标签绑定、叶子按钮、多语言文字、拖放与原生确认。通过 #519 的 tablist/tab 和 selected 绑定向引擎语义树发布当前页；手机保留货架/法宝双页，平板保持双栏，下一波固定底部。 · Native safe areas, variants, scrolling, bindings, leaf buttons, localization, drag-and-drop and confirm replace the bridges. #519 publishes tablist/tab selection; phone tabs, tablet panes and the fixed Next action are retained.
+- 状态：原生视图接管屏幕适配、分页语义与确认；货架数量、配方、统计和销售数值属于本作规则，并非引擎绕过。 · Screen fitting, page semantics and confirmation are now native; stock, recipes, statistics and prices are application rules.
 
 ### 11. 默认纹理加载器支持 WebP · WebP in the default texture loader — 已在 `95897d78` 解决 / resolved in `95897d78`
 <!-- engine-note: {"id": "NezhaSea#11", "status": "resolved", "topic": "play-webp-loader", "workaround": ["src/ui-screens.mjs"]} -->
@@ -134,11 +132,17 @@ SwiftShader. Sections 4 and 5 use Chrome with hardware acceleration.
 - 状态：#503/#510 已解决。Chromium 真实输入与模拟屏幕专项见 [QUALITY.md](QUALITY.md)，物理设备结论不从模拟外推。 · Resolved by #503/#510; see the current browser regressions in QUALITY.
 
 
-### 16. 多屏检查需要运行中界面入口 · Screen verification needs state entry — 已写入文档 / documented
-<!-- engine-note: {"id": "NezhaSea#16", "status": "documented", "topic": "verify-screens-state-entry", "workaround": ["test/verify-screens.mjs"]} -->
+### 16. 多屏检查需要运行中界面入口 · Screen verification needs state entry — 已在 #519 解决 / resolved in #519
+<!-- engine-note: {"id": "NezhaSea#16", "status": "resolved", "topic": "verify-screens-state-entry"} -->
 
-- 现象：verify --screens 会打开指定页面并检查可见控件；同一个单页游戏进入战斗、集市、确认框和暂停后需要分别检查，但 CLI 没有预置操作/等待指定界面就绪的参数。 · The checker opens a page and inspects visible controls, but a single-page game needs distinct battle, market, confirmation and pause checks. There is no CLI action/readiness hook for those states.
-- 最小复现：在本目录按 README 生成引擎副本后执行 node vendor/egret.mjs verify --screens，检查的是默认加载入口；非默认界面需要另建入口页面。 · Run the screen verifier against the default game entry; a non-default state needs its own entry page.
-- 绕过办法：test/verify-screens.mjs 生成独立、可清理的测试入口并用现有语义测试操作定位状态，然后调用原版引擎检查器。不修改正式 HTML、规则或 vendor。 · Disposable fixture entries set up the desired state using existing test actions, then run the official checker without modifying production or vendor.
-- 建议：可选的场景就绪回调或操作脚本参数，复用同一 URL 和既有验收脚本，并记录实际检查的状态。 · Accept an optional readiness/action script for the same URL and report the captured state.
-- 状态：记录为工具增强建议，现有检查器可通过独立测试页稳定完成。 · Documented tooling improvement; isolated entry pages work.
+- 现象：旧 verify --screens 只能检查默认加载界面。战斗、集市、确认和暂停需要独立测试入口。 · The old checker only covered the initial screen; other states needed disposable entry pages.
+- 本作解决：[引擎 #519](https://github.com/cnedwin/Egret_rebuild/pull/519) 增加受信任本地的 --prepare 脚本。游戏的 [八屏测试](test/verify-screens.mjs) 在原 index.html 打开指定状态，删除独立 HTML 入口及资源链接，不修改运行时或 vendor。 · The trusted local --prepare callback opens each state in the production index, removing duplicate fixture HTML and resource links.
+- 状态：通过五个状态、八种设备与双语检查验证；详情见 QUALITY。 · Tested through the five states, eight profiles and two languages; see QUALITY.
+
+### 17. 下层界面旋转重建导致确认语义被覆盖 · Lower modal variants could displace an upper confirmation — 已在 #519 解决 / resolved in #519
+<!-- engine-note: {"id": "NezhaSea#17", "status": "resolved", "topic": "play-view-modal-semantics-variant-order"} -->
+
+- 现象：出售确认仍显示在最前方，但集市从横屏改为竖屏时重建语义节点，确认的语义控件与焦点消失，Esc 无法取消。库存未变化。 · During rotation the confirmation remained visible, while rebuilding the lower market replaced the active semantic modal; its focus and Escape cancellation were lost, with inventory unchanged.
+- 最小复现：不隐藏下层模态，它带 portrait 变体；在其上打开原生 game.confirm，再改变屏幕方向。对照组去掉变体或禁用下层语义时正常。 · Open native confirm above an active modal with a portrait variant and rotate; either removing the variant or deactivating the lower view avoids the former defect.
+- 本作解决：[引擎 #519](https://github.com/cnedwin/Egret_rebuild/pull/519) 保留变体重建时的语义根与模态优先级，引擎回归仍保持下层活跃，证明无需停用来修语义问题。游戏另在确认未决且屏幕尺寸变化时暂收起过时尺寸的集市和 HUD，答复后恢复最新布局，避免视觉裁切与重建覆盖。 · Native variant rebuilding preserves root identity and modal precedence with the lower view active. Separately, the game temporarily hides stale-size market/HUD artwork during a pending confirmation resize, then restores the current layout on reply; this is visual lifecycle management, not a semantic workaround.
+- 状态：引擎浏览器回归以及集市旋转、取消、点确认的验收见 QUALITY。 · See QUALITY for engine/browser and market rotation, cancel and confirm acceptance.

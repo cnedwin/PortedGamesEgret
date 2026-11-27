@@ -64,6 +64,8 @@ const KEYS = {
     ]),
     button: new Set([
         ...BASE_KEYS,
+        'role',
+        'selected',
         'text',
         'size',
         'color',
@@ -113,11 +115,11 @@ function checkParagraph(value, label) {
     if (density !== undefined && (!finite(density) || density < 0.25 || density > 4))
         throw invalid(label, 'paragraph density');
 }
-/** Checks the parts of one tree and returns its named parts with their kinds. */
+/** Checks one tree, including the semantic ancestry of explicit native tabs. */
 function checkTree(root, where) {
-    const names = new Map();
+    const names = new Map(), tabRoles = new Map();
     let count = 0;
-    const visit = (value, at, depth) => {
+    const visit = (value, at, depth, parentRole, semanticParent = true) => {
         if (++count > MAX_PARTS)
             throw invalid(at, 'a view has at most ' + MAX_PARTS + ' parts');
         if (depth > MAX_DEPTH)
@@ -143,10 +145,29 @@ function checkTree(root, where) {
         const label = name === undefined ? at : at + ' (' + name + ')';
         if (part['semantic'] !== undefined && part['semantic'] !== false)
             throw invalid(label, 'semantic is false');
-        if (part['role'] !== undefined && part['role'] !== 'group' && part['role'] !== 'button')
-            throw invalid(label, 'panel role');
-        if (part['role'] === 'button' && (name === undefined || part['semantic'] === false))
-            throw invalid(label, 'a button role needs a named semantic panel');
+        const role = part['role'];
+        if (type === 'panel') {
+            if (role !== undefined && role !== 'group' && role !== 'button' && role !== 'tablist')
+                throw invalid(label, 'panel role');
+            if (role === 'button' && (name === undefined || part['semantic'] === false))
+                throw invalid(label, 'a button role needs a named semantic panel');
+            if (role === 'tablist') {
+                if (typeof name !== 'string' || part['semantic'] === false || !semanticParent)
+                    throw invalid(label, 'a tablist role needs a named semantic panel');
+                tabRoles.set(name, role);
+            }
+        }
+        if (type === 'button') {
+            if (role !== undefined && role !== 'tab')
+                throw invalid(label, 'button role');
+            if (part['selected'] !== undefined && (role !== 'tab' || typeof part['selected'] !== 'boolean'))
+                throw invalid(label, 'selected is a boolean on a tab');
+            if (role === 'tab') {
+                if (typeof name !== 'string' || part['semantic'] === false || !semanticParent || parentRole !== 'tablist')
+                    throw invalid(label, 'a tab role needs a named semantic button inside a named tablist');
+                tabRoles.set(name, role);
+            }
+        }
         if (part['anchor'] !== undefined && !ANCHORS.has(part['anchor']))
             throw invalid(label, 'anchor');
         for (const key of ['x', 'y'])
@@ -212,13 +233,15 @@ function checkTree(root, where) {
         if (children !== undefined) {
             if (!Array.isArray(children))
                 throw invalid(label, 'children is a list');
+            const nextParent = name !== undefined && type === 'panel' ? (role === 'tablist' ? 'tablist' : 'other') : parentRole;
+            const nextSemantic = semanticParent && part['semantic'] !== false && !(type === 'panel' && role === 'button');
             children.forEach((child, index) => {
-                visit(child, at + '/' + index, depth + 1);
+                visit(child, at + '/' + index, depth + 1, nextParent, nextSemantic);
             });
         }
     };
     visit(root, where, 1);
-    return names;
+    return { names, tabRoles };
 }
 /**
  * Checks a description: every part of a known kind with only the fields of its kind, names that are names and are
@@ -229,7 +252,7 @@ export function checkView(description) {
     if (description === null || typeof description !== 'object')
         throw invalid('view', 'a description is an object');
     for (const key of Object.keys(description))
-        if (!['label', 'root', 'portrait', 'tablet', 'tabletPortrait', 'area', 'modal', 'skin'].includes(key))
+        if (!['label', 'root', 'portrait', 'tablet', 'tabletPortrait', 'area', 'modal', 'skin', 'uiScale'].includes(key))
             throw invalid('view', 'a view has no ' + key);
     if (description.label !== undefined && typeof description.label !== 'string')
         throw invalid('view', 'label');
@@ -237,6 +260,8 @@ export function checkView(description) {
         throw invalid('view', "area is 'safe' or 'screen'");
     if (description.modal !== undefined && typeof description.modal !== 'boolean')
         throw invalid('view', 'modal is true or false');
+    if (description.uiScale !== undefined && typeof description.uiScale !== 'boolean')
+        throw invalid('view', 'uiScale is true or false');
     if (description.skin !== undefined) {
         if (description.skin === null || typeof description.skin !== 'object')
             throw invalid('skin', 'a skin is an object');
@@ -252,19 +277,20 @@ export function checkView(description) {
                 throw invalid('skin', key);
         }
     }
-    const names = checkTree(description.root, 'root');
+    const { names, tabRoles } = checkTree(description.root, 'root');
     for (const variant of ['portrait', 'tablet', 'tabletPortrait']) {
         const parts = description[variant];
         if (parts === undefined)
             continue;
-        const other = checkTree(parts, variant);
-        const missing = [...names.keys()].filter(name => !other.has(name)), extra = [...other.keys()].filter(name => !names.has(name)), changed = [...names].filter(([name, type]) => other.has(name) && other.get(name) !== type).map(([name]) => name);
-        if (missing.length + extra.length + changed.length > 0)
+        const { names: other, tabRoles: otherRoles } = checkTree(parts, variant);
+        const missing = [...names.keys()].filter(name => !other.has(name)), extra = [...other.keys()].filter(name => !names.has(name)), changed = [...names].filter(([name, type]) => other.has(name) && other.get(name) !== type).map(([name]) => name), changedRoles = [...names.keys()].filter(name => other.has(name) && tabRoles.get(name) !== otherRoles.get(name));
+        if (missing.length + extra.length + changed.length + changedRoles.length > 0)
             throw new EgretError('UI_VIEW_VARIANT_MISMATCH', {
                 cause: [
                     missing.length ? 'not in ' + variant + ': ' + missing.join(', ') : '',
                     extra.length ? 'only in ' + variant + ': ' + extra.join(', ') : '',
-                    changed.length ? 'of another kind in ' + variant + ': ' + changed.join(', ') : ''
+                    changed.length ? 'of another kind in ' + variant + ': ' + changed.join(', ') : '',
+                    changedRoles.length ? 'of another tab role in ' + variant + ': ' + changedRoles.join(', ') : ''
                 ]
                     .filter(Boolean)
                     .join('; ') + '.'

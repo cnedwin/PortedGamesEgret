@@ -1,5 +1,9 @@
 # 原生界面迁移验收 · Native UI migration
 
+### 2026-11-27：原生确认与页签 · Native confirmation and tabs
+
+官方引擎 c54c16c946f777970ed1ac838cc663d349246982 纳入 #519：原生主题/自动换行确认替代出售的备用视图与量宽逻辑；命名页签使用 tablist/tab/selected；同一正式入口通过 --prepare 进入五种八屏检查状态。保留原始玩法、数值、存档和美术。以下保留迁移历史证据；当前验收见 QUALITY.md。 · The official engine includes #519: native themed and wrapped confirm replaces the fallback and width gate; named tabs publish native selection; --prepare opens five states at the production entry. Rules, balance, saves and art remain unchanged. Historical migration evidence follows; current acceptance is in QUALITY.md.
+
 旧界面基于 PortedGamesEgret 的 `e85f81ca`，引擎为 `b5628eb`。新版引擎取自 Egret Rebuild main 的 `51b6175d`。首先替换引擎并保留旧界面复跑，随后再迁移界面。规则目录 `src/sim/` 的 Git 树、存档格式和原有中英文文本均保留。
 
 The reference interface is PortedGamesEgret `e85f81ca` with engine `b5628eb`. The engine-only comparison used the old interface with Egret Rebuild main at `51b6175d`. The simulation tree, save format and existing locale catalogue entries are preserved.
