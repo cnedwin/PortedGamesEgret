@@ -299,7 +299,7 @@ function wireKeys() {
 const yieldStartup = () => globalThis.scheduler?.yield?.() ?? new Promise((resolve) => setTimeout(resolve, 0));
 applyLanguage();
 await play({
-  width: FIELD.width, height: FIELD.height, parent: surface, fit: 'expand',
+  width: FIELD.width, height: FIELD.height, parent: surface, fit: 'expand', uiScale: { min: 1, max: 1.15 },
   transparent: true, audio: false, renderMode: 'on-demand', seed: app.seed, semantics: ui.semantics,
   setup(made) {
     game = made;

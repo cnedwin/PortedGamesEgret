@@ -502,7 +502,7 @@ export const GAMES = [
       },
       {
         title: { zh: "白鹭原生界面与输入", en: "Egret views and controls" },
-        description: { zh: "声明式视图管理标题、战斗顶栏和集市。集市支持手机分页、拖放合成及按名称验收。", en: "Declarative views cover the title, combat HUD and market, including compact tabs, drag-to-merge and named-control testing." },
+        description: { zh: "白鹭原生 UI 独立缩放及安全区适配标题、战斗顶栏和集市，支持手机分页、平板双栏、拖放合成与八种屏幕验收。", en: "Native UI scaling and safe-area views adapt the title, combat HUD and market, with phone tabs, tablet panes, drag-to-merge and eight-screen verification." },
         source: 'src/ui-market.mjs',
       },
       {

@@ -47,14 +47,6 @@ html, body { margin: 0; height: 100%; overflow: hidden; overscroll-behavior: non
   }
 }
 #surface { position: absolute; inset: 0; }
-#frame[data-screen="play"] #surface {
-  margin: auto;
-  width: min(100%, 56.25dvh);
-  height: min(100%, 177.7778vw);
-}
-@media (orientation: landscape) {
-  #frame[data-screen="title"] #surface { right: auto; width: min(100%, 610px); }
-}
 #surface canvas { touch-action: none; outline: none; }
 #boot { color: #e8c180; pointer-events: none; }
 #bootError {

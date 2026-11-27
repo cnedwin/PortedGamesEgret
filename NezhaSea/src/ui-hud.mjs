@@ -1,6 +1,8 @@
 import { t } from './i18n.mjs';
-import { FIELD, WAVES, waveSeconds, xpToLevel } from './sim/data.mjs';
-import { GOLD, MUTED, button, label, layoutFor, panel, textWidth, wrap } from './ui-layout.mjs';
+import { WAVES, waveSeconds, xpToLevel } from './sim/data.mjs';
+import { GOLD, MUTED, button, label, panel, showView, textWidth, viewSpace, wrap } from './ui-layout.mjs';
+
+const HUD_MAX_WIDTH = 560;
 
 export function createHud(game, app, rules, pause) {
   let view, hints, introStarted, onlyPaused = false, maxHp = 1;
@@ -39,17 +41,16 @@ export function createHud(game, app, rules, pause) {
     if (!app.run) return;
     syncStats();
     update();
-    const layout = layoutFor(game), { u, safe } = layout;
-    const left = Math.max(0, safe.x) + 6 * u, top = Math.max(0, safe.y) + 5 * u;
-    const right = Math.min(FIELD.width, safe.x + safe.width) - 6 * u;
-    const w = (right - left) / u;
+    // The expanded stage keeps the sea centred, while the native view can
+    // use all of the safe window. Its own units respect Play's uiScale.
+    const { width, height } = viewSpace(game);
+    const w = Math.min(HUD_MAX_WIDTH, width - 12);
     const short = w < 285;
-    const x = (left - safe.x) / u, y = (top - safe.y) / u;
     const labelSize = short ? 12 : 15, pauseW = short ? 52 : 65;
     const normalTimerW = short ? 53 : 78;
     const waveMaxWidth = textWidth(t('wave', { n: WAVES, total: WAVES }), labelSize, true);
-    // In a very narrow landscape battlefield, share the left column vertically.
-    // The pause button keeps its independent 44 CSS pixel tap target.
+    // On a narrow safe area, share the left column vertically. Play's view
+    // scale keeps the pause button at least 44 CSS pixels tall.
     const stackedClock = w - pauseW - normalTimerW - 18 < waveMaxWidth + 8;
     const timerX = stackedClock ? 7 : w - pauseW - normalTimerW - 10;
     const timerW = stackedClock ? w - pauseW - 16 : normalTimerW;
@@ -58,9 +59,8 @@ export function createHud(game, app, rules, pause) {
     const tutorialWords = wrap(t('visualTip'), w - 20, short ? 11 : 13);
     const tutorialH = tutorialWords.split('\n').length * 17 + 14;
     state.tutorial = tutorialWords;
-    const fieldBottom = Math.min(FIELD.height, safe.y + safe.height);
-    const tutorialY = Math.min((fieldBottom - top) / u - 60 - tutorialH, (fieldBottom - top) / u * 0.82);
-    const row = panel(undefined, x, y, w, 143, { children: [
+    const tutorialBottom = Math.max(0, Math.min(60, height - 143 - tutorialH - 10));
+    const row = panel(undefined, 0, 5, w, 143, { anchor: 'top', children: [
       panel(undefined, 0, 0, w, 46, { color: 0x0b2424, alpha: 0.96 }),
       label('wave', 7, 0, waveW, waveH, '', labelSize, { bold: true, color: GOLD }),
       panel(undefined, timerX, timerY, timerW, timerH, { color: 0x193c34, alpha: 1 }),
@@ -79,12 +79,16 @@ export function createHud(game, app, rules, pause) {
       ] }),
       panel('tipPaper', 0, 112, w, 30, { color: 0x102c30, alpha: 0.88, children: [
         label('tip', 4, 0, w - 8, 30, '', short ? 10 : 12, { align: 'center' })
-      ] }),
-      panel('tutorialPaper', 0, tutorialY, w, tutorialH, { color: 0x102c30, alpha: 0.90, children: [
+      ] })
+    ] });
+    const root = panel(undefined, 0, 0, 'fill', 'fill', { children: [
+      row,
+      // Keep the first-wave explanation above the engine's bottom hints bar.
+      panel('tutorialPaper', 0, tutorialBottom, w, tutorialH, { anchor: 'bottom', color: 0x102c30, alpha: 0.90, children: [
         label('tutorial', 6, 0, w - 12, tutorialH, '', short ? 11 : 13, { align: 'center' })
       ] })
     ] });
-    view = layout.show(t('stage'), row, { state, bind });
+    view = showView(game, t('stage'), { root }, { state, bind });
     view.deactivate();
     if (!onlyPaused) view.activate();
   }
@@ -142,8 +146,13 @@ export function createHud(game, app, rules, pause) {
     view?.refresh();
   }
   function exclude(x, y) {
-    const target = view?.rect('pause');
-    return Boolean(target && x >= target.x && x < target.x + target.width && y >= target.y && y < target.y + target.height);
+    const target = view?.visibleRect('pause');
+    if (!target) return false;
+    // Floating stick origins are design coordinates; visibleRect is a
+    // clipped stage rectangle after the view's independent scale.
+    const at = game.toStage(x, y);
+    return at.x >= target.x && at.x < target.x + target.width
+      && at.y >= target.y && at.y < target.y + target.height;
   }
   function close() {
     view?.close();
