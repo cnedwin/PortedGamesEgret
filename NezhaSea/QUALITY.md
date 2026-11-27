@@ -1,5 +1,39 @@
 # 品质验收 · Quality — 哪吒闹海 · Nezha Stirs the Sea
 
+## 2026-11-27 公开版自然二十波 · Natural twenty-wave public release acceptance
+
+- **实际版本 · Tested release:** [公开试玩](https://cnedwin.github.io/PortedGamesEgret/NezhaSea/) 的 PortedGamesEgret main `900840011232aaf34591f53962eef8edbc875683`（[#274](https://github.com/cnedwin/PortedGamesEgret/pull/274)，Pages run `45933384870`），Egret main `c54c16c946f777970ed1ac838cc663d349246982`。实际 HTTPS 获取的入口 SHA-256 为 `baf2844a836b107a7380df141c11080f1135ebd85a230a98976aa2502a54d449`，与已提交资源一致。 · Both hardware runs used the actual public release and verified its runtime bytes, not a local mirror.
+- **方法 · Method:** 两机使用全新的隔离浏览上下文，从少年哪吒、风平、query seed=2 正常开局（按代码推导首次 run seed=27）。程序只读局面以决定走位和交易，实际浏览器鼠标/键盘和物理 Fold7 上的 CDP 触控进行全部移动、升级、购买和合成。未跳关、未加速、未直接调用改状态的规则函数，也未写入 HP、珍珠、装备或存档；两机不同输入及自然出货导致战况不同。 · Algorithm-assisted actual input, not human play. No fixtures, skips, modified values, or save injection. The seed is a reproducibility aid, not proof of identical combat states.
+
+| 实际胜利 · Natural victory | PC: Edge 158, RTX 5090 Laptop, WebGPU | Fold7: Chrome 157, Android 17, Adreno 830, WebGPU |
+|---|---:|---:|
+| 正常波次 · Waves | 20/20 | 20/20 |
+| 游戏计时 · Simulated game seconds | 717.30 | 721.50 |
+| 实际操作及战斗 · Wall-clock run | 740.07 s | 830.36 s |
+| 击杀 · Defeated | 4,758 | 4,754 |
+| 等级 · Level | 26 | 27 |
+| 合成／神器 · Merges/divines | 13/2 | 21/2 |
+| 结束血量 · HP at victory | 75 | 101 |
+| 正常保存胜利、波次和解锁 · Save win, wave, unlocks | plays=1, wins=1, best=21, 3 forms | plays=1, wins=1, best=21, 3 forms |
+| 刷新读档 · Reload save | 完全一致 · identical | 完全一致 · identical |
+
+- **首领 · Bosses:** PC 实际看到第10波夜叉（765 HP）和第20波敖丙（2,720 HP）出现，分别正常转换至集市与胜利，首个观测至转换约 2.83 / 2.23 游戏秒。Fold7 逐帧监测夜叉初始765、最后可见70 HP，下一16.6 ms逻辑时间即进入集市；敖丙初始2,720、最后可见119 HP，下一16.5 ms逻辑时间即胜利。原规则只有首领被实际击败、boss 引用清除后才结束首领波。未把未采到的 HP=0 一帧伪称已观察。 · Both natural boss deaths are established by live Boss telemetry and their rule-driven transitions. Fold7 captures the last living sample and next state, not a sampled zero-HP frame.
+- **整局性能 · Whole-run cadence:** PC 171,483 个间隔、p50/p95/p99 4.2/4.3/4.5 ms、最大 158.1 ms、>50 ms 两次；全场峰敌60。Fold7 43,477 个间隔、16.6/16.7/16.7 ms、最大33.2 ms、>50 ms 零次；全场峰敌55。PC 未记录 LongTask；Fold7 有一条 57 ms LongTask 按观察器交付时归于第1波，不能等同 rAF 长帧，未做原因归属。两台设备均无页面及控制台错误。 · Pooled raw browser rAF intervals (nearest-rank percentiles). A separate LongTask measure is not a displayed-frame interval or GPU execution time.
+- **后期 · Late waves:** PC 16–20 共43,488间隔，p95/p99 4.3/4.5 ms、最大125.0 ms，>50 ms一次；Fold7 共10,943间隔，p95/p99 16.7/16.7 ms、最大33.2 ms，>50 ms零次。下表为每波实际峰值敌数及 P95/最大间隔（毫秒）。 · Actual per-wave enemy peaks, P95/max cadence; the natural routes did not reach the 140-enemy cap.
+
+| 波次 · Wave | PC 峰敌 · Peak | PC P95 / max (ms) | Fold7 峰敌 · Peak | Fold7 P95 / max (ms) |
+|---|---:|---:|---:|---:|
+| 16 | 58 | 4.3 / 29.2 | 41 | 16.7 / 16.7 |
+| 17 | 45 | 4.3 / 29.2 | 41 | 16.7 / 16.7 |
+| 18 | 50 | 4.3 / 25.0 | 42 | 16.7 / 33.2 |
+| 19 | 50 | 4.3 / 46.0 | 32 | 16.7 / 33.2 |
+| 20 | 18 | 4.3 / 125.0 | 6 | 16.7 / 16.8 |
+
+- **残留长帧 · Tail observations:** PC 158.1 和125.0 ms 两次都邻近 Boss 首次截图请求（按游戏时间分别约188和146 ms后）；均无 LongTask。未独立测量截图命令耗时，不能证实由截图、引擎或 GPU 引起，仍保留为真实测量异常。没有反复出现的密集战场长帧或可复现游戏功能故障，因此未为此修改运行时、伤害或平衡。 · Keep both outliers; evidence is insufficient to attribute them to the screenshot, runtime or GPU. No repeated dense-wave defect justified a product change.
+- **验收脚本与存档 · Harness and save:** PC 完整路线通过，重新加载后新角色控件均可用。Fold7 原始脚本142/143检查通过，唯一失败为 Boss 辅助截图数组未记录（将非零负数 rising 当作仍未出场）；真实20波、胜利结算、保存及刷新已先完成，独立逐帧数据也证明两 Boss 正常击败。原失败保留，独立审查通过真实证据，私用修正辅助检测的3项回归通过。未因证据错误篡改游戏或重跑整局；该断言之后的两个新角色实际点选未执行，但重载存档和标题均确认已解锁。 · The phone's original harness is not falsely marked green. Its auxiliary observation assertion failed after valid completion and reload. Independent telemetry/save review and corrected helper checks distinguish a test issue from a product bug.
+- **证据 · Evidence:** [两机逐波精简数据](test/evidence/natural20-public-90084001.json)；[PC 双Boss、结算、解锁标题四图](test/visual-comparison/natural20-public-pc.png)（左上、右上、左下、右下）；[Fold7 结算及解锁标题](test/visual-comparison/natural20-public-fold7.png)（左、右）为实际手机浏览器 surface 捕获，隐私模式系统截图保护不用于游戏视觉证明。 · Evidence is from the actual physical browsers; the phone has no separate Boss screenshot.
+- **范围与限制 · Scope and limits:** 这次仅验收及记录，未改变游戏源代码、规则、数值、素材、存档格式与入口包。真实设备的自动输入而非人工玩家；只覆盖风平、首角色的一次正常通关（并非全难度、全角色或140敌压力测试）；物理手柄、读屏、Safari/Firefox/微信、扬声器实听不在本次覆盖。 · Reproduce by starting a fresh independent browser save on the public page, selecting Young Nezha and Calm, playing every wave with ordinary input and buying/merging only through the market, then checking the two unlocks and reloading. Device and browser settings are restored; prior user saves are untouched.
+
 ## 2026-11-27 #519 原生确认、语义与多屏回归 · Native confirmation, semantics and screen regression
 
 - **版本 · Version:** 正式 Egret main `c54c16c946f777970ed1ac838cc663d349246982`（[#519](https://github.com/cnedwin/Egret_rebuild/pull/519)，[M0](https://github.com/cnedwin/Egret_rebuild/actions/runs/45930055885) 全部通过）。官方 vendor 工具生成 229 个文件；正式启动包 14 个文件、921,475 字节（旧 915,943，+0.60%）。起始 JS 的 SHA-256 为 `baf2844a836b107a7380df141c11080f1135ebd85a230a98976aa2502a54d449`。规则、数值、存档、文字、图片和音频文件均未改。 · Official engine and reproducible launch bundle, with no changes to simulation, balance, saves, copy, art or audio.

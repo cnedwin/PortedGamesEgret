@@ -97,6 +97,8 @@ Nezha Stirs the Sea is a survival action game built with [Egret Rebuild](https:/
 
 本轮引擎 #519：Node 38/38、Chromium 157 SwiftShader 核心 84/84、三尺寸流程 26/26、HUD/摇杆 23/23；正式入口的八设备 × 五状态 × 双语 80/80 均零告警。PC Edge 158 / RTX 5090 Laptop / WebGPU 实际键鼠最终 25/25；三星 Fold7 Android 17 / Chrome 157 / WebGPU 首波与市场 26/26，最终实机双向旋转专项 6/6。原标题和结算基线差异均 0.00%。详见 [本轮品质记录](QUALITY.md)。 · #519 passes 38 Node, 84 browser acceptance, 26 screen journeys, 23 HUD/touch and 80 screen checks; hardware PC 25/25, real Fold7 first-wave/market 26/26 and final rotation 6/6. The approved title/result baselines are unchanged. Device input is injected into the physical browser; the physical controller and complete natural twenty-wave game were not tested.
 
+公开版追加完整自然路线：2026-11-27，PC（Edge 158 / RTX 5090 Laptop / WebGPU）和 Fold7（Chrome 157 / Adreno 830 / WebGPU）均从新档以风平难度、少年哪吒正常打完二十波，实际击败夜叉与敖丙，结算解锁莲花身和三头六臂，刷新读取存档完全一致。实际输入由只读策略辅助；未置入任何测试局面或修改游戏值。Fold7 辅助 Boss 截图断言错误与独立真实通关证据、后期逐波帧率及未测项见 [QUALITY.md](QUALITY.md)。 · Both physical devices complete a natural Calm twenty-wave run, defeat the two bosses, unlock the forms and reload the saved result. The handset's auxiliary observation failure is retained and independently reviewed; full evidence and scope are in QUALITY.
+
 ## 已知问题 · Known issues
 
 白鹭输入、透明画布和软件渲染的历史测量与复现见 [ENGINE-NOTES.md](ENGINE-NOTES.md)。 · See the engine notes for input, transparent canvas and software-rendering measurements.
@@ -113,7 +115,7 @@ Nezha Stirs the Sea is a survival action game built with [Egret Rebuild](https:/
 
 ## 未完成 · Unfinished
 
-物理手柄、读屏软件、Safari、完整二十波及扬声器听感需用对应环境进一步验收。 · Physical gamepads, screen readers, Safari, a full twenty-wave playthrough and speaker listening require separate checks.
+物理手柄、读屏软件、Safari、扬声器听感，以及其他难度、其他角色的自然通关需用对应环境进一步验收。 · Physical gamepads, screen readers, Safari, speaker listening and natural wins with other forms/dangers require separate checks.
 
 ## 目录结构 · Layout
 
