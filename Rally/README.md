@@ -1,4 +1,4 @@
-# Jinxiu Rally · 锦绣飞车
+# 锦绣飞车 · Jinxiu Rally
 
 ## 简介 · Introduction
 
@@ -6,7 +6,7 @@
 
 Jinxiu Rally is an independently developed 3D kart racing demo built with [Egret Rebuild](https://github.com/cnedwin/Egret_rebuild). Eight racers drawn from Chinese tradition share the Mountain and Water Circuit: under the ceremonial gate, up the hill, through the S-bend, over the stone bridge and round the hairpin, drifting for boosts, collecting coins, threading cloud gates and tucking into slipstreams, steering round mud, stone lions and rolling drums, and turning the order around with firecrackers, cuju balls, kites, a somersault cloud and sky rockets. [Play online](https://cnedwin.github.io/PortedGamesEgret/Rally/)
 
-## 玩法 · How to play
+## 玩法与操作 · How to play
 
 | | 键盘 · Keyboard | 手柄 · Gamepad |
 |---|---|---|
@@ -19,9 +19,9 @@ Jinxiu Rally is an independently developed 3D kart racing demo built with [Egret
 | 暂停 · Pause | Esc / P | Start |
 | 静音 · Mute | M | |
 
-触屏设备会显示屏幕按键，并自动踩住油门。比赛中可点小地图下方的暂停键。
+触屏设备会显示屏幕按键，并自动踩住油门。比赛中可点小地图下方的暂停键，PC 也可点击或使用键盘。
 
-Touch screens get on-screen buttons, and the kart accelerates by itself. Tap the pause button below the minimap during a race.
+Touch screens get on-screen buttons, and the kart accelerates by itself. Tap the pause button below the minimap during a race; desktop players may also click it or use the keyboard.
 
 - 转向时按住漂移键过弯，火花由蓝变橙再变紫，松开后获得相应强度的加速。
 - 倒数到“2”之后再踩油门可以弹射起步；踩得太早会熄火。
@@ -109,7 +109,7 @@ npx serve .
 Use Node.js 22 or later and run from this folder:
 
 ```sh
-node --test
+node --test test/*.test.mjs
 ```
 
 不开页面跑完一整场比赛（参数为级别 0 到 2、圈数、种子，均可省略），八辆车都由游戏驾驶，输出每圈的名次和最终成绩，适合检查规则和数值改动：
@@ -120,7 +120,7 @@ Run a whole race without a page (class 0 to 2, laps and seed are optional). The 
 node tools/headless.mjs 1 3 7
 ```
 
-## 引擎用法 · How it uses the engine
+## 引擎能力对照表 · Engine capabilities
 
 游戏使用白鹭 World3D，默认以 WebGL2 绘制。各部分对应的引擎功能如下。
 
@@ -129,7 +129,7 @@ The game uses Egret World3D and draws with WebGL2 by default. Each part maps to 
 | 引擎入口 / API · Entry / API | 在本游戏中的用途 · Use in this game | 文件 · File |
 |---|---|---|
 | `CatmullRomCurve3D` 闭合曲线，等距取样 · closed curve, sampled at equal distances | 赛道中心线 · The circuit's centre line | `src/track.mjs` |
-| `createGeometry3D` 沿赛道生成的带状网格 · strips generated along the track | 路面、路肩、围墙、桥面 · Road, kerbs, walls, bridge deck | `src/tree-models.mjs` |
+| `createGeometry3D` 沿赛道生成的带状网格 · strips generated along the track | 路面、路肩、围墙、桥面 · Road, kerbs, walls, bridge deck | `src/scenery.mjs` |
 | 白鹭 glTF 加载器读取内嵌 PBR 贴图的 GLB，也支持带顶点色的程序网格 · Egret's glTF loader reads GLBs with embedded PBR textures alongside vertex-coloured procedural meshes | 车手、座驾、地标与道具 · Racers, karts, landmarks and props | `src/track-models.mjs` |
 | `createLatheGeometry3D` 旋转成形 · spun from an outline | 轮胎 · Tyres | `src/racers.mjs` |
 | `InstancedMesh3D` 逐实例变换与颜色 · per-instance transform and colour | 树木、花草、灯笼、旌旗、观众、仙鹤、长城、群山 · Trees, verge plants, lanterns, banners, crowd, cranes, long wall, mountains | `src/scenery.mjs` |
@@ -142,6 +142,23 @@ The game uses Egret World3D and draws with WebGL2 by default. Each part maps to 
 | 由像素或画布生成的 `Texture3D` · made from pixels or a canvas | 路面、草地、牌匾、横幅、车徽贴图 · Road, turf, plaque, banner and badge textures | `src/shapes.mjs` |
 | Engine 时钟 · Engine clock，`createWorld3DView`，`startWorld3DLoop` | 帧循环 · Frame loop | `src/main.mjs` |
 | 级联阴影、天空环境光、雾、环境遮蔽、泛光、FXAA · cascaded shadows, sky lighting, fog, ambient occlusion, bloom, FXAA | 画面 · Look | `src/main.mjs` |
+| `createWorld3DOverlay` (`fit: 'expand'`, `portrait`, `uiScale`, `renderMode: 'on-demand'`) | 全屏 3D 上的透明原生界面、安全区适配与按需绘制 · Native overlay, safe-area layout, on-demand drawing | [src/ui/host.mjs](src/ui/host.mjs) |
+| `createUiRoot` | 标题、选择、暂停、故障与战果界面栈 · Screen stack and modal menus | [src/ui/menus.mjs](src/ui/menus.mjs) |
+| `createUiLayerManager` / `createUiScreenStack` | 原生层、模态与返回、焦点恢复 · Layers, modal behavior, back and focus restoration | [src/ui/menus.mjs](src/ui/menus.mjs) |
+| `game.onScreenChange` | 横竖屏保留叠加层及当前操作、原地重排 · Reflow without replacing the overlay or current flow | [src/ui/host.mjs](src/ui/host.mjs) |
+| `createAtlasLabel` | 中英文菜单与文字复用图集 · Bilingual menu text from the engine atlas | [src/ui/kit.mjs](src/ui/kit.mjs) |
+| `createBrowserHoverInput` | 浏览器鼠标悬停 · Native browser hover events | [src/ui/host.mjs](src/ui/host.mjs) |
+| `createActionControl` | 按钮与独立触点的驾驶长按 · Actions and independent held driving contacts | [src/ui/race-touch.mjs](src/ui/race-touch.mjs), [src/ui/kit.mjs](src/ui/kit.mjs) |
+| `createToggleControl` | 音效开关 · Sound toggle | [src/ui/kit.mjs](src/ui/kit.mjs) |
+| `createSelectionGroup` | 车手、级别、圈数选择 · Racer, class and lap choices | [src/ui/kit.mjs](src/ui/kit.mjs) |
+| `createControlKeys` | 键盘操控与可见焦点 · Keyboard controls and visible focus | [src/ui/kit.mjs](src/ui/kit.mjs) |
+| `createHoverControl` | 鼠标悬停反馈 · Pointer hover feedback | [src/ui/kit.mjs](src/ui/kit.mjs) |
+| `pickLanguage` | 旧档及浏览器默认语言 · Language selection from save or browser | [src/settings.mjs](src/settings.mjs) |
+| `createGamepadInput` | 手柄按键边沿，保持原转向曲线 · Gamepad button edges with unchanged steering | [src/input.mjs](src/input.mjs) |
+| `createUiSemantics` / `createBrowserSemantics` | 控件名称、角色、状态、位置和读屏投影 · Accessible names, roles, states and physical bounds | [src/ui/host.mjs](src/ui/host.mjs) |
+| `createUiTester` | 具名操作验收 · Named-control acceptance | [src/ui/host.mjs](src/ui/host.mjs) |
+| `parseBitmapFont` / `createBitmapText` | 计时、速度与比赛数字复用字形纹理 · Fixed glyphs for racing counters | [src/ui/race-font.mjs](src/ui/race-font.mjs) |
+| `Graphics` | 原生赛道缩略图和移动标记 · Retained native minimap and moving marks | [src/ui/race-map.mjs](src/ui/race-map.mjs) |
 
 比赛规则（车辆手感、对手驾驶、道具、圈数与名次）可以在 Node 中整局运行。画面使用程序网格和 [Tripo 模型](assets/track-models/README.md)，音乐和音效由代码生成。
 
@@ -152,12 +169,18 @@ The race rules (handling, rival driving, items, laps and places) can run a whole
 - 2026-11-21 引擎副本升级到 `b5628eb` 后：34 项 Node 测试通过；无头 Chromium 下标题画面牌匾文字方向正确，进入比赛并按住油门 40 秒无控制台错误。 · After the engine update: 34 tests pass, the plaque reads the right way up, and a started race runs clean.
 - 2026-11-21 在提交 `fc1dacb`、Node 22.23.4 下运行 `node --test test/*.test.mjs`：34 项全部通过（车辆手感、对手驾驶、道具、圈数与名次、输入、赛道美术与模型）。 · `node --test` at commit `fc1dacb` with Node 22.23.4: all 34 tests pass.
 - 2026-11-20 `node tools/quality.mjs Rally` 在无头 Chromium + SwiftShader 下测了 16 个自动项，结果见 [QUALITY.md](QUALITY.md)；软件渲染下 3D 赛道几乎画不动，帧时间一项不代表真机。 · The 16 automatic quality items in headless Chromium; its frame time says nothing of real devices.
-- 没有记录在案的真机整局验收。 · No recorded whole race on a real device.
+- 2026-11-27 引擎升级后的旧界面独立提交 `2c06e203`：34/34，整场三圈结果一致，浏览器 verify 无例外。 · Engine-only upgrade: 34/34, identical full three-lap result, browser verify without errors.
+- 原生界面迁移后：Node 26.7.0 的 42 项测试全部通过；固定 seed 7 三圈的排名、计时和事件统计与升级前逐项一致。 · Native migration: 42/42 Node 26.7.0 tests; the fixed seed 7 three-lap order, times and event counts match the pre-upgrade run exactly.
+- 在 Windows Edge / RTX 5090 与 Galaxy Z Fold7 / Adreno 830（实体外屏）分别用高画质、熊猫、固定种子真实输入跑完一圈：PC 9/9、Fold7 14/14 验收项通过；Fold7 双触点真实漂移、越界保持、取消、第二指暂停和回合继续均通过。 · High-quality one-lap races through real browser inputs on the Windows RTX 5090 PC (9/9) and physical Fold7 outer display (14/14), including independent drifting contacts, leaving the touch target, cancellation and second-finger pause/resume.
+- 同一引擎对照，PC 整圈 p95 4.3→4.3 ms，Fold7 16.7→16.7 ms；两台设备的动态比赛 UI 样本均无重复纹理上传，静止菜单不提交重复绘制。 · Same-engine A/B: full-race p95 4.3→4.3 ms on PC and 16.7→16.7 ms on Fold7; no repeated UI texture uploads in the racing samples, and no redundant rendering of static menus.
+- 官方八屏路线每屏实际完赛一圈，9个检查点合计72/72，0错误、0警告。详见 [QUALITY.md](QUALITY.md) 和 [原生控件回执](test/evidence/native-screens/screen-receipts.json)。 · Official eight viewport profiles, each with a real complete lap, 72/72 checkpoints, zero errors or warnings (hardware browser emulation).
+- 正式 `test/accept.mjs` 在硬件浏览器通过53/53，包含四状态八次旋转、赛中双语、原生键盘和模拟手柄、实际道具使用、重赛与载入故障重试；三份审核过的静态截图基线正常对照。 · The formal hardware-browser acceptance passed 53/53, including eight orientation changes in four states, live bilingual UI, keyboard/simulated pad, real item use, rematch and actual resource-failure Retry; all three reviewed screenshot references were compared.
 
 ## 已知问题 · Known issues
 
 - 湖面倒影每三帧才更新一次，快速转弯时倒影会略微滞后。 · The lake's reflection updates every third frame, so it lags a little in fast turns.
-- 品质验收未达标 · Quality items failing（[QUALITY.md](QUALITY.md)，2026-11-21，无头 Chromium + SwiftShader · headless, software rendering）：T2 触控区 ≥ 44×44 CSS px（2 of 4 under 44×44: Sound: On 120×41; Quality: High 137×41）；F1 桌面帧时间 p95 ≤ 16.7 ms（p95 1316.6 ms over 9 frames）；I1 中英文全可切换，英文下无中文（html lang "en", Chinese left: 锦绣飞车 赛车游戏 或上箭头加速 或下箭头刹车 或左右箭头转向）；E2 资源失败有错误界面和重试（1 files refused; no uncaught error; no error screen with a retry）。
+- 2026-11-27 自动品质验收更新（[QUALITY.md](QUALITY.md)）：15/16 通过，仅 F1 在 SwiftShader 软件渲染下为 p95 1509.8 ms（13帧；3D 赛道的无显卡耗时），不可作为真机帧率。PC RTX 5090 同引擎旧/新 UI 的整圈 p95 都为 4.3 ms。 · Automated quality: 15/16; F1 remains 1509.8 ms (13 frames) in SwiftShader software rendering, not physical GPU performance; on the RTX 5090 PC, the old and native UI each measured 4.3 ms p95 during a full lap.
+- 原生一次性控件拖出后松手的激活策略、按钮语义按住状态（[ENGINE-NOTES](ENGINE-NOTES.md) 5–6）。 · Release-outside activation policy and semantic held-button state (items 5–6).
 
 ## 已解决 · Solved
 
@@ -165,18 +188,20 @@ The race rules (handling, rival driving, items, laps and places) can run a whole
 - 系统要求减少动态效果时镜头仍在晃、雷电仍闪白：改用引擎的 `prefersReducedMotion()` / `watchReducedMotion()`（ENGINE-NOTES 第 4 条）。 · Reduced motion is now honoured through the engine's helpers (item 4).
 - 拿到玉佩时第一次绘制它的材质造成卡顿：给玉佩网格加中性的顶点色，复用赛车已经编译过的着色器（`b8b0c07`，ENGINE-NOTES 第 2 条）。 · The jade charm's first draw stalled; it now reuses the karts' programs (item 2).
 - 湖面倒影每帧都重画一次场景：改为每三帧更新一次（`src/scenery.mjs`，`ee391d0`，ENGINE-NOTES 第 3 条）。 · The lake's reflection redrew the scene every frame; it now updates every third frame (item 3).
-- 触屏操作不稳，已修正并稳定下来（`ee391d0`、`cde9ae4`）。 · The touch controls were fixed and steadied.
+- 触屏操作：原生 ActionControl 每个驾驶键独立拥有一个触点；越界依然保持，释放、取消、失焦或暂停后清除；一次性菜单禁止滑出后误触（ENGINE-NOTES 6）。 · Each native driving action owns one contact, retains it outside the button, releases at end/cancel/blur/pause, and discrete menus reject outside releases (item 6).
+- 设置沿用原 JSON 存档键，损坏档案回退到默认值；模型失败显示原生重试和继续选项。 · Settings retain the original JSON key and recover from invalid data; model failures surface native Retry and Continue controls.
+- 2026-11-27 自动品质的 T2、I1、E2 三项从不达标到通过：原生触控区均≥44 CSS 像素、英文无遗留中文的页面语义名、资源加载失败可重试。 · T2, I1 and E2 now pass: minimum sized controls, no residual Chinese in English page accessible names, and a retry for refused resources.
 
 ## 未完成 · Unfinished
 
-- 英文模式下页面上仍有中文（品质 I1），资源加载失败没有错误界面和重试（E2）。 · Chinese left in English mode, no retry after a failed file.
-- 真机上的帧时间和整局触屏验收。 · Frame times and a whole race by touch on real devices.
+- 原生按钮按住状态的读屏投影有待引擎支持（ENGINE-NOTES 5）。 · Semantic projection of a held button awaits engine support (item 5).
+- 继续观察 Fold7 整局出现的偶发长帧（本轮最长 116 ms，两帧超过 50 ms；样本不足以归因于引擎或 UI）；未测 Fold7 实体内屏、中端手机、实际读屏、真手柄、Safari、Firefox 和微信。 · Investigate the occasional Fold7 long frames (116 ms maximum, two over 50 ms in this run; attribution is not established); the physical Fold7 inner screen, mid-range phones, a physical controller, an actual screen reader, Safari, Firefox and WeChat remain untested.
 
-## 目录 · Layout
+## 目录结构 · Layout
 
 | 路径 · Path | 内容 · Contents |
 |---|---|
-| `index.html`, `style.css` | 页面与界面样式 · the page and interface styles |
+| `index.html`, `style.css` | 全屏画布与启动失败文字 · full-screen canvas and startup failure text |
 | `src/main.mjs` | 启动与每帧流程 · start-up and the frame |
 | `src/track.mjs` | 赛道，规则与场景共用 · the circuit, shared by the rules and the scenery |
 | `src/sim.mjs` | 比赛规则，不依赖页面 · the rules of a race, no page needed |
@@ -184,12 +209,26 @@ The race rules (handling, rival driving, items, laps and places) can run a whole
 | `src/scenery.mjs` | 赛道与周围的景物 · the circuit and the land around it |
 | `src/racers.mjs`, `src/shapes.mjs` | 车手与座驾模型，建模用的基础件 · racer and kart models, and the building blocks they are made from |
 | `src/view.mjs` | 车辆、道具、特效和镜头 · karts, items, effects and the camera |
-| `src/hud.mjs`, `src/input.mjs`, `src/audio.mjs` | 界面、输入、音效 · interface, input, sound |
-| `tools/`, `test/` | 无页面运行与规则测试 · headless run and rule tests |
+| `src/hud.mjs`, `src/ui/` | 原生叠加层、菜单、比赛界面、小游戏地图和字形 · native overlay, menus, race HUD, minimap and glyphs |
+| `src/input.mjs`, `src/settings.mjs`, `src/audio.mjs` | 输入合并、旧格式设置存档和声音 · merged input, original settings format and sound |
+| `tools/`, `test/` | 无页面规则测试、浏览器验收与截图基线 · headless rules, browser acceptance and screenshots |
 | `vendor/` | 引擎运行时副本 · the engine runtime copy |
 
-## 引擎与许可 · Engine and license
+## 引擎副本 · Engine copy
 
-`vendor/` 中是新白鹭引擎的运行时副本，采用 Apache-2.0 许可，引擎提交 `b5628eb9997b67cf6163a388f5aa06f321f3833a`，来源和版本见 [vendor/SOURCE.md](vendor/SOURCE.md)。
+`vendor/` 中是新白鹭引擎的运行时副本，采用 Apache-2.0 许可，引擎提交 `8ef4cf3a2cf507c58665de9f9b43c63b379121c2`，来源和版本见 [vendor/SOURCE.md](vendor/SOURCE.md)。
 
-`vendor/` holds a copy of the Egret Rebuild runtime under Apache-2.0; engine commit `b5628eb9997b67cf6163a388f5aa06f321f3833a`; see [vendor/SOURCE.md](vendor/SOURCE.md) for its source and version.
+`vendor/` holds a copy of the Egret Rebuild runtime under Apache-2.0; engine commit `8ef4cf3a2cf507c58665de9f9b43c63b379121c2`; see [vendor/SOURCE.md](vendor/SOURCE.md) for its source and version.
+
+官方生成命令（从引擎 8ef4cf3a 的检出目录运行，入口以 SOURCE.md 为准）：
+
+Official generation command (from the checked-out engine, with the entries in SOURCE.md):
+
+```sh
+node tools/build.mjs
+node tools/vendor-game.mjs <Rally> @egret/engine @egret/engine/world3d @egret/engine/webgl2/world3d @egret/engine/webgpu/world3d @egret/engine/web/kit @egret/engine/ui @egret/engine/ui/semantics @egret/engine/web/semantics @egret/engine/kit @egret/engine/input @egret/engine/input/gamepad @egret/engine/ui/testing @egret/engine/input/hover @egret/engine/web/hover @egret/engine/bitmapfont
+```
+
+详细的逐项界面迁移说明与复跑命令见 [UI-MIGRATION.md](UI-MIGRATION.md)、[QUALITY.md](QUALITY.md)。
+
+See [UI-MIGRATION.md](UI-MIGRATION.md) and [QUALITY.md](QUALITY.md) for the mapping, layout decisions, and reproducible checks.

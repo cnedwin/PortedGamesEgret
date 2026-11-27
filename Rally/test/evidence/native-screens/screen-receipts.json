@@ -1,0 +1,1209 @@
+{
+  "engine": "8ef4cf3a2cf507c58665de9f9b43c63b379121c2",
+  "method": "Official vendor verify --screens --play test/screen-route.mjs, split into two disjoint profile groups; same route and native actual input. Windows hardware browser viewport emulation, not phone hardware.",
+  "profiles": [
+    {
+      "profile": "phone-small",
+      "size": [
+        375,
+        667
+      ],
+      "insets": {
+        "top": 0,
+        "right": 0,
+        "bottom": 0,
+        "left": 0
+      },
+      "gpu": "ANGLE (NVIDIA, NVIDIA GeForce RTX 5090 Laptop GPU (0x00002C58) Direct3D11 vs_5_0 ps_5_0, D3D11)",
+      "pass_": true,
+      "contactSheet": "screen-phone-small.jpg",
+      "checkpoints": [
+        {
+          "state": "title",
+          "count": 4,
+          "minWidth": 102.358,
+          "minHeight": 43.999,
+          "errors": 0,
+          "warnings": 0,
+          "receipt": {
+            "before": 2,
+            "after": 3,
+            "fresh": true
+          },
+          "clock": 0
+        },
+        {
+          "state": "title-en",
+          "count": 4,
+          "minWidth": 102.358,
+          "minHeight": 43.999,
+          "errors": 0,
+          "warnings": 0,
+          "receipt": {
+            "before": 4,
+            "after": 5,
+            "fresh": true
+          },
+          "clock": 0
+        },
+        {
+          "state": "select-en",
+          "count": 16,
+          "minWidth": 90.747,
+          "minHeight": 43.999,
+          "errors": 0,
+          "warnings": 0,
+          "receipt": {
+            "before": 6,
+            "after": 7,
+            "fresh": true
+          },
+          "clock": 0
+        },
+        {
+          "state": "select",
+          "count": 16,
+          "minWidth": 90.747,
+          "minHeight": 43.999,
+          "errors": 0,
+          "warnings": 0,
+          "receipt": {
+            "before": 9,
+            "after": 10,
+            "fresh": true
+          },
+          "clock": 0
+        },
+        {
+          "state": "countdown",
+          "count": 6,
+          "minWidth": 43.999,
+          "minHeight": 43.999,
+          "errors": 0,
+          "warnings": 0,
+          "receipt": {
+            "before": 24,
+            "after": 25,
+            "fresh": true
+          },
+          "clock": 0
+        },
+        {
+          "state": "race",
+          "count": 6,
+          "minWidth": 43.999,
+          "minHeight": 43.999,
+          "errors": 0,
+          "warnings": 0,
+          "receipt": {
+            "before": 38,
+            "after": 39,
+            "fresh": true
+          },
+          "clock": 0.8712000000000011
+        },
+        {
+          "state": "item",
+          "count": 6,
+          "minWidth": 43.999,
+          "minHeight": 43.999,
+          "errors": 0,
+          "warnings": 0,
+          "receipt": {
+            "before": 93,
+            "after": 94,
+            "fresh": true
+          },
+          "clock": 14.575800000000001
+        },
+        {
+          "state": "pause",
+          "count": 6,
+          "minWidth": 106.025,
+          "minHeight": 43.999,
+          "errors": 0,
+          "warnings": 0,
+          "receipt": {
+            "before": 96,
+            "after": 97,
+            "fresh": true
+          },
+          "clock": 14.596699999999998
+        },
+        {
+          "state": "results",
+          "count": 2,
+          "minWidth": 164.537,
+          "minHeight": 43.999,
+          "errors": 0,
+          "warnings": 0,
+          "receipt": {
+            "before": 306,
+            "after": 307,
+            "fresh": true
+          },
+          "clock": 63.81529999999999
+        }
+      ],
+      "finish": {
+        "time": 63.81529999999999,
+        "lap": 1,
+        "place": 8
+      },
+      "actualResults": 8
+    },
+    {
+      "profile": "phone-notch",
+      "size": [
+        393,
+        852
+      ],
+      "insets": {
+        "top": 59,
+        "right": 0,
+        "bottom": 34,
+        "left": 0
+      },
+      "gpu": "ANGLE (NVIDIA, NVIDIA GeForce RTX 5090 Laptop GPU (0x00002C58) Direct3D11 vs_5_0 ps_5_0, D3D11)",
+      "pass_": true,
+      "contactSheet": "screen-phone-notch.jpg",
+      "checkpoints": [
+        {
+          "state": "title",
+          "count": 4,
+          "minWidth": 107.919,
+          "minHeight": 44.914,
+          "errors": 0,
+          "warnings": 0,
+          "receipt": {
+            "before": 3,
+            "after": 4,
+            "fresh": true
+          },
+          "clock": 0
+        },
+        {
+          "state": "title-en",
+          "count": 4,
+          "minWidth": 107.919,
+          "minHeight": 44.914,
+          "errors": 0,
+          "warnings": 0,
+          "receipt": {
+            "before": 8,
+            "after": 9,
+            "fresh": true
+          },
+          "clock": 0
+        },
+        {
+          "state": "select-en",
+          "count": 16,
+          "minWidth": 96.067,
+          "minHeight": 44.914,
+          "errors": 0,
+          "warnings": 0,
+          "receipt": {
+            "before": 13,
+            "after": 14,
+            "fresh": true
+          },
+          "clock": 0
+        },
+        {
+          "state": "select",
+          "count": 16,
+          "minWidth": 96.067,
+          "minHeight": 44.914,
+          "errors": 0,
+          "warnings": 0,
+          "receipt": {
+            "before": 18,
+            "after": 19,
+            "fresh": true
+          },
+          "clock": 0
+        },
+        {
+          "state": "countdown",
+          "count": 6,
+          "minWidth": 44.914,
+          "minHeight": 44.914,
+          "errors": 0,
+          "warnings": 0,
+          "receipt": {
+            "before": 34,
+            "after": 35,
+            "fresh": true
+          },
+          "clock": 0
+        },
+        {
+          "state": "race",
+          "count": 6,
+          "minWidth": 44.914,
+          "minHeight": 44.914,
+          "errors": 0,
+          "warnings": 0,
+          "receipt": {
+            "before": 50,
+            "after": 51,
+            "fresh": true
+          },
+          "clock": 1.1880999999999968
+        },
+        {
+          "state": "item",
+          "count": 6,
+          "minWidth": 44.914,
+          "minHeight": 44.914,
+          "errors": 0,
+          "warnings": 0,
+          "receipt": {
+            "before": 107,
+            "after": 108,
+            "fresh": true
+          },
+          "clock": 14.8365
+        },
+        {
+          "state": "pause",
+          "count": 6,
+          "minWidth": 111.662,
+          "minHeight": 44.914,
+          "errors": 0,
+          "warnings": 0,
+          "receipt": {
+            "before": 112,
+            "after": 113,
+            "fresh": true
+          },
+          "clock": 14.848899999999999
+        },
+        {
+          "state": "results",
+          "count": 2,
+          "minWidth": 173.107,
+          "minHeight": 44.914,
+          "errors": 0,
+          "warnings": 0,
+          "receipt": {
+            "before": 321,
+            "after": 322,
+            "fresh": true
+          },
+          "clock": 63.91509999999998
+        }
+      ],
+      "finish": {
+        "time": 63.91509999999998,
+        "lap": 1,
+        "place": 8
+      },
+      "actualResults": 8
+    },
+    {
+      "profile": "phone-notch-wide",
+      "size": [
+        852,
+        393
+      ],
+      "insets": {
+        "top": 0,
+        "right": 59,
+        "bottom": 21,
+        "left": 59
+      },
+      "gpu": "ANGLE (NVIDIA, NVIDIA GeForce RTX 5090 Laptop GPU (0x00002C58) Direct3D11 vs_5_0 ps_5_0, D3D11)",
+      "pass_": true,
+      "contactSheet": "screen-phone-notch-wide.jpg",
+      "checkpoints": [
+        {
+          "state": "title",
+          "count": 4,
+          "minWidth": 105.833,
+          "minHeight": 43.999,
+          "errors": 0,
+          "warnings": 0,
+          "receipt": {
+            "before": 2,
+            "after": 3,
+            "fresh": true
+          },
+          "clock": 0
+        },
+        {
+          "state": "title-en",
+          "count": 4,
+          "minWidth": 105.833,
+          "minHeight": 43.999,
+          "errors": 0,
+          "warnings": 0,
+          "receipt": {
+            "before": 5,
+            "after": 6,
+            "fresh": true
+          },
+          "clock": 0
+        },
+        {
+          "state": "select-en",
+          "count": 16,
+          "minWidth": 54.467,
+          "minHeight": 43.999,
+          "errors": 0,
+          "warnings": 0,
+          "receipt": {
+            "before": 8,
+            "after": 9,
+            "fresh": true
+          },
+          "clock": 0
+        },
+        {
+          "state": "select",
+          "count": 16,
+          "minWidth": 54.467,
+          "minHeight": 43.999,
+          "errors": 0,
+          "warnings": 0,
+          "receipt": {
+            "before": 12,
+            "after": 13,
+            "fresh": true
+          },
+          "clock": 0
+        },
+        {
+          "state": "countdown",
+          "count": 6,
+          "minWidth": 44.0,
+          "minHeight": 43.999,
+          "errors": 0,
+          "warnings": 0,
+          "receipt": {
+            "before": 28,
+            "after": 29,
+            "fresh": true
+          },
+          "clock": 0
+        },
+        {
+          "state": "race",
+          "count": 6,
+          "minWidth": 44.0,
+          "minHeight": 43.999,
+          "errors": 0,
+          "warnings": 0,
+          "receipt": {
+            "before": 44,
+            "after": 45,
+            "fresh": true
+          },
+          "clock": 1.1919000000000004
+        },
+        {
+          "state": "item",
+          "count": 6,
+          "minWidth": 44.0,
+          "minHeight": 43.999,
+          "errors": 0,
+          "warnings": 0,
+          "receipt": {
+            "before": 100,
+            "after": 101,
+            "fresh": true
+          },
+          "clock": 14.789599999999995
+        },
+        {
+          "state": "pause",
+          "count": 6,
+          "minWidth": 142.999,
+          "minHeight": 43.999,
+          "errors": 0,
+          "warnings": 0,
+          "receipt": {
+            "before": 105,
+            "after": 106,
+            "fresh": true
+          },
+          "clock": 14.8104
+        },
+        {
+          "state": "results",
+          "count": 2,
+          "minWidth": 297.915,
+          "minHeight": 43.999,
+          "errors": 0,
+          "warnings": 0,
+          "receipt": {
+            "before": 315,
+            "after": 316,
+            "fresh": true
+          },
+          "clock": 63.96020000000001
+        }
+      ],
+      "finish": {
+        "time": 63.96020000000001,
+        "lap": 1,
+        "place": 8
+      },
+      "actualResults": 8
+    },
+    {
+      "profile": "phone-tall",
+      "size": [
+        360,
+        800
+      ],
+      "insets": {
+        "top": 24,
+        "right": 0,
+        "bottom": 0,
+        "left": 0
+      },
+      "gpu": "ANGLE (NVIDIA, NVIDIA GeForce RTX 5090 Laptop GPU (0x00002C58) Direct3D11 vs_5_0 ps_5_0, D3D11)",
+      "pass_": true,
+      "contactSheet": "screen-phone-tall.jpg",
+      "checkpoints": [
+        {
+          "state": "title",
+          "count": 4,
+          "minWidth": 97.165,
+          "minHeight": 44.0,
+          "errors": 0,
+          "warnings": 0,
+          "receipt": {
+            "before": 2,
+            "after": 3,
+            "fresh": true
+          },
+          "clock": 0
+        },
+        {
+          "state": "title-en",
+          "count": 4,
+          "minWidth": 97.165,
+          "minHeight": 44.0,
+          "errors": 0,
+          "warnings": 0,
+          "receipt": {
+            "before": 6,
+            "after": 7,
+            "fresh": true
+          },
+          "clock": 0
+        },
+        {
+          "state": "select-en",
+          "count": 16,
+          "minWidth": 85.554,
+          "minHeight": 44.0,
+          "errors": 0,
+          "warnings": 0,
+          "receipt": {
+            "before": 10,
+            "after": 11,
+            "fresh": true
+          },
+          "clock": 0
+        },
+        {
+          "state": "select",
+          "count": 16,
+          "minWidth": 85.554,
+          "minHeight": 44.0,
+          "errors": 0,
+          "warnings": 0,
+          "receipt": {
+            "before": 14,
+            "after": 15,
+            "fresh": true
+          },
+          "clock": 0
+        },
+        {
+          "state": "countdown",
+          "count": 6,
+          "minWidth": 43.999,
+          "minHeight": 44.0,
+          "errors": 0,
+          "warnings": 0,
+          "receipt": {
+            "before": 30,
+            "after": 31,
+            "fresh": true
+          },
+          "clock": 0
+        },
+        {
+          "state": "race",
+          "count": 6,
+          "minWidth": 43.999,
+          "minHeight": 44.0,
+          "errors": 0,
+          "warnings": 0,
+          "receipt": {
+            "before": 45,
+            "after": 46,
+            "fresh": true
+          },
+          "clock": 0.966899999999999
+        },
+        {
+          "state": "item",
+          "count": 6,
+          "minWidth": 43.999,
+          "minHeight": 44.0,
+          "errors": 0,
+          "warnings": 0,
+          "receipt": {
+            "before": 101,
+            "after": 102,
+            "fresh": true
+          },
+          "clock": 14.670599999999997
+        },
+        {
+          "state": "pause",
+          "count": 6,
+          "minWidth": 100.832,
+          "minHeight": 44.0,
+          "errors": 0,
+          "warnings": 0,
+          "receipt": {
+            "before": 105,
+            "after": 106,
+            "fresh": true
+          },
+          "clock": 14.6832
+        },
+        {
+          "state": "results",
+          "count": 2,
+          "minWidth": 156.748,
+          "minHeight": 44.0,
+          "errors": 0,
+          "warnings": 0,
+          "receipt": {
+            "before": 319,
+            "after": 320,
+            "fresh": true
+          },
+          "clock": 65.1194
+        }
+      ],
+      "finish": {
+        "time": 65.1194,
+        "lap": 1,
+        "place": 8
+      },
+      "actualResults": 8
+    },
+    {
+      "profile": "tablet",
+      "size": [
+        768,
+        1024
+      ],
+      "insets": {
+        "top": 0,
+        "right": 0,
+        "bottom": 0,
+        "left": 0
+      },
+      "gpu": "ANGLE (NVIDIA, NVIDIA GeForce RTX 5090 Laptop GPU (0x00002C58) Direct3D11 vs_5_0 ps_5_0, D3D11)",
+      "pass_": true,
+      "contactSheet": "screen-tablet.jpg",
+      "checkpoints": [
+        {
+          "state": "title",
+          "count": 4,
+          "minWidth": 177.5,
+          "minHeight": 60.0,
+          "errors": 0,
+          "warnings": 0,
+          "receipt": {
+            "before": 2,
+            "after": 3,
+            "fresh": true
+          },
+          "clock": 0
+        },
+        {
+          "state": "title-en",
+          "count": 4,
+          "minWidth": 177.5,
+          "minHeight": 60.0,
+          "errors": 0,
+          "warnings": 0,
+          "receipt": {
+            "before": 6,
+            "after": 7,
+            "fresh": true
+          },
+          "clock": 0
+        },
+        {
+          "state": "select-en",
+          "count": 16,
+          "minWidth": 90.125,
+          "minHeight": 60.0,
+          "errors": 0,
+          "warnings": 0,
+          "receipt": {
+            "before": 10,
+            "after": 11,
+            "fresh": true
+          },
+          "clock": 0
+        },
+        {
+          "state": "select",
+          "count": 16,
+          "minWidth": 90.125,
+          "minHeight": 60.0,
+          "errors": 0,
+          "warnings": 0,
+          "receipt": {
+            "before": 15,
+            "after": 16,
+            "fresh": true
+          },
+          "clock": 0
+        },
+        {
+          "state": "countdown",
+          "count": 6,
+          "minWidth": 60.0,
+          "minHeight": 60.0,
+          "errors": 0,
+          "warnings": 0,
+          "receipt": {
+            "before": 33,
+            "after": 34,
+            "fresh": true
+          },
+          "clock": 0
+        },
+        {
+          "state": "race",
+          "count": 6,
+          "minWidth": 60.0,
+          "minHeight": 60.0,
+          "errors": 0,
+          "warnings": 0,
+          "receipt": {
+            "before": 49,
+            "after": 50,
+            "fresh": true
+          },
+          "clock": 1.2921000000000014
+        },
+        {
+          "state": "item",
+          "count": 6,
+          "minWidth": 60.0,
+          "minHeight": 60.0,
+          "errors": 0,
+          "warnings": 0,
+          "receipt": {
+            "before": 105,
+            "after": 106,
+            "fresh": true
+          },
+          "clock": 14.888700000000004
+        },
+        {
+          "state": "pause",
+          "count": 6,
+          "minWidth": 195.0,
+          "minHeight": 60.0,
+          "errors": 0,
+          "warnings": 0,
+          "receipt": {
+            "before": 111,
+            "after": 112,
+            "fresh": true
+          },
+          "clock": 14.926200000000005
+        },
+        {
+          "state": "results",
+          "count": 2,
+          "minWidth": 352.5,
+          "minHeight": 60.0,
+          "errors": 0,
+          "warnings": 0,
+          "receipt": {
+            "before": 332,
+            "after": 333,
+            "fresh": true
+          },
+          "clock": 66.41889999999997
+        }
+      ],
+      "finish": {
+        "time": 66.41889999999997,
+        "lap": 1,
+        "place": 8
+      },
+      "actualResults": 8
+    },
+    {
+      "profile": "tablet-wide",
+      "size": [
+        1024,
+        768
+      ],
+      "insets": {
+        "top": 0,
+        "right": 0,
+        "bottom": 0,
+        "left": 0
+      },
+      "gpu": "ANGLE (NVIDIA, NVIDIA GeForce RTX 5090 Laptop GPU (0x00002C58) Direct3D11 vs_5_0 ps_5_0, D3D11)",
+      "pass_": true,
+      "contactSheet": "screen-tablet-wide.jpg",
+      "checkpoints": [
+        {
+          "state": "title",
+          "count": 4,
+          "minWidth": 151.467,
+          "minHeight": 51.2,
+          "errors": 0,
+          "warnings": 0,
+          "receipt": {
+            "before": 2,
+            "after": 3,
+            "fresh": true
+          },
+          "clock": 0
+        },
+        {
+          "state": "title-en",
+          "count": 4,
+          "minWidth": 151.467,
+          "minHeight": 51.2,
+          "errors": 0,
+          "warnings": 0,
+          "receipt": {
+            "before": 7,
+            "after": 8,
+            "fresh": true
+          },
+          "clock": 0
+        },
+        {
+          "state": "select-en",
+          "count": 16,
+          "minWidth": 77.073,
+          "minHeight": 51.2,
+          "errors": 0,
+          "warnings": 0,
+          "receipt": {
+            "before": 12,
+            "after": 13,
+            "fresh": true
+          },
+          "clock": 0
+        },
+        {
+          "state": "select",
+          "count": 16,
+          "minWidth": 77.073,
+          "minHeight": 51.2,
+          "errors": 0,
+          "warnings": 0,
+          "receipt": {
+            "before": 17,
+            "after": 18,
+            "fresh": true
+          },
+          "clock": 0
+        },
+        {
+          "state": "countdown",
+          "count": 6,
+          "minWidth": 51.2,
+          "minHeight": 51.2,
+          "errors": 0,
+          "warnings": 0,
+          "receipt": {
+            "before": 34,
+            "after": 35,
+            "fresh": true
+          },
+          "clock": 0
+        },
+        {
+          "state": "race",
+          "count": 6,
+          "minWidth": 51.2,
+          "minHeight": 51.2,
+          "errors": 0,
+          "warnings": 0,
+          "receipt": {
+            "before": 51,
+            "after": 52,
+            "fresh": true
+          },
+          "clock": 1.3130000000000006
+        },
+        {
+          "state": "item",
+          "count": 6,
+          "minWidth": 51.2,
+          "minHeight": 51.2,
+          "errors": 0,
+          "warnings": 0,
+          "receipt": {
+            "before": 108,
+            "after": 109,
+            "fresh": true
+          },
+          "clock": 14.933399999999999
+        },
+        {
+          "state": "pause",
+          "count": 6,
+          "minWidth": 166.4,
+          "minHeight": 51.2,
+          "errors": 0,
+          "warnings": 0,
+          "receipt": {
+            "before": 114,
+            "after": 115,
+            "fresh": true
+          },
+          "clock": 14.958400000000001
+        },
+        {
+          "state": "results",
+          "count": 2,
+          "minWidth": 346.667,
+          "minHeight": 51.2,
+          "errors": 0,
+          "warnings": 0,
+          "receipt": {
+            "before": 323,
+            "after": 324,
+            "fresh": true
+          },
+          "clock": 66.87149999999991
+        }
+      ],
+      "finish": {
+        "time": 63.74229999999993,
+        "lap": 1,
+        "place": 7
+      },
+      "actualResults": 8
+    },
+    {
+      "profile": "foldable",
+      "size": [
+        884,
+        1104
+      ],
+      "insets": {
+        "top": 0,
+        "right": 0,
+        "bottom": 0,
+        "left": 0
+      },
+      "gpu": "ANGLE (NVIDIA, NVIDIA GeForce RTX 5090 Laptop GPU (0x00002C58) Direct3D11 vs_5_0 ps_5_0, D3D11)",
+      "pass_": true,
+      "contactSheet": "screen-foldable.jpg",
+      "checkpoints": [
+        {
+          "state": "title",
+          "count": 4,
+          "minWidth": 177.5,
+          "minHeight": 60.0,
+          "errors": 0,
+          "warnings": 0,
+          "receipt": {
+            "before": 2,
+            "after": 3,
+            "fresh": true
+          },
+          "clock": 0
+        },
+        {
+          "state": "title-en",
+          "count": 4,
+          "minWidth": 177.5,
+          "minHeight": 60.0,
+          "errors": 0,
+          "warnings": 0,
+          "receipt": {
+            "before": 9,
+            "after": 10,
+            "fresh": true
+          },
+          "clock": 0
+        },
+        {
+          "state": "select-en",
+          "count": 16,
+          "minWidth": 99.225,
+          "minHeight": 60.0,
+          "errors": 0,
+          "warnings": 0,
+          "receipt": {
+            "before": 16,
+            "after": 17,
+            "fresh": true
+          },
+          "clock": 0
+        },
+        {
+          "state": "select",
+          "count": 16,
+          "minWidth": 99.225,
+          "minHeight": 60.0,
+          "errors": 0,
+          "warnings": 0,
+          "receipt": {
+            "before": 23,
+            "after": 24,
+            "fresh": true
+          },
+          "clock": 0
+        },
+        {
+          "state": "countdown",
+          "count": 6,
+          "minWidth": 60.0,
+          "minHeight": 60.0,
+          "errors": 0,
+          "warnings": 0,
+          "receipt": {
+            "before": 42,
+            "after": 43,
+            "fresh": true
+          },
+          "clock": 0
+        },
+        {
+          "state": "race",
+          "count": 6,
+          "minWidth": 60.0,
+          "minHeight": 60.0,
+          "errors": 0,
+          "warnings": 0,
+          "receipt": {
+            "before": 59,
+            "after": 60,
+            "fresh": true
+          },
+          "clock": 1.487400000000001
+        },
+        {
+          "state": "item",
+          "count": 6,
+          "minWidth": 60.0,
+          "minHeight": 60.0,
+          "errors": 0,
+          "warnings": 0,
+          "receipt": {
+            "before": 118,
+            "after": 119,
+            "fresh": true
+          },
+          "clock": 15.476099999999999
+        },
+        {
+          "state": "pause",
+          "count": 6,
+          "minWidth": 195.0,
+          "minHeight": 60.0,
+          "errors": 0,
+          "warnings": 0,
+          "receipt": {
+            "before": 126,
+            "after": 127,
+            "fresh": true
+          },
+          "clock": 15.501099999999997
+        },
+        {
+          "state": "results",
+          "count": 2,
+          "minWidth": 406.25,
+          "minHeight": 60.0,
+          "errors": 0,
+          "warnings": 0,
+          "receipt": {
+            "before": 344,
+            "after": 345,
+            "fresh": true
+          },
+          "clock": 66.16729999999998
+        }
+      ],
+      "finish": {
+        "time": 66.16729999999998,
+        "lap": 1,
+        "place": 8
+      },
+      "actualResults": 8
+    },
+    {
+      "profile": "desktop",
+      "size": [
+        1920,
+        1080
+      ],
+      "insets": {
+        "top": 0,
+        "right": 0,
+        "bottom": 0,
+        "left": 0
+      },
+      "gpu": "ANGLE (NVIDIA, NVIDIA GeForce RTX 5090 Laptop GPU (0x00002C58) Direct3D11 vs_5_0 ps_5_0, D3D11)",
+      "pass_": true,
+      "contactSheet": "screen-desktop.jpg",
+      "checkpoints": [
+        {
+          "state": "title",
+          "count": 4,
+          "minWidth": 194.167,
+          "minHeight": 60.0,
+          "errors": 0,
+          "warnings": 0,
+          "receipt": {
+            "before": 2,
+            "after": 3,
+            "fresh": true
+          },
+          "clock": 0
+        },
+        {
+          "state": "title-en",
+          "count": 4,
+          "minWidth": 194.167,
+          "minHeight": 60.0,
+          "errors": 0,
+          "warnings": 0,
+          "receipt": {
+            "before": 5,
+            "after": 6,
+            "fresh": true
+          },
+          "clock": 0
+        },
+        {
+          "state": "select-en",
+          "count": 16,
+          "minWidth": 100.85,
+          "minHeight": 60.0,
+          "errors": 0,
+          "warnings": 0,
+          "receipt": {
+            "before": 8,
+            "after": 9,
+            "fresh": true
+          },
+          "clock": 0
+        },
+        {
+          "state": "select",
+          "count": 16,
+          "minWidth": 100.85,
+          "minHeight": 60.0,
+          "errors": 0,
+          "warnings": 0,
+          "receipt": {
+            "before": 11,
+            "after": 12,
+            "fresh": true
+          },
+          "clock": 0
+        },
+        {
+          "state": "countdown",
+          "count": 1,
+          "minWidth": 60.0,
+          "minHeight": 60.0,
+          "errors": 0,
+          "warnings": 0,
+          "receipt": {
+            "before": 27,
+            "after": 28,
+            "fresh": true
+          },
+          "clock": 0
+        },
+        {
+          "state": "race",
+          "count": 1,
+          "minWidth": 60.0,
+          "minHeight": 60.0,
+          "errors": 0,
+          "warnings": 0,
+          "receipt": {
+            "before": 41,
+            "after": 42,
+            "fresh": true
+          },
+          "clock": 1.3630999999999993
+        },
+        {
+          "state": "item",
+          "count": 1,
+          "minWidth": 60.0,
+          "minHeight": 60.0,
+          "errors": 0,
+          "warnings": 0,
+          "receipt": {
+            "before": 96,
+            "after": 97,
+            "fresh": true
+          },
+          "clock": 15.051100000000002
+        },
+        {
+          "state": "pause",
+          "count": 6,
+          "minWidth": 195.0,
+          "minHeight": 60.0,
+          "errors": 0,
+          "warnings": 0,
+          "receipt": {
+            "before": 100,
+            "after": 101,
+            "fresh": true
+          },
+          "clock": 15.055400000000002
+        },
+        {
+          "state": "results",
+          "count": 2,
+          "minWidth": 406.25,
+          "minHeight": 60.0,
+          "errors": 0,
+          "warnings": 0,
+          "receipt": {
+            "before": 315,
+            "after": 316,
+            "fresh": true
+          },
+          "clock": 65.5449
+        }
+      ],
+      "finish": {
+        "time": 65.5449,
+        "lap": 1,
+        "place": 8
+      },
+      "actualResults": 8
+    }
+  ],
+  "totalCheckpoints": 72,
+  "errors": 0,
+  "warnings": 0
+}

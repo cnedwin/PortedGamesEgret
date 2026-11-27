@@ -1,214 +1,172 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { createInput } from '../src/input.mjs';
+import '../vendor/node-register.mjs';
+const { createEngine, DisplayObjectContainer } = await import('@egret/engine');
+const { createPointerInput } = await import('@egret/engine/input');
+const { createInput } = await import('../src/input.mjs');
+const { bindRaceAction } = await import('../src/ui/race-touch.mjs');
 
-class PointerSurface {
-  listeners = new Map();
-  captures = new Set();
-  classes = new Set();
-  classList = {
-    add: name => this.classes.add(name),
-    remove: name => this.classes.delete(name),
-    contains: name => this.classes.has(name),
+async function setup(t, enabled = true) {
+  const browser = new EventTarget(), page = new EventTarget(), devices = { getGamepads: () => [] };
+  const input = createInput({ browser, page, devices });
+  const engine = await createEngine({ host: {
+    surface: {}, start() {}, stop() {}, async close() {}, setTimeout() { return () => {}; },
+  } });
+  const scope = engine.createScope();
+  const pointer = createPointerInput({ engine, scope, width: 360, height: 100, capacity: 8 });
+  const buttons = {}, targets = {}, locations = {}, commands = [];
+  const host = { pointer, scope, metrics: () => ({ scale: 1 }) };
+  for (const [index, name] of ['left', 'right', 'drift', 'brake', 'item', 'pause'].entries()) {
+    const target = scope.use(new DisplayObjectContainer());
+    target.x = index * 60;
+    target.hitArea = { x: 0, y: 0, width: 48, height: 48 };
+    engine.stage.addChild(target);
+    targets[name] = target;
+    locations[name] = target.x + 24;
+    buttons[name] = bindRaceAction(host, target, {
+      name, pause: name === 'pause', onHeld: input.setTouchControl,
+      onActivate: () => { if (name === 'pause') { commands.push('pause'); input.onCommand?.('pause'); } },
+    });
+  }
+  const setEnabled = on => {
+    input.setTouchEnabled(on);
+    Object.values(buttons).forEach(button => button.setAvailable(on));
   };
-  constructor(name) {
-    this.dataset = { touch: name };
-  }
-  addEventListener(type, listener) {
-    if (!this.listeners.has(type)) this.listeners.set(type, []);
-    this.listeners.get(type).push(listener);
-  }
-  dispatch(type, fields = {}) {
-    const event = { type, target: this, preventDefault() {}, ...fields };
-    for (const listener of this.listeners.get(type) ?? []) listener(event);
-  }
-  getBoundingClientRect() { return { left: 0, top: 0, width: 100, height: 100 }; }
-  setPointerCapture(id) { this.captures.add(id); }
-  hasPointerCapture(id) { return this.captures.has(id); }
-  releasePointerCapture(id) { this.captures.delete(id); }
-}
-
-function setup(t, enabled = true) {
-  const browser = new PointerSurface();
-  const document = new PointerSurface();
-  const touchRoot = new PointerSurface();
-  const elsewhere = new PointerSurface();
-  const pause = new PointerSurface();
-  const buttons = Object.fromEntries(['left', 'right', 'drift', 'brake', 'item'].map(name => [name, new PointerSurface(name)]));
-  touchRoot.querySelectorAll = () => Object.values(buttons);
-  const originals = new Map();
-  for (const [name, value] of Object.entries({
-    window: browser,
-    addEventListener: browser.addEventListener.bind(browser),
-    document,
-    navigator: { getGamepads: () => [] },
-    HTMLInputElement: class {},
-  })) {
-    originals.set(name, Object.getOwnPropertyDescriptor(globalThis, name));
-    Object.defineProperty(globalThis, name, { value, configurable: true });
-  }
-  t.after(() => {
-    for (const [name, original] of originals) {
-      if (original) Object.defineProperty(globalThis, name, original);
-      else delete globalThis[name];
-    }
+  input.onClearTouch = () => Object.values(buttons).forEach(button => button.release());
+  setEnabled(enabled);
+  let time = 0;
+  const begin = (name, id, x = locations[name], y = 24) => pointer.begin({
+    pointerId: id, pointerType: 'touch', globalX: x, globalY: y, buttons: 1, timestamp: ++time * 10,
   });
-  const input = createInput(touchRoot, pause);
-  if (enabled) input.setTouchEnabled?.(true);
-  const pointer = (surface, type, pointerId, clientX = 40, clientY = 40, pointerType = 'touch') => {
-    const fields = { pointerId, clientX, clientY, button: 0, pointerType };
-    surface.dispatch(type, fields);
-    if (surface !== browser) browser.dispatch(type, { ...fields, target: surface });
+  const move = (contact, x = 358, y = 80) => pointer.move(contact, { globalX: x, globalY: y, buttons: 1, timestamp: ++time * 10 });
+  const end = (contact, x = 358, y = 80) => pointer.end(contact, { globalX: x, globalY: y, buttons: 1, timestamp: ++time * 10 });
+  const cancel = (contact, reason = 'lostcapture') => pointer.cancel(contact, reason);
+  const key = (type, code) => {
+    const event = new Event(type, { cancelable: true });
+    Object.defineProperty(event, 'code', { value: code });
+    browser.dispatchEvent(event);
   };
-  return { input, browser, document, buttons, pause, elsewhere, pointer };
+  t.after(async () => { input.dispose(); pointer.dispose(); await engine.dispose(); });
+  return { input, buttons, targets, setEnabled, browser, page, devices, begin, move, end, cancel, locations, commands, key };
 }
 
-test('a finger leaving Drift keeps its original control while Left is held separately', t => {
-  const { input, buttons, elsewhere, pointer } = setup(t);
-  const { left, drift } = buttons;
-  drift.setPointerCapture = undefined;
-  pointer(left, 'pointerdown', 1);
-  pointer(drift, 'pointerdown', 2);
+test('native Drift stays with its owner outside the control while Left holds separately', async t => {
+  const { input, buttons, begin, move, end } = await setup(t);
+  const first = begin('left', 1), second = begin('drift', 2);
   assert.equal(input.poll(0.2).steer, -1);
   assert.equal(input.poll(0.2).drift, true);
-  pointer(drift, 'pointerleave', 2);
-  pointer(elsewhere, 'pointermove', 2);
-  assert.equal(input.poll(0.2).drift, true);
-  assert.equal(drift.classList.contains('held'), true);
-  pointer(elsewhere, 'pointerup', 2);
+  move(second);
+  assert.equal(buttons.drift.held, true);
+  end(second);
+  assert.equal(buttons.drift.held, false);
   assert.equal(input.poll(0.2).drift, false);
   assert.equal(input.poll(0.2).steer, -1);
-  assert.equal(drift.classList.contains('held'), false);
+  end(first);
 });
 
-test('known outside release and cancel end the right control when explicit capture fails', t => {
-  const { input, buttons, elsewhere, pointer } = setup(t);
-  const { left, brake } = buttons;
-  left.setPointerCapture = () => { throw new DOMException('Capture refused', 'NotFoundError'); };
-  brake.setPointerCapture = undefined;
-  pointer(left, 'pointerdown', 1);
-  pointer(brake, 'pointerdown', 2);
-  assert.equal(input.poll(0.2).steer, -1);
-  assert.equal(input.poll(0.2).throttle, 0);
-  pointer(elsewhere, 'pointerup', 1);
-  assert.equal(input.poll(0.2).steer, 0);
-  assert.equal(left.classList.contains('held'), false);
-  assert.equal(input.poll(0.2).brake, 1);
-  pointer(elsewhere, 'pointercancel', 2);
-  assert.equal(input.poll(0.2).brake, 0);
-  assert.equal(input.poll(0.2).throttle, 1);
-  assert.equal(brake.classList.contains('held'), false);
+test('outside release and cancellation end independent controls and restore auto-throttle', async t => {
+  const { input, buttons, begin, move, end, cancel } = await setup(t);
+  const left = begin('left', 1), brake = begin('brake', 2);
+  move(left); move(brake);
+  assert.equal(input.poll(.2).throttle, 0);
+  end(left);
+  assert.equal(input.poll(.2).steer, 0);
+  assert.equal(input.poll(.2).brake, 1);
+  cancel(brake);
+  assert.equal(input.poll(.2).brake, 0);
+  assert.equal(input.poll(.2).throttle, 1);
+  assert.equal(buttons.brake.held, false);
 });
 
-test('two fingers on Drift are independent and a wrong pointer ID cannot release either', t => {
-  const { input, buttons, elsewhere, pointer } = setup(t);
-  const { drift } = buttons;
-  pointer(drift, 'pointerdown', 4);
-  pointer(drift, 'pointerdown', 5);
-  pointer(drift, 'pointercancel', 90);
-  assert.equal(input.poll(0.2).drift, true);
-  pointer(drift, 'pointerup', 5);
-  assert.equal(input.poll(0.2).drift, true);
-  assert.equal(drift.classList.contains('held'), true);
-  pointer(elsewhere, 'pointercancel', 4);
-  assert.equal(input.poll(0.2).drift, false);
-  assert.equal(drift.classList.contains('held'), false);
+test('each native button admits one owner and refuses a second contact', async t => {
+  const { input, buttons, begin, end, cancel } = await setup(t);
+  const a = begin('drift', 4), b = begin('drift', 5);
+  end(b);
+  assert.equal(buttons.drift.held, true);
+  cancel(a);
+  assert.equal(input.poll(.2).drift, false);
 });
 
-test('lost native capture releases only the matching finger', t => {
-  const { input, buttons, pointer } = setup(t);
-  const { drift } = buttons;
-  pointer(drift, 'pointerdown', 4);
-  pointer(drift, 'pointerdown', 5);
-  assert.equal(drift.hasPointerCapture(4), true);
-  assert.equal(drift.hasPointerCapture(5), true);
-  drift.captures.delete(4);
-  pointer(drift, 'lostpointercapture', 4);
-  assert.equal(input.poll(0.2).drift, true);
-  drift.captures.delete(5);
-  pointer(drift, 'lostpointercapture', 5);
-  assert.equal(input.poll(0.2).drift, false);
-  assert.equal(drift.classList.contains('held'), false);
+test('lost native capture releases only its owner', async t => {
+  const { input, begin, cancel } = await setup(t);
+  const a = begin('drift', 1), b = begin('item', 2);
+  cancel(a);
+  assert.equal(input.poll(.2).drift, false);
+  assert.equal(input.poll(.2).item, true);
+  cancel(b);
+  assert.equal(input.poll(.2).item, false);
 });
 
-test('touch controls start disabled and pause/resume rejects old contacts without dropping auto-throttle', t => {
-  const { input, buttons, elsewhere, pointer } = setup(t, false);
-  const { right, brake } = buttons;
-  pointer(right, 'pointerdown', 1);
-  assert.equal(input.poll(0.2).steer, 0);
+test('disabled controls and pause/resume reject old contacts without dropping auto-throttle', async t => {
+  const { input, buttons, begin, move, end, setEnabled } = await setup(t, false);
+  begin('right', 1);
   assert.equal(input.touch, false);
-  input.setTouchEnabled(true);
-  pointer(right, 'pointerdown', 2);
-  pointer(brake, 'pointerdown', 3);
-  assert.equal(input.poll(0.2).steer, 1);
-  assert.equal(input.poll(0.2).throttle, 0);
-  input.setTouchEnabled(false);
-  assert.equal(right.classList.contains('held'), false);
-  assert.equal(brake.classList.contains('held'), false);
-  assert.equal(right.hasPointerCapture(2), false);
-  input.setTouchEnabled(true);
-  pointer(elsewhere, 'pointermove', 2);
-  pointer(elsewhere, 'pointerup', 3);
-  const { steer, brake: braking, throttle } = input.poll(0.2);
-  assert.deepEqual([steer, braking, throttle], [0, 0, 1]);
-  assert.equal(input.touch, true);
+  setEnabled(true);
+  const right = begin('right', 2), brake = begin('brake', 3);
+  assert.equal(input.poll(.2).steer, 1);
+  assert.equal(input.poll(.2).throttle, 0);
+  setEnabled(false);
+  assert.equal(buttons.right.held, false);
+  assert.equal(buttons.brake.held, false);
+  setEnabled(true);
+  move(right); end(brake);
+  assert.deepEqual([input.poll(.2).steer, input.poll(.2).brake, input.poll(.2).throttle], [0, 0, 1]);
 });
 
-test('blur and backgrounding clear all touch motion and held visuals', t => {
-  const { input, browser, document, buttons, pointer } = setup(t);
-  const { drift, brake } = buttons;
-  pointer(drift, 'pointerdown', 1);
-  browser.dispatch('blur');
-  assert.equal(input.poll(0.2).drift, false);
-  assert.equal(drift.classList.contains('held'), false);
-  pointer(brake, 'pointerdown', 2);
-  document.hidden = true;
-  document.dispatch('visibilitychange');
-  assert.equal(input.poll(0.2).brake, 0);
-  assert.equal(brake.classList.contains('held'), false);
+test('blur and backgrounding clear native held visuals and driving', async t => {
+  const { input, buttons, begin, browser, page } = await setup(t);
+  begin('drift', 1);
+  browser.dispatchEvent(new Event('blur'));
+  assert.equal(input.poll(.2).drift, false);
+  assert.equal(buttons.drift.held, false);
+  begin('brake', 2);
+  page.hidden = true;
+  page.dispatchEvent(new Event('visibilitychange'));
+  assert.equal(buttons.brake.held, false);
+  assert.equal(input.poll(.2).brake, 0);
 });
 
-test('a second-finger pause dispatches on valid release while steering remains held', t => {
-  const { input, buttons, pause, pointer } = setup(t);
-  const commands = [];
-  input.onCommand = command => {
-    assert.equal(input.poll(0.2).steer, -1);
-    commands.push(command);
-  };
-  pointer(buttons.left, 'pointerdown', 1);
-  pointer(pause, 'pointerdown', 2);
+test('second-finger pause activates on deliberate release while steering remains held', async t => {
+  const { input, begin, end, locations, commands } = await setup(t);
+  begin('left', 1);
+  const pause = begin('pause', 2);
+  input.onCommand = () => assert.equal(input.poll(.2).steer, -1);
   assert.deepEqual(commands, []);
-  pointer(pause, 'pointerup', 2, 42, 41);
-  pointer(buttons.left, 'pointerup', 1);
+  end(pause, locations.pause + 2, 25);
   assert.deepEqual(commands, ['pause']);
 });
 
-test('canceled, outside and swiped pauses do not dispatch a menu command', t => {
-  const { input, pause, elsewhere, pointer } = setup(t);
-  const commands = [];
-  input.onCommand = command => commands.push(command);
-  pointer(pause, 'pointerdown', 1);
-  pointer(elsewhere, 'pointercancel', 1);
-  pointer(pause, 'pointerdown', 2, 3, 40);
-  pointer(pause, 'pointerup', 2, -1, 40);
-  pointer(pause, 'pointerdown', 3);
-  pointer(elsewhere, 'pointermove', 3, 61, 40);
-  pointer(pause, 'pointerup', 3);
+test('native pause rejects canceled, outside and swiped contacts', async t => {
+  const { begin, end, move, cancel, locations, commands } = await setup(t);
+  cancel(begin('pause', 1));
+  end(begin('pause', 2, 301), 299, 24);
+  const swipe = begin('pause', 3);
+  move(swipe, locations.pause - 20, 24); end(swipe, locations.pause, 24);
   assert.deepEqual(commands, []);
-  pointer(pause, 'pointerdown', 4);
-  pointer(pause, 'pointerup', 4);
+  end(begin('pause', 4), locations.pause, 24);
   assert.deepEqual(commands, ['pause']);
 });
 
-test('keyboard and gamepad controls still work while touch controls are disabled', t => {
-  const { input, browser } = setup(t, false);
-  browser.dispatch('keydown', { code: 'KeyW' });
-  browser.dispatch('keydown', { code: 'ArrowLeft' });
-  assert.equal(input.poll(0.2).throttle, 1);
-  assert.equal(input.poll(0.2).steer, -1);
-  browser.dispatch('keyup', { code: 'KeyW' });
-  browser.dispatch('keyup', { code: 'ArrowLeft' });
-  navigator.getGamepads = () => [{ connected: true, axes: [0.65], buttons: [{ value: 1 }] }];
-  assert.equal(input.poll(0.2).throttle, 1);
-  assert.equal(input.poll(0.2).steer, 0.65);
+test('keyboard and gamepad retain their driving curves while touch is disabled', async t => {
+  const { input, key, devices } = await setup(t, false);
+  key('keydown', 'KeyW'); key('keydown', 'ArrowLeft');
+  assert.equal(input.poll(.2).throttle, 1);
+  assert.equal(input.poll(.2).steer, -1);
+  key('keyup', 'KeyW'); key('keyup', 'ArrowLeft');
+  devices.getGamepads = () => [{ connected: true, axes: [.65], buttons: [{ value: 1 }] }];
+  assert.equal(input.poll(.2).throttle, 1);
+  assert.equal(input.poll(.2).steer, .65);
+});
+
+test('native gamepad button edges include vertical menu moves without repeating a held button', async t => {
+  const { input, devices } = await setup(t, false);
+  const commands = [];
+  input.onCommand = (command, detail) => commands.push([command, detail.source]);
+  const buttons = Array.from({ length: 16 }, () => ({ value: 0 }));
+  devices.getGamepads = () => [{ connected: true, axes: [0], buttons }];
+  buttons[12].value = 1;
+  input.poll(.2); input.poll(.2);
+  buttons[12].value = 0; buttons[13].value = 1;
+  input.poll(.2);
+  assert.deepEqual(commands, [['up', 'gamepad'], ['down', 'gamepad']]);
 });

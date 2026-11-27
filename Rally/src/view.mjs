@@ -546,7 +546,7 @@ export function createView(scene, camera, track, options = {}) {
    * rival from the side, 'select' circles the parked kart, 'intro' sweeps
    * round the player (`sweep` runs 0 to 1) and 'race' chases the player.
    */
-  view.update = (dt, race, shot, { lookBack = false, sweep = 0 } = {}) => {
+  view.update = (dt, race, shot, { lookBack = false, sweep = 0, preview } = {}) => {
     view.time += dt;
     const time = view.time;
     const watched = race.human ?? race.karts.find((kart) => kart.place === 1) ?? race.karts[0];
@@ -712,7 +712,18 @@ export function createView(scene, camera, track, options = {}) {
     // Camera.
     if (shot === 'select' && shown) {
       const angle = shown.at.heading + Math.PI - 0.63 + Math.sin(time * 0.65) * 0.24;
-      orbit(shown.at.x, shown.at.y, shown.at.z, angle, 5.15, 2.0);
+      // The scene always fills the viewport. Frame the kart inside the empty
+      // rectangle supplied by the overlay rather than moving the canvas.
+      const area = preview ?? { x: 0.5, y: 0.5, width: 1, height: 1 };
+      const zoom = Math.max(1, 0.82 / area.height, 1.10 / (camera.aspect * area.width));
+      const distance = 5.15 * zoom;
+      orbit(shown.at.x, shown.at.y, shown.at.z, angle, distance, 2.0 + (zoom - 1) * 0.45);
+      const halfHeight = Math.hypot(distance, 0.9) * Math.tan(53 * Math.PI / 360);
+      const shift = (0.5 - area.x) * 2 * halfHeight * camera.aspect;
+      const lift = (area.y - 0.5) * 2 * halfHeight;
+      const x = Math.cos(angle) * shift, z = -Math.sin(angle) * shift;
+      camera.setPosition(camera.position[0] + x, camera.position[1], camera.position[2] + z);
+      camera.lookAt(shown.at.x + x, shown.at.y + 1.1 + lift, shown.at.z + z);
       rig.fovTarget = 53;
     } else if (shot === 'title') {
       rig.orbit += dt * 0.12;
