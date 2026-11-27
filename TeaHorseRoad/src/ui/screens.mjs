@@ -10,6 +10,38 @@ import { OPENING } from '../play/story.mjs';
 
 const stops = (...pairs) => pairs.map(([offset, color, alpha = 1]) => ({ offset, color, alpha }));
 
+/** Reserve the footer and all touch targets before fitting the decorative heading into the safe height. */
+export function titleVerticalLayout(screen, { buttons, best, footerHeight }) {
+  const { safe, scale } = screen,
+    f = controlScale(screen),
+    margin = 12 / scale,
+    resumedBest = buttons === 3 && best,
+    start = resumedBest ? 248 : 270,
+    normalHeight = start + buttons * CONTROL + (buttons - 1) * 8 + (best ? 38 : 0),
+    compactStart = 194,
+    compactHeight = compactStart + buttons * CONTROL + (buttons - 1) * 4 + (best ? 26 : 0),
+    available = (safe.height - 2 * margin) / f - footerHeight - 8,
+    squeeze = Math.max(0, Math.min(1, (normalHeight - available) / (normalHeight - compactHeight))),
+    blend = (normal, compact) => normal + (compact - normal) * squeeze,
+    buttonStart = blend(start, compactStart),
+    gap = blend(8, 4),
+    columnHeight = buttonStart + buttons * CONTROL + (buttons - 1) * gap + (best ? blend(38, 26) : 0),
+    footerY = safe.y + safe.height - margin - footerHeight * f,
+    y = Math.max(safe.y + margin, Math.min(
+      safe.y + (safe.height - columnHeight * f - 32 * f) / 2,
+      footerY - (columnHeight + 8) * f
+    ));
+  const heroScale = blend(1, 0.72);
+  return {
+    y, footerY, f, columnHeight, buttonStart, gap, heroScale,
+    regionY: blend(8, 0), ruleY: blend(32, 22), heroY: blend(44, 24),
+    enTitleY: blend(150, 105),
+    zhDescriptionY: blend(resumedBest ? 182 : 198, 136),
+    enDescriptionY: blend(resumedBest ? 216 : 232, 169),
+    bestY: buttonStart + buttons * CONTROL + (buttons - 1) * gap + blend(12, 6)
+  };
+}
+
 /** The title: the name, a line about the road, and the ways in. */
 export async function titleScreen(ui, { journey, best, onNew, onContinue, onSettings, animateIn = true }) {
   const { game, semantics, sound } = ui,
@@ -21,53 +53,60 @@ export async function titleScreen(ui, { journey, best, onNew, onContinue, onSett
   const frame = root.addChild(scope.use(new Sprite())).graphics,
     column = root.addChild(scope.use(new DisplayObjectContainer()));
   const ornament = column.addChild(scope.use(new Sprite())).graphics;
-  ornament.lineStyle(1, SAFFRON, 0.58).moveTo(0, 32).lineTo(352, 32).lineStyle(0);
-  ornament.beginFill(FLAG_RED).drawRect(352, 56, 38, 38).endFill();
   const labels = [];
   const titleLabel = async (text, options) => {
     const made = await kit.label(column, text, options);
     labels.push(made.display);
     return made;
   };
-  await titleLabel('滇南茶山  /  金沙峡谷  /  梅里雪山', { y: 8, size: 16, color: SAFFRON, family: SANS });
-  await titleLabel('茶马古道', { x: -4, y: 44, size: 84, weight: 900, color: PAPER, family: FONT });
-  await titleLabel('茶', { x: 358, y: 60, size: 27, weight: 700, color: PAPER, family: FONT });
-  await titleLabel('TEA HORSE ROAD', { x: 2, y: 150, size: 23, weight: 700, color: SAFFRON, family: SANS });
-  const savedAndBest = Boolean(journey && journey.station > 0 && best);
-  // A resumed journey can have three buttons as well as a personal best. Compact only the surrounding words,
-  // reserving the same 70-unit button heights and a separate safe-area footer.
-  await titleLabel('雪封山之前，把七十二捆茶送到高原。', { y: savedAndBest ? 182 : 198, size: 24, color: PAPER, family: FONT });
-  await titleLabel('Bring the tea caravan across the pass before the snow closes it.', { y: savedAndBest ? 216 : 232, size: 16, color: 0xd7c9ac, family: SANS });
+  const region = (await titleLabel('滇南茶山  /  金沙峡谷  /  梅里雪山', { size: 16, color: SAFFRON, family: SANS })).display,
+    hero = (await titleLabel('茶马古道', { x: -4, size: 84, weight: 900, color: PAPER, family: FONT })).display,
+    seal = (await titleLabel('茶', { x: 358, size: 27, weight: 700, color: PAPER, family: FONT })).display,
+    enTitle = (await titleLabel('TEA HORSE ROAD', { x: 2, size: 23, weight: 700, color: SAFFRON, family: SANS })).display,
+    zhDescription = (await titleLabel('雪封山之前，把七十二捆茶送到高原。', { size: 24, color: PAPER, family: FONT })).display,
+    enDescription = (await titleLabel('Bring the tea caravan across the pass before the snow closes it.', { size: 16, color: 0xd7c9ac, family: SANS })).display;
   const buttons = [];
-  let y = savedAndBest ? 248 : 270;
   if (journey && journey.station > 0) {
-    buttons.push(await kit.button({ x: 0, y, width: 320, text: '继续旅程', sub: `从 ${journey.stationName} 出发 · ${journey.cargoLeft} 捆茶`, primary: true, onActivate: onContinue, container: column, name: '继续旅程' }));
-    y += CONTROL + 8;
+    buttons.push(await kit.button({ x: 0, y: 0, width: 320, text: '继续旅程', sub: `从 ${journey.stationName} 出发 · ${journey.cargoLeft} 捆茶`, primary: true, onActivate: onContinue, container: column, name: '继续旅程' }));
   }
-  buttons.push(await kit.button({ x: 0, y, width: 320, text: journey && journey.station > 0 ? '重新出发' : '出发', sub: 'New journey', primary: !(journey && journey.station > 0), onActivate: onNew, container: column, name: '出发 新的旅程' }));
-  y += CONTROL + 8;
-  buttons.push(await kit.button({ x: 0, y, width: 320, text: '设置', sub: 'Settings', onActivate: onSettings, container: column, small: true }));
-  if (best) await titleLabel(`最好的一趟：送到 ${best.delivered} 捆 · ${Math.floor(best.seconds / 60)} 分 ${Math.round(best.seconds % 60)} 秒`, { x: 4, y: y + CONTROL + 12, size: 15, color: 0xd8c08a, family: SANS });
+  buttons.push(await kit.button({ x: 0, y: 0, width: 320, text: journey && journey.station > 0 ? '重新出发' : '出发', sub: 'New journey', primary: !(journey && journey.station > 0), onActivate: onNew, container: column, name: '出发 新的旅程' }));
+  buttons.push(await kit.button({ x: 0, y: 0, width: 320, text: '设置', sub: 'Settings', onActivate: onSettings, container: column, small: true }));
+  const bestLabel = best ? (await titleLabel(`最好的一趟：送到 ${best.delivered} 捆 · ${Math.floor(best.seconds / 60)} 分 ${Math.round(best.seconds % 60)} 秒`, { x: 4, size: 15, color: 0xd8c08a, family: SANS })).display : null;
   const footer = await kit.label(root, '基于新白鹭引擎开发 · Powered by Egret', { size: 14, color: 0xcebb94, family: SANS });
+  const footerHeight = footer.display.height;
   kit.onScreenChange(({ width, height, safe, scale }) => {
     const margin = 12 / scale,
       left = safe.x + Math.max(margin, Math.min(64, safe.width * 0.06)),
       right = safe.x + safe.width - margin,
       bottom = safe.y + safe.height - margin,
-      f = controlScale(game.screen),
-      columnHeight = y + CONTROL + (best ? 38 : 0);
+      layout = titleVerticalLayout(game.screen, { buttons: buttons.length, best: Boolean(best), footerHeight }),
+      f = layout.f;
     const g = wash.graphics;
     g.clear();
     g.beginLinearGradientFill(0, 0, width * 0.71, 0, stops([0, INK, 0.98], [0.52, INK, 0.82], [1, INK, 0])).drawRect(0, 0, width * 0.71, height).endFill();
     g.beginLinearGradientFill(0, height * 0.8, 0, height, stops([0, INK, 0], [1, INK, 0.8])).drawRect(0, height * 0.8, width, height * 0.2).endFill();
+    region.y = layout.regionY;
+    hero.y = layout.heroY;
+    hero.scaleX = hero.scaleY = layout.heroScale;
+    seal.x = 358 * layout.heroScale;
+    seal.y = layout.heroY + 16 * layout.heroScale;
+    seal.scaleX = seal.scaleY = layout.heroScale;
+    enTitle.y = layout.enTitleY;
+    zhDescription.y = layout.zhDescriptionY;
+    enDescription.y = layout.enDescriptionY;
+    ornament.clear();
+    ornament.lineStyle(1, SAFFRON, 0.58).moveTo(0, layout.ruleY).lineTo(352 * layout.heroScale, layout.ruleY).lineStyle(0);
+    ornament.beginFill(FLAG_RED).drawRect(352 * layout.heroScale, layout.heroY + 12 * layout.heroScale, 38 * layout.heroScale, 38 * layout.heroScale).endFill();
+    buttons.forEach((button, i) => { button.root.y = layout.buttonStart + i * (CONTROL + layout.gap); });
+    if (bestLabel) bestLabel.y = layout.bestY;
     const fullWidth = Math.max(390, ...labels.map((d) => d.x + d.width));
     // Keep the button height independent of the width of the title words on very narrow screens.
     column.x = left;
-    column.y = Math.max(safe.y + margin, safe.y + (safe.height - columnHeight * f - 32 * f) / 2);
+    column.y = layout.y;
     column.scaleX = Math.min(f, (right - left) / fullWidth);
     column.scaleY = f;
     footer.display.x = left;
-    footer.display.y = bottom - footer.display.height * f;
+    footer.display.y = layout.footerY;
     footer.display.scaleX = footer.display.scaleY = f;
     frame.clear();
     frame.lineStyle(1, SAFFRON, 0.58).moveTo(right - 72, safe.y + margin).lineTo(right, safe.y + margin).lineTo(right, safe.y + margin + 72);

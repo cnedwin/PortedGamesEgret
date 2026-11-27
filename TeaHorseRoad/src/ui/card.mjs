@@ -21,6 +21,35 @@ const PAD = 16, INNER_PAD = 20, GAP = 6;
 // Only the card contents are scaled within these slots; the backdrop and the modal veil use the real stage coordinates.
 const SLOT_WIDTH = 1040;
 
+const rowHeights = (rows) => rows.map((row) => row.kind === 'text' && row.lines ? HEIGHT.text * row.lines :
+  HEIGHT[row.kind] + (row.kind === 'title' && row.en ? 20 : row.kind === 'choice' && row.text && row.options.length > 3 ? 28 : 0));
+
+/** Card geometry in stage units, derived from the current engine plan. */
+export function cardGeometry(screen, { rows, cardWidth = 520, top, left }) {
+  const heights = rowHeights(rows),
+    rowTotal = heights.reduce((sum, height) => sum + height, 0),
+    gapCount = rows.length - 1,
+    normalTotal = rowTotal + gapCount * GAP + PAD * 2,
+    { safe, width, height, scale } = screen,
+    f = controlScale(screen),
+    margin = 10 / scale,
+    // Reduce unused vertical space first, rather than scaling an otherwise 45 CSS-pixel control below 44.
+    // Browser chrome on a folded phone can leave only 325 CSS pixels of landscape height.
+    maxReduction = (PAD - 10) * 2 + (GAP - 3) * gapCount,
+    squeeze = Math.max(0, Math.min(1, (normalTotal - (safe.height - 2 * margin) / f) / maxReduction)),
+    pad = PAD - 6 * squeeze,
+    gap = GAP - 3 * squeeze,
+    total = rowTotal + gapCount * gap + pad * 2,
+    sx = Math.min(f, Math.max(1, safe.width - 2 * margin) / cardWidth),
+    sy = Math.min(f, Math.max(1, safe.height - 2 * margin) / total),
+    w = cardWidth * sx, h = total * sy;
+  return {
+    x: Math.max(safe.x + margin, Math.min(safe.x + safe.width - margin - w, left === undefined ? (width - w) / 2 : safe.x + left)),
+    y: Math.max(safe.y + margin, Math.min(safe.y + safe.height - margin - h, top === undefined ? (height - h) / 2 : safe.y + top)),
+    w, h, sx, sy, pad, gap
+  };
+}
+
 /**
  * Open a card over the current engine screen. `rows` are `{ kind, ... }`:
  * - `title`/`text`/`note`: words (`zh`, and `en` under them for a title),
@@ -45,9 +74,7 @@ export async function openCard(game, { semantics, sound, rows, cardWidth = 520, 
   const back = game.stage.addChild(scope.use(new Sprite()));
 
   const inner = cardWidth - INNER_PAD * 2;
-  const heights = rows.map((row) => row.kind === 'text' && row.lines ? HEIGHT.text * row.lines :
-    HEIGHT[row.kind] + (row.kind === 'title' && row.en ? 20 : row.kind === 'choice' && row.text && row.options.length > 3 ? 28 : 0));
-  const total = heights.reduce((sum, height) => sum + height, 0) + (rows.length - 1) * GAP + PAD * 2;
+  const heights = rowHeights(rows);
   // Each row is a leaf that, prepared, is an empty container of its height; what goes in it comes after the commit.
   const leaves = rows.map((row, index) => {
     const key = `${id}-row-${index}`,
@@ -67,26 +94,14 @@ export async function openCard(game, { semantics, sound, rows, cardWidth = 520, 
       }
     };
   });
-  function geometry(screen) {
-    const { safe, width, height, scale } = screen,
-      f = controlScale(screen),
-      margin = 10 / scale,
-      sx = Math.min(f, Math.max(1, safe.width - 2 * margin) / cardWidth),
-      sy = Math.min(f, Math.max(1, safe.height - 2 * margin) / total),
-      w = cardWidth * sx, h = total * sy;
-    return {
-      x: Math.max(safe.x + margin, Math.min(safe.x + safe.width - margin - w, left === undefined ? (width - w) / 2 : safe.x + left)),
-      y: Math.max(safe.y + margin, Math.min(safe.y + safe.height - margin - h, top === undefined ? (height - h) / 2 : safe.y + top)),
-      w, h, sx, sy
-    };
-  }
+  const geometry = (screen) => cardGeometry(screen, { rows, cardWidth, top, left });
   const origin = ({ x, y, w }) => ({ x: x - (SLOT_WIDTH - w) / 2, y });
-  function tree({ sy }) {
-    const pad = (key) => ({ id: `${id}-${key}`, kind: 'leaf', explicitWidth: SLOT_WIDTH, explicitHeight: PAD * sy });
+  function tree({ sy, pad, gap }) {
+    const spacer = (key) => ({ id: `${id}-${key}`, kind: 'leaf', explicitWidth: SLOT_WIDTH, explicitHeight: pad * sy });
     return { id: `${id}-column`, kind: 'column', explicitWidth: SLOT_WIDTH, children: [
-      pad('top'),
-      ...leaves.map((leaf, i) => ({ ...leaf, explicitHeight: (heights[i] + (i === rows.length - 1 ? 0 : GAP)) * sy })),
-      pad('bottom')
+      spacer('top'),
+      ...leaves.map((leaf, i) => ({ ...leaf, explicitHeight: (heights[i] + (i === rows.length - 1 ? 0 : gap)) * sy })),
+      spacer('bottom')
     ] };
   }
   let placed = geometry(game.screen);
@@ -180,7 +195,7 @@ export async function openCard(game, { semantics, sound, rows, cardWidth = 520, 
       while (pending && !closed) {
         const next = pending;
         pending = undefined;
-        if (['x', 'y', 'w', 'h', 'sx', 'sy'].every((key) => Math.abs(next[key] - placed[key]) < 0.001)) continue;
+        if (['x', 'y', 'w', 'h', 'sx', 'sy', 'pad', 'gap'].every((key) => Math.abs(next[key] - placed[key]) < 0.001)) continue;
         root.setOrigin(origin(next));
         root.setViewport({ width: SLOT_WIDTH, height: next.h }, 1);
         root.setTree(tree(next));

@@ -1,0 +1,902 @@
+{
+  "schema": "tea-horse-road-public-physical-278-baseline/1",
+  "date": "2026-11-27",
+  "release": "24a723c03acf3af3c40b995d8bee96bbc97e72ff",
+  "engine": "72be4978226951c0727262e81da87f1aa7e15242",
+  "publicFileHashes": [
+    {
+      "path": "index.html",
+      "sha256": "f26e56c74fd058007ba6327f95a34436cc18c608c517eea5ab9af5641cf083bc",
+      "match": true
+    },
+    {
+      "path": "style.css",
+      "sha256": "128cdc977a7194416f7945158233d96dcc1f767777a1d5985cb79ae4ea45b335",
+      "match": true
+    },
+    {
+      "path": "src/main.mjs",
+      "sha256": "1b29ad899adc626a39ad7486cebf563b5f740caa7c69db0725f18d24392766ca",
+      "match": true
+    },
+    {
+      "path": "src/ui/kit.mjs",
+      "sha256": "832644ff86fd1609bb8a52d984062403dcb7898178bd16971f9e764e1577bfa4",
+      "match": true
+    },
+    {
+      "path": "src/ui/hud.mjs",
+      "sha256": "a057034b48e102679ae2f42c051f149bc34e0e604b5284fe4e9ffda7dba0a169",
+      "match": true
+    },
+    {
+      "path": "src/ui/card.mjs",
+      "sha256": "d18a11b234e805079c6cfa1b81d56cb13d3366541c01912ee0041afe3cb18a84",
+      "match": true
+    },
+    {
+      "path": "src/ui/screens.mjs",
+      "sha256": "bb5ddb50f92f728510e63cfa875200ebbdf6e03ba856a9f494b952b6347f2fc1",
+      "match": true
+    },
+    {
+      "path": "src/ui/markers.mjs",
+      "sha256": "fb34cdfcac4f04b74d4a8e5eb9e0fefe626cf3210ebbbd0c352c5b18ef9c5c98",
+      "match": true
+    },
+    {
+      "path": "vendor/SOURCE.md",
+      "sha256": "dd1df5ccbf754aba8fb3e592dd7e9a15edc00df211c3c2d42e45bc293795f36f",
+      "match": true
+    },
+    {
+      "path": "vendor/engine/dist/web/WebGL2Host.js",
+      "sha256": "a2746d013f5b83743affefda8405f31f2500f1d1fabbebdeae1e6042fa13c049",
+      "match": true
+    },
+    {
+      "path": "vendor/engine/dist/web/webgl2Native.js",
+      "sha256": "791874b609817f470bade42a82ffa501ccb5cc0867405f9c6de5fd60151e2e4d",
+      "match": true
+    },
+    {
+      "path": "vendor/engine/dist/rendering/world3d/PhysicsMesh3D.js",
+      "sha256": "7092646bca2c289ee4ee6e21c45105a275848c3aeb2fbb59c5a1d854b375c85f",
+      "match": true
+    },
+    {
+      "path": "test/evidence/screen-fit-72be497.json",
+      "sha256": "d70bdde2c46fc327d44622d620e32dddf399cc388b34867ced4c7fe2cae6ec16",
+      "match": true
+    }
+  ],
+  "pc": {
+    "device": "Physical Windows PC; Edge 158, RTX 5090 Laptop / ANGLE D3D11; both world and overlay WebGL2, High",
+    "parallelShaderExtension": true,
+    "automatedAssertions": {
+      "pass": 266,
+      "total": 266
+    },
+    "functionalPass": true,
+    "errors": 0,
+    "failedRequests": 0,
+    "rotations": [
+      {
+        "state": "driving",
+        "phases": [
+          {
+            "viewport": [
+              393,
+              852
+            ],
+            "outer": [
+              516,
+              940
+            ],
+            "stage": [
+              1066,
+              2311
+            ],
+            "sameGame": true,
+            "sameOverlay": true,
+            "sameProjection": true,
+            "projectionActive": true,
+            "sameHud": true,
+            "sameCard": true,
+            "sameScreen": true,
+            "sameState": true,
+            "samePaused": true,
+            "sameFocus": true,
+            "visibleFocus": true,
+            "sameChoices": true,
+            "samePieces": true,
+            "sameSelected": true,
+            "sameMode": true,
+            "sameScene": true,
+            "sameStorage": true,
+            "focus": "hud-button-9",
+            "prompt": false
+          },
+          {
+            "viewport": [
+              852,
+              393
+            ],
+            "outer": [
+              868,
+              482
+            ],
+            "stage": [
+              1300,
+              600
+            ],
+            "sameGame": true,
+            "sameOverlay": true,
+            "sameProjection": true,
+            "projectionActive": true,
+            "sameHud": true,
+            "sameCard": true,
+            "sameScreen": true,
+            "sameState": true,
+            "samePaused": true,
+            "sameFocus": true,
+            "visibleFocus": true,
+            "sameChoices": true,
+            "samePieces": true,
+            "sameSelected": true,
+            "sameMode": true,
+            "sameScene": true,
+            "sameStorage": true,
+            "focus": "hud-button-9",
+            "prompt": false
+          }
+        ]
+      },
+      {
+        "state": "pause",
+        "phases": [
+          {
+            "viewport": [
+              393,
+              852
+            ],
+            "outer": [
+              516,
+              940
+            ],
+            "stage": [
+              1066,
+              2311
+            ],
+            "sameGame": true,
+            "sameOverlay": true,
+            "sameProjection": true,
+            "projectionActive": true,
+            "sameHud": true,
+            "sameCard": true,
+            "sameScreen": true,
+            "sameState": true,
+            "samePaused": true,
+            "sameFocus": true,
+            "visibleFocus": true,
+            "sameChoices": true,
+            "samePieces": true,
+            "sameSelected": true,
+            "sameMode": true,
+            "sameScene": true,
+            "sameStorage": true,
+            "focus": "card-2-button-11",
+            "prompt": false
+          },
+          {
+            "viewport": [
+              852,
+              393
+            ],
+            "outer": [
+              868,
+              482
+            ],
+            "stage": [
+              1300,
+              600
+            ],
+            "sameGame": true,
+            "sameOverlay": true,
+            "sameProjection": true,
+            "projectionActive": true,
+            "sameHud": true,
+            "sameCard": true,
+            "sameScreen": true,
+            "sameState": true,
+            "samePaused": true,
+            "sameFocus": true,
+            "visibleFocus": true,
+            "sameChoices": true,
+            "samePieces": true,
+            "sameSelected": true,
+            "sameMode": true,
+            "sameScene": true,
+            "sameStorage": true,
+            "focus": "card-2-button-11",
+            "prompt": false
+          }
+        ]
+      },
+      {
+        "state": "station",
+        "phases": [
+          {
+            "viewport": [
+              393,
+              852
+            ],
+            "outer": [
+              516,
+              940
+            ],
+            "stage": [
+              1066,
+              2311
+            ],
+            "sameGame": true,
+            "sameOverlay": true,
+            "sameProjection": true,
+            "projectionActive": true,
+            "sameHud": true,
+            "sameCard": true,
+            "sameScreen": true,
+            "sameState": true,
+            "samePaused": true,
+            "sameFocus": true,
+            "visibleFocus": true,
+            "sameChoices": true,
+            "samePieces": true,
+            "sameSelected": true,
+            "sameMode": true,
+            "sameScene": true,
+            "sameStorage": true,
+            "focus": "card-5-button-23",
+            "prompt": false
+          },
+          {
+            "viewport": [
+              852,
+              393
+            ],
+            "outer": [
+              868,
+              482
+            ],
+            "stage": [
+              1300,
+              600
+            ],
+            "sameGame": true,
+            "sameOverlay": true,
+            "sameProjection": true,
+            "projectionActive": true,
+            "sameHud": true,
+            "sameCard": true,
+            "sameScreen": true,
+            "sameState": true,
+            "samePaused": true,
+            "sameFocus": true,
+            "visibleFocus": true,
+            "sameChoices": true,
+            "samePieces": true,
+            "sameSelected": true,
+            "sameMode": true,
+            "sameScene": true,
+            "sameStorage": true,
+            "focus": "card-5-button-23",
+            "prompt": false
+          }
+        ]
+      },
+      {
+        "state": "camp",
+        "phases": [
+          {
+            "viewport": [
+              393,
+              852
+            ],
+            "outer": [
+              516,
+              940
+            ],
+            "stage": [
+              1066,
+              2311
+            ],
+            "sameGame": true,
+            "sameOverlay": true,
+            "sameProjection": true,
+            "projectionActive": true,
+            "sameHud": true,
+            "sameCard": true,
+            "sameScreen": true,
+            "sameState": true,
+            "samePaused": true,
+            "sameFocus": true,
+            "visibleFocus": true,
+            "sameChoices": true,
+            "samePieces": true,
+            "sameSelected": true,
+            "sameMode": true,
+            "sameScene": true,
+            "sameStorage": true,
+            "focus": "card-6-button-25",
+            "prompt": false
+          },
+          {
+            "viewport": [
+              852,
+              393
+            ],
+            "outer": [
+              868,
+              482
+            ],
+            "stage": [
+              1300,
+              600
+            ],
+            "sameGame": true,
+            "sameOverlay": true,
+            "sameProjection": true,
+            "projectionActive": true,
+            "sameHud": true,
+            "sameCard": true,
+            "sameScreen": true,
+            "sameState": true,
+            "samePaused": true,
+            "sameFocus": true,
+            "visibleFocus": true,
+            "sameChoices": true,
+            "samePieces": true,
+            "sameSelected": true,
+            "sameMode": true,
+            "sameScene": true,
+            "sameStorage": true,
+            "focus": "card-6-button-25",
+            "prompt": false
+          }
+        ]
+      }
+    ],
+    "naturalApproach": {
+      "elapsedMs": 45042.844,
+      "distanceM": 918.861,
+      "cargo": 72
+    },
+    "nearStationFixture": {
+      "startingS": 1597.695,
+      "normalInputArrivalMs": 2987.492,
+      "arrived": true
+    },
+    "save": {
+      "station": 1,
+      "pieces": [
+        "fire"
+      ],
+      "reload": true,
+      "continued": true,
+      "sha256": "b93d60982ad93d44bf623d94e68f4a7fe3f13de2fa7740c2a55dbeec519adb13"
+    },
+    "cadence": [
+      {
+        "name": "initial-drive",
+        "samples": 907,
+        "durationMs": 8083.4,
+        "p95Ms": 16.8,
+        "maxMs": 29.2,
+        "over50": 0
+      },
+      {
+        "name": "natural-approach",
+        "samples": 3867,
+        "durationMs": 45060.5,
+        "p95Ms": 20.9,
+        "maxMs": 33.4,
+        "over50": 0
+      },
+      {
+        "name": "camp-edit-idle",
+        "samples": 544,
+        "durationMs": 4003.9,
+        "p95Ms": 8.5,
+        "maxMs": 12.6,
+        "over50": 0
+      }
+    ],
+    "visualIssue": "In actual portrait desktop viewport 393×852, the subtitle overlaps the non-touch speedometer. Screenshots were inspected; geometry assertions of interactive controls alone did not detect this visual issue."
+  },
+  "fold7": {
+    "device": {
+      "model": "SM-F966U1",
+      "android": "17",
+      "browser": "Chrome/157.0.8103.78",
+      "renderer": "ANGLE (Qualcomm, Adreno (TM) 830, OpenGL ES 3.2 V@0800.64.8 (GIT@0603ba43d2 Id52d3f334b 1782110333) (Date:06/22/26))"
+    },
+    "viewportLandscape": [
+      873,
+      325
+    ],
+    "viewportPortrait": [
+      411,
+      813
+    ],
+    "dpr": 2.625,
+    "backend": "webgl2",
+    "quality": "low",
+    "parallelShaderExtension": false,
+    "deviceTouch": true,
+    "pass": false,
+    "assertions": 228,
+    "failed": [
+      {
+        "problem": "settings 44 CSS px",
+        "actualGeometry": [
+          {
+            "name": "流畅 Low",
+            "role": "radio",
+            "x": 385.068,
+            "y": 60.173,
+            "width": 72.857,
+            "height": 43.524,
+            "bottom": 103.697
+          },
+          {
+            "name": "均衡 Medium",
+            "role": "radio",
+            "x": 457.926,
+            "y": 60.173,
+            "width": 72.857,
+            "height": 43.524,
+            "bottom": 103.697
+          },
+          {
+            "name": "精细 High",
+            "role": "radio",
+            "x": 530.783,
+            "y": 60.173,
+            "width": 72.857,
+            "height": 43.524,
+            "bottom": 103.697
+          },
+          {
+            "name": "音量 · Volume",
+            "role": "slider",
+            "x": 360.64,
+            "y": 124.854,
+            "width": 243,
+            "height": 42.315,
+            "bottom": 167.169
+          },
+          {
+            "name": "音乐 · Music",
+            "role": "switch",
+            "x": 269.354,
+            "y": 170.796,
+            "width": 334.286,
+            "height": 42.315,
+            "bottom": 213.111
+          },
+          {
+            "name": "自动 Auto",
+            "role": "radio",
+            "x": 385.068,
+            "y": 216.134,
+            "width": 72.857,
+            "height": 43.524,
+            "bottom": 259.657
+          },
+          {
+            "name": "显示 On",
+            "role": "radio",
+            "x": 457.926,
+            "y": 216.134,
+            "width": 72.857,
+            "height": 43.524,
+            "bottom": 259.657
+          },
+          {
+            "name": "隐藏 Off",
+            "role": "radio",
+            "x": 530.783,
+            "y": 216.134,
+            "width": 72.857,
+            "height": 43.524,
+            "bottom": 259.657
+          },
+          {
+            "name": "好",
+            "role": "button",
+            "x": 268.711,
+            "y": 262.075,
+            "width": 335.571,
+            "height": 43.524,
+            "bottom": 305.599
+          }
+        ]
+      },
+      {
+        "problem": "reloaded-title safe area",
+        "actualGeometry": [
+          {
+            "name": "设置",
+            "role": "button",
+            "x": 34.208,
+            "y": 285.214,
+            "width": 207,
+            "height": 46.286,
+            "bottom": 331.5
+          }
+        ]
+      }
+    ],
+    "errors": 0,
+    "httpErrors": 0,
+    "rotations": [
+      {
+        "state": "driving",
+        "phases": [
+          {
+            "actual": {
+              "width": 411,
+              "height": 813,
+              "orientation": "portrait-primary",
+              "dpr": 2.625
+            },
+            "result": {
+              "logical": {
+                "width": 1066,
+                "height": 2111,
+                "safe": {
+                  "x": 0,
+                  "y": 0,
+                  "width": 1064.8883802130854,
+                  "height": 2109.2726572598276
+                },
+                "scale": 0.38555347091932457,
+                "orientation": "portrait"
+              },
+              "sameGame": true,
+              "sameOverlay": true,
+              "sameProjection": true,
+              "projectionActive": true,
+              "sameHud": true,
+              "sameCard": true,
+              "sameScreen": true,
+              "sameState": true,
+              "sameFocus": true,
+              "sameChoices": true,
+              "campSelected": true,
+              "campMode": true,
+              "campParts": true,
+              "campContent": true,
+              "sameSave": true,
+              "promptVisible": true,
+              "promptExpected": true
+            }
+          },
+          {
+            "actual": {
+              "width": 873,
+              "height": 325,
+              "orientation": "landscape-primary",
+              "dpr": 2.625
+            },
+            "result": {
+              "logical": {
+                "width": 1611,
+                "height": 600,
+                "safe": {
+                  "x": 0,
+                  "y": 0,
+                  "width": 1611,
+                  "height": 599.3845966045674
+                },
+                "scale": 0.5416666666666666,
+                "orientation": "landscape"
+              },
+              "sameGame": true,
+              "sameOverlay": true,
+              "sameProjection": true,
+              "projectionActive": true,
+              "sameHud": true,
+              "sameCard": true,
+              "sameScreen": true,
+              "sameState": true,
+              "sameFocus": true,
+              "sameChoices": true,
+              "campSelected": true,
+              "campMode": true,
+              "campParts": true,
+              "campContent": true,
+              "sameSave": true,
+              "promptVisible": false,
+              "promptExpected": false
+            }
+          }
+        ]
+      },
+      {
+        "state": "pause",
+        "phases": [
+          {
+            "actual": {
+              "width": 411,
+              "height": 813,
+              "orientation": "portrait-primary",
+              "dpr": 2.625
+            },
+            "result": {
+              "logical": {
+                "width": 1066,
+                "height": 2111,
+                "safe": {
+                  "x": 0,
+                  "y": 0,
+                  "width": 1064.8883802130854,
+                  "height": 2109.2726572598276
+                },
+                "scale": 0.38555347091932457,
+                "orientation": "portrait"
+              },
+              "sameGame": true,
+              "sameOverlay": true,
+              "sameProjection": true,
+              "projectionActive": true,
+              "sameHud": true,
+              "sameCard": true,
+              "sameScreen": true,
+              "sameState": true,
+              "sameFocus": true,
+              "sameChoices": true,
+              "campSelected": true,
+              "campMode": true,
+              "campParts": true,
+              "campContent": true,
+              "sameSave": true,
+              "promptVisible": true,
+              "promptExpected": true
+            }
+          },
+          {
+            "actual": {
+              "width": 873,
+              "height": 325,
+              "orientation": "landscape-primary",
+              "dpr": 2.625
+            },
+            "result": {
+              "logical": {
+                "width": 1611,
+                "height": 600,
+                "safe": {
+                  "x": 0,
+                  "y": 0,
+                  "width": 1611,
+                  "height": 599.3845966045674
+                },
+                "scale": 0.5416666666666666,
+                "orientation": "landscape"
+              },
+              "sameGame": true,
+              "sameOverlay": true,
+              "sameProjection": true,
+              "projectionActive": true,
+              "sameHud": true,
+              "sameCard": true,
+              "sameScreen": true,
+              "sameState": true,
+              "sameFocus": true,
+              "sameChoices": true,
+              "campSelected": true,
+              "campMode": true,
+              "campParts": true,
+              "campContent": true,
+              "sameSave": true,
+              "promptVisible": false,
+              "promptExpected": false
+            }
+          }
+        ]
+      },
+      {
+        "state": "station",
+        "phases": [
+          {
+            "actual": {
+              "width": 411,
+              "height": 813,
+              "orientation": "portrait-primary",
+              "dpr": 2.625
+            },
+            "result": {
+              "logical": {
+                "width": 1066,
+                "height": 2111,
+                "safe": {
+                  "x": 0,
+                  "y": 0,
+                  "width": 1064.8883802130854,
+                  "height": 2109.2726572598276
+                },
+                "scale": 0.38555347091932457,
+                "orientation": "portrait"
+              },
+              "sameGame": true,
+              "sameOverlay": true,
+              "sameProjection": true,
+              "projectionActive": true,
+              "sameHud": true,
+              "sameCard": true,
+              "sameScreen": true,
+              "sameState": true,
+              "sameFocus": true,
+              "sameChoices": true,
+              "campSelected": true,
+              "campMode": true,
+              "campParts": true,
+              "campContent": true,
+              "sameSave": true,
+              "promptVisible": true,
+              "promptExpected": true
+            }
+          },
+          {
+            "actual": {
+              "width": 873,
+              "height": 325,
+              "orientation": "landscape-primary",
+              "dpr": 2.625
+            },
+            "result": {
+              "logical": {
+                "width": 1611,
+                "height": 600,
+                "safe": {
+                  "x": 0,
+                  "y": 0,
+                  "width": 1611,
+                  "height": 599.3845966045674
+                },
+                "scale": 0.5416666666666666,
+                "orientation": "landscape"
+              },
+              "sameGame": true,
+              "sameOverlay": true,
+              "sameProjection": true,
+              "projectionActive": true,
+              "sameHud": true,
+              "sameCard": true,
+              "sameScreen": true,
+              "sameState": true,
+              "sameFocus": true,
+              "sameChoices": true,
+              "campSelected": true,
+              "campMode": true,
+              "campParts": true,
+              "campContent": true,
+              "sameSave": true,
+              "promptVisible": false,
+              "promptExpected": false
+            }
+          }
+        ]
+      },
+      {
+        "state": "camp",
+        "phases": [
+          {
+            "actual": {
+              "width": 411,
+              "height": 813,
+              "orientation": "portrait-primary",
+              "dpr": 2.625
+            },
+            "result": {
+              "logical": {
+                "width": 1066,
+                "height": 2111,
+                "safe": {
+                  "x": 0,
+                  "y": 0,
+                  "width": 1064.8883802130854,
+                  "height": 2109.2726572598276
+                },
+                "scale": 0.38555347091932457,
+                "orientation": "portrait"
+              },
+              "sameGame": true,
+              "sameOverlay": true,
+              "sameProjection": true,
+              "projectionActive": true,
+              "sameHud": true,
+              "sameCard": true,
+              "sameScreen": true,
+              "sameState": true,
+              "sameFocus": true,
+              "sameChoices": true,
+              "campSelected": true,
+              "campMode": true,
+              "campParts": true,
+              "campContent": true,
+              "sameSave": true,
+              "promptVisible": true,
+              "promptExpected": true
+            }
+          },
+          {
+            "actual": {
+              "width": 873,
+              "height": 325,
+              "orientation": "landscape-primary",
+              "dpr": 2.625
+            },
+            "result": {
+              "logical": {
+                "width": 1611,
+                "height": 600,
+                "safe": {
+                  "x": 0,
+                  "y": 0,
+                  "width": 1611,
+                  "height": 599.3845966045674
+                },
+                "scale": 0.5416666666666666,
+                "orientation": "landscape"
+              },
+              "sameGame": true,
+              "sameOverlay": true,
+              "sameProjection": true,
+              "projectionActive": true,
+              "sameHud": true,
+              "sameCard": true,
+              "sameScreen": true,
+              "sameState": true,
+              "sameFocus": true,
+              "sameChoices": true,
+              "campSelected": true,
+              "campMode": true,
+              "campParts": true,
+              "campContent": true,
+              "sameSave": true,
+              "promptVisible": false,
+              "promptExpected": false
+            }
+          }
+        ]
+      }
+    ],
+    "savedCamp": {
+      "station": 1,
+      "pieces": [
+        "fire"
+      ],
+      "byteIdenticalReload": true,
+      "continuePresent": true,
+      "continuePressed": false
+    },
+    "cleanup": {
+      "ownedContextDisposed": true,
+      "rotationRestored": true,
+      "stayAwakeRestored": true,
+      "priorForegroundRestored": true,
+      "forwardRemoved": true,
+      "leaseReleased": true
+    },
+    "cadence": {
+      "samples": 181,
+      "durationMs": 3004.7,
+      "p95Ms": 16.7,
+      "maxMs": 16.7,
+      "over50": 0
+    }
+  },
+  "scope": "Real browser input on physical PC and Android Fold7; phone cover-screen actual OS rotation, PC actual window resize. No synthetic safe insets. Isolated saves. Fixtures used for near-station approach after actual initial driving (phone existing simulation ticks, PC real keyboard). rAF cadence is not GPU execution duration. PC functional pass does not erase the subsequently identified visual overlap; Fold7 diagnostic pass remains false due two size/safe-area failures."
+}

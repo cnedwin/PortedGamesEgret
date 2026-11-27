@@ -129,9 +129,11 @@ The tests check the road (its length, grades, the order of stations and ambushes
 
 - `72be497` 升级与原生屏幕适配：指定正式文件 3/3 字节一致，Node 36/36，官方浏览器 7/7，普通八屏 8/8、流程八屏 8/8（59 检查点和 291 项活动控件边界），四状态双向旋转 4/4。触屏最小实测边长 45.00 CSS px，首站与营地正常保存，未修改规则。软件渲染，使用隔离的驿站接近段测试定位；未进行真机 GPU 测试。详见 [QUALITY.md](QUALITY.md)。 · Official patch-free engine, eight device profiles, route/rotation and persistent control geometry checked with software rendering; no hardware claim.
 
+- #278 实际公开版的 PC RTX 5090 / Edge 与三星 Fold7 / Chrome 确认四状态转屏、输入、营地保存及刷新；专项发现的矮横屏设置、续档标题及窄桌面字幕问题已在候选布局中修正。40/40 Node、8/8 短屏软件检查点通过，真机公开回归区别报告。 · Real public-device observations and the targeted short-screen repair, separate from software results; see [QUALITY.md](QUALITY.md).
+
 ## 已知问题 · Known issues
 
-- 本次引擎与屏幕适配版本未复测真显卡或真手机；软件渲染数字不代表真机。 · This engine and screen-fit revision has not been retested on a physical GPU or phone; software-rendered numbers do not represent hardware.
+- 通用品质表为软件渲染；真机专项与未覆盖范围单独列在 QUALITY.md。 · Generic quality is software-rendered; physical device observations and coverage limits are recorded separately.
 - 软件渲染下天空盒是黑的（见 ENGINE-NOTES），截图里天顶偏暗。 · Under software rendering the skybox is black (see ENGINE-NOTES), so pictures show a dark zenith.
 - 一趟的时长只按自动驾驶估计：全程最快约 4.7 分钟驾驶，真人估计十分钟上下，没有实测。 · A journey's length is estimated from the autopilot alone (about 4.7 minutes of driving at best); no player was timed.
 - 品质验收未达标 · Quality items failing（[QUALITY.md](QUALITY.md)，2026-11-27，无头 Chromium + SwiftShader · headless, software rendering）：F1 桌面帧时间 p95 ≤ 16.7 ms（p95 287.5 ms over 29 frames）；I1 中英文全可切换，英文下无中文（no way to choose English found）；E2 资源失败有错误界面和重试（14 files refused; no uncaught error; no error screen with a retry）。
