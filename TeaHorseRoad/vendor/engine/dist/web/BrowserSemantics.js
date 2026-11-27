@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 import { EgretError } from '@egret/runtime';
+import { registerScreenSemantics } from './screenControlReportState.js';
 /** Roles a native button carries well: it is activated by a click from any assistive technology. */
 const pressable = [
     'button',
@@ -363,6 +364,7 @@ export function createBrowserSemantics(options) {
             throw new EgretError('UI_SEMANTICS_SURFACE_BUSY');
         ownedSurfaces.add(surface);
         owned = surface;
+        restores.push(registerScreenSemantics(surface, semantics));
         const holder = page.createElement('div');
         do
             holder.id = 'egret-semantics-' + ++containers;

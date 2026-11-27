@@ -1,0 +1,532 @@
+{
+  "schema": "tea-native-overlay-receipt-summary/1",
+  "enginePin": "2fbe55630b1f67c6b1584d73290c19cb0aa0ae24",
+  "enginePR": 535,
+  "baseline": {
+    "profile": "foldable-cover-wide",
+    "viewport": [
+      873,
+      325
+    ],
+    "checkpoints": [
+      {
+        "name": "title",
+        "native": 2
+      },
+      {
+        "name": "settings",
+        "native": 9
+      },
+      {
+        "name": "driving-hud",
+        "native": 5
+      }
+    ],
+    "nativeRectangles": 16,
+    "semanticCrosscheckedBeforeFailure": 11,
+    "pass": false,
+    "missing": "方向 Steering",
+    "receiptsFresh": true,
+    "receiptSHA256": {
+      "report.json": "21c5bfed51228e711689ebca7f18bcae188c5468a41d834feff4b942b3032d9a",
+      "semantic/play-873-325.json": "144e7580960245a03326845670c5e28e6eb31d117e39bd8e084b27ec55c0ecdd"
+    },
+    "runtimePin": "0a8da42e",
+    "profileSource": "The new folded-cover verifier profile definition (873x325 CSS, touch, DPR 2.625) was added to the pre-fix verifier only. The 0a8da42e game engine runtime was unmodified; this is not the stock pre-fix eight-profile verifier."
+  },
+  "candidate": {
+    "profiles": 9,
+    "pass": true,
+    "checkpointCount": 66,
+    "nativeRectCount": 334,
+    "ordinaryCheckpointCount": 63,
+    "crosschecked": 328,
+    "promptReceipts": 6,
+    "pictureCount": 75,
+    "minNativeTouchCssPx": 44.999284,
+    "minProjectedTouchCssPx": 44.99218,
+    "maxNativeSemanticCenterDeltaCssPx": 0,
+    "findings": 0,
+    "engineWarnings": 0,
+    "profileResults": [
+      {
+        "name": "phone-small",
+        "viewport": [
+          375,
+          667
+        ],
+        "touch": true,
+        "portraitPrompt": true,
+        "checkpoints": 8,
+        "nativeRectangles": 39,
+        "crosschecked": 37,
+        "minNativeTouchCssPx": 44.999284,
+        "minProjectedTouchCssPx": 44.994446,
+        "states": [
+          {
+            "name": "title",
+            "native": 2,
+            "semantic": 2
+          },
+          {
+            "name": "settings",
+            "native": 9,
+            "semantic": 9
+          },
+          {
+            "name": "driving-hud",
+            "native": 6,
+            "semantic": 6
+          },
+          {
+            "name": "pause",
+            "native": 4,
+            "semantic": 4
+          },
+          {
+            "name": "first-station",
+            "native": 2,
+            "semantic": 2
+          },
+          {
+            "name": "camp",
+            "native": 12,
+            "semantic": 12
+          },
+          {
+            "name": "camp-saved",
+            "native": 2,
+            "semantic": 2
+          }
+        ]
+      },
+      {
+        "name": "phone-notch",
+        "viewport": [
+          393,
+          852
+        ],
+        "touch": true,
+        "portraitPrompt": true,
+        "checkpoints": 8,
+        "nativeRectangles": 39,
+        "crosschecked": 37,
+        "minNativeTouchCssPx": 44.999621,
+        "minProjectedTouchCssPx": 44.994385,
+        "states": [
+          {
+            "name": "title",
+            "native": 2,
+            "semantic": 2
+          },
+          {
+            "name": "settings",
+            "native": 9,
+            "semantic": 9
+          },
+          {
+            "name": "driving-hud",
+            "native": 6,
+            "semantic": 6
+          },
+          {
+            "name": "pause",
+            "native": 4,
+            "semantic": 4
+          },
+          {
+            "name": "first-station",
+            "native": 2,
+            "semantic": 2
+          },
+          {
+            "name": "camp",
+            "native": 12,
+            "semantic": 12
+          },
+          {
+            "name": "camp-saved",
+            "native": 2,
+            "semantic": 2
+          }
+        ]
+      },
+      {
+        "name": "phone-notch-wide",
+        "viewport": [
+          852,
+          393
+        ],
+        "touch": true,
+        "portraitPrompt": false,
+        "checkpoints": 7,
+        "nativeRectangles": 37,
+        "crosschecked": 37,
+        "minNativeTouchCssPx": 45.85,
+        "minProjectedTouchCssPx": 45.849991,
+        "states": [
+          {
+            "name": "title",
+            "native": 2,
+            "semantic": 2
+          },
+          {
+            "name": "settings",
+            "native": 9,
+            "semantic": 9
+          },
+          {
+            "name": "driving-hud",
+            "native": 6,
+            "semantic": 6
+          },
+          {
+            "name": "pause",
+            "native": 4,
+            "semantic": 4
+          },
+          {
+            "name": "first-station",
+            "native": 2,
+            "semantic": 2
+          },
+          {
+            "name": "camp",
+            "native": 12,
+            "semantic": 12
+          },
+          {
+            "name": "camp-saved",
+            "native": 2,
+            "semantic": 2
+          }
+        ]
+      },
+      {
+        "name": "phone-tall",
+        "viewport": [
+          360,
+          800
+        ],
+        "touch": true,
+        "portraitPrompt": true,
+        "checkpoints": 8,
+        "nativeRectangles": 39,
+        "crosschecked": 37,
+        "minNativeTouchCssPx": 44.999307,
+        "minProjectedTouchCssPx": 44.999298,
+        "states": [
+          {
+            "name": "title",
+            "native": 2,
+            "semantic": 2
+          },
+          {
+            "name": "settings",
+            "native": 9,
+            "semantic": 9
+          },
+          {
+            "name": "driving-hud",
+            "native": 6,
+            "semantic": 6
+          },
+          {
+            "name": "pause",
+            "native": 4,
+            "semantic": 4
+          },
+          {
+            "name": "first-station",
+            "native": 2,
+            "semantic": 2
+          },
+          {
+            "name": "camp",
+            "native": 12,
+            "semantic": 12
+          },
+          {
+            "name": "camp-saved",
+            "native": 2,
+            "semantic": 2
+          }
+        ]
+      },
+      {
+        "name": "tablet",
+        "viewport": [
+          768,
+          1024
+        ],
+        "touch": true,
+        "portraitPrompt": false,
+        "checkpoints": 7,
+        "nativeRectangles": 37,
+        "crosschecked": 37,
+        "minNativeTouchCssPx": 50.431034,
+        "minProjectedTouchCssPx": 50.43103,
+        "states": [
+          {
+            "name": "title",
+            "native": 2,
+            "semantic": 2
+          },
+          {
+            "name": "settings",
+            "native": 9,
+            "semantic": 9
+          },
+          {
+            "name": "driving-hud",
+            "native": 6,
+            "semantic": 6
+          },
+          {
+            "name": "pause",
+            "native": 4,
+            "semantic": 4
+          },
+          {
+            "name": "first-station",
+            "native": 2,
+            "semantic": 2
+          },
+          {
+            "name": "camp",
+            "native": 12,
+            "semantic": 12
+          },
+          {
+            "name": "camp-saved",
+            "native": 2,
+            "semantic": 2
+          }
+        ]
+      },
+      {
+        "name": "tablet-wide",
+        "viewport": [
+          1024,
+          768
+        ],
+        "touch": true,
+        "portraitPrompt": false,
+        "checkpoints": 7,
+        "nativeRectangles": 37,
+        "crosschecked": 37,
+        "minNativeTouchCssPx": 67.241669,
+        "minProjectedTouchCssPx": 67.241669,
+        "states": [
+          {
+            "name": "title",
+            "native": 2,
+            "semantic": 2
+          },
+          {
+            "name": "settings",
+            "native": 9,
+            "semantic": 9
+          },
+          {
+            "name": "driving-hud",
+            "native": 6,
+            "semantic": 6
+          },
+          {
+            "name": "pause",
+            "native": 4,
+            "semantic": 4
+          },
+          {
+            "name": "first-station",
+            "native": 2,
+            "semantic": 2
+          },
+          {
+            "name": "camp",
+            "native": 12,
+            "semantic": 12
+          },
+          {
+            "name": "camp-saved",
+            "native": 2,
+            "semantic": 2
+          }
+        ]
+      },
+      {
+        "name": "foldable-cover-wide",
+        "viewport": [
+          873,
+          325
+        ],
+        "touch": true,
+        "portraitPrompt": false,
+        "checkpoints": 7,
+        "nativeRectangles": 37,
+        "crosschecked": 37,
+        "minNativeTouchCssPx": 45,
+        "minProjectedTouchCssPx": 44.99218,
+        "states": [
+          {
+            "name": "title",
+            "native": 2,
+            "semantic": 2
+          },
+          {
+            "name": "settings",
+            "native": 9,
+            "semantic": 9
+          },
+          {
+            "name": "driving-hud",
+            "native": 6,
+            "semantic": 6
+          },
+          {
+            "name": "pause",
+            "native": 4,
+            "semantic": 4
+          },
+          {
+            "name": "first-station",
+            "native": 2,
+            "semantic": 2
+          },
+          {
+            "name": "camp",
+            "native": 12,
+            "semantic": 12
+          },
+          {
+            "name": "camp-saved",
+            "native": 2,
+            "semantic": 2
+          }
+        ]
+      },
+      {
+        "name": "foldable",
+        "viewport": [
+          884,
+          1104
+        ],
+        "touch": true,
+        "portraitPrompt": false,
+        "checkpoints": 7,
+        "nativeRectangles": 37,
+        "crosschecked": 37,
+        "minNativeTouchCssPx": 58.04846,
+        "minProjectedTouchCssPx": 58.048462,
+        "states": [
+          {
+            "name": "title",
+            "native": 2,
+            "semantic": 2
+          },
+          {
+            "name": "settings",
+            "native": 9,
+            "semantic": 9
+          },
+          {
+            "name": "driving-hud",
+            "native": 6,
+            "semantic": 6
+          },
+          {
+            "name": "pause",
+            "native": 4,
+            "semantic": 4
+          },
+          {
+            "name": "first-station",
+            "native": 2,
+            "semantic": 2
+          },
+          {
+            "name": "camp",
+            "native": 12,
+            "semantic": 12
+          },
+          {
+            "name": "camp-saved",
+            "native": 2,
+            "semantic": 2
+          }
+        ]
+      },
+      {
+        "name": "desktop",
+        "viewport": [
+          1920,
+          1080
+        ],
+        "touch": false,
+        "portraitPrompt": false,
+        "checkpoints": 7,
+        "nativeRectangles": 32,
+        "crosschecked": 32,
+        "minNativeTouchCssPx": null,
+        "minProjectedTouchCssPx": null,
+        "states": [
+          {
+            "name": "title",
+            "native": 2,
+            "semantic": 2
+          },
+          {
+            "name": "settings",
+            "native": 9,
+            "semantic": 9
+          },
+          {
+            "name": "driving-hud",
+            "native": 1,
+            "semantic": 1
+          },
+          {
+            "name": "pause",
+            "native": 4,
+            "semantic": 4
+          },
+          {
+            "name": "first-station",
+            "native": 2,
+            "semantic": 2
+          },
+          {
+            "name": "camp",
+            "native": 12,
+            "semantic": 12
+          },
+          {
+            "name": "camp-saved",
+            "native": 2,
+            "semantic": 2
+          }
+        ]
+      }
+    ],
+    "receiptSHA256": {
+      "report.json": "afb4bee35b86d8f7386c304b27498b42aacab0e884359e5ef52f71bae18f998e",
+      "semantic/play-375-667.json": "7a52fb495218eb9330184497a55c3664de9a48ca8f2aec48f6c56e75e3878fc6",
+      "semantic/play-393-852.json": "1de060512ef6d83713c91a74a40eee8de954c0f63a0dea83f16ce75c3ef5ec8c",
+      "semantic/play-852-393.json": "aaf789cf027ac0fc49d5499d551f8c72eff4ef9e6811848c66eac4b17ee00120",
+      "semantic/play-360-800.json": "9a19f36e635782818d463b08ed2f874994b13e9be4bb999283fd366ac201caa2",
+      "semantic/play-768-1024.json": "4bda6514b0759826555bbe0445e33c1412b6d027517b3edb21114a0e9daf9788",
+      "semantic/play-1024-768.json": "7588e0f5aa9b9a95f7fcca3333804b5c79062ecca8da50db99edfcfba296c2c5",
+      "semantic/play-873-325.json": "22d80476563355c80b3fa188536f681505121fc17424ced786526522cb1a1627",
+      "semantic/play-884-1104.json": "62047a02d6e80bb5d25d5ff0c23dd595b5e71d2c2ccf621d9a299f4dc890efc2",
+      "semantic/play-1920-1080.json": "35e4e3189fc2d6f8a95f7725bf71b49da22c603cc9ab4ce9ee8740578fe5f356"
+    },
+    "vendorSource": "Unmodified official vendor generated by tools/vendor-game.mjs from merged engine main 2fbe55630b1f67c6b1584d73290c19cb0aa0ae24; default nine profiles."
+  },
+  "caveats": [
+    "The 3 portrait-prompt checkpoints report the underlying two title targets each, not the HTML rotate button; those six native rectangles are excluded from the 328 independent semantic/native crosschecks.",
+    "The official checkpoint receipt proves a fresh native report; the raw native rectangles in semantic receipts are read by the same game checkpoint immediately afterward and may be from an adjacent fresh sampling tick.",
+    "All nine profiles are simulated CSS viewports in software Chromium; this evidence does not represent physical devices or natural full-route driving.",
+    "The route fixture moves near the first station through the existing location hook, then uses simulation ticks and actual UI input for arrival, camp and persistence."
+  ]
+}
