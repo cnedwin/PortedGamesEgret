@@ -4,6 +4,7 @@
 import { encodeWav } from '@egret/engine/kit';
 import { createBrowserAudio } from '@egret/engine/web/audio';
 import { EFFECTS, RATE } from './synth.mjs';
+import { assetUrl } from '../asset-url.mjs';
 
 const MUSIC_LEVEL = 0.42;
 const TURN_PIECES = ['dawn', 'raven'];
@@ -42,7 +43,7 @@ export function createSound(scope, { sound = true, music = true } = {}) {
   }
   function preparePiece(name) {
     if (!pieces.has(name)) {
-      const ready = fetch(new URL(`../../assets/music/${name}.mp3`, import.meta.url))
+      const ready = fetch(assetUrl(`music/${name}.mp3`))
         .then((response) => {
           if (!response.ok) throw new Error(`HTTP ${response.status}`);
           return response.arrayBuffer();

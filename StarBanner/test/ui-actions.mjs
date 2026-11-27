@@ -65,12 +65,11 @@ export const readBattle = (page, fn, arg) => page.evaluate(fn,arg);
 
 // Uses the public 3D projection and the same tile-centre geometry as the game. The actual click/tap reaches the board.
 export async function boardPoint(page, tile) {
-  return page.evaluate(async ({ x, y }) => {
-    const { stage, battle } = window.egretGame;
-    const { tileCentre } = await import(new URL('src/view/stage.mjs', location.href).href);
-    const { projectToViewport3D } = await import('@egret/engine/world3d');
-    const p = tileCentre(x,y,battle.game), canvas=stage.canvas, box=canvas.getBoundingClientRect();
-    const result=projectToViewport3D(stage.camera,[p.x,0,p.z],box.width,box.height);
+  return page.evaluate(({ x, y }) => {
+    const { stage } = window.egretGame;
+    const canvas=stage.canvas,box=canvas.getBoundingClientRect();
+    // Use the loaded game's actual engine projection, not a second unbundled engine identity.
+    const result=stage.projectTile(x,y,box.width,box.height);
     return { x:box.x+result.x,y:box.y+result.y,ok:result.inFront,
       tile:stage.rig.tileAt(result.x,result.y,box.width,box.height),viewport:[innerWidth,innerHeight] };
   },tile);

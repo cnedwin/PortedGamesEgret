@@ -45,6 +45,28 @@
   }
 }
   </script>
+  <!-- launch-bundle-preloads:start -->
+  <link rel="modulepreload" href="./bundle/main-PIF2OKW2.mjs">
+  <link rel="modulepreload" href="./bundle/chunk-2PKRZAXY.mjs">
+  <link rel="modulepreload" href="./bundle/chunk-5FZ5JJBA.mjs">
+  <link rel="modulepreload" href="./bundle/chunk-663QOIXH.mjs">
+  <link rel="modulepreload" href="./bundle/chunk-CMEPA7RE.mjs">
+  <link rel="modulepreload" href="./bundle/chunk-EAWXZWZT.mjs">
+  <link rel="modulepreload" href="./bundle/chunk-F576OYKD.mjs">
+  <link rel="modulepreload" href="./bundle/chunk-HSD5GAD7.mjs">
+  <link rel="modulepreload" href="./bundle/chunk-ODATJFOB.mjs">
+  <link rel="modulepreload" href="./bundle/chunk-Q3A2T4L2.mjs">
+  <link rel="modulepreload" href="./bundle/chunk-VVGZFVG3.mjs">
+  <link rel="modulepreload" href="./bundle/chunk-WD45GUHK.mjs">
+  <script>
+    if (new URLSearchParams(location.search).get('backend') === 'webgpu') {
+      for (const file of ["chunk-ALUQKS75.mjs"]) {
+        const link = document.createElement('link');
+        link.rel = 'modulepreload'; link.href = './bundle/' + file; document.head.append(link);
+      }
+    }
+  </script>
+  <!-- launch-bundle-preloads:end -->
 </head>
 <body>
   <main id="frame">
@@ -52,6 +74,15 @@
     <p id="fatal" hidden role="alert"></p>
   </main>
   <noscript>这个游戏需要 JavaScript · This game needs JavaScript.</noscript>
-  <script type="module" src="src/main.mjs"></script>
+  <!-- launch-bundle-entry:start -->
+  <script type="module">
+    try { await import('./bundle/main-PIF2OKW2.mjs'); }
+    catch (cause) {
+      const error = document.querySelector('#fatal');
+      if (error.hidden) { error.textContent = '游戏加载失败，请刷新重试。 · Could not load the game; reload to retry.'; error.hidden = false; }
+      console.error(cause);
+    }
+  </script>
+  <!-- launch-bundle-entry:end -->
 </body>
 </html>

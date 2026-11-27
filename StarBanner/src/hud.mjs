@@ -9,7 +9,8 @@ import { COMMANDERS } from './sim/commanders.mjs';
 import { TEAMS } from './view/toon.mjs';
 import { createKit, FONT } from './ui/kit.mjs';
 
-const PORTRAIT = (id) => new URL(`../assets/portraits/${id}.webp`, import.meta.url).href;
+import { assetUrl } from './asset-url.mjs';
+const PORTRAIT = (id) => assetUrl(`portraits/${id}.webp`).href;
 const C = { ink: 0x1b2340, soft: 0x3a4670, paper: 0xf4f7fb, pale: 0xe4ebf5, gold: 0xf5c542, goldDeep: 0x9f6518, green: 0x3fbf6a, white: 0xffffff, blue: 0x3d7bff, red: 0xe8384a, orange: 0xe8642a };
 const ICONS = { endTurn: '⚑', next: '➜', cancel: '↩', threat: '◎', turnLeft: '↺', turnRight: '↻', zoomIn: '＋', zoomOut: '－', menu: '☰' };
 const TEAM = (color) => typeof color === 'number' ? color : Number.parseInt((color || '#1b2340').slice(1), 16);

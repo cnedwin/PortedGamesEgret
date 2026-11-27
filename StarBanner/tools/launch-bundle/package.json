@@ -1,0 +1,7 @@
+{
+  "name": "starbanner-launch-bundle",
+  "private": true,
+  "dependencies": {
+    "esbuild": "0.28.2"
+  }
+}

@@ -5,7 +5,6 @@
 // action → pick a target), the events the rules return played out one by one (walks, blows, missiles, damage
 // figures, criticals, falls, captures, recruits…), the computer's turns played a step at a time, and the whole board
 // saved after every action.
-import { projectToViewport3D } from '@egret/engine/world3d';
 import { createGame, act, reach, stops, pathTo, targetsFrom, forecast, actionsAt, unitAt, buildingAt, unitById, buildingById, terrainAt, recruitSpots, reinforcePlan, unloadSpots, distance, commanderOf, cloneGame, artReady } from './sim/rules.mjs';
 import { createBrain, nextOrder } from './sim/ai.mjs';
 import { battleSight, knownBattle, sightTile } from './sim/fog.mjs';
@@ -168,7 +167,7 @@ export async function startBattle(app, { setup, saved = null, attract = false })
   const screenOf = (p) => {
     const w = stage.canvas.clientWidth,
       h = stage.canvas.clientHeight;
-    const v = projectToViewport3D(stage.camera, p, w, h);
+    const v = stage.projectPoint(p, w, h);
     return { x: v.x, y: v.y, depth: v.depth, ok: v.inFront };
   };
   const heightAt = (x, y) => {
