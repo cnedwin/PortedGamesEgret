@@ -36,31 +36,18 @@
     "@egret/engine/web/kit": "./vendor/engine/dist/web/kit.js",
     "@egret/engine/ui/semantics": "./vendor/engine/dist/semantics.js",
     "@egret/engine/ui/testing": "./vendor/engine/dist/ui/testing.js",
-    "@egret/engine/web/semantics": "./vendor/engine/dist/web/semantics.js"
+    "@egret/engine/web/semantics": "./vendor/engine/dist/web/semantics.js",
+    "@egret/engine/web/screen": "./vendor/engine/dist/web/screen.js",
+    "@egret/engine/web/view": "./vendor/engine/dist/web/view.js"
   }
 }
   </script>
 </head>
 <body>
   <main id="frame">
-    <div id="back" class="layer"><canvas id="felt" aria-hidden="true"></canvas></div>
+    <div id="back"><canvas id="felt" aria-hidden="true"></canvas></div>
     <div id="stage"></div>
-    <div id="table" class="layer">
-
-      <div id="centre" aria-live="off">
-        <span class="seatWind" data-seat="0"></span><span class="seatWind" data-seat="1"></span><span class="seatWind" data-seat="2"></span><span class="seatWind" data-seat="3"></span>
-        <b id="roundLine"></b>
-        <span id="wallLeft"></span>
-      </div>
-      <div class="plate" data-seat="0"><i class="seal"></i><span class="who"></span><span class="badges"></span><b class="score"></b></div>
-      <div class="plate" data-seat="1"><i class="seal seatPortrait" aria-hidden="true"></i><span class="who"></span><span class="badges"></span><b class="score"></b></div>
-      <div class="plate" data-seat="2"><i class="seal seatPortrait" aria-hidden="true"></i><span class="who"></span><span class="badges"></span><b class="score"></b></div>
-      <div class="plate" data-seat="3"><i class="seal seatPortrait" aria-hidden="true"></i><span class="who"></span><span class="badges"></span><b class="score"></b></div>
-
-      <div id="hint" aria-live="polite"></div>
-      <p id="announce" class="sr" aria-live="assertive"></p>
-
-    </div>
+    <p id="announce" class="sr" aria-live="assertive"></p>
     <p id="loading" class="loading" role="status">洗牌中 · Shuffling</p>
   </main>
   <noscript>這個遊戲需要 JavaScript · This game needs JavaScript.</noscript>

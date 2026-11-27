@@ -99,7 +99,7 @@ export const MATRIX = {
     },
     {
      "game": "TaiwanMahjong",
-     "file": "TaiwanMahjong/src/round-ui.mjs"
+     "file": "TaiwanMahjong/src/hud.mjs"
     },
     {
      "game": "TeaHorseRoad",
@@ -115,12 +115,7 @@ export const MATRIX = {
    "id": "@egret/engine/webgpu",
    "kind": "entry",
    "label": "@egret/engine/webgpu",
-   "games": [
-    {
-     "game": "LoveElective",
-     "file": "LoveElective/src/engine/stage.mjs"
-    }
-   ]
+   "games": []
   },
   {
    "id": "@egret/engine/text",
@@ -179,10 +174,6 @@ export const MATRIX = {
     {
      "game": "JY",
      "file": "JY/web/main.mjs"
-    },
-    {
-     "game": "LoveElective",
-     "file": "LoveElective/src/engine/stage.mjs"
     }
    ]
   },
@@ -345,6 +336,10 @@ export const MATRIX = {
     {
      "game": "LubanBridge",
      "file": "LubanBridge/src/view/screens.mjs"
+    },
+    {
+     "game": "TaiwanMahjong",
+     "file": "TaiwanMahjong/src/ui.mjs"
     }
    ]
   },
@@ -352,12 +347,7 @@ export const MATRIX = {
    "id": "@egret/engine/web/pointer",
    "kind": "entry",
    "label": "@egret/engine/web/pointer",
-   "games": [
-    {
-     "game": "LoveElective",
-     "file": "LoveElective/src/engine/stage.mjs"
-    }
-   ]
+   "games": []
   },
   {
    "id": "@egret/engine/ui",
@@ -365,8 +355,16 @@ export const MATRIX = {
    "label": "@egret/engine/ui",
    "games": [
     {
+     "game": "LoveElective",
+     "file": "LoveElective/src/engine/ui.mjs"
+    },
+    {
      "game": "MechanismCity",
      "file": "MechanismCity/src/screens.mjs"
+    },
+    {
+     "game": "NezhaSea",
+     "file": "NezhaSea/src/main.mjs"
     },
     {
      "game": "NightWardens",
@@ -407,8 +405,20 @@ export const MATRIX = {
    "label": "@egret/engine/paragraph",
    "games": [
     {
+     "game": "FengshenChronicle",
+     "file": "FengshenChronicle/src/native-rpg-ui.mjs"
+    },
+    {
+     "game": "FivePhases",
+     "file": "FivePhases/src/ui/hud.mjs"
+    },
+    {
      "game": "InquestScrolls",
      "file": "InquestScrolls/src/view/type.mjs"
+    },
+    {
+     "game": "LanternShadows",
+     "file": "LanternShadows/src/native-ui.mjs"
     }
    ]
   },
@@ -418,8 +428,20 @@ export const MATRIX = {
    "label": "@egret/engine/web/paragraph",
    "games": [
     {
+     "game": "FengshenChronicle",
+     "file": "FengshenChronicle/src/native-rpg-ui.mjs"
+    },
+    {
+     "game": "FivePhases",
+     "file": "FivePhases/src/ui/hud.mjs"
+    },
+    {
      "game": "InquestScrolls",
      "file": "InquestScrolls/src/view/type.mjs"
+    },
+    {
+     "game": "LanternShadows",
+     "file": "LanternShadows/src/native-ui.mjs"
     }
    ]
   },
@@ -431,10 +453,6 @@ export const MATRIX = {
     {
      "game": "JY",
      "file": "JY/web/main.mjs"
-    },
-    {
-     "game": "LoveElective",
-     "file": "LoveElective/src/engine/stage.mjs"
     }
    ]
   },
@@ -489,7 +507,7 @@ export const MATRIX = {
     },
     {
      "game": "LoveElective",
-     "file": "LoveElective/src/engine/stage.mjs"
+     "file": "LoveElective/src/engine/ui.mjs"
     },
     {
      "game": "LubanBridge",
@@ -647,12 +665,7 @@ export const MATRIX = {
    "id": "@egret/engine/web/loop",
    "kind": "entry",
    "label": "@egret/engine/web/loop",
-   "games": [
-    {
-     "game": "LoveElective",
-     "file": "LoveElective/src/engine/stage.mjs"
-    }
-   ]
+   "games": []
   },
   {
    "id": "@egret/engine/web/screen",
@@ -662,6 +675,10 @@ export const MATRIX = {
     {
      "game": "LubanBridge",
      "file": "LubanBridge/src/main.mjs"
+    },
+    {
+     "game": "TaiwanMahjong",
+     "file": "TaiwanMahjong/src/main.mjs"
     }
    ]
   },
@@ -790,10 +807,6 @@ export const MATRIX = {
      "file": "SandScroll/src/main.mjs"
     },
     {
-     "game": "SnowTemple",
-     "file": "SnowTemple/src/main.mjs"
-    },
-    {
      "game": "StarBanner",
      "file": "StarBanner/src/main.mjs"
     },
@@ -821,14 +834,6 @@ export const MATRIX = {
      "file": "FengshenChronicle/src/main.mjs"
     },
     {
-     "game": "FivePhases",
-     "file": "FivePhases/src/main.mjs"
-    },
-    {
-     "game": "LanternShadows",
-     "file": "LanternShadows/src/main.mjs"
-    },
-    {
      "game": "MechanismCity",
      "file": "MechanismCity/src/main.mjs"
     },
@@ -852,8 +857,24 @@ export const MATRIX = {
      "file": "CanalWatch/src/main.mjs"
     },
     {
+     "game": "FengshenChronicle",
+     "file": "FengshenChronicle/src/native-rpg-ui.mjs"
+    },
+    {
+     "game": "FivePhases",
+     "file": "FivePhases/src/main.mjs"
+    },
+    {
      "game": "InquestScrolls",
      "file": "InquestScrolls/src/main.mjs"
+    },
+    {
+     "game": "LanternShadows",
+     "file": "LanternShadows/src/main.mjs"
+    },
+    {
+     "game": "LoveElective",
+     "file": "LoveElective/src/engine/stage.mjs"
     },
     {
      "game": "LubanBridge",
@@ -953,12 +974,28 @@ export const MATRIX = {
    "label": "@egret/engine/ui/semantics",
    "games": [
     {
+     "game": "CanalWatch",
+     "file": "CanalWatch/src/main.mjs"
+    },
+    {
+     "game": "FengshenChronicle",
+     "file": "FengshenChronicle/src/native-rpg-ui.mjs"
+    },
+    {
+     "game": "FivePhases",
+     "file": "FivePhases/src/main.mjs"
+    },
+    {
      "game": "InquestScrolls",
      "file": "InquestScrolls/src/main.mjs"
     },
     {
+     "game": "LanternShadows",
+     "file": "LanternShadows/src/main.mjs"
+    },
+    {
      "game": "LoveElective",
-     "file": "LoveElective/src/engine/ui-semantics.mjs"
+     "file": "LoveElective/src/engine/stage.mjs"
     },
     {
      "game": "LubanBridge",
@@ -967,6 +1004,10 @@ export const MATRIX = {
     {
      "game": "MechanismCity",
      "file": "MechanismCity/src/main.mjs"
+    },
+    {
+     "game": "NezhaSea",
+     "file": "NezhaSea/src/ui-input.mjs"
     },
     {
      "game": "NightWardens",
@@ -1000,8 +1041,20 @@ export const MATRIX = {
    "label": "@egret/engine/ui/testing",
    "games": [
     {
+     "game": "FivePhases",
+     "file": "FivePhases/src/main.mjs"
+    },
+    {
+     "game": "LanternShadows",
+     "file": "LanternShadows/src/main.mjs"
+    },
+    {
      "game": "LubanBridge",
      "file": "LubanBridge/src/check.mjs"
+    },
+    {
+     "game": "NezhaSea",
+     "file": "NezhaSea/src/main.mjs"
     }
    ]
   },
@@ -1011,12 +1064,28 @@ export const MATRIX = {
    "label": "@egret/engine/web/semantics",
    "games": [
     {
+     "game": "CanalWatch",
+     "file": "CanalWatch/src/main.mjs"
+    },
+    {
+     "game": "FengshenChronicle",
+     "file": "FengshenChronicle/src/native-rpg-ui.mjs"
+    },
+    {
+     "game": "FivePhases",
+     "file": "FivePhases/src/main.mjs"
+    },
+    {
      "game": "InquestScrolls",
      "file": "InquestScrolls/src/main.mjs"
     },
     {
+     "game": "LanternShadows",
+     "file": "LanternShadows/src/main.mjs"
+    },
+    {
      "game": "LoveElective",
-     "file": "LoveElective/src/engine/ui-semantics.mjs"
+     "file": "LoveElective/src/engine/ui.mjs"
     },
     {
      "game": "LubanBridge",
@@ -1025,6 +1094,10 @@ export const MATRIX = {
     {
      "game": "MechanismCity",
      "file": "MechanismCity/src/main.mjs"
+    },
+    {
+     "game": "NezhaSea",
+     "file": "NezhaSea/src/ui-input.mjs"
     },
     {
      "game": "NightWardens",
@@ -1178,12 +1251,7 @@ export const MATRIX = {
    "id": "multi-touch",
    "kind": "api",
    "label": "多点触控 · Multi-touch (multi-touch)",
-   "games": [
-    {
-     "game": "LoveElective",
-     "file": "LoveElective/src/engine/stage.mjs"
-    }
-   ]
+   "games": []
   }
  ]
 };

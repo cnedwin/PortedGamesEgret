@@ -53,22 +53,30 @@ function drawCallPulse(g, kind, color, radius) {
   }
 }
 
-/** The engine's part of the table. `tall`: the stage is turned a quarter inside a tall engine. */
-export function createView(game, lease, { tall = false, scale = 0.75 } = {}) {
-  const root = game.sprite(() => {}, game.world);
-  root.scaleX = root.scaleY = scale;
-  if (tall) {
-    root.rotation = 90;
-    root.x = STAGE.height * scale;
+/** A table-owned root; play itself and its canvas never turn. */
+export function createView(game, lease) {
+  // The table is fixed to the stage, not a camera. Native UI placement also updates during pause.
+  // A paused world layer retains its old design offset until the clock resumes (ENGINE-NOTES 11).
+  const root = game.sprite(() => {}, game.ui);
+  function arrange(board) {
+    root.x = board.x;
+    root.y = board.y;
+    root.rotation = board.rotation;
+    root.scaleX = root.scaleY = board.scale;
   }
   const handLayer = game.sprite(() => {}, root),
     handFeedback = game.sprite(() => {}, root),
     flyLayer = game.sprite(() => {}, root),
     wordLayer = game.sprite(() => {}, root);
   /** A stage point in the engine's world, for what play draws there itself (bursts). */
-  const toWorld = (at) => (tall ? { x: (STAGE.height - at.y) * scale, y: at.x * scale } : { x: at.x * scale, y: at.y * scale });
+  const toWorld = (at) => {
+    const p = root.localToGlobal(at.x, at.y);
+    return game.fromStage(p.x, p.y);
+  };
   const pool = [];
   const marks = [];
+  const handMotions = new WeakMap();
+  const handTargets = new WeakMap();
   const selection = game.sprite((g) => {
     const x = -TILE.width / 2 - 2,
       y = 2 - CELL.height / 2 - 2,
@@ -91,6 +99,9 @@ export function createView(game, lease, { tall = false, scale = 0.75 } = {}) {
     return bitmap;
   }
   function release(bitmap) {
+    handMotions.get(bitmap)?.stop();
+    handMotions.delete(bitmap);
+    handTargets.delete(bitmap);
     bitmap.parent?.removeChild(bitmap);
     pool.push(bitmap);
   }
@@ -100,13 +111,23 @@ export function createView(game, lease, { tall = false, scale = 0.75 } = {}) {
     bitmap.scaleX = bitmap.scaleY = at.scale;
     bitmap.rotation = (at.rotation ?? 0) * DEG;
   };
+  function slide(node, at, moving) {
+    // A settled hand's layout tween may have been queued before a turn. Retarget it, not the in-flight layer.
+    const prior = handTargets.get(node);
+    if (moving && prior?.x === at.x && prior.y === at.y && prior.scale === at.scale) return;
+    handTargets.set(node, at);
+    handMotions.get(node)?.stop();
+    handMotions.delete(node);
+    if (moving) handMotions.set(node, game.tween(node).to({ x: at.x, y: at.y, scaleX: at.scale, scaleY: at.scale }, .14, 'quadOut'));
+    else place(node, at);
+  }
 
   /**
    * Show the player's hand: `tiles` is [{ id, kind }] in order; `drawnApart` sets the last apart; `selected` is an
    * id raised; `ready` a set of ids marked; `moving` lets tiles glide to their places.
    */
-  function showHand(tiles, { drawnApart = false, selected = null, ready = new Set(), moving = true } = {}) {
-    const slots = handSlots(tiles.length, drawnApart),
+  function showHand(tiles, { drawnApart = false, selected = null, ready = new Set(), moving = true, slots = handSlots(tiles.length, drawnApart) } = {}) {
+    const
       before = new Map(shown.map((s) => [s.id, s.bitmap]));
     const next = [];
     tiles.forEach(({ id, kind }, i) => {
@@ -123,11 +144,9 @@ export function createView(game, lease, { tall = false, scale = 0.75 } = {}) {
       if (raised) {
         if (!selection.visible || selectedId !== id) place(selection, animate ? { ...at, x: bitmap.x, y: bitmap.y } : at);
         selection.visible = true;
-        if (animate) game.tween(selection).to({ x: at.x, y: at.y }, 0.14, 'quadOut');
-        else place(selection, at);
+        slide(selection, at, animate);
       }
-      if (animate) game.tween(bitmap).to({ x: at.x, y: at.y }, 0.14, 'quadOut');
-      else place(bitmap, at);
+      slide(bitmap, at, animate);
       next.push({ id, bitmap });
     });
     for (const bitmap of before.values()) release(bitmap);
@@ -175,8 +194,9 @@ export function createView(game, lease, { tall = false, scale = 0.75 } = {}) {
         rotation: (bitmap.rotation + end.rotation) / 2 }, seconds * 0.43, 'quadOut')
         .to(end, seconds * 0.57, 'quadInOut');
     }
-    // A game made again mid-flight (the screen turned) never finishes the motion; do not wait on it for ever.
-    const landed = await Promise.race([motion.done.then(() => true), new Promise((resolve) => setTimeout(() => resolve(false), seconds * 1000 + 600))]);
+    // The table root moves with the native screen plan, so an in-flight tile stays on the same motion clock.
+    await motion.done;
+    const landed = bitmap.parent === flyLayer;
     if (landed && !reduced && to.scale < 0.43 && bitmap.parent === flyLayer) {
       const spot = toWorld(to);
       game.burst(spot.x, spot.y, { color: COPPER, count: 4, speed: 49, life: 0.24, size: 1.8 });
@@ -231,11 +251,14 @@ export function createView(game, lease, { tall = false, scale = 0.75 } = {}) {
     for (const s of shown) release(s.bitmap);
     shown = [];
     selection.visible = false;
+    handMotions.get(selection)?.stop();
+    handMotions.delete(selection);
+    handTargets.delete(selection);
     selectedId = null;
     for (const mark of marks) mark.visible = false;
     for (const child of [...flyLayer.children ?? []]) flyLayer.removeChild(child);
     for (const child of [...wordLayer.children ?? []]) game.remove(child);
   }
 
-  return { showHand, handPlace, fly, call, clear, stage: STAGE };
+  return { arrange, root, showHand, handPlace, fly, call, clear, stage: STAGE };
 }

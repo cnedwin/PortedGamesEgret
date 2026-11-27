@@ -1,6 +1,5 @@
-// The scenery and interface share the table's 1280 × 720 design coordinates.
-// The Egret surface runs at three quarters of that size.
-const UNIT = 0.75;
+// The view descriptions use the logical table's 1280 × 720 coordinates.
+// Placement, safe area, and layout variants belong to the native view planner.
 const bridges = new WeakMap();
 const words = new Set(['text', 'button']);
 const read = (value) => typeof value === 'function' ? value() : value;
@@ -10,18 +9,33 @@ const rectangle = (x, y, w, h) => ({ x, y, w, h, width: w, height: h });
 /** Adds the focus and accessible names of the table's canvas controls to Egret's semantic tree. */
 export function bridgeUiSemantics(tree) {
   let current;
+  // The engine retains a view's id when it rebuilds the parts for another form.
+  // Keep its descriptor until the game actually closes the view, not when
+  // native arrange temporarily removes/registers its semantic subtree.
+  const owners = new Map();
   const bridge = Object.create(tree, {
     add: {
       value(definition) {
-        return tree.add(current?.(definition) ?? definition);
+        const id = definition.id.split(':')[0];
+        if (current && !definition.parent) {
+          current.id = id;
+          owners.set(id, current);
+        }
+        const owner = current ?? owners.get(id);
+        return tree.add(owner?.describe(definition) ?? definition);
       }
     }
   });
   bridges.set(bridge, (describe, build) => {
     const previous = current;
-    current = describe;
+    const owner = { describe, id: null };
+    current = owner;
     try {
-      return build();
+      const view = build();
+      return { view, forget: () => owners.delete(owner.id) };
+    } catch (error) {
+      owners.delete(owner.id);
+      throw error;
     } finally {
       current = previous;
     }
@@ -29,13 +43,18 @@ export function bridgeUiSemantics(tree) {
   return bridge;
 }
 
-function plan({ label, modal = false, items, skin }) {
+function planParts(items, frame) {
   const rows = items.map((item, index) => {
     const { type, parent } = item, w = item.w ?? item.width ?? 0, h = item.h ?? item.height ?? 0;
     const x = item.x ?? 0, y = item.y ?? 0;
     const name = item.name ?? (type === 'button' || item.decorate || item.scroll || item.role || styleOf(item) ||
       item.invisible || item.alpha !== undefined ? '_item' + index : undefined);
-    const part = { type, x: x * UNIT, y: y * UNIT, width: w * UNIT, height: h * UNIT };
+    // A hand uses a stable native button per tile. Its target is placed from
+    // the current table geometry in applyParts; changing only the target's
+    // hit rectangle on a resize must not replace its native focus or ID.
+    const part = item.invisible
+      ? { type, x: 0, y: 0, width: 64, height: 96 }
+      : { type, x, y, width: w, height: h };
     if (name !== undefined) part.name = name;
     if (type === 'panel') {
       part.children = [];
@@ -43,7 +62,7 @@ function plan({ label, modal = false, items, skin }) {
     }
     if (words.has(type)) {
       part.text = name === undefined ? read(item.text) ?? '' : '';
-      if (item.size !== undefined) part.size = item.size * UNIT;
+      if (item.size !== undefined) part.size = item.size;
     }
     if (type === 'text') {
       if (item.align !== undefined) part.align = item.align;
@@ -53,7 +72,10 @@ function plan({ label, modal = false, items, skin }) {
     if (name === undefined && item.color !== undefined) part.color = read(item.color);
     return { item, name, parent, part, w, h };
   });
-  const entries = new Map(), root = { type: 'panel', children: [] };
+  const entries = new Map(), root = {
+    type: 'panel', name: '_layout', anchor: frame.anchor ?? 'center',
+    width: frame.width, height: frame.height, children: []
+  };
   for (const row of rows) {
     if (row.name === undefined) continue;
     if (entries.has(row.name)) throw new Error('Duplicate table UI name: ' + row.name);
@@ -64,41 +86,54 @@ function plan({ label, modal = false, items, skin }) {
     if (parent?.type !== 'panel') throw new Error('Missing table UI parent: ' + row.parent);
     parent.children.push(row.part);
   }
-  const description = { label, modal, area: 'screen', root };
+  return { root, entries };
+}
+
+function plan({ label, modal = false, items, skin, frame, variants = {}, table, area }) {
+  const base = planParts(items, frame ?? { width: 1280, height: 720 });
+  const description = { label, modal, area: area ?? (table === true ? 'screen' : 'safe'), root: base.root };
+  const byVariant = new Map([['landscape', base.entries]]);
+  for (const variant of ['portrait', 'tablet', 'tabletPortrait']) {
+    if (!variants[variant]) continue;
+    const { items: alternative, frame: box } = variants[variant];
+    const planned = planParts(alternative, box ?? frame ?? { width: 1280, height: 720 });
+    description[variant] = planned.root;
+    byVariant.set(variant, planned.entries);
+  }
   description.skin = {
     accent: 0x9d7438,
     ...skin,
-    ...(skin?.radius === undefined ? {} : { radius: skin.radius * UNIT }),
-    ...(skin?.size === undefined ? {} : { size: skin.size * UNIT })
+    ...(skin?.radius === undefined ? {} : { radius: skin.radius }),
+    ...(skin?.size === undefined ? {} : { size: skin.size })
   };
-  const signature = JSON.stringify([description, [...entries.values()].map(({ item, name }) => [
+  const signature = JSON.stringify([description, [...base.entries.values()].map(({ item, name }) => [
     name, !!item.action, !!item.pointerOnly, item.role, !!styleOf(item)
   ])]);
-  return { description, entries, signature };
+  return { description, byVariant, signature };
 }
 
 /** Adapts table coordinates and decoration to native views; the engine owns focus. */
-export function createUi(game, semantics) {
+export function createUi(game, semantics, { board = () => null } = {}) {
   const layers = new Map();
   const canvas = game.canvas;
-  const buildWithSemantics = bridges.get(semantics) ?? ((_describe, build) => build());
+  const buildWithSemantics = bridges.get(semantics) ?? ((_describe, build) => ({ view: build(), forget() {} }));
   let nextOrder = 0;
   if (!canvas.hasAttribute('tabindex')) canvas.tabIndex = 0;
   const frontModal = () => [...layers.values()].findLast(record => record.modal);
   const publish = () => semantics?.publish();
 
+  function entriesOf(record) {
+    return record.byVariant.get(record.view?.variant ?? record.variant) ?? record.byVariant.get('landscape');
+  }
+
   function bounds(record, entry) {
-    const native = record.describe.get(entry.name)?.().bounds;
-    if (!native) return rectangle(0, 0, 0, 0);
-    const a = game.ui.globalToLocal(native.x, native.y);
-    const b = game.ui.globalToLocal(native.x + native.width, native.y + native.height);
-    return rectangle(Math.min(a.x, b.x) / UNIT, Math.min(a.y, b.y) / UNIT,
-      Math.abs(b.x - a.x) / UNIT, Math.abs(b.y - a.y) / UNIT);
+    const native = record.view.visibleRect(entry.name);
+    return native ? rectangle(native.x, native.y, native.width, native.height) : undefined;
   }
 
   function find(name) {
     for (const record of [...layers.values()].reverse()) {
-      const entry = record.entries.get(name);
+      const entry = entriesOf(record).get(name);
       if (entry) return { record, entry };
     }
     return null;
@@ -118,15 +153,18 @@ export function createUi(game, semantics) {
       describe: () => ({ ...definition.describe(), order: record.order })
     };
     const name = definition.id.slice(definition.id.indexOf(':') + 1);
-    const entry = record.entries.get(name);
+    if (name === '_layout') return {
+      ...definition,
+      describe: () => ({ ...definition.describe(), name: record.options.label })
+    };
+    const entry = entriesOf(record).get(name);
     if (!entry) return definition;
-    record.describe.set(name, definition.describe);
     const role = entry.item.role ?? definition.role;
     return {
       ...definition,
       role,
       describe() {
-        const current = record.entries.get(name);
+        const current = entriesOf(record).get(name);
         const initial = definition.describe();
         const item = current.item, rect = initial.bounds;
         const label = String(read(item.label) ?? (words.has(item.type) ? read(item.text) : initial.name) ?? '');
@@ -148,8 +186,8 @@ export function createUi(game, semantics) {
 
   function bindParts(record) {
     const bindings = {};
-    for (const [name, { item }] of record.entries) {
-      const type = item.type, current = () => record.entries.get(name).item;
+    for (const [name, { item }] of record.byVariant.get('landscape')) {
+      const type = item.type, current = () => entriesOf(record).get(name).item;
       const binding = {
         color: () => styleOf(current()) ? undefined : read(current().color)
       };
@@ -168,12 +206,13 @@ export function createUi(game, semantics) {
   }
 
   function applyParts(record, view) {
-    for (const [name, { item, w, h }] of record.entries) {
+    record.variant = view.variant;
+    for (const [name, { item, w, h }] of entriesOf(record)) {
       const host = view.get(name);
       const style = styleOf(item);
       host.alpha = read(item.alpha) ?? (style && item.type === 'button' && read(item.disabled) ? 0.58 : 1);
       // Keep hit testing and the native focus outline; only the button's fill is hidden over a real tile.
-      if (item.invisible) host.graphics.clear();
+      if (item.invisible) placeInvisible(host, item, view.rect(name));
       if (style || item.decorate) {
         let visual = record.decorations.get(name);
         if (visual?.host !== host) {
@@ -183,13 +222,13 @@ export function createUi(game, semantics) {
           record.decorations.set(name, visual);
         }
         visual.node.visible = true;
-        const rect = rectangle(0, 0, w * UNIT, h * UNIT);
+        const rect = rectangle(0, 0, w, h);
         if (style) {
           // Keep the engine hit target and label while replacing its flat background.
           host.graphics.clear();
           const ink = visual.node.graphics.clear();
-          if (style.border !== undefined) ink.lineStyle(UNIT, style.border);
-          const corner = Math.min(rect.w, rect.h, (style.radius ?? 6) * UNIT * 2);
+          if (style.border !== undefined) ink.lineStyle(1, style.border);
+          const corner = Math.min(rect.w, rect.h, (style.radius ?? 6) * 2);
           ink.beginFill(read(item.color) ?? 0xfcf8ee).drawRoundRect(0, 0, rect.w, rect.h, corner).endFill();
         }
         item.decorate?.(visual.node, rect, host);
@@ -199,24 +238,57 @@ export function createUi(game, semantics) {
     }
   }
 
+  function placeInvisible(host, item, authored) {
+    host.x = item.x;
+    host.y = item.y;
+    host.scaleX = item.w / authored.width;
+    host.scaleY = item.h / authored.height;
+    host.graphics.clear();
+  }
+
+  function placeTable(record, view) {
+    const root = view.get('_layout').parent;
+    const follow = record.options.table === true ||
+      (record.options.table === 'exceptTabletPortrait' && view.variant !== 'tabletPortrait');
+    const at = follow ? board() : null;
+    if (!at) {
+      root.x = root.y = root.rotation = 0;
+      root.scaleX = root.scaleY = 1;
+      return;
+    }
+    // The native view plans its panel in the screen's coordinates. Fold its
+    // local origin onto the scene's board (without moving the game UI root).
+    const box = view.rect('_layout');
+    const angle = at.rotation * Math.PI / 180;
+    const scale = at.scale;
+    root.rotation = at.rotation;
+    root.scaleX = root.scaleY = scale;
+    root.x = at.x - (Math.cos(angle) * box.x - Math.sin(angle) * box.y) * scale;
+    root.y = at.y - (Math.sin(angle) * box.x + Math.cos(angle) * box.y) * scale;
+  }
+
   function arrange() {
     for (const record of layers.values()) {
-      for (const { name, item } of record.entries.values()) {
-        if (styleOf(item) || item.invisible) record.view.get(name).graphics.clear();
+      placeTable(record, record.view);
+      for (const { name, item } of entriesOf(record).values()) {
+        if (item.invisible) placeInvisible(record.view.get(name), item, record.view.rect(name));
+        else if (styleOf(item)) record.view.get(name).graphics.clear();
       }
     }
+    publish();
   }
 
   function show(key, options) {
-    const { description, entries, signature: layoutSignature } = plan(options);
+    const { description, byVariant, signature: layoutSignature } = plan(options);
     const signature = JSON.stringify([layoutSignature, options.initialFocus, !!options.dismiss, !!options.resume]);
     const previous = layers.get(key);
     if (previous?.signature === signature) {
       previous.options = options;
       previous.pending = null;
-      previous.entries = entries;
+      previous.byVariant = byVariant;
       previous.view.refresh();
       applyParts(previous, previous.view);
+      placeTable(previous, previous.view);
       publish();
       return previous.view;
     }
@@ -230,24 +302,31 @@ export function createUi(game, semantics) {
     const priorFocus = previous?.view.focused;
     const scrollOffsets = new Map();
     if (previous) {
-      for (const [name, { item }] of previous.entries) {
+      for (const [name, { item }] of entriesOf(previous)) {
         if (item.scroll) scrollOffsets.set(name, previous.view.scroll(name).offset);
       }
     }
     const oldIndex = previous === undefined ? undefined : game.ui.getChildIndex(previous.root);
     previous?.view.close();
+    previous?.forget();
     const record = {
-      key, signature, entries, modal: description.modal, order: previous?.order ?? ++nextOrder,
-      options, pending: null, decorations: new Map(), describe: new Map()
+      key, signature, byVariant, modal: description.modal, order: previous?.order ?? ++nextOrder,
+      options, pending: null, decorations: new Map()
     };
     const insertion = game.ui.numChildren;
-    record.view = buildWithSemantics(definition => semanticPart(record, definition), () => game.show(description, {
+    const built = buildWithSemantics(definition => semanticPart(record, definition), () => game.show(description, {
       bind: bindParts(record),
-      built: view => applyParts(record, view),
+      built(view) {
+        // This is also called by native arrange when its variant changes.
+        applyParts(record, view);
+        placeTable(record, view);
+      },
       ...(description.modal && options.initialFocus ? { initialFocus: options.initialFocus } : {}),
       ...(description.modal && options.dismiss ? { dismiss: view => record.options.dismiss(view) } : {}),
       ...(description.modal && options.resume ? { resume: view => record.options.resume(view) } : {})
     }));
+    record.view = built.view;
+    record.forget = built.forget;
     record.root = game.ui.getChildAt(insertion);
     if (oldIndex !== undefined) game.ui.setChildIndex(record.root, oldIndex);
     layers.set(key, record);
@@ -255,12 +334,13 @@ export function createUi(game, semantics) {
       game.ui.setChildIndex(record.root, game.ui.getChildIndex(front.root));
     }
     for (const [name, offset] of scrollOffsets) {
-      if (entries.get(name)?.item.scroll) record.view.scroll(name).scrollTo(offset);
+      if (entriesOf(record).get(name)?.item.scroll) record.view.scroll(name).scrollTo(offset);
     }
-    if (priorFocus && entries.has(priorFocus)) record.view.focus(priorFocus);
+    if (priorFocus && entriesOf(record).has(priorFocus)) record.view.focus(priorFocus);
     if (record.modal && !document.hidden) canvas.focus({ preventScroll: true });
     record.view.refresh();
     applyParts(record, record.view);
+    placeTable(record, record.view);
     publish();
     return record.view;
   }
@@ -270,6 +350,7 @@ export function createUi(game, semantics) {
     if (!record) return;
     layers.delete(key);
     record.view.close();
+    record.forget();
     const front = frontModal();
     for (const layer of [...layers.values()]) {
       if (layer.pending && (!front || layer === front)) show(layer.key, layer.pending);
@@ -291,10 +372,11 @@ export function createUi(game, semantics) {
       const found = find(name);
       if (!found) return undefined;
       const rect = bounds(found.record, found.entry);
-      if (!rect.w || !rect.h) return undefined;
-      const anchor = game.ui.localToGlobal((rect.x + rect.w / 2) * UNIT, (rect.y + rect.h / 2) * UNIT);
+      if (!rect?.w || !rect.h) return undefined;
       const pixels = canvas.getBoundingClientRect();
-      return { x: pixels.left + anchor.x * pixels.width / game.width, y: pixels.top + anchor.y * pixels.height / game.height };
+      const frame = game.browser.frame;
+      return { x: pixels.left + (rect.x + rect.w / 2) * pixels.width / frame.width,
+        y: pixels.top + (rect.y + rect.h / 2) * pixels.height / frame.height };
     },
     get focused() {
       for (const record of [...layers.values()].reverse()) {
@@ -304,7 +386,10 @@ export function createUi(game, semantics) {
     },
     get modal() { return frontModal()?.key ?? null; },
     dispose() {
-      for (const record of [...layers.values()].reverse()) record.view.close();
+      for (const record of [...layers.values()].reverse()) {
+        record.view.close();
+        record.forget();
+      }
       layers.clear();
       publish();
     }

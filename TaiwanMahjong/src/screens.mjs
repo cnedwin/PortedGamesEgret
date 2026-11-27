@@ -12,7 +12,6 @@ const INK = 0x29201b;
 const MUTED = 0x594537;
 const LACQUER = 0x79382c;
 const JADE = 0x12353b;
-const SCALE = 0.75;
 const TITLE_SKIN = { accent: GOLD, dim: 0.5 };
 const SHEET_SKIN = { accent: 0x28644a, dim: 0 };
 const SHEET_FOCUS = { menu: 'resumeButton', rules: 'rulesClose', settings: 'setting-sound', record: 'recordClose' };
@@ -59,6 +58,167 @@ function paragraph(name, value, x, y, w, size, lineHeight, options) {
   ));
 }
 
+const wideFrame = { width: 1280, height: 720 };
+const tallFrame = width => ({ width, height: 1280 });
+const geometry = (item, x, y, w = item.w, h = item.h) => ({ ...item, x, y, w, h });
+const titleLinks = ['rulesButton', 'recordButton', 'settingsButton', 'languageButton'];
+
+// Preserve the original desktop composition; on short phones make the main
+// choices taller. Upright variants rearrange the choices and start/link rows
+// independently instead of rotating or proportionally shrinking a desktop.
+function titleVariant(items, top, width = null) {
+  if (width === null) return items.map(item => {
+    if (item.parent && (item.parent === 'rounds-group' || item.parent === 'level-group')) {
+      return item.type === 'button' ? { ...item, h: 100 } : item;
+    }
+    if (item.name === 'startButton') return geometry(item, 56, top + 336, 174, 104);
+    const link = titleLinks.indexOf(item.name);
+    if (link >= 0) return geometry(item, 240 + link * 128, top + 336, 120, 104);
+    if (item.name === 'rounds-group') return { ...item, h: 100, y: item.y - 3 };
+    if (item.name === 'level-group') return { ...item, h: 100, y: item.y + 9 };
+    if (item.name === 'level-label') return { ...item, y: item.y + 13 };
+    if (item.y >= top + 237 && item.y < top + 310) return { ...item, y: item.y + 24 };
+    return item;
+  });
+  const column = width >= 900 ? 760 : 630;
+  const left = (width - column) / 2;
+  const across = column / 625;
+  const offset = width >= 900 ? 140 : 186;
+  const rowY = Math.min(1100, top + offset + 402);
+  return items.map(item => {
+    if (item.name === 'title-art') return geometry(item, 0, 0, width, 1280);
+    if (item.name === 'startButton') return geometry(item, left, rowY, column, 112);
+    const link = titleLinks.indexOf(item.name);
+    if (link >= 0) {
+      const cell = (column - 24) / 4;
+      return geometry(item, left + link * (cell + 8), rowY + 124, cell, 100);
+    }
+    if (item.parent === 'rounds-group' || item.parent === 'level-group') {
+      return geometry(item, item.x * across, item.y, item.w * across, item.type === 'button' ? 108 : item.h);
+    }
+    if (item.name === 'retryTitleArt') return geometry(item, left + 20, 96, Math.min(400, column - 40), 100);
+    // The optional art error occupies the otherwise open upper image, never the choice rows.
+    if (item.x >= 768) {
+      const y = item.name?.startsWith('title-art-notice') ? 45 + (item.y - 502) : 28;
+      return geometry(item, left + (item.x - 768) * across, y, Math.min(column, item.w * across), item.h);
+    }
+    let down = item.y + offset;
+    if (item.y >= top + 237) down += 54;
+    else if (item.y >= top + 115) down += 28;
+    const x = left + (item.x - 56) * across;
+    const w = Math.min(column - (x - left), item.w * across);
+    return geometry(item, x, down, w, item.name?.endsWith('-group') ? 108 : item.h);
+  });
+}
+
+// Each portrait sheet has the same named controls and text lines as its
+// landscape counterpart, but a different flow selected by game.show.
+function portraitSheet(id, items, source, width) {
+  const tablet = width >= 900;
+  let w = width - 40, h = 1190, x = 20, y = 45;
+  if (id === 'record') { w = tablet ? 790 : 660; h = 1030; }
+  if (id === 'menu') { w = tablet ? 720 : 630; h = 740; }
+  if (id === 'record' || id === 'menu') { x = (width - w) / 2; y = (1280 - h) / 2; }
+  const left = x + 36, inner = w - 72;
+  const controlsY = y + h - 122;
+  const desc = new Map();
+  const bodyStart = y + 110;
+  let descBottom = bodyStart;
+  for (const key of ['rulesIntro', 'rulesFlow', 'rulesPay', 'rulesNotIncluded']) {
+    const lines = items.filter(item => item.name?.startsWith(key + '-'));
+    if (!lines.length) continue;
+    // The wider portrait column can repack the same words into fewer of the
+    // already-named lines; retain the first line's full accessible sentence.
+    const size = 22;
+    const wrapped = linesOf(lines[0].label, inner - 8, size);
+    const text = wrapped.length <= lines.length ? wrapped : lines.map(item => item.text);
+    lines.forEach((item, index) => desc.set(item, {
+      ...geometry(item, left, descBottom + Math.min(index, text.length) * 28, inner, 28),
+      size, text: text[index] ?? ''
+    }));
+    descBottom += text.length * 28 + 10;
+  }
+  const scrollTop = descBottom + 44;
+  const originalScroll = items.find(item => item.name === 'rulesScroll');
+  return items.map(item => {
+    switch (item.name) {
+      case 'sheetShade': return geometry(item, 0, 0, width, 1280);
+      case 'sheetEdge': return geometry(item, x - 5, y - 5, w + 10, h + 10);
+      case 'sheetPaper': return geometry(item, x, y, w, h);
+      case 'sheetDivider': return geometry(item, left, y + 88, inner, 1.5);
+    }
+    if (item.name === id + 'Title') return geometry(item, left, y + 23, inner, 55);
+    if (id === 'rules') {
+      if (desc.has(item)) return desc.get(item);
+      if (item.name === 'tai-table-heading') return geometry(item, left, scrollTop - 35, inner, 32);
+      if (item.name === 'rulesScroll') return geometry(item, left, scrollTop, inner, Math.max(120, controlsY - scrollTop - 16));
+      if (item.parent === 'rulesScroll') {
+        const factor = inner / originalScroll.w;
+        return geometry(item, item.x * factor, item.y, item.w * factor, item.h);
+      }
+      if (item.name === 'rulesClose') return geometry(item, left, controlsY, 175, 96);
+      if (item.name === 'rulesUp') return geometry(item, x + w - 248, controlsY, 100, 96);
+      if (item.name === 'rulesDown') return geometry(item, x + w - 136, controlsY, 100, 96);
+    }
+    if (id === 'settings') {
+      if (item.name === 'settingsClose') return geometry(item, left, controlsY, 184, 100);
+      const row = Math.floor((item.y - source.y - 98) / 82);
+      const index = row * 2 + (item.x >= source.x + 36 + 413 ? 1 : 0);
+      const columns = tablet ? 2 : 1;
+      const cellW = (inner - (columns - 1) * 16) / columns;
+      const rx = left + index % columns * (cellW + 16);
+      const ry = y + 125 + Math.floor(index / columns) * (tablet ? 182 : 128);
+      const rowH = tablet ? 151 : 112;
+      if (item.name?.startsWith('setting-label-')) return geometry(item, rx + 12, ry + 9, cellW - 186, rowH - 18);
+      if (item.name?.startsWith('setting-')) return geometry(item, rx + cellW - 170, ry + 8, 162, rowH - 16);
+      return geometry(item, rx, ry, cellW, rowH);
+    }
+    if (id === 'record') {
+      if (item.name === 'recordClose') return geometry(item, left, controlsY, 175, 96);
+      const index = Math.floor((item.y - source.y - 98) / 47);
+      const ry = y + 125 + index * 91;
+      if (item.name?.endsWith('-label')) return geometry(item, left + 14, ry, inner - 215, 82);
+      if (item.name?.endsWith('-value')) return geometry(item, x + w - 250, ry, 204, 82);
+      return geometry(item, left, ry, inner, 82);
+    }
+    if (id === 'menu') {
+      const index = ['resumeButton', 'menuRules', 'menuSettings', 'quitButton'].indexOf(item.name);
+      if (index >= 0) return geometry(item, left, y + 130 + index * 143, inner, 116);
+    }
+    return item;
+  });
+}
+
+function phoneSheet(id, items, source) {
+  return items.map(item => {
+    if (id === 'rules') {
+      if (item.name === 'rulesScroll') return { ...item, h: 430 };
+      if (item.name === 'rulesClose') return geometry(item, 550, 594, 170, 104);
+      if (item.name === 'rulesUp') return geometry(item, 955, 594, 104, 104);
+      if (item.name === 'rulesDown') return geometry(item, 1070, 594, 104, 104);
+    }
+    if (id === 'settings' || id === 'menu') {
+      if (item.name === 'sheetEdge') return geometry(item, item.x, 21, item.w, 678);
+      if (item.name === 'sheetPaper') return geometry(item, item.x, 26, item.w, 668);
+      if (item.name === 'sheetDivider') return { ...item, y: 104 };
+      if (item.name === id + 'Title') return { ...item, y: 45 };
+      if (id === 'menu') {
+        const index = ['resumeButton', 'menuRules', 'menuSettings', 'quitButton'].indexOf(item.name);
+        if (index >= 0) return geometry(item, item.x, 136 + index * 136, item.w, 112);
+      } else {
+        if (item.name === 'settingsClose') return geometry(item, item.x, 587, 175, 104);
+        if (item.type === 'button' || item.name?.startsWith('setting-label-') || item.card && item.y >= source.y + 98) {
+          const row = Math.floor((item.y - source.y - 98) / 82);
+          return geometry(item, item.x, 117 + row * 113 + (item.name?.startsWith('setting-label-') ? 8 : 0),
+            item.w, item.name?.startsWith('setting-label-') ? 94 : 104);
+        }
+      }
+    }
+    if (id === 'record' && item.name === 'recordClose') return geometry(item, item.x, 552, 175, 104);
+    return item;
+  });
+}
+
 /** Native title, rules, record, preferences, and the pause menu. Actions are owned by the round controller. */
 export function createScreens(game, ui, {
   save, problems, nameOf, seats, levelNames, rules, tai, start, setSetting, switchLanguage, resume, quit, playUi
@@ -94,24 +254,37 @@ export function createScreens(game, ui, {
   }
 
   function bitmap(node, lease, w, h, crop) {
-    if (!lease || art.has(node)) return;
-    const picture = new Bitmap(lease);
+    if (!lease) return;
+    let picture = art.get(node);
+    if (!picture) {
+      picture = new Bitmap(lease);
+      node.addChild(picture);
+      art.set(node, picture);
+    }
     if (crop) picture.sourceRect = crop;
     picture.width = w;
     picture.height = h;
-    node.addChild(picture);
-    art.set(node, picture);
   }
 
   function titleBackdrop(node, { w, h }) {
-    bitmap(node, titleLease, w, h);
-    const extent = w * 0.66;
+    let crop;
+    if (titleLease && h > w) {
+      const source = titleLease.value;
+      const width = Math.floor(Math.min(source.width, source.height * w / h));
+      crop = { x: Math.max(0, source.width - width), y: 0, width, height: source.height };
+    }
+    bitmap(node, titleLease, w, h, crop);
+    const extent = w * (h > w ? 1 : .66);
     node.graphics.clear().beginFill(0x081a20).drawRect(0, 0, w, h).endFill();
     let shade = node.numChildren > 1 ? node.getChildAt(1) : null;
     if (node.numChildren && shade === null) shade = game.sprite(undefined, node);
     if (!shade || !shade.graphics) return;
     // The photographed right side stays bright. Gradual shading protects the letters over the left.
     const graphics = shade.graphics.clear();
+    if (h > w) {
+      graphics.beginFill(0x081a20, .73).drawRect(0, h * .13, w, h * .79).endFill();
+      return;
+    }
     const strips = 28;
     for (let index = 0; index < strips; index++) {
       const ratio = index / (strips - 1);
@@ -194,24 +367,36 @@ export function createScreens(game, ui, {
           { dark: true, disabled: Boolean(artPending) })
       );
     }
-    ui.show('title', { label: t('title'), skin: TITLE_SKIN, items });
+    ui.show('title', { label: t('title'), skin: TITLE_SKIN, items: titleVariant(items, top), frame: wideFrame,
+      variants: {
+        tablet: { frame: wideFrame, items },
+        portrait: { frame: tallFrame(720), items: titleVariant(items, top, 720) },
+        tabletPortrait: { frame: tallFrame(920), items: titleVariant(items, top, 920) }
+      }
+    });
   }
 
   function sheet(id, heading, x, y, w, h, contents) {
+    const items = [
+      fill(0, 0, 1280, 720, 0x08171c, { name: 'sheetShade', alpha: 0.53 }),
+      { ...card(x - 5, y - 5, w + 10, h + 10, 0x132e36, 0x132e36, 16), name: 'sheetEdge' },
+      { ...card(x, y, w, h, PAPER, COPPER, 11), name: 'sheetPaper' },
+      text(id + 'Title', heading, x + 35, y + 23, w - 70, 49, { color: LACQUER, size: 37, bold: true, role: 'heading' }),
+      fill(x + 36, y + 78, w - 72, 1.5, 0xb79369, { name: 'sheetDivider' }),
+      ...contents
+    ];
+    const source = { x, y, w, h };
     ui.show(id, {
       label: heading, modal: true, skin: SHEET_SKIN,
       initialFocus: SHEET_FOCUS[id],
       dismiss: () => id === 'menu' ? resume() : close(id),
       ...(id === 'menu' ? { resume } : {}),
-      items: [
-        // This scrim shares the table's design coordinates when the whole view turns on a phone.
-        fill(0, 0, 1280, 720, 0x08171c, { alpha: 0.53 }),
-        card(x - 5, y - 5, w + 10, h + 10, 0x132e36, 0x132e36, 16),
-        card(x, y, w, h, PAPER, COPPER, 11),
-        text(id + 'Title', heading, x + 35, y + 23, w - 70, 49, { color: LACQUER, size: 37, bold: true, role: 'heading' }),
-        fill(x + 36, y + 78, w - 72, 1.5, 0xb79369),
-        ...contents
-      ]
+      items: phoneSheet(id, items, source), frame: wideFrame,
+      variants: {
+        tablet: { frame: wideFrame, items },
+        portrait: { frame: tallFrame(720), items: portraitSheet(id, items, source, 720) },
+        tabletPortrait: { frame: tallFrame(920), items: portraitSheet(id, items, source, 920) }
+      }
     });
   }
 
@@ -239,7 +424,10 @@ export function createScreens(game, ui, {
       );
       rowY += rowH;
     }
-    const page = (direction) => () => ui.view('rules')?.scroll('rulesScroll').scrollBy(direction * viewport.h * 0.88 * SCALE);
+    const page = (direction) => () => {
+      const view = ui.view('rules');
+      if (view) view.scroll('rulesScroll').scrollBy(direction * view.rect('rulesScroll').height * .88);
+    };
     sheet('rules', t('rules'), x, y, w, h, [
       ...descriptions,
       text('tai-table-heading', t('taiTable'), viewport.x, y + 83, viewport.w, 30, { color: LACQUER, size: 20, bold: true, role: 'heading' }),
