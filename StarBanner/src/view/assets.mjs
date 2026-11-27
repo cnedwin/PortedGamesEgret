@@ -6,6 +6,7 @@
 // is not an error: a shape drawn in code stands in.
 import { Mesh3D, Skeleton3D, computeObjectBounds3D, loadGltf3D } from '@egret/engine/world3d';
 import { toonify } from './toon.mjs';
+import { assetUrl } from '../asset-url.mjs';
 
 /** Which model set a quality uses. */
 export const SET_OF = { low: 'low', medium: 'mid', high: 'high' };
@@ -17,7 +18,7 @@ const decode = async ({ bytes, mimeType }) =>
 export const loadProblems = { count: 0 };
 
 /** Fetch and parse one model; null when it cannot be had. */
-export async function loadModel(name, set, base = new URL('../../assets/models/', import.meta.url)) {
+export async function loadModel(name, set, base = assetUrl('models/')) {
   try {
     const response = await fetch(new URL(`${name}-${set}.glb`, base));
     if (!response.ok) throw new Error(`${name}: HTTP ${response.status}`);

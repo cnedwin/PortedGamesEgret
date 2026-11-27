@@ -291,3 +291,91 @@ node vendor/egret.mjs verify --screens=phone-small,phone-notch-wide,tablet --pla
 追加专项 / Additional checks: `node test/native-ui-accept.mjs`, `node vendor/egret.mjs verify --screens=desktop,phone-small --play test/perf-route.mjs --out /path/to/new/perf`。分别单独运行测量档位，避免浏览器互相争用。 / Run measured profiles separately to avoid competing browser instances.
 
 未覆盖 / Untested：本轮仅补英文最紧 852×393 档 12 状态，未重复八档英文多机型长文本矩阵（语言切换和普通功能路线已通过，原迁移英文专项结果仍保留），未验 Fold7 实体内屏、其他实体刘海/系统条、Safari、Firefox、微信或嵌入式浏览器、真人读屏、真手柄、实体扬声器听感、能耗以及人工打完每个战役/每种输入。硬件路线覆盖有限合法操作，完整多项玩法分由浏览器验收承担。 / Only twelve states of the tight 852×393 English profile were repeated; the full English multi-profile long-text matrix was not repeated (language switching and general routes passed; historical results are retained). The physical Fold7 inner panel, other actual cutouts, Safari, Firefox, embedded browsers, real screen readers/controllers/speaker listening, power and a complete human campaign on every input method were not tested. Hardware routes exercise bounded legal actions; broader flows are covered by browser acceptance. 区分物理设备 CDP、浏览器尺寸模拟、自动化输入、完整人工游玩，以及静止叠加层提交与独占 GPU 时间/能耗。 / Distinguish real-device injection, simulated viewport, browser automation, complete manual play, and native dispatch from exclusive GPU work or energy.
+
+## 2026-11-27 后续生产 ESM 交付 · Production ESM delivery follow-up
+
+引擎副本仍为 `0e7b29321a07ec956f66efb293c79798270512bd`。旧公开先验为游戏 merge `275ce9a21fc61320d6f8137cd9065dfb6394409b`；新候选身份及发布状态：正式游戏本地候选已接入内容 hash ESM，采用前述已合并原生引擎，不把本地候选视作已部署 / The formal local game candidate uses content-hashed ESM and the already-merged native engine; local acceptance is not a Pages deployment.。未改变战斗规则、数值、3D 画质、模型资源或原生 UI，以下独立检查比较交付模块与启动顺序。 / The engine copy remains the same. The former public game is identified above; the new delivery identity is recorded separately. Delivery measurements do not change rules, quality, model assets or native UI.
+
+### 公开旧版诊断 · Public baseline diagnosis
+
+真实 PC Edge / NVIDIA RTX 5090 Laptop D3D11，1280×720、DPR1、seed3、低画质、中文、麦浪渡口。每次新浏览器进程，CDP 从导航前抓 Network+Tracing，HTTP browser cache 与 shader disk cache 禁用，实际浏览器键鼠点步骤到战场；OS、CDN、链路与驱动内部缓存不能控制。两次实际公网样本不挑选结果。 / Fresh real-GPU Edge under the same legal route, traced before navigation. Browser HTTP/shader disk caches disabled; OS, transit, CDN and driver caches uncontrolled. Both public timings retained.
+
+| 阶段 / Stage | Slow (ms) | Fast (ms) |
+|---|---:|---:|
+| 标题真实可操作 wall / Title actionable | 6777 | 1234 |
+| 主入口开始运行 / Entry evaluates | 3395.1 | 271.7 |
+| 原生 overlay 后端模块 / Native backend module | 1520.8 | 93.4 |
+| WebGL2 parallel program preparation | 381.4 | 370.0 |
+| 13 个关键模型批次 / Title GLB batch (start→last responseEnd) | 5315.2→6512.9 | 751.9→840.5 |
+| 出阵至真实可玩 / Deploy→actionable | 136 | 101 |
+
+两次均通过，标题前 352 请求（329 个脚本），全流程 359 个请求（公网 HTTP/2，0 browser cache hit）。298 静态脚本压缩正文 1,052,664 B，最后 PointerRouter.js 3389.9/266.6 ms；29 个 overlay 后端 lazy 脚本压缩正文 99,274 B，最后 robust-predicates util.js 4914.4/364 ms；实际发起链是父模块响应完成后继续发现子模块。入口前主线程 parse/compile 标记并集 5.26/4.30 ms，而墙钟 3395/272 ms；渲染器主线程 trace 对齐误差 <0.084 ms，不能把嵌套标记、后台线程或并发请求持续时间直接相加。原生 programme prep 约 0.37 秒，两次差异远小于交付变动。慢模型 barracks-low.glb 请求→header 1194.6 ms、正文 1.9 ms；这是 ResourceTiming 证据，而不是把 CDP 派发顺序误差当负传输。 / Both public routes passed. The slow route is dominated by deep module discovery and headers wait, not JS parse or newly slow shader linking. See ENGINE-NOTES 11. Trace unions are not exclusive CPU/GPU timing.
+
+### 同约束 PC A/B · Matched-network physical PC A/B
+
+同一实体 Edge/RTX、raw HTTP/1.1 no-store loopback，CDP latency 40 ms、下载 10 Mbps、上传 5 Mbps，无 CPU 降速；fresh process，cache disabled，同一路线。不是 GitHub Pages HTTP/2 压缩测量。先两次 A 再两次 B，未随机交错。 / Same PC, raw local HTTP/1.1 no-store, matched network emulation, no slowed CPU. A1,A2 then B1,B2, not randomized. Not a compressed public- transport measurement.
+
+| 观测 / Metric | A1 | A2 | B1 | B2 |
+|---|---:|---:|---:|---:|
+| 标题可操作 / Title wall ms | 8569 | 8438 | 4602 | 4594 |
+| Main entry page ms | 4480.7 | 4379.0 | 1186.6 | 1151.9 |
+| Overlay ready page ms | 5528.1 | 5400.8 | 1570.9 | 1533.6 |
+| Native backend module ms | 631.8 | 631.7 | 7.1 | 7.5 |
+| Native WebGL2 prepare ms | 403.4 | 376.5 | 364.1 | 361.3 |
+| Attract backdrop page ms | 8446.8 | 8323.4 | 4476.2 | 4444.4 |
+| Deploy wall ms | 124 | 96 | 102 | 142 |
+| Requests issued before title | 352 | 352 | 35 | 35 |
+| Script requests before title | 329 | 329 | 12 | 12 |
+| Requests through battle | 359 | 359 | 42 | 42 |
+
+本机受控平均开页→标题 8503.5→4598 ms（-45.9%）；原 329 个脚本 raw 正文 4,203,668 B，候选 12 个预加载脚本 1,250,132 B（-70.3%），关键 13 个 GLB raw 3,306,300 B 完全不变。四个样本无浏览器错误、无 trace loss。出阵 96–124→102–142 ms，未把省去的数秒等待移到出阵，不声称出阵更快。入口前主线程 module compile 标记并集 5.79/6.37→0.30/0.38 ms；整段 title compile+execution 标记并集 286.9/288.2→265.9/312.5 ms，无确定整体 CPU 性能提升。 / Controlled title mean falls 45.9%, raw JS body 70.3%, critical GLB bodies unchanged. All four routes pass. Deploy does not become the deferred seconds-long wait, but is not claimed faster. Trace confirms delivery gain rather than general CPU improvement.
+
+候选 13 关键 GLB 仍等 overlay ready 后启动，受控带宽窗口 B1 1574.3→4311.8、B2 1537→4275.9 ms；这约 2.74 s 的资源阶段是下一步可选并行优化，不包含在本轮收益。 / Critical title models still begin after overlay readiness; additional overlap is a separate opportunity.
+
+### 真实 Fold7 对照 · Physical Fold7
+
+实体 Galaxy Z Fold7 外屏 SM-F966U1，Android 17/Chrome 157，低画质 WebGL2；英文 seed5/wheat，同一合法 Seline/Garron/Easy、物理转横屏、To battle。每次新拥有的浏览器 context，HTTP 缓存禁用、SW bypass，但既有 Chrome 进程/GPU/驱动和热状态不重置。设备实测为 CDP 注入触摸，非浏览器尺寸模拟或人工手指。 / Real-device outer-panel CDP touch, same legal setup and rotation route; fresh owned contexts with cache disabled and SW bypass, without resetting the existing browser/driver caches.
+
+旧版公开页两次（不受控网络）标题 7785/932 ms，入口 4385.3/372.8 ms，后端模块 2020.8/114.3 ms，实际 WebGL2 初始化 28.4/19.3 ms，出阵 pointerup→ready 2538.8/1854.8 ms。两次每条 360 个 HTTP 200 请求，无缓存/SW flags 或错误；公网快慢同时保留，不把 CDN Age 与性能差别当成确定因果。 / Previous public slow/fast samples are both retained; same 360 successful requests, variable transport, and no attribution of CDN age as a proven cause.
+
+| 同约束手机 / Controlled physical device | A1 | A2 | B1 | B2 |
+|---|---:|---:|---:|---:|
+| Title actionable wall ms | 7811 | 7803 | 4066 | 4104 |
+| Module page ms | 4369.5 | 4345.3 | 1160.7 | 1150.2 |
+| Native backend module ms | 538.7 | 532.4 | 7.9 | 8.0 |
+| Actual WebGL2 init ms | 30.7 | 26.1 | 25.4 | 26.1 |
+| Overlay→game ready ms | 2790.7 | 2802.1 | 2780.1 | 2796.3 |
+| Owned requests by battle | 360 | 360 | 43 | 43 |
+| Actual To battle pointerup→ready ms | 2379.9 | 2351.3 | 2252.5 | 2676.2 |
+
+同 PC 的 raw/no-store loopback 经 ADB reverse，40 ms CDP latency/10 Mbps 下/5 Mbps 上，不 CPU 降速。标题两次平均 7807→4085 ms（-47.7%）。A/B 本轮出阵后的唯一资源均为同一个 garron-low.glb（436,791 B 含 HTTP overhead，首字节约 42 ms、正文约 355 ms），无新 post-click 脚本；原来正常未减弱动画模式仍有 1.6 s banner。B2 比 A2 慢约 325 ms、两样本均值增长约 99 ms，不能从四样本归因系统性退化，亦不声称出阵加速。四次都进入合法第一回合、截图实看，关键模型与 UI 不变；未重测显示帧率。 / Same controlled raw network as PC over ADB reverse. Mean title reduces 47.7%; identical single post-click model and no delayed scripts; the original 1.6-second banner remains. B2 is 325 ms slower than A2; the small sample does not establish a systematic change, and Deploy is not claimed faster. Legal turn one and appearance verified, not a full match/FPS rerun. All owned contexts, rotation, wake/original foreground and ADB/lease state restored.
+
+### 构建与完整回归 · Reproducible build and regression
+
+生产交付从同一 vendor import map 及游戏源码生成，esbuild 0.28.2（仅开发工具）、ES2022 ESM + splitting/minify/keepNames，16 个带 hash 输出，默认 WebGL2/title/text 12 项 preloads，WebGPU 仅选择时额外加载；manifest 包含引擎 SHA、输入/输出哈希及图，`src/asset-url.mjs` 统一 GLB、音乐等路径。 / Deterministic development-only bundle, content-hashed outputs, selected backend/text preloads and source/output graph provenance; assets remain game-root relative.
+
+```sh
+npm ci --prefix tools/launch-bundle --ignore-scripts
+node tools/launch-bundle/build.mjs
+node --test test/*.test.mjs
+node test/accept.mjs
+```
+
+正式 game worktree 使用 clean `npm ci --ignore-scripts` 与固定生产构建器重生成，31 个相关路径的 canonical bytes 全部一致；Node 53/53，包括新增 manifest/端口/资产路径 3 项。 / Fresh pinned install and build reproduce all 31 relevant canonical files; Node 53/53 includes three delivery provenance/preload/asset-path tests.
+
+| 检查 / Test | 本轮生产包结果 / Delivery candidate result |
+|---|---|
+| `node test/accept.mjs` | 40/40；无浏览器错误，原 native-title/setup/opening 基线差异 0.08% / 0.06% / 2.85%，均阈值内且未更新参考图 / reference images retained |
+| `node test/touch-accept.mjs` | 12/12，触屏模拟与转屏 / browser touch and rotation, not device |
+| `node test/art-accept.mjs` | 2/2，合法回放档战意技 / legal replay save and rally art |
+| `node test/native-ui-accept.mjs` | 10/10，原生控件交互、图片排队、焦点与缩放 / native controls, image admission, focus and scale |
+| `node test/resource-accept.mjs` | 故意拒绝 21 个模型，原生 Retry/Continue 正常 / native failure controls preserved |
+| 真实 PC WebGPU 专项 / Actual PC WebGPU | Edge NVIDIA Blackwell GPU、真实 GPUDevice，World3D WebGPU + overlay WebGL2，10/10；≥13 个 GLB/头像和 3 首 MP3 HTTP 200 且有传输，无模型、音频、shader 错误 / real GPU Device, successful resource transfer, no model/audio/shader errors; not speaker listening |
+
+默认 WebGL2 仍是原生，WebGPU 后端只在选择时加载；以上不代表实听音乐、实体 Fold7 内屏、其它浏览器或每种输入的完整战役通过。本轮聚焦冷启动交付，未重新执行上轮软件 F1 全局品质抽样。 / WebGPU is independently exercised without making it the default; no speaker listening or all-device campaign claim. This delivery study does not rerun the prior software F1 quality sample.
+
+### 公网发布与限制 · Public publication and limits
+
+本节旧公开数据已按原部署 275ce9a2 核验；新交付包的公网部署及从实际公开链接复跑须另附结果，当前不提前声称上线。 / Former public measurements are bound to deploy 275ce9a2; new bundle publication and real public retest remain separate evidence.
+
+浏览器缓存禁用不意味着真实 CDN/驱动缓存全冷；手机已有 Chrome 的缓存状态单独记录。PC 与手机受控服务器为 raw HTTP1.1，不与压缩公网 bytes 混合计算。未测试实体 Fold7 内屏、其它设备、Safari/Firefox、能耗和人工完整战役；不以同设备 CDP 浏览器路径当人工操作。 / Browser cache disable does not clear all CDN/driver caches. Controlled raw transfer differs from compressed public delivery. Inner panel, other devices, Safari/Firefox, energy and complete human-play campaigns remain untested.

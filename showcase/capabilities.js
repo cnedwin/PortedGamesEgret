@@ -293,10 +293,6 @@ export const MATRIX = {
      "file": "Rally/src/main.mjs"
     },
     {
-     "game": "StarBanner",
-     "file": "StarBanner/src/view/stage.mjs"
-    },
-    {
      "game": "Wulin",
      "file": "Wulin/src/view/stage.mjs"
     }

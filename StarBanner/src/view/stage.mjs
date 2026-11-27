@@ -3,8 +3,9 @@
 // The stage: the 3D app, the scene, sky light, sunlight with shadows, post-processing (bloom, outlines, grading), and
 // the camera looking down on the board at 45 degrees. It keeps a point of the board in view; it pans, zooms, turns in
 // quarter steps and glides to a tile; a point on the screen becomes a tile of the board.
-import { createWorld3DApp } from '@egret/engine/webgpu/world3d';
-import { Mesh3D, Raycaster3D, Scene3D, createDirectionalLight3D, createGradientCubeTexture3D, createHemisphereLight3D, createPerspectiveCamera3D } from '@egret/engine/world3d';
+// The same high-level app dynamically selects either 3D backend; the overlay is always WebGL2.
+import { createWorld3DApp } from '@egret/engine/webgl2/world3d';
+import { Mesh3D, Raycaster3D, Scene3D, createDirectionalLight3D, createGradientCubeTexture3D, createHemisphereLight3D, createPerspectiveCamera3D, projectToViewport3D } from '@egret/engine/world3d';
 
 /** World units per tile. */
 export const TILE = 2;
@@ -198,7 +199,12 @@ export async function createStage(canvas, { quality, backend = 'webgl2', onError
     }
   };
   place();
-  return { app, scene, camera, sun, sky, rig, setLook, preparePrograms, renderer, quality: app.quality };
+  const projectPoint = (point,width,height) => projectToViewport3D(camera,point,width,height);
+  const projectTile = (x,y,width,height) => {
+    const point=tileCentre(x,y,bounds);
+    return projectPoint([point.x,0,point.z],width,height);
+  };
+  return { app, scene, camera, sun, sky, rig, setLook, preparePrograms, projectPoint, projectTile, renderer, quality: app.quality };
 }
 
 /** The world point at the centre of tile (x, y) on a board `bounds` tiles across. */

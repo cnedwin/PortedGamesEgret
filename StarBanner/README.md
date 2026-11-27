@@ -101,6 +101,9 @@ stronghold.
 - 正式引擎 0e7b2932 的本地候选通过 50 项 Node、10 项原生接口专项、40 项功能验收，以及 8 机型 64 个新鲜原生命中区域检查点，以及最紧横屏英文 12 状态（均 0 错误、0 警告）；Windows RTX 与 Fold7 实体外屏的操作和静止叠加层提交复测见 QUALITY。 · The official engine-copy candidate passes 50 Node, 10 native interface and 40 functional checks, plus 64 fresh native screen checkpoints and 12 additional tight-landscape English checkpoints (zero errors/warnings). QUALITY records the hardware PC and Fold7 outer-screen interaction and idle-overlay dispatch results.
 - 本次原生接口的专项入口为 `node test/native-ui-accept.mjs`；静止叠加层原生提交、持续更新与启动阶段由 `test/perf-route.mjs` 记录，实际结果见 QUALITY。 · Native-interface regression has a dedicated route; the performance route records static overlay submits, continuing updates and startup phases. See QUALITY for results.
 
+- 本次生产包重生成 31 路径一致、Node 53/53；浏览器功能 40/40、触屏 12/12、战意技 2/2、原生 UI 10/10、21 项模型资源拒绝恢复，以及实际 PC WebGPU 10/10。原截图基线未修改，无浏览器错误；未实听扬声器。 · Reproducible production delivery, 53 Node and 40 functional checks, touch 12/12, rally 2/2, native UI 10/10, deliberate model failure and actual PC WebGPU 10/10. Reference images unchanged; speaker listening not tested.
+- 同一原生引擎的生产 ESM 交付专项：实体 PC 在固定 40 ms/10/5 Mbps 模拟网络下，打开至标题的两次平均 8.50→4.60 s，脚本 329→12；出阵仍 102–142 ms。实际公网及手机结果见 QUALITY。 · Controlled real-PC browser delivery tests reduce mean title time from 8.50 to 4.60 s and script requests from 329 to 12; Deploy is still 102–142 ms. QUALITY distinguishes public and device runs. 同网络实体 Fold7 标题两次平均 7.81→4.09 s，出阵不声称加速。 / The physical Fold7 controlled title mean falls from 7.81 to 4.09 s; Deploy is not claimed faster.
+
 ## 已知问题 · Known issues
 
 - 软件渲染下只有每秒几帧，验收截图之外的动画流畅度要在真 GPU 上看。 · Software rendering runs at a few frames a second; smoothness needs a real GPU.
@@ -146,6 +149,8 @@ stronghold.
 | `tools/assets/` | 模型描述表、打包和头像脚本 · model descriptions, packing and portrait scripts |
 | `docs/DESIGN.md`、`docs/ASSETS.md` | 规则与数值的来源；素材来源 · where the rules and numbers come from; where the assets come from |
 | `test/` | Node 测试、浏览器验收和截图基线 · Node tests, browser acceptance and baselines |
+| `src/asset-url.mjs` | 源代码和生产入口共用的游戏根资产地址 · game-root asset URLs shared by source and bundle |
+| `bundle/`、`tools/launch-bundle/` | 生成的生产 ESM、依赖/来源 manifest 与固定开发构建工具 · generated production ESM, provenance/dependency manifest and pinned development builder |
 | `vendor/` | 引擎副本 · the engine copy |
 
 ## 引擎副本 · Engine copy
@@ -153,3 +158,5 @@ stronghold.
 - 引擎提交 · Engine commit：`0e7b29321a07ec956f66efb293c79798270512bd`（见 · see [vendor/SOURCE.md](vendor/SOURCE.md)；引擎 #528 merge `0e7b29321a07ec956f66efb293c79798270512bd`）。
 - 生成命令 · Made with：`node tools/vendor-game.mjs ../PortedGamesEgret/StarBanner @egret/engine @egret/engine/world3d @egret/engine/webgpu/world3d @egret/engine/webgl2/world3d @egret/engine/kit @egret/engine/web/kit @egret/engine/audio @egret/engine/web/audio @egret/engine/input/gamepad @egret/engine/web/gamepad @egret/engine/input/hover @egret/engine/web/hover @egret/engine/ui/semantics @egret/engine/web/semantics @egret/engine/animation @egret/engine/ui @egret/engine/ui/testing`
 - 用到的入口 · Entries used：`@egret/engine/world3d`、`@egret/engine/webgpu/world3d`、`@egret/engine/webgl2/world3d`、`@egret/engine/kit`、`@egret/engine/web/kit`、`@egret/engine/web/audio`、`@egret/engine/input/gamepad`、`@egret/engine/ui`、`@egret/engine/ui/semantics`、`@egret/engine/web/semantics`、`@egret/engine/ui/testing`。
+- 生产交付 / Production delivery：固定开发期 esbuild 0.28.2，`npm ci --prefix tools/launch-bundle --ignore-scripts`，`node tools/launch-bundle/build.mjs`；更新引擎或修改游戏源码后重新生成 `bundle/`、入口 HTML 的 preload 和 manifest。普通用户直接打开网页，不需要 Node 或开发服务器。原 vendor/ 与可读 src/ 保留。 · Rebuild the content-hashed ESM outputs, HTML preloads and provenance manifest after source/vendor updates. The public player needs no Node or server; raw source and vendor remain available.
+- 生产包专项 / Delivery check：`node --test test/bundle.test.mjs` 校验生成来源、文件 hash、共享依赖、可选后端与资源 URL。 · Verify source/output identity, chunk graph, optional backend preload and asset URL placement.

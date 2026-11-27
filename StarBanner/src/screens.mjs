@@ -9,9 +9,10 @@ import { MAPS } from './sim/maps.mjs';
 import { CAMPAIGN } from './sim/campaign.mjs';
 import { COMMANDERS, COMMANDER_ORDER, FACTIONS } from './sim/commanders.mjs';
 import { TERRAIN } from './sim/terrain.mjs';
+import { assetUrl } from './asset-url.mjs';
 
 const C = { navy: 0x1b2340, navy2: 0x344363, paper: 0xf4f7fb, pale: 0xe4ebf5, gold: 0xf5c542, goldDeep: 0xc99d38, blue: 0x355ea3, red: 0xa33950, soft: 0x52637b, white: 0xffffff };
-const PORTRAIT = id => new URL(`../assets/portraits/${id}.webp`, import.meta.url).href;
+const PORTRAIT = id => assetUrl(`portraits/${id}.webp`).href;
 const thumbs = new Map();
 const COLORS = { plains: '#7cae4c', road: '#d8b77d', forest: '#3f7a35', mountain: '#8b8677', bridge: '#a77a48', river: '#5ab3d6', beach: '#ecd9a0', sea: '#3d8fc4', ocean: '#2a5f9e', reef: '#5d7f8f', floor: '#b8b3a8', dock: '#3d8fc4' };
 function mapThumb(map) {
