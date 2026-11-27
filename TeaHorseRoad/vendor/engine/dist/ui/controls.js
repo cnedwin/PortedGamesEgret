@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 import { EgretError } from '@egret/runtime';
+import { trackScreenControl } from '../internal/uiControlReportState.js';
 const ZERO = Object.freeze({ x: 0, y: 0 });
 function finite(value) {
     return typeof value === 'number' && Number.isFinite(value);
@@ -98,6 +99,7 @@ export function createMovementControl(options) {
         if (notification.kind === 'cancel' || notification.kind === 'end')
             release();
     });
+    const untrack = trackScreenControl(input, target, 'movement', () => enabled && !closed);
     return Object.freeze({
         get value() {
             return value;
@@ -131,6 +133,7 @@ export function createMovementControl(options) {
             if (closed)
                 return;
             closed = true;
+            untrack();
             let failure;
             try {
                 release();
@@ -157,6 +160,10 @@ export function createMovementControl(options) {
 }
 /** A button on a target: a press and release inside it activates it. */
 export function createActionControl(options) {
+    return createSelectionItemAction(options, () => true);
+}
+/** A selection item's action still has its existing delivery path; reporting also reads its group's enable state. */
+export function createSelectionItemAction(options, reportEnabled) {
     checkOptions(options);
     const { input, target, onActivate, onPressChange } = options;
     let closed = false;
@@ -218,6 +225,7 @@ export function createActionControl(options) {
             setPressed(false);
         }
     });
+    const untrack = trackScreenControl(input, target, 'action', () => enabled && !closed && reportEnabled());
     return Object.freeze({
         get pressed() {
             return held;
@@ -263,6 +271,7 @@ export function createActionControl(options) {
             if (closed)
                 return;
             closed = true;
+            untrack();
             candidate = undefined;
             let failure;
             try {

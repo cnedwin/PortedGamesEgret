@@ -2,13 +2,13 @@
 // Usage: node tools/verify-screens.mjs <absolute Playwright index.mjs> <game.html> <new output directory> [screen,...] [prepare.mjs | --prepare prepare.mjs] [--play play.mjs]
 // Opens one game page on the screens of several devices, in headless Chromium with software rendering, and says, for
 // each, what an agent cannot see from one window: whether the page scrolls or is blank, how much of the screen bars
-// take, whether the controls of a play game lie in the safe part, are at least 44 CSS pixels square and keep apart,
+// take, whether native play or World3D overlay controls lie in the safe part, are at least 44 CSS pixels square and keep apart,
 // and what the engine warned of. It writes report.json and a picture of each screen, the parts a notch or a home bar
 // covers tinted red, and exits with 1 when a screen has an error.
 //
 // A headless browser has no notch: the page is given `globalThis.__egretAgent.insets`, which the engine takes as the
-// window's safe-area insets. The controls are those a `play` game takes taps on, which it reports to
-// `globalThis.__egretAgent.controls`; a game of its own reports none, and their checks are then not run.
+// window's safe-area insets. Play and World3D overlay controls report native touch geometry to
+// `globalThis.__egretAgent.controls`; a game with no reporter still gets only the page-level checks.
 // Screens are named: SCREENS lists them; a comma-separated list of names picks some.
 // With an explicitly named local preparation module, run its default(player, screen) on each fresh page first.
 // It asserts the desired state and returns its nonempty scene name. The asynchronous preparation has 20 seconds.
@@ -37,6 +37,15 @@ export const SCREENS = Object.freeze({
   'phone-tall': { width: 360, height: 800, scale: 3, touch: true, insets: { top: 24, right: 0, bottom: 0, left: 0 } },
   tablet: { width: 768, height: 1024, scale: 2, touch: true, insets: { top: 0, right: 0, bottom: 0, left: 0 } },
   'tablet-wide': { width: 1024, height: 768, scale: 2, touch: true, insets: { top: 0, right: 0, bottom: 0, left: 0 } },
+  // Galaxy Z Fold7 cover screen, landscape Chrome content viewport with browser chrome present.
+  // The measured page had no inset; this profile adds no simulated cutout. The unfolded profile stays separate.
+  'foldable-cover-wide': {
+    width: 873,
+    height: 325,
+    scale: 2.625,
+    touch: true,
+    insets: { top: 0, right: 0, bottom: 0, left: 0 }
+  },
   foldable: { width: 884, height: 1104, scale: 2.5, touch: true, insets: { top: 0, right: 0, bottom: 0, left: 0 } },
   desktop: { width: 1920, height: 1080, scale: 1, touch: false, insets: { top: 0, right: 0, bottom: 0, left: 0 } }
 });

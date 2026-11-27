@@ -3,6 +3,8 @@ import { DisplayObject, DisplayObjectContainer, EgretError, Event, createEventTy
 import { createPointerRouter } from '@egret/runtime/input';
 import { requireMouseInputEngine } from './internal/mouseInputFactoryState.js';
 import { captureUiInputDelivery, registerUiPointerInput } from './internal/uiFactoryState.js';
+// The optional browser screen verifier reads this private input-surface association through the existing alias.
+export { screenControlFor } from './internal/uiControlReportState.js';
 const getter = (prototype, key) => Object.getOwnPropertyDescriptor(prototype, key).get;
 const parent = getter(DisplayObject.prototype, 'parent'), visible = getter(DisplayObject.prototype, 'visible');
 const touch = getter(DisplayObject.prototype, 'touchEnabled'), children = getter(DisplayObjectContainer.prototype, 'touchChildren');

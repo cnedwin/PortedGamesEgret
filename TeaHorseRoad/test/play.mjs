@@ -91,13 +91,18 @@ export async function checkpoint(player,name) {
   }
   if (player.checkpoint) {
     const native = await player.checkpoint(name);
-    // On a browser that does not expose the native report, the semantic checks still run, but the lack is explicit.
+    // The official screen verifier must receive native hit bounds; semantic bounds are independent evidence.
     observation.nativeControlReceipt=native?.controls??null;
-    if (typeof native?.controls === 'number') {
-      player.expect(native.controls>0, name+' native hit rectangles available');
-      player.expect(!native.findings?.some(f=>['inSafeArea','touchTarget','apart'].includes(f.check)),
-        name+' native rectangle findings: '+JSON.stringify(native.findings));
-    }
+    player.expect(typeof native?.controls === 'number' && native.controls>0, name+' fresh native hit rectangles available');
+    player.expect(native.controlReceipt?.fresh === true, name+' native receipt is fresh');
+    player.expect(!native.findings?.some(f=>['inSafeArea','touchTarget','apart'].includes(f.check)),
+      name+' native rectangle findings: '+JSON.stringify(native.findings));
+    const receipt=await player.read(()=>({controls:globalThis.__egretScreens?.controls??[],sequence:globalThis.__egretScreens?.receipts??0}));
+    const names=controls=>controls.map(c=>c.name).sort();
+    observation.nativeHitTargets=receipt.controls;
+    player.expect(receipt.sequence>=native.controlReceipt.after,name+' native observer did not regress to an older receipt');
+    player.expect(native.controls===receipt.controls.length && JSON.stringify(names(receipt.controls))===JSON.stringify(names(observation.controls)),
+      name+' semantic controls have exact native hit receipts: '+JSON.stringify({semantic:names(observation.controls),native:names(receipt.controls)}));
   } else await player.picture?.(name);
   player.expect(unsafe.length===0,name+' safe area: '+JSON.stringify(unsafe));
   player.expect(small.length===0,name+' 44 CSS px: '+JSON.stringify(small));

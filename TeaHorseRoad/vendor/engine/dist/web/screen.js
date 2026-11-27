@@ -21,7 +21,7 @@ const whole = (value) => Number.isSafeInteger(value.width) && Number.isSafeInteg
 export function planScreen(options) {
     if (options === null || typeof options !== 'object')
         throw invalid();
-    const { box, design: landscape, portrait, insets } = options, fit = options.fit ?? 'contain', wholeScale = options.wholeScale ?? false, pixelRatio = options.pixelRatio ?? 1;
+    const { box, design: landscape, portrait, insets, uiScale } = options, fit = options.fit ?? 'contain', wholeScale = options.wholeScale ?? false, pixelRatio = options.pixelRatio ?? 1;
     if (!size(box) ||
         !size(landscape) ||
         !whole(landscape) ||
@@ -29,6 +29,15 @@ export function planScreen(options) {
         !FITS.includes(fit) ||
         typeof wholeScale !== 'boolean' ||
         !positive(pixelRatio) ||
+        (uiScale !== undefined &&
+            (fit === 'contain' ||
+                wholeScale ||
+                uiScale === null ||
+                typeof uiScale !== 'object' ||
+                Array.isArray(uiScale) ||
+                (uiScale.min !== undefined && !positive(uiScale.min)) ||
+                (uiScale.max !== undefined && !positive(uiScale.max)) ||
+                (uiScale.min !== undefined && uiScale.max !== undefined && uiScale.min > uiScale.max))) ||
         (insets !== undefined &&
             (insets === null ||
                 typeof insets !== 'object' ||
@@ -43,21 +52,31 @@ export function planScreen(options) {
             : fit === 'fixedWide'
                 ? Math.max(across, down)
                 : Math.min(across, down);
+    const fitted = scale;
+    if (uiScale !== undefined)
+        scale = Math.min(uiScale.max ?? Infinity, Math.max(uiScale.min ?? 0, scale));
+    const bounded = scale !== fitted;
     // A whole number of device pixels a unit, where there is room for one or more.
     if (wholeScale && scale * pixelRatio >= 1)
         scale = Math.floor(scale * pixelRatio + 1e-9) / pixelRatio;
     // As many whole units as the space holds: never fewer than the design with 'expand', and as the space makes them
     // with the fixed modes; the design itself with 'contain'.
     const fill = (space) => Math.max(1, Math.floor(space / scale + 1e-6)), grows = fit === 'expand' || fit === 'fixedNarrow';
-    const width = fit === 'contain' || fit === 'fixedWidth'
-        ? design.width
-        : grows
-            ? Math.max(design.width, fill(box.width))
-            : fill(box.width), height = fit === 'contain' || fit === 'fixedHeight'
-        ? design.height
-        : grows
-            ? Math.max(design.height, fill(box.height))
-            : fill(box.height);
+    const width = bounded
+        ? fill(box.width)
+        : fit === 'contain' || fit === 'fixedWidth'
+            ? design.width
+            : grows
+                ? Math.max(design.width, fill(box.width))
+                : fill(box.width), height = bounded
+        ? fill(box.height)
+        : fit === 'contain' || fit === 'fixedHeight'
+            ? design.height
+            : grows
+                ? Math.max(design.height, fill(box.height))
+                : fill(box.height);
+    if (bounded && (!Number.isSafeInteger(width) || !Number.isSafeInteger(height)))
+        throw invalid();
     const left = (box.width - width * scale) / 2, top = (box.height - height * scale) / 2;
     const designRect = Object.freeze({
         x: (width - design.width) / 2,

@@ -97,3 +97,27 @@ node test/rotation.mjs <new-directory>
 - **性能口径 · Cadence:** 原公开版 PC 无截图的起步、45 秒驾驶、营地样本分别 p95 16.8 / 20.9 / 8.5 ms，最大 29.2 / 33.4 / 12.6 ms；Fold7 3 秒无截图驾驶样本 181 帧间隔，p95/max 16.7/16.7 ms。均无 >50 ms 间隔。这是 rAF，非 GPU 执行时间，非全局性能比较。 · Physical browser cadence estimates from bounded screenshot-free windows, not GPU timing or full-game performance.
 - **证据 · Evidence:** [原公开版真机精简记录](test/evidence/physical-278-baseline.json)。两个真机均使用隔离测试存档与真实浏览器输入；手机旋转提示保持可见，近站测试定位及软件模拟测试与自然完整旅程严格区分。 · Scoped public-build physical test data without unrelated device information.
 - **候选回归 · Local candidate regression:** 新增 4 个布局单测，`node --test test/*.test.mjs` 40/40；`node test/short-screen.mjs <new-dir>` 8/8 实际软件浏览器检查点、零错误。873×325 设置 9 个活动控件最小 45.00 CSS px，有首站续档及有无最佳记录的三按钮标题最小 46.29 CSS px，均在安全区。325×873 及原 852×393 刘海场景正常；原生卡片和投影保留。393×852 非触屏字幕使用已有剧情行的隔离 UI 测试，实际字幕与速度表显示边界留有约 4.85 CSS px 垂直空隙。 · Forty Node checks plus eight targeted software-browser checkpoints. Saved-title and subtitle fixtures are explicit; physical public revalidation is separate. [专项数据](test/evidence/short-screen-regression.json).
+
+### 引擎 #535：Fold7 矮横屏及原生控件收据 · Fold7 cover viewport and native overlay receipts (2026-11-27)
+
+- **正式引擎 · Official pin:** `72be497` → [`2fbe55630b1f67c6b1584d73290c19cb0aa0ae24`](https://github.com/cnedwin/Egret_rebuild/commit/2fbe55630b1f67c6b1584d73290c19cb0aa0ae24)，引擎 [#535](https://github.com/cnedwin/Egret_rebuild/pull/535) 的 M0 保护检查通过后正式合并。原 16 入口由工具生成 327 文件；报告器、指针、私有状态及四个原生控件模块（7/7）去掉 sourceMappingURL 后与官方构建字节一致。 · Official tool-generated copy, no local patches; seven relevant emitted files checked byte-for-byte.
+- **先复现 · Reproduction:** `0a8da42e` 的运行时配合新增规格的测试工具，在 873×325 的实际游戏软件浏览器流程中，标题 2、设置 9 项，但驾驶仅 5 项原生控件，漏掉有真实触摸命中区而无语义激活动作的「方向 Steering」。修复后驾驶为 6 项。没有伪造原生收据。 · The former runtime with the new profile reproduced a missing steering control: 5/6 HUD targets, strict route failed. The official engine now reports all six.
+- **正式复测 · Official rerun:** Windows 上实际 Chromium 软件渲染（SwiftShader），`node --test test/*.test.mjs` **40/40**；`node vendor/egret.mjs verify --screens --play test/play.mjs --out <new-dir>` **9/9**、全部 66 检查点。63 个普通状态的 328 个活动语义节点与实际原生命中收据名称和数量逐项对应；三个竖屏转屏提示另有 6 个底层标题收据。总计原生 334 个矩形，无安全区、44 CSS px 或重叠告警，无漏报/重复/额外目标。每个检查点要求新鲜非空收据。 · Headless Chromium software browser, not physical-device evidence; exact fresh native receipts and independent semantic checks.
+- **复跑口径 · Method:** 标题、设置、实际点击/油门、暂停继续、首站、营地放下篝火并旋转模式、保存返回。用已有开发者 hook 进行近站测试定位，随后由正常到站触发进行游戏，非全程自然驾驶。竖屏手机真实提示截图后，仅隔离验收临时隐藏提示检查下层布局，正式游戏仍要求横屏。 · Normal controls/save, with disclosed near-station fixture and isolated inspection underneath the portrait instruction.
+- **数据 · Evidence:** [逐规格、逐状态及原始报告哈希](test/evidence/native-control-receipts.json)；[九屏最终画面](test/evidence/native-controls-nine-screens.jpg)。新规格为真实 Fold7 外屏 Chrome 的有效 CSS 视口 873×325、DPR 2.625，模拟内缩为零，不代替 884×1104 展开屏或实际刘海验证。 · Measured cover viewport profile, not a physical cutout simulation.
+
+| 规格 · Profile | 尺寸 · CSS px | 检查点 · Checkpoints | 实际原生矩形 · Native rectangles | 独立交叉检查 · Matched controls | 错误/告警 · E/W |
+|---|---:|---:|---:|---:|---:|
+| phone-small | 375×667 | 8 | 39 | 37 | 0/0 |
+| phone-notch | 393×852 | 8 | 39 | 37 | 0/0 |
+| phone-notch-wide | 852×393 | 7 | 37 | 37 | 0/0 |
+| phone-tall | 360×800 | 8 | 39 | 37 | 0/0 |
+| tablet | 768×1024 | 7 | 37 | 37 | 0/0 |
+| tablet-wide | 1024×768 | 7 | 37 | 37 | 0/0 |
+| foldable-cover-wide | 873×325 | 7 | 37 | 37 | 0/0 |
+| foldable | 884×1104 | 7 | 37 | 37 | 0/0 |
+| desktop | 1920×1080 | 7 | 32 | 32 | 0/0 |
+| **合计 · Total** | — | **66** | **334** | **328** | **0/0** |
+
+- **尺寸与转屏 · Geometry and rotation:** 最小原生命中边长约 **45.00 CSS px**（44.999284，CSS 布局浮点误差），矮横屏方向滑条 176.14×69.43 CSS px。与正式合并树字节相同的候选（`90fd8724`）专项转屏 4/4、8 次屏幕变更、空白拖动、营地保存及矮屏短测试 8/8 均通过。 · Candidate and merge tree identities are identical; actual software-browser rotation and short-screen checks are separate from the 66 checkpoint rerun.
+- **通用品质 · Generic quality:** 同一候选源码树的 `quality.mjs --no-write --json` 仍为 13/16 自动项通过，F1/I1/E2 三个已知缺口未达标（软件 p95 454.2 ms / 22 帧、无独立英文切换、资源加载失败无重试页），exit 1；6 项设备/人工未执行。未更新基准图，未把软件渲染数值当作真机性能。 · Existing generic failures remain separate; the capture does not claim hardware cadence or all-browser acceptance.
