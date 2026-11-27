@@ -1,6 +1,6 @@
 # 星旗战记 · 引擎问题与建议 · Starbanner Tactics · Engine notes
 
-原生叠加层版本 / Native overlay version: `938a8d206fb3395bbac47be832a374df7b37eed3`.
+原生叠加层迁移基线 / Native overlay migration baseline: `938a8d206fb3395bbac47be832a374df7b37eed3`。本次引擎副本 / Current engine copy: `0e7b29321a07ec956f66efb293c79798270512bd`；引擎 #528 合并 / merge: `0e7b29321a07ec956f66efb293c79798270512bd`。
 
 开发中遇到的引擎问题、本作的绕过办法和给引擎的建议。
 
@@ -37,56 +37,68 @@ Engine problems met while making this game, what the game does about them, and s
 - **绕过办法 · Workaround**：验收脚本和截图前调用 `rig.snap()` 让镜头直接落位；单位走路、出手按时间推进，不依赖帧数（`src/view/stage.mjs`、`src/view/figures.mjs`）。 · Captures snap the camera; walks and blows advance by time.
 - **建议 · Suggestion**：引擎的验收工具文档里写明软件渲染的帧率范围，以及截图前应把按帧插值的状态落位。 · Note the software-rendering frame rate in the engine's testing guide.
 - **状态 · Status**：已写入文档 / documented（本条）。
-### 5. World3D 叠加层不支持 `uiScale` · World3D overlay does not expose `uiScale` — 未解决 / open
+### 5. World3D 叠加层不支持 `uiScale` · World3D overlay does not expose `uiScale` — 已在 0e7b2932 解决 / resolved in 0e7b2932
+<!-- engine-note: {"id": "StarBanner#5", "status": "resolved", "topic": "world3d-overlay-ui-scale", "workaround": []} -->
 
-<!-- engine-note: {"id": "StarBanner#5", "status": "open", "topic": "world3d-overlay-ui-scale", "workaround": ["src/ui/host.mjs", "src/screens.mjs", "src/hud.mjs"]} -->
+- 原现象 / Previous symptom：`play` 的界面缩放不能用于 `createWorld3DOverlay`。手机宽屏的可点尺寸与桌面的面板占比需要分别控制。 / The overlay has no independent interface scale; phone targets need a minimum size while desktop panels should not take over the scene.
+- 旧版最小复现 / Previous reproduction：创建 800×420、`portrait:{width:380,height:680}, fit:'expand'` 的叠加层，注册一个 48×48 的按钮，将窗口从 1920×1080 改成 873×325。对比 `game.screen.scale` 后的 CSS 尺寸；叠加层配置没有 `uiScale`。 / Create this overlay and a 48×48 button, then resize from desktop to a short widescreen; its interface dimensions follow the scene scale.
+- 旧版绕过 / Previous workaround：使用引擎 `game.screen.safe/scale`，以 `max(48u,44/scale)` 作为交互行的尺寸，不另建响应式 DOM。 / Derive hit sizes from the native screen plan and cap ordinary UI growth.
+- 原建议 / Prior proposal：为叠加层提供与 `play` 一致且可独立配置的界面缩放，明确语义和指针几何也随变换更新。 / Expose matching independent UI scale in overlays, including pointer and semantic geometry.
 
-- 现象 / Symptom：`play` 的界面缩放不能用于 `createWorld3DOverlay`。手机宽屏的可点尺寸与桌面的面板占比需要分别控制。 / The overlay has no independent interface scale; phone targets need a minimum size while desktop panels should not take over the scene.
-- 最小复现 / Reproduction：创建 800×420、`portrait:{width:380,height:680}, fit:'expand'` 的叠加层，注册一个 48×48 的按钮，将窗口从 1920×1080 改成 873×325。对比 `game.screen.scale` 后的 CSS 尺寸；叠加层配置没有 `uiScale`。 / Create this overlay and a 48×48 button, then resize from desktop to a short widescreen; its interface dimensions follow the scene scale.
-- 绕过 / Workaround：使用引擎 `game.screen.safe/scale`，以 `max(48u,44/scale)` 作为交互行的尺寸，不另建响应式 DOM。 / Derive hit sizes from the native screen plan and cap ordinary UI growth.
-- 建议 / Proposal：为叠加层提供与 `play` 一致且可独立配置的界面缩放，明确语义和指针几何也随变换更新。 / Expose matching independent UI scale in overlays, including pointer and semantic geometry.
+- 状态 / Status：引擎 #528（`0e7b29321a07ec956f66efb293c79798270512bd`）提供 `createWorld3DOverlay(...,{uiScale:{min,max}})`，由实际逻辑舞台、指针换算和语义几何共同使用。游戏采用 `{min:44/48,max:1.35}` 配合 `fit:'expand'`；48 个逻辑单位最低 44 CSS px，桌面最大 64.8 CSS px。布局仍以 `game.screen.safe` 及实际矩形为准。 / Engine #528 makes bounded overlay stage scaling native, including pointer and semantic transforms. The game selects these bounds so a 48-unit row spans 44–64.8 CSS px before actual hit-area geometry is considered.
+- 复跑 / Regression route：`node test/native-ui-accept.mjs` 与 `verify --screens` 的宽屏、竖屏档；验收数据另见 QUALITY。 / Exercise the wide and portrait profiles; measured results are recorded separately in QUALITY.
 
-### 6. `verify --screens` 未检查 World3D 叠加层的控件几何 · Screen verification omits overlay control geometry — 未解决 / open
+### 6. `verify --screens` 未检查 World3D 叠加层的控件几何 · Screen verification omits overlay control geometry — 已在 0e7b2932 解决 / resolved in 0e7b2932
+<!-- engine-note: {"id": "StarBanner#6", "status": "resolved", "topic": "world3d-overlay-screen-verify", "workaround": []} -->
 
-<!-- engine-note: {"id": "StarBanner#6", "status": "open", "topic": "world3d-overlay-screen-verify", "workaround": ["src/ui/host.mjs", "test/accept.mjs"]} -->
+- 原现象 / Previous symptom：World3D 叠加层和它的原生语义树存在时，多屏幕工具只能执行页面检查；没有 `play` 的安全区、触控区与控件间距报告。 / Native overlay controls do not participate in the play-only geometry collector.
+- 旧版最小复现 / Previous reproduction：建立 `createWorld3DOverlay`，在舞台边缘添加一个 20×20 的原生行动控件并发布语义，执行 `node vendor/egret.mjs verify --screens`。页面级检查会运行，但不会报告该控件进入安全区或触控区不足。 / Create a 20×20 native action at the edge, publish semantics, and run multi-screen verification; the per-control checks are absent.
+- 旧版绕过 / Previous workaround：浏览器验收直接读取 native `createUiSemantics` 的控件矩形，以 `game.screen.scale` 转成 CSS 尺寸，并与 `game.screen.safe` 比对。 / The acceptance suite reads real semantic rectangles and checks their CSS geometry against the actual safe area.
+- 原建议 / Prior proposal：提供可注册的叠加层 `verify --screens` 控件采集入口，与 `play` 共享几何、安全区和遮挡规则。 / Allow native overlays to register the shared screen-verification collector.
 
-- 现象 / Symptom：World3D 叠加层和它的原生语义树存在时，多屏幕工具只能执行页面检查；没有 `play` 的安全区、触控区与控件间距报告。 / Native overlay controls do not participate in the play-only geometry collector.
-- 最小复现 / Reproduction：建立 `createWorld3DOverlay`，在舞台边缘添加一个 20×20 的原生行动控件并发布语义，执行 `node vendor/egret.mjs verify --screens`。页面级检查会运行，但不会报告该控件进入安全区或触控区不足。 / Create a 20×20 native action at the edge, publish semantics, and run multi-screen verification; the per-control checks are absent.
-- 绕过 / Workaround：浏览器验收直接读取 native `createUiSemantics` 的控件矩形，以 `game.screen.scale` 转成 CSS 尺寸，并与 `game.screen.safe` 比对。 / The acceptance suite reads real semantic rectangles and checks their CSS geometry against the actual safe area.
-- 建议 / Proposal：提供可注册的叠加层 `verify --screens` 控件采集入口，与 `play` 共享几何、安全区和遮挡规则。 / Allow native overlays to register the shared screen-verification collector.
+- 状态 / Status：引擎 #528（`0e7b29321a07ec956f66efb293c79798270512bd`）把真实原生 hitArea、显示变换及裁切接入 `verify --screens`；存在浏览器原生语义投影时结合实际几何与语义名称。只有测试工具才启动采集，普通游戏无需轮询。补充语义视觉外框保留为诊断，不再替代官方控件报告。 / Engine #528 adds actual native hit targets, transforms and clips to screen verification, with names from native browser semantics when present. Collection is tooling-only; semantic visual bounds remain a supplementary diagnosis rather than a substitute collector.
+- 复跑 / Regression route：`node vendor/egret.mjs verify --screens --play test/screen-route.mjs --out <new-dir>`，以原生报告为主，补测 `node test/screen-report.mjs <new-dir>`。 / Use native control receipts and the independent supplementary report.
 
-### 7. 原生图片加载的并发超限直接失败 · Concurrent native image jobs are rejected instead of queued — 未解决 / open
+### 7. 原生图片加载的并发超限直接失败 · Concurrent native image jobs are rejected instead of queued — 已在 0e7b2932 解决 / resolved in 0e7b2932
+<!-- engine-note: {"id": "StarBanner#7", "status": "resolved", "topic": "browser-game-image-admission", "workaround": []} -->
 
-<!-- engine-note: {"id": "StarBanner#7", "status": "open", "topic": "browser-game-image-admission", "workaround": ["src/ui/host.mjs"]} -->
+- 原现象 / Previous symptom：浏览器实测连续打开招募、设置、战果时出现 5 次 `ASSET_LOAD_FAILED`，内层为 `WEB_PNG_JOB_LIMIT`，头像并未缺失。`BrowserGame` 对所有图片编码共享 4 项的占用上限。 / Five such errors were observed during the initial browser route, even though the portraits existed. BrowserGame shares a four-job occupancy limit across image formats.
+- 旧版最小复现 / Previous reproduction：在 `createWorld3DOverlay` 后同时调用五个不同有效 URL 的 `game.loadTexture`，网络稍慢时第五个任务会被拒绝；调用 `Promise.allSettled` 可确认。 / Request five distinct valid textures at once on an overlay; with overlapping fetch/decode, the fifth can be rejected.
+- 旧版绕过 / Previous workaround：应用层按 URL 缓存实际引擎纹理租约，用最多三个并发的队列调用 `loadTexture`，让面板更替不会丢图。 / Cache actual engine leases and admit at most three URL jobs at once.
+- 原建议 / Prior proposal：保留严格的资源上限，提供可配置、有取消和优先级的排队入口，或公开等待占用槽的机制，避免普通场景切换把资源超限当成损坏。 / Keep the resource budget but expose cancellable/prioritized admission or a way to wait for a slot.
 
-- 现象 / Symptom：浏览器实测连续打开招募、设置、战果时出现 5 次 `ASSET_LOAD_FAILED`，内层为 `WEB_PNG_JOB_LIMIT`，头像并未缺失。`BrowserGame` 对所有图片编码共享 4 项的占用上限。 / Five such errors were observed during the initial browser route, even though the portraits existed. BrowserGame shares a four-job occupancy limit across image formats.
-- 最小复现 / Reproduction：在 `createWorld3DOverlay` 后同时调用五个不同有效 URL 的 `game.loadTexture`，网络稍慢时第五个任务会被拒绝；调用 `Promise.allSettled` 可确认。 / Request five distinct valid textures at once on an overlay; with overlapping fetch/decode, the fifth can be rejected.
-- 绕过 / Workaround：应用层按 URL 缓存实际引擎纹理租约，用最多三个并发的队列调用 `loadTexture`，让面板更替不会丢图。 / Cache actual engine leases and admit at most three URL jobs at once.
-- 建议 / Proposal：保留严格的资源上限，提供可配置、有取消和优先级的排队入口，或公开等待占用槽的机制，避免普通场景切换把资源超限当成损坏。 / Keep the resource budget but expose cancellable/prioritized admission or a way to wait for a slot.
+- 状态 / Status：引擎 #528（`0e7b29321a07ec956f66efb293c79798270512bd`）以每个 BrowserGame 的取消安全等待队列限制图片任务，在占用槽空闲前不发起实际任务；严格的 4 项上限保留。游戏取消自己的并发队列，保留同资源去重、真实引擎纹理租约及失败重试。没有取消资源额度，也未声称实现优先级队列。 / Engine #528 queues per-game image jobs until a slot is available, supports cancellation, and retains the four-job limit. The game retains resource reuse, leases and retries. Unlimited loading or priority scheduling is not claimed.
+- 复跑 / Regression route：`node test/native-ui-accept.mjs`，同时请求八张实际头像和重复 URL，观测请求并发与同资源租约。 / Load eight actual portraits concurrently and a duplicate URL; observe admission and resource sharing.
 
-### 8. 叠加层冷启动的耗时需要可观察性 · Overlay cold-start timing needs attribution — 未解决 / open
+### 8. 叠加层冷启动的耗时需要可观察性 · Overlay cold-start timing needs attribution — 已在 0e7b2932 解决 / resolved in 0e7b2932
+<!-- engine-note: {"id": "StarBanner#8", "status": "resolved", "topic": "world3d-overlay-startup-timing", "workaround": []} -->
 
-<!-- engine-note: {"id": "StarBanner#8", "status": "open", "topic": "world3d-overlay-startup-timing", "workaround": ["src/main.mjs"]} -->
+- 原现象 / Previous symptom：RTX 5090 Laptop、Edge、WebGL2、1280×720、低画质的新浏览器会话中，旧标题约 0.81 s 可用；迁移后约 3.06 s。并行初始化时 3D 主机在页面时间 287 ms 就绪，`createInterfaceHost` 在 2576 ms 就绪，背景在 2864 ms、标题在 2917 ms 就绪。这里的 UI 主机时段含 overlay、语义和 hover 接入，尚未证明单个着色程序或 GPU 调用是根因。 / In a fresh real-GPU Edge session the title was ready at ~0.81 s before, ~3.06 s after. Parallel startup timestamps are 287 ms (3D host), 2576 ms (UI host including overlay/semantics/hover), 2864 ms (backdrop), 2917 ms (ready). The cause within UI initialization is not isolated.
+- 旧版最小复现 / Previous reproduction：本 Demo 清洁浏览器上下文访问 `?quality=low&lang=zh&map=wheat&seed=3`；读取 `window.egretGame.status.startup`，并在 3D 画布上单独测 `createWorld3DOverlay(canvas,{width:800,height:420,portrait:{width:380,height:680},fit:'expand',pixelRatio:2})` 初始化。 / Use a fresh context and read startup milestones; separately measure the native overlay creation with those options.
+- 旧版绕过 / Previous workaround：并行准备两套引擎主机，不把 UI 初始化延迟移到出阵按钮之后。 / Prepare both hosts in parallel rather than moving the cost into a player action.
+- 原建议 / Prior proposal：为 overlay 提供主机初始化、着色器准备、首帧与资源启动子阶段计时；根据测量结果评估管线缓存或异步预热。 / Expose host, shader, first-frame and resource startup timings; investigate caching or async warmup using the evidence.
 
-- 现象 / Symptom：RTX 5090 Laptop、Edge、WebGL2、1280×720、低画质的新浏览器会话中，旧标题约 0.81 s 可用；迁移后约 3.06 s。并行初始化时 3D 主机在页面时间 287 ms 就绪，`createInterfaceHost` 在 2576 ms 就绪，背景在 2864 ms、标题在 2917 ms 就绪。这里的 UI 主机时段含 overlay、语义和 hover 接入，尚未证明单个着色程序或 GPU 调用是根因。 / In a fresh real-GPU Edge session the title was ready at ~0.81 s before, ~3.06 s after. Parallel startup timestamps are 287 ms (3D host), 2576 ms (UI host including overlay/semantics/hover), 2864 ms (backdrop), 2917 ms (ready). The cause within UI initialization is not isolated.
-- 最小复现 / Reproduction：本 Demo 清洁浏览器上下文访问 `?quality=low&lang=zh&map=wheat&seed=3`；读取 `window.egretGame.status.startup`，并在 3D 画布上单独测 `createWorld3DOverlay(canvas,{width:800,height:420,portrait:{width:380,height:680},fit:'expand',pixelRatio:2})` 初始化。 / Use a fresh context and read startup milestones; separately measure the native overlay creation with those options.
-- 绕过 / Workaround：并行准备两套引擎主机，不把 UI 初始化延迟移到出阵按钮之后。 / Prepare both hosts in parallel rather than moving the cost into a player action.
-- 建议 / Proposal：为 overlay 提供主机初始化、着色器准备、首帧与资源启动子阶段计时；根据测量结果评估管线缓存或异步预热。 / Expose host, shader, first-frame and resource startup timings; investigate caching or async warmup using the evidence.
+- 状态 / Status：`overlay.getStartupTiming()`、`game.getStartupTiming()` 在引擎 #528（`0e7b29321a07ec956f66efb293c79798270512bd`）记录宿主准备与首个真实提交；WebGL2 细分上下文、程序准备、单页/多页及其他着色程序阶段。上游 #525 的并行程序准备独立合入，原生 `webgl2PageBatching:'single-page'` 可省去多页程序而不禁用特效、不改变纹理内容。不同管线计时不能简单相加，实际耗时取决于设备与缓存；游戏继续并行准备两个宿主。 / Startup timings expose readiness, first admitted submit, and WebGL2 phases. Upstream #525 independently adds parallel preparation; #528's explicit single-page path omits the multi-page program without disabling effects. Parallel intervals are not isolated compilation times. Both hosts continue preparing concurrently.
+- 复跑 / Regression route：`test/native-ui-accept.mjs` 读取首个实际提交，`test/perf-route.mjs` 记录 `overlay.getStartupTiming()`；性能结果见 QUALITY。 / Observe actual first submission and startup phases; see QUALITY for results.
 
-### 9. 托管界面根的响应式树形与键盘注册限制 · Managed root responsive tree shape and keyboard attachment — 未解决 / open
+### 9. 托管界面根的响应式树形与键盘注册限制 · Managed root responsive tree shape and keyboard attachment — 已在 0e7b2932 解决 / resolved in 0e7b2932
+<!-- engine-note: {"id": "StarBanner#9", "status": "resolved", "topic": "ui-root-responsive-shape-and-attach", "workaround": []} -->
 
-<!-- engine-note: {"id": "StarBanner#9", "status": "open", "topic": "ui-root-responsive-shape-and-attach", "workaround": ["src/screens.mjs"]} -->
+- 原现象 / Previous symptom：`createUiRoot.setTree` 要求稳定树形，而 `KeyboardInput.registerTarget` 要求已附着的目标；在托管 leaf 的异步 prepare 阶段创建并注册控件时，目标尚未挂载。 / Managed-root updates require the same tree shape, and keyboard targets cannot register until attached; preparing controls in a detached leaf cannot register them yet.
+- 旧版最小复现 / Previous reproduction：在同一 `createUiRoot` 中把一列内容改成不同数量的叶子；另在 leaf `prepare` 返回前调用 `keyboard.registerTarget({id,target})`。 / Change the number of leaves on the same root, then separately try registering a control before the prepared leaf is published.
+- 旧版绕过 / Previous workaround：固定 16 个托管叶子槽，将不使用的槽设为零高度；prepare 原生空容器，提交后再在容器范围内连接原生控件和语义。屏幕根、栈和层管理器仍由引擎持有。 / Keep sixteen stable leaf slots, zero unused heights, prepare an empty scoped container, and connect native controls after attachment. Roots and layers remain engine-managed.
+- 原建议 / Prior proposal：支持可控的布局形状变化和已提交后注册钩子，让响应式屏幕减少不必要的视图重建并保留焦点。 / Offer safe responsive shape changes and a post-attachment registration hook preserving focus.
 
-- 现象 / Symptom：`createUiRoot.setTree` 要求稳定树形，而 `KeyboardInput.registerTarget` 要求已附着的目标；在托管 leaf 的异步 prepare 阶段创建并注册控件时，目标尚未挂载。 / Managed-root updates require the same tree shape, and keyboard targets cannot register until attached; preparing controls in a detached leaf cannot register them yet.
-- 最小复现 / Reproduction：在同一 `createUiRoot` 中把一列内容改成不同数量的叶子；另在 leaf `prepare` 返回前调用 `keyboard.registerTarget({id,target})`。 / Change the number of leaves on the same root, then separately try registering a control before the prepared leaf is published.
-- 绕过 / Workaround：固定 16 个托管叶子槽，将不使用的槽设为零高度；prepare 原生空容器，提交后再在容器范围内连接原生控件和语义。屏幕根、栈和层管理器仍由引擎持有。 / Keep sixteen stable leaf slots, zero unused heights, prepare an empty scoped container, and connect native controls after attachment. Roots and layers remain engine-managed.
-- 建议 / Proposal：支持可控的布局形状变化和已提交后注册钩子，让响应式屏幕减少不必要的视图重建并保留焦点。 / Offer safe responsive shape changes and a post-attachment registration hook preserving focus.
+- 状态 / Status：引擎 #528（`0e7b29321a07ec956f66efb293c79798270512bd`）提供 `UiRoot.setTree(tree,{responsive:true})` 和 leaf `onAttach(context)`。游戏按实际布局生成叶子，在已发布内容的作用域中注册控件及语义；屏幕、叠加层、战斗及稳定的焦点标识保持。严格同形规则默认有效，不声称任意树形更新兼容。 / Opt-in responsive trees and post-attachment hooks permit generated leaves with attachment-safe registration. The same managed root, overlay, battle and stable focus identity are kept; strict same-shape updates remain the default.
+- 复跑 / Regression route：`node test/native-ui-accept.mjs`，转屏时核对树形、叠加层、根实例与已注册的键盘焦点，继续合法移动和出兵。 / Check actual responsive tree shape and stable focus, then play a legal move and recruit.
 
-### 10. World3D 叠加层没有原生按需绘制模式 · World3D overlay has no native on-demand render mode — 未解决 / open
+### 10. World3D 叠加层没有原生按需绘制模式 · World3D overlay has no native on-demand render mode — 已在 0e7b2932 解决 / resolved in 0e7b2932
+<!-- engine-note: {"id": "StarBanner#10", "status": "resolved", "topic": "world3d-overlay-on-demand-render", "workaround": []} -->
 
-<!-- engine-note: {"id": "StarBanner#10", "status": "open", "topic": "world3d-overlay-on-demand-render", "workaround": ["src/ui/host.mjs", "src/ui/kit.mjs", "src/hud.mjs", "test/perf-route.mjs"]} -->
+- 原现象 / Previous symptom：当前叠加层通过 `createBrowserGame` 建立持续帧循环，未暴露 `play` 的按需渲染选项。独立 SwiftShader 同版本、静止棋盘 A/B/A，桌面叠层运行/暂停/恢复 p95 179.1/91.6/175.0 ms，375×667 模拟手机 129.1/62.6/125.0 ms；暂停段 UI 帧数为零而 World3D 继续更新。此为浏览器 rAF 间隔，不是 GPU 提交独占计时，也不是手机实机数字。 / A same-version software-rendered A/B/A reveals the repeated overlay-loop cost; rAF timing is not an exclusive GPU submission timer nor phone hardware measurement.
+- 旧版最小复现 / Previous reproduction：`node vendor/egret.mjs verify --screens=desktop,phone-small --play test/perf-route.mjs --out <fresh-dir>`。在相同场景测 2.5 秒，诊断性调用 `game.loop.stop()`，再 2.5 秒，恢复 `game.loop.start()` 后重测；检查 overlay 与 World3D 计数，不能把停止的 UI 当成正常玩法。 / The route compares a running, diagnostically stopped and restored native overlay on the same scene, checking both frame counters.
+- 旧版绕过 / Previous workaround：复用头顶标记和飘字，跳过相同内容的卡片、文字与几何绘制，语义树仅变化时发布。保留正常 overlay 帧循环，不为性能手写一套渲染、转屏、指针和动画调度。 / Pool projected nodes, skip unchanged content and geometry, and publish semantics when dirty. Keep the normal native loop rather than a custom render scheduler.
+- 原建议 / Prior proposal：`createWorld3DOverlay` 暴露与 `play` 一致的按需绘制，由原生 visual-revision、纹理就绪、hover/focus、动画与屏幕变更触发；可对 3D 投影标记在每次坐标变化时显式 invalidation。测量软件 A/B 改善同时保持实际触屏、转屏、语义与动态图集正确。 / Expose native on-demand rendering with visual-revision and input/resource/screen invalidation, plus explicit projected-marker updates; verify both performance and functional parity.
 
-- 现象 / Symptom：当前叠加层通过 `createBrowserGame` 建立持续帧循环，未暴露 `play` 的按需渲染选项。独立 SwiftShader 同版本、静止棋盘 A/B/A，桌面叠层运行/暂停/恢复 p95 179.1/91.6/175.0 ms，375×667 模拟手机 129.1/62.6/125.0 ms；暂停段 UI 帧数为零而 World3D 继续更新。此为浏览器 rAF 间隔，不是 GPU 提交独占计时，也不是手机实机数字。 / A same-version software-rendered A/B/A reveals the repeated overlay-loop cost; rAF timing is not an exclusive GPU submission timer nor phone hardware measurement.
-- 最小复现 / Reproduction：`node vendor/egret.mjs verify --screens=desktop,phone-small --play test/perf-route.mjs --out <fresh-dir>`。在相同场景测 2.5 秒，诊断性调用 `game.loop.stop()`，再 2.5 秒，恢复 `game.loop.start()` 后重测；检查 overlay 与 World3D 计数，不能把停止的 UI 当成正常玩法。 / The route compares a running, diagnostically stopped and restored native overlay on the same scene, checking both frame counters.
-- 绕过 / Workaround：复用头顶标记和飘字，跳过相同内容的卡片、文字与几何绘制，语义树仅变化时发布。保留正常 overlay 帧循环，不为性能手写一套渲染、转屏、指针和动画调度。 / Pool projected nodes, skip unchanged content and geometry, and publish semantics when dirty. Keep the normal native loop rather than a custom render scheduler.
-- 建议 / Proposal：`createWorld3DOverlay` 暴露与 `play` 一致的按需绘制，由原生 visual-revision、纹理就绪、hover/focus、动画与屏幕变更触发；可对 3D 投影标记在每次坐标变化时显式 invalidation。测量软件 A/B 改善同时保持实际触屏、转屏、语义与动态图集正确。 / Expose native on-demand rendering with visual-revision and input/resource/screen invalidation, plus explicit projected-marker updates; verify both performance and functional parity.
+- 状态 / Status：引擎 #528（`0e7b29321a07ec956f66efb293c79798270512bd`）让 `createWorld3DOverlay` 使用原生 `renderMode:'on-demand'`。静止 UI 保留已提交帧；时钟、输入、更新与 3D 继续，视觉、资源或舞台变化触发新提交。游戏保留标记池与跳过无效文本更新等普通优化，不需诊断性暂停循环。通过真实提交序号与帧间隔区分静/动态画面，不以停循环或 GPU 独占计时冒充。 / Native on-demand mode retains unchanged UI frames without stopping clocks, input, updates or 3D. Visual/resource/stage changes submit again. Ordinary pooling and unchanged-text optimization remain; measured serials and cadence distinguish redraw from paused loops and exclusive GPU timing.
+- 复跑 / Regression route：`node vendor/egret.mjs verify --screens=desktop,phone-small --play test/perf-route.mjs --out <new-dir>`；分别观察原生 host 提交计数、游戏更新与 3D 帧；结果见 QUALITY。 / Observe native Host submits, game updates and World3D frames separately; see QUALITY for measurements.

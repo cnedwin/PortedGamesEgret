@@ -32,5 +32,6 @@ export default async function(player){
   }
   await press(page,'button:Done',device);await ready(page,'dialog:Starbanner Tactics');
   await press(page,'button:Campaign',device);await ready(page,'dialog:Campaign');await snap('campaign');
-  player.expect(rows.every(row=>row.errors===0),'English controls stay inside the stand-in safe area');
+  player.expect(rows.every(row=>row.errors===0&&row.warnings===0&&row.engineWarnings.length===0),
+    'English controls pass native geometry and page checks');
 }

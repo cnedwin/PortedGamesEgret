@@ -1,47 +1,34 @@
 // Run with the vendored engine's verify --screens --play. Each checkpoint is a real rendered game state.
-// World3DOverlay does not currently publish BrowserPlay control probes; the actual native semantic tree is
-// inspected independently and recorded beside each profile's official checkpoint screenshots.
+// Use World3DOverlay's native control receipt for hit geometry, safe areas and overlap. The semantic tree
+// contributes only text metadata beside each profile's official checkpoint screenshots.
 import fs from 'node:fs';
 import path from 'node:path';
 import { ready, nodes, press, state, cursor, awaitMode, chooseMove, reachAttack } from './ui-actions.mjs';
 
-function findings(controls,safe,touch) {
-  const found=[],right=r=>r.x+r.width,bottom=r=>r.y+r.height;
-  const inside=(a,b,slack=1)=>a.x>=b.x-slack&&a.y>=b.y-slack&&right(a)<=right(b)+slack&&bottom(a)<=bottom(b)+slack;
-  for(const control of controls){
-    const b=control.box;
-    if(!inside(b,safe))found.push({check:'inSafeArea',severity:'error',control:control.name,rect:b});
-    if(touch&&(b.width<43.5||b.height<43.5))found.push({check:'touchTarget',severity:'warning',control:control.name,size:[b.width,b.height]});
-  }
-  for(let i=0;i<controls.length;i++)for(let j=i+1;j<controls.length;j++){
-    const a=controls[i].box,b=controls[j].box;
-    const overlap=Math.max(0,Math.min(right(a),right(b))-Math.max(a.x,b.x))*Math.max(0,Math.min(bottom(a),bottom(b))-Math.max(a.y,b.y));
-    if(overlap>1&&!inside(a,b,.5)&&!inside(b,a,.5))
-      found.push({check:'apart',severity:'warning',controls:[controls[i].name,controls[j].name]});
-  }
-  return found;
-}
-
 export async function geometry(player,label,shot){
   const observed=await player.read(async()=>{
     const host=window.egretGame.ui;await host.ready();
-    const rect=host.overlay.canvas.getBoundingClientRect(),frame=host.game.frame,safe=host.game.screen.safe;
+    const rect=host.overlay.canvas.getBoundingClientRect(),frame=host.game.frame;
     const map=b=>({x:rect.x+b.x*rect.width/frame.width,y:rect.y+b.y*rect.height/frame.height,width:b.width*rect.width/frame.width,height:b.height*rect.height/frame.height});
-    // Semantics are real engine nodes, not copied data written by the test or a layout generated separately.
+    // Text rectangles are visual metadata only. The engine reports the real interactive faces, not their decorative strokes.
     const all=host.semantics.snapshot.nodes.filter(n=>!n.inert&&n.bounds?.width>0&&n.bounds?.height>0);
-    const controls=all.filter(n=>!n.disabled&&n.actions?.includes('activate')).map(n=>({id:n.id,name:n.name,role:n.role,box:map(n.bounds),focused:n.focused}));
     const texts=all.filter(n=>['text','status','alert','heading'].includes(n.role)).map(n=>({id:n.id,name:n.name,role:n.role,box:map(n.bounds)}));
     const actualInsets=globalThis.__egretAgent?.insets??{top:0,right:0,bottom:0,left:0};
+    const receipt=globalThis.__egretScreens;
     return {width:innerWidth,height:innerHeight,dpr:devicePixelRatio,touch:matchMedia('(pointer:coarse)').matches,
-      viewport:[innerWidth,innerHeight],engineSafe:map(safe),insets:actualInsets,
+      viewport:[innerWidth,innerHeight],engineSafe:receipt?.screen?.safe??null,insets:actualInsets,
       safe:{x:actualInsets.left,y:actualInsets.top,width:innerWidth-actualInsets.left-actualInsets.right,height:innerHeight-actualInsets.top-actualInsets.bottom},
-      controls,texts,logical:[frame.width,frame.height],backing:[host.overlay.canvas.width,host.overlay.canvas.height],mode:window.egretGame.battle?.mode};
+      controls:receipt?.controls??null,receipt:receipt?.receipts??0,
+      texts,logical:[frame.width,frame.height],backing:[host.overlay.canvas.width,host.overlay.canvas.height],mode:window.egretGame.battle?.mode};
   });
-  const hits=findings(observed.controls,observed.safe,observed.touch);
-  const result={state:label,picture:shot?.picture??null,engineControls:shot?.controls??null,
+  player.expect(shot?.controlReceipt?.fresh===true&&shot.controls>0&&Array.isArray(observed.controls)&&
+    observed.controls.length===shot.controls&&observed.receipt>=shot.controlReceipt.after,
+    'fresh native overlay control receipt for '+label);
+  const hits=shot.findings??[], engineWarnings=shot.engineWarnings??[];
+  const result={state:label,picture:shot.picture,engineControls:shot.controls,fresh:shot.controlReceipt.fresh,
     errors:hits.filter(f=>f.severity==='error').length,warnings:hits.filter(f=>f.severity==='warning').length,
-    findings:hits,...observed};
-  console.log('native-semantic',label,observed.width+'x'+observed.height,observed.controls.length+' controls',result.errors+'/'+result.warnings);
+    findings:hits,engineWarnings,...observed};
+  console.log('native-controls',label,observed.width+'x'+observed.height,observed.controls.length+' controls',result.errors+'/'+result.warnings);
   return result;
 }
 
@@ -83,7 +70,7 @@ export default async function(player){
   await cursor(page,{x:sw.x,y:sw.y-2});await page.keyboard.press('Enter');await awaitMode(page,'act');await ready(page,'button:待命');
   await page.waitForTimeout(1500);
   const perf=await player.read(()=>{const p=window.__starPerf;p.stop=true;return{frames:p.frames,elapsed:performance.now()-p.started}});
-  const v=[...perf.frames].sort((a,b)=>a-b);
+  const v=perf.frames.slice(1).sort((a,b)=>a-b);
   route.push({label:'first move to action menu: swordsman two tiles up',actionElapsedMs:Date.now()-t0,samples:v.length,
     p95Ms:v[Math.ceil(v.length*.95)-1]??null,maxMs:v.at(-1)??null,over50:v.filter(x=>x>50).length,frames:perf.frames});
   await snapshot('action');
@@ -107,5 +94,9 @@ export default async function(player){
   player.expect((await nodes(page)).some(n=>n.name==='再战一局'&&!n.disabled),'result offers a real rematch');
   if(output)fs.writeFileSync(output,JSON.stringify({route,rows},null,2)+'\n');
   player.expect(rows.length===8,'all eight UI states were reached');
-  player.expect(rows.every(row=>row.errors===0),'no actionable semantic control is outside the simulated safe region');
+  player.expect(rows.every(row=>row.errors===0&&row.warnings===0&&row.engineWarnings.length===0),'the engine reports no control or page findings in these stable states');
+  const expected={title:['遭遇战','设置'],settings:['音乐','好'],setup:['出阵'],opening:['结束回合','菜单'],
+    selected:['菜单'],action:['待命'],forecast:['菜单'],result:['再战一局']};
+  player.expect(rows.every(row=>expected[row.state].every(name=>row.controls.some(control=>control.name===name))),
+    'actual native hit geometry includes the expected named controls');
 }

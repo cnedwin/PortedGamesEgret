@@ -8,11 +8,9 @@ import { createUiTester } from '@egret/engine/ui/testing';
 export const LANDSCAPE = { width: 800, height: 420 };
 export const PORTRAIT = { width: 380, height: 680 };
 
-/** UI units stay legible on a phone and do not grow without limit on a large display. */
+/** The native overlay clamps CSS scale; layout uses ordinary stage units and 48-unit touch controls. */
 export function uiMetrics(screen) {
-  const scale = screen.scale;
-  const unit = Math.min(1, 1.35 / scale);
-  return { screen, safe: screen.safe, scale, unit, tap: Math.max(48 * unit, 44 / scale), portrait: screen.height > screen.width };
+  return { screen, safe: screen.safe, scale: screen.scale, unit: 1, tap: 48, portrait: screen.height > screen.width };
 }
 
 export async function createInterfaceHost(canvas, { label, onError = console.error } = {}) {
@@ -22,7 +20,7 @@ export async function createInterfaceHost(canvas, { label, onError = console.err
     ...LANDSCAPE, portrait: PORTRAIT, fit: 'expand', blendSpace: 'srgb', passThrough: true,
     // Text raster density follows the overlay pixel ratio, not the stage's later CSS scale.
     // Two samples per logical pixel keep desktop text and borders sharp as expand enlarges the stage.
-    pixelRatio: 2,
+    pixelRatio: 2, renderMode: 'on-demand', uiScale: { min: 44 / 48, max: 1.35 }, webgl2PageBatching: 'single-page',
     update: (dt) => host?.tick(dt), onError
   });
   const game = overlay.game;
@@ -31,14 +29,6 @@ export async function createInterfaceHost(canvas, { label, onError = console.err
   const hover = game.hover ?? createBrowserHoverInput({ engine: game.engine, scope: game.scope, canvas: overlay.canvas,
     width: game.frame.width, height: game.frame.height, size: () => game.frame, onError });
   const keyboard = game.keyboard, pending = new Set(), layouts = new Set(), painters = new Set(), textures = new Map();
-  // BrowserGame admits four image jobs. Queue the portraits across screens rather than
-  // letting a new recruitment menu fail when its four image slots are already occupied.
-  const imageQueue=[];let imageInFlight=0;
-  function drainImages(){
-    while(!closed&&imageInFlight<3&&imageQueue.length){const task=imageQueue.shift();imageInFlight++;
-      game.loadTexture(task.url).then(task.resolve,task.reject).finally(()=>{imageInFlight--;drainImages();});}
-  }
-  const loadImage=url=>new Promise((resolve,reject)=>{imageQueue.push({url,resolve,reject});drainImages();});
   let dirty = true, closed = false, focusStamp = '', frameCount = 0;
   const requestPublish = () => { dirty = true; };
   function publish() {
@@ -94,7 +84,7 @@ export async function createInterfaceHost(canvas, { label, onError = console.err
       if (!source) return Promise.resolve(undefined);
       if (!textures.has(source)) {
         // The game's scope retains the lease for the host lifetime. Bitmap needs the lease, not its value.
-        const task = typeof source === 'string' || source instanceof URL ? loadImage(String(source)) : game.textureFromCanvas(source);
+        const task = typeof source === 'string' || source instanceof URL ? game.loadTexture(String(source)) : game.textureFromCanvas(source);
         textures.set(source, task);
         task.catch(()=>{if(textures.get(source)===task)textures.delete(source);});
       }
@@ -110,7 +100,6 @@ export async function createInterfaceHost(canvas, { label, onError = console.err
     get frames() { return frameCount; },
     async dispose() {
       if (closed) return; closed = true; stopScreen(); layouts.clear(); painters.clear();
-      for(const task of imageQueue.splice(0))task.reject(new Error('Interface host closed'));
       projection.dispose(); semantics.dispose(); await overlay.dispose();
     }
   };
