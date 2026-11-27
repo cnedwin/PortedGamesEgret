@@ -383,6 +383,10 @@ export const MATRIX = {
      "file": "PeachCreek/src/main.mjs"
     },
     {
+     "game": "Rally",
+     "file": "Rally/src/ui/kit.mjs"
+    },
+    {
      "game": "SandScroll",
      "file": "SandScroll/src/ui/kit.mjs"
     },
@@ -522,6 +526,10 @@ export const MATRIX = {
      "file": "LubanBridge/src/view/build.mjs"
     },
     {
+     "game": "Rally",
+     "file": "Rally/src/ui/host.mjs"
+    },
+    {
      "game": "StarBanner",
      "file": "StarBanner/src/ui/host.mjs"
     }
@@ -539,6 +547,10 @@ export const MATRIX = {
     {
      "game": "NightWardens",
      "file": "NightWardens/src/main.mjs"
+    },
+    {
+     "game": "Rally",
+     "file": "Rally/src/input.mjs"
     },
     {
      "game": "StarBanner",
@@ -647,6 +659,10 @@ export const MATRIX = {
      "file": "MechanismCity/src/main.mjs"
     },
     {
+     "game": "Rally",
+     "file": "Rally/src/ui/race-font.mjs"
+    },
+    {
      "game": "TeaHorseRoad",
      "file": "TeaHorseRoad/src/main.mjs"
     }
@@ -738,6 +754,10 @@ export const MATRIX = {
     {
      "game": "PeachCreek",
      "file": "PeachCreek/src/i18n.mjs"
+    },
+    {
+     "game": "Rally",
+     "file": "Rally/src/settings.mjs"
     },
     {
      "game": "SandScroll",
@@ -1034,6 +1054,10 @@ export const MATRIX = {
      "file": "PeachCreek/src/main.mjs"
     },
     {
+     "game": "Rally",
+     "file": "Rally/src/ui/host.mjs"
+    },
+    {
      "game": "SandScroll",
      "file": "SandScroll/src/main.mjs"
     },
@@ -1071,6 +1095,10 @@ export const MATRIX = {
     {
      "game": "NezhaSea",
      "file": "NezhaSea/src/main.mjs"
+    },
+    {
+     "game": "Rally",
+     "file": "Rally/src/ui/host.mjs"
     },
     {
      "game": "StarBanner",
@@ -1130,6 +1158,10 @@ export const MATRIX = {
     {
      "game": "PeachCreek",
      "file": "PeachCreek/src/main.mjs"
+    },
+    {
+     "game": "Rally",
+     "file": "Rally/src/ui/host.mjs"
     },
     {
      "game": "SandScroll",
@@ -1227,6 +1259,10 @@ export const MATRIX = {
     {
      "game": "MechanismCity",
      "file": "MechanismCity/src/ui/settings.mjs"
+    },
+    {
+     "game": "Rally",
+     "file": "Rally/src/ui/menus.mjs"
     },
     {
      "game": "StarBanner",

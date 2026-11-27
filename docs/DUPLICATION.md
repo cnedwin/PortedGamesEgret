@@ -4,17 +4,15 @@
 
 Made by `node tools/duplication.mjs --write` from the `src/` of every game; do not edit by hand, and `--check` says whether it is out of date. Code three or more games each wrote belongs in the engine's kit or in the template; "Engine has" names what can replace it.
 
-24 个游戏，4198 段至少 40 个词元的顶层代码。名字、数字和字符串都换成同一个记号后，连续 8 个词元的 Jaccard 指数不小于 0.6 就算相同。
+24 个游戏，4387 段至少 40 个词元的顶层代码。名字、数字和字符串都换成同一个记号后，连续 8 个词元的 Jaccard 指数不小于 0.6 就算相同。
 
-24 games, 4198 top-level units of at least 40 tokens. With every name, number and string made one token, two units are alike when the Jaccard index of their runs of 8 tokens is 0.6 or more.
+24 games, 4387 top-level units of at least 40 tokens. With every name, number and string made one token, two units are alike when the Jaccard index of their runs of 8 tokens is 0.6 or more.
 
 ## 1. 3 个以上游戏写了几乎相同的代码 · Code that 3 or more games wrote nearly alike
 
 | 名字 · Names | 游戏数 · Games | 相似度 · Alike | 词元 · Tokens | 引擎已有 · Engine has | 位置 · Where |
 |---|:-:|:-:|:-:|---|---|
-| `seeded`, `createRandom`, `rng`, `randomSource`, `random` | 11 | 0.86 | 109 | `createRandom`, `hashSeed` (@egret/engine/kit) | CanalWatch/src/sim/world.mjs:27<br>FiveRegiments/src/sim/fight.mjs:78<br>NezhaSea/src/sim/world.mjs:41<br>NineProvinces/src/sim/battle.mjs:85<br>NineProvinces/src/view/mapart.mjs:18<br>OperaDrums/src/sim/bot.mjs:7<br>PeachCreek/src/sim/world.mjs:47<br>Rally/src/sim.mjs:13<br>… +4 |
-| `t` | 5 | 0.61 | 61 | `createTextTable`, `pickLanguage` (@egret/engine/kit) | FiveRegiments/src/i18n.mjs:186<br>NightWardens/src/i18n.mjs:122<br>NineProvinces/src/i18n.mjs:533<br>SandScroll/src/i18n.mjs:122<br>StarBanner/src/i18n.mjs:187 |
-| `scatterSource`, `scatter` | 4 | 0.72 | 44 | – | Rally/src/shapes.mjs:153<br>SnowTemple/src/view/scenery.mjs:28<br>StarBanner/src/view/board.mjs:48<br>Wulin/src/view/shapes.mjs:289 |
+| `seeded`, `createRandom`, `rng`, `randomSource`, `random` | 11 | 0.84 | 109 | `createRandom`, `hashSeed` (@egret/engine/kit) | CanalWatch/src/sim/world.mjs:27<br>FiveRegiments/src/sim/fight.mjs:78<br>NezhaSea/src/sim/world.mjs:41<br>NineProvinces/src/sim/battle.mjs:85<br>NineProvinces/src/view/mapart.mjs:18<br>OperaDrums/src/sim/bot.mjs:7<br>PeachCreek/src/sim/world.mjs:47<br>Rally/src/sim.mjs:13<br>… +4 |
 | `actions` | 3 | 0.64 | 143 | `createInputActions` (@egret/engine/kit) | MechanismCity/src/main.mjs:72<br>NightWardens/src/main.mjs:34<br>SandScroll/src/main.mjs:30 |
 | `rgb` | 3 | 0.98 | 53 | – | FPS/src/build.mjs:9<br>Rally/src/shapes.mjs:19<br>jelly-pandas/src/panda.mjs:20<br>jelly-pandas/src/view.mjs:34 |
 
@@ -30,40 +28,46 @@ One name is not always one piece of code: games write an `update` or a `draw` of
 | `app` | 14 | – | CanalWatch, InquestScrolls, LubanBridge, MechanismCity, NezhaSea, NightWardens, NineProvinces, OperaDrums, PeachCreek, SandScroll, StarBanner, TaiwanMahjong, TeaHorseRoad, Wulin |
 | `WORDS` | 14 | `createTextTable`, `pickLanguage` (@egret/engine/kit) | CanalWatch, FiveRegiments, InquestScrolls, LanternShadows, LubanBridge, NezhaSea, NightWardens, NineProvinces, OperaDrums, PeachCreek, SandScroll, StarBanner, TaiwanMahjong, Wulin |
 | `openSave` | 13 | `createSaveStore` + `shapeOf` (@egret/engine/kit) | CanalWatch, FiveRegiments, InquestScrolls, LubanBridge, MechanismCity, NezhaSea, NightWardens, OperaDrums, SandScroll, SnowTemple, StarBanner, TaiwanMahjong, TeaHorseRoad |
+| `createHud` | 12 | – | FPS, FivePhases, FiveRegiments, MechanismCity, NezhaSea, NineProvinces, Rally, SnowTemple, StarBanner, TaiwanMahjong, TeaHorseRoad, jelly-pandas |
 | `noise` | 12 | – | FPS, FiveRegiments, LanternShadows, LubanBridge, MechanismCity, NightWardens, NineProvinces, SandScroll, SnowTemple, StarBanner, TeaHorseRoad, Wulin |
-| `createHud` | 10 | – | FPS, FivePhases, FiveRegiments, MechanismCity, NineProvinces, Rally, SnowTemple, StarBanner, TeaHorseRoad, jelly-pandas |
 | `createView` | 10 | – | CanalWatch, FPS, FengshenChronicle, NezhaSea, OperaDrums, PeachCreek, Rally, SnowTemple, TaiwanMahjong, jelly-pandas |
 | `freshSave` | 9 | `createSaveStore` + `shapeOf` (@egret/engine/kit) | CanalWatch, LubanBridge, NezhaSea, NightWardens, OperaDrums, PeachCreek, SandScroll, StarBanner, TaiwanMahjong |
+| `mix` | 9 | – | FiveRegiments, LanternShadows, LoveElective, LubanBridge, NightWardens, NineProvinces, OperaDrums, SandScroll, Wulin |
 | `seeded` | 9 | `createRandom`, `hashSeed` (@egret/engine/kit) | CanalWatch, LoveElective, LubanBridge, MechanismCity, NezhaSea, OperaDrums, PeachCreek, TaiwanMahjong, TeaHorseRoad |
 | `settle` | 9 | – | FivePhases, FiveRegiments, MechanismCity, PeachCreek, SandScroll, SnowTemple, StarBanner, TeaHorseRoad, Wulin |
 | `EFFECTS` | 8 | – | CanalWatch, InquestScrolls, LoveElective, LubanBridge, MechanismCity, NineProvinces, StarBanner, TaiwanMahjong |
-| `mix` | 8 | – | FiveRegiments, LoveElective, LubanBridge, NightWardens, NineProvinces, OperaDrums, SandScroll, Wulin |
-| `tone` | 8 | `createAudioCues`, `encodeWav` (@egret/engine/kit) | FiveRegiments, LubanBridge, MechanismCity, NightWardens, NineProvinces, PeachCreek, SandScroll, TeaHorseRoad |
+| `finish` | 8 | – | CanalWatch, FivePhases, InquestScrolls, NezhaSea, OperaDrums, StarBanner, TeaHorseRoad, Wulin |
 | `boot` | 7 | – | FengshenChronicle, FivePhases, NightWardens, NineProvinces, PeachCreek, SandScroll, TaiwanMahjong |
+| `button` | 7 | – | CanalWatch, FivePhases, LanternShadows, NezhaSea, NineProvinces, PeachCreek, TaiwanMahjong |
 | `createGame` | 7 | – | FPS, LoveElective, NineProvinces, SandScroll, SnowTemple, StarBanner, jelly-pandas |
 | `createInput` | 7 | – | FPS, FiveRegiments, LanternShadows, Rally, SnowTemple, StarBanner, jelly-pandas |
 | `fail` | 7 | – | FPS, FiveRegiments, LanternShadows, Rally, SnowTemple, Wulin, jelly-pandas |
-| `finish` | 7 | – | CanalWatch, FivePhases, InquestScrolls, NezhaSea, OperaDrums, StarBanner, Wulin |
 | `frame` | 7 | – | CanalWatch, FengshenChronicle, MechanismCity, NezhaSea, NightWardens, OperaDrums, SandScroll |
 | `LEVELS` | 7 | – | LoveElective, LubanBridge, MechanismCity, SandScroll, SnowTemple, StarBanner, TaiwanMahjong |
 | `titleScreen` | 7 | – | InquestScrolls, LoveElective, LubanBridge, MechanismCity, NightWardens, SandScroll, TeaHorseRoad |
+| `tone` | 7 | `createAudioCues`, `encodeWav` (@egret/engine/kit) | FiveRegiments, MechanismCity, NightWardens, NineProvinces, PeachCreek, SandScroll, TeaHorseRoad |
 | `act` | 6 | – | CanalWatch, LoveElective, NineProvinces, OperaDrums, StarBanner, TaiwanMahjong |
 | `createAudio` | 6 | – | FPS, FivePhases, LoveElective, Rally, SnowTemple, jelly-pandas |
-| `el` | 6 | – | FPS, FiveRegiments, Rally, SnowTemple, StarBanner, jelly-pandas |
+| `createScreens` | 6 | – | FiveRegiments, NezhaSea, OperaDrums, PeachCreek, StarBanner, TaiwanMahjong |
+| `panel` | 6 | – | CanalWatch, LubanBridge, NezhaSea, PeachCreek, TaiwanMahjong, TeaHorseRoad |
 | `pluck` | 6 | – | FiveRegiments, LubanBridge, MechanismCity, OperaDrums, SandScroll, TeaHorseRoad |
 | `rgb` | 6 | – | FPS, LoveElective, Rally, SnowTemple, Wulin, jelly-pandas |
+| `SKIN` | 6 | – | CanalWatch, FivePhases, LanternShadows, LoveElective, NezhaSea, OperaDrums |
 | `SOUNDS` | 6 | `createAudioCues`, `encodeWav` (@egret/engine/kit) | FiveRegiments, LanternShadows, NightWardens, NineProvinces, SandScroll, TeaHorseRoad |
 | `spawn` | 6 | – | CanalWatch, NezhaSea, NightWardens, NineProvinces, SnowTemple, StarBanner |
 | `step` | 6 | – | CanalWatch, FiveRegiments, NezhaSea, NightWardens, SandScroll, SnowTemple |
-| `backdrop` | 5 | – | InquestScrolls, MechanismCity, NightWardens, SandScroll, StarBanner |
-| `createScreens` | 5 | – | FiveRegiments, OperaDrums, PeachCreek, StarBanner, TaiwanMahjong |
+| `wrap` | 6 | – | CanalWatch, InquestScrolls, LubanBridge, NezhaSea, Rally, SandScroll |
+| `box` | 5 | – | CanalWatch, FPS, FivePhases, LanternShadows, TeaHorseRoad |
+| `C` | 5 | – | FivePhases, LanternShadows, LubanBridge, OperaDrums, StarBanner |
 | `CUES` | 5 | `createAudioCues`, `encodeWav` (@egret/engine/kit) | FivePhases, NightWardens, OperaDrums, PeachCreek, Wulin |
 | `ellipse` | 5 | – | CanalWatch, FengshenChronicle, LoveElective, NightWardens, OperaDrums |
 | `ENEMIES` | 5 | – | FPS, FengshenChronicle, FivePhases, NezhaSea, jelly-pandas |
 | `KEYS` | 5 | – | FPS, LanternShadows, Rally, StarBanner, jelly-pandas |
 | `main` | 5 | – | FPS, FiveRegiments, Rally, SnowTemple, jelly-pandas |
-| `params` | 5 | – | CanalWatch, NezhaSea, NightWardens, SandScroll, SnowTemple |
+| `pause` | 5 | – | LanternShadows, NezhaSea, Rally, TaiwanMahjong, TeaHorseRoad |
 | `ring` | 5 | – | CanalWatch, FiveRegiments, NezhaSea, NineProvinces, TaiwanMahjong |
+| `showTitle` | 5 | – | CanalWatch, NezhaSea, NineProvinces, OperaDrums, TeaHorseRoad |
 | `smooth` | 5 | – | FPS, LoveElective, NineProvinces, SnowTemple, jelly-pandas |
 | `strike` | 5 | – | FiveRegiments, NezhaSea, NightWardens, OperaDrums, Wulin |
 | `t` | 5 | `createTextTable`, `pickLanguage` (@egret/engine/kit) | FiveRegiments, NightWardens, NineProvinces, SandScroll, StarBanner |
+| `text` | 5 | – | CanalWatch, LanternShadows, OperaDrums, PeachCreek, TaiwanMahjong |

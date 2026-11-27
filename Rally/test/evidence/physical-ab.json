@@ -1,0 +1,1090 @@
+{
+  "method": "Actual physical device and foreground browser. Same engine high settings. Continuous rAF intervals and WebGL API call counts. Ordinary keyboard/touch events, no race state modification. Dynamic physical route/AI difference is not a strictly deterministic GPU workload.",
+  "date": "2026-11-27",
+  "baselineCommit": "2c06e203",
+  "runs": {
+    "engine-only-pc": {
+      "engine": "8ef4cf3a2cf507c58665de9f9b43c63b379121c2",
+      "quality": "high",
+      "device": {
+        "model": null,
+        "android": null,
+        "browser": null,
+        "physicalDisplay": null,
+        "gpu": "ANGLE (NVIDIA, NVIDIA GeForce RTX 5090 Laptop GPU (0x00002C58) Direct3D11 vs_5_0 ps_5_0, D3D11)",
+        "backend": "WebGL2Renderer3D",
+        "buffer": [
+          1280,
+          800
+        ],
+        "viewport": [
+          1280,
+          800,
+          1.0000000298023224
+        ],
+        "quality": "high",
+        "contextLost": false
+      },
+      "titleReadyWall": 4431,
+      "checks": [
+        {
+          "label": "Physical GPU and foreground",
+          "ok": true
+        },
+        {
+          "label": "Expected overlay / DOM host",
+          "ok": true
+        },
+        {
+          "label": "Actual one-lap race selected",
+          "ok": true
+        },
+        {
+          "label": "Pause time frozen",
+          "ok": true
+        },
+        {
+          "label": "Resume race",
+          "ok": true
+        },
+        {
+          "label": "Complete real one lap",
+          "ok": true
+        },
+        {
+          "label": "Actual result table has eight racers",
+          "ok": true
+        },
+        {
+          "label": "Trusted keyboard accelerates and steers",
+          "ok": true
+        },
+        {
+          "label": "Return to title",
+          "ok": true
+        }
+      ],
+      "finish": {
+        "stage": "race",
+        "time": 50.6788,
+        "lap": 1,
+        "laps": 1,
+        "place": 6,
+        "finished": true,
+        "item": "gong"
+      },
+      "results": [
+        {
+          "place": 1,
+          "racer": 4,
+          "human": false,
+          "time": 48.7164,
+          "bestLap": 47.970600000000005
+        },
+        {
+          "place": 2,
+          "racer": 2,
+          "human": false,
+          "time": 48.9372,
+          "bestLap": 48.1873
+        },
+        {
+          "place": 3,
+          "racer": 5,
+          "human": false,
+          "time": 49.008,
+          "bestLap": 48.17470000000001
+        },
+        {
+          "place": 4,
+          "racer": 0,
+          "human": false,
+          "time": 49.037200000000006,
+          "bestLap": 48.420500000000004
+        },
+        {
+          "place": 5,
+          "racer": 7,
+          "human": false,
+          "time": 50.59550000000001,
+          "bestLap": 49.52460000000001
+        },
+        {
+          "place": 6,
+          "racer": 1,
+          "human": true,
+          "time": 50.6539,
+          "bestLap": 48.503
+        },
+        {
+          "place": 7,
+          "racer": 6,
+          "human": false,
+          "time": 51.51630000000001,
+          "bestLap": 49.81200000000001
+        },
+        {
+          "place": 8,
+          "racer": 3,
+          "human": false,
+          "time": 52.0289,
+          "bestLap": 50.137100000000004
+        }
+      ],
+      "controls": null,
+      "metrics": {
+        "title": {
+          "samples": 601,
+          "p50": 4.199999999999818,
+          "p95": 4.300000000000182,
+          "p99": 4.300000000000182,
+          "max": 4.399999999999636,
+          "over33": 0,
+          "over50": 0,
+          "worldFrames": 602,
+          "worldDrawsP50": 91,
+          "worldTrisP50": 1186489,
+          "overlayDraws": null,
+          "overlaySteps": null,
+          "overlayHostSerialDelta": null,
+          "overlayUploadAPICalls": {},
+          "worldUploadAPICalls": {
+            "texImage2D": 3
+          }
+        },
+        "select": {
+          "samples": 600,
+          "p50": 4.199999999999818,
+          "p95": 4.299999999999272,
+          "p99": 4.300000000001091,
+          "max": 4.399999999999636,
+          "over33": 0,
+          "over50": 0,
+          "worldFrames": 601,
+          "worldDrawsP50": 80,
+          "worldTrisP50": 1142897,
+          "overlayDraws": null,
+          "overlaySteps": null,
+          "overlayHostSerialDelta": null,
+          "overlayUploadAPICalls": {},
+          "worldUploadAPICalls": {
+            "texImage2D": 0
+          }
+        },
+        "pause": {
+          "samples": 598,
+          "p50": 4.19999999999709,
+          "p95": 4.299999999999272,
+          "p99": 4.299999999999272,
+          "max": 8.399999999997817,
+          "over33": 0,
+          "over50": 0,
+          "worldFrames": 599,
+          "worldDrawsP50": 136,
+          "worldTrisP50": 1272616,
+          "overlayDraws": null,
+          "overlaySteps": null,
+          "overlayHostSerialDelta": null,
+          "overlayUploadAPICalls": {},
+          "worldUploadAPICalls": {
+            "texImage2D": 0
+          }
+        },
+        "race": {
+          "samples": 11755,
+          "p50": 4.19999999999709,
+          "p95": 4.299999999999272,
+          "p99": 8.299999999999272,
+          "max": 70.79999999999927,
+          "over33": 1,
+          "over50": 1,
+          "worldFrames": 11756,
+          "worldDrawsP50": 130,
+          "worldTrisP50": 1166062,
+          "overlayDraws": null,
+          "overlaySteps": null,
+          "overlayHostSerialDelta": null,
+          "overlayUploadAPICalls": {},
+          "worldUploadAPICalls": {
+            "texImage2D": 0
+          }
+        },
+        "results": {
+          "samples": 592,
+          "p50": 4.19999999999709,
+          "p95": 4.30000000000291,
+          "p99": 8.30000000000291,
+          "max": 8.400000000008731,
+          "over33": 0,
+          "over50": 0,
+          "worldFrames": 593,
+          "worldDrawsP50": 112,
+          "worldTrisP50": 1090860,
+          "overlayDraws": null,
+          "overlaySteps": null,
+          "overlayHostSerialDelta": null,
+          "overlayUploadAPICalls": {},
+          "worldUploadAPICalls": {
+            "texImage2D": 0
+          }
+        }
+      },
+      "errors": [],
+      "warnings": [],
+      "restoration": null,
+      "passed": true
+    },
+    "native-pc": {
+      "engine": "8ef4cf3a2cf507c58665de9f9b43c63b379121c2",
+      "quality": "high",
+      "device": {
+        "model": null,
+        "android": null,
+        "browser": null,
+        "physicalDisplay": null,
+        "gpu": "ANGLE (NVIDIA, NVIDIA GeForce RTX 5090 Laptop GPU (0x00002C58) Direct3D11 vs_5_0 ps_5_0, D3D11)",
+        "backend": "WebGL2Renderer3D",
+        "buffer": [
+          1280,
+          800
+        ],
+        "viewport": [
+          1280,
+          800,
+          1.0000000298023224
+        ],
+        "quality": "high",
+        "contextLost": false
+      },
+      "titleReadyWall": 4959,
+      "checks": [
+        {
+          "label": "Physical GPU and foreground",
+          "ok": true
+        },
+        {
+          "label": "Expected overlay / DOM host",
+          "ok": true
+        },
+        {
+          "label": "Actual one-lap race selected",
+          "ok": true
+        },
+        {
+          "label": "Pause time frozen",
+          "ok": true
+        },
+        {
+          "label": "Resume race",
+          "ok": true
+        },
+        {
+          "label": "Complete real one lap",
+          "ok": true
+        },
+        {
+          "label": "Actual result table has eight racers",
+          "ok": true
+        },
+        {
+          "label": "Trusted keyboard accelerates and steers",
+          "ok": true
+        },
+        {
+          "label": "Return to title",
+          "ok": true
+        }
+      ],
+      "finish": {
+        "stage": "race",
+        "time": 55.1437,
+        "lap": 1,
+        "laps": 1,
+        "place": 7,
+        "finished": true,
+        "item": null
+      },
+      "results": [
+        {
+          "place": 1,
+          "racer": 0,
+          "human": false,
+          "time": 51.34260000000001,
+          "bestLap": 50.72590000000001
+        },
+        {
+          "place": 2,
+          "racer": 4,
+          "human": false,
+          "time": 51.359199999999994,
+          "bestLap": 49.11339999999999
+        },
+        {
+          "place": 3,
+          "racer": 5,
+          "human": false,
+          "time": 52.255100000000006,
+          "bestLap": 51.426
+        },
+        {
+          "place": 4,
+          "racer": 3,
+          "human": false,
+          "time": 52.7926,
+          "bestLap": 51.9509
+        },
+        {
+          "place": 5,
+          "racer": 7,
+          "human": false,
+          "time": 52.8593,
+          "bestLap": 51.788599999999995
+        },
+        {
+          "place": 6,
+          "racer": 2,
+          "human": false,
+          "time": 53.159200000000006,
+          "bestLap": 52.4009
+        },
+        {
+          "place": 7,
+          "racer": 1,
+          "human": true,
+          "time": 55.1188,
+          "bestLap": 52.9231
+        },
+        {
+          "place": 8,
+          "racer": 6,
+          "human": false
+        }
+      ],
+      "controls": null,
+      "metrics": {
+        "title": {
+          "samples": 600,
+          "p50": 4.199999999999818,
+          "p95": 4.300000000000182,
+          "p99": 4.300000000000182,
+          "max": 4.400000000000546,
+          "over33": 0,
+          "over50": 0,
+          "worldFrames": 601,
+          "worldDrawsP50": 91,
+          "worldTrisP50": 1186487,
+          "overlayDraws": 0,
+          "overlaySteps": 601,
+          "overlayHostSerialDelta": 0,
+          "overlayUploadAPICalls": {
+            "texSubImage2D": 0
+          },
+          "worldUploadAPICalls": {
+            "texImage2D": 0
+          }
+        },
+        "select": {
+          "samples": 598,
+          "p50": 4.199999999998909,
+          "p95": 4.299999999999272,
+          "p99": 4.400000000001455,
+          "max": 12.5,
+          "over33": 0,
+          "over50": 0,
+          "worldFrames": 599,
+          "worldDrawsP50": 81,
+          "worldTrisP50": 1142879,
+          "overlayDraws": 0,
+          "overlaySteps": 599,
+          "overlayHostSerialDelta": 0,
+          "overlayUploadAPICalls": {
+            "texSubImage2D": 0
+          },
+          "worldUploadAPICalls": {
+            "texImage2D": 0
+          }
+        },
+        "pause": {
+          "samples": 602,
+          "p50": 4.19999999999709,
+          "p95": 4.200000000000728,
+          "p99": 4.299999999999272,
+          "max": 4.299999999999272,
+          "over33": 0,
+          "over50": 0,
+          "worldFrames": 603,
+          "worldDrawsP50": 136,
+          "worldTrisP50": 1272616,
+          "overlayDraws": 0,
+          "overlaySteps": 603,
+          "overlayHostSerialDelta": 0,
+          "overlayUploadAPICalls": {
+            "texSubImage2D": 0
+          },
+          "worldUploadAPICalls": {
+            "texImage2D": 0
+          }
+        },
+        "race": {
+          "samples": 12879,
+          "p50": 4.19999999999709,
+          "p95": 4.299999999999272,
+          "p99": 8.19999999999709,
+          "max": 8.900000000001455,
+          "over33": 0,
+          "over50": 0,
+          "worldFrames": 12880,
+          "worldDrawsP50": 134,
+          "worldTrisP50": 1196418,
+          "overlayDraws": 12002,
+          "overlaySteps": 12880,
+          "overlayHostSerialDelta": 12002,
+          "overlayUploadAPICalls": {
+            "texSubImage2D": 0
+          },
+          "worldUploadAPICalls": {
+            "texImage2D": 0
+          }
+        },
+        "results": {
+          "samples": 597,
+          "p50": 4.19999999999709,
+          "p95": 4.30000000000291,
+          "p99": 4.30000000000291,
+          "max": 12.5,
+          "over33": 0,
+          "over50": 0,
+          "worldFrames": 598,
+          "worldDrawsP50": 128,
+          "worldTrisP50": 1119914,
+          "overlayDraws": 1,
+          "overlaySteps": 598,
+          "overlayHostSerialDelta": 1,
+          "overlayUploadAPICalls": {
+            "texSubImage2D": 1
+          },
+          "worldUploadAPICalls": {
+            "texImage2D": 0
+          }
+        }
+      },
+      "errors": [],
+      "warnings": [],
+      "restoration": null,
+      "passed": true
+    },
+    "engine-only-fold7": {
+      "engine": "8ef4cf3a2cf507c58665de9f9b43c63b379121c2",
+      "quality": "high",
+      "device": {
+        "model": "SM-F966U1",
+        "android": "17",
+        "browser": "Chrome/157.0.8103.78",
+        "physicalDisplay": "Physical size: 1080x2520",
+        "gpu": "ANGLE (Qualcomm, Adreno (TM) 830, OpenGL ES 3.2)",
+        "backend": "WebGL2Renderer3D",
+        "buffer": [
+          616,
+          1221
+        ],
+        "viewport": [
+          411,
+          813,
+          2.625
+        ],
+        "quality": "high",
+        "contextLost": false
+      },
+      "titleReadyWall": 3850,
+      "checks": [
+        {
+          "label": "Real physical WebGL2 context and coarse pointer",
+          "ok": true
+        },
+        {
+          "label": "Expected DOM or native overlay",
+          "ok": true
+        },
+        {
+          "label": "Actual one-lap Panda selected",
+          "ok": true
+        },
+        {
+          "label": "Drift sustained after finger leaves control",
+          "ok": true
+        },
+        {
+          "label": "Second-finger pause freezes timer",
+          "ok": true
+        },
+        {
+          "label": "Pause resume clears drift and keeps race",
+          "ok": true
+        },
+        {
+          "label": "Complete physical one lap",
+          "ok": true
+        },
+        {
+          "label": "Actual finish result row populated",
+          "ok": true
+        },
+        {
+          "label": "All five touch control events delivered",
+          "ok": true
+        }
+      ],
+      "finish": {
+        "stage": "done",
+        "time": 212.1842500000437,
+        "lap": 1,
+        "laps": 1,
+        "place": 8,
+        "finished": true,
+        "item": "bell"
+      },
+      "results": [
+        {
+          "place": 1,
+          "racer": 4,
+          "human": false,
+          "time": 51.826150000000425,
+          "bestLap": 51.08015000000043
+        },
+        {
+          "place": 2,
+          "racer": 0,
+          "human": false,
+          "time": 53.79840000000043,
+          "bestLap": 53.02750000000043
+        },
+        {
+          "place": 3,
+          "racer": 2,
+          "human": false,
+          "time": 54.34530000000043,
+          "bestLap": 53.27605000000043
+        },
+        {
+          "place": 4,
+          "racer": 7,
+          "human": false,
+          "time": 54.42820000000043,
+          "bestLap": 52.47210000000044
+        },
+        {
+          "place": 5,
+          "racer": 3,
+          "human": false,
+          "time": 55.654900000000424,
+          "bestLap": 55.041500000000426
+        },
+        {
+          "place": 6,
+          "racer": 6,
+          "human": false,
+          "time": 57.81005000000043,
+          "bestLap": 56.972900000000436
+        },
+        {
+          "place": 7,
+          "racer": 5,
+          "human": false,
+          "time": 61.41580000000043,
+          "bestLap": 59.62550000000043
+        },
+        {
+          "place": 8,
+          "racer": 1,
+          "human": true,
+          "time": 212.1842500000437,
+          "bestLap": 209.6975500000437
+        }
+      ],
+      "controls": {
+        "left": {
+          "x": 41,
+          "y": 202.33334350585938,
+          "width": 58,
+          "height": 58,
+          "name": "左转"
+        },
+        "right": {
+          "x": 111,
+          "y": 202.33334350585938,
+          "width": 58,
+          "height": 58,
+          "name": "右转"
+        },
+        "brake": {
+          "x": 692.1428833007812,
+          "y": 202.33334350585938,
+          "width": 58,
+          "height": 58,
+          "name": "刹车与倒车"
+        },
+        "item": {
+          "x": 762.1428833007812,
+          "y": 202.33334350585938,
+          "width": 58,
+          "height": 58,
+          "name": "使用道具"
+        },
+        "drift": {
+          "x": 832.1428833007812,
+          "y": 202.33334350585938,
+          "width": 58,
+          "height": 58,
+          "name": "小跳与漂移"
+        },
+        "pause": {
+          "x": 839.1428833007812,
+          "y": 130,
+          "width": 44,
+          "height": 44,
+          "name": "暂停"
+        }
+      },
+      "metrics": {
+        "title": {
+          "samples": 193,
+          "p50": 16.599999999999454,
+          "p95": 16.699999999999818,
+          "p99": 33.20000000000073,
+          "max": 132.69999999999982,
+          "over33": 1,
+          "over50": 1,
+          "worldFrames": 194,
+          "worldDrawsP50": 87,
+          "worldTrisP50": 1147441,
+          "overlayDraws": null,
+          "overlaySteps": null,
+          "overlayHostSerialDelta": null,
+          "overlayUploadAPICalls": {},
+          "worldUploadAPICalls": {
+            "texImage2D": 7
+          }
+        },
+        "select": {
+          "samples": 180,
+          "p50": 16.599999999998545,
+          "p95": 16.700000000000728,
+          "p99": 16.700000000000728,
+          "max": 24.899999999997817,
+          "over33": 0,
+          "over50": 0,
+          "worldFrames": 181,
+          "worldDrawsP50": 81,
+          "worldTrisP50": 1149192,
+          "overlayDraws": null,
+          "overlaySteps": null,
+          "overlayHostSerialDelta": null,
+          "overlayUploadAPICalls": {},
+          "worldUploadAPICalls": {
+            "texImage2D": 0
+          }
+        },
+        "pause": {
+          "samples": 152,
+          "p50": 16.599999999998545,
+          "p95": 16.69999999999709,
+          "p99": 16.700000000004366,
+          "max": 16.700000000004366,
+          "over33": 0,
+          "over50": 0,
+          "worldFrames": 153,
+          "worldDrawsP50": 130,
+          "worldTrisP50": 1177538,
+          "overlayDraws": null,
+          "overlaySteps": null,
+          "overlayHostSerialDelta": null,
+          "overlayUploadAPICalls": {},
+          "worldUploadAPICalls": {
+            "texImage2D": 0
+          }
+        },
+        "race": {
+          "samples": 12374,
+          "p50": 16.599999999998545,
+          "p95": 16.69999999999709,
+          "p99": 16.70000000001164,
+          "max": 16.70000000001164,
+          "over33": 0,
+          "over50": 0,
+          "worldFrames": 12375,
+          "worldDrawsP50": 100,
+          "worldTrisP50": 1097676,
+          "overlayDraws": null,
+          "overlaySteps": null,
+          "overlayHostSerialDelta": null,
+          "overlayUploadAPICalls": {},
+          "worldUploadAPICalls": {
+            "texImage2D": 0
+          }
+        },
+        "results": {
+          "samples": 214,
+          "p50": 16.60000000000582,
+          "p95": 16.699999999982538,
+          "p99": 16.70000000001164,
+          "max": 16.70000000001164,
+          "over33": 0,
+          "over50": 0,
+          "worldFrames": 215,
+          "worldDrawsP50": 74,
+          "worldTrisP50": 1070221,
+          "overlayDraws": null,
+          "overlaySteps": null,
+          "overlayHostSerialDelta": null,
+          "overlayUploadAPICalls": {},
+          "worldUploadAPICalls": {
+            "texImage2D": 0
+          }
+        }
+      },
+      "errors": [],
+      "warnings": [],
+      "restoration": {
+        "rotation": true,
+        "controller": {
+          "stayOn": true,
+          "priorComponentRestored": true,
+          "priorIdsPreserved": true,
+          "ownedAbsent": true,
+          "leaseReleased": true
+        },
+        "context": true,
+        "forward": true,
+        "reverse": true
+      },
+      "passed": true
+    },
+    "native-fold7-r3": {
+      "engine": "8ef4cf3a2cf507c58665de9f9b43c63b379121c2",
+      "quality": "high",
+      "device": {
+        "model": "SM-F966U1",
+        "android": "17",
+        "browser": "Chrome/157.0.8103.78",
+        "physicalDisplay": "Physical size: 1080x2520",
+        "gpu": "ANGLE (Qualcomm, Adreno (TM) 830, OpenGL ES 3.2)",
+        "backend": "WebGL2Renderer3D",
+        "buffer": [
+          616,
+          1221
+        ],
+        "viewport": [
+          411,
+          813,
+          2.625
+        ],
+        "quality": "high",
+        "contextLost": false
+      },
+      "titleReadyWall": 2576,
+      "checks": [
+        {
+          "label": "Real physical WebGL2 context and coarse pointer",
+          "ok": true
+        },
+        {
+          "label": "Expected DOM or native overlay",
+          "ok": true
+        },
+        {
+          "label": "Actual one-lap Panda selected",
+          "ok": true
+        },
+        {
+          "label": "Five driving controls and Pause ≥44 CSS px",
+          "ok": true
+        },
+        {
+          "label": "Item touch does not pause",
+          "ok": true
+        },
+        {
+          "label": "Native touch triggers actual physics drift",
+          "ok": true
+        },
+        {
+          "label": "Two contacts tracked through outside movement with no page drag",
+          "ok": true
+        },
+        {
+          "label": "Native independent contacts and outside routing observed",
+          "ok": true
+        },
+        {
+          "label": "Native contacts released on cancel",
+          "ok": true
+        },
+        {
+          "label": "Second-finger pause freezes timer",
+          "ok": true
+        },
+        {
+          "label": "Pause resume clears drift and keeps race",
+          "ok": true
+        },
+        {
+          "label": "Complete physical one lap",
+          "ok": true
+        },
+        {
+          "label": "Actual finish result row populated",
+          "ok": true
+        },
+        {
+          "label": "All five touch control events delivered",
+          "ok": true
+        }
+      ],
+      "finish": {
+        "stage": "done",
+        "time": 186.35140000003014,
+        "lap": 1,
+        "laps": 1,
+        "place": 8,
+        "finished": true,
+        "item": "bell"
+      },
+      "results": [
+        {
+          "place": 1,
+          "racer": 4,
+          "human": false,
+          "time": 50.64180000000057,
+          "bestLap": 50.02830000000057
+        },
+        {
+          "place": 2,
+          "racer": 6,
+          "human": false,
+          "time": 53.14470000000057,
+          "bestLap": 52.08370000000057
+        },
+        {
+          "place": 3,
+          "racer": 2,
+          "human": false,
+          "time": 54.694800000000576,
+          "bestLap": 53.92390000000058
+        },
+        {
+          "place": 4,
+          "racer": 3,
+          "human": false,
+          "time": 55.24180000000057,
+          "bestLap": 54.495700000000575
+        },
+        {
+          "place": 5,
+          "racer": 0,
+          "human": false,
+          "time": 55.31640000000057,
+          "bestLap": 53.608900000000574
+        },
+        {
+          "place": 6,
+          "racer": 7,
+          "human": false,
+          "time": 57.81110000000057,
+          "bestLap": 55.84665000000057
+        },
+        {
+          "place": 7,
+          "racer": 5,
+          "human": false,
+          "time": 59.062400000000565,
+          "bestLap": 58.23350000000056
+        },
+        {
+          "place": 8,
+          "racer": 1,
+          "human": true,
+          "time": 186.35140000003014,
+          "bestLap": 183.35100000003013
+        }
+      ],
+      "controls": {
+        "left": {
+          "x": 39.577381869198895,
+          "y": 242.16665649414065,
+          "width": 56.83333465832622,
+          "height": 56.833333333333336,
+          "name": "左转",
+          "id": "race-hud:left"
+        },
+        "right": {
+          "x": 103.74405003182527,
+          "y": 242.16665649414065,
+          "width": 56.83333465832622,
+          "height": 56.833333333333336,
+          "name": "右转",
+          "id": "race-hud:right"
+        },
+        "brake": {
+          "x": 705.0773973844382,
+          "y": 242.16665649414065,
+          "width": 56.83333465832622,
+          "height": 56.833333333333336,
+          "name": "刹车与倒车",
+          "id": "race-hud:brake"
+        },
+        "item": {
+          "x": 769.2440655470646,
+          "y": 242.16665649414065,
+          "width": 56.83333465832622,
+          "height": 56.833333333333336,
+          "name": "使用道具",
+          "id": "race-hud:item"
+        },
+        "drift": {
+          "x": 833.4107337096909,
+          "y": 242.16665649414065,
+          "width": 56.83333465832622,
+          "height": 56.833333333333336,
+          "name": "小跳与漂移",
+          "id": "race-hud:drift"
+        },
+        "pause": {
+          "x": 839.8274005259536,
+          "y": 114.83333333333333,
+          "width": 44.00000102580095,
+          "height": 44,
+          "name": "暂停",
+          "id": "race-hud:pause"
+        }
+      },
+      "metrics": {
+        "title": {
+          "samples": 240,
+          "p50": 16.599999999999454,
+          "p95": 16.699999999999818,
+          "p99": 16.700000000000728,
+          "max": 33.20000000000073,
+          "over33": 0,
+          "over50": 0,
+          "worldFrames": 241,
+          "worldDrawsP50": 86,
+          "worldTrisP50": 1169846,
+          "overlayDraws": 0,
+          "overlaySteps": 241,
+          "overlayHostSerialDelta": 0,
+          "overlayUploadAPICalls": {
+            "texSubImage2D": 0
+          },
+          "worldUploadAPICalls": {
+            "texImage2D": 7
+          }
+        },
+        "select": {
+          "samples": 210,
+          "p50": 16.599999999998545,
+          "p95": 16.700000000000728,
+          "p99": 16.700000000000728,
+          "max": 58,
+          "over33": 1,
+          "over50": 1,
+          "worldFrames": 211,
+          "worldDrawsP50": 85,
+          "worldTrisP50": 1187734,
+          "overlayDraws": 0,
+          "overlaySteps": 211,
+          "overlayHostSerialDelta": 0,
+          "overlayUploadAPICalls": {
+            "texSubImage2D": 0
+          },
+          "worldUploadAPICalls": {
+            "texImage2D": 1
+          }
+        },
+        "pause": {
+          "samples": 159,
+          "p50": 16.599999999998545,
+          "p95": 16.69999999999709,
+          "p99": 16.700000000004366,
+          "max": 16.700000000004366,
+          "over33": 0,
+          "over50": 0,
+          "worldFrames": 160,
+          "worldDrawsP50": 91,
+          "worldTrisP50": 1131567,
+          "overlayDraws": 0,
+          "overlaySteps": 160,
+          "overlayHostSerialDelta": 0,
+          "overlayUploadAPICalls": {
+            "texSubImage2D": 0
+          },
+          "worldUploadAPICalls": {
+            "texImage2D": 0
+          }
+        },
+        "race": {
+          "samples": 10831,
+          "p50": 16.599999999998545,
+          "p95": 16.69999999999709,
+          "p99": 16.70000000001164,
+          "max": 116,
+          "over33": 2,
+          "over50": 2,
+          "worldFrames": 10832,
+          "worldDrawsP50": 98,
+          "worldTrisP50": 1120350,
+          "overlayDraws": 9782,
+          "overlaySteps": 10832,
+          "overlayHostSerialDelta": 9782,
+          "overlayUploadAPICalls": {
+            "texSubImage2D": 0
+          },
+          "worldUploadAPICalls": {
+            "texImage2D": 274
+          }
+        },
+        "results": {
+          "samples": 203,
+          "p50": 16.60000000000582,
+          "p95": 16.699999999982538,
+          "p99": 16.70000000001164,
+          "max": 16.70000000001164,
+          "over33": 0,
+          "over50": 0,
+          "worldFrames": 204,
+          "worldDrawsP50": 103,
+          "worldTrisP50": 1147831,
+          "overlayDraws": 0,
+          "overlaySteps": 204,
+          "overlayHostSerialDelta": 0,
+          "overlayUploadAPICalls": {
+            "texSubImage2D": 0
+          },
+          "worldUploadAPICalls": {
+            "texImage2D": 0
+          }
+        }
+      },
+      "errors": [],
+      "warnings": [],
+      "restoration": {
+        "rotation": true,
+        "controller": {
+          "stayOn": true,
+          "priorComponentRestored": true,
+          "priorIdsPreserved": true,
+          "ownedAbsent": true,
+          "leaseReleased": true
+        },
+        "context": true,
+        "forward": true,
+        "reverse": true
+      },
+      "passed": true,
+      "drift": {
+        "observedDriftingFrames": 26,
+        "heldFrames": 28,
+        "released": false
+      }
+    }
+  }
+}
