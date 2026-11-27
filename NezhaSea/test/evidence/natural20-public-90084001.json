@@ -1,0 +1,1053 @@
+{
+  "schema": "nezha-natural20-evidence/1",
+  "date": "2026-11-27",
+  "release": {
+    "url": "https://cnedwin.github.io/PortedGamesEgret/NezhaSea/",
+    "demoMain": "900840011232aaf34591f53962eef8edbc875683",
+    "engine": "c54c16c946f777970ed1ac838cc663d349246982",
+    "entrySha256": "baf2844a836b107a7380df141c11080f1135ebd85a230a98976aa2502a54d449"
+  },
+  "scenario": {
+    "hero": "boy",
+    "danger": 0,
+    "querySeed": 2,
+    "initialRunSeedDerived": 27,
+    "method": "fresh isolated public browser contexts; game state read-only; actual input events; no fixtures, skipped waves, timing, health, item, currency or save mutations; algorithm-assisted rather than human input",
+    "measurement": "actual requestAnimationFrame intervals; nearest-rank percentiles over pooled raw intervals, not GPU execution or identical-input A/B; input and screenshots can affect tails"
+  },
+  "pc": {
+    "device": "Windows / RTX 5090 Laptop / Edge158 / WebGPU",
+    "won": true,
+    "naturalWaves": 20,
+    "result": {
+      "won": true,
+      "wave": 20,
+      "kills": 4758,
+      "level": 26,
+      "merges": 13,
+      "divines": 2,
+      "best": true,
+      "unlocked": [
+        "lotus",
+        "sixArms"
+      ],
+      "kept": true
+    },
+    "save": {
+      "unlocked": [
+        "boy",
+        "lotus",
+        "sixArms"
+      ],
+      "best": {
+        "boy": {
+          "0": 21
+        }
+      },
+      "plays": 1,
+      "wins": 1,
+      "reloadEqual": true
+    },
+    "wallMs": 740073,
+    "gameSeconds": 717.3,
+    "overall": {
+      "intervals": 171483,
+      "p50Ms": 4.2,
+      "p95Ms": 4.3,
+      "p99Ms": 4.5,
+      "maxMs": 158.1,
+      "over33_5Ms": 6,
+      "over50Ms": 2,
+      "peakEnemies": 60,
+      "longTasks": 0
+    },
+    "late16to20": {
+      "intervals": 43488,
+      "p50Ms": 4.2,
+      "p95Ms": 4.3,
+      "p99Ms": 4.5,
+      "maxMs": 125,
+      "over33_5Ms": 3,
+      "over50Ms": 1,
+      "peakEnemies": 58,
+      "longTasks": 0
+    },
+    "waves": [
+      {
+        "wave": 1,
+        "phase": "levelUp",
+        "simStart": 0,
+        "simEnd": 19,
+        "hpEnd": 24,
+        "minHp": 24,
+        "peakEnemies": 4,
+        "totalKills": 12,
+        "bossKinds": [],
+        "frames": {
+          "intervals": 4465,
+          "p50Ms": 4.2,
+          "p95Ms": 4.3,
+          "p99Ms": 7.4,
+          "maxMs": 33.6,
+          "over33_5Ms": 1,
+          "over50Ms": 0
+        },
+        "longTasks": 0
+      },
+      {
+        "wave": 2,
+        "phase": "levelUp",
+        "simStart": 19.01,
+        "simEnd": 42.01,
+        "hpEnd": 27,
+        "minHp": 27,
+        "peakEnemies": 7,
+        "totalKills": 33,
+        "bossKinds": [],
+        "frames": {
+          "intervals": 5517,
+          "p50Ms": 4.2,
+          "p95Ms": 4.3,
+          "p99Ms": 4.3,
+          "maxMs": 8.3,
+          "over33_5Ms": 0,
+          "over50Ms": 0
+        },
+        "longTasks": 0
+      },
+      {
+        "wave": 3,
+        "phase": "levelUp",
+        "simStart": 42.01,
+        "simEnd": 69.01,
+        "hpEnd": 27,
+        "minHp": 27,
+        "peakEnemies": 11,
+        "totalKills": 63,
+        "bossKinds": [],
+        "frames": {
+          "intervals": 6477,
+          "p50Ms": 4.2,
+          "p95Ms": 4.3,
+          "p99Ms": 4.3,
+          "maxMs": 8.4,
+          "over33_5Ms": 0,
+          "over50Ms": 0
+        },
+        "longTasks": 0
+      },
+      {
+        "wave": 4,
+        "phase": "levelUp",
+        "simStart": 69.01,
+        "simEnd": 100.01,
+        "hpEnd": 27,
+        "minHp": 27,
+        "peakEnemies": 15,
+        "totalKills": 109,
+        "bossKinds": [],
+        "frames": {
+          "intervals": 7438,
+          "p50Ms": 4.2,
+          "p95Ms": 4.3,
+          "p99Ms": 4.3,
+          "maxMs": 8.3,
+          "over33_5Ms": 0,
+          "over50Ms": 0
+        },
+        "longTasks": 0
+      },
+      {
+        "wave": 5,
+        "phase": "levelUp",
+        "simStart": 100.02,
+        "simEnd": 135.01,
+        "hpEnd": 27,
+        "minHp": 27,
+        "peakEnemies": 14,
+        "totalKills": 177,
+        "bossKinds": [],
+        "frames": {
+          "intervals": 8397,
+          "p50Ms": 4.2,
+          "p95Ms": 4.3,
+          "p99Ms": 4.3,
+          "maxMs": 8.4,
+          "over33_5Ms": 0,
+          "over50Ms": 0
+        },
+        "longTasks": 0
+      },
+      {
+        "wave": 6,
+        "phase": "levelUp",
+        "simStart": 135.02,
+        "simEnd": 174.02,
+        "hpEnd": 32,
+        "minHp": 32,
+        "peakEnemies": 20,
+        "totalKills": 259,
+        "bossKinds": [],
+        "frames": {
+          "intervals": 9357,
+          "p50Ms": 4.2,
+          "p95Ms": 4.3,
+          "p99Ms": 4.3,
+          "maxMs": 8.4,
+          "over33_5Ms": 0,
+          "over50Ms": 0
+        },
+        "longTasks": 0
+      },
+      {
+        "wave": 7,
+        "phase": "levelUp",
+        "simStart": 174.02,
+        "simEnd": 217.02,
+        "hpEnd": 32,
+        "minHp": 32,
+        "peakEnemies": 24,
+        "totalKills": 365,
+        "bossKinds": [],
+        "frames": {
+          "intervals": 10292,
+          "p50Ms": 4.2,
+          "p95Ms": 4.3,
+          "p99Ms": 4.5,
+          "maxMs": 25,
+          "over33_5Ms": 0,
+          "over50Ms": 0
+        },
+        "longTasks": 0
+      },
+      {
+        "wave": 8,
+        "phase": "levelUp",
+        "simStart": 217.02,
+        "simEnd": 262.02,
+        "hpEnd": 34.38,
+        "minHp": 31,
+        "peakEnemies": 42,
+        "totalKills": 512,
+        "bossKinds": [],
+        "frames": {
+          "intervals": 10790,
+          "p50Ms": 4.2,
+          "p95Ms": 4.3,
+          "p99Ms": 4.7,
+          "maxMs": 8.7,
+          "over33_5Ms": 0,
+          "over50Ms": 0
+        },
+        "longTasks": 0
+      },
+      {
+        "wave": 9,
+        "phase": "levelUp",
+        "simStart": 262.02,
+        "simEnd": 307.02,
+        "hpEnd": 41,
+        "minHp": 41,
+        "peakEnemies": 33,
+        "totalKills": 726,
+        "bossKinds": [],
+        "frames": {
+          "intervals": 10770,
+          "p50Ms": 4.2,
+          "p95Ms": 4.3,
+          "p99Ms": 4.4,
+          "maxMs": 45.8,
+          "over33_5Ms": 1,
+          "over50Ms": 0
+        },
+        "longTasks": 0
+      },
+      {
+        "wave": 10,
+        "phase": "shop",
+        "simStart": 307.02,
+        "simEnd": 309.95,
+        "hpEnd": 52,
+        "minHp": 52,
+        "peakEnemies": 6,
+        "totalKills": 728,
+        "bossKinds": [
+          "yaksha"
+        ],
+        "frames": {
+          "intervals": 671,
+          "p50Ms": 4.2,
+          "p95Ms": 4.3,
+          "p99Ms": 4.7,
+          "maxMs": 158.1,
+          "over33_5Ms": 1,
+          "over50Ms": 1
+        },
+        "longTasks": 0
+      },
+      {
+        "wave": 11,
+        "phase": "levelUp",
+        "simStart": 309.96,
+        "simEnd": 354.96,
+        "hpEnd": 52,
+        "minHp": 52,
+        "peakEnemies": 44,
+        "totalKills": 1017,
+        "bossKinds": [],
+        "frames": {
+          "intervals": 10766,
+          "p50Ms": 4.2,
+          "p95Ms": 4.3,
+          "p99Ms": 4.6,
+          "maxMs": 12.6,
+          "over33_5Ms": 0,
+          "over50Ms": 0
+        },
+        "longTasks": 0
+      },
+      {
+        "wave": 12,
+        "phase": "levelUp",
+        "simStart": 354.97,
+        "simEnd": 399.96,
+        "hpEnd": 57,
+        "minHp": 57,
+        "peakEnemies": 44,
+        "totalKills": 1330,
+        "bossKinds": [],
+        "frames": {
+          "intervals": 10774,
+          "p50Ms": 4.2,
+          "p95Ms": 4.3,
+          "p99Ms": 4.5,
+          "maxMs": 16.7,
+          "over33_5Ms": 0,
+          "over50Ms": 0
+        },
+        "longTasks": 0
+      },
+      {
+        "wave": 13,
+        "phase": "levelUp",
+        "simStart": 399.97,
+        "simEnd": 444.96,
+        "hpEnd": 54,
+        "minHp": 54,
+        "peakEnemies": 40,
+        "totalKills": 1697,
+        "bossKinds": [],
+        "frames": {
+          "intervals": 10778,
+          "p50Ms": 4.2,
+          "p95Ms": 4.3,
+          "p99Ms": 4.5,
+          "maxMs": 12.5,
+          "over33_5Ms": 0,
+          "over50Ms": 0
+        },
+        "longTasks": 0
+      },
+      {
+        "wave": 14,
+        "phase": "levelUp",
+        "simStart": 444.97,
+        "simEnd": 489.97,
+        "hpEnd": 59,
+        "minHp": 59,
+        "peakEnemies": 38,
+        "totalKills": 2104,
+        "bossKinds": [],
+        "frames": {
+          "intervals": 10769,
+          "p50Ms": 4.2,
+          "p95Ms": 4.3,
+          "p99Ms": 4.5,
+          "maxMs": 12.5,
+          "over33_5Ms": 0,
+          "over50Ms": 0
+        },
+        "longTasks": 0
+      },
+      {
+        "wave": 15,
+        "phase": "levelUp",
+        "simStart": 489.97,
+        "simEnd": 534.97,
+        "hpEnd": 59,
+        "minHp": 59,
+        "peakEnemies": 60,
+        "totalKills": 2543,
+        "bossKinds": [],
+        "frames": {
+          "intervals": 10734,
+          "p50Ms": 4.2,
+          "p95Ms": 4.3,
+          "p99Ms": 4.5,
+          "maxMs": 29.3,
+          "over33_5Ms": 0,
+          "over50Ms": 0
+        },
+        "longTasks": 0
+      },
+      {
+        "wave": 16,
+        "phase": "levelUp",
+        "simStart": 534.97,
+        "simEnd": 579.97,
+        "hpEnd": 59,
+        "minHp": 59,
+        "peakEnemies": 58,
+        "totalKills": 3035,
+        "bossKinds": [],
+        "frames": {
+          "intervals": 10704,
+          "p50Ms": 4.2,
+          "p95Ms": 4.3,
+          "p99Ms": 4.6,
+          "maxMs": 29.2,
+          "over33_5Ms": 0,
+          "over50Ms": 0
+        },
+        "longTasks": 0
+      },
+      {
+        "wave": 17,
+        "phase": "levelUp",
+        "simStart": 579.98,
+        "simEnd": 624.97,
+        "hpEnd": 67,
+        "minHp": 67,
+        "peakEnemies": 45,
+        "totalKills": 3572,
+        "bossKinds": [],
+        "frames": {
+          "intervals": 10753,
+          "p50Ms": 4.2,
+          "p95Ms": 4.3,
+          "p99Ms": 4.3,
+          "maxMs": 29.2,
+          "over33_5Ms": 0,
+          "over50Ms": 0
+        },
+        "longTasks": 0
+      },
+      {
+        "wave": 18,
+        "phase": "levelUp",
+        "simStart": 624.98,
+        "simEnd": 669.97,
+        "hpEnd": 67,
+        "minHp": 67,
+        "peakEnemies": 50,
+        "totalKills": 4149,
+        "bossKinds": [],
+        "frames": {
+          "intervals": 10753,
+          "p50Ms": 4.2,
+          "p95Ms": 4.3,
+          "p99Ms": 4.5,
+          "maxMs": 25,
+          "over33_5Ms": 0,
+          "over50Ms": 0
+        },
+        "longTasks": 0
+      },
+      {
+        "wave": 19,
+        "phase": "levelUp",
+        "simStart": 669.98,
+        "simEnd": 714.98,
+        "hpEnd": 75,
+        "minHp": 75,
+        "peakEnemies": 50,
+        "totalKills": 4752,
+        "bossKinds": [],
+        "frames": {
+          "intervals": 10745,
+          "p50Ms": 4.2,
+          "p95Ms": 4.3,
+          "p99Ms": 4.5,
+          "maxMs": 46,
+          "over33_5Ms": 2,
+          "over50Ms": 0
+        },
+        "longTasks": 0
+      },
+      {
+        "wave": 20,
+        "phase": "won",
+        "simStart": 714.98,
+        "simEnd": 717.3,
+        "hpEnd": 75,
+        "minHp": 75,
+        "peakEnemies": 18,
+        "totalKills": 4758,
+        "bossKinds": [
+          "aoBing"
+        ],
+        "frames": {
+          "intervals": 533,
+          "p50Ms": 4.2,
+          "p95Ms": 4.3,
+          "p99Ms": 4.3,
+          "maxMs": 125,
+          "over33_5Ms": 1,
+          "over50Ms": 1
+        },
+        "longTasks": 0
+      }
+    ],
+    "errors": 0,
+    "notes": "Boss 10/20 first-capture vicinity had 158.1 and 125 ms intervals, zero long-task records. Camera/screenshot overhead not proven; no attribution. Both unlocked buttons enabled after fresh reload, no second game started.",
+    "bossEvidence": [
+      {
+        "wave": 10,
+        "kind": "yaksha",
+        "initialHp": 765,
+        "observedStart": 307.1205,
+        "transitionTime": 309.9541,
+        "phase": "shop"
+      },
+      {
+        "wave": 20,
+        "kind": "aoBing",
+        "initialHp": 2720,
+        "observedStart": 715.0734,
+        "transitionTime": 717.3025,
+        "phase": "won"
+      }
+    ]
+  },
+  "fold7": {
+    "device": "Samsung Galaxy Z Fold7 SM-F966U1 / Android17 / Chrome157 / Adreno830 / WebGPU",
+    "won": true,
+    "naturalWaves": 20,
+    "result": {
+      "won": true,
+      "wave": 20,
+      "kills": 4754,
+      "level": 27,
+      "merges": 21,
+      "divines": 2,
+      "best": true,
+      "unlocked": [
+        "lotus",
+        "sixArms"
+      ],
+      "kept": true
+    },
+    "save": {
+      "unlocked": [
+        "boy",
+        "lotus",
+        "sixArms"
+      ],
+      "best": {
+        "boy": {
+          "0": 21
+        }
+      },
+      "plays": 1,
+      "wins": 1,
+      "reloadEqual": true
+    },
+    "wallMs": 830363,
+    "gameSeconds": 721.5,
+    "overall": {
+      "intervals": 43477,
+      "p50Ms": 16.6,
+      "p95Ms": 16.7,
+      "p99Ms": 16.7,
+      "maxMs": 33.2,
+      "over33_5Ms": 0,
+      "over50Ms": 0,
+      "peakEnemies": 55,
+      "longTasks": 1
+    },
+    "late16to20": {
+      "intervals": 10943,
+      "p50Ms": 16.6,
+      "p95Ms": 16.7,
+      "p99Ms": 16.7,
+      "maxMs": 33.2,
+      "over33_5Ms": 0,
+      "over50Ms": 0,
+      "peakEnemies": 42,
+      "longTasks": 0
+    },
+    "waves": [
+      {
+        "wave": 1,
+        "phase": "shop",
+        "simStart": 0.02,
+        "simEnd": 19.01,
+        "hpEnd": 21,
+        "minHp": 21,
+        "peakEnemies": 4,
+        "totalKills": 12,
+        "boss": null,
+        "frames": {
+          "intervals": 1144,
+          "p50Ms": 16.6,
+          "p95Ms": 16.7,
+          "p99Ms": 16.7,
+          "maxMs": 28.8,
+          "over33_5Ms": 0,
+          "over50Ms": 0
+        },
+        "longTasks": 1
+      },
+      {
+        "wave": 2,
+        "phase": "shop",
+        "simStart": 19.03,
+        "simEnd": 42.02,
+        "hpEnd": 24,
+        "minHp": 24,
+        "peakEnemies": 8,
+        "totalKills": 33,
+        "boss": null,
+        "frames": {
+          "intervals": 1386,
+          "p50Ms": 16.6,
+          "p95Ms": 16.7,
+          "p99Ms": 16.7,
+          "maxMs": 16.7,
+          "over33_5Ms": 0,
+          "over50Ms": 0
+        },
+        "longTasks": 0
+      },
+      {
+        "wave": 3,
+        "phase": "shop",
+        "simStart": 42.04,
+        "simEnd": 69.02,
+        "hpEnd": 24,
+        "minHp": 24,
+        "peakEnemies": 10,
+        "totalKills": 65,
+        "boss": null,
+        "frames": {
+          "intervals": 1627,
+          "p50Ms": 16.6,
+          "p95Ms": 16.7,
+          "p99Ms": 16.7,
+          "maxMs": 16.7,
+          "over33_5Ms": 0,
+          "over50Ms": 0
+        },
+        "longTasks": 0
+      },
+      {
+        "wave": 4,
+        "phase": "shop",
+        "simStart": 69.04,
+        "simEnd": 100.04,
+        "hpEnd": 24,
+        "minHp": 24,
+        "peakEnemies": 16,
+        "totalKills": 107,
+        "boss": null,
+        "frames": {
+          "intervals": 1869,
+          "p50Ms": 16.6,
+          "p95Ms": 16.7,
+          "p99Ms": 16.7,
+          "maxMs": 16.7,
+          "over33_5Ms": 0,
+          "over50Ms": 0
+        },
+        "longTasks": 0
+      },
+      {
+        "wave": 5,
+        "phase": "shop",
+        "simStart": 100.06,
+        "simEnd": 135.05,
+        "hpEnd": 24,
+        "minHp": 24,
+        "peakEnemies": 17,
+        "totalKills": 167,
+        "boss": null,
+        "frames": {
+          "intervals": 2110,
+          "p50Ms": 16.6,
+          "p95Ms": 16.7,
+          "p99Ms": 16.7,
+          "maxMs": 16.7,
+          "over33_5Ms": 0,
+          "over50Ms": 0
+        },
+        "longTasks": 0
+      },
+      {
+        "wave": 6,
+        "phase": "shop",
+        "simStart": 135.07,
+        "simEnd": 174.06,
+        "hpEnd": 24,
+        "minHp": 24,
+        "peakEnemies": 22,
+        "totalKills": 248,
+        "boss": null,
+        "frames": {
+          "intervals": 2351,
+          "p50Ms": 16.6,
+          "p95Ms": 16.7,
+          "p99Ms": 16.7,
+          "maxMs": 16.8,
+          "over33_5Ms": 0,
+          "over50Ms": 0
+        },
+        "longTasks": 0
+      },
+      {
+        "wave": 7,
+        "phase": "shop",
+        "simStart": 174.07,
+        "simEnd": 217.06,
+        "hpEnd": 19,
+        "minHp": 19,
+        "peakEnemies": 21,
+        "totalKills": 359,
+        "boss": null,
+        "frames": {
+          "intervals": 2592,
+          "p50Ms": 16.6,
+          "p95Ms": 16.7,
+          "p99Ms": 16.7,
+          "maxMs": 16.7,
+          "over33_5Ms": 0,
+          "over50Ms": 0
+        },
+        "longTasks": 0
+      },
+      {
+        "wave": 8,
+        "phase": "shop",
+        "simStart": 217.07,
+        "simEnd": 262.06,
+        "hpEnd": 21,
+        "minHp": 16,
+        "peakEnemies": 30,
+        "totalKills": 504,
+        "boss": null,
+        "frames": {
+          "intervals": 2713,
+          "p50Ms": 16.6,
+          "p95Ms": 16.7,
+          "p99Ms": 16.7,
+          "maxMs": 16.8,
+          "over33_5Ms": 0,
+          "over50Ms": 0
+        },
+        "longTasks": 0
+      },
+      {
+        "wave": 9,
+        "phase": "shop",
+        "simStart": 262.08,
+        "simEnd": 307.07,
+        "hpEnd": 23,
+        "minHp": 23,
+        "peakEnemies": 28,
+        "totalKills": 698,
+        "boss": null,
+        "frames": {
+          "intervals": 2713,
+          "p50Ms": 16.6,
+          "p95Ms": 16.7,
+          "p99Ms": 16.7,
+          "maxMs": 16.8,
+          "over33_5Ms": 0,
+          "over50Ms": 0
+        },
+        "longTasks": 0
+      },
+      {
+        "wave": 10,
+        "phase": "shop",
+        "simStart": 307.09,
+        "simEnd": 314.84,
+        "hpEnd": 23,
+        "minHp": 23,
+        "peakEnemies": 8,
+        "totalKills": 711,
+        "boss": {
+          "kind": "yaksha",
+          "firstHp": 765,
+          "max": 765,
+          "firstTime": 307.0866000000677,
+          "lastHp": 70,
+          "lastTime": 314.8271000000704
+        },
+        "frames": {
+          "intervals": 467,
+          "p50Ms": 16.6,
+          "p95Ms": 16.7,
+          "p99Ms": 16.7,
+          "maxMs": 16.7,
+          "over33_5Ms": 0,
+          "over50Ms": 0
+        },
+        "longTasks": 0
+      },
+      {
+        "wave": 11,
+        "phase": "shop",
+        "simStart": 314.86,
+        "simEnd": 359.85,
+        "hpEnd": 20,
+        "minHp": 20,
+        "peakEnemies": 55,
+        "totalKills": 975,
+        "boss": null,
+        "frames": {
+          "intervals": 2713,
+          "p50Ms": 16.6,
+          "p95Ms": 16.7,
+          "p99Ms": 16.7,
+          "maxMs": 16.7,
+          "over33_5Ms": 0,
+          "over50Ms": 0
+        },
+        "longTasks": 0
+      },
+      {
+        "wave": 12,
+        "phase": "shop",
+        "simStart": 359.87,
+        "simEnd": 404.85,
+        "hpEnd": 20.26,
+        "minHp": 14,
+        "peakEnemies": 36,
+        "totalKills": 1295,
+        "boss": null,
+        "frames": {
+          "intervals": 2713,
+          "p50Ms": 16.6,
+          "p95Ms": 16.7,
+          "p99Ms": 16.7,
+          "maxMs": 16.7,
+          "over33_5Ms": 0,
+          "over50Ms": 0
+        },
+        "longTasks": 0
+      },
+      {
+        "wave": 13,
+        "phase": "shop",
+        "simStart": 404.87,
+        "simEnd": 449.86,
+        "hpEnd": 31,
+        "minHp": 31,
+        "peakEnemies": 35,
+        "totalKills": 1653,
+        "boss": null,
+        "frames": {
+          "intervals": 2712,
+          "p50Ms": 16.6,
+          "p95Ms": 16.7,
+          "p99Ms": 16.7,
+          "maxMs": 30.2,
+          "over33_5Ms": 0,
+          "over50Ms": 0
+        },
+        "longTasks": 0
+      },
+      {
+        "wave": 14,
+        "phase": "shop",
+        "simStart": 449.87,
+        "simEnd": 494.86,
+        "hpEnd": 49,
+        "minHp": 49,
+        "peakEnemies": 51,
+        "totalKills": 2062,
+        "boss": null,
+        "frames": {
+          "intervals": 2713,
+          "p50Ms": 16.6,
+          "p95Ms": 16.7,
+          "p99Ms": 16.7,
+          "maxMs": 16.7,
+          "over33_5Ms": 0,
+          "over50Ms": 0
+        },
+        "longTasks": 0
+      },
+      {
+        "wave": 15,
+        "phase": "shop",
+        "simStart": 494.88,
+        "simEnd": 539.87,
+        "hpEnd": 56,
+        "minHp": 56,
+        "peakEnemies": 33,
+        "totalKills": 2496,
+        "boss": null,
+        "frames": {
+          "intervals": 2711,
+          "p50Ms": 16.6,
+          "p95Ms": 16.7,
+          "p99Ms": 16.7,
+          "maxMs": 33.1,
+          "over33_5Ms": 0,
+          "over50Ms": 0
+        },
+        "longTasks": 0
+      },
+      {
+        "wave": 16,
+        "phase": "shop",
+        "simStart": 539.89,
+        "simEnd": 584.87,
+        "hpEnd": 56,
+        "minHp": 56,
+        "peakEnemies": 41,
+        "totalKills": 2992,
+        "boss": null,
+        "frames": {
+          "intervals": 2713,
+          "p50Ms": 16.6,
+          "p95Ms": 16.7,
+          "p99Ms": 16.7,
+          "maxMs": 16.7,
+          "over33_5Ms": 0,
+          "over50Ms": 0
+        },
+        "longTasks": 0
+      },
+      {
+        "wave": 17,
+        "phase": "shop",
+        "simStart": 584.89,
+        "simEnd": 629.88,
+        "hpEnd": 56,
+        "minHp": 56,
+        "peakEnemies": 41,
+        "totalKills": 3531,
+        "boss": null,
+        "frames": {
+          "intervals": 2713,
+          "p50Ms": 16.6,
+          "p95Ms": 16.7,
+          "p99Ms": 16.7,
+          "maxMs": 16.7,
+          "over33_5Ms": 0,
+          "over50Ms": 0
+        },
+        "longTasks": 0
+      },
+      {
+        "wave": 18,
+        "phase": "shop",
+        "simStart": 629.89,
+        "simEnd": 674.88,
+        "hpEnd": 61,
+        "minHp": 61,
+        "peakEnemies": 42,
+        "totalKills": 4113,
+        "boss": null,
+        "frames": {
+          "intervals": 2711,
+          "p50Ms": 16.6,
+          "p95Ms": 16.7,
+          "p99Ms": 16.7,
+          "maxMs": 33.2,
+          "over33_5Ms": 0,
+          "over50Ms": 0
+        },
+        "longTasks": 0
+      },
+      {
+        "wave": 19,
+        "phase": "shop",
+        "simStart": 674.9,
+        "simEnd": 719.89,
+        "hpEnd": 69,
+        "minHp": 69,
+        "peakEnemies": 32,
+        "totalKills": 4749,
+        "boss": null,
+        "frames": {
+          "intervals": 2711,
+          "p50Ms": 16.6,
+          "p95Ms": 16.7,
+          "p99Ms": 16.7,
+          "maxMs": 33.2,
+          "over33_5Ms": 0,
+          "over50Ms": 0
+        },
+        "longTasks": 0
+      },
+      {
+        "wave": 20,
+        "phase": "won",
+        "simStart": 719.91,
+        "simEnd": 721.5,
+        "hpEnd": 101,
+        "minHp": 101,
+        "peakEnemies": 6,
+        "totalKills": 4754,
+        "boss": {
+          "kind": "aoBing",
+          "firstHp": 2720,
+          "max": 2720,
+          "firstTime": 719.9078999992979,
+          "lastHp": 119,
+          "lastTime": 721.4813999992931
+        },
+        "frames": {
+          "intervals": 95,
+          "p50Ms": 16.6,
+          "p95Ms": 16.7,
+          "p99Ms": 16.8,
+          "maxMs": 16.8,
+          "over33_5Ms": 0,
+          "over50Ms": 0
+        },
+        "longTasks": 0
+      }
+    ],
+    "errors": 0,
+    "consoleEvents": 0,
+    "rawHarness": {
+      "passing": false,
+      "observedChecks": 143,
+      "failure": "auxiliary Boss screenshot array did not observe negative rising timer; final assertion stopped after actual victory and save/reload; frames.boss monitor independently verifies each Boss and natural transition; no post-reload selection tap executed",
+      "passedChecks": 142,
+      "failedChecks": 1,
+      "correctedHelperTests": {
+        "passed": 3,
+        "total": 3,
+        "method": "read-only regression using original telemetry and negative rising control; no new device run"
+      }
+    },
+    "notes": "Fold7 actual browser surface. Incognito OS screenshots may be black. Final save and screenshot prove both unlocks; physical post-reload hero selection taps were not performed due to auxiliary harness assertion. One PerformanceObserver LongTask of 57ms was assigned to wave1 on delivery; not a rAF long interval and not attributed to an engine stage. Device context, rotation, awake setting, prior foreground, transport and lease restored.",
+    "bossEvidence": [
+      {
+        "wave": 10,
+        "kind": "yaksha",
+        "firstHp": 765,
+        "lastObservedHp": 70,
+        "firstTime": 307.0866,
+        "lastTime": 314.8271,
+        "transitionTime": 314.8437,
+        "phase": "shop"
+      },
+      {
+        "wave": 20,
+        "kind": "aoBing",
+        "firstHp": 2720,
+        "lastObservedHp": 119,
+        "firstTime": 719.9079,
+        "lastTime": 721.4814,
+        "transitionTime": 721.4979,
+        "phase": "won"
+      }
+    ]
+  }
+}
