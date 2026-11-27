@@ -14,5 +14,6 @@ export default async function(player){
     rows.push(await geometry(player,'title-'+lang,shot));
     if(shot?.picture)fs.writeFileSync(path.join(path.dirname(shot.picture),'native-semantic.json'),JSON.stringify({rows},null,2)+'\n');
   }
-  player.expect(rows.every(row=>row.errors===0),'both title languages fit the safe area');
+  player.expect(rows.every(row=>row.errors===0&&row.warnings===0&&row.engineWarnings.length===0),
+    'both title languages pass native geometry and page checks');
 }

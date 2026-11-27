@@ -226,26 +226,37 @@ export function createScreens(host, app) {
   async function render(entry, deferLayer=false) {
     if(entry.closed)return;
     const g=geometry(host,entry), plan=scenePlan(entry,g), height=plan.blocks.reduce((a,b)=>a+b.height,0), version=++entry.version;
-    // A managed root's tree shape is fixed. Reserve a bounded set of content leaves and reflow their
-    // dimensions/data; unused leaves have zero height. Turning a phone therefore never replaces the root.
-    if(plan.blocks.length>16)throw new Error('screen layout has too many blocks: '+entry.id);
-    while(plan.blocks.length<16)plan.blocks.push({height:0,paint:null});
     const size={width:g.width,height};
     if(height>g.maxHeight+1)console.warn('screen layout extends beyond safe viewport',entry.id,height,g.maxHeight);
-    const fresh=new Map(), previous=focusId();
-    // A managed content leaf is detached during prepare. Keyboard registration requires an attached display object;
-    // materialize its ordinary scoped container immediately after the engine publishes the empty leaf. The root,
-    // stack, backdrop and screen model keep their identities across a viewport change.
+    const fresh=[], freshFocusIds=new Set(), previous=focusId();
+    // The native root accepts responsive shape changes. Its post-attachment hook supplies a published leaf's
+    // actual content and owning scope, so keyboard and semantic registrations need no manual after-commit pass.
+    const attach=(slotIndex,block,context)=>{
+      const slot={node:context.content,scope:context.scope,block,width:context.width};fresh[slotIndex]=slot;
+      if(!slot.block.paint)return;
+      const k=createKit(host,slot.node,{prefix:entry.id,semanticParent:entry.semanticId,scope:slot.scope});
+      // The screen retains a stable focus target id across content/layout replacement. Capture the native kit ids.
+      slot.scope.use({dispose:()=>k.dispose()});
+      const wrapped={...k};
+      let labelIndex=0;
+      wrapped.label=options=>{const h=k.label(options);if(!String(options.text).trim())return h;const id=entry.id+':text-'+slotIndex+'-'+(++labelIndex);slot.scope.use({dispose:()=>semantic.remove()});const semantic=semantics.add({id,parent:entry.semanticId,role:options.semanticRole??'text',describe:()=>({name:String(options.text),bounds:semanticBoundsOf(h.root),hidden:entry.covered||!entry.visible})});return h;};
+      const collect=(h,enabled=true)=>{if(h?.id&&enabled)freshFocusIds.add(h.id);return h;};
+      wrapped.button=options=>collect(k.button(options),options.enabled!==false);
+      wrapped.toggle=options=>collect(k.toggle(options));
+      wrapped.choice=options=>collect(k.choice({...options,items:options.items.map(a=>({...a,key:String(a.key)})),selected:String(options.selected),onChange:v=>options.onChange(options.items.find(a=>String(a.key)===String(v))?.key??v)}));
+      if(slot.block.fill!==null)k.panel({x:0,y:0,width:slot.width,height:slot.block.height,fill:slot.block.fill,alpha:1,border:false,radius:0});
+      slot.block.paint(wrapped,slot.width,slot.block.height);
+      slot.node.visible=!entry.covered;
+    };
     const tree={id:'layout',kind:'column',explicitWidth:size.width,explicitHeight:size.height,gap:0,children:plan.blocks.map((block,i)=>({
       id:`block-${i}`,kind:'leaf',explicitWidth:size.width,explicitHeight:block.height,content:{revision:version,prepare(context){
-        const node=context.scope.use(new DisplayObjectContainer());
-        fresh.set(i,{node,scope:context.scope,block,width:context.width});return {content:node,measuredHeight:block.height};
-      }}
+        const node=context.scope.use(new DisplayObjectContainer());return {content:node,measuredHeight:block.height};
+      },onAttach(context){attach(i,block,context);}}
     }))};
     if(!entry.root){
       entry.root=createUiRoot({engine,scope:game.scope,id:entry.id,viewport:size,density:1,tree,input:pointer,keyboard:{input:keyboard,idPrefix:entry.id}});
     }else{
-      entry.root.setViewport(size,1);entry.root.setTree(tree);
+      entry.root.setViewport(size,1);entry.root.setTree(tree,{responsive:true});
     }
     let prepared;
     for(let i=0;i<8;i++){prepared=await entry.root.prepare();if(prepared.status!=='pending')break;}
@@ -253,23 +264,7 @@ export function createScreens(host, app) {
     if(!prepared||prepared.status==='pending')throw new Error(`incomplete layout: ${entry.id}`);
     const result=entry.root.commit(prepared);
     if(!['committed','unchanged'].includes(result.kind)||result.postCommitErrors.length)throw new Error(`screen layout ${entry.id}: ${result.kind} ${result.postCommitErrors.map(String).join(', ')}`);
-    entry.focusIds.clear();entry.liveSlots=[...fresh.values()];
-    for(const [slotIndex,slot] of entry.liveSlots.entries()) {
-      if(!slot.block.paint)continue;
-      const k=createKit(host,slot.node,{prefix:entry.id,semanticParent:entry.semanticId,scope:slot.scope});
-      // The screen retains a stable focus target id across content/layout replacement. Capture the native kit ids.
-      slot.scope.use({dispose:()=>k.dispose()});
-      const wrapped={...k};
-      let labelIndex=0;
-      wrapped.label=options=>{const h=k.label(options);if(!String(options.text).trim())return h;const id=entry.id+':text-'+slotIndex+'-'+(++labelIndex);slot.scope.use({dispose:()=>semantic.remove()});const semantic=semantics.add({id,parent:entry.semanticId,role:options.semanticRole??'text',describe:()=>({name:String(options.text),bounds:semanticBoundsOf(h.root),hidden:entry.covered||!entry.visible})});return h;};
-      const collect=(h,enabled=true)=>{if(h?.id&&enabled)entry.focusIds.add(h.id);return h;};
-      wrapped.button=options=>collect(k.button(options),options.enabled!==false);
-      wrapped.toggle=options=>collect(k.toggle(options));
-      wrapped.choice=options=>collect(k.choice({...options,items:options.items.map(a=>({...a,key:String(a.key)})),selected:String(options.selected),onChange:v=>options.onChange(options.items.find(a=>String(a.key)===String(v))?.key??v)}));
-      if(slot.block.fill!==null)k.panel({x:0,y:0,width:slot.width,height:slot.block.height,fill:slot.block.fill,alpha:1,border:false,radius:0});
-      slot.block.paint(wrapped,slot.width,slot.block.height);
-      slot.node.visible=!entry.covered;
-    }
+    entry.focusIds=freshFocusIds;entry.liveSlots=fresh;
     entry.size=size;
     if(!entry.registration)entry.registration=manager.register({id:entry.id,root:entry.root,kind:'modal',closeOnEscape:false,closeOnOutside:false,backdropColor:C.navy,backdropAlpha:entry.kind==='title'?.08:.56});
     if(entry.visible)manager.open(entry.id);

@@ -82,11 +82,13 @@ stronghold.
 | `@egret/engine/kit` · `encodeWav` | 合成好的音效与曲子编码成 WAV 交给混音器 · synthesized effects and pieces encoded for the mixer | [src/audio/sound.mjs](src/audio/sound.mjs) |
 | `@egret/engine/web/audio` · `createBrowserAudio` | 音效与音乐两条总线、循环曲、淡入淡出、限幅 · effects and music buses, looping pieces, fades, a limiter | [src/audio/sound.mjs](src/audio/sound.mjs) |
 | `@egret/engine/input/gamepad` · `createGamepadInput` | 手柄按键、摇杆、方向连发 · gamepad buttons, sticks and repeat | [src/input.mjs](src/input.mjs) |
-| `createWorld3DOverlay` · `fit: 'expand'`、`portrait`、`game.onScreenChange` | 透明 2D 舞台随 3D 画布扩展并原地适配横竖屏，空白手势穿透 · expanded transparent 2D stage above 3D, in-place orientation and empty-area gesture routing | [src/ui/host.mjs](src/ui/host.mjs) |
+| `createWorld3DOverlay` · `fit: 'expand'`、`portrait`、`game.onScreenChange`、`uiScale` | 透明 2D 舞台随 3D 画布扩展并原地适配横竖屏；UI 独立缩放、空白手势穿透 · transparent 2D stage above 3D, in-place orientation, independent UI scale and empty-area gesture routing | [src/ui/host.mjs](src/ui/host.mjs) |
+| `createWorld3DOverlay` · `renderMode:'on-demand'`、`webgl2PageBatching:'single-page'`、`getStartupTiming()` | 静止画面保留原生提交、画面变化才重新绘制；单页纹理批处理与启动阶段观测 · native retained frames and redraw on change, single-page batching and startup attribution | [src/ui/host.mjs](src/ui/host.mjs)、[test/perf-route.mjs](test/perf-route.mjs) |
 | `@egret/engine/ui` · `createActionControl`、`createToggleControl`、`createSelectionGroup`、`createControlKeys`、`createHoverControl` | 操作、开关、单选、键盘与鼠标状态 · action, toggle, choice, key and hover state | [src/ui/kit.mjs](src/ui/kit.mjs) |
-| `createUiLayerManager`、`createUiScreenStack`、`createUiRoot` | 标题、菜单、设置、准备、战果、模态层与返回顺序 · native pages, modal layers, back and focus restoration | [src/screens.mjs](src/screens.mjs) |
+| `createUiLayerManager`、`createUiScreenStack`、`createUiRoot`、`setTree(tree,{responsive:true})`、`onAttach` | 标题到结算；原生托管根按屏幕变化改变布局树，控件发布后注册输入及语义 · native pages and modal stack, responsive root topology and registration after attachment | [src/screens.mjs](src/screens.mjs) |
 | `createUiSemantics`、`createBrowserSemantics`、`createUiTester` | 发布命名语义树、浏览器辅助功能映射与按名称验收 · named semantic tree, browser accessibility projection and named-control testing | [src/ui/host.mjs](src/ui/host.mjs) |
-| `createAtlasLabel`、`loadTexture`、`textureFromCanvas` | 双语文字、头像与沙盘缩略图 · bilingual labels, portraits and map thumbnails | [src/ui/kit.mjs](src/ui/kit.mjs) |
+| `createAtlasLabel`、`loadTexture`、`textureFromCanvas` | 双语文字、头像与地图缩略图；引擎排队限制图片并发占用，游戏保留去重及纹理租约 · bilingual labels, portraits and thumbnails; native admission with game-owned reuse and leases | [src/ui/kit.mjs](src/ui/kit.mjs)、[src/ui/host.mjs](src/ui/host.mjs) |
+| `verify --screens` | 原生实际命中矩形参与安全区、触控目标及间距检测 · native hit rectangles participate in safe-area, touch-target and separation checks | [test/screen-route.mjs](test/screen-route.mjs) |
 
 ## 已验证 · Verified
 
@@ -96,12 +98,15 @@ stronghold.
 - 品质验收见 [QUALITY.md](QUALITY.md)（`node ../tools/quality.mjs .`）。 · Quality results in QUALITY.md.
 - Windows Edge RTX 5090 Laptop 与 Fold7 外屏实际浏览器已验证操作和横竖屏；手柄使用浏览器标准 Gamepad 模拟，未验真手柄、Fold7 内屏或读屏器。 · Actual Windows Edge/RTX and Fold7 outer-screen browser input were tested. The standard Gamepad path was simulated; a physical controller, inner display and screen reader were not tested.
 
+- 正式引擎 0e7b2932 的本地候选通过 50 项 Node、10 项原生接口专项、40 项功能验收，以及 8 机型 64 个新鲜原生命中区域检查点，以及最紧横屏英文 12 状态（均 0 错误、0 警告）；Windows RTX 与 Fold7 实体外屏的操作和静止叠加层提交复测见 QUALITY。 · The official engine-copy candidate passes 50 Node, 10 native interface and 40 functional checks, plus 64 fresh native screen checkpoints and 12 additional tight-landscape English checkpoints (zero errors/warnings). QUALITY records the hardware PC and Fold7 outer-screen interaction and idle-overlay dispatch results.
+- 本次原生接口的专项入口为 `node test/native-ui-accept.mjs`；静止叠加层原生提交、持续更新与启动阶段由 `test/perf-route.mjs` 记录，实际结果见 QUALITY。 · Native-interface regression has a dedicated route; the performance route records static overlay submits, continuing updates and startup phases. See QUALITY for results.
+
 ## 已知问题 · Known issues
 
 - 软件渲染下只有每秒几帧，验收截图之外的动画流畅度要在真 GPU 上看。 · Software rendering runs at a few frames a second; smoothness needs a real GPU.
 - 骑士、马车、器械、热气球、飞兵和舰船是整体模型，只有颠簸、悬浮、摇摆和前冲，没有分件动画。 · Knights, carts, engines, the balloon, fliers and ships are single meshes with bobbing, hovering, rolling and lunging only.
-- 品质验收未达标 · Quality items failing（[QUALITY.md](QUALITY.md)，2026-11-25，无头 Chromium + SwiftShader · headless, software rendering）：F1 桌面帧时间 p95 ≤ 16.7 ms（p95 633.3 ms over 14 frames）。
-- World3D 叠加层尚缺独立 `uiScale`、原生屏幕检查的控件采集、并发图片排队、启动阶段计时与按需绘制；见 ENGINE-NOTES 5–10。冷启动有额外等待，小屏 SwiftShader 帧预算未达标，真实 GPU 和软件渲染各自测量见 QUALITY。 · Overlay UI scale, control-report integration, image admission, startup attribution and on-demand rendering are tracked in ENGINE-NOTES 5–10. Cold start is slower and software small-screen cadence regressed; QUALITY separates real GPU and software timing.
+- 品质验收未达标 · Quality item failing（[QUALITY.md](QUALITY.md)，2026-11-27，无头 Chromium + SwiftShader · headless software rendering）：F1 桌面帧时间 p95 ≤ 16.7 ms（本轮 p95 175.0 ms / 43 帧；软件单次样本不证明相对前版改善 / 175.0 ms p95 over 43 frames; a single software sample does not prove improvement）。实体 RTX 和 Fold7 另测 / real-GPU results measured separately.
+- 软件渲染动态画面仍需独立评估；即使静止叠加层不再重复提交，也不能推出复杂棋盘和动画达到 16.7 ms。冷启动、动态帧及静止帧分列于 QUALITY。 · Dynamic software rendering still needs independent assessment; retaining a static overlay does not prove an animated board meets 16.7 ms. QUALITY separates startup, animated and static frames.
 
 ## 已解决 · Solved
 
@@ -113,6 +118,7 @@ stronghold.
 - 英文模式下标题副标和页面标题里还留着中文（品质验收 I1）：都改成英文。 · Chinese left in the English title and page title (quality item I1) is now English.
 - 战斗中切换语言时界面按钮仍是旧语言：切换后整套战斗界面按新语言重建；战斗界面不再清空页面上的画面层，设置和战果面板能在战斗中正常弹出。 · Switching the language mid-battle now rebuilds the battle interface, and the HUD no longer wipes the screens' layer, so settings and the result show over a battle.
 - 原 DOM 界面的宽屏刘海遮挡、窄屏点击面积和焦点问题，改用引擎 `screen.safe`、原生焦点控件、页面栈和安全区几何验证；转屏保持同一叠加层及战斗实例。 · Replaced DOM notch/target/focus handling with the engine's safe geometry, control focus and screen stack; orientation keeps the same overlay and battle.
+- ENGINE-NOTES 5–10 的六项缺口由引擎 #528 提供原生按需绘制、WebGL2 启动阶段、独立缩放、控件报告、图片排队及响应式根；正式验收见 QUALITY。 · Engine #528 addresses the six gaps with retained drawing, startup phases, independent scaling, control reports, image admission and responsive roots; see QUALITY for tested adoption.
 
 ## 未完成 · Unfinished
 
@@ -144,6 +150,6 @@ stronghold.
 
 ## 引擎副本 · Engine copy
 
-- 引擎提交 · Engine commit：`938a8d206fb3395bbac47be832a374df7b37eed3`（见 · see [vendor/SOURCE.md](vendor/SOURCE.md)）。
+- 引擎提交 · Engine commit：`0e7b29321a07ec956f66efb293c79798270512bd`（见 · see [vendor/SOURCE.md](vendor/SOURCE.md)；引擎 #528 merge `0e7b29321a07ec956f66efb293c79798270512bd`）。
 - 生成命令 · Made with：`node tools/vendor-game.mjs ../PortedGamesEgret/StarBanner @egret/engine @egret/engine/world3d @egret/engine/webgpu/world3d @egret/engine/webgl2/world3d @egret/engine/kit @egret/engine/web/kit @egret/engine/audio @egret/engine/web/audio @egret/engine/input/gamepad @egret/engine/web/gamepad @egret/engine/input/hover @egret/engine/web/hover @egret/engine/ui/semantics @egret/engine/web/semantics @egret/engine/animation @egret/engine/ui @egret/engine/ui/testing`
 - 用到的入口 · Entries used：`@egret/engine/world3d`、`@egret/engine/webgpu/world3d`、`@egret/engine/webgl2/world3d`、`@egret/engine/kit`、`@egret/engine/web/kit`、`@egret/engine/web/audio`、`@egret/engine/input/gamepad`、`@egret/engine/ui`、`@egret/engine/ui/semantics`、`@egret/engine/web/semantics`、`@egret/engine/ui/testing`。
