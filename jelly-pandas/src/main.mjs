@@ -178,10 +178,12 @@ async function main() {
     if (!input.touchMode) canvas.requestPointerLock?.()?.catch?.(() => {});
   };
 
-  function newGame(party, seed) {
+  function newGame(party, seed, previewMode = false) {
     game = createGame({ party, seed, islandGeometry });
     human = game.pandas.find((panda) => panda.human) ?? game.pandas[0];
     applyQuality();
+    hitStop=0;
+    view.setPreview(previewMode);
     view.attach(game);
     target[0] = human.x;
     target[1] = human.y;
@@ -193,6 +195,7 @@ async function main() {
     newGame(
       Array.from({ length: settings.party }, (_, index) => ({ skin: (settings.skin + index) % 8, human: index === 0 })),
       1,
+      true,
     );
     titleSnap = true;
     follow.distance = titleLayout.portrait ? 8 : 7.5;

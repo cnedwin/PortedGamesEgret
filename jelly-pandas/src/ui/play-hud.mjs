@@ -149,7 +149,7 @@ export async function createPlayHud(game,{root,atlas,locale,semantics,onChanged,
     challengeGoal.at(chW/2,49,'center',chW-14);
     // The compact landscape moves the party to the upper-right, keeping the two thumbs free.
     const rowW=narrow?Math.min(140,w*.38):short?153:180,rowH=short?31:38, gap=4;
-    const partyY=touch?(short?y+62:y+(narrow?108:90)):Math.max(y+95,b-pad-partyCount*(rowH+gap)-25);
+    const partyY=touch?(short?y+62:y+(screen.orientation==='portrait'?108:90)):Math.max(y+95,b-pad-partyCount*(rowH+gap)-25);
     place(party,touch&&short?r-pad-rowW:x+pad,partyY);
     rows.forEach((row,i)=>{
       place(row.node,0,i*(rowH+gap));draw(row.background,rowW,rowH,{fill:0x1c102e,alpha:.82,radius:10});

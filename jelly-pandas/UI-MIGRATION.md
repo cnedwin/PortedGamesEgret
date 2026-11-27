@@ -1,4 +1,5 @@
 # 原生界面迁移 · Native UI migration
+本文对应独立 UI 迁移提交 `9f7de9ed`；后续角色、场景及特效的独立画质升级见 [QUALITY.md](QUALITY.md)。前后图、规则与性能基线按阶段保留。 · This map describes the UI-only migration commit; subsequent visual enhancements are documented separately, with their own screenshots and performance samples.
 
 《果冻熊猫》的 3D 岛屿、角色、动作、战斗规则、掉落与升级数据、音乐和音效均保留。原先页面上的 HTML/CSS 菜单和战斗操作由一个贯穿整局的白鹭 World3D 叠加层接管；读取与保存玩家设置仍使用同一存档键和原有字段。验收环境、结果和前后对照见 [QUALITY.md](QUALITY.md)，引擎能力缺口见 [ENGINE-NOTES.md](ENGINE-NOTES.md)。
 

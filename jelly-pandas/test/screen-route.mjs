@@ -122,6 +122,19 @@ export async function checkpoint(player,label) {
   } else await player.picture?.(label);
   return observed;
 }
+// Read-only HUD plates are not interactive controls, so independently check their real native bounds.
+export async function assertBossPartySeparation(player){
+  const geometry=await player.read(()=>{
+    const {ui}=window.__jellyPandas;ui.flush?.();
+    const nodes=ui.semantics.snapshot.nodes.filter(n=>!n.hidden&&!n.inert),boss=nodes.find(n=>n.id==='jelly-boss');
+    const party=nodes.filter(n=>n.id.startsWith('jelly-party-'));
+    if(!boss||!party.length)throw new Error('Boss and current party semantic geometry not published');
+    const overlap=(a,b)=>({w:Math.max(0,Math.min(a.x+a.width,b.x+b.width)-Math.max(a.x,b.x)),h:Math.max(0,Math.min(a.y+a.height,b.y+b.height)-Math.max(a.y,b.y))});
+    return {boss:boss.bounds,party:party.map(n=>({id:n.id,bounds:n.bounds,overlap:overlap(boss.bounds,n.bounds)}))};
+  });
+  player.expect(geometry.party.every(p=>p.overlap.w<.1||p.overlap.h<.1),'Boss bar and party health plates do not overlap: '+JSON.stringify(geometry));
+  return geometry;
+}
 const SIM_ADVANCE=(opts)=>{
   const {to,bot,untilChoice,stopBoss,sea,fresh}=opts;
   const s=window.__jellyPandas;
@@ -299,7 +312,7 @@ export async function runRoute(player,{rotate,includeEnd=true,includeLanguages=t
     await pauseControl(player);await control(player,{name:'Restart',role:'button'});
     const boss=await advance(player,300.1,{bot:true,stopBoss:true,fresh:'Restart'});record('first boss fixture',boss);
     player.expect(boss.start.t===0&&boss.end.boss==='pudding'&&boss.end.bossHp===1500,'first boss created by real spawner at 300 s');
-    await waitFrames(player,5);results.observations.boss=await checkpoint(player,'boss');
+    await waitFrames(player,5);record('boss plate geometry',await assertBossPartySeparation(player));results.observations.boss=await checkpoint(player,'boss');
     const fight=await advance(player,380,{bot:true});record('boss fight',fight);
     player.expect(!fight.end.boss&&fight.end.kills>boss.end.kills,'first boss defeated (normal bot rules)');
     if(includeEnd) {

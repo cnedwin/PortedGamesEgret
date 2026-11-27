@@ -81,6 +81,7 @@ node tools/headless.mjs 4 7 17
 ~~~sh
 node --test test/*.test.mjs
 node test/accept.mjs
+node test/visual-accept.mjs
 node vendor/egret.mjs verify
 node vendor/egret.mjs verify --screens --play test/screen-route.mjs --out <output>
 node test/performance.mjs
@@ -100,12 +101,12 @@ The game uses Egret World3D and draws with WebGL2 by default. Each part maps to 
 | 每个敌人一个刚体球，用碰撞层与熊猫分开 · one rigid sphere per enemy, kept apart from pandas by collision layers | 糖果敌群 · The candy horde | `src/sim.mjs` |
 | `createMeshShape3D` 静态三角网格 · static triangle mesh | 岛屿碰撞 · Island collision | `src/sim.mjs` |
 | 球体与凸包刚体 · sphere and convex-hull rigid bodies | 沙滩球和木桶 · Beach balls and barrels | `src/sim.mjs` |
-| `createGlassMaterial3D` + 程序生成的花纹纹理 · generated pattern textures | 果冻身体 · Jelly bodies | `src/panda.mjs` |
-| `createJelly3D` | 果冻抖动 · Jelly wobble | `src/panda.mjs` |
+| `createGlassMaterial3D` + 程序生成的花纹纹理 · generated pattern textures | 果冻身体、独立清漆高光、缓存花纹 · Jelly bodies, clearcoat highlights and cached belly stamps | `src/panda.mjs` |
+| `createJelly3D` | 蓄力、跳跃、翻滚、受击与回弹 · Charged jump, roll, impact and rebound | `src/panda.mjs` |
 | `createTrail3D` | 拖尾 · Trails | `src/view.mjs` |
 | `createCustomShader3D` 顶点钩子 · vertex hook | 植被随风摆动、被角色拨开 · Plants swaying in the wind and parting around characters | `src/wind.mjs` |
-| `InstancedMesh3D` 逐实例颜色 · per-instance colour | 敌群、弹丸、糖粒、树木 · Horde, shots, sprinkles, trees | `src/view.mjs` |
-| `createWater3D` 波浪与倒影 · waves and reflection | 海面 · The sea | `src/view.mjs` |
+| `InstancedMesh3D` 逐实例颜色 · per-instance colour | 敌群、弹丸、糖粒、树木和真实范围/方向预警 · Horde, shots, sprinkles, trees and rule-linked hazard telegraphs | `src/view.mjs` |
+| `createWater3D` 波浪与倒影 · waves and reflection | 海面、浅滩泡沫与保留式反射 · Shore foam and retained sea reflections | `src/view.mjs` |
 | `createParticleEmitter3D` | 特效 · Effects | `src/view.mjs` |
 | `createFollowCamera3D` | 相机 · Camera | `src/main.mjs` |
 | `createWorld3DOverlay` + `renderMode: 'on-demand'` | 持久透明原生 HUD 和菜单，静止界面保留帧 · Persistent transparent HUD and retained static menus | `src/main.mjs`, `src/hud.mjs` |
@@ -125,6 +126,7 @@ The game uses Egret World3D and draws with WebGL2 by default. Each part maps to 
 3D models, 3D textures and sounds are generated in code. The picker and party portraits share one concept art atlas.
 
 ## 已验证 · Verified
+- 2026-11-27 独立画质版：44/44 Node、163/163 浏览器及 40/40 视觉专项；同场景 RTX 5090 中/高画质 p95 6.1 ms；Fold7 新版流程 48/48 与标题修正 20/20、密集采样 p95 28.0 ms、RAF p95 16.7 ms；硬件 WebGPU 启动、移动、暂停 smoke 通过，未跑整局。见 [QUALITY.md](QUALITY.md)。 · Separate visual pass: 44 Node, 163 browser and 40 visual assertions, hardware RTX p95 6.1 ms, 48+20 Fold7 physical assertions, dense p95 28.0 ms and RAF p95 16.7 ms; hardware WebGPU startup/movement/pause smoke only.
 - 2026-11-27：原生 UI 迁移 34/34 Node 测试、161/161 浏览器验收、引擎 verify 7/7、九屏 108/108 检查点（0 错误/警告），包括横竖屏保留、原生多点、最后一次重抽、完整胜败及旧存档恢复。通用 T2/T3/I1/E2 和 S1–S3 已通过；软件 F1 帧尾问题仍见 QUALITY/ENGINE-NOTES。 · Native migration passed 34 Node, 161 browser assertions, seven basic verify checks and 108 screen checkpoints. Generic targets, English, retry and settings checks pass; software F1 remains an open performance issue.
 
 - 2026-11-27：仅刷新引擎至 `2fbe5563`、保留 DOM 界面。原 24 项 Node 测试全部通过，官方浏览器 verify 7/7；同一种子既有规则推进至首个 Boss，实际选角、移动、暂停、升级重抽和选卡正常，首领在 300 秒生成并击败。SwiftShader 软件浏览器，长路线使用固定输入规则步进，不代表真机自然游玩。 · Engine-only baseline: 24/24 Node, 7/7 browser checks; same-seed rule-step route reached and defeated the first boss, with actual menu and keyboard actions. Headless software Chromium, not physical play.
@@ -137,7 +139,7 @@ The game uses Egret World3D and draws with WebGL2 by default. Each part maps to 
 ## 已知问题 · Known issues
 
 - 海面倒影里不画阴影和小物件（植物、敌群、弹丸、拾取物、粒子），这是为了省绘制而有意去掉的。 · The sea's mirror leaves out shadows and small things on purpose, to save drawing.
-- 品质验收未达标 · Quality items failing（[QUALITY.md](QUALITY.md)，2026-11-27，无头 Chromium + SwiftShader · headless, software rendering）：F1 桌面帧时间 p95 ≤ 16.7 ms（p95 595.8 ms over 15 frames）。
+- 品质验收未达标 · Quality items failing（[QUALITY.md](QUALITY.md)，2026-11-27，无头 Chromium + SwiftShader · headless, software rendering）：F1 桌面帧时间 p95 ≤ 16.7 ms（p95 370.8 ms over 25 frames）。
 
 ## 已解决 · Solved
 - 原 DOM/CSS 标题、HUD、升级、暂停、结算及触控已迁移到引擎原生 UI；伙伴选择触控尺寸、英文残留、加载重试修复，原 3D 画布保持全屏。 · Replaced DOM/CSS screens, HUD and controls with native UI; fixed target sizes, untranslated English-mode text and retry.
@@ -148,8 +150,8 @@ The game uses Egret World3D and draws with WebGL2 by default. Each part maps to 
 
 ## 未完成 · Unfinished
 
-- 软件 Chromium 的叠加层帧尾长延迟，见 ENGINE-NOTES 第 8 条；RTX 5090/D3D11 硬件对照 p95 6.0 ms，未复现软件长尾，其他 GPU/WebGPU 尚待验收。 · Software-overlay tail latency remains open; RTX 5090/D3D11 passed the hardware p95 sample at 6.0 ms; other GPUs/WebGPU remain unqualified.
-- 真机触控整局、物理手柄、实际读屏软件、Safari、Firefox、微信内置浏览器及其他硬件 GPU/WebGPU 验收。 · Whole-run physical touch, physical controller, assistive technology, Safari, Firefox, WeChat browser and other GPU/WebGPU qualification.
+- 软件 Chromium 的叠加层帧尾长延迟，见 ENGINE-NOTES 第 8 条；RTX 5090/D3D11 硬件对照 p95 6.0 ms，未复现软件长尾，其他 GPU 与 WebGPU 整局/性能尚待验收。 · Software-overlay tail latency remains open; RTX 5090/D3D11 passed the hardware p95 sample at 6.0 ms; other GPUs and WebGPU whole-run/performance remain unqualified.
+- 真机触控整局、物理手柄、实际读屏软件、Safari、Firefox、微信内置浏览器及其他硬件 GPU、WebGPU 整局与性能验收。 · Whole-run physical touch, physical controller, assistive technology, Safari, Firefox, WeChat browser and other GPU and WebGPU whole-run/performance qualification.
 
 ## 目录 · Layout
 

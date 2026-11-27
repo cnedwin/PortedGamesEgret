@@ -210,6 +210,99 @@ function dotTexture() {
   return new Texture3D({ width: size, height: size, data });
 }
 
+const clamp01 = (value) => Math.max(0, Math.min(1, value));
+
+/** Read the existing wind-up and leap state. These are render cues, never new attack rules. */
+export function describeHazardCue(enemy) {
+  if (enemy.dead) return undefined;
+  if (enemy.boss && enemy.leap && enemy.air) {
+    // The ring follows the airborne boss's shadow; it does not predict a landing point.
+    return { kind: 'hop', radius: 7.5, progress: clamp01((enemy.airT ?? 0) / 1.1) };
+  }
+  if (enemy.mode !== 1) return undefined;
+  const progress = (duration) => clamp01(1 - Math.max(0, enemy.modeT) / duration);
+  const direction = (dx, dz) => {
+    const length = Math.hypot(dx, dz);
+    return length > 0 ? { dx: dx / length, dz: dz / length } : { dx: 0, dz: 0 };
+  };
+  // Peppermint's blast in sim.mjs tests a horizontal distance of 3.2 metres.
+  if (enemy.def.bomb) return { kind: 'bomb', radius: 3.2, progress: progress(0.8) };
+  // Candy corn commits its direction at the start of its 0.55 s wind-up.
+  if (enemy.def.dash) return {
+    kind: 'dash', radius: enemy.r + 0.65, progress: progress(0.55), ...direction(enemy.dirX, enemy.dirZ),
+  };
+  if (enemy.boss && enemy.def.attack === 'charge') {
+    // The donut chooses a final direction only when its 0.9 s wind-up ends.
+    // Its visible arrows therefore track the current target, rather than promising a path.
+    const target = enemy.target;
+    return {
+      kind: 'charge', radius: enemy.r + 0.8, progress: progress(0.9),
+      ...direction(target ? target.x - enemy.x : 0, target ? target.z - enemy.z : 0),
+    };
+  }
+  return undefined;
+}
+
+/** A subtle seamless hand-painted grain. The existing island's vertex colours still supply grass and sand. */
+function meadowTexture() {
+  const size = 128, data = new Uint8Array(size * size * 4), turn = Math.PI * 2;
+  let seed = 0x713abe;
+  const next = () => ((seed = (Math.imul(seed, 1664525) + 1013904223) >>> 0) / 4294967296);
+  const grain = new Float32Array(size * size);
+  for (let y = 0; y < size; y++) for (let x = 0; x < size; x++) {
+    // Periodic broad washes wrap at every tile edge; fine grain does not form a grid.
+    const wash = Math.sin(turn*x/size*3 + Math.cos(turn*y/size*2)) *
+      Math.cos(turn*y/size*4 - Math.sin(turn*x/size*2));
+    grain[y*size+x] = 240 + wash*6 + next()*9;
+  }
+  // Seeded small grass-like strokes are softly edged, and wrap cleanly over seams.
+  for (let i = 0; i < 96; i++) {
+    const x = Math.floor(next()*size), y = Math.floor(next()*size), angle = next()*turn;
+    const length = 2 + Math.floor(next()*4), dx = Math.cos(angle), dy = Math.sin(angle);
+    for (let j = 0; j < length; j++) {
+      const strength = Math.sin(Math.PI*(j+0.5)/length) * (5+next()*7);
+      const px = (Math.round(x+dx*j)+size)%size, py = (Math.round(y+dy*j)+size)%size;
+      grain[py*size+px] -= strength;
+      grain[py*size+(px+1)%size] -= strength*.32;
+    }
+  }
+  for (let i=0;i<grain.length;i++) {
+    const c = Math.max(219, Math.min(255, Math.round(grain[i])));
+    data.set([c,c,c,255],i*4);
+  }
+  return new Texture3D({width:size,height:size,data}, {
+    name:'Island meadow grain',wrapS:'repeat',wrapT:'repeat',mipmaps:true,anisotropy:4,
+  });
+}
+
+/** A curved, closed frond with a raised ridge instead of a flat conical leaf. */
+function curvedFrond(steps=6) {
+  const positions=[],indices=[];
+  for(let i=0;i<=steps;i++) {
+    const t=i/steps,z=2.18*t,y=.42*Math.sin(Math.PI*t)-.35*t*t;
+    const width=.016+.29*Math.pow(Math.sin(Math.PI*t),.8),ridge=.02+.09*Math.sin(Math.PI*t);
+    positions.push(-width,y,z,0,y+ridge,z,width,y,z,0,y-ridge*.38,z);
+  }
+  for(let i=0;i<steps;i++) for(let side=0;side<4;side++) {
+    const a=i*4+side,b=i*4+(side+1)%4,c=a+4,d=b+4;
+    indices.push(a,c,b,b,c,d);
+  }
+  return createGeometry3D({positions,indices});
+}
+
+/** A white candy-star texture; the native emitter still supplies its tint and lifetime. */
+function sparkleTexture() {
+  const size=48,data=new Uint8Array(size*size*4);
+  for(let y=0;y<size;y++)for(let x=0;x<size;x++) {
+    const dx=(x-(size-1)/2)/(size/2),dy=(y-(size-1)/2)/(size/2);
+    const angle=Math.atan2(dy,dx),radius=Math.hypot(dx,dy);
+    const outline=.18+.64*Math.pow(Math.abs(Math.cos(angle*2)),7);
+    const point=clamp01((outline-radius)*11),halo=Math.max(0,1-radius/.9)*.17;
+    data.set([255,255,255,Math.round(255*Math.max(point,halo))],(y*size+x)*4);
+  }
+  return new Texture3D({width:size,height:size,data},{name:'Candy star'});
+}
+
 /**
  * Fill `scene` with the island and everything that moves on it. Options:
  * `jelly` (see-through pandas), `shadowSize`, `reflect` and `reflectionSize`.
@@ -220,21 +313,22 @@ export function createView(scene, options = {}) {
   const view = { pandas: [], bossNodes: new Map(), rings: [], time: 0, shake: 0, freeze: 0, jelly };
 
   // ---- sky, light, island, sea -------------------------------------------------------
-  const sky = createGradientCubeTexture3D([60, 140, 250], [185, 225, 255], [70, 170, 150], 64);
+  const sky = createGradientCubeTexture3D([57, 135, 247], [210, 235, 255], [73, 187, 169], 64);
   scene.background = sky;
   scene.environment = sky;
-  scene.environmentIntensity = 0.45;
-  scene.fog = { kind: 'linear', color: [0.5, 0.75, 1], near: 90, far: 260 };
-  scene.addChild(createHemisphereLight3D({ color: 0xcfe8ff, groundColor: 0x6fae6a, intensity: 0.5 }));
-  scene.addChild(createAmbientLight3D({ intensity: 0.06 }));
-  const sun = createDirectionalLight3D({ color: 0xfff3d8, intensity: 1.5, castShadow: true });
+  scene.environmentIntensity = 0.52;
+  scene.fog = { kind: 'linear', color: [0.54, 0.77, 1], near: 84, far: 260 };
+  scene.addChild(createHemisphereLight3D({ color: 0xd7ebff, groundColor: 0x82b86c, intensity: 0.6 }));
+  scene.addChild(createAmbientLight3D({ intensity: 0.075 }));
+  const sun = createDirectionalLight3D({ color: 0xffefd3, intensity: 1.58, castShadow: true });
   sun.setPosition(22, 34, 14).lookAt(0, 0, 0);
   Object.assign(sun.shadow, { cascades: 2, cascadeDistance: 48, mapSize: options.shadowSize ?? 2048 });
   scene.addChild(sun);
 
   /** Add the island mesh; the same geometry is the collision shape in the simulation. */
+  const meadow = meadowTexture();
   view.attachIsland = (geometry) => {
-    const island = new Mesh3D(geometry, createStandardMaterial3D({ color: 0xffffff, vertexColors: true, roughness: 0.95 }));
+    const island = new Mesh3D(geometry, createStandardMaterial3D({ color: 0xffffff, map:meadow, vertexColors: true, roughness: 0.9 }));
     island.receiveShadow = true;
     scene.addChild(island);
   };
@@ -243,20 +337,27 @@ export function createView(scene, options = {}) {
     width: 520,
     depth: 520,
     segments: 104,
-    color: 0x2f9fe6,
+    color: 0x39b7df,
+    deepColor: 0x1765ad,
+    depthFade: 5.5,
+    foamWidth: 0.67,
+    caustics: 0.5,
+    rippleStrength: 0.16,
     amplitude: 0.1,
-    wavelength: 9,
-    clarity: 0.75,
+    wavelength: 10,
+    clarity: 0.78,
     reflectionSize: options.reflectionSize ?? 512,
   });
   const mirror = sea.reflection?.texture;
   if (sea.reflection) {
     // The mirror image is small and rippled: it needs neither shadows nor the island's small details.
+    sea.reflection.interval = 2;
     sea.reflection.shadows = false;
     sea.reflection.layerMask = ~DETAIL;
   }
   sea.setPosition(0, ISLAND.sea, 0);
   scene.addChild(sea);
+  view.water = sea;
   view.reflect = true;
   /** Turn the water's mirror image on or off. */
   view.setReflect = (on) => {
@@ -264,6 +365,7 @@ export function createView(scene, options = {}) {
     view.reflect = on;
     sea.material.reflectionMap = on ? mirror : undefined;
     sea.material.touch();
+    if(on)sea.reflection?.invalidate();
   };
   /** Draw the mirror image the water shows; call before the main view is drawn. */
   view.renderReflection = (renderer, camera, preparePanda = false) => {
@@ -290,6 +392,7 @@ export function createView(scene, options = {}) {
     }
     try {
       for (const mesh of samples.values()) scene.addChild(mesh);
+      sea.reflection?.invalidate();
       sea.renderReflection(renderer, scene, camera);
     } finally {
       for (const mesh of samples.values()) mesh.removeFromParent();
@@ -300,34 +403,63 @@ export function createView(scene, options = {}) {
   seaBed.setPosition(0, -4.6, 0);
   scene.addChild(seaBed);
 
-  // Palms, bamboo and toy blocks along the shore, each kind drawn in one call.
-  const palmShape = buildShape([
-    [cylinder, [0, 1.6, 0], [0.16, 3.2, 0.16], [0.62, 0.45, 0.28]],
-    ...[0, 1, 2, 3, 4, 5].map((i) => [
-      cone,
-      [Math.cos(i * 1.05) * 0.9, 3.25, Math.sin(i * 1.05) * 0.9],
-      [0.32, 2, 0.12],
-      [0.2, 0.72, 0.3],
-      [Math.sin(i * 1.05) * 1.25, 0, -Math.cos(i * 1.05) * 1.25],
+  // Bent palms, ringed bamboo, and stamped toy blocks are still one instanced draw per kind.
+  const frond = curvedFrond(), bambooFrond=curvedFrond(4);
+  const trunkCylinder=createCylinderGeometry3D({radiusTop:1,radiusBottom:1,height:1,radialSegments:8});
+  const bambooCylinder=createCylinderGeometry3D({radiusTop:1,radiusBottom:1,height:1,radialSegments:6});
+  // A thin embossed hexagonal inlay is enough at these shore landmarks; no sphere per pip.
+  const stampPoints=[0,0,0],stampIndices=[];
+  for(let i=0;i<6;i++){const a=i*Math.PI/3;stampPoints.push(Math.cos(a),Math.sin(a),0);stampIndices.push(0,i+1,1+(i+1)%6);}
+  const toyStamp=createGeometry3D({positions:stampPoints,indices:stampIndices});
+  const trunk = [];
+  const trunkPoint = (i) => [0.38*(i/5)**2, i*.66, .1*Math.sin(i*.48)];
+  for (let i=0;i<5;i++) {
+    const a=trunkPoint(i),b=trunkPoint(i+1),dx=b[0]-a[0],dy=b[1]-a[1],dz=b[2]-a[2];
+    const radius=.19-.012*i,mid=a.map((v,k)=>(v+b[k])/2);
+    trunk.push([trunkCylinder,mid,[radius,Math.hypot(dx,dy,dz)+.035,radius],[.62+i*.027,.39+i*.025,.22+i*.019],
+      [Math.atan2(dz,dy),0,-Math.atan2(dx,dy)]]);
+    if(i>0)trunk.push([trunkCylinder,a,[radius*1.09,.042,radius*1.09],[.77,.55,.32]]);
+  }
+  const crown=trunkPoint(5),greens=[[.15,.58,.29],[.25,.74,.33],[.39,.85,.42],[.2,.68,.35]];
+  const palmShape=buildShape([
+    ...trunk,
+    ...Array.from({length:8},(_,i)=>[
+      frond,[crown[0],crown[1]+.04+(i%2)*.16,crown[2]],i%2? [.86,.88,.88]:[1.05,1,1.07],greens[i%greens.length],
+      [i%2?-.25:.03,i*Math.PI/4,Math.sin(i*1.6)*.08],
     ]),
-    [sphere, [0.2, 3.05, 0.1], 0.2, [0.5, 0.32, 0.16]],
+    ...Array.from({length:3},(_,i)=>[
+      petal,[crown[0]+Math.cos(i*2.09)*.2,crown[1]-.16,crown[2]+Math.sin(i*2.09)*.2],
+      [.17,.2,.17],[.47,.31,.16],
+    ]),
   ]);
-  const bambooShape = buildShape(
-    [0, 1, 2, 3, 4].flatMap((i) => {
-      const x = Math.cos(i * 2.4) * 0.35,
-        z = Math.sin(i * 2.4) * 0.35,
-        h = 2.4 + (i % 3) * 0.7;
-      return [
-        [cylinder, [x, h / 2, z], [0.07, h, 0.07], [0.45, 0.78, 0.3]],
-        [cone, [x + 0.2, h * 0.8, z], [0.08, 0.7, 0.2], [0.3, 0.68, 0.25], [0, i, 1.2]],
-        [cone, [x - 0.2, h * 0.62, z], [0.08, 0.6, 0.2], [0.3, 0.68, 0.25], [0, i, -1.2]],
-      ];
-    }),
+  const bambooShape=buildShape(
+    [0,1,2,3,4].flatMap((i)=>{
+      const x=Math.cos(i*2.4)*.35,z=Math.sin(i*2.4)*.35,h=2.4+(i%3)*.7,r=.075;
+      const stalk=[[bambooCylinder,[x,h/2,z],[r,h,r],[.37+i*.035,.66+i*.035,.22]]];
+      for(let j=1;j<=4;j++)stalk.push([bambooCylinder,[x,h*j/5,z],[r*1.18,.055,r*1.18],[.46,.81,.31]]);
+      for(let j=0;j<3;j++)stalk.push([
+        bambooFrond,[x,h*(.59+j*.14),z],[.28,.31,.32+j*.05],[.24,.68+.06*j,.27],
+        [-.22+j*.14,i*2.1+j*2.15,0],
+      ]);
+      return stalk;
+    })
   );
-  const blockShape = buildShape([
-    [box, [0, 0.5, 0], [1, 1, 1], WHITE],
-    [box, [0, 1.3, 0], [0.6, 0.6, 0.6], [1, 0.9, 0.6]],
+  const blockShape=buildShape([
+    [box,[0,.5,0],[1,1,1],WHITE],
+    [box,[0,.91,0],[1.03,.10,1.03],[.93,.93,.96]],
+    [box,[0,.08,0],[1.03,.12,1.03],[.72,.68,.82]],
+    [box,[0,1.27,0],[.66,.57,.66],[1,.88,.62]],
+    [trunkCylinder,[0,1.595,0],[.20,.10,.20],WHITE],
+    // Raised toy studs on all four sides, in the familiar die pattern.
+    ...[0,1,2,3].flatMap((side)=> {
+      const a=side*Math.PI/2,nx=Math.sin(a),nz=Math.cos(a),rx=Math.cos(a),rz=-Math.sin(a);
+      return [[-.22,.34],[0,.52],[.22,.70]].map(([u,y])=>[
+        toyStamp,[nx*.509+rx*u,y,nz*.509+rz*u],.087,
+        [.97,.96,.82],[0,a,0],
+      ]);
+    }),
   ]);
+
   /** Scatter `count` copies of a shape; `place(i)` returns [x, z, size, turn]. */
   const wind = createWind();
   const decor = (shape, count, place, tint, sway) => {
@@ -560,6 +692,59 @@ export function createView(scene, options = {}) {
     scene.addChild(mesh);
     return mesh;
   };
+  // Wind-up feedback is a bounded pair of native instanced draws. Dashes
+  // point in the current announced direction; the dashed bomb edge is the
+  // rule's exact horizontal radius. Each segment samples the real island.
+  const warningLimit=18, warningSegments=16, warningCues=[];
+  const warningMaterial=createUnlitMaterial3D({color:0xffffff,opacity:.86,alphaMode:'blend',depthWrite:false,side:'double'});
+  const warningQuad=createGeometry3D({
+    positions:[-.5,0,-.5,-.5,0,.5,.5,0,.5,.5,0,-.5],
+    normals:[0,1,0,0,1,0,0,1,0,0,1,0],uvs:[0,0,0,1,1,1,1,0],indices:[0,1,2,0,2,3],
+  });
+  // A floating chevron, oriented along +Z in its own geometry.
+  const arrowShape=createGeometry3D({
+    positions:[-.64,0,-.48,0,0,.55,.64,0,-.48,.28,0,-.48,0,0,.02,-.28,0,-.48],
+    normals:Array.from({length:6},()=>[0,1,0]).flat(),uvs:[0,0,.5,1,1,0,.72,0,.5,.5,.28,0],
+    indices:[0,1,4,0,4,5,1,2,3,1,3,4],
+  });
+  const warningRings=instanced(warningQuad,warningMaterial,warningLimit*warningSegments);
+  const warningArrows=instanced(arrowShape,warningMaterial,warningLimit*3);
+  warningRings.name='Candy wind-up rings';warningArrows.name='Candy wind-up direction';
+  view.telegraphs={rings:warningRings,arrows:warningArrows};
+  function warningColor(mesh,i,kind,lit) {
+    if(kind==='bomb')mesh.setColorAt(i,1,lit?.42:.055,lit?.1:.025);
+    else if(kind==='hop')mesh.setColorAt(i,.98,lit?.42:.19,.06);
+    else mesh.setColorAt(i,1,lit?.72:.23,lit?.16:.045);
+  }
+  function showWarnings() {
+    warningCues.sort((a,b)=>Number(!!b.enemy.boss)-Number(!!a.enemy.boss)||a.distance-b.distance);
+    let rings=0,arrows=0;
+    for(let c=0;c<Math.min(warningLimit,warningCues.length);c++){
+      const {enemy,cue}=warningCues[c],radius=cue.radius,large=cue.kind==='hop';
+      const length=radius*2*Math.sin(Math.PI/warningSegments)*.79;
+      for(let i=0;i<warningSegments;i++){
+        const angle=i*Math.PI*2/warningSegments;
+        position[0]=enemy.x+Math.cos(angle)*radius;
+        position[2]=enemy.z+Math.sin(angle)*radius;
+        position[1]=Math.max(groundHeight(position[0],position[2]),ISLAND.sea)+.18;
+        scale[0]=length;scale[1]=1;scale[2]=large?.24:cue.kind==='bomb'?.17:.13;
+        warningRings.setTransformAt(rings,position,yawQuat(-angle-Math.PI/2),scale);
+        warningColor(warningRings,rings++,cue.kind,(i+.5)/warningSegments<=cue.progress);
+      }
+      if(cue.dx||cue.dz)for(let i=0;i<3;i++){
+        const reach=enemy.r+.85+i*(cue.kind==='charge'?1.55:.9);
+        position[0]=enemy.x+cue.dx*reach;position[2]=enemy.z+cue.dz*reach;
+        const ground=groundHeight(position[0],position[2]);
+        if(ground<ISLAND.sea-.2)continue;
+        position[1]=Math.max(ground,ISLAND.sea)+.2;
+        scale[0]=scale[2]=cue.kind==='charge'?1.45:.8;scale[1]=1;
+        warningArrows.setTransformAt(arrows,position,yawQuat(Math.atan2(cue.dx,cue.dz)),scale);
+        warningColor(warningArrows,arrows++,cue.kind,(i+1)/3<=cue.progress);
+      }
+    }
+    warningRings.count=rings;warningArrows.count=arrows;
+  }
+
   const glossy = createStandardMaterial3D({ color: 0xffffff, vertexColors: true, roughness: 0.3 });
   const crowns = instanced(
     crownShape,
@@ -754,6 +939,7 @@ export function createView(scene, options = {}) {
     }),
   );
   const stars = emitter({
+    map: sparkleTexture(),
     startColor: 0xffffff,
     endColor: 0xfff1a8,
     blending: 'additive',
@@ -819,6 +1005,10 @@ export function createView(scene, options = {}) {
     trail.opacity = 0;
     trail.push(0, 1, 0);
     trail.push(0.25, 1, 0);
+    // Exercise the same native instanced unlit warning stream on a zero-area title sample.
+    warningRings.setTransformAt(0,[0,0,0],IDENTITY,0);
+    warningArrows.setTransformAt(0,[0,0,0],IDENTITY,0);
+    warningRings.count=warningArrows.count=1;
     return () => {
       ringMesh.visible = false;
       ringMesh.frustumCulled = frustumCulled;
@@ -830,6 +1020,7 @@ export function createView(scene, options = {}) {
       trail.visible = false;
       trail.clear();
       trail.opacity = trailOpacity;
+      warningRings.count=warningArrows.count=0;
     };
   };
   const TRAIL = Object.fromEntries(
@@ -876,11 +1067,29 @@ export function createView(scene, options = {}) {
   ]);
 
   // ---- per-game objects --------------------------------------------------------------------------
-  const gameNodes = [];
+  const gameNodes = [], propNodes=[];
+  let previewMode=false;
+  // Only title preview art is hidden; physics bodies and normal round props are unchanged.
+  view.setPreview=(on)=>{
+    on=!!on;if(previewMode===on)return;previewMode=on;
+    for(const node of propNodes)node.visible=!previewMode;
+    sea.reflection?.invalidate();
+  };
   /** Build the pandas and props of a new game, dropping those of the previous one. */
   view.attach = (game) => {
     for (const node of gameNodes) node.removeFromParent();
-    gameNodes.length = 0;
+    gameNodes.length = 0;propNodes.length=0;
+    // The title may not advance any time (reduced motion). Release old round
+    // effects now, rather than relying on age-based visibility next frame.
+    trailOf.clear();
+    for(const entry of trails){
+      entry.owner=undefined;entry.seen=false;entry.trail.clear();entry.trail.visible=false;
+    }
+    for(const slot of view.rings){slot.t=slot.life;slot.mesh.visible=false;slot.mesh.material.opacity=0;}
+    for(const emitter of [...confetti,dust,spray,sparks,...goo,stars])emitter.reset();
+    warningCues.length=0;
+    warningRings.count=warningArrows.count=0;
+    view.freeze=view.shake=0;
     view.pandas.length = 0;
     for (const node of view.bossNodes.values()) node.removeFromParent();
     view.bossNodes.clear();
@@ -897,9 +1106,11 @@ export function createView(scene, options = {}) {
       if (prop.kind === 'ball') mesh.setScale(prop.r);
       mesh.castShadow = true;
       scene.addChild(mesh);
-      gameNodes.push(mesh);
+      gameNodes.push(mesh);propNodes.push(mesh);
+      mesh.visible=!previewMode;
       prop.body.node = mesh;
     }
+    sea.reflection?.invalidate();
   };
 
   const GEM_COLORS = [
@@ -963,13 +1174,24 @@ export function createView(scene, options = {}) {
         scale,
       );
     });
-    game.pandas.forEach((panda, index) => view.pandas[index]?.update(dt, panda, time));
+    game.pandas.forEach((panda, index) => {
+      const model=view.pandas[index];
+      if(!model)return;
+      model.update(dt,panda,time);
+      // The still title fixture never advances its spawn/drop physics. Seat the
+      // preview rig on the floor instead of displaying the initial spawn offset.
+      if(previewMode)model.node.setPosition(panda.x,groundHeight(panda.x,panda.z),panda.z);
+    });
 
     // The horde: hop along, tumble in the air, flash white when hit.
     for (const kind of horde) kind.mesh.count = 0;
     let crownCount = 0;
+    warningCues.length=0;
+    const watched=game.pandas.find(p=>p.human)??game.pandas[0];
     for (const e of game.enemies) {
       if (e.dead) continue;
+      const cue=describeHazardCue(e);
+      if(cue)warningCues.push({enemy:e,cue,distance:(e.x-watched.x)**2+(e.z-watched.z)**2});
       if (e.boss) {
         drawBoss(e, time);
         continue;
@@ -1012,6 +1234,7 @@ export function createView(scene, options = {}) {
       }
     }
     crowns.count = crownCount;
+    showWarnings();
     for (const [enemy, node] of view.bossNodes)
       if (enemy.dead) {
         node.removeFromParent();
@@ -1265,10 +1488,13 @@ export function createView(scene, options = {}) {
           }
           break;
         case 'slam':
-          ring(x, y, z, event.radius, 0.45, [1, 1, 1]);
-          ring(x, y, z, event.radius * 0.6, 0.3, [1, 0.95, 0.6], 0.2);
+          {
+            const tint=view.pandas[event.panda]?.tint??[1,.8,.5];
+            ring(x,y,z,event.radius,.45,tint.map(c=>.32+c*.68));
+            ring(x,y,z,event.radius*.6,.3,[1,.95,.6],.2);
+          }
           burst(dust, x, y + 0.2, z, 30, event.radius * 0.5);
-          burst(stars, x, y + 0.3, z, 14, event.radius * 0.3);
+          burst(stars, x, y + 0.3, z, 18, event.radius * 0.3);
           view.shake = Math.max(view.shake, 0.6);
           view.freeze = Math.max(view.freeze, 0.07);
           view.pandas[event.panda]?.land(event.fall, true);
@@ -1354,7 +1580,7 @@ export function createView(scene, options = {}) {
           burst(sparks, x, y, z, 30, 1);
           break;
         case 'telegraph':
-          ring(x, y, z, 1, 0.8, [1, 0.2, 0.2], 6);
+          // The state-following native warning above replaces the old unrelated shrinking ring.
           break;
         case 'won':
           party(x, y + 2, z, 400);

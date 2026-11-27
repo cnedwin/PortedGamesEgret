@@ -331,12 +331,12 @@ export const GAMES = [
     features: [
       {
         title: { zh: "果冻形变", en: "Jelly deformation" },
-        description: { zh: "Jelly3D 表现跳跃、落地和撞击时的挤压回弹。", en: "Jelly3D adds squash and rebound to jumps, landings and impacts." },
+        description: { zh: "Jelly3D 与原生 PBR 透射、清漆材质表现果冻光泽、蓄力、跳跃和撞击时的挤压回弹。", en: "Jelly3D, PBR transmission and clearcoat combine glossy gummy surfaces with charged jump, landing and impact squash." },
         source: 'src/panda.mjs',
       },
       {
         title: { zh: "实例化与粒子", en: "Instancing and particles" },
-        description: { zh: "成群敌人和攻击演出采用实例网格与 3D 粒子。", en: "Crowds and attacks use instanced meshes and 3D particles." },
+        description: { zh: "成群敌人、真实范围与方向预警、攻击演出采用实例网格与 3D 粒子。", en: "Crowds, rule-linked hazard telegraphs and attacks use instanced meshes and 3D particles." },
         source: 'src/view.mjs',
       },
       {

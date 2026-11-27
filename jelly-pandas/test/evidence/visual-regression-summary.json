@@ -1,0 +1,374 @@
+{
+  "environment": "Chrome for Testing 157.0.8103.6, ANGLE Vulkan SwiftShader; desktop and touch viewports simulated, not hardware evidence",
+  "changes": [
+    "The first screenshot baselines changed deliberately because the title rig now stands on terrain with preview props hidden, and the island/sea/lighting art is updated. Previous UI-stage hashes and before/after evidence are preserved. Screenshot tolerance and limit were not changed.",
+    "A real outgoing rolling trail was captured, paused while still alive, and checked against the actual scene pool after Restart and return to Title. No direct rule-state or damage edits.",
+    "Portrait boss/party separation was checked using the actual read-only semantic rectangles, which the native interactive-control reporter does not flag."
+  ],
+  "acceptance": {
+    "candidates": {
+      "total": 161,
+      "passed": 161,
+      "problems": 0
+    },
+    "repeat": {
+      "total": 163,
+      "passed": 163,
+      "problems": 0
+    },
+    "goldenDiffs": [
+      "title screenshot 0.09% differs",
+      "end screenshot 0.13% differs"
+    ],
+    "candidateBaselines": {
+      "title.png": {
+        "uiStage": "80d097b4dbfd75e8aeba7bb67d6a1be79b4f517a77b7480299ee5361b315ecab",
+        "qualityStage": "26a80a23be5162a0c7ba32b8d0e755e6219353b824a5689a5041004cf4c94cc8"
+      },
+      "end.png": {
+        "uiStage": "18deac07152f23f7edb8fc4e3585968fc4b2418fabc6ec1bc00079222f2e4201",
+        "qualityStage": "b08730597c6c0e23bf2b4a8fbf1ce4e28d980eea4b8aae8860ad8b2b1df33680"
+      }
+    }
+  },
+  "visualRegression": {
+    "total": 40,
+    "passed": 40,
+    "problems": 0,
+    "targeted": {
+      "landscape-title": {
+        "mode": "title",
+        "t": 0,
+        "ground": 0.16468513011932373,
+        "rigY": [
+          0.16468513011932373
+        ],
+        "props": 12,
+        "hiddenProps": 12,
+        "trails": [],
+        "warnings": [
+          {
+            "name": "Candy wind-up rings",
+            "count": 0
+          },
+          {
+            "name": "Candy wind-up direction",
+            "count": 0
+          }
+        ]
+      },
+      "live-roll-before-restart": {
+        "mode": "play",
+        "t": 0.3583000000000002,
+        "ground": 0.28914376178454304,
+        "rigY": [
+          0.30051305890083313
+        ],
+        "props": 12,
+        "hiddenProps": 0,
+        "trails": [
+          {
+            "points": 6,
+            "visible": true
+          }
+        ],
+        "warnings": [
+          {
+            "name": "Candy wind-up rings",
+            "count": 0
+          },
+          {
+            "name": "Candy wind-up direction",
+            "count": 0
+          }
+        ]
+      },
+      "restarted": {
+        "mode": "play",
+        "t": 0.1542000000000009,
+        "ground": 0.1642181030983188,
+        "rigY": [
+          0.17623266577720642
+        ],
+        "props": 12,
+        "hiddenProps": 0,
+        "trails": [
+          {
+            "points": 0,
+            "visible": false
+          }
+        ],
+        "warnings": [
+          {
+            "name": "Candy wind-up rings",
+            "count": 0
+          },
+          {
+            "name": "Candy wind-up direction",
+            "count": 0
+          }
+        ]
+      },
+      "live-roll-before-title": {
+        "mode": "play",
+        "t": 0.4084000000000017,
+        "ground": 0.17473733649250736,
+        "rigY": [
+          0.18679094314575195
+        ],
+        "props": 12,
+        "hiddenProps": 0,
+        "trails": [
+          {
+            "points": 2,
+            "visible": true
+          }
+        ],
+        "warnings": [
+          {
+            "name": "Candy wind-up rings",
+            "count": 0
+          },
+          {
+            "name": "Candy wind-up direction",
+            "count": 0
+          }
+        ]
+      },
+      "landscape-returned-title": {
+        "mode": "title",
+        "t": 0,
+        "ground": 0.16468513011932373,
+        "rigY": [
+          0.16468513011932373
+        ],
+        "props": 12,
+        "hiddenProps": 12,
+        "trails": [
+          {
+            "points": 0,
+            "visible": false
+          }
+        ],
+        "warnings": [
+          {
+            "name": "Candy wind-up rings",
+            "count": 0
+          },
+          {
+            "name": "Candy wind-up direction",
+            "count": 0
+          }
+        ]
+      },
+      "phone-title": {
+        "mode": "title",
+        "t": 0,
+        "ground": 0.16468513011932373,
+        "rigY": [
+          0.16468513011932373
+        ],
+        "props": 12,
+        "hiddenProps": 12,
+        "trails": [],
+        "warnings": [
+          {
+            "name": "Candy wind-up rings",
+            "count": 0
+          },
+          {
+            "name": "Candy wind-up direction",
+            "count": 0
+          }
+        ]
+      },
+      "phone-selected-title": {
+        "mode": "title",
+        "t": 0,
+        "ground": 0.16468513011932373,
+        "rigY": [
+          0.16468513011932373
+        ],
+        "props": 12,
+        "hiddenProps": 12,
+        "trails": [],
+        "warnings": [
+          {
+            "name": "Candy wind-up rings",
+            "count": 0
+          },
+          {
+            "name": "Candy wind-up direction",
+            "count": 0
+          }
+        ]
+      },
+      "boss-768x1024": {
+        "firstBoss": "pudding",
+        "time": 300.0000000000558,
+        "geometry": {
+          "boss": {
+            "x": 165.28,
+            "y": 67,
+            "width": 283.44000000000005,
+            "height": 32.5
+          },
+          "party": [
+            {
+              "id": "jelly-party-0",
+              "bounds": {
+                "x": 7.4,
+                "y": 107.4,
+                "width": 181.2,
+                "height": 39.19999999999999
+              },
+              "overlap": {
+                "w": 23.319999999999993,
+                "h": 0
+              }
+            }
+          ]
+        }
+      },
+      "warning-768x1024": {
+        "cue": {
+          "kind": "hop",
+          "radius": 7.5,
+          "progress": 0
+        },
+        "time": 303.5299333333861,
+        "steps": 200,
+        "warningMeshes": [
+          {
+            "name": "Candy wind-up rings",
+            "count": 16
+          },
+          {
+            "name": "Candy wind-up direction",
+            "count": 0
+          }
+        ]
+      },
+      "boss-884x1104": {
+        "firstBoss": "pudding",
+        "time": 300.0000000000558,
+        "geometry": {
+          "boss": {
+            "x": 190.39,
+            "y": 67,
+            "width": 326.22,
+            "height": 32.5
+          },
+          "party": [
+            {
+              "id": "jelly-party-0",
+              "bounds": {
+                "x": 7.4,
+                "y": 107.4,
+                "width": 181.2,
+                "height": 39.19999999999999
+              },
+              "overlap": {
+                "w": 0,
+                "h": 0
+              }
+            }
+          ]
+        }
+      },
+      "warning-884x1104": {
+        "cue": {
+          "kind": "hop",
+          "radius": 7.5,
+          "progress": 0
+        },
+        "time": 303.5298666667195,
+        "steps": 199,
+        "warningMeshes": [
+          {
+            "name": "Candy wind-up rings",
+            "count": 16
+          },
+          {
+            "name": "Candy wind-up direction",
+            "count": 0
+          }
+        ]
+      }
+    },
+    "failures": []
+  },
+  "warningEvidence": {
+    "fixture": {
+      "t": 303.9919333333856,
+      "n": 236,
+      "player": [
+        4.948061707466906,
+        23.672775021329052
+      ],
+      "boss": [
+        19.89242053179132,
+        30.530328257786948
+      ],
+      "cue": {
+        "kind": "hop",
+        "radius": 7.5,
+        "progress": 0.42424242424242414
+      },
+      "camera": {
+        "yaw": -2.0010039678361506,
+        "pitch": 0.85,
+        "distance": 20
+      }
+    },
+    "shots": [
+      {
+        "t": 304.32390533338594,
+        "boss": [
+          19.896188004128227,
+          30.61342263327642
+        ],
+        "clip": [
+          -0.03592514991760254,
+          0.6770429015159607,
+          0.9831676483154297
+        ],
+        "ringCount": 16
+      },
+      {
+        "t": 304.33650533338596,
+        "boss": [
+          19.896188004128227,
+          30.61549594025147
+        ],
+        "clip": [
+          -0.03843360021710396,
+          0.6779283881187439,
+          0.9831816554069519
+        ],
+        "ringCount": 16
+      },
+      {
+        "t": 304.349105333386,
+        "boss": [
+          19.896188004128227,
+          30.61549594025147
+        ],
+        "clip": [
+          -0.041222866624593735,
+          0.6789641380310059,
+          0.9831960201263428
+        ],
+        "ringCount": 16
+      }
+    ],
+    "note": "Actual first Boss leap, camera angle/zoom adjusted only for inspection. The visible lower-right native orange warning ring/directional arrows in quality-warning.jpg are actual wind-up art; the specific Boss leap cue and ring-instance count were separately read from the live game. No claim that the full Boss ring is visible in every frame.",
+    "errors": []
+  },
+  "evidence": [
+    "quality-before-after-844.jpg",
+    "quality-portrait-hud.jpg",
+    "quality-lifecycle.jpg",
+    "quality-warning.jpg"
+  ]
+}
