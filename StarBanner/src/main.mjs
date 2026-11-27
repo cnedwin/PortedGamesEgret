@@ -15,10 +15,13 @@ import { MAPS } from './sim/maps.mjs';
 import { campaignChapter, campaignSetup } from './sim/campaign.mjs';
 import { cloneGame } from './sim/rules.mjs';
 import { loadProblems } from './view/assets.mjs';
+import { createInterfaceHost } from './ui/host.mjs';
+import { createKit } from './ui/kit.mjs';
 
 const params = new URLSearchParams(location.search);
 const canvas = document.querySelector('#stage');
-const ui = document.querySelector('#ui');
+const systemReduced = () => getComputedStyle(document.documentElement).getPropertyValue('--reduce-motion').trim()==='1';
+const startup={module:performance.now()};
 
 // ---- the save ----
 const problems = [];
@@ -35,12 +38,12 @@ showLanguage();
 const quiet = { play() {}, music() {}, setSound() {}, setMusic() {} };
 const app = {
   stage: null,
-  ui,
+  ui: null,
   canvas,
   settings,
   sound: quiet,
-  touch: params.has('touch') || matchMedia('(pointer: coarse)').matches,
-  reducedMotion: settings.reducedMotion || matchMedia('(prefers-reduced-motion: reduce)').matches,
+  touch: params.has('touch') || navigator.maxTouchPoints>0,
+  reducedMotion: settings.reducedMotion || systemReduced(),
   notice: problems.some((k) => k !== 'write-failed') ? t('saveReset') : null,
   library: null,
   battle: null,
@@ -51,15 +54,16 @@ const app = {
     if (!kept) app.notice = t('saveRefused');
     if (key === 'sound') app.sound.setSound(value);
     if (key === 'music') app.sound.setMusic(value);
-    if (key === 'reducedMotion') app.reducedMotion = value || matchMedia('(prefers-reduced-motion: reduce)').matches;
+    if (key === 'reducedMotion') app.reducedMotion = value || systemReduced();
   },
   switchLanguage() {
     setLanguage(getLanguage() === 'zh' ? 'en' : 'zh');
     app.setSetting('language', getLanguage());
     showLanguage();
-    // A battle keeps going with its interface redrawn; the title is drawn again in the new language.
-    if (app.battle && !app.battle.attract) return app.battle.relabel();
-    app.screens.title();
+    // Preserve the battle, screen stack and active dialog during a language change.
+    app.ui.overlay.canvas.setAttribute('aria-label',t('canvas'));
+    if (app.battle && !app.battle.attract) app.battle.relabel();
+    return app.screens.relabel();
   },
   record: () => save.data.record ?? { won: 0, lost: 0 },
   hasBattle: () => battleIsWhole(save.data.battle),
@@ -112,23 +116,32 @@ const app = {
     app.screens.campaign();
   },
   async toTitle() {
-    app.screens.closeAll();
+    await app.screens.closeAll();
     await backdrop();
     app.screens.title();
   }
 };
 
 // ---- the stage ----
-let stage;
+let stage, ui;
 try {
-  stage = await createStage(canvas, { quality: params.get('quality') ?? (settings.quality === 'auto' ? undefined : settings.quality), backend: params.get('backend') ?? 'webgl2' });
+  // Both canvases have independent hosts; prepare the overlay and the 3D scene concurrently.
+  [stage,ui]=await Promise.all([
+    createStage(canvas,{quality:params.get('quality')??(settings.quality==='auto'?undefined:settings.quality),backend:params.get('backend')??'webgl2'}).then(value=>{startup.world=performance.now();return value;}),
+    createInterfaceHost(canvas,{label:t('canvas')}).then(value=>{startup.overlay=performance.now();return value;})
+  ]);
 } catch (cause) {
-  document.querySelector('#loading').textContent = t('fatal', { why: cause?.message ?? cause });
+  const error=document.querySelector('#fatal');error.textContent=t('fatal',{why:cause?.message??cause});error.hidden=false;
   throw cause;
 }
 stage.canvas = canvas;
 app.stage = stage;
+app.ui = ui;
 app.screens = createScreens(ui, app);
+const loading = createKit(ui,ui.game.stage,{prefix:'loading'});
+const loadingNote = loading.label({text:t('loading'),x:0,y:0,width:240,height:50,size:20,weight:800,color:0xffffff,align:'center'});
+const placeLoading=()=>{const {safe,unit}=ui.metrics();loadingNote.setRect({x:safe.x+(safe.width-240*unit)/2,y:safe.y+(safe.height-50*unit)/2,width:240*unit,height:50*unit});};
+const stopLoadingLayout=ui.registerLayout(placeLoading);placeLoading();
 
 // Sound starts with the first key or touch, as browsers ask.
 const startSound = async () => {
@@ -150,36 +163,19 @@ let toldProblems = false;
 function tellLoadProblems() {
   if (toldProblems || !loadProblems.count) return;
   toldProblems = true;
-  const box = document.createElement('div');
-  box.className = 'load-error';
-  box.setAttribute('role', 'alert');
-  const words = document.createElement('span');
-  words.textContent = t('loadFailed');
-  const again = document.createElement('button');
-  again.type = 'button';
-  again.className = 'btn primary';
-  again.textContent = t('retry');
-  again.addEventListener('click', () => location.reload());
-  const on = document.createElement('button');
-  on.type = 'button';
-  on.className = 'btn quiet';
-  on.textContent = t('dismiss');
-  on.addEventListener('click', () => box.remove());
-  box.append(words, again, on);
-  ui.append(box);
+  void app.screens.loadFailure(()=>location.reload(),()=>{});
 }
 
 async function play({ setup, saved = null, attract = false }) {
-  app.screens.closeAll();
+  await app.screens.closeAll();
   app.battle?.dispose();
   app.battle = null;
-  ui.classList.toggle('in-battle', !attract);
   const battle = await startBattle(app, { setup, saved, attract });
   battle.attract = attract;
   battle.human = setup.human;
   app.battle = battle;
   if (setup.campaign && !battle.game.over) app.keepBattle({ setup, game: cloneGame(battle.game) });
-  tellLoadProblems();
+  if(!attract)tellLoadProblems();
   return battle;
 }
 
@@ -193,6 +189,7 @@ async function backdrop() {
 // ---- input ----
 const input = createInput(canvas, {
   frame: document.querySelector('#frame'),
+  bridge: ui.overlay.canvas,
   on(command, detail) {
     if (app.screens.open) return void app.screens.command(command, detail);
     if (app.battle && !app.battle.attract) app.battle.command(command, detail);
@@ -206,7 +203,7 @@ const input = createInput(canvas, {
 });
 
 // ---- the frame ----
-const status = { frames: 0 };
+const status = { frames: 0, startup };
 stage.app.show(stage.scene, stage.camera, {
   onUpdate(dt) {
     status.frames++;
@@ -226,15 +223,20 @@ if (straight) {
   await app.startNew({ ...app.lastSetup(), map: straight, ...(params.get('you') ? { you: params.get('you') } : {}), ...(params.get('foe') ? { foe: params.get('foe') } : {}) });
 } else {
   await backdrop();
+  startup.backdrop=performance.now();
   app.screens.title();
+  await ui.ready();
+  tellLoadProblems();
 }
-document.querySelector('#loading')?.remove();
+stopLoadingLayout();loading.dispose();await ui.ready();
+startup.ready=performance.now();
 
 // For tests and for anyone curious, from the console.
 window.egretGame = {
   app,
   status,
   stage,
+  ui,
   get battle() {
     return app.battle;
   },

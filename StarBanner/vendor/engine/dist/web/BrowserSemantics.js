@@ -59,7 +59,8 @@ let containers = 0;
 export function createBrowserSemantics(options) {
     if (options === null || typeof options !== 'object')
         throw new EgretError('UI_SEMANTICS_OPTIONS');
-    const { semantics, canvas: surface, width, height, label, onError } = options;
+    const { semantics, canvas: surface, label, onError } = options;
+    let { width, height } = options;
     if (semantics === null ||
         typeof semantics !== 'object' ||
         typeof semantics.observe !== 'function' ||
@@ -80,7 +81,7 @@ export function createBrowserSemantics(options) {
         throw new EgretError('UI_SEMANTICS_SURFACE_INVALID');
     const projected = new Map(), identities = new WeakMap();
     const pairs = [], restores = [];
-    let closed = false, owned, container, elements = 0, placed = '';
+    let closed = false, owned, container, elements = 0, placed = '', transformed = false;
     function report(cause) {
         if (onError !== undefined)
             onError(cause);
@@ -118,27 +119,43 @@ export function createBrowserSemantics(options) {
         report(cause);
     }
     /** The rectangle of the canvas on the page, refused unless one scale and one offset map it. */
-    function profile() {
+    function profile(allowHidden = false) {
         if (typeof surface.getBoundingClientRect !== 'function' ||
             surface.ownerDocument !== page ||
             surface.isConnected !== true)
             throw new EgretError('UI_SEMANTICS_SURFACE_INVALID');
+        transformed = false;
         let current = surface, depth = 0;
         while (current !== page) {
             if (current === null || current.nodeType !== 1 || ++depth > 64)
                 throw new EgretError('UI_SEMANTICS_SURFACE_INVALID');
             const style = win.getComputedStyle(current), read = (name) => style.getPropertyValue(name).trim();
-            if (['transform', 'perspective', 'translate', 'rotate', 'scale'].some(name => read(name) !== 'none'))
+            if (read('perspective') !== 'none' || read('rotate') !== 'none')
                 throw new EgretError('UI_SEMANTICS_SURFACE_INVALID');
+            const transform = read('transform');
+            const scale = read('scale');
+            if (transform !== 'none') {
+                const matrix = /^matrix\(([^)]*)\)$/.exec(transform)?.[1]?.split(',').map(Number);
+                if (!matrix ||
+                    matrix.length !== 6 ||
+                    !matrix.every(finite) ||
+                    matrix[0] <= 0 ||
+                    matrix[3] <= 0 ||
+                    matrix[1] !== 0 ||
+                    matrix[2] !== 0)
+                    throw new EgretError('UI_SEMANTICS_SURFACE_INVALID');
+            }
+            if (scale !== 'none' && !scale.split(/\s+/).every(part => finite(Number(part)) && Number(part) > 0))
+                throw new EgretError('UI_SEMANTICS_SURFACE_INVALID');
+            transformed ||= transform !== 'none' || scale !== 'none' || read('translate') !== 'none';
             const zoom = read('zoom');
             if (zoom !== 'normal' && zoom !== '1')
                 throw new EgretError('UI_SEMANTICS_SURFACE_INVALID');
             current = current.parentNode;
         }
         const rect = measure(surface);
-        if (rect.width <= 0 || rect.height <= 0)
+        if (!allowHidden && (rect.width <= 0 || rect.height <= 0))
             throw new EgretError('UI_SEMANTICS_SURFACE_INVALID');
-        return rect;
     }
     function measure(element) {
         const rect = element.getBoundingClientRect();
@@ -155,7 +172,7 @@ export function createBrowserSemantics(options) {
                 container.style.cssText = placed = 'display:none';
             return;
         }
-        const style = (left, top) => 'position:fixed;left:' +
+        const style = (left, top, stretchX = 1, stretchY = 1) => 'position:fixed;left:' +
             left +
             'px;top:' +
             top +
@@ -164,19 +181,22 @@ export function createBrowserSemantics(options) {
             'px;height:' +
             height +
             'px;transform-origin:0 0;transform:scale(' +
-            rect.width / width +
+            rect.width / (width * stretchX) +
             ',' +
-            rect.height / height +
+            rect.height / (height * stretchY) +
             ');overflow:hidden;pointer-events:none;opacity:0;margin:0;padding:0;border:0';
         const wanted = style(rect.left, rect.top);
         if (wanted === placed)
             return;
         container.style.cssText = wanted;
         placed = wanted;
-        // An ancestor can be what a fixed element is placed against. Where it landed says by how much.
-        const landed = measure(container), dx = rect.left - landed.left, dy = rect.top - landed.top;
-        if (dx !== 0 || dy !== 0)
-            container.style.cssText = style(rect.left + dx, rect.top + dy);
+        // A transformed ancestor supplies the containing block for fixed elements. Measure its
+        // scale in page space and undo it before placing logical control bounds over the canvas.
+        const landed = measure(container), dx = rect.left - landed.left, dy = rect.top - landed.top, sx = transformed ? landed.width / rect.width : 1, sy = transformed ? landed.height / rect.height : 1;
+        if (!(sx > 0 && sy > 0))
+            throw new EgretError('UI_SEMANTICS_SURFACE_INVALID');
+        if (dx !== 0 || dy !== 0 || sx !== 1 || sy !== 1)
+            container.style.cssText = style(rect.left + dx / sx, rect.top + dy / sy, sx, sy);
     }
     function write(item, name, value) {
         if (item.written.get(name) === value && item.written.has(name))
@@ -372,6 +392,20 @@ export function createBrowserSemantics(options) {
         listen(win, 'resize', place);
         listen(win, 'orientationchange', place);
         listen(win, 'scroll', place, { capture: true });
+        if (typeof globalThis.ResizeObserver === 'function') {
+            const resized = new ResizeObserver(() => {
+                if (closed)
+                    return;
+                try {
+                    place();
+                }
+                catch (cause) {
+                    fail(cause);
+                }
+            });
+            restores.push(() => resized.disconnect());
+            resized.observe(surface);
+        }
         const viewport = win.visualViewport;
         if (viewport !== null && viewport !== undefined) {
             listen(viewport, 'resize', place);
@@ -395,15 +429,31 @@ export function createBrowserSemantics(options) {
             },
             container: holder,
             elementOf: (id) => (closed ? undefined : projected.get(id)?.element),
-            sync() {
-                if (!closed)
-                    try {
-                        place();
-                    }
-                    catch (cause) {
-                        fail(cause);
-                        throw cause;
-                    }
+            sync(size) {
+                if (closed)
+                    return;
+                // Refuse bad caller input before changing the active mapping. CSS resize alone does not tell
+                // us the logical stage size, and only the mapping changes: the container and its focus stay.
+                if (size !== undefined) {
+                    if (size === null || typeof size !== 'object')
+                        throw new EgretError('UI_SEMANTICS_OPTIONS');
+                    const next = { width: size.width, height: size.height };
+                    if (!finite(next.width) || next.width <= 0 || !finite(next.height) || next.height <= 0)
+                        throw new EgretError('UI_SEMANTICS_OPTIONS');
+                    width = next.width;
+                    height = next.height;
+                }
+                try {
+                    const wasTransformed = transformed;
+                    profile(true);
+                    if (placed !== 'display:none' && (wasTransformed || transformed))
+                        placed = '';
+                    place();
+                }
+                catch (cause) {
+                    fail(cause);
+                    throw cause;
+                }
             },
             dispose: cleanup
         });

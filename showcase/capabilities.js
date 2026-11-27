@@ -98,6 +98,10 @@ export const MATRIX = {
      "file": "SnowTemple/src/main.mjs"
     },
     {
+     "game": "StarBanner",
+     "file": "StarBanner/src/hud.mjs"
+    },
+    {
      "game": "TaiwanMahjong",
      "file": "TaiwanMahjong/src/hud.mjs"
     },
@@ -254,6 +258,10 @@ export const MATRIX = {
      "file": "SnowTemple/src/main.mjs"
     },
     {
+     "game": "StarBanner",
+     "file": "StarBanner/src/ui/host.mjs"
+    },
+    {
      "game": "TeaHorseRoad",
      "file": "TeaHorseRoad/src/audio/soundscape.mjs"
     },
@@ -381,6 +389,10 @@ export const MATRIX = {
     {
      "game": "SandScroll",
      "file": "SandScroll/src/ui/kit.mjs"
+    },
+    {
+     "game": "StarBanner",
+     "file": "StarBanner/src/ui/kit.mjs"
     },
     {
      "game": "TeaHorseRoad",
@@ -512,6 +524,10 @@ export const MATRIX = {
     {
      "game": "LubanBridge",
      "file": "LubanBridge/src/view/build.mjs"
+    },
+    {
+     "game": "StarBanner",
+     "file": "StarBanner/src/ui/host.mjs"
     }
    ]
   },
@@ -1026,6 +1042,10 @@ export const MATRIX = {
      "file": "SandScroll/src/main.mjs"
     },
     {
+     "game": "StarBanner",
+     "file": "StarBanner/src/hud.mjs"
+    },
+    {
      "game": "TaiwanMahjong",
      "file": "TaiwanMahjong/src/main.mjs"
     },
@@ -1055,6 +1075,10 @@ export const MATRIX = {
     {
      "game": "NezhaSea",
      "file": "NezhaSea/src/main.mjs"
+    },
+    {
+     "game": "StarBanner",
+     "file": "StarBanner/src/ui/host.mjs"
     }
    ]
   },
@@ -1114,6 +1138,10 @@ export const MATRIX = {
     {
      "game": "SandScroll",
      "file": "SandScroll/src/main.mjs"
+    },
+    {
+     "game": "StarBanner",
+     "file": "StarBanner/src/ui/host.mjs"
     },
     {
      "game": "TaiwanMahjong",
@@ -1203,6 +1231,10 @@ export const MATRIX = {
     {
      "game": "MechanismCity",
      "file": "MechanismCity/src/ui/settings.mjs"
+    },
+    {
+     "game": "StarBanner",
+     "file": "StarBanner/src/screens.mjs"
     },
     {
      "game": "TeaHorseRoad",

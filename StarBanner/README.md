@@ -4,7 +4,7 @@
 
 星旗战记是基于[新白鹭引擎 Egret Rebuild](https://github.com/cnedwin/Egret_rebuild)独立开发的斜 45 度 3D 战棋游戏 Demo，日系西幻风格，卡通渲染。晨星王国与夜鸦公国在一块浮空沙盘上对阵：用村庄和要塞的收入在兵营、飞羽塔、港口招兵，派剑士和枪兵去占领村庄，用骑士冲锋、弓手守点、投石车轰城，最后击倒敌方指挥官或攻破敌方要塞取胜。
 
-- 规则按原作还原：伤害随攻方剩余生命变化，防御星随守方生命打折，河流与沙滩反而加重伤害；每个兵种有自己的暴击条件（骑士整整冲出 6 格、弓手原地不动、枪兵并肩站、猎犬围猎……）；被打的一方若还活着、够得着就会反击；占领、收入、建筑回血、援军、法师治疗、魔女诅咒、运输都照原作的数值。详见 [docs/DESIGN.md](docs/DESIGN.md)。
+- 战斗规则：伤害随攻方剩余生命变化，防御星随守方生命打折，河流与沙滩反而加重伤害；每个兵种有自己的暴击条件（骑士整整冲出 6 格、弓手原地不动、枪兵并肩站、猎犬围猎……）；被打的一方若还活着、够得着就会反击；占领、收入、建筑回血、援军、法师治疗、魔女诅咒、运输采用固定数值。详见 [docs/DESIGN.md](docs/DESIGN.md)。
 - 四位指挥官（赛琳、埃德蒙、维蕾塔、格伦）、两个阵营、三张地图、全部兵种和建筑的外观与设定都是本作原创；音乐和音效全部由代码合成。
 - 遭遇战可选地图、双方指挥官、难度（轻松 / 标准 / 困难）和先后手；每个回合结束自动存档，关掉页面回来能接着打。
 
@@ -15,11 +15,11 @@ on troops from barracks, aeries and harbours, send swordsmen and pikemen to take
 ground with archers, batter walls with trebuchets, and win by felling the enemy commander or breaking their
 stronghold.
 
-- The rules follow the original: damage scales with the attacker's remaining health, cover stars weaken as the
+- Combat rules: damage scales with the attacker's remaining health, cover stars weaken as the
   defender is hurt, rivers and beaches make wounds worse; each unit has its own critical condition (a knight charging
   exactly six tiles, an archer standing still, pikemen side by side, hounds hunting in pairs…); a surviving defender
   within reach strikes back; capture, income, building repair, reinforcing, a mage's healing, a witch's hex and
-  carrying use the original's numbers. See [docs/DESIGN.md](docs/DESIGN.md).
+  carrying use the fixed game values. See [docs/DESIGN.md](docs/DESIGN.md).
 - The four commanders (Seline, Edmund, Vireta, Garron), the two factions, the three maps and the look and lore of
   every unit and building are this game's own; all music and sound is synthesized in code.
 - A skirmish picks the map, both commanders, the difficulty (easy, normal, hard) and who moves first; the battle is
@@ -82,19 +82,26 @@ stronghold.
 | `@egret/engine/kit` · `encodeWav` | 合成好的音效与曲子编码成 WAV 交给混音器 · synthesized effects and pieces encoded for the mixer | [src/audio/sound.mjs](src/audio/sound.mjs) |
 | `@egret/engine/web/audio` · `createBrowserAudio` | 音效与音乐两条总线、循环曲、淡入淡出、限幅 · effects and music buses, looping pieces, fades, a limiter | [src/audio/sound.mjs](src/audio/sound.mjs) |
 | `@egret/engine/input/gamepad` · `createGamepadInput` | 手柄按键、摇杆、方向连发 · gamepad buttons, sticks and repeat | [src/input.mjs](src/input.mjs) |
+| `createWorld3DOverlay` · `fit: 'expand'`、`portrait`、`game.onScreenChange` | 透明 2D 舞台随 3D 画布扩展并原地适配横竖屏，空白手势穿透 · expanded transparent 2D stage above 3D, in-place orientation and empty-area gesture routing | [src/ui/host.mjs](src/ui/host.mjs) |
+| `@egret/engine/ui` · `createActionControl`、`createToggleControl`、`createSelectionGroup`、`createControlKeys`、`createHoverControl` | 操作、开关、单选、键盘与鼠标状态 · action, toggle, choice, key and hover state | [src/ui/kit.mjs](src/ui/kit.mjs) |
+| `createUiLayerManager`、`createUiScreenStack`、`createUiRoot` | 标题、菜单、设置、准备、战果、模态层与返回顺序 · native pages, modal layers, back and focus restoration | [src/screens.mjs](src/screens.mjs) |
+| `createUiSemantics`、`createBrowserSemantics`、`createUiTester` | 发布命名语义树、浏览器辅助功能映射与按名称验收 · named semantic tree, browser accessibility projection and named-control testing | [src/ui/host.mjs](src/ui/host.mjs) |
+| `createAtlasLabel`、`loadTexture`、`textureFromCanvas` | 双语文字、头像与沙盘缩略图 · bilingual labels, portraits and map thumbnails | [src/ui/kit.mjs](src/ui/kit.mjs) |
 
 ## 已验证 · Verified
 
 - `node --test test/*.test.mjs` 覆盖战斗数值和规则、AI 装卸与迷雾、战役解锁、存档迁移和双语文字。 · Node tests cover battle rules, AI transport and fog, chapter unlocks, save migration and bilingual text.
 - `node test/accept.mjs` 覆盖键盘出阵、移动、手选出兵、敌方回合、续档和坏档恢复。随仓库的截图基线来自 Linux 软件渲染，Windows 上需单独核对实际画面。 · The browser acceptance covers keyboard setup, movement, deployment, enemy turns, save resume and damaged save recovery. The bundled reference images use Linux software rendering. Review current images separately on Windows.
+- 原生叠加层相关的按名称控件验收、`test/touch-accept.mjs` 的拖动及多触点、`test/art-accept.mjs` 的合法存档战意技与 `test/screen-route.mjs` 的可重放多屏检查，详见 [UI-MIGRATION.md](UI-MIGRATION.md) 和 [QUALITY.md](QUALITY.md)。 · See UI-MIGRATION and QUALITY for native named-control acceptance, multi-touch, legal replay-based rally art and the multi-screen route.
 - 品质验收见 [QUALITY.md](QUALITY.md)（`node ../tools/quality.mjs .`）。 · Quality results in QUALITY.md.
-- 本轮使用 Windows RTX 5090 Laptop 与 Galaxy Z Fold7 的实体设备，通过自动化浏览器输入验证操作。手柄和扬声器听感另计。 · This round used browser-automated input on a real Windows RTX 5090 Laptop and Galaxy Z Fold7. Gamepad input and speaker listening were not part of that round.
+- Windows Edge RTX 5090 Laptop 与 Fold7 外屏实际浏览器已验证操作和横竖屏；手柄使用浏览器标准 Gamepad 模拟，未验真手柄、Fold7 内屏或读屏器。 · Actual Windows Edge/RTX and Fold7 outer-screen browser input were tested. The standard Gamepad path was simulated; a physical controller, inner display and screen reader were not tested.
 
 ## 已知问题 · Known issues
 
 - 软件渲染下只有每秒几帧，验收截图之外的动画流畅度要在真 GPU 上看。 · Software rendering runs at a few frames a second; smoothness needs a real GPU.
 - 骑士、马车、器械、热气球、飞兵和舰船是整体模型，只有颠簸、悬浮、摇摆和前冲，没有分件动画。 · Knights, carts, engines, the balloon, fliers and ships are single meshes with bobbing, hovering, rolling and lunging only.
 - 品质验收未达标 · Quality items failing（[QUALITY.md](QUALITY.md)，2026-11-25，无头 Chromium + SwiftShader · headless, software rendering）：F1 桌面帧时间 p95 ≤ 16.7 ms（p95 633.3 ms over 14 frames）。
+- World3D 叠加层尚缺独立 `uiScale`、原生屏幕检查的控件采集、并发图片排队、启动阶段计时与按需绘制；见 ENGINE-NOTES 5–10。冷启动有额外等待，小屏 SwiftShader 帧预算未达标，真实 GPU 和软件渲染各自测量见 QUALITY。 · Overlay UI scale, control-report integration, image admission, startup attribution and on-demand rendering are tracked in ENGINE-NOTES 5–10. Cold start is slower and software small-screen cadence regressed; QUALITY separates real GPU and software timing.
 
 ## 已解决 · Solved
 
@@ -105,21 +112,23 @@ stronghold.
 - 模型文件读不到时（品质验收 E2）不再只在控制台里警告：画面下方说明哪里出了问题，给出「重试」（重新载入）和「先这样玩」（用代码画的替身继续）。 · When model files fail to arrive (quality item E2) the page now says so and offers to try again or play on with stand-in shapes.
 - 英文模式下标题副标和页面标题里还留着中文（品质验收 I1）：都改成英文。 · Chinese left in the English title and page title (quality item I1) is now English.
 - 战斗中切换语言时界面按钮仍是旧语言：切换后整套战斗界面按新语言重建；战斗界面不再清空页面上的画面层，设置和战果面板能在战斗中正常弹出。 · Switching the language mid-battle now rebuilds the battle interface, and the HUD no longer wipes the screens' layer, so settings and the result show over a battle.
+- 原 DOM 界面的宽屏刘海遮挡、窄屏点击面积和焦点问题，改用引擎 `screen.safe`、原生焦点控件、页面栈和安全区几何验证；转屏保持同一叠加层及战斗实例。 · Replaced DOM notch/target/focus handling with the engine's safe geometry, control focus and screen stack; orientation keeps the same overlay and battle.
 
 ## 未完成 · Unfinished
 
 - 天气、本地双人对战、地图编辑器。 · Weather, local two-player, a map editor.
-- 原作后续版本加入的兵种（火枪手、盗贼等）和更多指挥官。 · Units added in the original's later versions (riflemen, thieves) and more commanders.
+- 更多兵种和指挥官。 · Additional unit types and commanders.
 - 骑士和器械的分件动画（马腿、投石车的抛臂）。 · Part animation for knights and engines (horse legs, the trebuchet's arm).
 
 ## 目录结构 · Layout
 
 | 路径 · Path | 用途 · What |
 |---|---|
-| `index.html`、`style.css` | 页面、import map、界面样式 · the page, import map and interface styles |
+| `index.html`、`style.css` | 页面、import map、两套引擎画布宿主样式 · the page, import map and canvas host styles |
 | `src/main.mjs` | 入口：舞台、存档、声音、操作、画面切换 · entry: stage, save, sound, input, screens |
 | `src/play.mjs` | 一局战斗：操作流程、事件演出、电脑回合、存档 · a battle: the order flow, events played out, computer turns, saving |
 | `src/hud.mjs`、`src/screens.mjs` | 战斗界面；标题、准备、设置、玩法、战果 · battle HUD; title, preparation, settings, help, result |
+| `src/ui/` | 原生叠加层、绘制、控件、语义与布局 · native overlay, art, controls, semantics and layout |
 | `src/input.mjs` | 键盘、鼠标、触屏、手柄 · keys, mouse, touch, gamepad |
 | `src/i18n.mjs` | 中英文字表 · the word table |
 | `src/saves.mjs` | 存档 · the save |
@@ -135,6 +144,6 @@ stronghold.
 
 ## 引擎副本 · Engine copy
 
-- 引擎提交 · Engine commit：`b3b594351e8017ce43a7c3cb20c769403806553e`（见 · see [vendor/SOURCE.md](vendor/SOURCE.md)）。
-- 生成命令 · Made with：`node tools/vendor-game.mjs ../PortedGamesEgret/StarBanner @egret/engine @egret/engine/world3d @egret/engine/webgpu/world3d @egret/engine/webgl2/world3d @egret/engine/kit @egret/engine/web/kit @egret/engine/audio @egret/engine/web/audio @egret/engine/input/gamepad @egret/engine/web/gamepad @egret/engine/input/hover @egret/engine/web/hover @egret/engine/ui/semantics @egret/engine/web/semantics @egret/engine/animation`
-- 用到的入口 · Entries used：`@egret/engine/world3d`、`@egret/engine/webgpu/world3d`、`@egret/engine/kit`、`@egret/engine/web/kit`、`@egret/engine/web/audio`、`@egret/engine/input/gamepad`。
+- 引擎提交 · Engine commit：`938a8d206fb3395bbac47be832a374df7b37eed3`（见 · see [vendor/SOURCE.md](vendor/SOURCE.md)）。
+- 生成命令 · Made with：`node tools/vendor-game.mjs ../PortedGamesEgret/StarBanner @egret/engine @egret/engine/world3d @egret/engine/webgpu/world3d @egret/engine/webgl2/world3d @egret/engine/kit @egret/engine/web/kit @egret/engine/audio @egret/engine/web/audio @egret/engine/input/gamepad @egret/engine/web/gamepad @egret/engine/input/hover @egret/engine/web/hover @egret/engine/ui/semantics @egret/engine/web/semantics @egret/engine/animation @egret/engine/ui @egret/engine/ui/testing`
+- 用到的入口 · Entries used：`@egret/engine/world3d`、`@egret/engine/webgpu/world3d`、`@egret/engine/webgl2/world3d`、`@egret/engine/kit`、`@egret/engine/web/kit`、`@egret/engine/web/audio`、`@egret/engine/input/gamepad`、`@egret/engine/ui`、`@egret/engine/ui/semantics`、`@egret/engine/web/semantics`、`@egret/engine/ui/testing`。

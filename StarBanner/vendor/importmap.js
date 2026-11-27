@@ -17,6 +17,10 @@ const imports = {
   "@egret/engine/kit": "./engine/dist/kit.js",
   "@egret/engine/audio": "./engine/dist/audio.js",
   "@egret/engine/input/gamepad": "./engine/dist/gamepad.js",
+  "@egret/runtime/ui": "./runtime/dist/ui/index.js",
+  "@egret/engine/ui": "./engine/dist/ui/index.js",
+  "@egret/runtime/paragraph": "./runtime/dist/paragraph/index.js",
+  "@egret/engine/paragraph": "./engine/dist/paragraph.js",
   "@egret/engine/webgl2/world3d": "./engine/dist/web/world3d/index.js",
   "@egret/engine/web/kit": "./engine/dist/web/kit.js",
   "@egret/engine/web/audio": "./engine/dist/web/audio.js",
@@ -24,7 +28,8 @@ const imports = {
   "@egret/engine/web/hover": "./engine/dist/web/hover.js",
   "@egret/engine/ui/semantics": "./engine/dist/semantics.js",
   "@egret/engine/web/semantics": "./engine/dist/web/semantics.js",
-  "@egret/engine/animation": "./engine/dist/animation/index.js"
+  "@egret/engine/animation": "./engine/dist/animation/index.js",
+  "@egret/engine/ui/testing": "./engine/dist/ui/testing.js"
 };
 const base = document.currentScript.src;
 for (const name of Object.keys(imports)) imports[name] = new URL(imports[name], base).href;

@@ -49,7 +49,7 @@ test('names of units, buildings, terrain, commanders, arts and maps are in both 
 test('no Chinese is written into the interface code outside the word table and the data', async () => {
   const CJK = /[㐀-鿿]/;
   const files = [];
-  for (const folder of ['../src/', '../src/view/', '../src/audio/'])
+  for (const folder of ['../src/', '../src/view/', '../src/audio/', '../src/ui/'])
     for (const name of await readdir(new URL(folder, import.meta.url))) if (name.endsWith('.mjs') && name !== 'i18n.mjs') files.push(folder + name);
   for (const file of files) {
     const code = (await readFile(new URL(file, import.meta.url), 'utf8')).replace(/\/\/.*$/gm, '').replace(/\/\*[\s\S]*?\*\//g, '');

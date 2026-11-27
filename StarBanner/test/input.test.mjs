@@ -23,9 +23,15 @@ function listeners() {
   };
 }
 
-function inputFixture(run) {
+function inputFixture(run, { forwarded = false } = {}) {
   const windowEvents = listeners(), frame = listeners(), canvas = listeners(), control = {};
-  frame.contains = (target) => [canvas, control].includes(target);
+  const bridge=forwarded?listeners():undefined,captures=new Set();
+  if(bridge){
+    bridge.setPointerCapture=id=>captures.add(id);
+    bridge.hasPointerCapture=id=>captures.has(id);
+    bridge.releasePointerCapture=id=>captures.delete(id);
+  }
+  frame.contains = (target) => [canvas, control,bridge].includes(target);
   canvas.getBoundingClientRect = () => ({ left: 0, top: 0 });
   canvas.focus = () => {};
   canvas.clientHeight = 80;
@@ -34,22 +40,43 @@ function inputFixture(run) {
   const previous = { addEventListener: globalThis.addEventListener, document: globalThis.document };
   const calls = [];
   globalThis.addEventListener = windowEvents.addEventListener;
-  globalThis.document = { elementFromPoint: (x) => x < 80 ? canvas : control };
+  globalThis.document = { elementFromPoint: (x) => x < 80 ? bridge??canvas : control };
   try {
-    createInput(canvas, {
-      frame, canNavigate: () => boardEnabled,
+    const input=createInput(canvas, {
+      frame,bridge, canNavigate: () => boardEnabled,
       on: (action) => calls.push(action),
       tap: (...args) => calls.push(['tap', ...args]),
       point: () => {},
       pan: (...args) => calls.push(['pan', ...args]),
       zoom: (...args) => calls.push(['zoom', ...args])
     });
-    run({ windowEvents, frame, canvas, control, calls, setBoardEnabled: (on) => { boardEnabled = on; } });
+    run({ windowEvents, frame, canvas, control,bridge,captures,input,calls, setBoardEnabled: (on) => { boardEnabled = on; } });
   } finally {
     globalThis.addEventListener = previous.addEventListener;
     globalThis.document = previous.document;
   }
 }
+
+test('forwarded native overlay board presses retain capture on the true surface and release/cancel cleanly',()=>{
+  inputFixture(({canvas,bridge,captures,input,calls})=>{
+    canvas.send('pointerdown',{isTrusted:false,pointerType:'touch',pointerId:9});
+    assert.ok(captures.has(9),'forwarded pointer capture belongs to the overlay surface');
+    canvas.send('pointerup',{isTrusted:false,pointerType:'touch',pointerId:9});
+    assert.deepEqual(calls,[['tap',35,40,{device:'touch'}]]);
+    canvas.send('pointerdown',{isTrusted:false,pointerType:'mouse',pointerId:10});
+    bridge.send('lostpointercapture',{pointerId:10});
+    canvas.send('pointerup',{isTrusted:false,pointerType:'mouse',pointerId:10});
+    assert.equal(calls.length,1,'lost capture cannot leave a latent board click');
+    canvas.send('pointerdown',{isTrusted:false,pointerType:'touch',pointerId:11,clientX:25});
+    canvas.send('pointerdown',{isTrusted:false,pointerType:'touch',pointerId:12,clientX:65});
+    canvas.send('pointermove',{isTrusted:false,pointerType:'touch',pointerId:12,clientX:75});
+    assert.deepEqual(calls[1],['zoom',1.25]);
+    input.release();
+    canvas.send('pointerup',{isTrusted:false,pointerType:'touch',pointerId:11});
+    assert.equal(calls.length,2,'release clears the two-pointer gesture without a stale tap');
+    assert.ok(!captures.has(11)&&!captures.has(12));
+  },{forwarded:true});
+});
 
 test('the frame suppresses native context menus and a right click cancels once', () => {
   inputFixture(({ frame, windowEvents, canvas, control, calls }) => {
