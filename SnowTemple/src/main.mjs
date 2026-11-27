@@ -20,6 +20,9 @@ import { createAudio } from './audio.mjs';
 import { DIALOGUE } from './dialogue.mjs';
 import { captureTempleLoadout, createTempleReplay } from './chapter.mjs';
 import { createHud } from './hud.mjs';
+import { createSnowUiHost } from './ui/host.mjs';
+import { createSnowBoot } from './ui/boot.mjs';
+import { createSnowLocale, normalizeLanguage } from './i18n.mjs';
 import { DEFAULT_KEYS, createInput } from './input.mjs';
 import { createLessons } from './lessons.mjs';
 import { openProgress, recordClear, recordStand } from './progress.mjs';
@@ -36,15 +39,21 @@ import { createView } from './view/view.mjs';
 
 const params = new URLSearchParams(location.search),
   canvas = document.querySelector('#stage'),
-  boot = document.querySelector('#boot'),
   status = { frames: 0, error: null };
+let boot, uiHost, locale;
 document.querySelector('#game').addEventListener('contextmenu', (event) => event.preventDefault());
 
 function fail(cause) {
   status.error = cause;
-  const box = document.querySelector('#error');
-  box.hidden = false;
-  box.textContent = /webgl/i.test(String(cause?.message ?? cause)) ? '这台设备的浏览器不支持本游戏需要的 WebGL 2。\n请换一台较新的手机或电脑再试。' : '出了点问题，画面停了。请重新载入。\n' + (cause?.message ?? cause);
+  const message = /webgl/i.test(String(cause?.message ?? cause))
+    ? (locale?.t('这台设备的浏览器不支持本游戏需要的 WebGL 2。请换一台较新的手机或电脑再试。', 'This browser does not support WebGL 2. Please try another device.') ?? '此浏览器不支持 WebGL 2。')
+    : String(cause?.message ?? cause);
+  if (boot) boot.failure(message, { onRetry: () => location.reload() });
+  else {
+    const box = document.querySelector('#error');
+    box.hidden = false;
+    box.textContent = message;
+  }
   console.error(cause);
 }
 
@@ -53,9 +62,9 @@ function fail(cause) {
 const storage = snowSaveStorage(),
   settingsSave = openSave(storage, 'snow-temple-settings', { defaults: () => ({}) });
 function loadSettings() {
-  const defaults = { quality: 'auto', models: 'auto', particles: 'some', sound: 'on', keys: { ...DEFAULT_KEYS } },
+  const defaults = { quality: 'auto', models: 'auto', particles: 'some', sound: 'on', lang: 'zh', keys: { ...DEFAULT_KEYS } },
     saved = settingsSave.data;
-  return { ...defaults, ...saved, keys: { ...DEFAULT_KEYS, ...(saved.keys ?? {}) }, ...(params.get('quality') ? { quality: params.get('quality') } : {}) };
+  return { ...defaults, ...saved, lang: normalizeLanguage(params.get('lang'), normalizeLanguage(saved.lang, defaults.lang)), keys: { ...DEFAULT_KEYS, ...(saved.keys ?? {}) }, ...(params.get('quality') ? { quality: params.get('quality') } : {}) };
 }
 const saveSettings = (settings) => settingsSave.save(settings);
 
@@ -69,8 +78,20 @@ const LEVELS = {
 async function main() {
   const settings = loadSettings(),
     coarse = matchMedia('(pointer: coarse)').matches,
-    level = LEVELS[settings.quality] ?? (coarse ? LEVELS.mid : LEVELS.high),
-    progress = (k, note) => ((boot.querySelector('i').style.width = k * 100 + '%'), (boot.querySelector('.boot-note').textContent = note));
+    level = LEVELS[settings.quality] ?? (coarse ? LEVELS.mid : LEVELS.high);
+  locale = createSnowLocale(settings.lang);
+  function syncLanguage() {
+    document.documentElement.lang = locale.lang === 'en' ? 'en' : 'zh-CN';
+    document.title = locale.t('风雪山神庙', 'Snow at the Mountain Temple');
+    canvas.setAttribute('aria-label', locale.t('风雪山神庙：俯视角动作游戏。', 'Snow at the Mountain Temple: top-down action game.'));
+    uiHost?.syncLocale();
+  }
+  syncLanguage();
+  uiHost = await createSnowUiHost(canvas, { locale, onError: fail });
+  boot = createSnowBoot(uiHost, { locale });
+  // Startup diagnostics can inspect the admitted native retry before World3D exists.
+  window.__snowLoading = { ui: uiHost, status, get active() { return boot.active; } };
+  const progress = (k, note) => boot.progress(k, note);
 
   progress(0.2, '点灯');
   const engine = await createEngine({ host: createWorld3DHost(canvas) }),
@@ -120,6 +141,7 @@ async function main() {
     try {
       scope.dispose();
     } finally {
+      void uiHost.dispose().catch(console.error);
       void engine.dispose().catch(console.error);
     }
   }
@@ -211,10 +233,13 @@ async function main() {
   progress(0.9, '请陆虞候入座');
   await new Promise((done) => setTimeout(done));
 
-  const input = createInput(canvas, settings.keys),
-    audio = createAudio(),
-    ui = document.querySelector('#ui'),
-    result = document.querySelector('#chapter-result');
+  const input = createInput(canvas, settings.keys, {
+      // A focused native menu action owns its navigation/confirmation keys.
+      // A world-focused canvas continues to receive the original combat keys.
+      uiOwnsKey: event => event.target !== canvas && Boolean(uiHost.keyboard?.getSnapshot().focusedId) &&
+        /^(?:Space|Enter|Tab|Arrow(?:Up|Down|Left|Right))$/.test(event.code)
+    }),
+    audio = createAudio();
   view.onFoley = (event) => audio.play(event);
   audio.setOn(settings.sound === 'on');
   // The pose the title is looked at in. Starting puts the player back at the chapter's entrance.
@@ -226,10 +251,18 @@ async function main() {
     carry = 0,
     pick = -1, // the lesson chosen from an open page, until the rules have taken it
     debug = params.has('debug');
-  const hud = createHud(ui, input, settings, {
+  let displayedLanguage = locale.lang;
+  const hud = await createHud(uiHost, input, settings, {
+    locale,
     onSettings(next) {
       saveSettings(next);
       audio.setOn(next.sound === 'on');
+      locale.set(next.lang);
+      syncLanguage();
+      if (displayedLanguage !== locale.lang) {
+        displayedLanguage = locale.lang;
+        hud.setLanguage();
+      }
     },
     onUiSound: (cue) => audio.playUi(cue),
     onStart: (way) => mode === 'title' && !hud.settingsOpen() && startGame(way === 'yard' ? 'yard' : ''),
@@ -239,18 +272,21 @@ async function main() {
       hud.entry(saved);
       audio.playUi('select');
     },
-    onPick: (index) => (pick = index)
+    onPick: (index) => (pick = index),
+    onReplay: (replay) => mode === 'result' && startGame(replay)
   });
+  input.setEnabled(false);
   hud.entry(saved);
   // The engine's readout: frame time, this game's share of it, and what the renderer drew. The numbers are
   // gathered either way; they are shown with the state panel.
-  let stats = createWorld3DStats(renderer, debug ? { container: document.querySelector('#game') } : {});
+  let stats = createWorld3DStats(renderer);
   input.on('any', (code, event) => {
+    if (hud.handleKey(code, event)) return;
     if (code !== 'F3' || hud.settingsOpen() || Object.values(input.keys).includes(code)) return;
     event?.preventDefault();
     debug = !debug;
     stats.dispose();
-    stats = createWorld3DStats(renderer, debug ? { container: document.querySelector('#game') } : {});
+    stats = createWorld3DStats(renderer);
   });
   const bot = params.has('auto') ? (await import('../test/bot.mjs')).createBot() : null;
 
@@ -335,9 +371,8 @@ async function main() {
     pending = [];
     pendingHint = null;
     titleCardAt = veilAt = Infinity;
-    result.hidden = true;
-    ui.inert = false;
-    ui.classList.remove('complete');
+    hud.hideResult();
+    hud.setMode(mode);
     input.setEnabled(true);
     audio.start();
     audio.stopDialogue();
@@ -363,18 +398,15 @@ async function main() {
       game.events.forEach(onEvent);
     }
   }
-  for (const button of result.querySelectorAll('[data-replay]'))
-    button.addEventListener('click', () => mode === 'result' && startGame(button.dataset.replay));
 
   /** Back to the title, with whatever the last run opened. */
   function toTitle() {
     mode = 'title';
     game = createGame();
     Object.assign(game.hero, TITLE_POSE);
-    result.hidden = true;
-    ui.inert = false;
-    ui.classList.remove('complete');
-    input.setEnabled(true);
+    hud.hideResult();
+    hud.setMode(mode);
+    input.setEnabled(false);
     hud.stage(false);
     hud.clearSpeech();
     hud.clearPickups();
@@ -391,51 +423,41 @@ async function main() {
 
   /** The closing sheet: of the chapter with its mark, or of a stand in the yard with the wave reached. */
   function showResult() {
-    const yard = game.mode === 'yard',
-      set = (stat, text) => (result.querySelector(`[data-stat="${stat}"]`).textContent = text),
-      show = (replay, on) => (result.querySelector(`[data-replay="${replay}"]`).hidden = !on);
+    const yard = game.mode === 'yard';
     mode = 'result';
     input.setEnabled(false);
+    hud.setMode(mode);
     hud.clearSpeech();
     hud.clearHint();
     hud.closeChoice();
     hud.veil(false);
-    ui.classList.add('complete');
-    ui.inert = true;
     const seconds = Math.floor(summary.time);
-    set('time', `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, '0')}`);
-    set('parries', summary.parries);
-    set('ripostes', summary.ripostes);
-    set('last-name', yard ? '击倒' : '倒地');
-    set('last', yard ? summary.kills : summary.falls);
-    result.querySelector('#result-heading').textContent = yard ? '守草料场' : '风雪山神庙';
-    let news = '';
+    const data = {
+      heading: yard ? '守草料场' : '风雪山神庙',
+      time: `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, '0')}`,
+      parries: summary.parries, ripostes: summary.ripostes,
+      lastName: yard ? '击倒' : '倒地', last: yard ? summary.kills : summary.falls,
+      mark: null, news: '', actions: []
+    };
     const marked = !yard && !duelOnly;
     if (yard) {
-      set('line', `守到第 ${game.wave} 拨`);
-      if (!bot && recordStand(saved, game.wave)) news = '这是守得最久的一回。';
+      data.line = `守到第 ${game.wave} 拨`;
+      if (!bot && recordStand(saved, game.wave)) data.news = '这是守得最久的一回。';
     } else {
-      set('line', game.tier > 1 ? `第一回　完　${tierName(game.tier)}` : '第一回　完');
+      data.line = game.tier > 1 ? `第一回　完　${tierName(game.tier)}` : '第一回　完';
       const { mark } = grade(summary);
-      set('mark', mark);
+      if (marked) data.mark = mark;
       if (counted) {
         const { improved, opened } = recordClear(saved, game.tier, mark);
-        if (opened) news = `上面还有一重：${tierName(game.tier + 1)}。${(TIERS[game.tier] ?? { text: '所有人更耐打，下手更重。' }).text}`;
-        else if (improved) news = '这一重里，这是最好的一回。';
+        if (opened) data.news = `上面还有一重：${tierName(game.tier + 1)}。${(TIERS[game.tier] ?? { text: '所有人更耐打，下手更重。' }).text}`;
+        else if (improved) data.news = '这一重里，这是最好的一回。';
       }
     }
     saveProgress();
-    result.querySelector('.result-mark').hidden = !marked;
-    set('news', news);
-    result.querySelector('[data-stat="news"]').hidden = !news;
-    show('climb', marked && counted && saved.open > game.tier);
-    show('temple', !yard && !!templeLoadout);
-    show('chapter', !yard);
-    show('yard', yard);
-    const first = [...result.querySelectorAll('[data-replay]')].find((button) => !button.hidden);
-    for (const button of result.querySelectorAll('[data-replay]')) button.classList.toggle('lead', button === first);
-    result.hidden = false;
-    first.focus({ preventScroll: true });
+    if (marked && counted && saved.open > game.tier) data.actions.push('climb');
+    if (!yard && templeLoadout) data.actions.push('temple');
+    data.actions.push(yard ? 'yard' : 'chapter', 'title');
+    hud.showResult(data);
     audio.gong();
   }
   /** Begin further in, for looking at one part. */
@@ -573,11 +595,12 @@ async function main() {
     if (autoResolution && mode === 'play') ratio = pace.update(dt);
     status.frames++;
     if (status.frames === 2) {
-      boot.classList.add('done');
-      hud.ready();
       audio.prepareDialogue('lin-opening');
-      if (params.has('auto') || params.get('at')) startGame();
-      if (loadExternal) requestAnimationFrame(startBackgroundCharacters);
+      // Release the loading surface only once the native title is ready to operate.
+      Promise.resolve(hud.ready()).then(() => boot.finish()).then(() => {
+        if (params.has('auto') || params.get('at')) startGame();
+        if (loadExternal) requestAnimationFrame(startBackgroundCharacters);
+      }).catch(fail);
     }
     dt = Math.min(dt, 0.1);
     clock += dt;
@@ -646,11 +669,12 @@ async function main() {
     stats.lap('reflection');
     if (mode === 'title') titleCamera();
     updateLook(camera, view.fogLights, mode === 'title' || !!view.cine, game.stage === 'boss' && !view.cine, dt);
-    hud.update(game, view);
+    hud.setInteractive(active && !hud.staged && !hud.choosing());
+    hud.update(game, view, dt);
     audio.update();
     stats.lap('present');
 
-    hud.debug(debug ? `状态: ${game.hero.state}  关: ${game.stage}  重: ${game.tier}  拨: ${game.wave}  过场: ${game.cine > 0 ? '是' : '否'}  所学: ${game.boons.join(' ') || '无'}\n位置: ${game.hero.x.toFixed(1)}, ${game.hero.z.toFixed(1)}  气血: ${game.hero.hp | 0}  枪意: ${game.hero.will | 0}\n帧率: ${stats.fps.toFixed(0)}  绘制比例: ${ratio.toFixed(2)}  灯: 分块 ${renderer.info.lightsTiled} 弃 ${renderer.info.lightsDropped}  陆谦: ${game.boss.state} ${game.boss.hp | 0}` : null);
+    hud.debug(debug ? (locale.lang === 'en' ? `State: ${game.hero.state} | Stage: ${game.stage} | Tier: ${game.tier} | Wave: ${game.wave}\nPosition: ${game.hero.x.toFixed(1)}, ${game.hero.z.toFixed(1)} | Health: ${game.hero.hp | 0} | Resolve: ${game.hero.will | 0}\nFPS: ${stats.fps.toFixed(0)} | Scale: ${ratio.toFixed(2)} | Lights: ${renderer.info.lightsTiled}/${renderer.info.lightsDropped} | Lu Qian: ${game.boss.state} ${game.boss.hp | 0}` : `状态: ${game.hero.state}  关: ${game.stage}  重: ${game.tier}  拨: ${game.wave}  过场: ${game.cine > 0 ? '是' : '否'}  所学: ${game.boons.join(' ') || '无'}\n位置: ${game.hero.x.toFixed(1)}, ${game.hero.z.toFixed(1)}  气血: ${game.hero.hp | 0}  枪意: ${game.hero.will | 0}\n帧率: ${stats.fps.toFixed(0)}  绘制比例: ${ratio.toFixed(2)}  灯: 分块 ${renderer.info.lightsTiled} 弃 ${renderer.info.lightsDropped}  陆谦: ${game.boss.state} ${game.boss.hp | 0}`) : null);
   }
   Object.assign(game.hero, TITLE_POSE);
   function titleCamera() {
@@ -683,6 +707,11 @@ async function main() {
     },
     view,
     hud,
+    ui: uiHost,
+    input,
+    settings,
+    get mode() { return mode; },
+    get bootActive() { return boot?.active ?? false; },
     status,
     renderer,
     get stats() {

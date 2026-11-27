@@ -1,0 +1,513 @@
+{
+  "date": "2026-11-27",
+  "engine": "e15aabcf742ec7c82ba4a8e8c2de663137c18f71",
+  "method": "Physical Windows Edge RTX 5090/ANGLE D3D11/WebGL2, CSS 1280×800 DPR1, seed7, high scene and high models, actual normal keyboard/mouse. Chapter rule state read only; raw view.update timestamps include screenshots and scene transitions. The same route varies due dynamic timing; not a deterministic GPU benchmark.",
+  "baseline": {
+    "titleReadyMs": 4143.9376,
+    "titleReadyDefinition": "First two game frames",
+    "context": {
+      "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/158.0.0.0 Safari/537.36 Edg/158.0.0.0",
+      "coarse": false,
+      "renderer": "ANGLE (NVIDIA, NVIDIA GeForce RTX 5090 Laptop GPU (0x00002C58) Direct3D11 vs_5_0 ps_5_0, D3D11)",
+      "href": "http://127.0.0.1:61573/SnowTemple/?seed=7&quality=high&models=high",
+      "contextLost": false,
+      "shadows": true,
+      "displayError": false,
+      "errorText": null
+    },
+    "chapterWin": {
+      "type": "stage",
+      "t": 74.8666666666637,
+      "at": 91475.39999999106,
+      "stage": "done",
+      "phase": 2,
+      "party": 1,
+      "heroHP": 120,
+      "enemyHP": 0
+    },
+    "roles": {
+      "level": "high",
+      "phase": "ready",
+      "loaded": [
+        "hero",
+        "blade",
+        "shield",
+        "bow",
+        "lu"
+      ],
+      "failures": {}
+    },
+    "settingsPassed": true,
+    "actualRematch": true,
+    "fullHarnessPassed": null,
+    "failure": "AssertionError [ERR_ASSERTION]: Audio source scheduling exceeded the 10 ms live threshold",
+    "audioMaxLagMs": 17.3333333333332,
+    "errors": [],
+    "sourceFileCount": 541
+  },
+  "native": {
+    "titleReadyMs": 4303,
+    "titleReadyDefinition": "Native Chapter semantic target available",
+    "device": {
+      "gpu": "ANGLE (NVIDIA, NVIDIA GeForce RTX 5090 Laptop GPU (0x00002C58) Direct3D11 vs_5_0 ps_5_0, D3D11)",
+      "contextLost": false,
+      "shadows": true,
+      "tiledLights": true,
+      "buffer": [
+        1280,
+        800
+      ],
+      "viewport": [
+        1280,
+        800,
+        1.0000000298023224
+      ],
+      "focus": true,
+      "visibility": "visible",
+      "ua": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/158.0.0.0 Safari/537.36 Edg/158.0.0.0"
+    },
+    "chapterWin": {
+      "type": "stage",
+      "t": 69.09999999999737,
+      "at": 90382.5,
+      "stage": "done",
+      "phase": 2,
+      "party": 1,
+      "heroHP": 120,
+      "enemyHP": 0
+    },
+    "checks": [
+      {
+        "name": "physical hardware, actual shadow, active context",
+        "ok": true,
+        "details": {
+          "gpu": "ANGLE (NVIDIA, NVIDIA GeForce RTX 5090 Laptop GPU (0x00002C58) Direct3D11 vs_5_0 ps_5_0, D3D11)",
+          "contextLost": false,
+          "shadows": true,
+          "tiledLights": true,
+          "buffer": [
+            1280,
+            800
+          ],
+          "viewport": [
+            1280,
+            800,
+            1.0000000298023224
+          ],
+          "focus": true,
+          "visibility": "visible",
+          "ua": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/158.0.0.0 Safari/537.36 Edg/158.0.0.0"
+        }
+      },
+      {
+        "name": "both native entry controls visible",
+        "ok": true
+      },
+      {
+        "name": "Settings pauses simulation and clears residual motion/dodge",
+        "ok": true
+      },
+      {
+        "name": "mute persists exact old save format",
+        "ok": true
+      },
+      {
+        "name": "unmute persists",
+        "ok": true
+      },
+      {
+        "name": "live English HUD without replacing game or overlay",
+        "ok": true
+      },
+      {
+        "name": "Chinese restored on same game",
+        "ok": true
+      },
+      {
+        "name": "settings resumes same scene and no held input",
+        "ok": true
+      },
+      {
+        "name": "genuine full chapter, both yard groups, parry/counter, gate and Lu two phases",
+        "ok": true,
+        "details": [
+          "alert",
+          "stage-yard",
+          "starsStart",
+          "stars",
+          "hit",
+          "starHit",
+          "windup",
+          "strike",
+          "arrowStuck",
+          "guardUp",
+          "parry",
+          "riposte",
+          "riposteHit",
+          "death",
+          "swing",
+          "dropLand",
+          "slash",
+          "pickup",
+          "dodge",
+          "slip",
+          "interrupt",
+          "choice",
+          "boon",
+          "yard-second-party",
+          "rain",
+          "spear",
+          "burst",
+          "deflect",
+          "hurt",
+          "shieldBreak",
+          "stage-gate",
+          "rest",
+          "cine-meet",
+          "stage-boss",
+          "postureBreak",
+          "rise",
+          "cine-rage",
+          "boss-phase-2",
+          "cine-end",
+          "win"
+        ]
+      },
+      {
+        "name": "natural win saved tier and all high roles",
+        "ok": true,
+        "details": {
+          "record": {
+            "version": 1,
+            "savedAt": "2026-11-27T09:11:26.516Z",
+            "data": {
+              "open": 2,
+              "tier": 1,
+              "marks": {
+                "1": "甲"
+              },
+              "wave": 0
+            }
+          },
+          "characters": {
+            "level": "high",
+            "phase": "ready",
+            "loaded": [
+              "hero",
+              "blade",
+              "shield",
+              "bow",
+              "lu"
+            ],
+            "failures": {}
+          },
+          "status": null
+        }
+      },
+      {
+        "name": "native rematch actually creates normal first-phase Lu encounter",
+        "ok": true
+      }
+    ],
+    "actualFallRevive": [
+      {
+        "type": "fall",
+        "t": 17.10000000000031,
+        "at": 116190.10000000894,
+        "stage": "boss",
+        "phase": 1,
+        "party": 1,
+        "heroHP": 0,
+        "enemyHP": 980
+      },
+      {
+        "type": "revive",
+        "t": 20.500000000000117,
+        "at": 119591,
+        "stage": "gate",
+        "phase": 1,
+        "party": 1,
+        "heroHP": 120,
+        "enemyHP": 980
+      }
+    ],
+    "fullHarnessPassed": false,
+    "failure": "The test waited for a result after a chapter rematch fall. Original rules revive at the mountain gate; recorded real fall and revive confirm unchanged behavior. The later reload step was not reached in this run.",
+    "settings": {
+      "paused": {
+        "time": 3.7833333333333248,
+        "x": 0,
+        "z": 32.019999999999925,
+        "stamina": 100,
+        "heroState": "free",
+        "settings": true,
+        "focus": "snow-settings:close",
+        "save": null
+      },
+      "still": {
+        "time": 3.7833333333333248,
+        "x": 0,
+        "z": 32.019999999999925,
+        "stamina": 100,
+        "heroState": "free",
+        "settings": true,
+        "focus": "snow-settings:close",
+        "save": null
+      },
+      "after": {
+        "time": 3.9666666666666575,
+        "x": 0,
+        "z": 32.019999999999925,
+        "stamina": 100,
+        "heroState": "free",
+        "settings": false,
+        "save": {
+          "version": 1,
+          "savedAt": "2026-11-27T09:10:05.832Z",
+          "data": {
+            "quality": "high",
+            "models": "auto",
+            "particles": "some",
+            "sound": "on",
+            "lang": "zh",
+            "keys": {
+              "up": "KeyW",
+              "down": "KeyS",
+              "left": "KeyA",
+              "right": "KeyD",
+              "attack": "Mouse0",
+              "guard": "Mouse2",
+              "stars": "KeyF",
+              "rain": "KeyQ",
+              "dodge": "Space",
+              "glide": "ShiftLeft",
+              "drink": "KeyE",
+              "bag": "KeyB"
+            }
+          }
+        }
+      }
+    },
+    "errors": [],
+    "overlayWindows": {
+      "title-static": {
+        "draws": 0,
+        "steps": 529,
+        "uploads": {
+          "texSubImage2D": 0
+        }
+      },
+      "settings-static": {
+        "draws": 0,
+        "steps": 531,
+        "uploads": {
+          "texSubImage2D": 0
+        }
+      },
+      "result-static": {
+        "draws": 59,
+        "steps": 529,
+        "uploads": {
+          "texSubImage2D": 0
+        }
+      }
+    }
+  },
+  "viewUpdateFirstVictory": {
+    "old": {
+      "win": {
+        "type": "stage",
+        "t": 74.8666666666637,
+        "at": 91475.39999999106,
+        "stage": "done",
+        "phase": 2,
+        "party": 1,
+        "heroHP": 120,
+        "enemyHP": 0
+      },
+      "viewIntervals": {
+        "title": {
+          "frames": 32,
+          "medianMs": 4.2,
+          "p95Ms": 48.9,
+          "maxMs": 246.1,
+          "over33Ms": 3,
+          "over50Ms": 2
+        },
+        "road-cinematic": {
+          "frames": 729,
+          "medianMs": 4.2,
+          "p95Ms": 4.4,
+          "maxMs": 183.8,
+          "over33Ms": 1,
+          "over50Ms": 1
+        },
+        "road": {
+          "frames": 761,
+          "medianMs": 4.2,
+          "p95Ms": 4.3,
+          "maxMs": 242,
+          "over33Ms": 8,
+          "over50Ms": 8
+        },
+        "yard": {
+          "frames": 9290,
+          "medianMs": 4.2,
+          "p95Ms": 4.5,
+          "maxMs": 221,
+          "over33Ms": 9,
+          "over50Ms": 6
+        },
+        "gate": {
+          "frames": 1063,
+          "medianMs": 4.2,
+          "p95Ms": 4.5,
+          "maxMs": 262.4,
+          "over33Ms": 1,
+          "over50Ms": 1
+        },
+        "boss-cinematic": {
+          "frames": 1870,
+          "medianMs": 4.2,
+          "p95Ms": 4.6,
+          "maxMs": 267,
+          "over33Ms": 1,
+          "over50Ms": 1
+        },
+        "boss-1": {
+          "frames": 2285,
+          "medianMs": 4.2,
+          "p95Ms": 7.8,
+          "maxMs": 102.8,
+          "over33Ms": 26,
+          "over50Ms": 16
+        },
+        "boss-2": {
+          "frames": 2408,
+          "medianMs": 4.2,
+          "p95Ms": 7.5,
+          "maxMs": 135.3,
+          "over33Ms": 17,
+          "over50Ms": 9
+        },
+        "done-cinematic": {
+          "frames": 1,
+          "medianMs": 5.4,
+          "p95Ms": 5.4,
+          "maxMs": 5.4,
+          "over33Ms": 0,
+          "over50Ms": 0
+        }
+      },
+      "falls": []
+    },
+    "fresh": {
+      "win": {
+        "type": "stage",
+        "t": 69.09999999999737,
+        "at": 90382.5,
+        "stage": "done",
+        "phase": 2,
+        "party": 1,
+        "heroHP": 120,
+        "enemyHP": 0
+      },
+      "viewIntervals": {
+        "title": {
+          "frames": 1,
+          "medianMs": 54,
+          "p95Ms": 54,
+          "maxMs": 54,
+          "over33Ms": 1,
+          "over50Ms": 1
+        },
+        "road-cinematic": {
+          "frames": 733,
+          "medianMs": 4.2,
+          "p95Ms": 4.6,
+          "maxMs": 238,
+          "over33Ms": 1,
+          "over50Ms": 1
+        },
+        "road": {
+          "frames": 1454,
+          "medianMs": 4.2,
+          "p95Ms": 4.4,
+          "maxMs": 237.8,
+          "over33Ms": 9,
+          "over50Ms": 6
+        },
+        "yard": {
+          "frames": 7445,
+          "medianMs": 4.2,
+          "p95Ms": 5.3,
+          "maxMs": 242.4,
+          "over33Ms": 3,
+          "over50Ms": 3
+        },
+        "gate": {
+          "frames": 1175,
+          "medianMs": 4.2,
+          "p95Ms": 5.3,
+          "maxMs": 225.8,
+          "over33Ms": 1,
+          "over50Ms": 1
+        },
+        "boss-cinematic": {
+          "frames": 1913,
+          "medianMs": 4.2,
+          "p95Ms": 5,
+          "maxMs": 258.6,
+          "over33Ms": 1,
+          "over50Ms": 1
+        },
+        "boss-1": {
+          "frames": 3191,
+          "medianMs": 4.2,
+          "p95Ms": 5.4,
+          "maxMs": 225.9,
+          "over33Ms": 1,
+          "over50Ms": 1
+        },
+        "boss-2": {
+          "frames": 2892,
+          "medianMs": 4.2,
+          "p95Ms": 7.6,
+          "maxMs": 185.2,
+          "over33Ms": 1,
+          "over50Ms": 1
+        },
+        "done-cinematic": {
+          "frames": 1,
+          "medianMs": 10.3,
+          "p95Ms": 10.3,
+          "maxMs": 10.3,
+          "over33Ms": 0,
+          "over50Ms": 0
+        }
+      },
+      "falls": [
+        {
+          "type": "fall",
+          "t": 17.10000000000031,
+          "at": 116190.10000000894,
+          "stage": "boss",
+          "phase": 1,
+          "party": 1,
+          "heroHP": 0,
+          "enemyHP": 980
+        },
+        {
+          "type": "revive",
+          "t": 20.500000000000117,
+          "at": 119591,
+          "stage": "gate",
+          "phase": 1,
+          "party": 1,
+          "heroHP": 120,
+          "enemyHP": 980
+        }
+      ]
+    }
+  }
+}

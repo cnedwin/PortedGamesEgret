@@ -5,6 +5,126 @@
 Checked against QUALITY-CHECKLIST.md. The automatic items were measured by `node tools/quality.mjs SnowTemple`, which writes
 this file; items by hand or on a device are marked not run until someone runs them.
 
+## 2026-11-27：原生 UI · Native UI acceptance
+
+引擎 `e15aabcf742ec7c82ba4a8e8c2de663137c18f71`，同一游戏规则、模型、存档及音频文件。UI 改为原生 2D 叠加层，新增英语字幕及界面（原中文表演语音不变）。 · Engine e15aabcf, with identical simulation, assets, saves and recordings. The interface uses a native 2D overlay and adds English display text/subtitles while retaining Chinese speech.
+
+### 多屏布局 · Screen layout
+
+引擎工具实际检查 9 种视口；用 Windows Edge RTX 5090 Laptop ANGLE/D3D11 硬件浏览器验证屏幕几何，**模拟尺寸和刘海，不等于九台真机**。初轮设置页 7 个 touchTarget 警告，均为滚动裁切后只剩部分可见区域的按钮；禁用这些部分可见节点的原生触摸命中后，45 个检查点全通过。当前具名操作区最小 44×44 CSS px，真实 Fold7 的七个动作键最小 52.25 CSS px。逐张检查实拍与红色安全区覆盖；原生标题保留竖排书名、红印与原雪路，长英文标题另行换行。 · Nine profiles checked with a real Windows GPU browser but simulated viewport and cutout geometry, not nine physical devices. Initially seven partially clipped settings actions triggered touchTarget warnings. After gating the native pointer targets until wholly visible, all 45 checkpoints pass; named controls reach at least 44 CSS px, physical Fold7 combat actions 52.25 CSS px. Reviewed the checkpoint images and cutout tint. The vertical Chinese title and seal are kept; English wraps separately.
+
+| 视口 · Viewport | 标题 · Title E/W | 设置 · Settings E/W | 开场 · Opening E/W | 雪路 · Road E/W | 行囊 · Bag E/W |
+|---|---:|---:|---:|---:|---:|
+| 375×667 | 0/0 | 0/0 | 0/0 | 0/0 | 0/0 |
+| 393×852 (cutouts) | 0/0 | 0/0 | 0/0 | 0/0 | 0/0 |
+| 852×393 (cutouts) | 0/0 | 0/0 | 0/0 | 0/0 | 0/0 |
+| 360×800 | 0/0 | 0/0 | 0/0 | 0/0 | 0/0 |
+| 768×1024 | 0/0 | 0/0 | 0/0 | 0/0 | 0/0 |
+| 1024×768 | 0/0 | 0/0 | 0/0 | 0/0 | 0/0 |
+| 873×325 Fold7 cover | 0/0 | 0/0 | 0/0 | 0/0 | 0/0 |
+| 884×1104 foldable | 0/0 | 0/0 | 0/0 | 0/0 | 0/0 |
+| 1920×1080 | 0/0 | 0/0 | 0/0 | 0/0 | 0/0 |
+
+E/W = verifier errors/warnings。实测表及截图 · Receipt and inspected contact sheets: [summary](test/evidence/native-screen-summary.json), [title](test/evidence/screens-title.jpg), [settings](test/evidence/screens-settings.jpg), [road](test/evidence/screens-road.jpg)。
+
+### PC 实机 · Physical PC
+
+Windows Edge 158，RTX 5090 Laptop，ANGLE D3D11，1280×800，高画质／高模型。正常键鼠从开场推进两拨草料场、两次实际枪谱、山门、陆谦两个阶段、胜利、解锁、重战（不修改血量、装备、规则或作弊跳关）。设置暂停、战斗中切换英文再恢复中文、行囊、静音、同一 overlay 与游戏身份通过，五个高档角色无 stock 回退。原诊断 r2 在重战后误等「败局结算」超时：章节原规则是倒地后火盆复起，实际 trace 已观察 fall 17.1 s → revive 20.5 s、HP120。该诊断脚本未全通过，首胜及重战有真实证据；正式路线按原规则修正。 · Real keyboard/mouse through the full chapter, two actual manual rewards, both Lu phases, victory, next tier and rematch, without state injection. Settings pause, bilingual live HUD, satchel, mute, stable identity and all five high models passed. The exploratory r2 script mistakenly awaited a defeat result in chapter rematch, which instead naturally revives at the brazier; the trace proves the actual fall and revival. This does not count as a fully passed script. The formal route follows the original rule.
+
+首胜前相同 view-update 采样，旧 DOM → 原生 P95（ms）：雪路 4.3→4.4，草料场 4.5→5.3，山门 4.5→5.3，首领一段 7.8→5.4，二段 7.5→7.6。标题就绪 4.144→4.303 s，旧就绪为帧计数、新为语义可操作，非完全相同测点；标题 529 个叠加层更新零提交，静止设置 531 个更新零提交，两段均零纹理上传。结算进入时仍有过场黑边淡出。非严格可归因的 GPU 定时，实际操作、截图取样有差异。 · P95 from comparable first-win World3D view-update observations shown above; title-ready definitions differ. Idle title and settings submit zero overlay frames and no uploads across 529 and 531 steps respectively. Result arrival has the letterbox transition. These are browser observations, not GPU timer results.
+
+[PC comparison](test/evidence/pc-native-menu-before-after.jpg) · [PC receipt](test/evidence/physical-pc-receipt.json)。
+
+最终正式硬件浏览器验收 `SNOW_HARDWARE=1` 41/41 通过（首次设置 resize 的复合断言失败，增加诊断后同运行时代码完整重跑通过）。正常完整章节，包括设置/雪路/枪谱/结算横竖往返、语言、改键 Esc/Tab、真实重战倒地复起、旧档刷新、独立守草料场败局返回。真实硬件浏览器中的模拟双触点越界和取消也通过；拒绝 optional hero GLB（HTTP503）保留原 fallback，拒绝必需 scene pack（HTTP503）显示具名原生 Retry，真实点击重新加载，五个角色恢复，正常流程零错误。 · The final hardware acceptance passed all 41 checks. The first composite resize assertion failed; a retry with diagnostics and unchanged runtime passed the entire route. The actual PC scene, rotations, inputs, victory/revival/save and genuine yard loss pass. The PC browser's two-contact emulation is not a mobile device. Real intentional HTTP503 responses separately verify the optional hero fallback, required scene-pack Retry, fresh reload and five recovered roles.
+
+三档原生设置逐档选择与重新载入 3/3 通过，15/15 GLB 档位正确；首帧仅新版主角（waiting），随后三个草料场角色，再陆谦，全部 ready，无 stock 回退或未预期请求。低/中/高模型首个实际 3D 帧 638/541/604 ms，标题加载罩退场 1541/1443/1512 ms；同低画质、热资源上下文顺序测量，旧 DOM 分别 371/368/426 ms 和 1287/1278/1337 ms，新增原生标题约 0.17–0.27 s；不是网络冷启动测量。 · All three native quality settings and actual reloads pass, correct 15 GLBs, original staged ordering and no fallback. Warm local sequential times show the extra native title cost; these are not network cold starts.
+
+### Fold7 实机 · Physical Fold7
+
+Galaxy Z Fold7 Android 17 Chrome 157，外屏横放873×325及竖放411×813 CSS，DPR2.625，默认中画质/低模型。第一次在实际草料场 27.283 s 按住摇杆拾枪谱报 `UI_INPUT_BUSY`（ENGINE-NOTES #8）；原生接触取消修复后同台正常重跑，实际拾枪谱冻结及选择、两拨、两阶段首领、甲等 1:40、弹反5、回马枪9、倒地0、结算、重战倒地复起、返回/刷新旧存档和独立守草料场真实败局均通过。536/536 请求资源指纹一致，8条对白事件，设置声音开关；三处实际转屏（标题/设置/结算）保持同一引擎叠加层、焦点和状态。摇杆半幅/全幅实测 1.74/4.95 m/s，双指同时持有与越界持续追踪、取消释放通过。 · Actual Fold7 external display landscape/portrait through the full chapter, including the real held-contact manual trigger after the specific fatal issue, result, replay, natural revival, reload and real endless-yard loss. Grade A, 1:40, 5 parries/9 ripostes/0 falls; 536/536 matched resources; eight dialogue events and sound toggling. Real rotations retain identity, focus and state. Analog movement and multitouch ownership/cancellation pass.
+
+| 路段 · Phase | 旧 DOM view-update P95 / max ms | 原生 view-update P95 / max ms |
+|---|---:|---:|
+| 雪路 · Road | 17.3 / 29.1 | 21.9 / 105.6 |
+| 草料场 · Yard | 17.4 / 36.1 | 24.9 / 109.9 |
+| 山门 · Gate | 17.5 / 27.2 | 22.4 / 44.0 |
+| 陆谦一段 · Boss 1 | 17.1 / 20.0 | 28.4 / 116.2 |
+| 陆谦二段 · Boss 2 | 17.5 / 18.9 | 28.4 / 116.2 |
+
+同台整章采样显示新 UI 的 view-update P95 升高；新测试额外记录两个 WebGL 宿主、实际转屏和长回合，不能直接归因为 GPU 渲染。新轮的独立浏览器 RAF P95 约16.7 ms，但仍有偶发长帧，二种统计不可混用。原生位图字形纹理固定一页，boss2 实际动态 HUD 并没有按帧上传文字纹理。 · Full-run view-update intervals increased. The new run also records two hosts and rotates the real phone; different fight paths, thermal state and observer costs cannot establish the cause. Its separate browser RAF p95 is about 16.7 ms with occasional long frames. The metrics are not interchangeable. Fixed glyph text does not upload by every counter change.
+
+#### 同场低开销对照 · Same-scene low-overhead A/B
+
+实机外屏 873×325，中画质/低模型、seed 7，两次独立新浏览器上下文。实际点击进入守草料场，首拨待机，两个版本的最终位置、HP120→45一致；仅采 RAF 和 view-update 时间，不逐帧拦截 GL、语义或音频，不转屏，不在采样中截图。标题 8 秒，草料场约9秒。 · Same physical external screen and settings, fresh browser contexts, normal title/yard entry and the same first wave, final hero position and health. Lightweight RAF and view-update measurements only; no per-frame GL, semantics or audio hooks, no rotation or capture during sampling.
+
+| 指标 · Measure | DOM · old | Native · new |
+|---|---:|---:|
+| 标题 RAF P95 · Title RAF P95 | 16.7 ms | 16.7 ms |
+| 标题 view interval P95 | 17.2 ms | 17.2 ms |
+| 标题 view work P95 | 1.7 ms | 1.7 ms |
+| 草料场 RAF P95 · Yard RAF P95 | 16.7 ms | 16.7 ms |
+| 草料场 view interval P95 | 17.9 ms | 20.0 ms |
+| 草料场 view work P95 | 2.9 ms | 2.4 ms |
+| 草料场 >50 ms RAF | 0 / 540 | 0 / 541 |
+| 草料场 >33.33 ms RAF | 0 | 1 |
+
+新标题叠加层 485 次更新/0 次提交，草料场 544 次更新/340 次提交；初始电池温度 32.1°C，相同；结束 32.1/32.3°C（非 GPU 温度）。此较短同场低开销对照不支持把整章较大的 P95 差异直接归结为原生 UI；仍有小幅 view 回调间隔开销，保留原生绘制清晰度。未做同条件完整首领战 A/B 或 GPU fence 测定。 · The native title has 485 updates and zero submissions; the yard has 544 updates and 340 submissions. Identical starting battery temperature, ending 32.1/32.3°C; not a GPU sensor. This smaller controlled test does not establish the native UI as the entire cause of larger full-run differences. Modest callback-phase jitter remains; visual density is retained. A matched complete boss fight and GPU fence measurement remain untested.
+
+[Fold7 comparison](test/evidence/fold7-native-before-after.jpg) · [portrait](test/evidence/fold7-native-portrait.jpg) · [device receipt](test/evidence/physical-fold7-receipt.json) · [low-overhead A/B](test/evidence/physical-fold7-cadence-ab.json)。
+
+启动图由旧页面 `as=image` 预加载改为匹配原生纹理 fetch 的 `as=fetch crossorigin=anonymous`。同一台 PC 两次新浏览器上下文：原版迁移候选出现 image+fetch 两个请求通知及一次未使用 preload 警告；新声明仅一个请求、零该警告，原图编码47,538 B，标题正常、无游戏错误。请求通知数不等于两次完整网络字节。 · Match the native loader's fetch preload instead of the old image preload. In two fresh contexts the previous candidate emitted image and fetch request events plus the unused-preload warning; the corrected declaration produces one request and no warning, identical 47,538-byte content, healthy title. Request events do not prove two full transfers.
+
+安卓缺少桌面 KaiTi 时使用系统中文回退，实机中文字可读但字形风格不同；2 倍叠加层物理像素比（Fold7 DPR2.625）细小图标轮廓略有阶梯，不为提高分辨率盲目增加成本，尚无独立像素比 A/B。 · Android falls back when desktop KaiTi is absent. Chinese remains legible; small outline raster edges differ from DOM at the 2× overlay density versus 2.625 device DPR. No isolated density A/B has been run.
+
+### 软件验证与边界 · Software verification and limits
+
+SwiftShader Chromium 640×360 开场验收 8/8，人工查看新截图并另建 native-title 基线；再次运行截图差异 1.09%。原 DOM title.png 留存作为历史画面，并非覆盖旧基线。真机操作采用真实设备 Chrome/Edge 的浏览器键鼠／CDP 触屏事件，未冒称真人手指或扬声器主观实听。未覆盖物理展开内屏、其他手机/GPU、Safari、Firefox、微信、屏幕阅读软件、长时间热稳态和实机手柄。 · Software opening acceptance 8/8 at 640×360, with a separately reviewed native-title image and 1.09% difference in a second run. The old title reference is retained. Actual devices use browser keyboard/mouse and CDP touch; no claim of unaided human finger or subjective speaker listening. Unfolded physical screen, wider hardware, Safari/Firefox/WeChat, screen readers, long thermal runs and hardware gamepads remain untested.
+
+### 通用品质工具 · General quality tool
+
+`node tools/quality.mjs SnowTemple --no-write --json`，Windows 无头 Chromium / SwiftShader（软件渲染）。保留先前记录，不用工具覆盖本文件；最终 16 个自动项 12 pass、3 n/a、1 fail。 · Run without overwriting history; 12 of 16 automatic checks pass, three are not applicable to the generic DOM probe, and one software-rendered timing fails.
+
+| 项 · Check | 结果 · Result | 实测 · Measured |
+|---|---|---|
+| T2 | n/a | no page controls; the canvas is measured by hand |
+| T3 | pass | overscroll held, touch-action none, double-tap zoom off |
+| F1 | fail | p95 1300.0 ms over 6 frames |
+| L1 | pass | 1.5 s to the first playable screen, 3.2 MB |
+| O1 | pass | 1280×800, 390×844, 844×390, 768×1024 and live resizing: fits, no errors |
+| I1 | pass | html lang "en", no Chinese in page text or names |
+| I3 | pass | no page text cut off at 390 px in English |
+| A1 | pass | Tab → "风雪山神庙" (outline) |
+| A2 | pass | 4 named controls, e.g. button "全屏", button "设置", button "踏雪上路" |
+| A3 | pass | the code reads prefers-reduced-motion or offers a setting |
+| S1 | n/a | the game keeps nothing in browser storage |
+| S2 | n/a | the game keeps nothing in browser storage |
+| S3 | pass | storage refused: started without an uncaught error |
+| E1 | pass | 0 errors |
+| E2 | pass | 8 files refused; no uncaught error; offers to try again |
+| E3 | pass | no errors; the game or the engine loop watches visibility |
+
+T2 通用品质工具没有识别原生画布控件；上面的原生几何 45/45 和真实 Fold7 触控记录才是 T2 实测，最小44 CSS px。S1/S2 通用工具没有在初始标题发现档案，旧档／损坏档与版本回退由 Node 专门测试及真机刷新覆盖。A3 首次静态扫描未识别原生 `prefersReducedMotion` 命名；以清晰变量名及实际系统偏好 watcher 测试验证，不替换原生接口。F1 软件渲染失败（1300 ms，仅6帧），与真实 RTX/Fold7 不可混用；原 3D 画质保留。最终 103/103 Node，最终软件开场回归 8/8、截图差异 0.50%。 · The generic DOM probe does not see native canvas controls; the native geometry and physical Fold7 evidence qualify T2. Its title-only storage probe does not detect a save; separate save tests and physical reload cover the format and corruption. The first static A3 scan missed the native preference API's naming, now covered by an explicit preference-watcher test. F1 fails in software and is not interchangeable with hardware. Final Node 103/103 and software opening 8/8, final native-title difference 0.50%.
+
+## 2026-11-27：原生 UI 迁移前基线 · Baseline before native UI migration
+
+独立引擎升级提交 `07639ada`：官方工具由 `8e70dcb3` 更新至 `e15aabcf742ec7c82ba4a8e8c2de663137c18f71`，生成 324 个文件，只更新引擎副本和 import map。旧版与升级后旧 DOM 分别 92/92 Node；引擎 verify 无控制台或引擎警告；旧版浏览器验收 7/7，标题截图与原基线差异 0.75%。 · The independent engine refresh changes only the official vendor copy and import map. Both old and refreshed DOM versions passed all 92 Node tests; the refreshed copy passed the engine verifier and 7/7 former browser acceptance checks. Its title screenshot differed from the original baseline by 0.75%.
+
+| 实测 · Measurement | 同一新引擎旧 DOM · Same refreshed engine, old DOM |
+|---|---|
+| PC, Windows Edge 158, RTX 5090 Laptop ANGLE/D3D11, 1280×800, 高画质／高模型 · high picture/detail | 标题可操作 4144 ms；实际键鼠第一回至陆谦二阶段、结算与重战，游戏时间 74.87 s、HP120，无页面异常；两条音效 CPU 调度分别 14.67/17.33 ms，超出旧诊断 10 ms 阈值，因此该脚本随后读档步骤未运行，不计整份脚本通过。 · Title 4144 ms; real browser input through chapter, second boss phase, results and rematch; 74.87 game seconds, full HP, no page errors. Two pre-existing audio scheduling observations exceeded the old strict 10 ms diagnostic, stopping the script before the final reload. |
+| Fold7 Android 17 Chrome, 外屏横放 873×325 CSS, DPR 2.625, 中画质／低模型 · medium scene/low detail | 实际触屏完整章，甲等 1:52，弹反3、回马枪10、倒地0；重战、战败、旧档重载、8条对白、静音恢复、五角色加载通过。 · Full touch chapter, grade A, 1:52, 3 parries, 10 ripostes and no falls; rematch, defeat, old-format reload, eight spoken lines, mute recovery and all five roles passed. |
+| 三档实际设置切换与重载 · Three real model-quality settings and reloads | 3/3；首帧仅 hero，随后 blade/shield/bow，最后 lu；15/15 GLB 下载属正确档位，零 stock 回退。低/中/高首帧 371.2/367.7/426 ms、标题 1287/1278/1337 ms（低画质、热资源上下文，不能作为冷启动性能）。 · Three tiers pass; hero alone at first render, then three yard roles, then Lu; all 15 expected GLBs, no stock fallback. Timings are warm-resource/low-render setup, not cold-start evidence. |
+
+| 路段 · Phase | PC 旧 DOM P95 / max (ms) | Fold7 旧 DOM P95 / max (ms) |
+|---|---:|---:|
+| 雪路 · Road | 4.3 / 242.0 | 17.3 / 29.1 |
+| 草料场 · Yard | 4.5 / 221.0 | 17.4 / 36.1 |
+| 山门 · Gate | 4.5 / 262.4 | 17.5 / 27.2 |
+| 陆谦一段 · Boss 1 | 7.9 / 102.8 | 17.1 / 20.0 |
+| 陆谦二段 · Boss 2 | 7.5 / 135.3 | 17.5 / 18.9 |
+
+帧间隔是浏览器 RAF 的观测，受显示刷新频率、测试截图与驱动影响，并非 GPU 执行时间；PC 抓取高刷新率样本，不能直接与手机 60 Hz 比绝对值。 · These are browser RAF intervals, affected by refresh rate, screenshot capture and the driver, not GPU durations. PC's high-refresh sample cannot be compared absolutely to the phone's 60 Hz sample.
+
 ## 2026-11-26：引擎 `8e70dcb3` 实机回归 · Engine refresh on physical devices
 
 官方引擎工具生成 306 个文件，逻辑、数值、模型、动画、音频与原主干一致。适配原生自动实例化预热，去掉已不需要的特定硬件阴影禁用，保留有效像素比的动态调节及旧档读取容错。Node 回归 92/92 通过。 · The official vendor tool generated 306 files. Rules, balance, models, animation and audio are unchanged. Auto-instancing program preparation uses the native option, the obsolete adapter-specific shadow disable is removed, and effective render-density control and legacy-save fallback are retained. All 92 Node tests passed.

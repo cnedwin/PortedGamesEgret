@@ -1,0 +1,178 @@
+[
+  {
+    "id": "T1",
+    "zh": "触屏走完主流程",
+    "en": "The whole game by touch",
+    "how": "device",
+    "result": "not run",
+    "value": ""
+  },
+  {
+    "id": "T2",
+    "zh": "触控区 ≥ 44×44 CSS px",
+    "en": "Touch targets ≥ 44 × 44 CSS px",
+    "how": "auto",
+    "result": "n/a",
+    "value": "no page controls; the canvas is measured by hand"
+  },
+  {
+    "id": "T3",
+    "zh": "不误触下拉刷新和双击缩放",
+    "en": "No pull-to-refresh or double-tap zoom",
+    "how": "auto",
+    "result": "pass",
+    "value": "overscroll held, touch-action none, double-tap zoom off"
+  },
+  {
+    "id": "F1",
+    "zh": "桌面帧时间 p95 ≤ 16.7 ms",
+    "en": "Desktop frame time p95 ≤ 16.7 ms",
+    "how": "auto",
+    "result": "fail",
+    "value": "p95 1300.0 ms over 6 frames"
+  },
+  {
+    "id": "F2",
+    "zh": "中端手机帧时间 p95 ≤ 33 ms",
+    "en": "Mid-range phone frame time p95 ≤ 33 ms",
+    "how": "device",
+    "result": "not run",
+    "value": ""
+  },
+  {
+    "id": "L1",
+    "zh": "首屏 ≤ 3 s（10/5 Mbps、40 ms、CPU ×4）",
+    "en": "Start-up ≤ 3 s (10/5 Mbps, 40 ms, CPU ×4)",
+    "how": "auto",
+    "result": "pass",
+    "value": "1.5 s to the first playable screen, 3.2 MB"
+  },
+  {
+    "id": "O1",
+    "zh": "横竖屏与窗口尺寸",
+    "en": "Orientation and window sizes",
+    "how": "auto",
+    "result": "pass",
+    "value": "1280×800, 390×844, 844×390, 768×1024 and live resizing: fits, no errors"
+  },
+  {
+    "id": "I1",
+    "zh": "中英文全可切换，英文下无中文",
+    "en": "Both languages; no Chinese left in English",
+    "how": "auto",
+    "result": "pass",
+    "value": "html lang \"en\", no Chinese in page text or names"
+  },
+  {
+    "id": "I2",
+    "zh": "画布上的字也随语言切换",
+    "en": "Words drawn on the canvas follow the language",
+    "how": "manual",
+    "result": "not run",
+    "value": ""
+  },
+  {
+    "id": "I3",
+    "zh": "长英文不溢出",
+    "en": "Long English does not overflow",
+    "how": "auto",
+    "result": "pass",
+    "value": "no page text cut off at 390 px in English"
+  },
+  {
+    "id": "A1",
+    "zh": "键盘可到达控件，焦点可见",
+    "en": "The keyboard reaches controls; focus shows",
+    "how": "auto",
+    "result": "pass",
+    "value": "Tab → \"风雪山神庙\" (outline)"
+  },
+  {
+    "id": "A1m",
+    "zh": "只用键盘走完主流程",
+    "en": "The whole game by keyboard alone",
+    "how": "manual",
+    "result": "not run",
+    "value": ""
+  },
+  {
+    "id": "A2",
+    "zh": "读屏读出主要按钮",
+    "en": "A screen reader names the main buttons",
+    "how": "auto",
+    "result": "pass",
+    "value": "4 named controls, e.g. button \"全屏\", button \"设置\", button \"踏雪上路\""
+  },
+  {
+    "id": "A3",
+    "zh": "尊重 prefers-reduced-motion",
+    "en": "prefers-reduced-motion is honoured",
+    "how": "auto",
+    "result": "pass",
+    "value": "the code reads prefers-reduced-motion or offers a setting"
+  },
+  {
+    "id": "S1",
+    "zh": "存档损坏不崩溃",
+    "en": "A broken save does not crash",
+    "how": "auto",
+    "result": "n/a",
+    "value": "the game keeps nothing in browser storage"
+  },
+  {
+    "id": "S2",
+    "zh": "存档版本不匹配不崩溃",
+    "en": "A save of another version does not crash",
+    "how": "auto",
+    "result": "n/a",
+    "value": "the game keeps nothing in browser storage"
+  },
+  {
+    "id": "S3",
+    "zh": "存储不可用不崩溃",
+    "en": "Refused storage does not crash",
+    "how": "auto",
+    "result": "pass",
+    "value": "storage refused: started without an uncaught error"
+  },
+  {
+    "id": "S4",
+    "zh": "存档出问题时提示并可重开",
+    "en": "A save problem is told and a fresh start offered",
+    "how": "manual",
+    "result": "not run",
+    "value": ""
+  },
+  {
+    "id": "E1",
+    "zh": "无控制台错误",
+    "en": "No console errors",
+    "how": "auto",
+    "result": "pass",
+    "value": "0 errors"
+  },
+  {
+    "id": "E2",
+    "zh": "资源失败有错误界面和重试",
+    "en": "A failed file shows an error and a retry",
+    "how": "auto",
+    "result": "pass",
+    "value": "8 files refused; no uncaught error; offers to try again"
+  },
+  {
+    "id": "E3",
+    "zh": "切到后台再回来不出错",
+    "en": "Hidden and shown again without errors",
+    "how": "auto",
+    "result": "pass",
+    "value": "no errors; the game or the engine loop watches visibility"
+  },
+  {
+    "id": "E4",
+    "zh": "切回后声音和计时正常",
+    "en": "Sound and timers right after coming back",
+    "how": "device",
+    "result": "not run",
+    "value": ""
+  }
+]

@@ -116,6 +116,70 @@ test('a touch control has one owner; another finger cannot steal or release it',
   assert.equal(owner.claim(3), true);
 });
 
+test('native overlay rebind consumes its next mouse press without producing a strike', () => {
+  const oldAdd = globalThis.addEventListener, oldDocument = globalThis.document, events = {};
+  globalThis.addEventListener = (name, call) => { events[name] = call; };
+  globalThis.document = { hidden: false, addEventListener() {} };
+  try {
+    const input = createInput({ addEventListener() {} }, { ...DEFAULT_KEYS });
+    input.setEnabled(false);
+    let code, stopped = false, prevented = false;
+    input.ask(value => { code = value; });
+    events.pointerdown({ pointerType: 'touch', button: 0 });
+    assert.equal(input.asking, true);
+    events.pointerdown({
+      pointerType: 'mouse', button: 2,
+      stopImmediatePropagation() { stopped = true; },
+      preventDefault() { prevented = true; }
+    });
+    assert.equal(code, 'Mouse2');
+    assert.ok(stopped && prevented);
+    assert.equal(input.asking, false);
+    input.setEnabled(true);
+    assert.deepEqual(input.sample({ x: 0, z: 0 }, null), quiet());
+  } finally {
+    globalThis.addEventListener = oldAdd;
+    globalThis.document = oldDocument;
+  }
+});
+
+test('losing focus while rebinding sends one cancellation to the native settings row', () => {
+  const oldAdd = globalThis.addEventListener, oldDocument = globalThis.document, events = {};
+  globalThis.addEventListener = (name, call) => { events[name] = call; };
+  globalThis.document = { hidden: false, addEventListener() {} };
+  try {
+    const input = createInput({ addEventListener() {} }, { ...DEFAULT_KEYS });
+    const cancelled = [];
+    input.ask(() => assert.fail('interrupted rebind committed'), code => cancelled.push(code));
+    events.blur();
+    events.blur();
+    assert.equal(input.asking, false);
+    assert.deepEqual(cancelled, ['InputReset']);
+  } finally {
+    globalThis.addEventListener = oldAdd;
+    globalThis.document = oldDocument;
+  }
+});
+
+test('focused native UI confirms without dodging, while world keys still reach combat', () => {
+  const oldAdd = globalThis.addEventListener, oldDocument = globalThis.document, events = {};
+  globalThis.addEventListener = (name, call) => { events[name] = call; };
+  globalThis.document = { hidden: false, addEventListener() {} };
+  try {
+    const canvas = { addEventListener() {} };
+    const input = createInput(canvas, { ...DEFAULT_KEYS }, {
+      uiOwnsKey: event => event.target !== canvas && event.code === 'Space'
+    });
+    events.keydown({ code: 'Space', target: {}, preventDefault() {} });
+    assert.equal(input.sample({ x: 0, z: 0 }, null).dodge, false);
+    events.keydown({ code: 'Space', target: canvas, preventDefault() {} });
+    assert.equal(input.sample({ x: 0, z: 0 }, null).dodge, true);
+  } finally {
+    globalThis.addEventListener = oldAdd;
+    globalThis.document = oldDocument;
+  }
+});
+
 test('releasing a canvas pointer over an overlay clears only its matching hold', () => {
   const oldAdd = globalThis.addEventListener, oldDocument = globalThis.document;
   const oldWidth = globalThis.innerWidth, oldHeight = globalThis.innerHeight;
