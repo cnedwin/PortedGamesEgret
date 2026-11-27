@@ -238,12 +238,12 @@ async function walkEastRound() {
   await page.context().close();
 }
 
-// PC Chromium simulations: a vertical gesture in the rules panel's *local* coordinates must
-// scroll once even when the whole interface is rotated 90 degrees for a portrait screen.
+// PC Chromium simulations: menus stay upright even when the phone's playfield is turned.
+// A vertical gesture in the rules panel's *local* coordinates must scroll exactly once.
 // No direct scroll-controller writes: actual CDP touch contacts and real mouse wheel input.
 async function checkNativeRulesScroll(tall) {
   const page = await startPage(16, tall ? { width: 390, height: 844, touch: true } : { width: 1280, height: 720, touch: true });
-  const label = tall ? 'rotated portrait (PC touch simulation)' : 'landscape (PC touch simulation)';
+  const label = tall ? 'upright portrait menu (PC touch simulation)' : 'landscape (PC touch simulation)';
   await activate(page, 'rulesButton', true);
   await see(page, 'rulesClose');
   await nativeFocus(page, 'rules', 'rulesClose', label + ' Rules opens with native focus');
@@ -253,13 +253,13 @@ async function checkNativeRulesScroll(tall) {
     const plan = await state(page, ({ axis, delta }) => {
       const { ui, game } = window.mahjong;
       const view = ui.view('rules'), panel = view.get('rulesScroll'), scroll = view.scroll('rulesScroll');
-      const bounds = ui.rect('rulesScroll'), pixels = game.canvas.getBoundingClientRect();
-      const unit = Math.max(game.width, game.height) / 1280;
-      const origin = { x: bounds.w * unit / 2, y: bounds.h * unit / 2 };
+      const bounds = view.rect('rulesScroll'), pixels = game.canvas.getBoundingClientRect();
+      const surface = game.browser.frame;
+      const origin = { x: bounds.width / 2, y: bounds.height / 2 };
       const points = Array.from({ length: 8 }, (_, i) => {
         const spot = { ...origin, [axis]: origin[axis] + delta * i / 7 };
         const global = panel.localToGlobal(spot.x, spot.y);
-        return { x: pixels.left + global.x * pixels.width / game.width, y: pixels.top + global.y * pixels.height / game.height };
+        return { x: pixels.left + global.x * pixels.width / surface.width, y: pixels.top + global.y * pixels.height / surface.height };
       });
       return { points, before: scroll.offset, maximum: scroll.maximum, rotation: game.ui.rotation };
     }, { axis, delta });
@@ -287,7 +287,7 @@ async function checkNativeRulesScroll(tall) {
   const cross = await drag('x', -80);
   const forward = await drag('y', -90);
   const reverse = await drag('y', 90);
-  check(cross.rotation === (tall ? 90 : 0) && Math.abs(cross.after - cross.before) < 1,
+  check(cross.rotation === 0 && Math.abs(cross.after - cross.before) < 1,
     label + ' perpendicular local drag does not scroll');
   check(forward.maximum > 90 && Math.abs(forward.after - forward.before - 90) <= 4,
     label + ' advances exactly once by the local 90-unit drag (' + (forward.after - forward.before).toFixed(1) + ')');
@@ -357,8 +357,18 @@ async function replay({ seed, name, touch = false, actions }) {
     check(true, name + ' resolves via real ' + (touch ? 'touch input' : 'mouse input'));
   }
   if (touch) {
+    await wait(page, () => window.mahjong.app.human?.options.type === 'act');
+    await state(page, () => {
+      const { app, game, ui, semantics } = window.mahjong;
+      window.__mahjongRotationRefs = { app, game, ui, semantics, hand:app.match.hand, focus:ui.focused };
+    });
     await page.setViewportSize({ width: 844, height: 390 });
-    await wait(page, () => window.mahjong.ready && !window.mahjong.app.tall && window.mahjong.app.game);
+    await wait(page, () => window.mahjong.ready && window.mahjong.app.board?.rotation === 0 && window.mahjong.app.game);
+    await frame(page);
+    check(await state(page, () => {
+      const { app, game, ui, semantics } = window.mahjong, old = window.__mahjongRotationRefs;
+      return old.app === app && old.game === game && old.ui === ui && old.semantics === semantics && old.hand === app.match.hand && old.focus === ui.focused;
+    }), 'touch browser rotation retains engine, UI, hand, semantic tree and focus rather than rebuilding');
     check(await state(page, () => window.mahjong.app.match.hand.players[0].melds.some(meld => meld.type === 'chow')),
       'touch browser rotation preserves the active hand and chosen combination');
     await activate(page, 'pauseButton', true);

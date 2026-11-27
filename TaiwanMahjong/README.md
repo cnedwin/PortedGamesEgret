@@ -41,7 +41,7 @@ The cover, headshots and table portraits are original generated illustrations. T
 | 暂停 · Pause | Esc（没有吃碰可选时也可按 P）· Esc (or P when no pong is offered) | 「暫停」· Pause |
 | 托管 · Auto-play | Tab 到「託管」· Tab to Auto | 「託管」· Auto |
 
-横屏时牌桌按屏幕等比放大；竖着拿手机时整张牌桌转 90°，和横屏一样大，把手机横过来就摆正了。切到别的标签页时打开暂停菜单。 · The table scales to the screen; on an upright phone it turns a quarter to stay as large, and turning the phone sets it straight. Switching tabs opens the pause menu.
+橫放手機時牌桌置中、兩側延伸絨布，手牌善用安全區寬度。直放小手機時牌桌轉 90° 橫著打，標題、規則與設定則正向閱讀；平板直放時整桌保持正向，上下顯示座位資料及工具。轉向不中斷對局、動畫或語音。切到其他分頁時開啟暫停選單。 · The table is centred on wide phones with extra baize and a wider usable hand. On upright small phones the table turns a quarter while menus read upright; upright tablets keep the table straight with information and tools above and below. Resizing keeps the match, motion and audio alive. Switching tabs opens the pause menu.
 
 **设置 · Settings**：音效、配乐、出牌速度（从容、轻快）、听牌提示、减弱动画（系统设了「减少动态效果」时自动减弱）、中英文。 · Sound, music, pace (easy or brisk), ready hints, reduced motion (on when the system asks for it), and the language.
 
@@ -84,7 +84,12 @@ quarter of their discards are not the best) and hardly defend; experts defend ha
 
 | 引擎入口 / API · Entry / API | 在本游戏中的用途 · Use in this game | 文件 · File |
 |---|---|---|
-| `play`（`@egret/engine/play`）、`pixelRatio` | 透明畫布、帧循環、暫停與自適應像素密度；保留橫、直向的邏輯尺寸 · clear canvas, loop and pause; adaptive pixel density for the wide and tall logical stages | `src/main.mjs`, `src/layout.mjs` |
+| `play`（`@egret/engine/play`）、`pixelRatio` | 透明畫布、按需畫面、單一實例，1280×720 原生設計單位，獨立渲染密度預算 · clear canvas, on-demand rendering, one instance and independent raster budget at the native 1280×720 design | [src/main.mjs](src/main.mjs), [src/layout.mjs](src/layout.mjs) |
+| `fit: 'expand'`、`planScreen`（`@egret/engine/web/screen`） | 牌桌完整、畫布填滿視口、寬手機延伸絨布；只用原生 screen plan 選擇初始像素密度 · entire design stays visible, canvas fills the viewport, extra baize, initial density derives from the engine plan | [src/main.mjs](src/main.mjs), [src/felt.mjs](src/felt.mjs) |
+| `portrait`、`arrange`、`game.screen`、`game.safe`、`game.toStage` / `fromStage` | 窄手機轉桌、平板直放不轉、靜態頁面 canvas 與原生牌張共用幾何，轉向不重建 play · quarter-turned phone table, upright tablet, static canvas and native tiles share engine geometry without rebuilding play | [src/layout.mjs](src/layout.mjs), [src/main.mjs](src/main.mjs), [src/felt.mjs](src/felt.mjs), [src/view.mjs](src/view.mjs) |
+| `game.pin` | 座位牌及平板局數資訊以實際安全區定位 · seat plates and tablet round information are pinned to the actual safe area | [src/hud.mjs](src/hud.mjs) |
+| `game.show` 的 `tablet` / `tabletPortrait` / `portrait`（`@egret/engine/web/view`） | 手機、桌面及平板採用獨立原生部件，保留具名焦點及捲動 · separate native layouts for phones, desktop and tablets, keeping named focus and scroll | [src/ui.mjs](src/ui.mjs), [src/screens.mjs](src/screens.mjs), [src/round-ui.mjs](src/round-ui.mjs) |
+| `verify --screens` | 8 種視口的引擎檢查，另由真實輸入測試叫牌、出牌、選吃及結算 · native eight-screen verification supplemented with real-input call, discard, chow and settlement states | [test/screens.mjs](test/screens.mjs) |
 | `game.browser.textureFromCanvas` + `Bitmap.sourceRect` | 42 种牌面画在一张图集上，手牌和飞行的牌各取一块 · one atlas of 42 faces, each hand or flying tile a rectangle of it | `src/view.mjs`, `src/tiles.mjs` |
 | `game.tween`（缓动 · easing `cubicOut`、`backOut`） | 牌打出、摸进的飞行，选中时抬起，吃碰胡的大字弹出 · tiles flying, rising when chosen, the call words popping | `src/view.mjs` |
 | `game.text`、`game.burst`、`Graphics` | 吃、碰、槓、胡、自摸的印章、震圈、牌形與粒子 · call stamps, impact rings, tile silhouettes and particles | `src/view.mjs` |
@@ -96,28 +101,39 @@ quarter of their discards are not the best) and hardly defend; experts defend ha
 | `createTextTable` + `pickLanguage` | 繁体中文和英文文字表，开局按浏览器语言 · the words, by the browser's language | `src/i18n.mjs` |
 | `createSaveStore` + `browserSaveStorage` | 设置、上次的选择和战绩；坏档另存后重开 · settings, the last setup and the record; a broken save set aside | `src/saves.mjs` |
 
+
+選用 `expand`：`contain` 會留黑邊；`fixedWidth` 在極寬手機會截去上下牌桌，`fixedHeight` 在 4:3 平板可能裁掉左右，`fixedWide` 會裁去一軸；`fixedNarrow` 相當於 `expand`，因此選語意更清楚的後者。非像素風，不使用 `wholeScale`。
+
+`expand` keeps the entire table. `contain` leaves bars, `fixedWidth` can crop the top or bottom on wide phones, `fixedHeight` can crop the sides on 4:3 tablets, and `fixedWide` can crop one axis. `fixedNarrow` is equivalent to expand. No wholeScale (not pixel art). Global `uiScale` is intentionally off: table-aligned hit regions must share the tiles’ transform; see ENGINE-NOTES 9.
+
 ## 已验证 · Verified
 
-- `node --test test/*.test.mjs` 通过 30 项，覆盖十六张规则、台数、庄家轮换、四圈结束、收支守恒、旧档和坏档，以及中英文词表和引擎副本。 · 30 Node tests cover rules, tai, the dealer and four winds, zero-sum results, saves, localization, and the engine copy.
-- `node test/accept.mjs` 覆盖原生控件的键盘和语义树、横竖屏触控、吃牌有多个组合、碰、槓、荣和、自摸、暂停、四家结算和战绩。标题和规则有截图基线。 · Browser acceptance covers native keyboard controls and semantics, touch in both orientations, multiple chow options, pong, kong, discard win, self-draw, pause, settlement, and records, with title and rules screenshot baselines.
+- `node --test test/*.test.mjs` 通過 34 項（含原生設計密度、安全區與手牌幾何），規則、台數、存檔和雙語詞表不變。 · 34 Node tests cover native density and safe hand geometry, with unchanged rules, tai, saves and localization.
+- `node test/accept.mjs` 69/69 通過，涵蓋原生控件的键盘和语义树、横竖屏触控、吃牌有多个组合、碰、槓、荣和、自摸、暂停、四家结算和战绩。标题和规则有截图基线。 · All 69 browser assertions passed, covering native keyboard controls and semantics, touch in both orientations, multiple chow options, pong, kong, discard win, self-draw, pause, settlement, and records, with title and rules screenshot baselines.
+- 本輪原生螢幕檢查：`node vendor/egret.mjs verify --screens` 標題八種 0 錯誤；`node test/screens.mjs --mode screens` 七種狀態、八個 profile 共 56/56 無錯誤，所有殘留 touchTarget 警告已於 QUALITY 逐類記錄。 · Native verification: eight clean CLI title screens; 56 state/profile combinations through the native checker with no errors. Remaining target-size warnings are documented.
+- `node test/screens.mjs --mode rounds` 六種指定尺寸合法打完整一局、碰／槓／兩組吃牌候選／自摸、轉向、暫停、語音／飛牌及戰績讀回。Windows RTX 5090 Laptop 硬體 WebGPU 完整一局 11/11、Fold7 外螢幕實機橫直轉向 10/10；折疊內螢幕為模擬，不能視為真機驗收。 · Six full legal hands via browser inputs, with claims, rotation, pause, voice/tile continuity and persisted records. The physical Windows WebGPU hand passed 11/11 and physical Fold7 external-display rotation passed 10/10; the unfolded profile is emulated.
 - 真机对局、帧时间、断网插画恢复及自动检查的限制见 [QUALITY.md](QUALITY.md)。新版驗收腳本另包含原生彈窗焦點、巢狀選單語言切換、兩次 Enter 出牌及 0°／90° 捲動位移檢查。 · See [QUALITY.md](QUALITY.md) for device play, frame timings, recovery from missing title art, and automated check limits. The updated acceptance script additionally checks native modal focus, nested language changes, two-press discard and 0°/90° scroll displacement.
 
 ## 已知问题 · Known issues
 
 - 裝置上的音效驗證涵蓋播放事件、聲音訊號和設定。仍待使用手機喇叭實聽整局的混音。 · Device checks covered playback, signal and settings. The complete mix through phone speakers still needs a listening pass.
-- 手机横屏（高 390 像素）时一张手牌约 35×52 CSS 像素，比 44 像素的触控建议窄；十七张牌要排在一行里，宽不了更多。 · On a phone held sideways (390 px tall) a hand tile is about 35 × 52 CSS px, narrower than the 44 px advice; seventeen tiles must fit one row.
-- 引擎畫布與文字圖集的像素密度上限為 2，以維持手機的渲染及圖集預算。若實際顯示尺寸與裝置像素比要求更高密度，畫布仍需放大，部分細字或牌面可能稍軟。 · Render and text-atlas density is capped at 2 to protect the mobile rendering and atlas budgets. Very large or dense displays can still upscale the canvas and soften fine type or tile details (item 3).
-- 螢幕轉向時會重建牌桌畫布，飛行中的牌會直接落到位。配樂維持原本的播放進度。 · Turning the screen recreates the table renderer. Tiles in flight land at once, and music keeps its position.
+- 寬手機的手牌使用安全區長度；852×393 的模擬劉海僅留下 734 CSS 像素，17 張各 44 像素至少需 748，故最滿手牌無法全達 44，但不重疊。 · A simulated notch leaves 734 CSS px at 852×393; seventeen disjoint 44 px targets need at least 748 px, so the full hand cannot quite meet the recommendation. See QUALITY.md for measurements.
+- 渲染密度與設計座標分離，初始依原生 screen plan 與 DPR 選擇；緊湊螢幕使用獨立光柵預算。極高密度螢幕可能仍需放大，且 play 尚無執行時 pixelRatio 設定器。 · Initial render density follows the native screen plan and device ratio, with a compact-screen raster budget. Very dense screens may still upscale; play has no runtime density setter.
+- 全域 uiScale 暫不啟用：手牌的原生語意與鍵盤焦點不能為了介面放大而犧牲。瀏覽器語意投影目前需在 stage frame 尺寸變動時重接；原語意樹及焦點不重建。 · Global uiScale stays off to preserve hand alignment and keyboard/semantic focus. The browser semantics projection is reattached when frame extent changes; the semantic tree and focus stay alive. See ENGINE-NOTES 9–10.
 - 台数表是台湾常见的一种，各地牌桌的规矩不尽相同（例如天地人胡的台数、花槓算法）；没有天听、地听、嚦咕嚦咕和过水。 · The tai table is one common Taiwanese table; tables differ, and some hands are left out.
 - 电脑牌友不读别家的牌河推理听什么，防守只看危险程度的粗略估计；老陈为做大牌放槍偏多。 · The computer players do not read rivers for waits; defence is a rough danger estimate, and Old Chen deals in more for his big hands.
 - 已在 Chromium 中检查语义树。真实读屏播报仍待验证。 · The semantic tree was checked in Chromium. Actual screen-reader speech is pending.
+
+- 暫停時 world 的 expand 偏移可能滯後；牌桌不使用相機，故採原生固定舞台 UI 層，詳見 ENGINE-NOTES 11。 · A paused world can retain its prior expand offset; the stage-fixed table uses native ui instead (ENGINE-NOTES 11).
+
+- 多螢幕 CLI 目前只檢查啟動狀態；牌局及選單狀態使用相同 checker 由測試腳本操作（ENGINE-NOTES 12）。 · Multi-screen CLI checks launch only; browser test actions supplement it with the same checker (ENGINE-NOTES 12).
 
 ## 已解决 · Solved
 
 - 牌局按鈕使用白鷺原生視圖與語意樹。引擎 #488 新增具名彈窗初始焦點、原生焦點查詢與設定；標題、吃牌組合、結算及巢狀暫停選單不再另設焦點控制器。Tab、Enter 和 Space 的一般介面操作交由引擎接管。 · Native views expose control names and keyboard activation. Engine #488 supplies named initial modal focus and native focus access; the Demo removes its separate focus controller.
 - 透明画布与静止牌桌分层合成。暂停、规则与结算在引擎中统一处理前景遮罩。 · The clear canvas combines with the static table, while the engine draws the pause, rules and result scrims.
-- 牌桌保留 1280×720 設計座標、960×540 邏輯舞台及按需渲染；使用引擎 `play({ pixelRatio })`，建置或轉向重建舞台時按實際顯示尺寸與裝置像素比選擇 1–2 的渲染及文字密度。標題卡片、規則說明與結算表格的小字略為加大，不改操作區與玩法。 · The 1280 × 720 design and 960 × 540 logical stage are unchanged. On-demand rendering uses Egret's `pixelRatio` (1–2), chosen at stage creation from its actual display size and device ratio. Small captions, rules and settlement type are slightly enlarged without changing the controls or rules.
-- 直向畫面在引擎內部旋轉。引擎 #486 已統一按視口本地座標判斷拖曳方向、閾值和位移，規則與結算台數表直接使用原生捲動，不再另外擷取旋轉觸控（引擎筆記第 7 條）。 · The canvas stays upright in portrait. Engine #486 fixes viewport-local touch panning; the rules and result lists now use native scrolling without a rotated-touch workaround (engine note 7).
+- 移除 0.75 中間舞台倍率與 CSS 手寫 fit。`play` 的 expand、portrait、arrange 負責畫布適配；桌面採用原本完整 1280×720，直向畫面只移動牌桌專屬根節點。 · Removed the 0.75 intermediary and handwritten CSS fit. Native expand, portrait and arrange own the canvas; only the board-specific roots move or turn.
+- 轉向不銷毀 play、對局、場景或語意樹。直立手機的牌桌轉 90°、選單正向閱讀，平板保持正向；規則及結算使用原生捲動。 · Rotation retains game, match, scene and semantics; a phone turns only the game table, upright menus and tablets use native scrolling and layouts.
 - 两百多张静止的牌做成 Bitmap 太慢（ENGINE-NOTES 5）：静止的牌画在页面 canvas 上，只在变化时重画。 · Two hundred still Bitmaps too slow (item 5): still tiles painted on a page canvas when they change.
 - 选圈数和难度没存上（ENGINE-NOTES 6）：`update` 的回调返回了赋值的结果，被当成新存档；改成不返回值。 · The setup not saved (item 6): the update callback returned its assignment; now it returns nothing.
 - 结算时牌桌上已经显示下一局的庄家和门风：每局开始时把庄家、圈风、连庄记在这一局里，显示都读这一局的。 · The result showed the next hand's dealer: each hand now keeps its own dealer, wind and streak for display.
@@ -125,7 +141,7 @@ quarter of their discards are not the best) and hardly defend; experts defend ha
 
 ## 未完成 · Unfinished
 
-- 手機喇叭實聽，以及低階手機的幀率與觸控驗收。 · A listening pass on phone speakers, and frame pacing and touch checks on lower-end phones.
+- Fold7 實體內螢幕橫直、實體平板、真實瀏海、Safari／Firefox／微信、真人讀屏、手柄及未輔助手指操作仍待驗收；手機喇叭實聽、低階手機幀率也未完成。 · Physical unfolded Fold7, tablets, real cutouts, Safari/Firefox/WeChat, live screen readers, controllers and unaided finger input remain untested, as do phone speaker listening and lower-end frame pacing.
 - 牌河推理（别家可能在听什么）和更细的防守。 · Reading rivers for waits, and finer defence.
 - 可选的规则：天听、地听、嚦咕嚦咕、过水、不同的台数表。 · Optional rules and other tai tables.
 - 牌局回放和每一手的复盘。 · Replays and a review of each hand.
@@ -134,13 +150,14 @@ quarter of their discards are not the best) and hardly defend; experts defend ha
 
 | 路径 · Path | 内容 · Contents |
 |---|---|
-| `index.html`, `style.css` | 页面、import map、牌桌底图、名牌、听牌提示和加载状态 · page shell, import map, table backing, plates, ready hints and loading state |
+| `index.html`, `style.css` | 頁面、import map、靜態底圖與載入狀態 · page shell, import map, static table canvas and loading state |
 | `src/main.mjs` | 引擎启动、牌局流程、输入和存档 · engine startup, round flow, input and saves |
 | `src/screens.mjs`, `src/round-ui.mjs` | 大厅与牌局的白鹭原生界面 · native Egret lobby and game views |
 | `src/ui.mjs` | 設計座標、客製裝飾、原生視圖綁定與語意角色；焦點和捲動交由引擎 · design coordinates, decoration, native view binding and semantic roles; focus and scrolling are owned by the engine |
 | `src/tiles.mjs` | 牌面图集（2D canvas 画） · the tile atlas |
 | `src/layout.mjs` | 桌上每張牌的位置、方向及自適應像素密度 · where each tile sits and adaptive render density |
-| `src/felt.mjs` | 静止的牌桌（页面 canvas） · the still table |
+| `src/felt.mjs` | 靜止的牌桌（頁面 canvas）及引擎座標投影 · still table and projection from engine geometry |
+| `src/hud.mjs` | 原生座位牌、中框、聽牌提示、安全區 pins · native seats, centre, hints and safe-area pins |
 | `src/view.mjs` | 引擎画的手牌、飞行的牌、大字和火花 · the engine's part |
 | `src/sound.mjs`, `src/voice.mjs`, `assets/audio/` | 音效合成、配樂、牌友語音與獨立靜音 · synthesized effects, music, table voices and independent mute |
 | `src/sim/hand.mjs`, `game.mjs`, `score.mjs` | 向听数、对局规则、台数 · shanten, the game, tai |
@@ -151,12 +168,12 @@ quarter of their discards are not the best) and hardly defend; experts defend ha
 
 ## 引擎副本 · Engine copy
 
-引擎副本取自 [Egret_rebuild](https://github.com/cnedwin/Egret_rebuild) 提交 `94bd70fb26b1f81794c9c6fbbb258c655fcd19df`，由引擎仓库的 `tools/vendor-game.mjs` 复制，见 [vendor/SOURCE.md](vendor/SOURCE.md)。用到的入口见下方命令。
+引擎副本取自 [Egret_rebuild](https://github.com/cnedwin/Egret_rebuild) 提交 `13d70b73904266c11b23de4c09c239240a7162db`，由引擎仓库的 `tools/vendor-game.mjs` 复制，见 [vendor/SOURCE.md](vendor/SOURCE.md)。用到的入口见下方命令。
 
 The engine copy is from [Egret_rebuild](https://github.com/cnedwin/Egret_rebuild) commit
-`94bd70fb26b1f81794c9c6fbbb258c655fcd19df`, copied by the engine's `tools/vendor-game.mjs`; see
+`13d70b73904266c11b23de4c09c239240a7162db`, copied by the engine's `tools/vendor-game.mjs`; see
 [vendor/SOURCE.md](vendor/SOURCE.md) and the entries below.
 
 ```sh
-node tools/vendor-game.mjs <this folder> @egret/engine @egret/engine/play @egret/engine/kit @egret/engine/web/kit @egret/engine/ui @egret/engine/ui/semantics @egret/engine/ui/testing @egret/engine/web/semantics
+node tools/vendor-game.mjs <this folder> @egret/engine @egret/engine/play @egret/engine/kit @egret/engine/web/kit @egret/engine/ui @egret/engine/ui/semantics @egret/engine/ui/testing @egret/engine/web/semantics @egret/engine/web/screen @egret/engine/web/view
 ```

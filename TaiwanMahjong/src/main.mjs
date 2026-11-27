@@ -1,5 +1,7 @@
 // Gameplay orchestration, the unrotated canvas host and table state.
 import { play } from '@egret/engine/play';
+import { planScreen } from '@egret/engine/web/screen';
+import { TABLET_SHORT_SIDE } from '@egret/engine/web/view';
 import { browserSaveStorage } from '@egret/engine/web/kit';
 import { createUiSemantics } from '@egret/engine/ui/semantics';
 import { createBrowserSemantics } from '@egret/engine/web/semantics';
@@ -7,21 +9,20 @@ import { bridgeUiSemantics, createUi } from './ui.mjs';
 import { createScreens } from './screens.mjs';
 import { createRoundUi } from './round-ui.mjs';
 import { createFelt } from './felt.mjs';
+import { createHud } from './hud.mjs';
 import { getLanguage, onLanguage, setLanguage, startLanguage, t, tileName } from './i18n.mjs';
-import { displayPixelRatio, handCentre, handSlots, riverSlot, STAGE, STAGE_SCALE } from './layout.mjs';
+import { boardLayout, displayPixelRatio, handCentre, handSlots, meldTiles, riverSlot, STAGE, PORTRAIT } from './layout.mjs';
 import { LEVEL_NAMES, openSave, recordGame, recordHand } from './saves.mjs';
 import { createSound } from './sound.mjs';
 import { CHARACTERS, decide } from './sim/bot.mjs';
 import { act, chowsFor, createMatch, kindOf, liveLeft, needOf, optionsFor, RULES, seenBy, startHand, waiting } from './sim/game.mjs';
 import { countsOf, waitsOf } from './sim/hand.mjs';
 import { TAI } from './sim/score.mjs';
-import { BACK, CELL, frameOf, paintAtlas } from './tiles.mjs';
+import { CELL, paintAtlas } from './tiles.mjs';
 import { createView } from './view.mjs';
 
 const params = new URLSearchParams(location.search);
 const $ = (selector, root = document) => root.querySelector(selector);
-const $$ = (selector, root = document) => [...root.querySelectorAll(selector)];
-const table = $('#table');
 
 // The save and the language.
 const problems = [];
@@ -49,13 +50,12 @@ const app = {
   sound: createSound({
     ...save.data.settings,
     onSpeakerChanged(seat) {
-      for (const plate of $$('.plate[data-seat]')) {
-        plate.classList.toggle('speaking', seat !== null && Number(plate.dataset.seat) === seat);
-      }
+      app.hud?.speaker(seat);
     }
   }),
   felt: null,
   view: null,
+  board: null,
   match: null,
   screen: 'loading',
   selected: null,
@@ -69,121 +69,59 @@ const app = {
   quitting: false
 };
 
-// Board art keeps its table coordinates. The browser canvas itself stays unrotated.
-let desiredTall;
-let building = Promise.resolve();
-let engineGate = null;
-function fit() {
-  const tall = innerHeight > innerWidth;
-  const w = tall ? STAGE.height : STAGE.width, h = tall ? STAGE.width : STAGE.height;
-  const s = Math.min(innerWidth / w, innerHeight / h);
-  const left = (innerWidth - w * s) / 2, top = (innerHeight - h * s) / 2;
-  const turn = tall ? `translate(${left + w * s}px, ${top}px) rotate(90deg) scale(${s})` : `translate(${left}px, ${top}px) scale(${s})`;
-  for (const layer of [$('#back'), table]) layer.style.transform = turn;
-  Object.assign($('#stage').style, {
-    left: left + 'px', top: top + 'px', width: w * s + 'px', height: h * s + 'px'
-  });
+// The engine owns fit, orientation and safe areas. Only the table's own nodes turn on a narrow portrait phone.
+function arrange(game) {
+  const screen = game.browser.screen;
+  const tablet = Math.min(screen.width, screen.height) * screen.scale >= TABLET_SHORT_SIDE;
+  app.board = boardLayout({ safe: game.safe, orientation: game.orientation, screenScale: screen.scale, tablet });
+  app.view?.arrange(app.board);
+  app.felt?.arrange(game, app.board);
+  app.hud?.arrange(app.board);
+  app.ui?.arrange();
+  if (app.match?.hand && app.screen !== 'title' && app.view) paintHand(false);
+  if (app.semantics) syncProjection(game);
+}
+
+function syncProjection(game) {
+  const { width, height } = game.browser.frame;
+  // The browser semantics adapter accepts fixed stage dimensions (ENGINE-NOTES). Keep the tree and focus;
+  // only reconnect its browser projection when the engine's expanded frame changes size.
+  const key = `${width}x${height}`;
+  if (app.projectionSize !== key) {
+    const focused = document.activeElement === game.canvas;
+    app.projection?.dispose();
+    app.projection = createBrowserSemantics({ semantics: app.semantics, canvas: game.canvas, width, height, label: t('title') });
+    app.projectionSize = key;
+    if (focused) game.canvas.focus({ preventScroll: true });
+  }
   app.projection?.sync();
-  if (!app.atlas || desiredTall === tall) return;
-  desiredTall = tall;
-  building = building.then(async () => {
-    if (desiredTall !== app.tall || !app.game) await buildEngine(desiredTall);
-  }).catch(error => console.error(error));
-}
-addEventListener('resize', fit);
-
-function placeUi(game, tall) {
-  game.ui.rotation = tall ? 90 : 0;
-  game.ui.x = tall ? STAGE.height * .75 : 0;
-  game.ui.y = 0;
 }
 
-async function buildEngine(tall) {
-  const old = app.game;
-  const priorPanels = app.screens?.panels ?? [];
-  const priorFocus = app.ui?.focused;
-  let done;
-  engineGate = new Promise(resolve => { done = resolve; });
-  app.tall = tall;
-  app.game = null;
-  app.projection?.dispose();
-  app.projection = null;
-  app.ui?.dispose();
-  app.ui = null;
-  app.view = { showHand() {}, fly: async () => {}, call() {}, clear() {} };
-  try {
-    if (old) await old.dispose();
-    const host = $('#stage');
-    host.replaceChildren();
-    const box = host.getBoundingClientRect();
-    const pixelRatio = displayPixelRatio(box.width, box.height, tall, window.devicePixelRatio);
-    const semantics = createUiSemantics({ maxNodes: 1024 });
-    const bridge = bridgeUiSemantics(semantics);
-    const game = await play({
-      width: (tall ? STAGE.height : STAGE.width) * STAGE_SCALE,
-      height: (tall ? STAGE.width : STAGE.height) * STAGE_SCALE,
-      pixelRatio,
-      parent: host, transparent: true, seed: app.seed, semantics: bridge,
-      renderMode: 'on-demand',
-      arrange(next) {
-        placeUi(next, tall);
-        app.ui?.arrange();
-      },
-      onError: console.error
-    });
-    placeUi(game, tall);
-    game.reducedMotion = save.data.settings.reducedMotion || matchMedia('(prefers-reduced-motion: reduce)').matches;
-    const lease = await game.browser.textureFromCanvas(app.atlas);
-    app.view = createView(game, lease, { tall });
-    app.sound.attach(game);
-    app.game = game;
-    app.semantics = semantics;
-    app.ui = createUi(game, bridge);
-    app.projection = createBrowserSemantics({ semantics, canvas: game.canvas, width: game.width, height: game.height, label: t('title') });
-    app.round = createRoundUi(game, app.ui, lease, { nameOf, signed, sealOf: seat => t(SEATS[seat].seal) });
-    app.screens = createScreens(game, app.ui, {
-      save, problems, nameOf, seats: SEATS, levelNames: LEVEL_NAMES, rules: RULES, tai: TAI,
-      start: () => beginGame(), setSetting, switchLanguage, resume, quit,
-      playUi: () => app.sound.play('ui')
-    });
-    if (pauseGate) game.pause();
-    if (app.screen === 'title') app.screens.showTitle();
-    if (app.match?.hand && app.screen !== 'title') paintTable();
-    if (app.screen === 'play') {
-      paintTools();
-      if (app.chow) displayChow();
-    }
-    if (app.screen === 'result') renderResult();
-    if (app.screen === 'final') renderFinal();
-    for (const panel of priorPanels) app.screens.open(panel);
-    if (priorFocus) app.ui.focus(priorFocus);
-  } finally {
-    engineGate = null;
-    done();
-  }
-}
-
-// ——— Tile pictures for the page ———
-let atlas;
-const pictures = new Map();
-function picture(kind) {
-  const key = kind ?? BACK;
-  if (!pictures.has(key)) {
-    const canvas = document.createElement('canvas'),
-      frame = frameOf(key);
-    canvas.width = CELL.width / 2;
-    canvas.height = CELL.height / 2;
-    canvas.getContext('2d').drawImage(atlas, frame.x, frame.y, frame.width, frame.height, 0, 0, canvas.width, canvas.height);
-    pictures.set(key, canvas.toDataURL());
-  }
-  return pictures.get(key);
-}
-function img(kind, className = '') {
-  const image = document.createElement('img');
-  image.src = picture(kind);
-  image.alt = kind === null ? '' : tileName(kind);
-  if (className) image.className = className;
-  return image;
+async function startEngine(atlas) {
+  const host = $('#stage'), box = host.getBoundingClientRect();
+  const initial = planScreen({ box, design: STAGE, portrait: PORTRAIT, fit: 'expand' });
+  const semantics = createUiSemantics({ maxNodes: 1024 }), bridge = bridgeUiSemantics(semantics);
+  const game = await play({
+    ...STAGE, portrait: PORTRAIT, fit: 'expand',
+    pixelRatio: displayPixelRatio(initial.scale, window.devicePixelRatio, Math.min(box.width, box.height) < TABLET_SHORT_SIDE),
+    parent: host, transparent: true, seed: app.seed, semantics: bridge,
+    renderMode: 'on-demand', arrange, onError: console.error
+  });
+  const lease = await game.browser.textureFromCanvas(atlas);
+  game.reducedMotion = save.data.settings.reducedMotion || matchMedia('(prefers-reduced-motion: reduce)').matches;
+  app.game = game;
+  app.semantics = semantics;
+  app.view = createView(game, lease);
+  app.hud = createHud(game, lease, { nameOf, signed, semantics, sealOf: seat => t(SEATS[seat].seal) });
+  app.sound.attach(game);
+  app.ui = createUi(game, bridge, { board: () => app.board });
+  app.round = createRoundUi(game, app.ui, lease, { nameOf, signed, sealOf: seat => t(SEATS[seat].seal) });
+  app.screens = createScreens(game, app.ui, {
+    save, problems, nameOf, seats: SEATS, levelNames: LEVEL_NAMES, rules: RULES, tai: TAI,
+    start: () => beginGame(), setSetting, switchLanguage, resume, quit,
+    playUi: () => app.sound.play('ui')
+  });
+  arrange(game);
 }
 
 // ——— Delays that stop while paused ———
@@ -193,12 +131,12 @@ async function wait(seconds) {
   let left = seconds * pace() * 1000;
   while (left > 0) {
     await new Promise((resolve) => setTimeout(resolve, Math.min(40, left)));
-    if (!pauseGate && !engineGate) left -= 40 * (app.speed ?? 1);
+    if (!pauseGate) left -= 40 * (app.speed ?? 1);
   }
 }
 let pauseGate = null;
 async function gate() {
-  while (engineGate || pauseGate) await (engineGate ?? pauseGate.promise);
+  while (pauseGate) await pauseGate.promise;
 }
 
 // ——— Painting the table ———
@@ -208,35 +146,7 @@ function paintTable() {
   app.felt?.paint({ hand, turn: hand && !hand.result ? hand.turn : -1, reveal: app.reveal, hidden: app.hidden, last: app.last, winner: hand?.result?.seat ?? -1 });
   if (!hand) return;
   const windOf = (seat) => (seat - hand.dealer + 4) % 4;
-  $('#roundLine').textContent = t('roundLine', { wind: t('wind' + hand.wind), seat: t('wind' + hand.passes) });
-  $('#wallLeft').textContent = t('wallLeft', { n: Math.max(0, liveLeft(hand)) });
-  for (const span of $$('.seatWind')) {
-    const seat = Number(span.dataset.seat);
-    span.textContent = t('wind' + windOf(seat));
-    span.classList.toggle('dealer', seat === hand.dealer);
-  }
-  for (const plate of $$('.plate')) {
-    const seat = Number(plate.dataset.seat);
-    $('.seal', plate).textContent = t(SEATS[seat].seal);
-    $('.who', plate).textContent = nameOf(seat);
-    const badges = $('.badges', plate);
-    badges.replaceChildren();
-    const wind = document.createElement('span');
-    wind.className = 'wind';
-    wind.textContent = t('wind' + windOf(seat));
-    badges.append(wind);
-    if (seat === hand.dealer) {
-      const mark = document.createElement('span');
-      mark.className = 'dealerMark';
-      mark.textContent = t('dealer') + (hand.streak ? ' ' + t('streak', { n: hand.streak }) : '');
-      badges.append(mark);
-    }
-    const score = $('.score', plate);
-    score.textContent = signed(match.scores[seat]);
-    score.classList.toggle('down', match.scores[seat] < 0);
-    plate.classList.toggle('turn', !hand.result && hand.turn === seat && hand.phase === 'act');
-    plate.setAttribute('aria-label', `${nameOf(seat)} ${t('wind' + windOf(seat))} ${signed(match.scores[seat])}`);
-  }
+  app.hud?.paint({ hand, match, windOf });
   paintHand();
 }
 
@@ -268,46 +178,38 @@ function readyByDiscard() {
   return out;
 }
 
-function paintHand() {
+function laidOutHand(count, apart) {
+  const space = app.board?.hand;
+  if (!space) return handSlots(count, apart);
+  const melds = meldTiles(0, app.match?.hand?.players[0]?.melds ?? [], kindOf);
+  const right = melds.length ? Math.min(space.right, ...melds.map(tile => tile.x - CELL.width * tile.scale / 2 - 6)) : space.right;
+  return handSlots(count, apart, { ...space, right });
+}
+
+function paintHand(moving = true) {
   const hand = app.match.hand,
     { ids, apart } = myTiles(),
     human = app.human,
     acting = human?.options.type === 'act',
     hints = save.data.settings.hints && acting ? readyByDiscard() : new Map();
   const ready = new Set(ids.filter((id) => hints.has(kindOf(id))));
+  const slots = laidOutHand(ids.length, apart);
   app.view.showHand(
     ids.map((id) => ({ id, kind: kindOf(id) })),
-    { drawnApart: apart, selected: app.selected, ready }
+    { drawnApart: apart, selected: app.selected, ready, slots, moving }
   );
-  app.round?.showHand(ids, handSlots(ids.length, apart), apart, ready, acting, tapTile);
+  app.round?.showHand(ids, slots, apart, ready, acting, tapTile);
   paintHint(hints);
   paintActions();
   void hand;
 }
 
 function paintHint(hints) {
-  const hint = $('#hint'),
-    match = app.match,
-    human = app.human;
-  hint.replaceChildren();
+  const match = app.match, human = app.human;
+  app.hud?.hint(null);
   if (!save.data.settings.hints || !match?.hand || match.hand.result) return;
   const seen = seenBy(match, 0);
-  const show = (key, tile, waits) => {
-    const [before, after] = t(key, { tile: '\u0001', tiles: '\u0002' }).split('\u0002');
-    const [lead, middle] = before.split('\u0001');
-    hint.append(lead);
-    if (tile !== null) {
-      hint.append(img(tile), middle ?? '');
-    }
-    for (const kind of waits) {
-      hint.append(img(kind));
-      const count = document.createElement('span');
-      count.className = 'count';
-      count.textContent = `×${Math.max(0, 4 - seen[kind])}`;
-      hint.append(count);
-    }
-    hint.append(after ?? '');
-  };
+  const show = (key, tile, waits) => app.hud?.hint({ key, tile, waits, seen });
   if (human?.options.type === 'act' && app.selected !== null) {
     const waits = hints.get(kindOf(app.selected));
     if (waits) return show('discardToReady', kindOf(app.selected), waits);
@@ -354,7 +256,7 @@ function closeChow() {
 
 function tapTile(id) {
   const human = app.human;
-  if (!human || human.options.type !== 'act' || app.ui?.modal || pauseGate || engineGate) return;
+  if (!human || human.options.type !== 'act' || app.ui?.modal || pauseGate) return;
   if (app.selected === id) return answer({ type: 'discard', id });
   app.selected = id;
   app.sound.play('select');
@@ -454,7 +356,7 @@ async function present(from) {
           app.hidden.add(event.id);
           paintTable();
           const { ids, apart } = myTiles(),
-            slots = handSlots(ids.length + 1, true);
+            slots = laidOutHand(ids.length + 1, true);
           void apart;
           await app.view.fly(kindOf(event.id), { x: CENTRE_FROM.x, y: CENTRE_FROM.y, scale: 0.3 }, slots.at(-1), 0.22);
           app.hidden.delete(event.id);
@@ -470,7 +372,7 @@ async function present(from) {
         if (event.seat === 0) {
           const { ids, apart } = myTiles();
           const order = [...ids, event.id].sort((a, b) => kindOf(a) - kindOf(b));
-          fromPlace = handSlots(ids.length + 1, apart)[Math.max(0, order.indexOf(event.id))];
+          fromPlace = laidOutHand(ids.length + 1, apart)[Math.max(0, order.indexOf(event.id))];
         } else fromPlace = { ...handCentre(event.seat), scale: 0.3, rotation: to.rotation };
         app.hidden.add(event.id);
         app.last = event.id;
@@ -582,7 +484,8 @@ function renderFinal() {
 }
 function show(name) {
   app.screen = name;
-  table.classList.toggle('atTitle', name === 'title');
+  $('#back').style.visibility = name === 'title' ? 'hidden' : 'visible';
+  app.hud?.show(name !== 'title');
   if (name === 'title') {
     app.ui?.hide('actions');
     app.ui?.hide('hand');
@@ -644,7 +547,7 @@ function updateLanguage() {
 onLanguage(updateLanguage);
 
 function openMenu() {
-  if (app.screen !== 'play' || !app.screens || app.screens.modal || engineGate) return;
+  if (app.screen !== 'play' || !app.screens || app.screens.modal) return;
   pause(true);
   app.screens.open('menu');
 }
@@ -688,7 +591,7 @@ document.addEventListener('keydown', event => {
     event.preventDefault();
     return;
   }
-  if (app.screen !== 'play' || app.ui.modal || engineGate) return;
+  if (app.screen !== 'play' || app.ui.modal) return;
   const key = event.key.toLowerCase(), options = app.human?.options;
   if (key === 'p' && !options?.pong) {
     event.preventDefault();
@@ -722,16 +625,11 @@ document.addEventListener('visibilitychange', () => {
 
 // ——— Start ———
 async function boot() {
-  fit();
   if (document.fonts?.ready) await Promise.race([document.fonts.ready, new Promise(resolve => setTimeout(resolve, 1500))]);
-  atlas = paintAtlas();
-  app.atlas = atlas;
+  const atlas = paintAtlas();
   app.felt = createFelt($('#felt'), atlas, kindOf);
-  desiredTall = innerHeight > innerWidth;
-  building = buildEngine(desiredTall);
-  await building;
+  await startEngine(atlas);
   await app.screens.ready;
-  fit();
   updateLanguage();
   show('title');
   $('#loading').hidden = true;

@@ -7,18 +7,29 @@
 import { CELL } from './tiles.mjs';
 
 export const STAGE = { width: 1280, height: 720 };
-export const STAGE_SCALE = 0.75;
+export const PORTRAIT = { width: 720, height: 1280 };
 export const CENTRE = { x: 640, y: 360, half: 76 };
 
-/** Preserve the logical table and pick enough native pixels for its actual display size.
- * The 2× ceiling keeps both the render target and Egret's text atlas within the existing mobile budget.
- */
-export function displayPixelRatio(cssWidth, cssHeight, tall, deviceRatio) {
-  const width = (tall ? STAGE.height : STAGE.width) * STAGE_SCALE;
-  const height = (tall ? STAGE.width : STAGE.height) * STAGE_SCALE;
+/** Use the engine's initial screen plan, not a second fit calculation. The former 0.75 × 2 ceiling is 1.5;
+ * a short phone has a smaller raster budget when the expanded stage also draws the native table HUD. */
+export function displayPixelRatio(screenScale, deviceRatio, compact = false) {
   const dpr = Number.isFinite(deviceRatio) && deviceRatio > 0 ? deviceRatio : 1;
-  const displayDensity = Math.min(cssWidth / width, cssHeight / height) * dpr;
-  return Math.min(2, Math.max(1, dpr, displayDensity));
+  return Math.min(compact ? 1 : 1.5, Math.max(1, screenScale * dpr));
+}
+
+/** Place the *table*, not the canvas. The engine owns the whole screen, its scale and safe rectangle. */
+export function boardLayout({ safe, orientation, screenScale, tablet }) {
+  const portrait = orientation === 'portrait', turned = portrait && !tablet;
+  const w = turned ? STAGE.height : STAGE.width, h = turned ? STAGE.width : STAGE.height;
+  const scale = Math.min(1, safe.width / w, safe.height / h);
+  const left = safe.x + (safe.width - w * scale) / 2;
+  const top = safe.y + (safe.height - h * scale) / 2;
+  const x = left + (turned ? w * scale : 0), y = top;
+  // In a quarter-turn the physical vertical axis is the hand's horizontal axis.
+  const start = turned ? (safe.y - y) / scale : (safe.x - x) / scale;
+  const end = start + (turned ? safe.height : safe.width) / scale;
+  return { x, y, scale, rotation: turned ? 90 : 0, portrait, tablet, width: w * scale, height: h * scale,
+    hand: { left: start + 4, right: end - 4, cssUnit: screenScale * scale } };
 }
 
 /** Scales of a tile cell (128 × 172 pixels) in each place. */
@@ -47,12 +58,20 @@ export function riverSlot(seat, index) {
 }
 
 /** The player's concealed tiles: centres of `count` tiles, the last apart when it was just drawn. */
-export function handSlots(count, drawnApart) {
-  const step = CELL.width * SCALE.hand - 4,
-    out = [];
+export function handSlots(count, drawnApart, space) {
+  const base = CELL.width * SCALE.hand - 4, out = [];
+  // Keep the established desktop layout. On smaller displays use the extra safe length in table coordinates.
+  const adaptive = Boolean(space && space.cssUnit * 64 < 44);
+  const gap = drawnApart ? (adaptive ? Math.min(16, 4 / space.cssUnit) : 16) : 0;
+  const left = adaptive ? space.left : 30;
+  const step = adaptive ? Math.min(Math.max(base, 44 / space.cssUnit + 0.5), (space.right - left - gap) / Math.max(1, count)) : base;
+  const scale = adaptive ? Math.min(.72, Math.max(.48, (step + 4) / CELL.width)) : SCALE.hand;
+  const hitW = adaptive ? Math.max(1, step - .5) : 64;
+  const hitH = adaptive ? Math.min(110, Math.max(96, CELL.height * scale + 10)) : 96;
+  const rowY = adaptive ? Math.min(660, 716 - CELL.height * scale / 2) : 660;
   for (let i = 0; i < count; i++) {
-    const gap = drawnApart && i === count - 1 ? 16 : 0;
-    out.push({ x: 30 + step / 2 + i * step + gap, y: 660, rotation: 0, scale: SCALE.hand });
+    out.push({ x: left + step / 2 + i * step + (drawnApart && i === count - 1 ? gap : 0),
+      y: rowY, rotation: 0, scale, hitW, hitH });
   }
   return out;
 }

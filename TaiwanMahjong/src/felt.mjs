@@ -188,17 +188,54 @@ function roundRect(g, x, y, w, h, r) {
  */
 export function createFelt(canvas, atlas, kindOf) {
   const scale = Math.min(2, Math.max(1, Math.round(window.devicePixelRatio || 1)));
-  canvas.width = STAGE.width * scale;
-  canvas.height = STAGE.height * scale;
-  const g = canvas.getContext('2d'),
+  const logical = document.createElement('canvas');
+  logical.width = STAGE.width * scale;
+  logical.height = STAGE.height * scale;
+  const g = logical.getContext('2d'), output = canvas.getContext('2d'),
     base = paintBase(scale);
   g.imageSmoothingQuality = 'high';
+  let projection;
+
+  /** Project the cached table using the engine's own stage geometry. No holder rotation or viewport fit. */
+  function arrange(game, board) {
+    const host = game.canvas.getBoundingClientRect(), box = canvas.getBoundingClientRect(), frame = game.browser.frame;
+    const density = Math.min(1.5, Math.max(1, window.devicePixelRatio || 1));
+    const width = Math.max(1, Math.round(box.width * density)), height = Math.max(1, Math.round(box.height * density));
+    if (canvas.width !== width || canvas.height !== height) {
+      canvas.width = width;
+      canvas.height = height;
+    }
+    const cssPoint = (x, y) => {
+      const p = game.toStage(x, y);
+      return { x: (host.left - box.left + p.x * host.width / frame.width) * width / box.width,
+        y: (host.top - box.top + p.y * host.height / frame.height) * height / box.height };
+    };
+    const p = cssPoint(board.x, board.y), u = cssPoint(board.x + (board.rotation ? 0 : board.scale), board.y + (board.rotation ? board.scale : 0)),
+      v = cssPoint(board.x - (board.rotation ? board.scale : 0), board.y + (board.rotation ? 0 : board.scale));
+    projection = [u.x - p.x, u.y - p.y, v.x - p.x, v.y - p.y, p.x, p.y];
+    project();
+  }
+
+  function project() {
+    if (!projection) return;
+    output.setTransform(1, 0, 0, 1, 0, 0);
+    // Expand exposes more felt beyond the lacquer rail, rather than browser-black bars.
+    const baize = output.createRadialGradient(canvas.width * .5, canvas.height * .5, 0,
+      canvas.width * .5, canvas.height * .5, Math.max(canvas.width, canvas.height) * .7);
+    baize.addColorStop(0, '#23585a');
+    baize.addColorStop(1, '#10282f');
+    output.fillStyle = baize;
+    output.fillRect(0, 0, canvas.width, canvas.height);
+    output.setTransform(...projection);
+    output.imageSmoothingQuality = 'high';
+    output.drawImage(logical, 0, 0, STAGE.width, STAGE.height);
+  }
 
   function paint({ hand, turn = -1, reveal = false, hidden = new Set(), last = null, winner = -1 } = {}) {
     g.setTransform(1, 0, 0, 1, 0, 0);
     g.drawImage(base, 0, 0);
     g.setTransform(scale, 0, 0, scale, 0, 0);
-    if (!hand) return;
+    if (!hand) return project();
     // Whose turn: a glow on that side of the centre square.
     if (turn >= 0) {
       const { x, y, half } = CENTRE,
@@ -237,6 +274,7 @@ export function createFelt(canvas, atlas, kindOf) {
       for (const tile of meldTiles(seat, hand.players[seat].melds, kindOf)) drawTile(g, atlas, tile.kind, tile);
       hand.players[seat].flowers.forEach((id, i) => drawTile(g, atlas, kindOf(id), flowerSlot(seat, i)));
     }
+    project();
   }
-  return { paint };
+  return { arrange, paint };
 }

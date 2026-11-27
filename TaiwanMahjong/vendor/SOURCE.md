@@ -1,7 +1,7 @@
 # Vendored engine
 
-- Egret Engine community rebuild, commit `94bd70fb26b1f81794c9c6fbbb258c655fcd19df`, copied by `tools/vendor-game.mjs`.
-- Entries: `@egret/engine`, `@egret/engine/play`, `@egret/engine/kit`, `@egret/engine/web/kit`, `@egret/engine/ui`, `@egret/engine/ui/semantics`, `@egret/engine/ui/testing`, `@egret/engine/web/semantics`. Only the JavaScript files they import are kept; source maps and declarations are left out.
+- Egret Engine community rebuild, commit `13d70b73904266c11b23de4c09c239240a7162db`, copied by `tools/vendor-game.mjs`.
+- Entries: `@egret/engine`, `@egret/engine/play`, `@egret/engine/kit`, `@egret/engine/web/kit`, `@egret/engine/ui`, `@egret/engine/ui/semantics`, `@egret/engine/ui/testing`, `@egret/engine/web/semantics`, `@egret/engine/web/screen`, `@egret/engine/web/view`. Only the JavaScript files they import are kept; source maps and declarations are left out.
 - Third-party packages, copied with their own licences: `robust-predicates` (Unlicense).
 - First-party engine code: Apache-2.0, see `LICENSE` and `NOTICE`.
 - In a page: add `vendor/importmap.json` to the import map, or load `vendor/importmap.js` first. In Node: `node --import ./vendor/node-register.mjs`.
