@@ -432,22 +432,29 @@ export class GLNativeSession {
     program(vertex, fragment) {
         return this.finishProgram(this.submitProgram(vertex, fragment, true));
     }
-    /** A missing extension keeps callers on the original synchronous path. */
+    /**
+     * The programs of `sources`, made together when the context has KHR_parallel_shader_compile: every shader is
+     * compiled and every program linked first, and their completion is then asked, with `wait` between the asks, so the
+     * driver builds them side by side and the page goes on meanwhile. Undefined without the extension: the caller makes
+     * them one by one with `program`, as before. The extension is looked up once, by name, between gates; it is no part
+     * of the finite capture, and a context without it is not refused.
+     */
     preparePrograms(sources, wait) {
         this.gate();
-        const getExtension = this.context.getExtension;
+        const lookup = this.context.getExtension;
         this.gate();
-        const extension = typeof getExtension === 'function'
-            ? getExtension.call(this.context, 'KHR_parallel_shader_compile')
+        const extension = typeof lookup === 'function'
+            ? lookup.call(this.context, 'KHR_parallel_shader_compile')
             : null;
         this.gate();
         const completion = extension?.COMPLETION_STATUS_KHR;
         this.gate();
-        if (completion === 0x91b1)
-            return this.prepareParallelPrograms(sources, completion, wait);
+        // COMPLETION_STATUS_KHR is 0x91B1 by the extension's specification; anything else is not that extension.
+        return completion === 0x91b1 ? this.prepareTogether(sources, completion, wait) : undefined;
     }
-    async prepareParallelPrograms(sources, completion, wait) {
+    async prepareTogether(sources, completion, wait) {
         const batch = sources.map(([vertex, fragment]) => this.submitProgram(vertex, fragment, false));
+        // Each ask goes through the gate: a context lost or replaced meanwhile ends the wait with its failure.
         let pending = batch;
         while (pending.length) {
             pending = pending.filter(({ program }) => !this.gl.getProgramParameter(program, completion));
@@ -456,7 +463,8 @@ export class GLNativeSession {
         }
         return batch.map(entry => this.finishProgram(entry));
     }
-    submitProgram(vertex, fragment, verifyCompile) {
+    /** Compiles two shaders and links them; checks the compile at once when `verify`, else when the link fails. */
+    submitProgram(vertex, fragment, verify) {
         const gl = this.gl, v = this.create('Shader', 0, gl.VERTEX_SHADER), f = this.create('Shader', 0, gl.FRAGMENT_SHADER);
         for (const [owner, source] of [
             [v, vertex],
@@ -465,23 +473,23 @@ export class GLNativeSession {
             const shader = owner.value;
             gl.shaderSource(shader, source);
             gl.compileShader(shader);
-            if (verifyCompile && !gl.getShaderParameter(shader, gl.COMPILE_STATUS))
+            if (verify && !gl.getShaderParameter(shader, gl.COMPILE_STATUS))
                 throw new Error(gl.getShaderInfoLog(shader) ?? 'Shader compilation');
         }
         const p = this.create('Program'), program = p.value;
         gl.attachShader(program, v.value);
         gl.attachShader(program, f.value);
         gl.linkProgram(program);
-        return { program, v, f, verifyCompile };
+        return { program, v, f, verified: verify };
     }
-    finishProgram({ program, v, f, verifyCompile }) {
+    /** Checks a submitted program's link, then lets its shaders go. A failed link names a failed compile first. */
+    finishProgram({ program, v, f, verified }) {
         const gl = this.gl;
         if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {
-            if (!verifyCompile) {
-                for (const shader of [v.value, f.value])
-                    if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS))
-                        throw new Error(gl.getShaderInfoLog(shader) ?? 'Shader compilation');
-            }
+            if (!verified)
+                for (const owner of [v, f])
+                    if (!gl.getShaderParameter(owner.value, gl.COMPILE_STATUS))
+                        throw new Error(gl.getShaderInfoLog(owner.value) ?? 'Shader compilation');
             throw new Error(gl.getProgramInfoLog(program) ?? 'Program link');
         }
         gl.detachShader(program, v.value);

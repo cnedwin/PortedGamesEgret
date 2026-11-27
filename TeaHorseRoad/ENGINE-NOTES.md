@@ -2,7 +2,7 @@
 
 做《茶马古道》时记下的新白鹭引擎（[Egret_rebuild](https://github.com/cnedwin/Egret_rebuild)，提交 `687037a`）的缺口、问题、文档不清处和建议。原则是：要求的能力一律用引擎 API 实现；引擎缺的或别扭的，不在游戏里另写一套替代品，而是用引擎已有的部件把效果拼出来、在这里写明。每条写了现象、游戏里的处理和建议。
 
-游戏后来升级到 `8637ace`（引擎 #423–#485），每条的「游戏里」写了升级后的做法；第 25–28 条是升级时新记下的。
+游戏后来升级到 `8637ace`（引擎 #423–#485），每条的「游戏里」写了升级后的做法；第 25–28 条是升级时新记下的。现用引擎提交 `72be4978226951c0727262e81da87f1aa7e15242`；第 25、26 条已由引擎正式实现。
 
 Gaps, problems, unclear documentation and suggestions found in the new Egret engine
 ([Egret_rebuild](https://github.com/cnedwin/Egret_rebuild), commit `687037a`) while making *Tea Horse Road*. The rule:
@@ -11,7 +11,7 @@ game does not write its own replacement but builds the effect from parts the eng
 Each item gives what happens, what the game does and a suggestion.
 
 The game later moved to `8637ace` (engine #423–#485); each item's "in the game" says what it does now, and items 25–28
-were written during that move.
+were written during that move. The game now uses `72be4978226951c0727262e81da87f1aa7e15242`; the engine officially implements items 25 and 26.
 
 类别 · Kinds: **缺陷 / bug** · **缺口 / gap** · **文档 / docs** · **别扭 / awkward**；状态 · Status: **未解决 / open**：引擎还没有改 · nothing changed in the engine yet
 
@@ -350,38 +350,19 @@ were written during that move.
 
 ## 升级到 8637ace 时记下的 · Written during the move to 8637ace
 
-### 25. 2D 宿主创建时同步链接全部着色器 · The 2D host links all its programs synchronously when made — 缺口 / gap · 未解决 / open
-<!-- engine-note: {"id": "TeaHorseRoad#25", "status": "open", "topic": "webgl2-2d-program-link-startup", "workaround": ["vendor/engine/dist/web/WebGL2Host.js", "vendor/engine/dist/web/webgl2Native.js", "test/webgl2-startup.test.mjs"]} -->
+### 25. 2D 宿主创建时同步链接全部着色器 · The 2D host links all its programs synchronously when made — 缺口 / gap · 已在 72be497 解决 / resolved in 72be497
+<!-- engine-note: {"id": "TeaHorseRoad#25", "status": "resolved", "topic": "webgl2-2d-program-link-startup"} -->
 
-- 现象：叠加层的 2D WebGL2 宿主在创建时依次编译、链接主程序、纯色、合成、各个特效和多页程序，每个都立刻查 `LINK_STATUS`，主线程在标题画面出现前被卡住。3D 渲染器已有 `preparePrograms` 并用 `KHR_parallel_shader_compile`，2D 宿主没有。
-- 游戏里：引擎副本里带着一处本地补丁（`687037a` 时加的，升级时原样带到 `8637ace`，见 `vendor/SOURCE.md`）：先把这些程序一起提交，有 `KHR_parallel_shader_compile` 时轮询完成再检查；没有这个扩展时在两次链接之间让出主线程。`test/webgl2-startup.test.mjs` 检查这处补丁。
-- 建议：2D 宿主也用 3D 那套并行编译和让出，这样游戏的引擎副本里不必再带补丁。
+- **现象 · What happens**：叠加层的 2D WebGL2 宿主曾在创建和恢复时依次编译、链接主程序、纯色、合成等程序，立即查询 LINK_STATUS，导致标题出现前主线程阻塞。 · The former overlay host linked and synchronously validated its programs on startup and recovery, holding the main thread before the title.
+- **游戏里 · In the game**：使用引擎自身的 GLNativeSession.preparePrograms(sources, wait)，有 KHR_parallel_shader_compile 时批量链接后每 8 ms 查询完成状态；无扩展时逐个链接并在程序间让出主线程。原本本地补丁完全删除；test/webgl2-startup.test.mjs 继续检查引擎契约。 · The official implementation batches links and polls at 8 ms with KHR, or yields between serial links without it; the regression tests retain the same contract.
+- **状态 · Status**：已在 72be497 解决（引擎 [#525](https://github.com/cnedwin/Egret_rebuild/pull/525)），游戏的 2D 宿主直接使用正式实现。 · Resolved in 72be497 (#525); no local vendor patch.
 
-- What happens: the overlay's 2D WebGL2 host compiles and links its main, solid, resolve, effect and paged programs one
-  after another when it is made, checking `LINK_STATUS` on each at once, and the main thread is held before the title
-  appears. The 3D renderer has `preparePrograms` with `KHR_parallel_shader_compile`; the 2D host has not.
-- In the game: the engine copy carries a local patch (added at `687037a` and carried unchanged to `8637ace`; see
-  `vendor/SOURCE.md`) that submits these programs together, polls for completion when `KHR_parallel_shader_compile` is
-  there, and otherwise yields between links. `test/webgl2-startup.test.mjs` checks it.
-- Suggestion: give the 2D host the 3D renderer's parallel compile and yielding, so a game's engine copy need carry no
-  patch.
+### 26. 三角网碰撞形状不能在 Worker 里建好再交回 · A triangle mesh shape cannot be built in a worker and handed back — 缺口 / gap · 已在 72be497 解决 / resolved in 72be497
+<!-- engine-note: {"id": "TeaHorseRoad#26", "status": "resolved", "topic": "mesh-shape-worker-transfer"} -->
 
-### 26. 三角网碰撞形状不能在 Worker 里建好再交回 · A triangle mesh shape cannot be built in a worker and handed back — 缺口 / gap · 未解决 / open
-<!-- engine-note: {"id": "TeaHorseRoad#26", "status": "open", "topic": "mesh-shape-worker-transfer", "workaround": ["vendor/engine/dist/rendering/world3d/PhysicsMesh3D.js", "src/world/tileWorker.mjs", "src/world/land.mjs", "test/terrain-shape-transfer.test.mjs"]} -->
-
-- 现象：每块 192 米的地形都要一个三角网静态碰撞体。`TriangleMeshShape3D` 在构造时建包围体层次，放在主线程会让车开着开着顿一下；在 Worker 里建好以后，没有公开的办法把顶点、索引和层次交回主线程直接用。
-- 游戏里：引擎副本里带着一处本地补丁（同上，`687037a` 时加的，原样带到 `8637ace`）：`exportBuffers()` 交出这些数组，`TriangleMeshShape3D.fromBuffers()` 检查后直接接过来，不复制、不重建。地块 Worker 建形状（`src/world/tileWorker.mjs`），主线程接过来（`src/world/land.mjs`）；`test/terrain-shape-transfer.test.mjs` 检查这处补丁。
-- 建议：把这两个方法放进引擎，或给 `createTerrainStream3D` 一个在 Worker 里准备碰撞体的选项。
-
-- What happens: each 192 m tile needs a static triangle mesh collider. `TriangleMeshShape3D` builds its bounding-volume
-  hierarchy in the constructor, which on the main thread makes the drive stutter; built in a worker, there is no public
-  way to hand the vertices, indices and hierarchy back for the main thread to use as they are.
-- In the game: the engine copy carries a local patch (as above, added at `687037a` and carried unchanged to `8637ace`):
-  `exportBuffers()` gives those arrays and `TriangleMeshShape3D.fromBuffers()` checks and adopts them, with no copy and no
-  rebuild. The tile worker builds the shape (`src/world/tileWorker.mjs`) and the main thread adopts it
-  (`src/world/land.mjs`); `test/terrain-shape-transfer.test.mjs` checks the patch.
-- Suggestion: take these two methods into the engine, or give `createTerrainStream3D` a way to prepare colliders in a
-  worker.
+- **现象 · What happens**：每个 192 米地块需要独立三角网碰撞体；曾无法从 Worker 传递构造完成的包围层次，主线程构造会产生停顿。 · The worker-built mesh hierarchy could not formerly be adopted by the main thread.
+- **游戏里 · In the game**：src/world/tileWorker.mjs 继续调用 exportBuffers()，src/world/land.mjs 用 TriangleMeshShape3D.fromBuffers(buffers) 检查后接管相同数组，无复制、无重建。非法 prepared mesh buffers 抛 WORLD3D_INPUT_INVALID；test/terrain-shape-transfer.test.mjs 继续验证碰撞查询及拒绝行为。 · The existing worker/receiver calls use the official buffer adoption and preserve collision queries; malformed buffers are rejected by the engine.
+- **状态 · Status**：已在 72be497 解决（引擎 [#524](https://github.com/cnedwin/Egret_rebuild/pull/524)），不再携带本地补丁。 · Resolved in 72be497 (#524); no local vendor patch.
 
 ### 27. 导航体转身以 -Z 为前方 · A navigation agent turns with -Z as its front — 别扭 / awkward · 未解决 / open
 <!-- engine-note: {"id": "TeaHorseRoad#27", "status": "open", "topic": "nav-agent-forward-axis", "workaround": ["src/play/threats.mjs"]} -->

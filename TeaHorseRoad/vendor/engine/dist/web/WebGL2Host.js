@@ -692,20 +692,24 @@ class SharedGLHost {
                 [sharedWebGL2SolidVertexSource, sharedWebGL2SolidFragment(coded)],
                 [sharedWebGL2ResolveVertexSource, sharedWebGL2ResolveFragment(coded)],
                 ...effectPasses.map(mode => [sharedWebGL2ResolveVertexSource, sharedEffectGLSL(mode, coded)]),
+                // The program of a batch of several pages.
                 [sharedWebGL2VertexSource, sampledFragmentSource(true, coded)]
             ];
-            const wait = delay => new Promise(resolve => schedule(resolve, delay));
-            const preparation = native.preparePrograms(sources, () => wait(8));
-            const programs = preparation ? await preparation : undefined;
+            // With KHR_parallel_shader_compile the programs are built side by side while the page goes on, the host asking
+            // after them every 8 ms. Without it each is made in turn, the host yielding to the page between two programs.
+            const prepared = native.preparePrograms(sources, () => new Promise(resolve => schedule(resolve, 8)));
+            const programs = prepared === undefined ? undefined : await prepared;
             this.generationGate(token);
             let next = 0;
-            const nextProgram = () => {
+            const nextProgram = async () => {
                 const index = next++;
                 if (programs)
                     return programs[index];
-                const compile = () => native.program(...sources[index]);
-                // Without a completion query, one link can still block. Give other tasks a turn between links.
-                return index === 0 ? compile() : wait(0).then(compile);
+                if (index > 0) {
+                    await new Promise(resolve => schedule(resolve, 0));
+                    this.generationGate(token);
+                }
+                return native.program(...sources[index]);
             };
             this.program = await nextProgram();
             native.block(this.program, 'DrawUniform', DRAW_UNIFORM_MEMBERS, 128);
@@ -721,7 +725,7 @@ class SharedGLHost {
                 gl.uniformBlockBinding(program, index, 0);
                 this.effectPrograms.set(mode, program);
             }
-            // The program of a batch of several pages. Its eight page samplers name the eight units once, here.
+            // Its eight page samplers name the eight units once, here.
             this.pagedProgram = await nextProgram();
             native.block(this.pagedProgram, 'DrawUniform', DRAW_UNIFORM_MEMBERS, 128);
             native.block(this.pagedProgram, 'RegionWindow', ['regions'], SHARED_REGION_WINDOW_BYTES_2D, 1);
