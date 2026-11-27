@@ -1,0 +1,1018 @@
+{
+  "schema": "nezha-boss-frame-attribution/1",
+  "date": "2026-11-27",
+  "release": {
+    "url": "https://cnedwin.github.io/PortedGamesEgret/NezhaSea/",
+    "demoMain": "24c6d6e8691054b8338119ebc734db879d998e30",
+    "engine": "c54c16c946f777970ed1ac838cc663d349246982",
+    "bundleFiles": 14,
+    "entrySha256": "baf2844a836b107a7380df141c11080f1135ebd85a230a98976aa2502a54d449"
+  },
+  "environment": {
+    "device": "physical Windows PC / Edge 158 / RTX 5090 Laptop GPU / WebGPU",
+    "viewport": [
+      1440,
+      850
+    ],
+    "playwright": "1.64.0",
+    "scenario": "Fresh isolated contexts, query seed 2 -> first game seed 27, Young Nezha, Calm, same input policy, actual inputs; no game-state or save mutations. Natural loadouts and host load differed.",
+    "measurement": "Browser rAF intervals, not displayed-frame latency or GPU execution duration. Screenshot marks bracket command; raw trace clock alignment and host command bounds independently checked."
+  },
+  "historical": {
+    "release": "900840011232aaf34591f53962eef8edbc875683",
+    "sameRuntimeEntry": true,
+    "wave10MaxMs": 158.1,
+    "wave20MaxMs": 125,
+    "indication": "Both historical screenshots were written within the corresponding long rAF intervals by independent UTC anchoring; exact command timestamps and trace were absent. Historical attribution is inferential."
+  },
+  "naturalRuns": [
+    {
+      "mode": "off",
+      "querySeed": 2,
+      "actualSeed": 27,
+      "titleReadyMs": 5018,
+      "naturalResult": {
+        "won": true,
+        "wave": 20,
+        "kills": 4436,
+        "level": 26,
+        "merges": 15,
+        "divines": 0,
+        "best": true,
+        "unlocked": [
+          "lotus",
+          "sixArms"
+        ],
+        "kept": true
+      },
+      "fullTwentyWaveAssertionPassed": true,
+      "bosses": [
+        {
+          "wave": 10,
+          "boss": "yaksha",
+          "bossInitialHp": 765,
+          "playerInitialHp": 20,
+          "initialWeapons": [
+            [
+              "ring",
+              1,
+              false
+            ],
+            [
+              "ribbon",
+              1,
+              false
+            ],
+            [
+              "spear",
+              3,
+              false
+            ],
+            [
+              "brick",
+              1,
+              false
+            ],
+            [
+              "dome",
+              1,
+              false
+            ],
+            [
+              "brick",
+              0,
+              false
+            ]
+          ],
+          "initialEnemyCount": 1,
+          "resultScreen": "shop",
+          "elapsedMs": 3371,
+          "frames": 813,
+          "peakEnemies": 9,
+          "p95Ms": 4.3,
+          "maxMs": 16.7,
+          "over50": 0,
+          "longTasks": 0,
+          "screenshotExecuted": false,
+          "commandMs": 0.001,
+          "markerSpanMs": 1.9,
+          "traceDataLoss": false
+        },
+        {
+          "wave": 20,
+          "boss": "aoBing",
+          "bossInitialHp": 2720,
+          "playerInitialHp": 81,
+          "initialWeapons": [
+            [
+              "ring",
+              1,
+              false
+            ],
+            [
+              "ribbon",
+              3,
+              false
+            ],
+            [
+              "spear",
+              3,
+              false
+            ],
+            [
+              "brick",
+              3,
+              false
+            ],
+            [
+              "dome",
+              1,
+              false
+            ],
+            [
+              "brick",
+              2,
+              false
+            ]
+          ],
+          "initialEnemyCount": 1,
+          "resultScreen": "end",
+          "elapsedMs": 6920,
+          "frames": 1675,
+          "peakEnemies": 20,
+          "p95Ms": 4.3,
+          "maxMs": 29.2,
+          "over50": 0,
+          "longTasks": 0,
+          "screenshotExecuted": false,
+          "commandMs": 0.001,
+          "markerSpanMs": 3.3,
+          "traceDataLoss": false
+        }
+      ]
+    },
+    {
+      "mode": "on",
+      "querySeed": 2,
+      "actualSeed": 27,
+      "titleReadyMs": 1060,
+      "naturalResult": {
+        "won": false,
+        "wave": 12,
+        "kills": 1106,
+        "level": 14,
+        "merges": 8,
+        "divines": 0,
+        "best": true,
+        "unlocked": [
+          "lotus"
+        ],
+        "kept": true
+      },
+      "fullTwentyWaveAssertionPassed": false,
+      "bosses": [
+        {
+          "wave": 10,
+          "boss": "yaksha",
+          "bossInitialHp": 765,
+          "playerInitialHp": 37,
+          "initialWeapons": [
+            [
+              "ring",
+              2,
+              false
+            ],
+            [
+              "wheels",
+              2,
+              false
+            ],
+            [
+              "spear",
+              1,
+              false
+            ],
+            [
+              "ring",
+              1,
+              false
+            ],
+            [
+              "dome",
+              0,
+              false
+            ],
+            [
+              "ribbon",
+              1,
+              false
+            ]
+          ],
+          "initialEnemyCount": 1,
+          "resultScreen": "shop",
+          "elapsedMs": 4276,
+          "frames": 986,
+          "peakEnemies": 12,
+          "p95Ms": 4.3,
+          "maxMs": 137.6,
+          "over50": 1,
+          "longTasks": 0,
+          "screenshotExecuted": true,
+          "commandMs": 207.348,
+          "markerSpanMs": 209,
+          "traceDataLoss": false
+        }
+      ]
+    },
+    {
+      "mode": "on",
+      "querySeed": 2,
+      "actualSeed": 27,
+      "titleReadyMs": 3727,
+      "naturalResult": {
+        "won": false,
+        "wave": 8,
+        "kills": 410,
+        "level": 9,
+        "merges": 7,
+        "divines": 0,
+        "best": true,
+        "unlocked": [],
+        "kept": true
+      },
+      "fullTwentyWaveAssertionPassed": false,
+      "bosses": []
+    }
+  ],
+  "approximateHostCpuSnapshotsPercent": {
+    "offAfterBoss10": 67,
+    "offBeforeBoss20": 63.7,
+    "onBeforeBoss10": 5.3
+  },
+  "controls": {
+    "method": "Interleaved fresh natural first-wave games; D/S/A/W at 0.5 game-second intervals, release before command at ~7.5 seconds, finish after ~11.5 seconds. No tracing in short controls. Same unchanged public build; no direct rule calls. All buffers saved after the measurement except the explicit path variant.",
+    "total": 20,
+    "playwrightOver50Count": 8,
+    "otherOver50Count": 0,
+    "groups": [
+      {
+        "group": "capture-mode",
+        "orders": [
+          [
+            "none",
+            "pw-path",
+            "pw-buffer",
+            "cdp"
+          ],
+          [
+            "cdp",
+            "none",
+            "pw-path",
+            "pw-buffer"
+          ],
+          [
+            "pw-buffer",
+            "pw-path",
+            "cdp",
+            "none"
+          ]
+        ],
+        "trials": [
+          {
+            "round": 1,
+            "mode": "none",
+            "initialGameTimeSeconds": 7.537,
+            "initialHp": 24,
+            "initialEnemies": 3,
+            "initialDrawCalls": 12,
+            "approximateHostCpuPercent": 10.2,
+            "commandMs": 0.002,
+            "markerSpanMs": 1.3,
+            "overlapFrameCount": 1,
+            "overlapMaxMs": 4.2,
+            "overlapOver50": 0,
+            "overlapLongTasks": 0,
+            "otherMaxMs": 8.3,
+            "otherOver50": 0,
+            "hostFramesDuringMarks": 0,
+            "pendingFrames": [
+              1,
+              1
+            ],
+            "pendingReadbackBytes": [
+              0,
+              0
+            ]
+          },
+          {
+            "round": 1,
+            "mode": "pw-path",
+            "initialGameTimeSeconds": 7.563,
+            "initialHp": 24,
+            "initialEnemies": 3,
+            "initialDrawCalls": 12,
+            "approximateHostCpuPercent": 34.5,
+            "commandMs": 234.409,
+            "markerSpanMs": 237.8,
+            "overlapFrameCount": 13,
+            "overlapMaxMs": 158.3,
+            "overlapOver50": 1,
+            "overlapLongTasks": 0,
+            "otherMaxMs": 13,
+            "otherOver50": 0,
+            "hostFramesDuringMarks": 10,
+            "pendingFrames": [
+              1,
+              1
+            ],
+            "pendingReadbackBytes": [
+              0,
+              0
+            ]
+          },
+          {
+            "round": 1,
+            "mode": "pw-buffer",
+            "initialGameTimeSeconds": 7.526,
+            "initialHp": 24,
+            "initialEnemies": 3,
+            "initialDrawCalls": 12,
+            "approximateHostCpuPercent": 20.1,
+            "commandMs": 178.531,
+            "markerSpanMs": 180.6,
+            "overlapFrameCount": 11,
+            "overlapMaxMs": 141.6,
+            "overlapOver50": 1,
+            "overlapLongTasks": 0,
+            "otherMaxMs": 10,
+            "otherOver50": 0,
+            "hostFramesDuringMarks": 10,
+            "pendingFrames": [
+              1,
+              0
+            ],
+            "pendingReadbackBytes": [
+              0,
+              0
+            ]
+          },
+          {
+            "round": 1,
+            "mode": "cdp",
+            "initialGameTimeSeconds": 7.523,
+            "initialHp": 24,
+            "initialEnemies": 3,
+            "initialDrawCalls": 12,
+            "approximateHostCpuPercent": 12.6,
+            "commandMs": 273.195,
+            "markerSpanMs": 275,
+            "overlapFrameCount": 67,
+            "overlapMaxMs": 4.3,
+            "overlapOver50": 0,
+            "overlapLongTasks": 0,
+            "otherMaxMs": 25.4,
+            "otherOver50": 0,
+            "hostFramesDuringMarks": 65,
+            "pendingFrames": [
+              1,
+              1
+            ],
+            "pendingReadbackBytes": [
+              0,
+              0
+            ]
+          },
+          {
+            "round": 2,
+            "mode": "cdp",
+            "initialGameTimeSeconds": 7.525,
+            "initialHp": 24,
+            "initialEnemies": 3,
+            "initialDrawCalls": 12,
+            "approximateHostCpuPercent": 12.7,
+            "commandMs": 307.394,
+            "markerSpanMs": 309.4,
+            "overlapFrameCount": 76,
+            "overlapMaxMs": 4.6,
+            "overlapOver50": 0,
+            "overlapLongTasks": 0,
+            "otherMaxMs": 8.3,
+            "otherOver50": 0,
+            "hostFramesDuringMarks": 74,
+            "pendingFrames": [
+              1,
+              1
+            ],
+            "pendingReadbackBytes": [
+              0,
+              0
+            ]
+          },
+          {
+            "round": 2,
+            "mode": "none",
+            "initialGameTimeSeconds": 7.551,
+            "initialHp": 24,
+            "initialEnemies": 3,
+            "initialDrawCalls": 12,
+            "approximateHostCpuPercent": 19.6,
+            "commandMs": 0.001,
+            "markerSpanMs": 2.7,
+            "overlapFrameCount": 2,
+            "overlapMaxMs": 4.2,
+            "overlapOver50": 0,
+            "overlapLongTasks": 0,
+            "otherMaxMs": 33.5,
+            "otherOver50": 0,
+            "hostFramesDuringMarks": 1,
+            "pendingFrames": [
+              1,
+              2
+            ],
+            "pendingReadbackBytes": [
+              0,
+              0
+            ]
+          },
+          {
+            "round": 2,
+            "mode": "pw-path",
+            "initialGameTimeSeconds": 7.5,
+            "initialHp": 24,
+            "initialEnemies": 3,
+            "initialDrawCalls": 12,
+            "approximateHostCpuPercent": 15.3,
+            "commandMs": 183.583,
+            "markerSpanMs": 186.3,
+            "overlapFrameCount": 11,
+            "overlapMaxMs": 150.1,
+            "overlapOver50": 1,
+            "overlapLongTasks": 0,
+            "otherMaxMs": 16.6,
+            "otherOver50": 0,
+            "hostFramesDuringMarks": 10,
+            "pendingFrames": [
+              1,
+              1
+            ],
+            "pendingReadbackBytes": [
+              0,
+              0
+            ]
+          },
+          {
+            "round": 2,
+            "mode": "pw-buffer",
+            "initialGameTimeSeconds": 7.521,
+            "initialHp": 24,
+            "initialEnemies": 3,
+            "initialDrawCalls": 12,
+            "approximateHostCpuPercent": 14.6,
+            "commandMs": 148.464,
+            "markerSpanMs": 150.1,
+            "overlapFrameCount": 10,
+            "overlapMaxMs": 116.7,
+            "overlapOver50": 1,
+            "overlapLongTasks": 0,
+            "otherMaxMs": 8.3,
+            "otherOver50": 0,
+            "hostFramesDuringMarks": 9,
+            "pendingFrames": [
+              1,
+              0
+            ],
+            "pendingReadbackBytes": [
+              0,
+              0
+            ]
+          },
+          {
+            "round": 3,
+            "mode": "pw-buffer",
+            "initialGameTimeSeconds": 7.505,
+            "initialHp": 24,
+            "initialEnemies": 3,
+            "initialDrawCalls": 12,
+            "approximateHostCpuPercent": 28.2,
+            "commandMs": 182.841,
+            "markerSpanMs": 184.6,
+            "overlapFrameCount": 10,
+            "overlapMaxMs": 150.1,
+            "overlapOver50": 1,
+            "overlapLongTasks": 0,
+            "otherMaxMs": 8.3,
+            "otherOver50": 0,
+            "hostFramesDuringMarks": 9,
+            "pendingFrames": [
+              1,
+              0
+            ],
+            "pendingReadbackBytes": [
+              0,
+              0
+            ]
+          },
+          {
+            "round": 3,
+            "mode": "pw-path",
+            "initialGameTimeSeconds": 7.521,
+            "initialHp": 24,
+            "initialEnemies": 3,
+            "initialDrawCalls": 12,
+            "approximateHostCpuPercent": 23.6,
+            "commandMs": 184.998,
+            "markerSpanMs": 187.2,
+            "overlapFrameCount": 11,
+            "overlapMaxMs": 149.9,
+            "overlapOver50": 1,
+            "overlapLongTasks": 0,
+            "otherMaxMs": 12.5,
+            "otherOver50": 0,
+            "hostFramesDuringMarks": 10,
+            "pendingFrames": [
+              1,
+              1
+            ],
+            "pendingReadbackBytes": [
+              0,
+              0
+            ]
+          },
+          {
+            "round": 3,
+            "mode": "cdp",
+            "initialGameTimeSeconds": 7.526,
+            "initialHp": 24,
+            "initialEnemies": 3,
+            "initialDrawCalls": 12,
+            "approximateHostCpuPercent": 20.7,
+            "commandMs": 300.988,
+            "markerSpanMs": 303.1,
+            "overlapFrameCount": 74,
+            "overlapMaxMs": 4.4,
+            "overlapOver50": 0,
+            "overlapLongTasks": 0,
+            "otherMaxMs": 12.5,
+            "otherOver50": 0,
+            "hostFramesDuringMarks": 73,
+            "pendingFrames": [
+              1,
+              1
+            ],
+            "pendingReadbackBytes": [
+              0,
+              0
+            ]
+          },
+          {
+            "round": 3,
+            "mode": "none",
+            "initialGameTimeSeconds": 7.504,
+            "initialHp": 24,
+            "initialEnemies": 3,
+            "initialDrawCalls": 12,
+            "approximateHostCpuPercent": 16.3,
+            "commandMs": 0,
+            "markerSpanMs": 2.5,
+            "overlapFrameCount": 2,
+            "overlapMaxMs": 4.2,
+            "overlapOver50": 0,
+            "overlapLongTasks": 0,
+            "otherMaxMs": 12.5,
+            "otherOver50": 0,
+            "hostFramesDuringMarks": 1,
+            "pendingFrames": [
+              1,
+              1
+            ],
+            "pendingReadbackBytes": [
+              0,
+              0
+            ]
+          }
+        ]
+      },
+      {
+        "group": "capture-parameters",
+        "orders": [
+          [
+            "pw-caret-initial",
+            "cdp-clip",
+            "cdp-metrics",
+            "cdp"
+          ],
+          [
+            "cdp",
+            "cdp-metrics",
+            "cdp-clip",
+            "pw-caret-initial"
+          ]
+        ],
+        "trials": [
+          {
+            "round": 1,
+            "mode": "pw-caret-initial",
+            "initialGameTimeSeconds": 7.559,
+            "initialHp": 24,
+            "initialEnemies": 3,
+            "initialDrawCalls": 12,
+            "approximateHostCpuPercent": 13.9,
+            "commandMs": 183.084,
+            "markerSpanMs": 184.8,
+            "overlapFrameCount": 12,
+            "overlapMaxMs": 116.7,
+            "overlapOver50": 1,
+            "overlapLongTasks": 0,
+            "otherMaxMs": 12.5,
+            "otherOver50": 0,
+            "hostFramesDuringMarks": 10,
+            "pendingFrames": [
+              1,
+              0
+            ],
+            "pendingReadbackBytes": [
+              0,
+              0
+            ]
+          },
+          {
+            "round": 1,
+            "mode": "cdp-clip",
+            "initialGameTimeSeconds": 7.538,
+            "initialHp": 24,
+            "initialEnemies": 3,
+            "initialDrawCalls": 12,
+            "approximateHostCpuPercent": 22.4,
+            "commandMs": 265.906,
+            "markerSpanMs": 267.7,
+            "overlapFrameCount": 65,
+            "overlapMaxMs": 4.4,
+            "overlapOver50": 0,
+            "overlapLongTasks": 0,
+            "otherMaxMs": 8.3,
+            "otherOver50": 0,
+            "hostFramesDuringMarks": 63,
+            "pendingFrames": [
+              1,
+              2
+            ],
+            "pendingReadbackBytes": [
+              0,
+              0
+            ],
+            "captureParameters": {
+              "format": "png",
+              "captureBeyondViewport": false,
+              "clip": {
+                "x": 0,
+                "y": 0,
+                "width": 1440,
+                "height": 850,
+                "scale": 1
+              }
+            },
+            "layoutMetricsCommandMs": 0.856,
+            "cdpCaptureCommandMs": 264.594
+          },
+          {
+            "round": 1,
+            "mode": "cdp-metrics",
+            "initialGameTimeSeconds": 7.534,
+            "initialHp": 24,
+            "initialEnemies": 3,
+            "initialDrawCalls": 12,
+            "approximateHostCpuPercent": 18.1,
+            "commandMs": 259.349,
+            "markerSpanMs": 261.4,
+            "overlapFrameCount": 63,
+            "overlapMaxMs": 4.5,
+            "overlapOver50": 0,
+            "overlapLongTasks": 0,
+            "otherMaxMs": 8.3,
+            "otherOver50": 0,
+            "hostFramesDuringMarks": 61,
+            "pendingFrames": [
+              2,
+              1
+            ],
+            "pendingReadbackBytes": [
+              0,
+              0
+            ],
+            "captureParameters": {
+              "format": "png",
+              "captureBeyondViewport": false
+            },
+            "layoutMetricsCommandMs": 0.517,
+            "cdpCaptureCommandMs": 258.538
+          },
+          {
+            "round": 1,
+            "mode": "cdp",
+            "initialGameTimeSeconds": 7.513,
+            "initialHp": 24,
+            "initialEnemies": 3,
+            "initialDrawCalls": 12,
+            "approximateHostCpuPercent": 13.7,
+            "commandMs": 262.951,
+            "markerSpanMs": 270.1,
+            "overlapFrameCount": 66,
+            "overlapMaxMs": 4.4,
+            "overlapOver50": 0,
+            "overlapLongTasks": 0,
+            "otherMaxMs": 12.6,
+            "otherOver50": 0,
+            "hostFramesDuringMarks": 63,
+            "pendingFrames": [
+              2,
+              1
+            ],
+            "pendingReadbackBytes": [
+              0,
+              0
+            ],
+            "captureParameters": {
+              "format": "png",
+              "captureBeyondViewport": false
+            },
+            "cdpCaptureCommandMs": 262.655
+          },
+          {
+            "round": 2,
+            "mode": "cdp",
+            "initialGameTimeSeconds": 7.526,
+            "initialHp": 24,
+            "initialEnemies": 3,
+            "initialDrawCalls": 12,
+            "approximateHostCpuPercent": 9.2,
+            "commandMs": 254.812,
+            "markerSpanMs": 256.7,
+            "overlapFrameCount": 63,
+            "overlapMaxMs": 4.3,
+            "overlapOver50": 0,
+            "overlapLongTasks": 0,
+            "otherMaxMs": 8.4,
+            "otherOver50": 0,
+            "hostFramesDuringMarks": 60,
+            "pendingFrames": [
+              1,
+              2
+            ],
+            "pendingReadbackBytes": [
+              0,
+              0
+            ],
+            "captureParameters": {
+              "format": "png",
+              "captureBeyondViewport": false
+            },
+            "cdpCaptureCommandMs": 254.521
+          },
+          {
+            "round": 2,
+            "mode": "cdp-metrics",
+            "initialGameTimeSeconds": 7.513,
+            "initialHp": 24,
+            "initialEnemies": 3,
+            "initialDrawCalls": 12,
+            "approximateHostCpuPercent": 9.6,
+            "commandMs": 258.375,
+            "markerSpanMs": 260.5,
+            "overlapFrameCount": 64,
+            "overlapMaxMs": 4.4,
+            "overlapOver50": 0,
+            "overlapLongTasks": 0,
+            "otherMaxMs": 12.5,
+            "otherOver50": 0,
+            "hostFramesDuringMarks": 61,
+            "pendingFrames": [
+              1,
+              1
+            ],
+            "pendingReadbackBytes": [
+              0,
+              0
+            ],
+            "captureParameters": {
+              "format": "png",
+              "captureBeyondViewport": false
+            },
+            "layoutMetricsCommandMs": 0.396,
+            "cdpCaptureCommandMs": 257.673
+          },
+          {
+            "round": 2,
+            "mode": "cdp-clip",
+            "initialGameTimeSeconds": 7.513,
+            "initialHp": 24,
+            "initialEnemies": 3,
+            "initialDrawCalls": 12,
+            "approximateHostCpuPercent": 31,
+            "commandMs": 264.703,
+            "markerSpanMs": 266.7,
+            "overlapFrameCount": 65,
+            "overlapMaxMs": 4.4,
+            "overlapOver50": 0,
+            "overlapLongTasks": 0,
+            "otherMaxMs": 12.5,
+            "otherOver50": 0,
+            "hostFramesDuringMarks": 59,
+            "pendingFrames": [
+              1,
+              1
+            ],
+            "pendingReadbackBytes": [
+              0,
+              0
+            ],
+            "captureParameters": {
+              "format": "png",
+              "captureBeyondViewport": false,
+              "clip": {
+                "x": 0,
+                "y": 0,
+                "width": 1440,
+                "height": 850,
+                "scale": 1
+              }
+            },
+            "layoutMetricsCommandMs": 1.091,
+            "cdpCaptureCommandMs": 263.346
+          },
+          {
+            "round": 2,
+            "mode": "pw-caret-initial",
+            "initialGameTimeSeconds": 7.542,
+            "initialHp": 24,
+            "initialEnemies": 3,
+            "initialDrawCalls": 12,
+            "approximateHostCpuPercent": 29.7,
+            "commandMs": 155.825,
+            "markerSpanMs": 157.6,
+            "overlapFrameCount": 11,
+            "overlapMaxMs": 120.9,
+            "overlapOver50": 1,
+            "overlapLongTasks": 0,
+            "otherMaxMs": 8.2,
+            "otherOver50": 0,
+            "hostFramesDuringMarks": 10,
+            "pendingFrames": [
+              1,
+              0
+            ],
+            "pendingReadbackBytes": [
+              0,
+              0
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "trace": {
+    "wave": 10,
+    "traceDataLoss": false,
+    "rawTraceSha256": "160756cdd4b14a7e14ec171e87c0433e791b0caf30ae4d922d35a3d5a248ada9",
+    "clockUncertaintyMs": 0.3025,
+    "frameMs": 137.6,
+    "screenshotHostMs": 207.348,
+    "marksMs": 209,
+    "guaranteedCommandOverlapMs": 135.043,
+    "taskScopeUnionWithinFrameMs": {
+      "rendererMain": 2.108,
+      "rendererRenderScopes": 0.047,
+      "browserMain": 134.0245,
+      "gpuMain": 1.094,
+      "vizCompositor": 1.164,
+      "compositor": 0.397
+    },
+    "copyResultCallback": {
+      "function": "SendResult",
+      "source": "services/viz/public/cpp/compositing/copy_output_request_mojom_traits.cc",
+      "line": 60,
+      "taskName": "ThreadControllerImpl::RunTask",
+      "wallMs": 145.09,
+      "threadCpuMs": 145.248,
+      "overlapFrameMs": 131.9575
+    },
+    "precedingCopyScopes": [
+      {
+        "name": "SkiaOutputSurfaceImplOnGpu::CopyOutput",
+        "durationMs": 3.967,
+        "endsBeforeLongRafMs": 20.729
+      },
+      {
+        "name": "viz::mojom::CopyOutputResultSender::SendResult",
+        "durationMs": 2.452,
+        "endsBeforeLongRafMs": 13.211
+      },
+      {
+        "name": "CopyOutputResultSenderImpl::SendResult",
+        "durationMs": 0.005,
+        "endsBeforeLongRafMs": 13.141
+      }
+    ],
+    "sourceMapValidation": "14/14 fixed-length import-name position-equivalent; raw byte mismatch preserved",
+    "timeWeightedSamples": 92,
+    "selfSampleMs": {
+      "profile-idle": 134.18,
+      "profile-v8-native-or-gc": 2.019,
+      "unmapped-or-browser": 1.154,
+      "engine-views-projection-cpu": 0.247
+    },
+    "idleSharePercent": 97.5,
+    "profileStageWeights": [
+      {
+        "window": "A10-full",
+        "weightedSampleMs": 3687.606,
+        "selfSampleMs": {
+          "profile-v8-native-or-gc": 1653.127,
+          "profile-idle": 1276.938,
+          "unmapped-or-browser": 220.26,
+          "engine-shared-capture-or-tree-cpu": 154.299,
+          "engine-other-cpu": 146.244,
+          "engine-shared-prepare-cpu": 105.652,
+          "engine-webgpu-host-other-cpu": 44.515,
+          "engine-views-projection-cpu": 19.716,
+          "engine-host-resource-prepare-cpu": 17.568,
+          "engine-play-loop-cpu": 14.338,
+          "engine-host-encode-submit-cpu": 7.68,
+          "engine-host-admit-prepare-cpu": 6.626,
+          "engine-host-submit-orchestration-cpu": 5.569,
+          "demo-ui": 5.283,
+          "demo-rules": 3.895,
+          "demo-view": 3.433,
+          "demo-main-frame": 1.445,
+          "demo-main-other": 0.59,
+          "demo-audio": 0.428
+        }
+      },
+      {
+        "window": "A20-full",
+        "weightedSampleMs": 7241.518,
+        "selfSampleMs": {
+          "profile-v8-native-or-gc": 3229.088,
+          "profile-idle": 2127.102,
+          "engine-shared-capture-or-tree-cpu": 500.755,
+          "unmapped-or-browser": 430.583,
+          "engine-other-cpu": 356.625,
+          "engine-shared-prepare-cpu": 335.012,
+          "engine-webgpu-host-other-cpu": 79.597,
+          "engine-host-admit-prepare-cpu": 37.438,
+          "engine-host-resource-prepare-cpu": 27.752,
+          "engine-play-loop-cpu": 24.658,
+          "engine-views-projection-cpu": 23.241,
+          "engine-host-encode-submit-cpu": 18.456,
+          "engine-host-submit-orchestration-cpu": 17.176,
+          "demo-view": 13.329,
+          "demo-rules": 12.904,
+          "demo-ui": 5.085,
+          "demo-main-frame": 1.193,
+          "demo-audio": 1.083,
+          "qa-readonly-strategy": 0.358,
+          "demo-other": 0.083
+        }
+      },
+      {
+        "window": "B10-full",
+        "weightedSampleMs": 4519.117,
+        "selfSampleMs": {
+          "profile-idle": 2018.507,
+          "profile-v8-native-or-gc": 1772.408,
+          "unmapped-or-browser": 270.013,
+          "engine-other-cpu": 154.147,
+          "engine-shared-capture-or-tree-cpu": 143.609,
+          "engine-shared-prepare-cpu": 55.012,
+          "engine-webgpu-host-other-cpu": 24.363,
+          "engine-views-projection-cpu": 17.317,
+          "engine-play-loop-cpu": 14.291,
+          "engine-host-encode-submit-cpu": 10.894,
+          "engine-host-submit-orchestration-cpu": 8.734,
+          "engine-host-admit-prepare-cpu": 8.711,
+          "engine-host-resource-prepare-cpu": 6.733,
+          "demo-rules": 6.122,
+          "demo-view": 3.552,
+          "demo-main-frame": 1.948,
+          "demo-other": 1.593,
+          "demo-ui": 1.163
+        }
+      }
+    ],
+    "noCaptureWindows": [
+      {
+        "wave": 10,
+        "traceLoss": false,
+        "markerMs": 1.9,
+        "browserMainTaskUnionMs": 0.452
+      },
+      {
+        "wave": 20,
+        "traceLoss": false,
+        "markerMs": 3.3,
+        "browserMainTaskUnionMs": 0.613
+      }
+    ],
+    "caveat": "Parallel task unions are not additive; sampling weights are estimates, not exact function wall time. Idle is a V8 profile category, not GPU idleness. No GPU timestamp measurement. Callback source identifies a screenshot result task, not a specific PNG encoder or Playwright substep."
+  },
+  "conclusion": "Strong reproduction of capture-related measurement interference via Playwright wrapper in this environment; no confirmed game simulation or Egret CPU submission defect. New capture-on wave 20 missing after natural losses, so historical wave-20 attribution is inferred. Measure frame windows without screenshots; take visuals separately. If capture is necessary, mark the command and report separately, optionally use raw CDP. Do not claim an engine fix."
+}

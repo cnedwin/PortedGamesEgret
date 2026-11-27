@@ -99,6 +99,8 @@ Nezha Stirs the Sea is a survival action game built with [Egret Rebuild](https:/
 
 公开版追加完整自然路线：2026-11-27，PC（Edge 158 / RTX 5090 Laptop / WebGPU）和 Fold7（Chrome 157 / Adreno 830 / WebGPU）均从新档以风平难度、少年哪吒正常打完二十波，实际击败夜叉与敖丙，结算解锁莲花身和三头六臂，刷新读取存档完全一致。实际输入由只读策略辅助；未置入任何测试局面或修改游戏值。Fold7 辅助 Boss 截图断言错误与独立真实通关证据、后期逐波帧率及未测项见 [QUALITY.md](QUALITY.md)。 · Both physical devices complete a natural Calm twenty-wave run, defeat the two bosses, unlock the forms and reload the saved result. The handset's auxiliary observation failure is retained and independently reviewed; full evidence and scope are in QUALITY.
 
+PC 首领专项（同一公开运行时，Edge 158 / RTX 5090 Laptop / WebGPU）：关闭战斗截图后自然通关，夜叉与敖丙最大帧间隔分别为 16.7/29.2 ms；开启截图复现夜叉 137.6 ms。20 次独立首波交叉控制中 Playwright 截图 8/8 出现超过 50 ms 帧，原始 CDP/不截图 0/12。追踪指向浏览器截图返回任务，非已确认的游戏或引擎缺陷；今后性能与画面取证分开。新开启截图路线未到达敖丙，详见 [QUALITY.md](QUALITY.md)。 · Screenshot-free natural completion and 20 separate capture controls distinguish browser screenshot interference from game/engine defects; no new screenshot-on Ao Bing trace. Keep performance and visual measurements separate.
+
 ## 已知问题 · Known issues
 
 白鹭输入、透明画布和软件渲染的历史测量与复现见 [ENGINE-NOTES.md](ENGINE-NOTES.md)。 · See the engine notes for input, transparent canvas and software-rendering measurements.

@@ -1,5 +1,45 @@
 # 品质验收 · Quality — 哪吒闹海 · Nezha Stirs the Sea
 
+## 2026-11-27 PC 两场 Boss 长帧归因 · PC boss-frame attribution
+
+- **结论 · Conclusion:** 上轮 PC 的夜叉 158.1 ms、敖丙 125.0 ms 两次异常与活跃战斗截图有关。本轮复现了 Playwright 截图路径的长帧，并在夜叉追踪中定位到浏览器主线程截图结果返回任务；没有证据需要改游戏规则、渲染代码或引擎。历史两次的归因仍是由复测与时间相关性支持的推断，尤其敖丙没有新的开启截图追踪。 · The follow-up strongly implicates measurement interference from the Playwright screenshot route. A new Yaksha trace locates a screenshot-result callback on the browser main thread. Neither a product nor an engine defect is confirmed; historical attribution remains inferential, especially for Ao Bing.
+- **版本/环境 · Version/environment:** 公开版 main `24c6d6e8691054b8338119ebc734db879d998e30`（#275）、Egret `c54c16c946f777970ed1ac838cc663d349246982`，核对全部 14 个 bundle 文件，入口 SHA-256 与上轮相同（`baf2844a836b107a7380df141c11080f1135ebd85a230a98976aa2502a54d449`）。同一台 Windows、Edge 158、RTX 5090 Laptop、WebGPU，1440×850，Playwright 1.64.0。实际输入、每局隔离存档、少年哪吒/风平/query seed 2（首局 seed 27）、同一走位和交易策略；不跳关、不更改游戏时间或数值。 · Physical PC, actual public bundle, equal seed, form, danger and input policy, no state injection. Natural input timing, loadouts and host contention differ, so these are matched-policy comparisons, not deterministic replay.
+- **自然对照 · Natural comparison:** 关闭战斗截图完整通关，击败双 Boss 并保存解锁；开启截图的两次独立路线分别在第 12、8 波正常战败，未确认新截图开启条件下的敖丙结果。A、B 路线不同装备和背景负载（邻近夜叉的系统 CPU 抽样 A 约 67%、B 约 5.3%；敖丙前 A 约 63.7%），不能由整局耗时推导截图或游戏的因果效果。三次均无页面错误。 · Screenshot-off completed all 20 waves; screenshot-on runs naturally lost on waves 12 and 8, with no new on-trace for Ao Bing. A/B system load and loadout differ; whole-run timings are not a causal comparison.
+
+| 首领 · Boss | 上轮截图开启 max · Historical on | 本轮关闭 max / p95 · Off | 本轮开启 max / p95 · On |
+|---|---:|---:|---:|
+| 10 夜叉 · Yaksha (765 HP) | 158.1 ms | 16.7 / 4.3 ms | 137.6 / 4.3 ms |
+| 20 敖丙 · Ao Bing (2,720 HP) | 125.0 ms | 29.2 / 4.3 ms | 未到达 · not reached |
+
+- **时间对齐 · Trace alignment:** 夜叉复现的 137.6 ms rAF 间隔与实际 207.348 ms 截图命令至少重合 135.043 ms（对齐不确定度 ±0.303 ms）。追踪无缓冲溢出丢失。该间隔内的浏览器线程任务覆盖如下；线程并行，不能相加。 · Trace and host clock bounds establish the overlap; these are task scope unions, not exact stage or GPU execution durations.
+
+| 追踪范围 · Scope within 137.6 ms | 时间覆盖 · Task scope union (ms) |
+|---|---:|
+| 游戏 RendererMain · Game renderer main | 2.108 |
+| 其中渲染追踪范围 · Renderer render scopes | 0.047 |
+| 浏览器主线程 · BrowserMain | 134.025 |
+| GPU 主线程 · GPU main | 1.094 |
+| Viz 合成线程 · Viz compositor | 1.164 |
+| 普通合成线程 · Compositor | 0.397 |
+
+- **内部证据 · Internal evidence:** Chromium 的 `ThreadControllerImpl::RunTask` 来源 `services/viz/public/cpp/compositing/copy_output_request_mojom_traits.cc:60 / SendResult`，持续 145.090 ms，记录线程 CPU 145.248 ms，与长帧重合 131.958 ms。GPU CopyOutput 追踪范围 3.967 ms，结束在长间隔开始约 20.729 ms 之前。对应 V8 时间加权样本：约 134.180 ms (97.5%) 为 idle，2.019 ms 为 (program)，1.154 ms 未映射、0.247 ms 为视图描述；该间隔内未采到游戏规则、战斗绘制、引擎共享帧准备或 Host 编码/提交工作。私用外部源码映射只差固定等长 chunk 引用名，规范化引用后 14/14 文件字节等价，保留列位置与原始哈希差异。全窗和长帧采样权重见数据文件。 · The browser's screenshot CopyOutput result callback dominates the observed gap. The renderer profile does not sample the proposed simulation, view or Host submission stages inside it. Sample weights are not exact wall times; V8 idle does not mean the GPU was idle, and CPU trace scopes do not measure GPU execution. The exact costly browser/Playwright substep was not isolated.
+- **独立短控制 · Independent short controls:** 相同公开包、正常首波、同一真实键盘 D/S/A/W 顺序（每 0.5 游戏秒），约 7.5 游戏秒、玩家 24 HP、3 敌、12 draw calls 时松键；在标记区间执行指定命令，继续至约 11.5 游戏秒。每次新存档；20 次交替控制，均无 JS 错误和截图标记外超过 50 ms 的帧，无额外 CPU/浏览器追踪负担。下表是标记内最大 rAF，非命令执行时间。 · Twenty interleaved fresh first-wave runs use equal starting conditions, live keyboard input and no tracing. Each screenshot is bracketed separately. Reported maxima are rAF intervals, not capture latency.
+
+| 路径 · Capture path | 每次最大帧间隔 · Max rAF (ms) | >50 ms 试次 · Trials |
+|---|---|---:|
+| 不截图 · None | 4.2 / 4.2 / 4.2 | 0/3 |
+| Playwright 文件 · `page.screenshot({path})` | 158.3 / 150.1 / 149.9 | 3/3 |
+| Playwright 缓冲 · `page.screenshot()` | 141.6 / 116.7 / 150.1 | 3/3 |
+| Playwright 不隐藏光标 · `caret:'initial', animations:'allow'` | 116.7 / 120.9 | 2/2 |
+| 原始 CDP · direct capture | 4.3 / 4.6 / 4.4 / 4.4 / 4.3 | 0/5 |
+| CDP 布局查询后截图 · metrics then raw capture | 4.5 / 4.4 | 0/2 |
+| CDP 布局查询及相同裁切参数 · metrics + same clip | 4.4 / 4.4 | 0/2 |
+
+- **定位边界 · Diagnostic limits:** Playwright 8/8、原始 CDP/无截图合计 0/12。原始 CDP 命令约 255–307 ms（比若干 Playwright 命令长），期间正常提交几十帧；标记边界 Host pendingFrames 0–2，pendingReadbackBytes 0，不代表浏览器没有截图读回。文件写入、默认光标隐藏、布局查询及相同裁切参数均非必要触发条件；不能据此宣称特定 PNG 编码或某个 Playwright 准备步骤已定位。 · Disk writes, caret hiding and the metrics/clip combination are not necessary to reproduce the observed Playwright-associated stalls. Raw CDP can be slower as a command without blocking rAF; browser capture is independent of the engine's readback credit counter.
+- **修正验收流程 · Corrected measurement procedure:** 按纯性能路线记录原始 rAF 间隔、引擎帧计数/提交状态和控制台，不在计时窗口调用 `page.screenshot()`；画面取证单独跑。若必须同场取证，可用 CDP `Page.captureScreenshot` 并单独记录命令开始、结束，按标记归类相交的帧，同时报告含截图的原始数据和纯性能数据。不能为了达标从原始数据中静默删长帧。无需改变运行时代码。 · Separate cadence from visual capture; if a screenshot is unavoidable, mark it, retain all samples and report intersecting intervals separately rather than silently deleting them. Keep runtime unchanged.
+- **最小复跑 · Reproduction:** 用独立浏览上下文在[公开试玩](https://cnedwin.github.io/PortedGamesEgret/NezhaSea/?seed=2&lang=en)正常选少年/风平、出海；用 `requestAnimationFrame` 记录每个回调时间及相邻间隔，在约 7.5 游戏秒标记 `performance.now()` 前后，分别运行空操作、`await page.screenshot()`、`await cdp.send('Page.captureScreenshot',{format:'png',fromSurface:true,captureBeyondViewport:false})`。每种在新上下文交替重复，保留跨标记边界的完整帧，比较 >50 ms 的数量。用 `Page.getLayoutMetrics` + `clip:{x:0,y:0,width:1440,height:850,scale:1}` 可对照同裁切。命令返回的图在计时结束后保存。需要归因时再单独记录 Chromium trace 和 V8 CPU profile；不要将一条 rAF 直接称为 GPU 时间。 · Use a fresh context per path, identical ordinary inputs, frame timestamps and capture brackets; raw CDP session from the same context. Full natural routes, unlike the short controls, need not end in the same wave.
+- **证据/范围 · Evidence/scope:** [逐次精简数据与追踪摘要](test/evidence/boss-frame-attribution-24c6d6e8.json)，上轮[原始验收汇总](test/evidence/natural20-public-90084001.json) 保留。仅 PC 本轮专项；未重测 Fold7、未获得第 20 波新截图开启追踪、未测 GPU 时间戳/其他浏览器。没有确认引擎缺陷，因此不新增 ENGINE-NOTES 缺陷。 · Retain historical evidence and the new compact trace and trial data. No new physical handset, new screenshot-on wave-20 trace, GPU timestamps or cross-browser test; no fabricated engine issue.
+
 ## 2026-11-27 公开版自然二十波 · Natural twenty-wave public release acceptance
 
 - **实际版本 · Tested release:** [公开试玩](https://cnedwin.github.io/PortedGamesEgret/NezhaSea/) 的 PortedGamesEgret main `900840011232aaf34591f53962eef8edbc875683`（[#274](https://github.com/cnedwin/PortedGamesEgret/pull/274)，Pages run `45933384870`），Egret main `c54c16c946f777970ed1ac838cc663d349246982`。实际 HTTPS 获取的入口 SHA-256 为 `baf2844a836b107a7380df141c11080f1135ebd85a230a98976aa2502a54d449`，与已提交资源一致。 · Both hardware runs used the actual public release and verified its runtime bytes, not a local mirror.
@@ -29,7 +69,7 @@
 | 19 | 50 | 4.3 / 46.0 | 32 | 16.7 / 33.2 |
 | 20 | 18 | 4.3 / 125.0 | 6 | 16.7 / 16.8 |
 
-- **残留长帧 · Tail observations:** PC 158.1 和125.0 ms 两次都邻近 Boss 首次截图请求（按游戏时间分别约188和146 ms后）；均无 LongTask。未独立测量截图命令耗时，不能证实由截图、引擎或 GPU 引起，仍保留为真实测量异常。没有反复出现的密集战场长帧或可复现游戏功能故障，因此未为此修改运行时、伤害或平衡。 · Keep both outliers; evidence is insufficient to attribute them to the screenshot, runtime or GPU. No repeated dense-wave defect justified a product change.
+- **残留长帧 · Tail observations:** PC 158.1 和125.0 ms 两次都邻近 Boss 首次截图请求（按游戏时间分别约188和146 ms后）；均无 LongTask。未独立测量截图命令耗时，当时不能证实由截图、引擎或 GPU 引起，仍保留为真实测量异常；后续专项归因见本文顶部。没有反复出现的密集战场长帧或可复现游戏功能故障，因此未为此修改运行时、伤害或平衡。 · Keep both historical outliers; that run alone could not attribute them to screenshot, runtime or GPU. See the follow-up above. No repeated dense-wave defect justified a product change.
 - **验收脚本与存档 · Harness and save:** PC 完整路线通过，重新加载后新角色控件均可用。Fold7 原始脚本142/143检查通过，唯一失败为 Boss 辅助截图数组未记录（将非零负数 rising 当作仍未出场）；真实20波、胜利结算、保存及刷新已先完成，独立逐帧数据也证明两 Boss 正常击败。原失败保留，独立审查通过真实证据，私用修正辅助检测的3项回归通过。未因证据错误篡改游戏或重跑整局；该断言之后的两个新角色实际点选未执行，但重载存档和标题均确认已解锁。 · The phone's original harness is not falsely marked green. Its auxiliary observation assertion failed after valid completion and reload. Independent telemetry/save review and corrected helper checks distinguish a test issue from a product bug.
 - **证据 · Evidence:** [两机逐波精简数据](test/evidence/natural20-public-90084001.json)；[PC 双Boss、结算、解锁标题四图](test/visual-comparison/natural20-public-pc.png)（左上、右上、左下、右下）；[Fold7 结算及解锁标题](test/visual-comparison/natural20-public-fold7.png)（左、右）为实际手机浏览器 surface 捕获，隐私模式系统截图保护不用于游戏视觉证明。 · Evidence is from the actual physical browsers; the phone has no separate Boss screenshot.
 - **范围与限制 · Scope and limits:** 这次仅验收及记录，未改变游戏源代码、规则、数值、素材、存档格式与入口包。真实设备的自动输入而非人工玩家；只覆盖风平、首角色的一次正常通关（并非全难度、全角色或140敌压力测试）；物理手柄、读屏、Safari/Firefox/微信、扬声器实听不在本次覆盖。 · Reproduce by starting a fresh independent browser save on the public page, selecting Young Nezha and Calm, playing every wave with ordinary input and buying/merging only through the market, then checking the two unlocks and reloading. Device and browser settings are restored; prior user saves are untouched.
