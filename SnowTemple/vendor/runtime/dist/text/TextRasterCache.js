@@ -769,7 +769,7 @@ function acquire(input, options) {
             finally {
                 assertOpen(state);
             }
-            let summary = summarizeTextRasterRequest(snapshot, state.provider.identity, state.fontGeneration, invocation);
+            let summary = summarizeTextRasterRequest(snapshot, state.provider.identity, state.fontGeneration, invocation, state.provider.supportsStroke);
             // Count refusal precedes any optional route retirement and external cleanup.
             state.budget.check({ pendingWaiters: 1, callerLeaseSlots: 1 }, (code, cause) => createTextValueFailure(invocation, code, cause));
             let generation = state.lru.find(value => matchesTextRasterRequestSummary(value.request, summary, state.provider.identity, state.fontGeneration));
@@ -1065,7 +1065,14 @@ export function createTextRasterCache(assets, options) {
         try {
             if (receiver === null || (typeof receiver !== 'object' && typeof receiver !== 'function'))
                 throw new TypeError('Text provider required');
-            providerValues = [receiver.identity, receiver.profile, receiver.measure, receiver.rasterize, receiver.release];
+            providerValues = [
+                receiver.identity,
+                receiver.profile,
+                receiver.measure,
+                receiver.rasterize,
+                receiver.release,
+                'supportsStroke' in receiver ? receiver.supportsStroke : undefined
+            ];
         }
         catch (cause) {
             try {
@@ -1082,13 +1089,14 @@ export function createTextRasterCache(assets, options) {
         catch (cause) {
             throw new EgretError('TEXT_CACHE_CLOSED', { cause });
         }
-        const [identity, profile, measure, rasterize, releasePlan] = providerValues;
+        const [identity, profile, measure, rasterize, releasePlan, supportsStroke] = providerValues;
         const match = typeof identity === 'string'
             ? APPLY(REGEXP_EXEC, PROVIDER_IDENTITY, [identity])
             : null;
         if (match === null ||
             match[0].length !== identity.length ||
             profile !== PROFILE ||
+            (supportsStroke !== undefined && supportsStroke !== true) ||
             typeof measure !== 'function' ||
             typeof rasterize !== 'function' ||
             typeof releasePlan !== 'function')
@@ -1117,6 +1125,7 @@ export function createTextRasterCache(assets, options) {
             provider: FREEZE({
                 receiver,
                 identity: identity,
+                supportsStroke: supportsStroke === true,
                 measure: measure,
                 rasterize: rasterize,
                 release: releasePlan
@@ -1167,7 +1176,7 @@ export function createTextRasterCache(assets, options) {
                 try {
                     const snapshot = snapshotTextRasterRequest(input, invocation);
                     revalidate();
-                    const summary = summarizeTextRasterRequest(snapshot, state.provider.identity, state.fontGeneration, invocation);
+                    const summary = summarizeTextRasterRequest(snapshot, state.provider.identity, state.fontGeneration, invocation, state.provider.supportsStroke);
                     return createTextFieldRequestInput(summary, invocation);
                 }
                 catch (cause) {
