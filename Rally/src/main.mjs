@@ -8,13 +8,14 @@
 //   scenery.mjs          the circuit and the land around it
 //   racers.mjs           the karts and their drivers
 //   view.mjs             karts, items, effects and the camera
-//   hud.mjs              the page around the canvas
+//   hud.mjs              the engine-owned interface above the scene
 //   input.mjs, audio.mjs devices and sound
 import { createEngine } from '@egret/engine';
 import { prefersReducedMotion, watchReducedMotion } from '@egret/engine/web/kit';
 import { Scene3D, createPerspectiveCamera3D } from '@egret/engine/world3d';
 import { createAudio } from './audio.mjs';
-import { LAP_CHOICES, RACERS } from './data.mjs';
+import { RACERS } from './data.mjs';
+import { loadSettings, saveSettings } from './settings.mjs';
 import { createHud } from './hud.mjs';
 import { createInput } from './input.mjs';
 import { createRace } from './sim.mjs';
@@ -42,38 +43,9 @@ globalThis.__rally = status;
 
 function fail(cause) {
   const box = document.querySelector('#error');
-  box.textContent = 'Error / 出错了: ' + (cause?.message ?? cause);
+  box.textContent = (status.settings?.lang === 'zh' || (!status.settings && navigator.language?.startsWith('zh')) ? '出错了：' : 'Error: ') + (cause?.message ?? cause);
   box.hidden = false;
   status.error = String(cause?.stack ?? cause);
-}
-
-// ---- saved choices ----------------------------------------------------------------------
-const SETTINGS_KEY = 'jinxiu-rally';
-function loadSettings() {
-  const defaults = { racer: 0, klass: 1, laps: 3, muted: false, quality: 'high', lang: undefined };
-  let saved = {};
-  try {
-    saved = JSON.parse(localStorage.getItem(SETTINGS_KEY) ?? '{}');
-  } catch {
-    /* unreadable: start from the defaults */
-  }
-  const settings = { ...defaults, ...saved };
-  // Anything out of range falls back, so an old or edited entry cannot break the menus.
-  if (!RACERS[settings.racer]) settings.racer = 0;
-  if (![0, 1, 2].includes(settings.klass)) settings.klass = 1;
-  if (!LAP_CHOICES.includes(settings.laps)) settings.laps = 3;
-  if (!['high', 'medium', 'low'].includes(settings.quality)) settings.quality = 'high';
-  if (['high', 'medium', 'low'].includes(params.get('quality'))) settings.quality = params.get('quality');
-  if (params.get('lang')) settings.lang = params.get('lang');
-  return settings;
-}
-function saveSettings(settings) {
-  // Private windows may refuse storage; the choices then last for this visit only.
-  try {
-    localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
-  } catch {
-    /* ignored */
-  }
 }
 
 async function main() {
@@ -111,7 +83,10 @@ async function main() {
   const camera = createPerspectiveCamera3D({ fov: 60, near: 0.3, far: 1600 });
   scene.addChild(camera);
 
-  const settings = loadSettings();
+  let storage;
+  try { storage = localStorage; } catch { /* private browsing */ }
+  const settings = loadSettings(storage, params, navigator.language);
+  status.settings = settings;
   const track = createTrack();
   const bundle = params.get('models') === 'original' ? null : scope.use(await loadTrackModels(backend.loadGltfFromUrl3D));
   status.models = { loaded: Object.keys(bundle?.models ?? {}), failures: bundle?.failures ?? {} };
@@ -119,17 +94,28 @@ async function main() {
   // Less motion when the system asks for it, and again whenever the player changes the setting.
   view.reducedMotion = prefersReducedMotion();
   scope.use({ dispose: watchReducedMotion((reduced) => (view.reducedMotion = reduced)) });
-  const hud = createHud(document.querySelector('#ui'), track, {
-    lang: settings.lang,
-    stage: canvas,
-    onPause: (event) => {
-      // A gesture on Pause resolves through the input module. Keep native mouse and keyboard clicks.
-      if (event.detail && (event.pointerType === 'touch' || event.pointerType === 'pen' || event.sourceCapabilities?.firesTouchEvents)) return;
-      if (mode === 'race') setPaused(true);
-    },
-  });
-  const input = createInput(hud.touchRoot, hud.pauseButton);
+  const input = createInput();
   const audio = createAudio();
+  let preview;
+  const hud = await createHud(canvas, track, {
+    lang: settings.lang,
+    onTouch: (name, held) => input.setTouchControl(name, held),
+    onPause: () => { if (mode === 'race') setPaused(true); },
+    onPreviewRect(rect, screen) {
+      preview = rect && screen ? {
+        x: (rect.x + rect.width / 2 - (screen.x ?? 0)) / screen.width,
+        y: (rect.y + rect.height / 2 - (screen.y ?? 0)) / screen.height,
+        width: rect.width / screen.width,
+        height: rect.height / screen.height,
+      } : undefined;
+    },
+    onError: fail,
+  });
+  status.ui = hud.host;
+  status.hud = hud;
+  status.input = input;
+  input.onClearTouch = () => hud.releaseTouch();
+  scope.use(input);
   audio.setMuted(settings.muted);
 
   /**
@@ -145,7 +131,10 @@ async function main() {
     renderer.shadowsEnabled = !low && shadowCompatible;
     view.scenery.setReflect(high);
     audio.setMuted(settings.muted);
-    saveSettings(settings);
+    hud.lang = settings.lang;
+    document.documentElement.lang = settings.lang;
+    canvas.setAttribute("aria-label", settings.lang === "zh" ? "锦绣飞车：赛车舞台" : "Jinxiu Rally: racing stage");
+    saveSettings(storage, settings);
   }
   applySettings();
 
@@ -164,7 +153,7 @@ async function main() {
     input.setTouchEnabled(driving);
     hud.setTouchAvailable(driving);
     hud.setRacePauseAvailable(next === 'race');
-    document.documentElement.classList.toggle('race-active', driving);
+    hud.setSuspended(next === 'paused' || next === 'results');
   };
   const seed = () => Number(params.get('seed')) || Date.now() & 0xffffff || 1;
 
@@ -241,24 +230,16 @@ async function main() {
     });
   }
 
-  input.onCommand = (command) => {
+  input.onCommand = (command, detail) => {
     audio.unlock();
-    if (command === 'pause') {
-      if (mode === 'race') setPaused(true);
-    } else if (command === 'mute') {
+    if (command === 'mute') {
       settings.muted = !settings.muted;
       applySettings();
-    } else if (command === 'menu' || command === 'back') {
-      if (mode === 'select') showTitle();
-      else if (command === 'menu') setPaused(mode === 'race');
-    } else if (command === 'confirm') {
-      if (mode === 'title') showSelect();
-      else if (mode === 'select' || mode === 'results') start();
-      else if (mode === 'paused') setPaused(false);
-    } else if (mode === 'select') {
-      // Left and right step through the racers.
-      settings.racer = (settings.racer + (command === 'left' ? RACERS.length - 1 : 1)) % RACERS.length;
-      showSelect();
+      hud.refresh();
+    } else if (mode === 'race') {
+      if (command === 'menu' || command === 'back') setPaused(true);
+    } else if (mode !== 'intro' && hud.menuActive()) {
+      hud.command(command, detail);
     }
   };
   addEventListener('pointerdown', () => audio.unlock());
@@ -339,6 +320,7 @@ async function main() {
     view.update(mode === 'select' ? dt : step, race, shot, {
       lookBack: controls.lookBack && mode === 'race',
       sweep: Math.min(1, introTime / INTRO_SECONDS),
+      preview,
     });
     view.scenery.renderReflection(renderer, camera);
 
@@ -378,6 +360,13 @@ async function main() {
     onError: fail,
   });
   showTitle();
+  if (Object.keys(status.models.failures).length) {
+    hud.showFailure({
+      message: Object.keys(status.models.failures).join(', '),
+      retry: () => location.reload(),
+      continue: () => {},
+    });
+  }
   startWorld3DLoop(engine, fail);
 }
 

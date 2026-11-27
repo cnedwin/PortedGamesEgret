@@ -549,6 +549,10 @@ export const MATRIX = {
      "file": "NightWardens/src/main.mjs"
     },
     {
+     "game": "Rally",
+     "file": "Rally/src/input.mjs"
+    },
+    {
      "game": "StarBanner",
      "file": "StarBanner/src/input.mjs"
     }

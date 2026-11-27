@@ -30,9 +30,25 @@ written as in part 3 of [docs/GAME-STANDARD.md](../docs/GAME-STANDARD.md).
 - 状态 · Status：引擎 guide 卡片 `world3d-draw-cost` 已写明这种做法 · described in the world3d-draw-cost card.
 
 ### 4. 引擎没有读取"减少动态效果"的现成办法 · No ready way to read the system's reduced-motion setting — 已在 `1b40619` 解决 / resolved in `1b40619`
-<!-- engine-note: {"id": "Rally#4", "status": "resolved", "topic": "reduced-motion-setting", "workaround": ["src/main.mjs", "src/view.mjs", "src/hud.mjs"]} -->
+<!-- engine-note: {"id": "Rally#4", "status": "resolved", "topic": "reduced-motion-setting", "workaround": ["src/main.mjs", "src/view.mjs", "src/ui/race-hud.mjs"]} -->
 
 - 现象 · What happens：品质验收 A3 不达标：碰撞和道具命中时镜头抖动、雷电全屏闪白，系统打开"减少动态效果"后也一样。 · Quality item A3 failed: camera shake and the thunder's white flash stayed on with the system set to reduce motion.
-- 游戏里 · In the game：`src/main.mjs` 用 `@egret/engine/web/kit` 的 `prefersReducedMotion()` 和 `watchReducedMotion()`；`view.reducedMotion` 为真时不晃镜头，雷电闪光减到三成（`src/view.mjs`、`src/hud.mjs`）。 · The game reads and follows the setting with the engine's helpers; with it on there is no shake and the thunder flashes at three tenths.
+- 游戏里 · In the game：`src/main.mjs` 用 `@egret/engine/web/kit` 的 `prefersReducedMotion()` 和 `watchReducedMotion()`；`view.reducedMotion` 为真时不晃镜头，雷电闪光减到三成（`src/view.mjs`、`src/ui/race-hud.mjs`）。 · The game reads and follows the setting with the engine's helpers; with it on there is no shake and the thunder flashes at three tenths.
 - 建议 · Suggestion：无 · none.
 - 状态 · Status：引擎已提供，本作 2026-11-21 起使用 · provided by the engine and used here since 2026-11-21.
+
+### 5. 原生语义按钮没有按住状态 · A native semantic button cannot report its held state — 未解决 / open
+<!-- engine-note: {"id": "Rally#5", "status": "open", "topic": "semantic-button-pressed-state", "workaround": ["src/ui/race-touch.mjs", "src/ui/race-hud.mjs"]} -->
+
+- **现象 · What happens**：在引擎 `8ef4cf3a` 上，`createUiSemantics` 的 `role: 'button'` 描述提供 `pressed: true`；发布的节点仍只有 `disabled`、`focused`、`actions` 等字段，没有 `pressed`，浏览器投影也不提供 `aria-pressed`。执行 `node test/engine-gaps.mjs` 第一行结果可复现。 · On `8ef4cf3a`, supplying `pressed: true` on a semantic button leaves it absent from the published node, and browser projection has no `aria-pressed`. The first receipt from `node test/engine-gaps.mjs` reproduces this.
+- **游戏里 · In the game**：驾驶按钮使用原生 ActionControl 的真实按下、取消与释放状态，视觉反馈和测试快照保留；语义仍为有名称的普通按钮，未伪装成切换开关。名次和圈数保留 status 语义，计时和速度为普通文字。 · Native ActionControl still owns pressing, cancellation, release and visual feedback. The semantic controls remain correctly named ordinary buttons, not fake switches. Place and lap are status nodes; time and speed are plain text.
+- **建议 · Suggestion**：提供可选的原生按下状态及浏览器投影。验收：按住、释放、取消时语义树状态和实际控制一致，不改变单次 activate 或现有按钮表现，读屏不持续播报帧更新。 · Expose an optional pressed/held state and browser projection. Acceptance: the semantic state follows press, release and cancel without changing activation behavior or existing button states; no announcement on every frame.
+- **状态 · Status**：未解决，未修改引擎副本。 · Open; the engine copy is unchanged.
+
+### 6. 原生按钮拖出后释放仍激活 · Native action activates on release outside — 未解决 / open
+<!-- engine-note: {"id": "Rally#6", "status": "open", "topic": "action-control-outside-release", "workaround": ["src/ui/race-touch.mjs", "src/ui/kit.mjs"]} -->
+
+- **现象 · What happens**：引擎 `8ef4cf3a` 中，48×48 的原生按钮在 (10, 10) 按下，移动到 (90, 90) 后释放，`createActionControl` 仍调用一次 `onActivate`。无需 DOM 或游戏，执行 `node test/engine-gaps.mjs` 第二行实测 `{"activated":1,"pressed":false}`。 · On `8ef4cf3a`, press a 48×48 native button at (10, 10), move to (90, 90), and release; the action fires once. The second receipt from the headless reproduction shows one activation and a released press.
+- **游戏里 · In the game**：驾驶的长按有意保留原触点归属，但菜单的一次性按钮要求释放仍在实际命中区，暂停额外检查触控滑动阈值；使用原生 pointer 路由与 ActionControl，未添加浏览器游戏按钮。 · Driving holds intentionally retain the originating contact. Discrete menu actions require a release inside the hit area; Pause also checks touch slop, using native pointer routing and ActionControl without browser game controls.
+- **建议 · Suggestion**：保持独立长按/释放，提供一次性激活的可选 release-inside / tap-slop 策略，且默认行为和文档一致。验收：滑出释放、取消和失焦不触发；内部点击、键盘、语义 activate 正常，驾驶长按仍不丢。 · Retain independent held state while offering an activation policy for release-inside/tap-slop, with documented defaults. Acceptance: outside release, cancel and blur do not activate; inside click, keyboard and semantic activate still do; driving holds are unaffected.
+- **状态 · Status**：未解决，游戏使用原生部件保留交互语义。 · Open; the game preserves behavior with native components.

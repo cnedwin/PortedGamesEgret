@@ -40,7 +40,7 @@ used or not; only each game's own code is read, not `vendor/`, tests or tools. T
 | `@egret/engine/web/editing` | 1 |  |  |  |  |  | [✔](InquestScrolls/src/view/type.mjs) |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |
 | `@egret/engine/input/hover` | 0 |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |
 | `@egret/engine/web/hover` | 5 |  |  |  |  |  | [✔](InquestScrolls/src/view/casebook.mjs) | [✔](jelly-pandas/src/hud.mjs) |  |  | [✔](LoveElective/src/engine/ui.mjs) | [✔](LubanBridge/src/view/build.mjs) |  |  |  |  |  |  |  |  |  | [✔](StarBanner/src/ui/host.mjs) |  |  |  |
-| `@egret/engine/input/gamepad` | 3 |  |  |  | [✔](FiveRegiments/src/input.mjs) |  |  |  |  |  |  |  |  |  | [✔](NightWardens/src/main.mjs) |  |  |  |  |  |  | [✔](StarBanner/src/input.mjs) |  |  |  |
+| `@egret/engine/input/gamepad` | 4 |  |  |  | [✔](FiveRegiments/src/input.mjs) |  |  |  |  |  |  |  |  |  | [✔](NightWardens/src/main.mjs) |  |  |  | [✔](Rally/src/input.mjs) |  |  | [✔](StarBanner/src/input.mjs) |  |  |  |
 | `@egret/engine/web/gamepad` | 4 |  |  |  |  |  |  |  | [✔](JY/web/main.mjs) | [✔](LanternShadows/src/input.mjs) |  |  |  |  | [✔](NightWardens/src/main.mjs) |  |  |  |  |  |  |  |  | [✔](TeaHorseRoad/src/play/input.mjs) |  |
 | `@egret/engine/camera` | 2 |  |  |  |  |  |  |  |  | [✔](LanternShadows/src/main.mjs) |  |  | [✔](MechanismCity/src/play/level.mjs) |  |  |  |  |  |  |  |  |  |  |  |  |
 | `@egret/engine/tilemap` | 2 |  |  |  |  |  |  |  |  | [✔](LanternShadows/src/main.mjs) |  |  | [✔](MechanismCity/src/play/level.mjs) |  |  |  |  |  |  |  |  |  |  |  |  |

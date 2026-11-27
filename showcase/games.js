@@ -218,7 +218,21 @@ export const GAMES = [
         description: { zh: "白鹭加载赛道资产，并将它们接入实时场景。", en: "Egret loads track assets and places them in the live scene." },
         source: 'src/track-models.mjs',
       },
-    ],
+      {
+        title: { zh: "原生 3D 界面叠加与安全区", en: "Native 3D overlay and responsive safe areas" },
+        description: { zh: "全屏场景上绘制菜单和触屏驾驶，横竖屏原地重排，静止界面按需提交。", en: "Native menus and touch driving overlay the full-screen scene, reflow in place on rotation, and draw on demand." },
+        source: 'src/ui/host.mjs',
+      },
+      {
+        title: { zh: "实时数字与赛道小地图", en: "Retained race counters and minimap" },
+        description: { zh: "固定数字字形复用纹理，原生图形保留赛道轮廓，仅移动八辆车的标记。", en: "Fixed numeric glyphs reuse a texture; retained native geometry shows the track and moves eight kart markers." },
+        source: 'src/ui/race-font.mjs',
+      },
+      {
+        title: { zh: "多指控制与具名语义", en: "Independent touch controls and named semantics" },
+        description: { zh: "方向、漂移和道具按键独立管理原生触点，菜单支持焦点导航和无障碍名称。", en: "Direction, drift and item actions own separate native contacts; menus support focus navigation and accessible names." },
+        source: 'src/ui/race-touch.mjs',
+      },    ],
   },
   {
     id: 'fengshen', folder: 'FengshenChronicle', kind: '2d',
