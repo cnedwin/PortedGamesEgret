@@ -553,7 +553,7 @@ export async function startBattle(app, { setup, saved = null, attract = false })
   async function mapMenu() {
     setMode('menu');
     sound.play('menu');
-    const choice = await hud.menu(
+    const choice = await app.screens.pause(
       [
         { key: 'end', label: t('endTurn') },
         { key: 'threat', label: `${t('threat')}：${s.threat ? t('on') : t('off')}` },
@@ -563,7 +563,6 @@ export async function startBattle(app, { setup, saved = null, attract = false })
         { key: 'concede', label: t('surrender') },
         { key: null, label: t('back') }
       ],
-      null,
       { title: t('menu') }
     );
     if (s.disposed) return;
@@ -579,12 +578,11 @@ export async function startBattle(app, { setup, saved = null, attract = false })
       return app.toTitle();
     }
     if (choice === 'concede') {
-      const sure = await hud.menu(
+      const sure = await app.screens.pause(
         [
           { key: 'yes', label: t('yes') },
           { key: 'no', label: t('no') }
         ],
-        null,
         { title: t('surrenderAsk') }
       );
       if (sure === 'yes') return finish(1 - human, 'surrender');

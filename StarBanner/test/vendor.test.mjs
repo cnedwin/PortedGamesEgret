@@ -15,7 +15,7 @@ test("the page's import map is the one the engine copy came with", async () => {
 test('every engine entry the game imports is in the copy', async () => {
   const { imports } = JSON.parse(await read('../vendor/importmap.json')),
     asked = new Set();
-  for (const folder of ['../src/', '../src/view/', '../src/sim/', '../src/audio/'])
+  for (const folder of ['../src/', '../src/view/', '../src/sim/', '../src/audio/', '../src/ui/'])
     for (const name of await readdir(new URL(folder, import.meta.url)))
       if (name.endsWith('.mjs')) for (const [, entry] of (await read(folder + name)).matchAll(/from '(@egret\/[^']+)'/g)) asked.add(entry);
   assert.ok(asked.size >= 6, `only ${asked.size} entries`);
