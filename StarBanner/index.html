@@ -29,6 +29,10 @@
     "@egret/engine/kit": "./vendor/engine/dist/kit.js",
     "@egret/engine/audio": "./vendor/engine/dist/audio.js",
     "@egret/engine/input/gamepad": "./vendor/engine/dist/gamepad.js",
+    "@egret/runtime/ui": "./vendor/runtime/dist/ui/index.js",
+    "@egret/engine/ui": "./vendor/engine/dist/ui/index.js",
+    "@egret/runtime/paragraph": "./vendor/runtime/dist/paragraph/index.js",
+    "@egret/engine/paragraph": "./vendor/engine/dist/paragraph.js",
     "@egret/engine/webgl2/world3d": "./vendor/engine/dist/web/world3d/index.js",
     "@egret/engine/web/kit": "./vendor/engine/dist/web/kit.js",
     "@egret/engine/web/audio": "./vendor/engine/dist/web/audio.js",
@@ -36,7 +40,8 @@
     "@egret/engine/web/hover": "./vendor/engine/dist/web/hover.js",
     "@egret/engine/ui/semantics": "./vendor/engine/dist/semantics.js",
     "@egret/engine/web/semantics": "./vendor/engine/dist/web/semantics.js",
-    "@egret/engine/animation": "./vendor/engine/dist/animation/index.js"
+    "@egret/engine/animation": "./vendor/engine/dist/animation/index.js",
+    "@egret/engine/ui/testing": "./vendor/engine/dist/ui/testing.js"
   }
 }
   </script>
@@ -44,8 +49,7 @@
 <body>
   <main id="frame">
     <canvas id="stage" tabindex="0" aria-label="战场 · Battlefield"></canvas>
-    <div id="ui"></div>
-    <p id="loading">载入中 · Loading</p>
+    <p id="fatal" hidden role="alert"></p>
   </main>
   <noscript>这个游戏需要 JavaScript · This game needs JavaScript.</noscript>
   <script type="module" src="src/main.mjs"></script>

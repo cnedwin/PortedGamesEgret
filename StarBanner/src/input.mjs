@@ -38,14 +38,15 @@ const DIRS = ['up', 'right', 'down', 'left'];
  * The frame owns secondary clicks. Only the canvas handles board picks and camera gestures.
  * Point, tap and wheel coordinates are CSS pixels relative to the canvas.
  */
-export function createInput(canvas, { frame, on, point, tap, pan, zoom, canNavigate, active = () => true }) {
+export function createInput(canvas, { frame, bridge, on, point, tap, pan, zoom, canNavigate, active = () => true }) {
   const held = new Map();
   let lastDevice = 'mouse';
   const onKey = (e) => {
     const command = KEYS[e.code];
     if (!command || !active()) return;
-    // Enter and Space on a focused button press it the browser's way; everything else is ours.
-    if (command === 'confirm' && e.target && e.target !== document.body && e.target !== canvas && e.target.closest?.('button, input, select')) return;
+    // The engine's registered UI keys get first refusal; don't dispatch them a second time.
+    if(e.type==='keyup')held.delete(command);
+    if(e.defaultPrevented)return;
     e.preventDefault();
     lastDevice = 'keys';
     if (e.type === 'keyup') {
@@ -69,7 +70,7 @@ export function createInput(canvas, { frame, on, point, tap, pan, zoom, canNavig
   const release = () => {
     held.clear();
     for (const id of pointers.keys()) {
-      if (canvas.hasPointerCapture?.(id)) canvas.releasePointerCapture(id);
+      for(const surface of [canvas,bridge])if(surface?.hasPointerCapture?.(id))surface.releasePointerCapture(id);
     }
     pointers.clear();
     drag = null;
@@ -103,7 +104,8 @@ export function createInput(canvas, { frame, on, point, tap, pan, zoom, canNavig
     lastDevice = touch ? 'touch' : 'mouse';
     const p = local(e);
     pointers.set(e.pointerId, p);
-    canvas.setPointerCapture?.(e.pointerId);
+    // A pass-through press is forwarded by the native overlay. Capture on its actual pointer surface.
+    try{(e.isTrusted||!bridge?canvas:bridge).setPointerCapture?.(e.pointerId);}catch{}
     if (pointers.size === 1) drag = { id: e.pointerId, start: p, last: p, moved: false, button: e.button, touch };
     if (pointers.size === 2) {
       const [a, b] = [...pointers.values()];
@@ -148,7 +150,8 @@ export function createInput(canvas, { frame, on, point, tap, pan, zoom, canNavig
       drag = null;
       canvas.classList.remove('panning');
       const still = Math.hypot(p[0] - gesture.start[0], p[1] - gesture.start[1]) <= (gesture.touch ? 14 : 6);
-      const inside = document.elementFromPoint(e.clientX, e.clientY) === canvas;
+      const hit=document.elementFromPoint(e.clientX,e.clientY);
+      const inside = hit===canvas || (!e.isTrusted&&hit===bridge);
       if (gesture.button === 0 && e.button === 0 && still && !gesture.moved && inside && canNavigate()) {
         tap(p[0], p[1], { device: gesture.touch ? 'touch' : 'mouse' });
       }
@@ -164,6 +167,7 @@ export function createInput(canvas, { frame, on, point, tap, pan, zoom, canNavig
   };
   canvas.addEventListener('pointercancel', cancelPointer);
   canvas.addEventListener('lostpointercapture', cancelPointer);
+  bridge?.addEventListener('lostpointercapture',cancelPointer);
   canvas.addEventListener('auxclick', (e) => {
     if (e.button === 1) e.preventDefault();
   });
@@ -221,7 +225,7 @@ export function createInput(canvas, { frame, on, point, tap, pan, zoom, canNavig
         }
       }
       const r = pad.stick('right');
-      if (Math.hypot(r.x, r.y) > 0.3) pan(-r.x * seconds * 600, -r.y * seconds * 600);
+      if (canNavigate()&&Math.hypot(r.x, r.y) > 0.3) pan(-r.x * seconds * 600, -r.y * seconds * 600);
     }
     padPrev = now;
   }
