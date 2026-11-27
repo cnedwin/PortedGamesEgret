@@ -242,21 +242,9 @@ were written during that move. The game now uses `72be4978226951c0727262e81da87f
 ### 17. 叠加层的舞台大小固定 · The overlay's stage size is fixed — 缺口 / gap · 已在 `1bfe818` 解决 / resolved in `1bfe818`
 <!-- engine-note: {"id": "TeaHorseRoad#17", "status": "resolved", "topic": "overlay-stage-size"} -->
 
-- 现象：`createWorld3DOverlay` 的舞台宽高在创建时定死，画布按 3D 画布的框拉伸，没有 `fit` 选项，`frame` 也是冻结的。手机横竖一转，界面就被拉扁。
-- 游戏里：按开局时屏幕的宽高比决定舞台宽度（高固定 720）；宽高比变化超过一成时，销毁叠加层、重新建一个，再把当前画面（标题、HUD、驿站卡）重建出来。竖着拿手机时提示横过来。升级到 `8637ace` 后叠加层用 `fit: 'contain'`：一成以内的变化不再把界面拉扁，界面保持比例、边上露出一点场景；超过一成仍按新宽度重建，HUD 才能贴到两边。比 4:3 还窄的屏幕上，舞台最窄 4:3，上下会露出几十像素的场景。
-- 建议：叠加层支持 `fit: 'contain' | 'cover'` 和按宽高比自动改舞台宽度，或提供 `resize(width, height)`。
-
-- What happens: the stage size of `createWorld3DOverlay` is fixed when it is made and its canvas is stretched to the 3D
-  canvas's box; there is no `fit` option and `frame` is frozen. Turn a phone and the interface is squashed.
-- In the game: the stage's width comes from the screen's shape at the start (the height is 720); when the shape changes
-  by more than a tenth, the overlay is disposed, made again, and the current screen (title, HUD, station card) rebuilt.
-  A phone held upright is asked to turn. Since the move to `8637ace` the overlay has `fit: 'contain'`: a change within a
-  tenth keeps the interface's proportions, with a little of the scene showing at its edges, instead of squashing it; a
-  larger change still makes the overlay again at the new width, so the HUD reaches both sides. On a screen narrower than
-  4:3, the narrowest the stage goes, a few dozen pixels of the scene show above and below.
-- Suggestion: `fit: 'contain' | 'cover'` on the overlay with the stage width following the aspect, or a
-  `resize(width, height)`.
-- 状态 · Status：已在 `1bfe818` 解决（引擎 #427）：叠加层能按舞台的比例适配。 · Resolved in `1bfe818` (engine #427): the overlay fits to the stage's proportions.
+- **现象 · What happens**：早期叠加层的舞台宽高固定，画布拉伸后界面变形。 · Earlier overlays stretched their fixed logical stage to the canvas box, squashing the UI.
+- **游戏里 · In the game**：现用 `createWorld3DOverlay(canvas, {width:1066,height:600,fit:'expand'})`，利用 `game.screen` 与 `game.onScreenChange` 原地摆放现存节点；满屏背景使用舞台，贴边组使用安全区，居中卡片以舞台中心为基准。语义投影只创建一次，用 `projection.sync({width,height})` 同步实际舞台尺寸及节点边界。手机竖屏保留转屏提示，平板竖屏仍能直接游玩。 · One expanded native overlay; relayout existing controls using the current screen and safe rectangle, fill the full stage where appropriate, and sync the existing semantic projection in place. Phone rotation prompt remains; portrait tablet stays usable.
+- **状态 · Status**：已在 `1bfe818` 解决（#427）比例适配；`72be497` 的原生扩展舞台、屏幕变化及逻辑语义尺寸更新已用于本作。 · Proportional overlay fit was resolved in #427. The 72be497 native expanding stage and responsive semantic geometry are now used in the game.
 
 ### 18. 打开模态对话框时焦点和语义 · Focus and semantics when a modal dialog opens — 别扭 / awkward · 已在 `1bfe818` 解决 / resolved in `1bfe818`
 <!-- engine-note: {"id": "TeaHorseRoad#18", "status": "resolved", "topic": "modal-focus-semantics"} -->
@@ -350,14 +338,14 @@ were written during that move. The game now uses `72be4978226951c0727262e81da87f
 
 ## 升级到 8637ace 时记下的 · Written during the move to 8637ace
 
-### 25. 2D 宿主创建时同步链接全部着色器 · The 2D host links all its programs synchronously when made — 缺口 / gap · 已在 72be497 解决 / resolved in 72be497
+### 25. 2D 宿主创建时同步链接全部着色器 · The 2D host links all its programs synchronously when made — 缺口 / gap · 已在 `72be497` 解决 / resolved in `72be497`
 <!-- engine-note: {"id": "TeaHorseRoad#25", "status": "resolved", "topic": "webgl2-2d-program-link-startup"} -->
 
 - **现象 · What happens**：叠加层的 2D WebGL2 宿主曾在创建和恢复时依次编译、链接主程序、纯色、合成等程序，立即查询 LINK_STATUS，导致标题出现前主线程阻塞。 · The former overlay host linked and synchronously validated its programs on startup and recovery, holding the main thread before the title.
 - **游戏里 · In the game**：使用引擎自身的 GLNativeSession.preparePrograms(sources, wait)，有 KHR_parallel_shader_compile 时批量链接后每 8 ms 查询完成状态；无扩展时逐个链接并在程序间让出主线程。原本本地补丁完全删除；test/webgl2-startup.test.mjs 继续检查引擎契约。 · The official implementation batches links and polls at 8 ms with KHR, or yields between serial links without it; the regression tests retain the same contract.
 - **状态 · Status**：已在 72be497 解决（引擎 [#525](https://github.com/cnedwin/Egret_rebuild/pull/525)），游戏的 2D 宿主直接使用正式实现。 · Resolved in 72be497 (#525); no local vendor patch.
 
-### 26. 三角网碰撞形状不能在 Worker 里建好再交回 · A triangle mesh shape cannot be built in a worker and handed back — 缺口 / gap · 已在 72be497 解决 / resolved in 72be497
+### 26. 三角网碰撞形状不能在 Worker 里建好再交回 · A triangle mesh shape cannot be built in a worker and handed back — 缺口 / gap · 已在 `72be497` 解决 / resolved in `72be497`
 <!-- engine-note: {"id": "TeaHorseRoad#26", "status": "resolved", "topic": "mesh-shape-worker-transfer"} -->
 
 - **现象 · What happens**：每个 192 米地块需要独立三角网碰撞体；曾无法从 Worker 传递构造完成的包围层次，主线程构造会产生停顿。 · The worker-built mesh hierarchy could not formerly be adopted by the main thread.
@@ -392,3 +380,29 @@ were written during that move. The game now uses `72be4978226951c0727262e81da87f
   `setEnabled` those whose centre is in an obstacle's circle or in the river (`src/play/threats.mjs`).
 - Suggestion: accept a height function or the terrain stream; drop a triangle when it meets the circle (or by its
   centre); allow a test for water.
+
+## 升级到 72be497 时记下的 · Written during the move to 72be497
+
+### 29. 3D 屏幕标记不能分边避让安全区 · 3D screen markers cannot respect per-edge safe areas — 缺口 / gap · 未解决 / open
+<!-- engine-note: {"id": "TeaHorseRoad#29", "status": "open", "topic": "world3d-screen-markers-safe-insets", "workaround": ["src/main.mjs", "src/ui/markers.mjs"]} -->
+
+- **现象 · What happens**：`createScreenMarkers3D` 的 `margin` 仅接收一个 CSS px 数值，添加时固定，仅约束离屏标记的投影锚点而非整个文字标牌；手机旋转后刘海、圆角及主屏指示条位于不同边缘，无法分别避让。 · The scalar margin is immutable after registration and clamps only off-screen anchors, not entire badges; asymmetric safe insets cannot be applied per edge.
+- **游戏里 · In the game**：`game.onScreenChange` 计算 `max(54, 最大安全区内缩 CSS px)`；变化时仅重新注册原有驿站标记，保留 DOM、场景目标及引擎投影。 · The largest safe inset gives a conservative scalar margin; only the marker registration changes, not the overlay or projection.
+- **建议 · Suggestion**：支持分边 margin 或安全区矩形，并支持更新标记选项。 · Accept edge margins or the current screen safe rect and support changing marker options in place.
+- **状态 · Status**：未解决 / open（`72be497`）。
+
+### 30. 3D 叠加层的控件检查未纳入八屏报告 · Native 3D overlay controls are absent from the eight-screen report — 缺口 / gap · 未解决 / open
+<!-- engine-note: {"id": "TeaHorseRoad#30", "status": "open", "topic": "world3d-overlay-screen-verifier-controls", "workaround": ["test/play.mjs"]} -->
+
+- **现象 · What happens**：在 `72be497`，`verify --screens` 可截图、检查舞台尺寸与页面错误，但 World3DOverlay 使用 BrowserGame 而非 Play；没有原生的控件收据，报告不能证明 HUD/模态控件安全区、点击大小及间距。 · The verifier captures the overlay but at this pin receives native control receipts only from Play, not BrowserGame-backed World3D overlays.
+- **游戏里 · In the game**：在验收脚本中读取真实引擎语义树当前可交互节点及 `game.screen.safe` 检查边界和尺寸，不更改引擎报告、不另造投影。 · The route asserts actual semantic control rectangles against the native safe area and measures CSS targets separately; no synthetic receipt.
+- **建议 · Suggestion**：让 World3DOverlay 原生将活动控件及当前屏幕计划交给同一验收工具。 · Report the active overlay controls and screen plan through the same native verifier channel.
+- **状态 · Status**：未解决 / open（`72be497`）。
+
+### 31. guide 卡片只接受 LF 行尾 · Guide cards reject CRLF line endings — 缺陷 / bug · 未解决 / open
+<!-- engine-note: {"id": "TeaHorseRoad#31", "status": "open", "topic": "guide-card-crlf", "workaround": [".gitattributes"]} -->
+
+- **现象 · What happens**：Windows Git 使用 `core.autocrlf=true` 检出时，`egret-guide.mjs` 的 `parseCard` 用 LF 分隔后将首行与字面 `---` 比较，CRLF 卡片报 `a card starts with a front matter line ---`。用正式 `72be497` 导入 `parseCard`，同一官方卡片 LF 成功、转换为 CRLF 后原样复现。 · At the official pin the same card parses with LF but fails with CRLF, reproducing the Windows checkout error without editing the vendored tool.
+- **游戏里 · In the game**：`.gitattributes` 仅要求官方生成的 vendor 文本检出时保留 LF；不手改任何生成文件。 · Keep generated vendor text in LF on checkout; the engine tool and generated bytes remain unmodified.
+- **建议 · Suggestion**：引擎 guide 解析兼容 CRLF（例如按 `/\r?\n/` 拆分）。 · Accept CRLF in the guide parser.
+- **状态 · Status**：未解决 / open（`72be497`）。

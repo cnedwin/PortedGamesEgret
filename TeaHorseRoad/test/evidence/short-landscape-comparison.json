@@ -1,0 +1,221 @@
+{
+  "schema": "tea-screen-short-landscape/1",
+  "before": {
+    "viewport": [
+      844,
+      390
+    ],
+    "stage": [
+      1298,
+      600
+    ],
+    "scale": [
+      0.6499903697996918,
+      0.65
+    ],
+    "controls": [
+      {
+        "name": "暂停 Pause",
+        "role": "button",
+        "cssRect": [
+          788.438,
+          12.35,
+          42.899,
+          40.3
+        ]
+      },
+      {
+        "name": "喇叭 Horn",
+        "role": "button",
+        "cssRect": [
+          677.94,
+          265.2,
+          62.399,
+          41.6
+        ]
+      },
+      {
+        "name": "视角 View",
+        "role": "button",
+        "cssRect": [
+          748.139,
+          245.7,
+          62.399,
+          41.6
+        ]
+      },
+      {
+        "name": "方向 Steering",
+        "role": "slider",
+        "cssRect": [
+          14.3,
+          309.4,
+          235.297,
+          70.2
+        ]
+      },
+      {
+        "name": "油门 Throttle",
+        "role": "button",
+        "cssRect": [
+          748.139,
+          292.5,
+          78.649,
+          83.2
+        ]
+      },
+      {
+        "name": "刹车 Brake",
+        "role": "button",
+        "cssRect": [
+          664.94,
+          313.95,
+          66.299,
+          61.75
+        ]
+      }
+    ],
+    "minimum": [
+      42.899,
+      40.3
+    ],
+    "errors": [
+      "Failed to load resource: the server responded with a status of 404 (Not Found)",
+      "Failed to load resource: the server responded with a status of 404 (Not Found)"
+    ]
+  },
+  "after": {
+    "viewport": [
+      844,
+      390
+    ],
+    "stage": [
+      1298,
+      600
+    ],
+    "scale": [
+      0.6499903697996918,
+      0.65
+    ],
+    "controls": [
+      {
+        "name": "暂停 Pause",
+        "role": "button",
+        "cssRect": [
+          785.538,
+          11.35,
+          46.799,
+          46.8
+        ]
+      },
+      {
+        "name": "喇叭 Horn",
+        "role": "button",
+        "cssRect": [
+          701.04,
+          242.15,
+          62.399,
+          46.8
+        ]
+      },
+      {
+        "name": "视角 View",
+        "role": "button",
+        "cssRect": [
+          769.939,
+          242.15,
+          62.399,
+          46.8
+        ]
+      },
+      {
+        "name": "方向 Steering",
+        "role": "slider",
+        "cssRect": [
+          12,
+          307.8,
+          178.097,
+          70.2
+        ]
+      },
+      {
+        "name": "油门 Throttle",
+        "role": "button",
+        "cssRect": [
+          753.689,
+          295.45,
+          78.649,
+          83.2
+        ]
+      },
+      {
+        "name": "刹车 Brake",
+        "role": "button",
+        "cssRect": [
+          680.89,
+          316.9,
+          66.299,
+          61.75
+        ]
+      }
+    ],
+    "minimum": [
+      46.799,
+      46.8
+    ],
+    "errors": []
+  },
+  "parallelShaderExtension": false,
+  "savedTitleFixture": {
+    "viewport": [
+      852,
+      393
+    ],
+    "sameSaveStation": 1,
+    "bestDelivered": 67,
+    "controls": [
+      {
+        "name": "继续旅程",
+        "bounds": {
+          "x": 152.6946564885496,
+          "y": 265.3206106870229,
+          "width": 322,
+          "height": 72
+        },
+        "css": [
+          210.91,
+          47.16
+        ]
+      },
+      {
+        "name": "出发 新的旅程",
+        "bounds": {
+          "x": 152.6946564885496,
+          "y": 343.3206106870229,
+          "width": 322,
+          "height": 72
+        },
+        "css": [
+          210.91,
+          47.16
+        ]
+      },
+      {
+        "name": "设置",
+        "bounds": {
+          "x": 152.6946564885496,
+          "y": 421.3206106870229,
+          "width": 322,
+          "height": 72
+        },
+        "css": [
+          210.91,
+          47.16
+        ]
+      }
+    ],
+    "pass": true,
+    "errors": []
+  },
+  "note": "Same exact 844×390 CSS viewport, low-quality software renderer; screenshot after real driving and rendered HUD. Saved title uses an isolated version-1 save fixture. No new baseline images."
+}
