@@ -21,7 +21,13 @@ const imports = {
   "@egret/runtime/paragraph": "./runtime/dist/paragraph/index.js",
   "@egret/engine/paragraph": "./engine/dist/paragraph.js",
   "@egret/engine/webgl2/world3d": "./engine/dist/web/world3d/index.js",
-  "@egret/engine/webgpu/world3d": "./engine/dist/web/world3d/webgpu.js"
+  "@egret/engine/webgpu/world3d": "./engine/dist/web/world3d/webgpu.js",
+  "@egret/engine/ui/semantics": "./engine/dist/semantics.js",
+  "@egret/engine/web/semantics": "./engine/dist/web/semantics.js",
+  "@egret/engine/ui/testing": "./engine/dist/ui/testing.js",
+  "@egret/engine/web/hover": "./engine/dist/web/hover.js",
+  "@egret/engine/input": "./engine/dist/input.js",
+  "@egret/engine/bitmapfont": "./engine/dist/bitmapfont.js"
 };
 const base = document.currentScript.src;
 for (const name of Object.keys(imports)) imports[name] = new URL(imports[name], base).href;

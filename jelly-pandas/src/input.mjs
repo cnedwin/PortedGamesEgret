@@ -1,311 +1,249 @@
-// Keyboard, mouse, gamepad and touch feed the same movement and actions.
-
+// Keyboard, mouse, gamepad and the native touch controls feed the same play state.
+// The 3D canvas retains its relative mouse and right-side look drag; visible
+// touch buttons belong exclusively to the engine's overlay pointer stream.
 const KEYS = {
-  forward: ['KeyW', 'ArrowUp'],
-  back: ['KeyS', 'ArrowDown'],
-  left: ['KeyA', 'ArrowLeft'],
-  right: ['KeyD', 'ArrowRight'],
-  jump: ['Space'],
-  slam: ['ControlLeft', 'ControlRight', 'KeyQ'],
-  roll: ['ShiftLeft', 'ShiftRight', 'KeyE'],
+  forward: ['KeyW', 'ArrowUp'], back: ['KeyS', 'ArrowDown'],
+  left: ['KeyA', 'ArrowLeft'], right: ['KeyD', 'ArrowRight'],
+  jump: ['Space'], slam: ['ControlLeft', 'ControlRight', 'KeyQ'], roll: ['ShiftLeft', 'ShiftRight', 'KeyE'],
 };
+const clamp = v => Math.max(-1, Math.min(1, v));
 
-export function createInput(canvas, touch) {
-  const down = new Set(),
-    listeners = [];
+export function createInput(canvas) {
+  const down = new Set(), listeners = [];
+  const touchPressed = new Set(), touchTaps = new Set();
+  let enabled = true, touchEnabled = false, resetNativeTouch;
+  let lookX = 0, lookY = 0, zoom = 0, slamQueued = false, mouseButtons = 0, dragging = false;
+  let mouseLastX = 0, mouseLastY = 0;
+  let touchForward = 0, touchRight = 0, sampledTouchJump = false;
+  let lookOwner, lastX, lastY, touchLookX = 0, touchLookY = 0, releasedLookX = 0, releasedLookY = 0;
+  let previousPad = new Set(), gamepadMode = false;
+  const padNeedsRelease = new Set();
   const input = {
-    // Per-frame values, filled by poll().
-    forward: 0,
-    right: 0,
-    jump: false,
-    slam: false,
-    roll: false,
-    lookX: 0,
-    lookY: 0,
-    zoom: 0,
-    /** Called with 'pick1'..'pick3', 'reroll' or 'menu' when those keys or buttons are pressed. */
-    onCommand: undefined,
-    enabled: true,
+    forward: 0, right: 0, jump: false, slam: false, roll: false, lookX: 0, lookY: 0, zoom: 0,
+    onCommand: undefined, onJumpCancel: undefined, commandMode: 'play',
     touchMode: window.matchMedia('(pointer: coarse)').matches,
-    onJumpCancel: undefined,
-    get captured() {
-      return document.pointerLockElement === canvas;
+    get captured() { return document.pointerLockElement === canvas; },
+    get gamepadMode() { return gamepadMode; },
+    get enabled() { return enabled; },
+    set enabled(next) {
+      next = !!next;
+      if (next === enabled) return;
+      enabled = next;
+      if (!enabled) clearGameplay();
     },
   };
-  let lookX = 0,
-    lookY = 0,
-    zoom = 0,
-    slamQueued = false,
-    mouseRoll = false,
-    dragging = false;
-  const pad = { slam: false, menu: false, pick: -1, reroll: false };
   const on = (target, type, handler, options) => {
     target.addEventListener(type, handler, options);
     listeners.push([target, type, handler, options]);
   };
-  const held = (name) => KEYS[name].some((code) => down.has(code));
+  const held = name => KEYS[name].some(code => down.has(code));
 
-  let touchEnabled = false,
-    touchForward = 0,
-    touchRight = 0,
-    touchLookX = 0,
-    touchLookY = 0,
-    releasedLookX = 0,
-    releasedLookY = 0,
-    sampledTouchJump = false;
-  const touchPressed = new Set(), touchTaps = new Set();
-  const contacts = new Map();
-
-  /** Each control owns a single contact, so a second finger can use another control. */
-  function bindTouch(element, start, move, finish) {
-    let pointer;
-    const release = (canceled, event) => {
-      if (pointer === undefined) return;
-      const id = pointer;
-      pointer = undefined;
-      contacts.delete(id);
-      finish?.(canceled, event);
-      if (element.hasPointerCapture?.(id)) {
-        try {
-          element.releasePointerCapture?.(id);
-        } catch {
-          // The browser may already have released the native contact.
-        }
-      }
-    };
-    const owner = { move, release };
-    on(element, 'pointerdown', (event) => {
-      if (!touchEnabled || pointer !== undefined || contacts.has(event.pointerId) || event.button !== 0 || !start(event)) return;
-      pointer = event.pointerId;
-      contacts.set(pointer, owner);
-      try {
-        element.setPointerCapture?.(pointer);
-      } catch {
-        // The window still routes this contact by ID if explicit capture is unavailable.
-      }
-      event.preventDefault();
-    });
-    on(element, 'lostpointercapture', (event) => {
-      if (event.pointerId === pointer && event.target === element) release(true, event);
-    });
-  }
-
-  if (touch) {
-    const { joystick, actions, pause } = touch;
-    let centerX, centerY, radius;
-    const moveStick = (event) => {
-      const x = event.clientX - centerX, y = event.clientY - centerY;
-      const distance = Math.hypot(x, y);
-      const scale = Math.max(distance, radius);
-      const active = distance > radius * 0.12;
-      touchRight = active ? x / scale : 0;
-      touchForward = active ? -y / scale : 0;
-      joystick.style.setProperty('--stick-x', (x / scale) * radius + 'px');
-      joystick.style.setProperty('--stick-y', (y / scale) * radius + 'px');
-    };
-    bindTouch(joystick, (event) => {
-      const box = joystick.getBoundingClientRect();
-      centerX = box.left + box.width / 2;
-      centerY = box.top + box.height / 2;
-      radius = Math.min(box.width, box.height) * 0.31;
-      moveStick(event);
-      joystick.classList.add('held');
-      return true;
-    }, moveStick, () => {
-      touchRight = touchForward = 0;
-      joystick.style.setProperty('--stick-x', '0px');
-      joystick.style.setProperty('--stick-y', '0px');
-      joystick.classList.remove('held');
-    });
-    for (const [action, button] of Object.entries(actions)) {
-      bindTouch(button, () => {
-        touchPressed.add(action);
-        touchTaps.add(action);
-        button.classList.add('held');
-        return true;
-      }, undefined, (canceled) => {
-        touchPressed.delete(action);
-        button.classList.remove('held');
-        if (canceled) {
-          touchTaps.delete(action);
-          if (action === 'jump') input.onJumpCancel?.();
-        }
-      });
+  /** The native controls keep contact ownership; the game only consumes their movement and action state. */
+  input.bindTouchReset = reset => {
+    resetNativeTouch = reset;
+    return () => { if (resetNativeTouch === reset) resetNativeTouch = undefined; };
+  };
+  input.touchMovement = (x, y) => {
+    if (touchEnabled && (x || y)) gamepadMode = false;
+    touchRight = touchEnabled ? x : 0;
+    touchForward = touchEnabled ? -y : 0;
+  };
+  input.touchAction = (action, pressed) => {
+    if (pressed && touchEnabled) {
+      gamepadMode = false;
+      touchPressed.add(action);
+      touchTaps.add(action); // A quick press and release between two frames still counts.
+    } else touchPressed.delete(action);
+  };
+  input.cancelTouchAction = action => {
+    const cancelJump = action === 'jump' &&
+      (sampledTouchJump || touchPressed.has(action) || touchTaps.has(action));
+    touchPressed.delete(action);
+    touchTaps.delete(action);
+    if (cancelJump) {
+      sampledTouchJump = false;
+      input.onJumpCancel?.();
     }
-    if (pause) {
-      let startX, startY, swiped;
-      const outsideSlop = (event) => Math.hypot(event.clientX - startX, event.clientY - startY) > 12;
-      // Browsers may not synthesize click for a second finger while the stick is held.
-      bindTouch(pause, (event) => {
-        if (event.pointerType === 'mouse') return false;
-        startX = event.clientX;
-        startY = event.clientY;
-        swiped = false;
-        pause.classList.add('held');
-        return true;
-      }, (event) => {
-        swiped ||= outsideSlop(event);
-      }, (canceled, event) => {
-        pause.classList.remove('held');
-        if (canceled || swiped || outsideSlop(event)) return;
-        const { left, top, width, height } = pause.getBoundingClientRect();
-        const { clientX: x, clientY: y } = event;
-        if (x >= left && x < left + width && y >= top && y < top + height) input.onCommand?.('menu');
-      });
-    }
-
-    let lastX, lastY;
-    bindTouch(canvas, (event) => {
-      const box = canvas.getBoundingClientRect();
-      if (event.pointerType !== 'touch' || event.clientX < box.left + box.width * 0.45) return false;
-      lastX = event.clientX;
-      lastY = event.clientY;
-      return true;
-    }, (event) => {
-      touchLookX += event.clientX - lastX;
-      touchLookY += event.clientY - lastY;
-      lastX = event.clientX;
-      lastY = event.clientY;
-    }, (canceled) => {
-      if (!canceled) {
-        releasedLookX += touchLookX;
-        releasedLookY += touchLookY;
-      }
-      touchLookX = touchLookY = 0;
-    });
-  }
-
-  function clearTouch() {
-    // A pause or canceled gesture must not release a charged jump into the next run.
-    if (sampledTouchJump || touchTaps.has('jump')) input.onJumpCancel?.();
-    sampledTouchJump = false;
-    for (const contact of contacts.values()) contact.release(true);
-    touchTaps.clear();
-    touchLookX = touchLookY = 0;
-    releasedLookX = releasedLookY = 0;
-  }
-  input.setTouchEnabled = (enabled) => {
-    if (touchEnabled && !enabled) clearTouch();
-    touchEnabled = enabled;
   };
 
-  on(window, 'keydown', (event) => {
-    if (event.repeat) return;
-    down.add(event.code);
-    if (KEYS.slam.includes(event.code)) slamQueued = true;
+  function releaseLook(canceled) {
+    if (lookOwner === undefined) return;
+    const id = lookOwner;
+    lookOwner = undefined;
+    if (!canceled) {
+      releasedLookX += touchLookX; releasedLookY += touchLookY;
+    }
+    touchLookX = touchLookY = 0;
+    if (canvas.hasPointerCapture?.(id)) {
+      try { canvas.releasePointerCapture?.(id); } catch { /* Native contact may already be released. */ }
+    }
+  }
+  function clearTouch() {
+    const cancelJump = sampledTouchJump || touchPressed.has('jump') || touchTaps.has('jump');
+    sampledTouchJump = false;
+    touchPressed.clear(); touchTaps.clear();
+    touchForward = touchRight = 0;
+    releaseLook(true);
+    releasedLookX = releasedLookY = touchLookX = touchLookY = 0;
+    resetNativeTouch?.();
+    if (cancelJump) input.onJumpCancel?.();
+    return cancelJump;
+  }
+  function clearGameplay() {
+    const cancelOtherJump = input.jump || held('jump');
+    for (const button of previousPad) padNeedsRelease.add(button);
+    down.clear(); mouseButtons = 0; dragging = false; slamQueued = false;
+    lookX = lookY = zoom = 0;
+    if (!clearTouch() && cancelOtherJump) input.onJumpCancel?.();
+    Object.assign(input, { forward: 0, right: 0, jump: false, slam: false, roll: false, lookX: 0, lookY: 0, zoom: 0 });
+  }
+  input.setTouchEnabled = next => {
+    next = !!next;
+    if (touchEnabled === next) return;
+    touchEnabled = next;
+    if (!next) clearTouch();
+  };
+
+  on(window, 'keydown', event => {
+    // The engine's focused menu control may already have consumed this key.
+    if (!event.repeat) gamepadMode = false;
+    if (event.repeat || event.defaultPrevented || event.target?.isContentEditable ||
+        /^(INPUT|TEXTAREA|SELECT)$/.test(event.target?.tagName ?? '')) return;
+    if (input.commandMode !== 'play' && /^Arrow(Up|Down|Left|Right)$/.test(event.code)) {
+      if (input.onCommand?.(event.code.slice(5).toLowerCase()) === true) event.preventDefault();
+      return;
+    }
     if (/^Digit[1-3]$/.test(event.code)) input.onCommand?.('pick' + event.code.slice(5));
     else if (event.code === 'KeyR') input.onCommand?.('reroll');
     else if (event.code === 'Escape' || event.code === 'KeyP') input.onCommand?.('menu');
+    if (!enabled) return;
+    down.add(event.code);
+    if (KEYS.slam.includes(event.code)) slamQueued = true;
     if (['Space', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(event.code)) event.preventDefault();
   });
-  on(window, 'keyup', (event) => {
-    down.delete(event.code);
-  });
-  on(window, 'blur', () => {
-    down.clear();
-    mouseRoll = false;
-    dragging = false;
-    slamQueued = false;
-    lookX = lookY = zoom = 0;
-    clearTouch();
-  });
-  on(document, 'visibilitychange', () => {
-    if (document.hidden) clearTouch();
-  });
-  on(canvas, 'pointerdown', (event) => {
-    if (!input.enabled || event.pointerType === 'touch') return;
+  on(window, 'keyup', event => down.delete(event.code));
+  on(window, 'blur', clearGameplay);
+  on(document, 'visibilitychange', () => { if (document.hidden) clearGameplay(); });
+
+  function buttons(event, canSlam) {
+    let next = event.buttons;
+    if (!Number.isInteger(next)) {
+      const bit = event.button === 0 ? 1 : event.button === 2 ? 2 : 0;
+      next = event.type === 'pointerup' ? mouseButtons & ~bit : mouseButtons | bit;
+    }
+    if (canSlam && (next & 1) && !(mouseButtons & 1)) slamQueued = true;
+    mouseButtons = next;
+  }
+  on(canvas, 'pointerdown', event => {
+    gamepadMode = false;
+    if (!enabled) return;
+    if (event.pointerType === 'touch') {
+      // Only the open right part of the 3D surface starts a look gesture; the engine
+      // overlay never passes a touch owned by one of its visible controls here.
+      const box = canvas.getBoundingClientRect();
+      if (!touchEnabled || lookOwner !== undefined || event.button !== 0 ||
+          event.clientX < box.left + box.width * 0.45) return;
+      lookOwner = event.pointerId; lastX = event.clientX; lastY = event.clientY;
+      try { canvas.setPointerCapture?.(lookOwner); } catch { /* DOM-copy or unsupported native capture: use the window route. */ }
+      event.preventDefault();
+      return;
+    }
     if (!input.captured) {
       dragging = true;
+      mouseLastX = event.clientX; mouseLastY = event.clientY;
       canvas.requestPointerLock?.()?.catch?.(() => {});
       return;
     }
-    if (event.button === 0) slamQueued = true;
-    else if (event.button === 2) mouseRoll = true;
+    buttons(event, true);
   });
-  on(window, 'pointerup', (event) => {
-    const contact = contacts.get(event.pointerId);
-    if (contact) return contact.release(false, event);
-    if (event.pointerType === 'touch') return;
-    dragging = false;
-    if (event.button === 2) mouseRoll = false;
-  });
-  on(window, 'pointermove', (event) => {
-    const contact = contacts.get(event.pointerId);
-    if (contact) return contact.move?.(event);
-    if (!input.enabled || event.pointerType === 'touch' || !(input.captured || dragging)) return;
-    lookX += event.movementX;
-    lookY += event.movementY;
-  });
-  on(window, 'pointercancel', (event) => contacts.get(event.pointerId)?.release(true, event));
-  on(
-    canvas,
-    'wheel',
-    (event) => {
-      zoom += Math.sign(event.deltaY);
-      event.preventDefault();
-    },
-    { passive: false },
-  );
-  on(canvas, 'contextmenu', (event) => event.preventDefault());
-  on(document, 'pointerlockchange', () => {
-    if (!input.captured) mouseRoll = false;
-  });
-
-  /** Read the devices once per frame. */
-  input.poll = () => {
-    let forward = (held('forward') ? 1 : 0) - (held('back') ? 1 : 0) + touchForward,
-      right = (held('right') ? 1 : 0) - (held('left') ? 1 : 0) + touchRight;
-    sampledTouchJump = touchPressed.has('jump') || touchTaps.has('jump');
-    let jump = held('jump') || sampledTouchJump,
-      roll = held('roll') || mouseRoll || touchPressed.has('roll') || touchTaps.has('roll'),
-      slam = slamQueued || touchTaps.has('slam');
-    touchTaps.clear();
-    slamQueued = false;
-    const gamepad = navigator.getGamepads?.().find((entry) => entry && entry.connected);
-    if (gamepad) {
-      const dead = (v) => (Math.abs(v) < 0.18 ? 0 : v),
-        buttons = gamepad.buttons;
-      right += dead(gamepad.axes[0] ?? 0);
-      forward -= dead(gamepad.axes[1] ?? 0);
-      lookX += dead(gamepad.axes[2] ?? 0) * 14;
-      lookY += dead(gamepad.axes[3] ?? 0) * 9;
-      jump ||= !!buttons[0]?.pressed;
-      roll ||= !!buttons[2]?.pressed;
-      const padSlam = !!buttons[1]?.pressed,
-        padMenu = !!buttons[9]?.pressed;
-      if (padSlam && !pad.slam) slam = true;
-      if (padMenu && !pad.menu) input.onCommand?.('menu');
-      // The direction pad picks a card: left, up, right for the first three; Y rerolls.
-      const pick = buttons[14]?.pressed ? 1 : buttons[12]?.pressed ? 2 : buttons[15]?.pressed ? 3 : -1,
-        padReroll = !!buttons[3]?.pressed;
-      if (pick > 0 && pad.pick < 0) input.onCommand?.('pick' + pick);
-      if (padReroll && !pad.reroll) input.onCommand?.('reroll');
-      pad.slam = padSlam;
-      pad.menu = padMenu;
-      pad.pick = pick;
-      pad.reroll = padReroll;
+  on(canvas, 'lostpointercapture', event => { if (event.pointerId === lookOwner) releaseLook(true); });
+  on(window, 'pointermove', event => {
+    if (event.pointerId === lookOwner) {
+      touchLookX += event.clientX - lastX; touchLookY += event.clientY - lastY;
+      lastX = event.clientX; lastY = event.clientY;
+      return;
     }
-    input.forward = Math.max(-1, Math.min(1, forward));
-    input.right = Math.max(-1, Math.min(1, right));
-    input.jump = jump;
-    input.roll = roll;
-    input.slam = slam;
-    input.lookX = lookX + touchLookX + releasedLookX;
-    input.lookY = lookY + touchLookY + releasedLookY;
-    touchLookX = touchLookY = 0;
-    releasedLookX = releasedLookY = 0;
-    input.zoom = zoom;
-    lookX = 0;
-    lookY = 0;
-    zoom = 0;
+    if (!enabled || event.pointerType === 'touch' || !(input.captured || dragging)) return;
+    if (input.captured) {
+      buttons(event, true); // Mouse chords change buttons on pointermove, not just pointerdown/up.
+      lookX += event.movementX || 0; lookY += event.movementY || 0;
+    } else {
+      // The overlay's forwarded DOM copy may omit movementX/Y; a free drag is
+      // measured from client coordinates, not from a fabricated relative event.
+      lookX += event.clientX - mouseLastX; lookY += event.clientY - mouseLastY;
+      mouseLastX = event.clientX; mouseLastY = event.clientY;
+    }
+  });
+  on(window, 'pointerup', event => {
+    if (event.pointerId === lookOwner) { releaseLook(false); return; }
+    if (event.pointerType === 'touch') return;
+    dragging = false; buttons(event, false);
+  });
+  on(window, 'pointercancel', event => {
+    if (event.pointerId === lookOwner) releaseLook(true);
+    if (event.pointerType !== 'touch') { mouseButtons = 0; dragging = false; }
+  });
+  on(canvas, 'wheel', event => {
+    if (!enabled) return;
+    zoom += Math.sign(event.deltaY); event.preventDefault();
+  }, { passive: false });
+  on(canvas, 'contextmenu', event => event.preventDefault());
+  on(document, 'pointerlockchange', () => { mouseButtons = 0; dragging = false; });
+
+  /** Sample devices once per frame. Menu commands stay available while play input is cleared. */
+  input.poll = () => {
+    const gamepad = Array.from(navigator.getGamepads?.() ?? []).find(entry => entry?.connected);
+    const pad = new Set();
+    if (gamepad) gamepad.buttons.forEach((button, i) => { if (button.pressed) pad.add(i); });
+    const edge = i => pad.has(i) && !previousPad.has(i);
+    if (!gamepad) gamepadMode = false;
+    else if (pad.size || gamepad.axes.some(value => Math.abs(value) >= 0.18)) gamepadMode = true;
+    const mode = input.commandMode;
+    for (const button of padNeedsRelease) if (!pad.has(button)) padNeedsRelease.delete(button);
+    if (mode !== 'play') for (const button of pad) padNeedsRelease.add(button);
+    const playButton = button => mode === 'play' && !padNeedsRelease.has(button) && pad.has(button);
+    // Preserve direct card picks; other menus use standard directional focus and A/B.
+    if (edge(9)) input.onCommand?.('menu');
+    else if (mode === 'cards') {
+      if (edge(14)) input.onCommand?.('pick1');
+      else if (edge(12)) input.onCommand?.('pick2');
+      else if (edge(15)) input.onCommand?.('pick3');
+      else if (edge(3)) input.onCommand?.('reroll');
+      else if (edge(1)) input.onCommand?.('back');
+      else if (edge(0)) input.onCommand?.('confirm');
+    } else if (mode === 'menu') {
+      for (const [button, command] of [[12,'up'],[13,'down'],[14,'left'],[15,'right'],[0,'confirm'],[1,'back']]) {
+        if (edge(button)) { input.onCommand?.(command); break; }
+      }
+    }
+    let forward = (held('forward') ? 1 : 0) - (held('back') ? 1 : 0) + touchForward;
+    let right = (held('right') ? 1 : 0) - (held('left') ? 1 : 0) + touchRight;
+    sampledTouchJump = touchPressed.has('jump') || touchTaps.has('jump');
+    let jump = held('jump') || sampledTouchJump || playButton(0),
+      roll = held('roll') || !!(mouseButtons & 2) || touchPressed.has('roll') || touchTaps.has('roll') || playButton(2),
+      slam = slamQueued || touchTaps.has('slam') || (playButton(1) && edge(1));
+    if (gamepad && enabled && mode === 'play') {
+      const dead = v => Math.abs(v) < 0.18 ? 0 : v;
+      right += dead(gamepad.axes[0] ?? 0); forward -= dead(gamepad.axes[1] ?? 0);
+      lookX += dead(gamepad.axes[2] ?? 0) * 14; lookY += dead(gamepad.axes[3] ?? 0) * 9;
+    }
+    previousPad = pad;
+    input.forward = enabled ? clamp(forward) : 0;
+    input.right = enabled ? clamp(right) : 0;
+    input.jump = enabled && jump; input.roll = enabled && roll; input.slam = enabled && slam;
+    input.lookX = enabled ? lookX + touchLookX + releasedLookX : 0;
+    input.lookY = enabled ? lookY + touchLookY + releasedLookY : 0;
+    input.zoom = enabled ? zoom : 0;
+    touchTaps.clear(); slamQueued = false;
+    lookX = lookY = zoom = touchLookX = touchLookY = releasedLookX = releasedLookY = 0;
     return input;
   };
   input.release = () => {
-    clearTouch();
+    clearGameplay();
     if (input.captured) document.exitPointerLock?.();
   };
   input.dispose = () => {
-    clearTouch();
+    clearGameplay();
     for (const [target, type, handler, options] of listeners) target.removeEventListener(type, handler, options);
   };
   return input;

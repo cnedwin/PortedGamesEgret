@@ -51,7 +51,7 @@ export const MATRIX = {
     },
     {
      "game": "jelly-pandas",
-     "file": "jelly-pandas/src/main.mjs"
+     "file": "jelly-pandas/src/hud.mjs"
     },
     {
      "game": "JY",
@@ -359,6 +359,10 @@ export const MATRIX = {
    "label": "@egret/engine/ui",
    "games": [
     {
+     "game": "jelly-pandas",
+     "file": "jelly-pandas/src/ui/menus.mjs"
+    },
+    {
      "game": "LoveElective",
      "file": "LoveElective/src/engine/ui.mjs"
     },
@@ -514,6 +518,10 @@ export const MATRIX = {
      "file": "InquestScrolls/src/view/casebook.mjs"
     },
     {
+     "game": "jelly-pandas",
+     "file": "jelly-pandas/src/hud.mjs"
+    },
+    {
      "game": "LoveElective",
      "file": "LoveElective/src/engine/ui.mjs"
     },
@@ -643,6 +651,10 @@ export const MATRIX = {
    "label": "@egret/engine/bitmapfont",
    "games": [
     {
+     "game": "jelly-pandas",
+     "file": "jelly-pandas/src/ui/play-hud.mjs"
+    },
+    {
      "game": "MechanismCity",
      "file": "MechanismCity/src/main.mjs"
     },
@@ -710,6 +722,10 @@ export const MATRIX = {
     {
      "game": "InquestScrolls",
      "file": "InquestScrolls/src/saves.mjs"
+    },
+    {
+     "game": "jelly-pandas",
+     "file": "jelly-pandas/src/hud.mjs"
     },
     {
      "game": "LubanBridge",
@@ -1002,6 +1018,10 @@ export const MATRIX = {
      "file": "InquestScrolls/src/main.mjs"
     },
     {
+     "game": "jelly-pandas",
+     "file": "jelly-pandas/src/hud.mjs"
+    },
+    {
      "game": "LanternShadows",
      "file": "LanternShadows/src/main.mjs"
     },
@@ -1061,6 +1081,10 @@ export const MATRIX = {
      "file": "FivePhases/src/main.mjs"
     },
     {
+     "game": "jelly-pandas",
+     "file": "jelly-pandas/src/hud.mjs"
+    },
+    {
      "game": "LanternShadows",
      "file": "LanternShadows/src/main.mjs"
     },
@@ -1098,6 +1122,10 @@ export const MATRIX = {
     {
      "game": "InquestScrolls",
      "file": "InquestScrolls/src/main.mjs"
+    },
+    {
+     "game": "jelly-pandas",
+     "file": "jelly-pandas/src/hud.mjs"
     },
     {
      "game": "LanternShadows",
@@ -1224,6 +1252,10 @@ export const MATRIX = {
    "kind": "api",
    "label": "托管界面根节点 · Managed UI root (createUiRoot)",
    "games": [
+    {
+     "game": "jelly-pandas",
+     "file": "jelly-pandas/src/ui/menus.mjs"
+    },
     {
      "game": "MechanismCity",
      "file": "MechanismCity/src/ui/settings.mjs"

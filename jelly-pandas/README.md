@@ -10,13 +10,13 @@ Jelly Pandas is an independently developed 3D action survival demo built with [E
 
 | | 键盘和鼠标 · Keyboard and mouse | 手柄 · Gamepad | 触屏 · Touch |
 |---|---|---|---|
-| 移动 · Move | W A S D / ↑ ↓ ← → | 左摇杆 · left stick | 左侧屏幕摇杆 · left on-screen stick |
+| 移动 · Move | W A S D / ↑ ↓ ← → | 左摇杆 · left stick | 白鹭原生左摇杆 · native Egret left stick |
 | 视角 · Look | 鼠标 · mouse | 右摇杆 · right stick | 拖动右侧空白处 · drag an open area on the right |
-| 跳跃，长按蓄力大跳 · Jump, hold for a super jump | Space | A | 跳跃 · Jump |
-| 空中下砸，地面肚皮撞 · Slam in the air, belly bump on the ground | Ctrl / 左键 left click / Q | B | 下砸 · Slam |
-| 翻滚 · Roll | Shift / 右键 right click / E | X | 移动时按住翻滚 · hold Roll while moving |
+| 跳跃，长按蓄力大跳 · Jump, hold for a super jump | Space | A | 原生跳跃键（长按）· native Jump (hold) |
+| 空中下砸，地面肚皮撞 · Slam in the air, belly bump on the ground | Ctrl / 左键 left click / Q | B | 原生下砸键 · native Slam |
+| 翻滚 · Roll | Shift / 右键 right click / E | X | 移动时按住原生翻滚键 · hold native Roll while moving |
 | 选卡，重抽 · Pick a card, reroll | 1 2 3，R | 方向键 ← ↑ → · direction pad，Y | 点卡片或重抽 · tap the card or Reroll |
-| 菜单 · Menu | Esc / P | Start | 暂停 · Pause |
+| 菜单 · Menu | Esc / P | Start | 原生暂停键 · native Pause |
 
 - 八只熊猫拥有各自的立绘、脸部表情、肚皮花纹和初始玩具。选角会显示玩具打法。可单人游玩，也可带一到三位由游戏操控的伙伴，站到倒下的熊猫身边可以救起它。[角色设计稿](CHARACTER-DESIGN.md)
 - 「果冻三连」奖励尝试三种主动动作。空中下砸、地面肚皮撞和翻滚各命中一次，就能拿到一次共享经验。
@@ -76,6 +76,18 @@ Play a whole run without a page (party size, seed and minutes are optional). It 
 node tools/headless.mjs 4 7 17
 ```
 
+原生界面验收、多屏检查与性能对照（需要仓库根目录的 Playwright 依赖）。 · Native UI acceptance, multi-screen verification and performance sampling (requires the repository Playwright dependency):
+
+~~~sh
+node --test test/*.test.mjs
+node test/accept.mjs
+node vendor/egret.mjs verify
+node vendor/egret.mjs verify --screens --play test/screen-route.mjs --out <output>
+node test/performance.mjs
+~~~
+
+[UI-MIGRATION.md](UI-MIGRATION.md) 记录界面迁移对应表和复跑参数；[QUALITY.md](QUALITY.md) 记录实测结果及限制。 · The migration map and rerun parameters are in UI-MIGRATION; measured results and limitations are in QUALITY.
+
 ## 引擎用法 · How it uses the engine
 
 游戏使用白鹭 World3D，默认以 WebGL2 绘制。各部分对应的引擎功能如下。
@@ -96,6 +108,15 @@ The game uses Egret World3D and draws with WebGL2 by default. Each part maps to 
 | `createWater3D` 波浪与倒影 · waves and reflection | 海面 · The sea | `src/view.mjs` |
 | `createParticleEmitter3D` | 特效 · Effects | `src/view.mjs` |
 | `createFollowCamera3D` | 相机 · Camera | `src/main.mjs` |
+| `createWorld3DOverlay` + `renderMode: 'on-demand'` | 持久透明原生 HUD 和菜单，静止界面保留帧 · Persistent transparent HUD and retained static menus | `src/main.mjs`, `src/hud.mjs` |
+| `createUiRoot`, `createUiScreenStack` | 标题、设置、说明、选卡、暂停、结算和加载失败页面与模态 · Managed menu pages and modals | `src/ui/menus.mjs` |
+| `createSelectionGroup`, `createActionControl`, `createControlKeys`, `createHoverControl` | 选角、人数、卡片、按键焦点及悬停 · Roster, party, cards, keyboard focus and hover | `src/ui/menus.mjs` |
+| `createMovementControl`, `createActionControl` | 多指摇杆、按住跳跃与翻滚、下砸及暂停 · Multi-contact stick, held jump/roll, slam and pause | `src/ui/touch.mjs`, `src/input.mjs` |
+| `game.screen.safe`, `game.onScreenChange`, `uiScale` | 九屏安全区和原地转屏排版 · Nine-screen safe layout and in-place orientation changes | `src/hud.mjs`, `src/ui/menus.mjs`, `src/ui/touch.mjs` |
+| `createUiSemantics`, `createBrowserSemantics`, `createUiTester` | 非指针辅助语义、原生命中边界和按名称验收 · Accessible semantic projection and named acceptance | `src/hud.mjs`, `test/screen-route.mjs` |
+| `createScreenMarkers3D` | 固定池的伤害数字与倒地标记 · Pooled damage and downed-panda markers | `src/ui/markers.mjs` |
+| `createBitmapText`, `createAtlasLabel`, `Bitmap.sourceRect` | 共享数字字形、文字图集及原生角色头像 · Fixed counter glyphs, atlas text and native portraits | `src/ui/play-hud.mjs`, `src/ui/menus.mjs` |
+| `createTextTable` | 画布 UI 与语义同步切换语言 · Shared language table for canvas UI and semantics | `src/hud.mjs` |
 | Engine 时钟 · Engine clock，`createWorld3DView`，`startWorld3DLoop` | 帧循环 · Frame loop | `src/main.mjs` |
 | 级联阴影、天空环境光、环境遮蔽、泛光、FXAA · cascaded shadows, sky lighting, ambient occlusion, bloom, FXAA | 画面 · Look | `src/view.mjs` |
 
@@ -104,6 +125,7 @@ The game uses Egret World3D and draws with WebGL2 by default. Each part maps to 
 3D models, 3D textures and sounds are generated in code. The picker and party portraits share one concept art atlas.
 
 ## 已验证 · Verified
+- 2026-11-27：原生 UI 迁移 34/34 Node 测试、161/161 浏览器验收、引擎 verify 7/7、九屏 108/108 检查点（0 错误/警告），包括横竖屏保留、原生多点、最后一次重抽、完整胜败及旧存档恢复。通用 T2/T3/I1/E2 和 S1–S3 已通过；软件 F1 帧尾问题仍见 QUALITY/ENGINE-NOTES。 · Native migration passed 34 Node, 161 browser assertions, seven basic verify checks and 108 screen checkpoints. Generic targets, English, retry and settings checks pass; software F1 remains an open performance issue.
 
 - 2026-11-27：仅刷新引擎至 `2fbe5563`、保留 DOM 界面。原 24 项 Node 测试全部通过，官方浏览器 verify 7/7；同一种子既有规则推进至首个 Boss，实际选角、移动、暂停、升级重抽和选卡正常，首领在 300 秒生成并击败。SwiftShader 软件浏览器，长路线使用固定输入规则步进，不代表真机自然游玩。 · Engine-only baseline: 24/24 Node, 7/7 browser checks; same-seed rule-step route reached and defeated the first boss, with actual menu and keyboard actions. Headless software Chromium, not physical play.
 
@@ -115,9 +137,10 @@ The game uses Egret World3D and draws with WebGL2 by default. Each part maps to 
 ## 已知问题 · Known issues
 
 - 海面倒影里不画阴影和小物件（植物、敌群、弹丸、拾取物、粒子），这是为了省绘制而有意去掉的。 · The sea's mirror leaves out shadows and small things on purpose, to save drawing.
-- 品质验收未达标 · Quality items failing（[QUALITY.md](QUALITY.md)，2026-11-21，无头 Chromium + SwiftShader · headless, software rendering）：T2 触控区 ≥ 44×44 CSS px（7 of 16 under 44×44: Solo 45×26; +1 friend 72×26; +2 friends 81×26; +3 friends 82×26）；T3 不误触下拉刷新和双击缩放（overscroll held, touch-action auto, double-tap zoom on）；F1 桌面帧时间 p95 ≤ 16.7 ms（p95 683.3 ms over 15 frames）；I1 中英文全可切换，英文下无中文（html lang "en", Chinese left: 果冻熊猫 动作游戏 移动 鼠标转视角 空格跳跃）；E2 资源失败有错误界面和重试（1 files refused; no uncaught error; no error screen with a retry）。
+- 品质验收未达标 · Quality items failing（[QUALITY.md](QUALITY.md)，2026-11-27，无头 Chromium + SwiftShader · headless, software rendering）：F1 桌面帧时间 p95 ≤ 16.7 ms（p95 595.8 ms over 15 frames）。
 
 ## 已解决 · Solved
+- 原 DOM/CSS 标题、HUD、升级、暂停、结算及触控已迁移到引擎原生 UI；伙伴选择触控尺寸、英文残留、加载重试修复，原 3D 画布保持全屏。 · Replaced DOM/CSS screens, HUD and controls with native UI; fixed target sizes, untranslated English-mode text and retry.
 
 - 每帧三角形太多：眼睛、花瓣、草叶、茎和弹丸用更粗的形状，海面倒影不画阴影和小物件，阴影从三级减到两级（`ddd18ce`）。 · Too many triangles; coarser small shapes, a leaner sea mirror and two shadow cascades.
 - 第一次出现的特效、倒影里熊猫的脸、宝石和弹丸各自要新编译管线，开局卡顿：在标题画面里先画一遍，并让弹丸、宝石沿用敌群的顶点布局（`f3cbec0`、`d016836`、`e5ca02e`、`13783f8`，ENGINE-NOTES 第 1、2 条）。 · First-use effects, the face in the mirror, gems and shots each compiled a pipeline; they are drawn on the title, and shots and gems share the horde's vertex layout (items 1 and 2).
@@ -125,26 +148,33 @@ The game uses Egret World3D and draws with WebGL2 by default. Each part maps to 
 
 ## 未完成 · Unfinished
 
-- 英文模式下页面上仍有中文（品质 I1）；选人数的按钮太小（T2）；资源加载失败没有错误界面和重试（E2）。 · Chinese left in English mode, small party buttons, no retry after a failed file.
-- 真机上的帧时间和触屏整局验收。 · Frame times and a whole run by touch on real devices.
+- 软件 Chromium 的叠加层帧尾长延迟，见 ENGINE-NOTES 第 8 条；RTX 5090/D3D11 硬件对照 p95 6.0 ms，未复现软件长尾，其他 GPU/WebGPU 尚待验收。 · Software-overlay tail latency remains open; RTX 5090/D3D11 passed the hardware p95 sample at 6.0 ms; other GPUs/WebGPU remain unqualified.
+- 真机触控整局、物理手柄、实际读屏软件、Safari、Firefox、微信内置浏览器及其他硬件 GPU/WebGPU 验收。 · Whole-run physical touch, physical controller, assistive technology, Safari, Firefox, WeChat browser and other GPU/WebGPU qualification.
 
 ## 目录 · Layout
 
 | 路径 · Path | 内容 · Contents |
 |---|---|
-| `index.html`, `style.css` | 页面与界面样式 · the page and interface styles |
+| `index.html`, `style.css` | 全屏画布、屏幕标记与启动失败纯文本 · Full-screen canvas, scene markers and bootstrap error |
 | `src/main.mjs` | 启动与每帧流程 · start-up and the frame |
 | `src/sim.mjs`, `src/toys.mjs` | 游戏规则，不依赖页面 · the rules, no page needed |
 | `src/data.mjs` | 熊猫、玩具、护符、敌人、Boss 和双语文字 · pandas, toys, charms, enemies, bosses and text in both languages |
 | `src/island.mjs` | 绘制与碰撞共用的岛屿高度网格 · the island height grid shared by drawing and collision |
 | `src/view.mjs`, `src/panda.mjs`, `src/wind.mjs` | 3D 画面与植被的风 · everything drawn in 3D, and the wind in the plants |
-| `src/hud.mjs`, `src/input.mjs`, `src/audio.mjs` | 界面、输入、音效 · interface, input, sound |
+| `src/hud.mjs`, `src/ui/` | 原生叠加层、菜单、HUD、标记及触屏 · Native overlay, menus, HUD, markers and touch |
+| `src/input.mjs`, `src/audio.mjs`, `src/save.mjs` | 输入、音效及旧设置存档 · Input, sound and compatible settings |
 | `assets/panda-roster.webp` | 角色设定和头像图集 · character concepts and portrait atlas |
 | `tools/`, `test/` | 无页面运行与规则测试 · headless run and rule tests |
 | `vendor/` | 引擎运行时副本 · the engine runtime copy |
 
-## 引擎与许可 · Engine and license
+## 引擎副本 · Engine copy
 
 `vendor/` 中是新白鹭引擎的运行时副本，采用 Apache-2.0 许可，引擎提交 `2fbe55630b1f67c6b1584d73290c19cb0aa0ae24`，来源和版本见 [vendor/SOURCE.md](vendor/SOURCE.md)。
 
 `vendor/` holds a copy of the Egret Rebuild runtime under Apache-2.0; engine commit `2fbe55630b1f67c6b1584d73290c19cb0aa0ae24`; see [vendor/SOURCE.md](vendor/SOURCE.md) for its source and version.
+
+由引擎工具生成，不手改副本。 · Generated without local patches:
+
+~~~sh
+node tools/vendor-game.mjs <PortedGamesEgret>/jelly-pandas @egret/engine @egret/engine/world3d @egret/engine/webgl2/world3d @egret/engine/webgpu/world3d @egret/engine/ui @egret/engine/ui/semantics @egret/engine/web/semantics @egret/engine/ui/testing @egret/engine/web/hover @egret/engine/input @egret/engine/bitmapfont @egret/engine/kit
+~~~

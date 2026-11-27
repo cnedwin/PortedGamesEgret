@@ -330,6 +330,21 @@ export const GAMES = [
         description: { zh: "默认使用 WebGL2。在支持 WebGPU 的设备和浏览器上，可在试玩网址加上 ?backend=webgpu 来启用 WebGPU。", en: "WebGL2 is the default. On supported devices and browsers, add ?backend=webgpu to the game URL to enable WebGPU." },
         source: 'src/main.mjs',
       },
+      {
+        title: { zh: "原生 3D 叠加界面", en: "Native 3D overlay UI" },
+        description: { zh: "透明原生 UI、页面栈与按需提交，屏幕和安全区变化时保留当前界面。", en: "Transparent native UI, screen stacks and on-demand rendering retain the current screen across viewport and safe-area changes." },
+        source: 'src/hud.mjs',
+      },
+      {
+        title: { zh: "原生多指控件", en: "Native multi-touch controls" },
+        description: { zh: "原生移动与动作控件管理触点，支持摇杆、拖动视角与蓄力跳跃同时操作。", en: "Native movement and action controls manage contacts for simultaneous stick, camera drag and charged jump." },
+        source: 'src/ui/touch.mjs',
+      },
+      {
+        title: { zh: "字形图集与读屏", en: "Glyph atlas and semantics" },
+        description: { zh: "HUD 数字复用位图字形，原生语义投影暴露可操作控件和比赛信息。", en: "HUD counters reuse bitmap glyphs, while native semantic projection exposes controls and match information." },
+        source: 'src/ui/play-hud.mjs',
+      },
     ],
   },
   {

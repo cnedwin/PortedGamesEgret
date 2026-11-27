@@ -2,12 +2,12 @@
 <html lang="en">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Jelly Pandas / 果冻熊猫</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Jelly Pandas</title>
   <meta name="description" content="Jelly Pandas, a 3D action game demo built with Egret Rebuild. / 果冻熊猫：基于新白鹭引擎开发的 3D 动作游戏 Demo。">
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Ccircle cx='4' cy='4' r='3' fill='%231f6b3a'/%3E%3Ccircle cx='12' cy='4' r='3' fill='%231f6b3a'/%3E%3Ccircle cx='8' cy='9' r='6.5' fill='%238fe6a0'/%3E%3C/svg%3E">
   <link rel="stylesheet" href="./style.css">
-  <link rel="stylesheet" href="./touch.css">
+
   <!-- The engine is a copy inside this folder (see vendor/SOURCE.md), so the game runs from any static host. -->
   <script type="importmap">
 {
@@ -33,15 +33,33 @@
     "@egret/runtime/paragraph": "./vendor/runtime/dist/paragraph/index.js",
     "@egret/engine/paragraph": "./vendor/engine/dist/paragraph.js",
     "@egret/engine/webgl2/world3d": "./vendor/engine/dist/web/world3d/index.js",
-    "@egret/engine/webgpu/world3d": "./vendor/engine/dist/web/world3d/webgpu.js"
+    "@egret/engine/webgpu/world3d": "./vendor/engine/dist/web/world3d/webgpu.js",
+    "@egret/engine/ui/semantics": "./vendor/engine/dist/semantics.js",
+    "@egret/engine/web/semantics": "./vendor/engine/dist/web/semantics.js",
+    "@egret/engine/ui/testing": "./vendor/engine/dist/ui/testing.js",
+    "@egret/engine/web/hover": "./vendor/engine/dist/web/hover.js",
+    "@egret/engine/input": "./vendor/engine/dist/input.js",
+    "@egret/engine/bitmapfont": "./vendor/engine/dist/bitmapfont.js"
   }
 }
   </script>
 </head>
 <body>
-  <canvas id="stage" tabindex="0" aria-label="Jelly Pandas: a 3D action game. W A S D to move, mouse to look, Space to jump, Ctrl or Q to slam, Shift or E to roll. / 果冻熊猫：3D 动作游戏。WASD 移动，鼠标转视角，空格跳跃，Ctrl 或 Q 下砸，Shift 或 E 翻滚。"></canvas>
-  <div id="ui"></div>
-  <div id="error" role="alert" hidden></div>
-  <script type="module" src="./src/main.mjs"></script>
+  <canvas id="stage" tabindex="0" aria-label="Jelly Pandas game"></canvas>
+  <div id="scene-markers" aria-hidden="true" hidden></div>
+  <p id="error" role="alert" hidden></p>
+  <script type="module">
+    const zh = new URLSearchParams(location.search).get('lang') === 'zh' ||
+      (!new URLSearchParams(location.search).has('lang') && navigator.language.toLowerCase().startsWith('zh'));
+    document.documentElement.lang = zh ? 'zh-CN' : 'en';
+    try { await import('./src/main.mjs'); }
+    catch (error) {
+      // The engine itself may not have loaded. There is no UI host yet.
+      const box = document.querySelector('#error');
+      box.textContent = zh ? '加载失败。请重新加载页面重试。' : 'Loading failed. Reload the page to retry.';
+      box.hidden = false;
+      globalThis.__jellyPandas ??= { frames: 0, mode: 'error', error: String(error?.stack ?? error) };
+    }
+  </script>
 </body>
 </html>
