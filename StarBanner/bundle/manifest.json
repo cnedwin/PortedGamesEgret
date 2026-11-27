@@ -10,9 +10,9 @@
     "minify": true,
     "keepNames": true
   },
-  "entry": "main-PIF2OKW2.mjs",
+  "entry": "main-BIJBCRBO.mjs",
   "startupPreloads": [
-    "main-PIF2OKW2.mjs",
+    "main-BIJBCRBO.mjs",
     "chunk-2PKRZAXY.mjs",
     "chunk-5FZ5JJBA.mjs",
     "chunk-663QOIXH.mjs",
@@ -29,15 +29,15 @@
     "chunk-ALUQKS75.mjs"
   ],
   "inputs": {
-    "index.html": "23b67a954157242b35dbe1c7c6883db340d18cf038c11afef836deed59bd103b",
+    "index.html": "65246b05de333db6b75ce4f34a2932887e392747b199fb0cc805b74686fda00d",
     "src/asset-url.mjs": "6507b8239b7c243f95b36211159057a359c93e12d4036cc44cd94ce054beaff2",
     "src/audio/sound.mjs": "656f3c26b9167a182838ad83ed0af1fdef82b5c3c1397fbe0e310b93b806d10b",
     "src/audio/synth.mjs": "ad70799fdda71bff8fac676f670334c7ba20699a0dc3fd91878b821aedb17914",
     "src/hud.mjs": "c2af2d977830fc797d2bfcf94f9991e1821779a2076ec2fdf2cd8b0067fe5b20",
     "src/i18n.mjs": "302fc22f320ecb022098063fdeb8cc07087fcbbb101954456dff57fc7b73b2c9",
     "src/input.mjs": "0a186ee01ab10ddbf71f989302042f56ebc428f7e65973559313ae506cc42c08",
-    "src/main.mjs": "04b0194e02ac16891bd302691ea40a10164df31753223471becea6a84cd3ac7b",
-    "src/play.mjs": "42177e2517b1f4c39580f247efead3a6f5b8ddbea4529f9ba7a898eb20c5b57d",
+    "src/main.mjs": "8e28de6c3527a5667f4e6b23460798f6542486867c603662016fdeade3f1686a",
+    "src/play.mjs": "454bae7202001228595417f5ae442a3eae0d30272f1949cc66d4a5aa67bb36f7",
     "src/saves.mjs": "69a24839095aab0eb6e4002e2a3585c6b0d94e9c764f23ef29bfc2f219304e6a",
     "src/screens.mjs": "d1746a926c016b0555a490e2468aef2d79b7cf0a7f6f96cd887a61b34ec6c2fc",
     "src/sim/ai.mjs": "6136008153b85b843319140c7d49d31d17b49f97433bafab7c8b7492ddb746a5",
@@ -48,12 +48,15 @@
     "src/sim/rules.mjs": "cc761aaa606de1b48ae4af8399dd2e8eff26bff5ac55f87f8ef3171d2191b2af",
     "src/sim/terrain.mjs": "2ea39db0e25dfbe3c467f59166cf86803cae870e4ff93e99880a92ed39eba04d",
     "src/sim/units.mjs": "8ab90149338a0a481c9029838cc6cb30a78823e6009d520a59425432b92771c4",
+    "src/startup-models.mjs": "6832ae0a0bf01dd50c9aaa928a8ecbedacd4d984081990d411e727d1eb1077b5",
     "src/ui/host.mjs": "c2aab4b51e5ee75f1a35b6eef93a23d1021c955d6ae4f6b721eafea96322c5ea",
     "src/ui/kit.mjs": "d4629354dd6eba143a650d2d47b9330a5693aa3f6dc751070beca50e80984133",
-    "src/view/assets.mjs": "a803e82414e19476a8c200ce1c3c9128cc94c332f93ab2703c967f922fdc0a0a",
+    "src/view/assets.mjs": "51b246270b8fa9df92c79b66f97d7e6c32209789d8f6047dcb897ac3ec228d00",
     "src/view/board.mjs": "251721c958e46daef72a6472e355feb1296b9ee0e55d20a494120a59ccc9d6b4",
     "src/view/effects.mjs": "dec1efe9e9efa6198f9a1f693018f8197b189568ca334aaef6578e88afb43497",
-    "src/view/figures.mjs": "cc5676198533c0042df464db945a3b6ab5776cd27ca3380221a137ee99ad8968",
+    "src/view/figures.mjs": "619f812baf5794c749f28a634dc258bc80442641e10aee33fc306dc1e2d552b1",
+    "src/view/model-bytes.mjs": "4a049bfb1f78fa5cb226af796e67df4e5ea3794e83ca4842c6bd17393c6aaba0",
+    "src/view/model-plan.mjs": "ff68ba132b5176d48c561b1efd10d8421644a8d04c8d492a6cbbd2e321e215ee",
     "src/view/overlay.mjs": "1cd5494e9f39320eafcb75f113ecf2abd1ec46d13790c1a078d4f2b8015644ad",
     "src/view/stage.mjs": "58e3c3e70fd5fa74f11025401ae5a5f46c4754c99071694d7715bc355a4498eb",
     "src/view/surface.mjs": "ed5c63aa75b4505af82f7062c24d7fb8014ca47ca0c48373da01b4c3cba8b201",
@@ -398,10 +401,10 @@
     "chunk-RC6QIM2N.mjs": "30dc45a02b5c8804f9cc24f7fe09ce4a4c80b20fae6c429a8b69b65242384e65",
     "chunk-VVGZFVG3.mjs": "4e1e9eba927b33e7131f26b994e3653d51533abbf4246131c2ccf980217478a2",
     "chunk-WD45GUHK.mjs": "72c275483f8e10215ac2cf6199400c9c562155631d568fb3f3b5fba174938222",
-    "main-PIF2OKW2.mjs": "cc4dc8cf69f175315a3446a2881a65d3c60f96cc02f0fab227d2e4491a65d584"
+    "main-BIJBCRBO.mjs": "b88719172ad560fc3c78a771a4990237de2443c89b02d1eb4b240f4c3cf03790"
   },
   "graph": {
-    "main-PIF2OKW2.mjs": {
+    "main-BIJBCRBO.mjs": {
       "entryPoint": "src/main.mjs",
       "imports": [
         {

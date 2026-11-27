@@ -379,3 +379,68 @@ node test/accept.mjs
 本节旧公开数据已按原部署 275ce9a2 核验；新交付包的公网部署及从实际公开链接复跑须另附结果，当前不提前声称上线。 / Former public measurements are bound to deploy 275ce9a2; new bundle publication and real public retest remain separate evidence.
 
 浏览器缓存禁用不意味着真实 CDN/驱动缓存全冷；手机已有 Chrome 的缓存状态单独记录。PC 与手机受控服务器为 raw HTTP1.1，不与压缩公网 bytes 混合计算。未测试实体 Fold7 内屏、其它设备、Safari/Firefox、能耗和人工完整战役；不以同设备 CDP 浏览器路径当人工操作。 / Browser cache disable does not clear all CDN/driver caches. Controlled raw transfer differs from compressed public delivery. Inner panel, other devices, Safari/Firefox, energy and complete human-play campaigns remain untested.
+
+## 2026-11-27 标题模型传输与原生宿主并行 · Title model transfer overlapped with host startup
+
+- 基线 / Baseline：正式 game merge `e81496b77ef2b34d4cd47d5bf0e1a40cdaa6027a`，原生引擎 `0e7b29321a07ec956f66efb293c79798270512bd`；本轮候选身份 / new candidate identity：正式本地 game 候选已应用同源12路径并重生成 manifest；游戏未以本地验证冒充线上 / The formal local candidate applies the tested source/output changes and rebuilds the manifest. Local acceptance is not a public deployment.。
+- 旧生产 ESM 交付优化仍保留，本轮仅在真实 World3D 已选定画质后，提前请求标题当前模型的同一批 GLB **bytes**；不预取其它画质、不提前把模型放进场景，解析/解码、原生 shader 与场景构建仍由原 loader 在原消费点执行。载入失败及取消/清理行为需专项复测。 / Retain production bundles. After actual World3D selects the quality, request the same title GLB bytes earlier; do not load unused qualities or create models early. Parse/decode and renderer/scene preparation remain in the original consumer. Regress failure/cancellation and cleanup separately.
+- 该问题是 Demo 自己的资源调度改进，不是新引擎功能缺陷。 / This is a game-owned scheduling improvement, not a new runtime bug.
+
+### 新轮受控真实 PC 基线 · Fresh physically-rendered PC baseline
+
+Windows Edge RTX 5090 Laptop ANGLE/D3D11、1280×720 DPR1、seed3/wheat/zh/low、减弱动画，新 Edge 进程、HTTP 和 shader disk cache 禁用；raw(no-store) loopback HTTP1.1，CDP 40 ms latency / 10 Mbps 下 / 5 Mbps 上，无 CPU 降速。与前一轮相同条件重新采两次 #281，避免仅用历史样本判断小变化；公网 CDN 与驱动缓存另有变化。 / Fresh real-GPU Edge, same controlled network and legal route as previous delivery trial, two new #281 baselines instead of relying on older samples. Device/CDN caches are separate.
+
+| 观测 / Metric | A1 | A2 | B1 | B2 |
+|---|---:|---:|---:|---:|
+| Title actionable wall ms | 4591 | 4542 | 4197 | 4204 |
+| Main entry page ms | 1177.7 | 1127.2 | 1162.7 | 1153.8 |
+| World3D ready page ms | 1201.6 | 1150.6 | 1188.0 | 1177.5 |
+| Overlay ready page ms | 1562.0 | 1510.2 | 1541.6 | 1536.1 |
+| 13 GLB first request page ms | 1565.8 | 1513.6 | 1188.8 | 1178.2 |
+| 13 GLB last responseEnd page ms | 4314.5 | 4249.1 | 3915.8 | 3918.1 |
+| GLBs started before overlay (n/13) | 0 | 0 | 13 | 13 |
+| Network interval overlapped World3D→overlay (ms) | 0 | 0 | 352.8 | 357.9 |
+| Backdrop complete page ms | 4468.8 | 4410.6 | 4067.6 | 4073.8 |
+| Click Deploy→actual battle wall ms | 93 | 96 | 99 | 120 |
+
+旧版 13 GLB raw body 合计 3,306,300 B，全部在 overlay ready 3.8/3.4 ms 之后才发出，批次持续 2748.7/2735.5 ms；最后 Vireta model request→headers 40.1 ms、正文 1785.1/1781.5 ms（共享带宽下受控测量），从最后 GLB 到实际 backdrop 还有 154.3/161.5 ms，不能独占归因给 decoder。两次均 42 个全路请求、无新增 post-deploy resource/trace loss/error，native shader preparation 363.8/363.5 ms。 / Both baselines use the same 13 critical GLB bodies, with all fetching after overlay; post-network time includes decode and scene preparation, not an isolated decoder. Both passed with 42 requests and no new post-deploy fetch, errors or trace loss.
+
+候选两次标题 4197/4204 ms，平均 4566.5→4200.5 ms（缩短 366 ms / 8.0%）。13/13 模型的实际 URL 与 raw 正文逐一完全相同（合计 3,306,300 B，ResourceTiming transferSize 3,310,200 B），实际在 World3D ready 后 0.8/0.7 ms 开始，较 overlay ready 提前 352.8/357.9 ms。批次持续 2727.0/2739.9 ms，与旧版相同量级，last responseEnd 驱动到 backdrop 151.8/155.7 ms，与旧 154.3/161.5 ms 同量级；不是模型解码加速。原生报告 `startup.modelsRequested=1188.3/1177.8`、`modelsDownloaded=3918.1/3920.2`，`modelPrefetch={requested:13,downloaded:13,failed:0,set:'low'}`，实际最后传输后仅 2.3/2.1 ms 完成 promises。 / Candidate starts every identical model before overlay readiness, overlapping 352.8/357.9 ms of the native UI startup. Title mean improves 366 ms (8.0%) without reducing model bytes or accelerating the measured network/decode work itself. Native promise receipts match final responses.
+
+四次均 35 请求在标题前发出、42 全流程，0 cache hits/errors/trace loss；无 post-deploy 资源请求。Deploy 93/96→99/120 ms，候选单样本略慢，未将 366ms 标题收益移到出阵，不声称出阵改善。Native program prep 363.8/363.5→359.3/363.4 ms；入口 parse/compile 标记并集 5.39/4.95→5.24/4.99 ms，整段 title compile+eligible execution 标记并集 245.4/268.1→242.8/244.5 ms，样本小，不声称 CPU 或 shader 性能提高。新增打包代码约 +2,016 raw B，模型完全不变。 / All matched runs pass with the same request count and no new post-Deploy resource; Deploy is not claimed faster. Native shader and main thread trace measurements do not establish a renderer/CPU speedup. The added bundled code is small; assets are unchanged.
+
+### 真实 Fold7 · Physical Fold7
+
+实体 Fold7 外屏 SM-F966U1、Android17/Chrome157，英文 seed5/wheat/low，同一设置 Seline/Garron/Easy、真实物理横转与 To battle。受控 raw/no-store HTTP1.1 loopback（ADB reverse），CDP 40 ms / 10 Mbps / 5 Mbps，无 CPU 降速。每次独立拥有 context、HTTP cache disabled/SW bypass，不重置既有 browser/GPU/driver/热状态；实际 CDP 注入触控，不是模拟尺寸或人工手指。 / Actual physical outer Fold7 panel, same controlled local network and game route. Fresh owned contexts without resetting browser/driver/thermal state; physical-device injected input, not emulated/human play.
+
+| 观测 / Metric | A1 | A2 | B1 | B2 |
+|---|---:|---:|---:|---:|
+| Title actionable wall ms | 4149 | 4077 | 4030 | 4036 |
+| World3D ready page ms | 1229.4 | 1176.3 | 1154.0 | 1164.8 |
+| Overlay ready page ms | 1242.4 | 1186.2 | 1170.6 | 1176.3 |
+| First critical GLB page ms | 1246.0 | 1189.3 | 1154.6 | 1165.5 |
+| Last critical GLB responseEnd page ms | 3944.6 | 3887.8 | 3853.8 | 3863.2 |
+| Starts before overlay | 0/13 | 0/13 | 13/13 | 13/13 |
+| Game ready page ms | 4021.8 | 3969.3 | 3931.4 | 3963.5 |
+| Native WebGL2 init total ms | 34.6 | 28.2 | 28.8 | 22.2 |
+| Actual To battle pointerup→ready ms | 2510.5 | 2245.9 | 2533.6 | 2452.2 |
+
+四次 13 个关键 GLB 唯一请求及 raw bytes（CDP encodedDataLength 含 HTTP overhead）3,308,939 B 完全相同；候选原生 marker 1154.2/1165.1 请求、3855.0/3864.7 下载完成；set low、13/13 成功。全部实际开始于 native World3D ready 之后、overlay ready 之前，B1/B2 实际可交叠 16.0/10.8 ms。观察平均标题 4113→4033ms（-80ms / -1.9%），手机宿主窗口很短，不能将全部 80ms 归因于重叠；不套用 PC 的幅度。 / Four trials have identical 13 critical URLs and counted transfer bytes. Native receipts show 13 successful requests; the actual overlap window is 16.0/10.8 ms. Observed title mean falls 80 ms (1.9%), not all causally attributable to overlap in this small sample.
+
+四次真实合法进入第一回合，43 请求/0 错误/0 trace loss/0 cache flags，图实看，原模型 UI 保留。出阵后仍唯一同 Garron GLB 436,791 B（含 overhead），A TTFB/body42.9/351.2、42.4/357.3ms；B43.1/351.9、43.2/354.5ms；无额外脚本，保留原1.6秒 banner。出阵两样本均值增加约115ms，不声称等时/改善，也无新增网络加载证据。所有设备控制/转屏/USB唤醒/调试/lease 按记录恢复。 / All real-device routes and restoration pass; the same only post-click model and original 1.6 s banner remain. Deploy is observed ~115 ms slower on average in these small samples, with no newly shifted resource/script load; it is not claimed faster or invariant.
+
+### 模型身份、失败与取消回归 · Asset identity, failure and cancellation regression
+
+正式候选已应用并重新生成 canonical manifest，原生 vendor 不变；Node 60/60（比前轮新增7项 startup model 单测）。 / Final local candidate rebuild matches its manifest; engine unchanged, Node 60/60 (seven new startup-model tests).
+
+实际实现：`src/startup-models.mjs` 只在 native World3D ready 且 overlay 未 ready 时规划一次真实标题地图，直接出阵、overlay 已 ready、宿主失败均跳过；`src/view/model-plan.mjs` 使用与原 battle 相同 props/建筑/军团/兵种/cargo 名单与实际 `stage.quality` 档；`src/view/model-bytes.mjs` 限16唯一模型，以精确 URL 消费一次早期 promise，成功或失败都交原 loader，取消及时 abort 和清 map，不持久缓存、不重复发请求、不把失败翻倍计数。原 `loadModel` 解码、现有失败提示及场景构建顺序保留。 / Prepare only while the real UI host is pending, using the same selected map and quality. Bound at 16 unique early binary requests, consume once per exact URL, retain original loader failure handling/decoding and cancellation; no persistent cache or early renderer upload.
+
+Node 的 7 项专项覆盖三地图原模型列表/cargo、真实 medium 分档和随机一次、直接出阵/先完成 overlay/宿主失败跳过、一次读取及不同地址/档不误用、HTTP 失败交原 loader 一次、取消 pending/迟到 world 不启动、固定16上限。 / Seven new unit cases cover the model list, actual tier, single random choice, paths that must skip prefetch, single consumption and path/tier isolation, original failure handling, abort on startup failure and finite limit.
+
+实际浏览器硬件验证 / Actual hardware-browser boundary route：5 cases / 18 assertions PASS。故意延迟 2D backend 500 ms 并令 oak-low.glb 返回503，world ready 127.5 ms / 早期请求 127.7 / 下载收据 193.1（12/13 成功、1 失败）/ overlay ready 1015.2；oak 只发一次，原告警仅一次，原 Retry/Continue 及恢复标题正常。直接战斗不预取标题；auto 实际 HIGH 时 13 个模型均 high 档且各一次；invalid quality/backend 保留原 fatal 且零 GLB，HIGH 截图实际检查无问题（不是性能 A/B）。既有 `node test/resource-accept.mjs` 故意拒绝 21 个模型资源，原生重试/继续通过。 / Delayed-backend/503 control, single failure reporting and original retry/continue path, no direct-battle prefetch, exact auto-HIGH tier and original invalid-options failure, with reviewed HIGH output; existing 21-model failure acceptance also passes. This is functional boundary evidence, not a timed high-quality trial.
+
+正式主流程回归 / Formal route regression：`node test/accept.mjs` 40/40、`node test/touch-accept.mjs` 12/12（浏览器触屏/转屏，不是实体手机）、`node test/art-accept.mjs` 2/2，全部 0 浏览器错误。既有 native-title/setup/opening 参考图差异 0.08% / 0.07% / 2.86%，均在阈值内；没有重写任何原截图基线。 / All three formal browser routes pass without errors. Existing reference images remain unchanged and their differences are within the previous limits.
+
+### 公开复测、限制及复跑 · Public check, limitations and reproduction
+
+本节当前为 #281 基线与候选受控测试；正式发布后另按实际 Pages 结果核对标题与出阵，不提前声称。原真实内屏/其它浏览器/扬声器/真人完整战役未测；独占 GLB decoder 时钟不存在，responseEnd→backdrop 是组合窗口。 / Local matched measurements are not public deployment evidence. Physical inner display, other browsers, audio listening and full manual matches remain untested. No isolated GLB decoder time is asserted.

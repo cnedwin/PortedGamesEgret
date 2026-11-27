@@ -11,7 +11,7 @@ import { createInput } from './input.mjs';
 import { createSound } from './audio/sound.mjs';
 import { openSave, settingsOf, recordBattle, battleIsWhole, campaignProgressOf, campaignChapterUnlocked, campaignBattleOf, keepCampaignBattle, recordCampaignResult } from './saves.mjs';
 import { setLanguage, getLanguage, t } from './i18n.mjs';
-import { MAPS } from './sim/maps.mjs';
+import { backdropSetup,prepareStartupHosts } from './startup-models.mjs';
 import { campaignChapter, campaignSetup } from './sim/campaign.mjs';
 import { cloneGame } from './sim/rules.mjs';
 import { loadProblems } from './view/assets.mjs';
@@ -123,17 +123,19 @@ const app = {
 };
 
 // ---- the stage ----
-let stage, ui;
+let stage,ui,initial,play,backdrop;
 try {
   // Both canvases have independent hosts; prepare the overlay and the 3D scene concurrently.
-  [stage,ui]=await Promise.all([
-    createStage(canvas,{quality:params.get('quality')??(settings.quality==='auto'?undefined:settings.quality),backend:params.get('backend')??'webgl2'}).then(value=>{startup.world=performance.now();return value;}),
-    createInterfaceHost(canvas,{label:t('canvas')}).then(value=>{startup.overlay=performance.now();return value;})
-  ]);
+  ({stage,ui,initial}=await prepareStartupHosts({params,startup,
+    createWorld:()=>createStage(canvas,{quality:params.get('quality')??(settings.quality==='auto'?undefined:settings.quality),backend:params.get('backend')??'webgl2'}),
+    createOverlay:()=>createInterfaceHost(canvas,{label:t('canvas')})
+  }));
 } catch (cause) {
   const error=document.querySelector('#fatal');error.textContent=t('fatal',{why:cause?.message??cause});error.hidden=false;
   throw cause;
 }
+// The one-shot raw byte promises must also be released if a later startup step fails.
+try {
 stage.canvas = canvas;
 app.stage = stage;
 app.ui = ui;
@@ -166,25 +168,24 @@ function tellLoadProblems() {
   void app.screens.loadFailure(()=>location.reload(),()=>{});
 }
 
-async function play({ setup, saved = null, attract = false }) {
+play=async function({ setup, saved = null, attract = false,prefetch }) {
   await app.screens.closeAll();
   app.battle?.dispose();
   app.battle = null;
-  const battle = await startBattle(app, { setup, saved, attract });
+  const battle = await startBattle(app, { setup, saved, attract,prefetch });
   battle.attract = attract;
   battle.human = setup.human;
   app.battle = battle;
   if (setup.campaign && !battle.game.over) app.keepBattle({ setup, game: cloneGame(battle.game) });
   if(!attract)tellLoadProblems();
   return battle;
-}
+};
 
 /** The title's backdrop: two computer commanders on one of the maps. */
-async function backdrop() {
-  const map = params.get('map') ?? MAPS[Math.floor(Math.random() * MAPS.length)].id;
-  await play({ setup: { map, sides: [{ commander: 'seline', ai: true, level: 'normal' }, { commander: 'vireta', ai: true, level: 'normal' }], human: -1, seed: 5 }, attract: true });
+backdrop=async function(setup=backdropSetup(params),prefetch) {
+  await play({setup,attract:true,prefetch});
   app.sound.music('title');
-}
+};
 
 // ---- input ----
 const input = createInput(canvas, {
@@ -222,7 +223,7 @@ const straight = params.get('battle');
 if (straight) {
   await app.startNew({ ...app.lastSetup(), map: straight, ...(params.get('you') ? { you: params.get('you') } : {}), ...(params.get('foe') ? { foe: params.get('foe') } : {}) });
 } else {
-  await backdrop();
+  await backdrop(initial?.setup,initial?.prefetch);
   startup.backdrop=performance.now();
   app.screens.title();
   await ui.ready();
@@ -245,3 +246,7 @@ window.egretGame = {
   },
   ready: true
 };
+} finally {
+  initial?.prefetch.cancel();
+  initial=null;
+}

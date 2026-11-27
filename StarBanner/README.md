@@ -104,6 +104,9 @@ stronghold.
 - 本次生产包重生成 31 路径一致、Node 53/53；浏览器功能 40/40、触屏 12/12、战意技 2/2、原生 UI 10/10、21 项模型资源拒绝恢复，以及实际 PC WebGPU 10/10。原截图基线未修改，无浏览器错误；未实听扬声器。 · Reproducible production delivery, 53 Node and 40 functional checks, touch 12/12, rally 2/2, native UI 10/10, deliberate model failure and actual PC WebGPU 10/10. Reference images unchanged; speaker listening not tested.
 - 同一原生引擎的生产 ESM 交付专项：实体 PC 在固定 40 ms/10/5 Mbps 模拟网络下，打开至标题的两次平均 8.50→4.60 s，脚本 329→12；出阵仍 102–142 ms。实际公网及手机结果见 QUALITY。 · Controlled real-PC browser delivery tests reduce mean title time from 8.50 to 4.60 s and script requests from 329 to 12; Deploy is still 102–142 ms. QUALITY distinguishes public and device runs. 同网络实体 Fold7 标题两次平均 7.81→4.09 s，出阵不声称加速。 / The physical Fold7 controlled title mean falls from 7.81 to 4.09 s; Deploy is not claimed faster.
 
+- 首屏预取专项 Node 60/60、实际硬件浏览器分档/503/直接战斗/非法配置 5 cases / 18 assertions；原 21 项模型拒绝恢复、主流程 40/40、触屏 12/12、战意技 2/2 均通过，0 浏览器错误且原截图基线未更新。详见 QUALITY。 · Model-prefetch unit and real-browser boundaries, original failure recovery, 40 functional, 12 touch and two rally checks pass without errors; reference images remain unchanged. See QUALITY.
+- 标题模型传输专项补充：World3D 选择真实画质后，与后续 2D 叠加层初始化并行准备同一批模型 bytes；保留原解析/解码与完整沙盘标题，实测 同约束 PC 4566.5→4200.5 ms（-8.0%），13 个模型 bytes不变；实体 Fold7 4113→4033ms（观察1.9%，手机实际重叠仅16.0/10.8ms，不能全归因），出阵时间不声称加速。 · After the actual World3D quality selection, fetch the same title model bytes in parallel with 2D startup; original decoding and the full attract scene are preserved. Controlled PC title 4566.5→4200.5ms (8.0%); physical Fold7 observed 4113→4033ms (1.9%, not fully attributable to overlap). Deploy is not claimed faster. See QUALITY.
+
 ## 已知问题 · Known issues
 
 - 软件渲染下只有每秒几帧，验收截图之外的动画流畅度要在真 GPU 上看。 · Software rendering runs at a few frames a second; smoothness needs a real GPU.

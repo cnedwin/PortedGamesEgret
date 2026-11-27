@@ -16,6 +16,7 @@ import { createOverlay } from './view/overlay.mjs';
 import { createEffects } from './view/effects.mjs';
 import { createLibrary, makeFigure, makeBuilding, modelOf, BUILDING_BODY, BODY } from './view/figures.mjs';
 import { loadModel, propFrom, SET_OF } from './view/assets.mjs';
+import { BOARD_PROP_NAMES,figureModelNames } from './view/model-plan.mjs';
 import { TEAMS } from './view/toon.mjs';
 import { TILE } from './view/stage.mjs';
 import { createHud } from './hud.mjs';
@@ -37,11 +38,11 @@ function quietHud() {
 
 /** The props every board uses, loaded once per page and quality. */
 const propCache = new Map();
-export async function boardProps(set) {
+export async function boardProps(set,prefetch) {
   if (!propCache.has(set))
     propCache.set(
       set,
-      Promise.all(['oak', 'pine', 'crag', 'rocks'].map((n) => loadModel(n, set))).then(([oak, pine, crag, rocks]) => ({
+      Promise.all(BOARD_PROP_NAMES.map(n=>loadModel(n,set,undefined,prefetch))).then(([oak, pine, crag, rocks]) => ({
         oak: propFrom(oak, 1.75),
         pine: propFrom(pine, 2.1),
         crag: propFrom(crag, 2.3, { by: 'width' }),
@@ -55,7 +56,7 @@ export async function boardProps(set) {
  * Start a battle on the app's stage. `setup` = { map, sides: [{ commander, ai, level }], human, seed }; `saved` is a
  * kept game to resume. Returns { dispose, update, command }.
  */
-export async function startBattle(app, { setup, saved = null, attract = false }) {
+export async function startBattle(app, { setup, saved = null, attract = false, prefetch }) {
   const { stage, ui } = app;
   // The title's background is a battle between two computer sides with no interface and no sound of its own.
   const sound = {
@@ -73,13 +74,8 @@ export async function startBattle(app, { setup, saved = null, attract = false })
   const set = SET_OF[stage.quality] ?? 'mid';
   const fog = Boolean(setup.fog && !attract);
   const bounds = { w: game.w, h: game.h, fog, water: (x, y) => WATER.has(game.terrain[y * game.w + x]) };
-  const library = app.library ?? (app.library = createLibrary(set));
-  const wanted = new Set([...Object.values(BUILDING_BODY).map((b) => b.model), ...game.players.map((p) => p.commander)]);
-  for (const u of game.units) {
-    wanted.add(modelOf(u));
-    for (const cargo of u.cargo) wanted.add(modelOf(cargo));
-  }
-  const [props] = await Promise.all([boardProps(set), library.want([...wanted])]);
+  const library = app.library ?? (app.library = createLibrary(set,prefetch));
+  const [props] = await Promise.all([boardProps(set,prefetch), library.want(figureModelNames(game))]);
 
   const figures = new Map();
   const pieces = new Map();
