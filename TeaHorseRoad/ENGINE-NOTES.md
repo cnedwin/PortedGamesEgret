@@ -2,7 +2,7 @@
 
 做《茶马古道》时记下的新白鹭引擎（[Egret_rebuild](https://github.com/cnedwin/Egret_rebuild)，提交 `687037a`）的缺口、问题、文档不清处和建议。原则是：要求的能力一律用引擎 API 实现；引擎缺的或别扭的，不在游戏里另写一套替代品，而是用引擎已有的部件把效果拼出来、在这里写明。每条写了现象、游戏里的处理和建议。
 
-游戏后来升级到 `8637ace`（引擎 #423–#485），每条的「游戏里」写了升级后的做法；第 25–28 条是升级时新记下的。现用引擎提交 `72be4978226951c0727262e81da87f1aa7e15242`；第 25、26 条已由引擎正式实现。
+游戏后来升级到 `8637ace`（引擎 #423–#485），每条的「游戏里」写了升级后的做法；第 25–28 条是升级时新记下的。第 25、26 条已在 `72be497` 由引擎正式实现；现用引擎提交 `2fbe55630b1f67c6b1584d73290c19cb0aa0ae24`，含 #535 的叠加层原生控件检查修复。
 
 Gaps, problems, unclear documentation and suggestions found in the new Egret engine
 ([Egret_rebuild](https://github.com/cnedwin/Egret_rebuild), commit `687037a`) while making *Tea Horse Road*. The rule:
@@ -11,7 +11,7 @@ game does not write its own replacement but builds the effect from parts the eng
 Each item gives what happens, what the game does and a suggestion.
 
 The game later moved to `8637ace` (engine #423–#485); each item's "in the game" says what it does now, and items 25–28
-were written during that move. The game now uses `72be4978226951c0727262e81da87f1aa7e15242`; the engine officially implements items 25 and 26.
+were written during that move. The engine officially implemented items 25 and 26 in `72be497`. The game now uses `2fbe55630b1f67c6b1584d73290c19cb0aa0ae24`, including the native overlay control-check fix in #535.
 
 类别 · Kinds: **缺陷 / bug** · **缺口 / gap** · **文档 / docs** · **别扭 / awkward**；状态 · Status: **未解决 / open**：引擎还没有改 · nothing changed in the engine yet
 
@@ -391,13 +391,13 @@ were written during that move. The game now uses `72be4978226951c0727262e81da87f
 - **建议 · Suggestion**：支持分边 margin 或安全区矩形，并支持更新标记选项。 · Accept edge margins or the current screen safe rect and support changing marker options in place.
 - **状态 · Status**：未解决 / open（`72be497`）。
 
-### 30. 3D 叠加层的控件检查未纳入八屏报告 · Native 3D overlay controls are absent from the eight-screen report — 缺口 / gap · 未解决 / open
-<!-- engine-note: {"id": "TeaHorseRoad#30", "status": "open", "topic": "world3d-overlay-screen-verifier-controls", "workaround": ["test/play.mjs"]} -->
+### 30. 3D 叠加层原生控件收据缺失或不完整 · Native 3D overlay control receipts are absent or incomplete — 缺口 / gap · 已在 `2fbe556` 解决 / resolved in `2fbe556`
+<!-- engine-note: {"id": "TeaHorseRoad#30", "status": "resolved", "topic": "world3d-overlay-screen-verifier-controls"} -->
 
-- **现象 · What happens**：在 `72be497`，`verify --screens` 可截图、检查舞台尺寸与页面错误，但 World3DOverlay 使用 BrowserGame 而非 Play；没有原生的控件收据，报告不能证明 HUD/模态控件安全区、点击大小及间距。 · The verifier captures the overlay but at this pin receives native control receipts only from Play, not BrowserGame-backed World3D overlays.
-- **游戏里 · In the game**：在验收脚本中读取真实引擎语义树当前可交互节点及 `game.screen.safe` 检查边界和尺寸，不更改引擎报告、不另造投影。 · The route asserts actual semantic control rectangles against the native safe area and measures CSS targets separately; no synthetic receipt.
+- **现象 · What happens**：在 `72be497`，`verify --screens` 可截图、检查舞台尺寸与页面错误，但 World3DOverlay 没有原生的控件收据，报告不能证明 HUD/模态控件安全区、点击大小及间距。到 `0a8da42e` 已有叠加层原生报告，但用旧运行时搭配新增的 873×325 外屏验收规格时，仅报告驾驶 HUD 5/6 项；遗漏没有 activate/focus 回调的触屏方向滑条「方向 Steering」，独立验收因此失败。 · At `72be497` the verifier captured the overlay yet received no native overlay control receipt. At `0a8da42e` receipts existed; testing the unmodified runtime with only the new folded-cover profile definition added reported five of six HUD controls, missing the touch steering slider without activate/focus callbacks. The independent route assertion failed.
+- **游戏里 · In the game**：`test/play.mjs` 现在要求每个普通检查点有新鲜且非空的原生控件收据；原生与真实引擎语义树的活动控件名称及数量完全一致，并分别核对安全区、尺寸、间距和投影 CSS 边界。原独立语义检查保留作回归，不替代引擎收据、不重写报告或另造投影。 · Require fresh, nonempty native receipts and exact matching active control names/counts at each ordinary route checkpoint; independently check the semantic safe area, sizes, spacing and projected CSS bounds. These are regression assertions, not synthetic receipts or a replacement projection.
 - **建议 · Suggestion**：让 World3DOverlay 原生将活动控件及当前屏幕计划交给同一验收工具。 · Report the active overlay controls and screen plan through the same native verifier channel.
-- **状态 · Status**：未解决 / open（`72be497`）。
+- **状态 · Status**：已在 `2fbe556` 解决（引擎 [#535](https://github.com/cnedwin/Egret_rebuild/pull/535)）。新的原生检查纳入启用的 action、movement、range 和 scroll thumb 控件及只声明角色的滑条，不把不可交互的结构语义或普通指针面当成控件。正式副本九屏路线 9/9，66 个检查点（普通 63 个，独立核对 328 项命中矩形；转屏提示下 6 项底层标题收据另计），安全区/大小/间距发现及引擎警告均为 0。触屏原生命中边长最小约 45.00 CSS px。软件 Chromium 模拟，不是真机；见 [QUALITY.md](QUALITY.md) 和 [原生收据摘要](test/evidence/native-control-receipts.json)。 · Resolved in `2fbe556` (#535): enabled action, movement, range, scroll-thumb and role-only slider targets are included, without promoting structural semantics or ordinary pointer surfaces to controls. The official vendor passed nine software-browser routes, 66 checkpoints and 328 independently cross-checked ordinary hit rectangles (six underlying title receipts counted separately); zero findings or warnings. Minimum native touch side about 45.00 CSS px. See the quality report and receipt summary; this is not a real-device test.
 
 ### 31. guide 卡片只接受 LF 行尾 · Guide cards reject CRLF line endings — 缺陷 / bug · 未解决 / open
 <!-- engine-note: {"id": "TeaHorseRoad#31", "status": "open", "topic": "guide-card-crlf", "workaround": [".gitattributes"]} -->

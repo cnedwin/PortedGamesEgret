@@ -59,7 +59,7 @@ Every item below is done through the engine's API; the table says where it shows
 | `createWorld3DOverlay` | 所有 2D 界面（标题、HUD、触屏控件、卡片）画在 3D 画面上的引擎 2D 舞台里；按在空白处的拖动交给 3D 画布（扎营时转相机、拖手柄） · the whole 2D interface (title, HUD, touch controls, cards) is drawn on the engine's 2D stage over the 3D picture; drags on empty parts go to the 3D canvas (turning the camp camera, dragging the handles) | `src/main.mjs`, `src/ui/*.mjs` |
 | `fit: expand`, `game.screen.safe`, `game.onScreenChange` | 单一 1066×600 横版设计，随 3D 画布扩展舞台；以当前安全区摆放 HUD、触控键和卡片，保留转屏时的控件及营地状态，不重建叠加层。 · One expanding landscape overlay; safe-area anchors, persistent cards, controls and camp state through rotation | `src/main.mjs`, `src/ui/hud.mjs`, `src/ui/card.mjs`, `src/ui/screens.mjs` |
 | `createBrowserSemantics().sync({width,height})` | 同一个语义投影跟随逻辑舞台尺寸变化及更新的节点边界 · update logical projection dimensions in place | `src/main.mjs` |
-| `verify --screens --play` | 八种窗口模拟真实 UI 路线、拍摄安全区检查点；叠加层当前版本缺少控件收据，另核对真实语义与 CSS 边界 · eight device profiles and route checkpoints, with independent semantic geometry checks | `test/play.mjs`, `test/rotation.mjs`, `QUALITY.md` |
+| `verify --screens --play` | 九种屏幕（含 873×325 折叠屏外屏）模拟实际 UI 路线；3D 叠加层的原生命中收据检查安全区、点击大小及间距，并独立核对真实语义与 CSS 边界 · nine device profiles, including the folded cover, with native overlay hit rectangles and independent semantic/CSS geometry checks | `test/play.mjs`, `test/rotation.mjs`, `QUALITY.md` |
 | `createTransformControls3D`（其手柄即 `TransformGizmo3D` · whose handles are a `TransformGizmo3D`）+ `createOrbitControls3D` | 扎营：移动、旋转营地物件，带吸附；相机绕营地转 · the camp: moving and turning pieces with snapping; the camera circling the yard | `src/play/camp.mjs` |
 | `serializeScene3D` + `deserializeScene3D` | 营地写成场景文档存进存档，下次路过时读回来摆好；物件的几何按名字存（`geometryKey` / `resolveGeometry`） · the camp is written as a scene document into the save and read back on later journeys, its pieces' geometries stored by name | `src/play/camp.mjs`, `src/main.mjs` |
 | `createWater3D` | 浅滩、峡谷里的江和高原湖；车轮蹚水时按水深溅起水花、不起车尘；高画质下湖面有倒影 · the ford, the river in the gorge and the plateau lake; wading wheels throw spray by the depth and raise no dust; the lake reflects on High | `src/world/water.mjs`, `src/play/effects.mjs` |
@@ -118,7 +118,7 @@ The tests check the road (its length, grades, the order of stations and ambushes
 | `media/` | 结尾短片 · the closing film |
 | `vendor/` | 引擎副本，见 `vendor/SOURCE.md` · the engine copy |
 
-引擎副本取自 Egret_rebuild 提交 `72be497`，由引擎仓库的 `tools/vendor-game.mjs` 生成，无本地补丁。 · Official engine copy at `72be497`, with no local patches.
+引擎副本取自 Egret_rebuild 提交 `2fbe556`，由引擎仓库的 `tools/vendor-game.mjs` 生成，无本地补丁。 · Official engine copy at `2fbe556`, with no local patches.
 
 ## 已验证 · Verified
 
@@ -131,6 +131,8 @@ The tests check the road (its length, grades, the order of stations and ambushes
 
 - #278 实际公开版的 PC RTX 5090 / Edge 与三星 Fold7 / Chrome 确认四状态转屏、输入、营地保存及刷新；专项发现的矮横屏设置、续档标题及窄桌面字幕问题已在候选布局中修正。40/40 Node、8/8 短屏软件检查点通过，真机公开回归区别报告。 · Real public-device observations and the targeted short-screen repair, separate from software results; see [QUALITY.md](QUALITY.md).
 
+- `2fbe556`（引擎 #535）正式副本：旧运行时 `0a8da42e` 搭配新增的 873×325 外屏规格时，驾驶 HUD 原生报告 5/6 项，遗漏「方向 Steering」。本次正式九屏路线 9/9、总检查点 66，63 个普通检查点独立核对 328 项原生命中矩形与语义/CSS 边界；3 个转屏提示检查点的 6 项底层标题收据另计。无安全区、目标大小或间距告警，触屏命中最小边长约 45.00 CSS px。无头 Chromium（SwiftShader）与定位到首站附近的路线测试，并非真机或全程自然驾驶。见 [QUALITY.md](QUALITY.md) 及 [原生收据摘要](test/evidence/native-control-receipts.json)。 · Official engine #535; the prior runtime with the new cover profile missed one steering target. All nine simulated routes passed, with 328 independently cross-checked controls and six underlying title receipts counted separately; no safe-area, size or spacing findings. The minimum touch hit is about 45.00 CSS px. Software rendering and a near-station route fixture, not a physical device or complete natural drive.
+
 ## 已知问题 · Known issues
 
 - 通用品质表为软件渲染；真机专项与未覆盖范围单独列在 QUALITY.md。 · Generic quality is software-rendered; physical device observations and coverage limits are recorded separately.
@@ -139,6 +141,8 @@ The tests check the road (its length, grades, the order of stations and ambushes
 - 品质验收未达标 · Quality items failing（[QUALITY.md](QUALITY.md)，2026-11-27，无头 Chromium + SwiftShader · headless, software rendering）：F1 桌面帧时间 p95 ≤ 16.7 ms（p95 287.5 ms over 29 frames）；I1 中英文全可切换，英文下无中文（no way to choose English found）；E2 资源失败有错误界面和重试（14 files refused; no uncaught error; no error screen with a retry）。
 
 ## 已解决 · Solved
+
+- 引擎 [#535](https://github.com/cnedwin/Egret_rebuild/pull/535) 已补齐折叠屏外屏规格和 World3DOverlay 原生控件检查（ENGINE-NOTES 第 30 条），没有再用独立语义收据代替原生报告；语义与 CSS 边界检查保留作回归。 · Engine #535 adds the folded-cover profile and completes the overlay control reporting used here; independent semantic checks remain as regression assertions, not a substitute for native receipts.
 
 - 引擎 #524/#525 已正式支持 Worker 碰撞体交还与 2D 宿主启动/恢复的着色器批处理，旧两处本地补丁不再保留（ENGINE-NOTES 25、26）。 · Official #524/#525 replace both carried patches with engine implementations.
 
@@ -160,8 +164,8 @@ The tests check the road (its length, grades, the order of stations and ambushes
 
 ## 引擎副本 · Engine copy
 
-引擎副本取自 [Egret_rebuild](https://github.com/cnedwin/Egret_rebuild) 提交 `72be4978226951c0727262e81da87f1aa7e15242`，由引擎仓库的 `tools/vendor-game.mjs` 生成，见 [vendor/SOURCE.md](vendor/SOURCE.md)。无需本地补丁。
+引擎副本取自 [Egret_rebuild](https://github.com/cnedwin/Egret_rebuild) 提交 `2fbe55630b1f67c6b1584d73290c19cb0aa0ae24`，由引擎仓库的 `tools/vendor-game.mjs` 生成，见 [vendor/SOURCE.md](vendor/SOURCE.md)。无需本地补丁。
 
-The engine copy is from [Egret_rebuild](https://github.com/cnedwin/Egret_rebuild) commit `72be4978226951c0727262e81da87f1aa7e15242`, generated by the engine's `tools/vendor-game.mjs`; see [vendor/SOURCE.md](vendor/SOURCE.md). No local patches.
+The engine copy is from [Egret_rebuild](https://github.com/cnedwin/Egret_rebuild) commit `2fbe55630b1f67c6b1584d73290c19cb0aa0ae24`, generated by the engine's `tools/vendor-game.mjs`; see [vendor/SOURCE.md](vendor/SOURCE.md). No local patches.
 
 入口 · Entries: `@egret/engine`, `@egret/engine/world3d`, `@egret/engine/webgl2/world3d`, `@egret/engine/webgpu/world3d`, `@egret/engine/bitmapfont`, `@egret/engine/ui`, `@egret/engine/ui/semantics`, `@egret/engine/web/semantics`, `@egret/engine/kit`, `@egret/engine/web/kit`, `@egret/engine/web/game`, `@egret/engine/web/video`, `@egret/engine/web/gamepad`, `@egret/engine/input/gamepad`, `@egret/engine/text`, `@egret/engine/web/text`.
