@@ -302,6 +302,14 @@ export async function createHud(game, scope, kit, { font, fontPages, stations, l
       }
     }
     const subtitleScale = Math.min(f, (right - left) / Math.max(1, subtitleWidth));
+    if (!touch) {
+      // A long subtitle can span the dial in a narrow desktop/portrait window. Only move it when the two
+      // horizontal ranges intersect, keeping the wide composition and the original type scale.
+      const halfWidth = subtitleWidth * subtitleScale / 2,
+        dialRadius = 106 * f;
+      if (middle + halfWidth > gauge.x - dialRadius && middle - halfWidth < gauge.x + dialRadius)
+        textY = Math.min(textY, gauge.y - dialRadius - 8 * f - 86 * subtitleScale);
+    }
     size(subtitle, middle, Math.max(top + 120 * f, textY), subtitleScale);
   }
   kit.onScreenChange(layout);
