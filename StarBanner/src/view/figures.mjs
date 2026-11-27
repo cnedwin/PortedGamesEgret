@@ -9,6 +9,8 @@ import { UNITS, isAir } from '../sim/units.mjs';
 import { TILE, INK } from './stage.mjs';
 import { cloneScene, loadModel, measure } from './assets.mjs';
 import { paintFigure, toonFrom, toonify, NEUTRAL, TEAMS } from './toon.mjs';
+import { BUILDING_BODY,modelOf } from './model-plan.mjs';
+export { BUILDING_BODY,modelOf } from './model-plan.mjs';
 
 /** How tall each kind stands on the board (world units), how high fliers hover, and whether it is skinned. */
 export const BODY = {
@@ -36,21 +38,15 @@ export const BODY = {
   vireta: { h: 2.34, rig: true },
   garron: { h: 2.5, rig: true }
 };
-/** The building models and how tall they stand. */
-export const BUILDING_BODY = { hq: { model: 'stronghold', h: 4.06 }, barracks: { model: 'barracks', h: 2.96 }, tower: { model: 'tower', h: 4.52 }, port: { model: 'port', h: 2.5 }, village: { model: 'village', h: 2.81 } };
-
 const STRIKE_CLIP = { archer: 'shoot', mage: 'shoot', edmund: 'shoot', vireta: 'shoot', hound: 'pounce' };
 
-/** The model that draws a unit: its own kind, or its commander. */
-export const modelOf = (unit) => (unit.type === 'commander' ? unit.commander : unit.type);
-
 /** The figure library shares the pending model load between preload and immediate requests. */
-export function createLibrary(set) {
+export function createLibrary(set,prefetch) {
   const loaded = new Map();
   const pending = new Map();
 
   async function load(name) {
-    const asset = await loadModel(name, set);
+    const asset = await loadModel(name,set,undefined,prefetch);
     if (!asset) {
       // Keep the failure for this session. A page retry will make a fresh library.
       loaded.set(name, null);

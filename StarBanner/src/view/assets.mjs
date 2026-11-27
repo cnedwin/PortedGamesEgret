@@ -7,9 +7,8 @@
 import { Mesh3D, Skeleton3D, computeObjectBounds3D, loadGltf3D } from '@egret/engine/world3d';
 import { toonify } from './toon.mjs';
 import { assetUrl } from '../asset-url.mjs';
-
-/** Which model set a quality uses. */
-export const SET_OF = { low: 'low', medium: 'mid', high: 'high' };
+import { modelBytes } from './model-bytes.mjs';
+export { SET_OF } from './model-plan.mjs';
 
 const decode = async ({ bytes, mimeType }) =>
   createImageBitmap(new Blob([bytes], { type: mimeType }), { colorSpaceConversion: 'none', premultiplyAlpha: 'none' });
@@ -18,11 +17,9 @@ const decode = async ({ bytes, mimeType }) =>
 export const loadProblems = { count: 0 };
 
 /** Fetch and parse one model; null when it cannot be had. */
-export async function loadModel(name, set, base = assetUrl('models/')) {
+export async function loadModel(name, set, base = assetUrl('models/'), prefetch) {
   try {
-    const response = await fetch(new URL(`${name}-${set}.glb`, base));
-    if (!response.ok) throw new Error(`${name}: HTTP ${response.status}`);
-    return await loadGltf3D(new Uint8Array(await response.arrayBuffer()), { decodeImage: decode });
+    return await loadGltf3D(await modelBytes(name,set,{base,prefetch}), { decodeImage: decode });
   } catch (cause) {
     loadProblems.count++;
     console.warn('model', name, cause?.message ?? cause);
