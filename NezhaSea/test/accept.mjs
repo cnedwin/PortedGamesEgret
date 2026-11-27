@@ -1,6 +1,7 @@
 // Browser acceptance for the keyboard, engine semantics and touch controls.
 // Use fixed encounter fixtures for rule transitions and real browser input for device behavior.
 import { dirname, relative, resolve } from 'node:path';
+import { mkdir } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import { ROOT, launch, matchBaseline, openPage, report, serve, until as waitFor } from '../../tools/lib/browser.mjs';
 
@@ -58,6 +59,10 @@ async function pointOf(part) {
 }
 
 async function takeBaseline(name) {
+  if (process.env.NEZHA_SCREEN_CANDIDATES) {
+    await mkdir(process.env.NEZHA_SCREEN_CANDIDATES, { recursive: true });
+    await page.screenshot({path: resolve(process.env.NEZHA_SCREEN_CANDIDATES, name + '.png')});
+  }
   const result = await matchBaseline(page, GAME, name);
   check(result.written || result.passed, name + ' matches its approved screenshot (' + (result.share * 100).toFixed(2) + '% differs)');
 }

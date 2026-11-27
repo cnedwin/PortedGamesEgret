@@ -1,5 +1,49 @@
 # 品质验收 · Quality — 哪吒闹海 · Nezha Stirs the Sea
 
+## 2026-11-27 原生屏幕适配 · Native screen fitting
+
+- **版本 · Version:** Egret main `13d70b73904266c11b23de4c09c239240a7162db`（包含 #507/#509/#510/#511/#513/#514/#515），由官方 vendor-game.mjs 生成。入口包 14 个文件、915,943 字节；规则、数值、存档、音频、美术资产未改。 · Official engine copy and reproducible 14-file bundle (915,943 bytes). Rules, balance, saves, audio and art assets are unchanged.
+- **环境 · Environment:** Windows / Node 26.7.0；官方八屏工具使用 Playwright 1.64.0 Chromium 无头软件渲染。浏览器操作验收使用本机 Chrome 的无头 SwiftShader；刘海、主屏指示条和设备像素比均为引擎工具注入，并非物理设备。 · The official checker uses headless Chromium with Playwright 1.64.0. Interaction tests use the installed Chrome with SwiftShader. Notches, home bars and DPR are simulated.
+- **改造前 · Before:** 保留 main `f838eef4` 的原始源码和素材。其旧副本 `94bd70fb` 的 CLI 首先遇到旧 guide 换行解析问题；旧 verify 参数校验还不识别 --screens，故不能给出可比较的原生控件检查。在原源码不变的独立副本刷新同一个官方 13d70b73 后，五个状态 × 八屏的基线才可比较。该基线包含 40/40 通过，0 个错误、7 个 fills 警告，0 个引擎警告。 · The old CLI could not run --screens (legacy guide parsing, and the option was absent). Frozen old game source was therefore measured with the same official new vendor for a like-for-like control count, bounds and warning comparison.
+- **改造后 · After:** `uiScale: {min:1,max:1.15}` 统一控件尺寸；整个窗口为透明画布，`expand` 保持原 540×960 设计及海面比例。视图使用原生安全区锚点和 portrait/tablet/tabletPortrait；平板货架与法宝同时可见，手机双页，下一波始终固定。 · Native scaling, safe views and variants replace per-part CSS projection. The expanded canvas preserves the whole battlefield. Tablet stock and relic panes coexist; phones keep their two pages.
+
+表内 E/W 为错误/警告数，箭头左侧是上述旧源码基线，右侧是最终中文版。 · Each cell is errors/warnings, old source → final Chinese. English is tested independently below.
+
+| 屏幕 · Screen | 标题 · Title | 战斗 · Battle | 集市 · Shop | 确认 · Confirm | 暂停 · Pause |
+|---|---:|---:|---:|---:|---:|
+| phone-small 375×667 | 0/0 → 0/0 | 0/0 → 0/0 | 0/0 → 0/0 | 0/0 → 0/0 | 0/0 → 0/0 |
+| phone-notch 393×852 | 0/0 → 0/0 | 0/0 → 0/0 | 0/0 → 0/0 | 0/0 → 0/0 | 0/0 → 0/0 |
+| phone-notch-wide 852×393 | 0/1 → 0/0 | 0/1 → 0/0 | 0/0 → 0/0 | 0/0 → 0/0 | 0/0 → 0/0 |
+| phone-tall 360×800 | 0/0 → 0/0 | 0/0 → 0/0 | 0/0 → 0/0 | 0/0 → 0/0 | 0/0 → 0/0 |
+| tablet 768×1024 | 0/0 → 0/0 | 0/0 → 0/0 | 0/0 → 0/0 | 0/0 → 0/0 | 0/0 → 0/0 |
+| tablet-wide 1024×768 | 0/1 → 0/0 | 0/1 → 0/0 | 0/0 → 0/0 | 0/0 → 0/0 | 0/0 → 0/0 |
+| foldable 884×1104 | 0/0 → 0/0 | 0/1 → 0/0 | 0/0 → 0/0 | 0/0 → 0/0 | 0/0 → 0/0 |
+| desktop 1920×1080 | 0/1 → 0/0 | 0/1 → 0/0 | 0/0 → 0/0 | 0/0 → 0/0 | 0/0 → 0/0 |
+
+- **最终双语 · Final bilingual:** 最终中文、英文分别 40/40，合计 80/80，均为 0 个错误、0 个布局警告、0 个引擎警告、0 个缺失的原生检查；直接对正式 index.html 运行 verify --screens 另有 8/8（各 9 控件），同样无告警。 · Final Chinese and English both pass 40/40, 80/80 in total, with zero errors, warnings, engine warnings or omitted native checks. The direct production entry also passes 8/8 with nine controls per screen.
+- **警告与画面 · Findings and visual review:** 旧的七条 fills 均源于标题或战斗的最大画布未覆盖窗口 75%；画面仍完整，但控件空间受限。改造后画布铺满，战场本身不被拉伸；非战斗区域只显示背景美术。最终无 touchTarget、apart、inSafeArea、滚动或 fills 警告。逐张检查工具标红刘海/指示条截图，重要文字、控件均在安全区内。 · The former seven fills warnings were from the constrained canvas, not truncated game rules. The full-window transparent canvas eliminates them without stretching/cropping the battlefield. Red-band screenshots were reviewed individually; controls and essential text are safe. No touch or separation warnings remain.
+- **截图基线 · Screenshot baselines:** 540×960 标题原图对照差异 28.33%：标题、按钮和角色卡移至安全区下部，让主视觉露出并维持手机控件尺寸；结算差异 6.87%：由单排统计改为移动端 2×2 统计网格，保留原文、统计值与动作。先保留旧图并进行并排核查，随后仅批准这两项意图明确的变化；最终 74 项验收中两张截图均为 0.00% 差异。[标题对照](test/visual-comparison/screen-fit-title-before-after.jpg)、[结算对照](test/visual-comparison/screen-fit-end-before-after.jpg)。 · The prior screenshots were preserved for visual comparison before accepting the intentional title repositioning and 2×2 results grid. The final acceptance matched the two approved images exactly.
+- **输入与完整界面流程 · Input and screen journeys:** 原有 74/74 浏览器验收（键盘焦点、Space、Esc、拖放合成、二十波解锁测试场景、旧档和坏档恢复）；专项 HUD/摇杆 23/23，873×325 和 390×844 暂停 65×44 CSS px，5 px 死区、越界、第二触点暂停/恢复、旋转取消持触点通过。三个指定尺寸的独立流程 26/26，覆盖选角、移动、暂停恢复、升级、集市买/合/卖/确认、第二波、结算与存档、返回标题。触摸使用 Chromium CDP，键盘使用浏览器按键，手柄为标准映射模拟输入；手柄的密集控件以命名焦点设置后验 A，另测真实方向键导航。流程为隔离测试场景，缩短首波、预置余额/配对装备与败退条件，不是完整二十波自然游玩。 · Actual browser input drives the complete UI route on the three requested sizes, with deterministic wave and equipment fixtures. Gamepad is a virtual standard-mapped pad, not a physical controller; named focus is used for some dense controls.
+- **自动品质 · Quality:** Node 38/38（含 bundle、规则、存档、双语、原生布局和摇杆）。quality 命令 16 项自动通过、0 失败、6 项设备/人工未运行；F1 静置标题 p95 4.2 ms（961 样本），上一轮 4.3 ms；L1 同限速标准 2.0 s / 1.4 MB，E2 拒绝 6 个文件仍可重试。以上不是最大敌群或 GPU 执行时间测量。 · The automatic quality checks pass: idle-title cadence and limited startup retain the previous baseline; no dense-enemy or hardware GPU performance claim.
+- **仓库标准 · Repository checks:** 根目录 npm run check:showcase 通过（24 个案例、72 张 WebP，所有引擎引用有效）；node tools/check-standard.mjs 退出 0，NezhaSea 及两模板达标。工具仍报告其他游戏既有缺项，未修改它们。 · Both repository commands return zero. Existing gaps in unrelated games remain out of scope.
+- **限制 · Limits:** 未验证物理刘海、Fold7 真机、本机硬件 GPU 高密度战斗、Safari、Firefox、微信、物理手柄、读屏软件、真实扬声器或二十波自然通关。 · No physical device/notch, hardware GPU stress, Safari, Firefox, WeChat, physical controller, screen reader, speaker listening or natural full twenty-wave completion in this round.
+
+**复跑 · Reproduction**（在 NezhaSea 目录 / from the game folder）：
+
+```sh
+node --test test/*.test.mjs
+node --test test/bundle.test.mjs
+node test/accept.mjs
+node vendor/egret.mjs verify --screens --out ./qa-screens-direct
+node test/verify-screens.mjs --out ./qa-screens-zh --lang zh
+node test/verify-screens.mjs --out ./qa-screens-en --lang en
+node test/screen-playthrough.mjs
+node test/hud-stick-browser.mjs
+```
+
+工具需要预先安装根目录的 Playwright 与匹配的 Chromium；可用 --playwright <index.mjs> 指定已有浏览器工具。输出目录必须新建；fixture 仅创建独立测试页，不写入正式运行文件。[八屏证据](test/visual-comparison/native-screen-fit/README.md)。 · Install the root Playwright dependency and matching Chromium first; --playwright points to an installed module if necessary. Fixture pages live outside production files. See the linked screenshot evidence.
+
+
 ## 2026-11-27 原生集市与屏幕通知 · Native market and screen notifications
 
 - **版本 · Version:** Egret main `94bd70fb26b1f81794c9c6fbbb258c655fcd19df`。官方副本刷新、正式入口重建，265 项运行文件（含游戏源码、引擎 JS 和入口包）与完成验收的候选逐字节相同；仅 pin 和构建元数据改变。无规则、存档、音频及素材改动。 · Official vendor and entry rebuild; all 265 checked runtime paths match the tested candidate byte for byte.

@@ -1,0 +1,3308 @@
+{
+  "engine": "13d70b73904266c11b23de4c09c239240a7162db",
+  "baselineEngine": "94bd70fb26b1f81794c9c6fbbb258c655fcd19df",
+  "baselineSource": "f838eef48c652e6b9a35a13914c2eb720310e415",
+  "baselineMethod": "Frozen baseline source measured with the identical new official vendor. Older CLI does not support --screens.",
+  "finalBundleSha256": "51cc10bc3a34d81a53d21f8ccd449f528c75f6aa9379dc169b7c06c1136f6368",
+  "counts": {
+    "before": {
+      "screens": 40,
+      "passed": 40,
+      "errors": 0,
+      "warnings": 7,
+      "engineWarnings": 0
+    },
+    "afterZh": {
+      "screens": 40,
+      "passed": 40,
+      "errors": 0,
+      "warnings": 0,
+      "engineWarnings": 0,
+      "missingNativeChecks": 0
+    },
+    "afterEn": {
+      "screens": 40,
+      "passed": 40,
+      "errors": 0,
+      "warnings": 0,
+      "engineWarnings": 0,
+      "missingNativeChecks": 0
+    }
+  },
+  "before": {
+    "title": [
+      {
+        "name": "phone-small",
+        "size": [
+          375,
+          667
+        ],
+        "insets": {
+          "top": 0,
+          "right": 0,
+          "bottom": 0,
+          "left": 0
+        },
+        "pass": true,
+        "shown": 1,
+        "controls": 9,
+        "safe": {
+          "x": 0,
+          "y": 0,
+          "width": 375,
+          "height": 667
+        },
+        "findings": [],
+        "engineWarnings": [],
+        "contactSheet": "baseline-title.jpg"
+      },
+      {
+        "name": "phone-notch",
+        "size": [
+          393,
+          852
+        ],
+        "insets": {
+          "top": 59,
+          "right": 0,
+          "bottom": 34,
+          "left": 0
+        },
+        "pass": true,
+        "shown": 1,
+        "controls": 9,
+        "safe": {
+          "x": 0,
+          "y": 59,
+          "width": 393,
+          "height": 759
+        },
+        "findings": [],
+        "engineWarnings": [],
+        "contactSheet": "baseline-title.jpg"
+      },
+      {
+        "name": "phone-notch-wide",
+        "size": [
+          852,
+          393
+        ],
+        "insets": {
+          "top": 0,
+          "right": 59,
+          "bottom": 21,
+          "left": 59
+        },
+        "pass": true,
+        "shown": 0.72,
+        "controls": 9,
+        "safe": {
+          "x": 59,
+          "y": 0,
+          "width": 551,
+          "height": 372
+        },
+        "findings": [
+          {
+            "check": "fills",
+            "severity": "warning",
+            "shown": 0.72
+          }
+        ],
+        "engineWarnings": [],
+        "contactSheet": "baseline-title.jpg"
+      },
+      {
+        "name": "phone-tall",
+        "size": [
+          360,
+          800
+        ],
+        "insets": {
+          "top": 24,
+          "right": 0,
+          "bottom": 0,
+          "left": 0
+        },
+        "pass": true,
+        "shown": 1,
+        "controls": 9,
+        "safe": {
+          "x": 0,
+          "y": 24,
+          "width": 360,
+          "height": 776
+        },
+        "findings": [],
+        "engineWarnings": [],
+        "contactSheet": "baseline-title.jpg"
+      },
+      {
+        "name": "tablet",
+        "size": [
+          768,
+          1024
+        ],
+        "insets": {
+          "top": 0,
+          "right": 0,
+          "bottom": 0,
+          "left": 0
+        },
+        "pass": true,
+        "shown": 1,
+        "controls": 9,
+        "safe": {
+          "x": 0,
+          "y": 0,
+          "width": 768,
+          "height": 1024
+        },
+        "findings": [],
+        "engineWarnings": [],
+        "contactSheet": "baseline-title.jpg"
+      },
+      {
+        "name": "tablet-wide",
+        "size": [
+          1024,
+          768
+        ],
+        "insets": {
+          "top": 0,
+          "right": 0,
+          "bottom": 0,
+          "left": 0
+        },
+        "pass": true,
+        "shown": 0.6,
+        "controls": 9,
+        "safe": {
+          "x": 0,
+          "y": 0,
+          "width": 610,
+          "height": 768
+        },
+        "findings": [
+          {
+            "check": "fills",
+            "severity": "warning",
+            "shown": 0.6
+          }
+        ],
+        "engineWarnings": [],
+        "contactSheet": "baseline-title.jpg"
+      },
+      {
+        "name": "foldable",
+        "size": [
+          884,
+          1104
+        ],
+        "insets": {
+          "top": 0,
+          "right": 0,
+          "bottom": 0,
+          "left": 0
+        },
+        "pass": true,
+        "shown": 1,
+        "controls": 9,
+        "safe": {
+          "x": 0,
+          "y": 0,
+          "width": 883,
+          "height": 1104
+        },
+        "findings": [],
+        "engineWarnings": [],
+        "contactSheet": "baseline-title.jpg"
+      },
+      {
+        "name": "desktop",
+        "size": [
+          1920,
+          1080
+        ],
+        "insets": {
+          "top": 0,
+          "right": 0,
+          "bottom": 0,
+          "left": 0
+        },
+        "pass": true,
+        "shown": 0.32,
+        "controls": 9,
+        "safe": {
+          "x": 0,
+          "y": 0,
+          "width": 610,
+          "height": 1080
+        },
+        "findings": [
+          {
+            "check": "fills",
+            "severity": "warning",
+            "shown": 0.32
+          }
+        ],
+        "engineWarnings": [],
+        "contactSheet": "baseline-title.jpg"
+      }
+    ],
+    "battle": [
+      {
+        "name": "phone-small",
+        "size": [
+          375,
+          667
+        ],
+        "insets": {
+          "top": 0,
+          "right": 0,
+          "bottom": 0,
+          "left": 0
+        },
+        "pass": true,
+        "shown": 1,
+        "controls": 1,
+        "safe": {
+          "x": 0,
+          "y": 0,
+          "width": 375,
+          "height": 667
+        },
+        "findings": [],
+        "engineWarnings": [],
+        "contactSheet": "baseline-battle.jpg"
+      },
+      {
+        "name": "phone-notch",
+        "size": [
+          393,
+          852
+        ],
+        "insets": {
+          "top": 59,
+          "right": 0,
+          "bottom": 34,
+          "left": 0
+        },
+        "pass": true,
+        "shown": 0.82,
+        "controls": 1,
+        "safe": {
+          "x": 0,
+          "y": 77,
+          "width": 393,
+          "height": 699
+        },
+        "findings": [],
+        "engineWarnings": [],
+        "contactSheet": "baseline-battle.jpg"
+      },
+      {
+        "name": "phone-notch-wide",
+        "size": [
+          852,
+          393
+        ],
+        "insets": {
+          "top": 0,
+          "right": 59,
+          "bottom": 21,
+          "left": 59
+        },
+        "pass": true,
+        "shown": 0.26,
+        "controls": 1,
+        "safe": {
+          "x": 315,
+          "y": 0,
+          "width": 221,
+          "height": 372
+        },
+        "findings": [
+          {
+            "check": "fills",
+            "severity": "warning",
+            "shown": 0.26
+          }
+        ],
+        "engineWarnings": [],
+        "contactSheet": "baseline-battle.jpg"
+      },
+      {
+        "name": "phone-tall",
+        "size": [
+          360,
+          800
+        ],
+        "insets": {
+          "top": 24,
+          "right": 0,
+          "bottom": 0,
+          "left": 0
+        },
+        "pass": true,
+        "shown": 0.8,
+        "controls": 1,
+        "safe": {
+          "x": 0,
+          "y": 80,
+          "width": 360,
+          "height": 640
+        },
+        "findings": [],
+        "engineWarnings": [],
+        "contactSheet": "baseline-battle.jpg"
+      },
+      {
+        "name": "tablet",
+        "size": [
+          768,
+          1024
+        ],
+        "insets": {
+          "top": 0,
+          "right": 0,
+          "bottom": 0,
+          "left": 0
+        },
+        "pass": true,
+        "shown": 0.75,
+        "controls": 1,
+        "safe": {
+          "x": 96,
+          "y": 0,
+          "width": 576,
+          "height": 1024
+        },
+        "findings": [],
+        "engineWarnings": [],
+        "contactSheet": "baseline-battle.jpg"
+      },
+      {
+        "name": "tablet-wide",
+        "size": [
+          1024,
+          768
+        ],
+        "insets": {
+          "top": 0,
+          "right": 0,
+          "bottom": 0,
+          "left": 0
+        },
+        "pass": true,
+        "shown": 0.42,
+        "controls": 1,
+        "safe": {
+          "x": 296,
+          "y": 0,
+          "width": 432,
+          "height": 768
+        },
+        "findings": [
+          {
+            "check": "fills",
+            "severity": "warning",
+            "shown": 0.42
+          }
+        ],
+        "engineWarnings": [],
+        "contactSheet": "baseline-battle.jpg"
+      },
+      {
+        "name": "foldable",
+        "size": [
+          884,
+          1104
+        ],
+        "insets": {
+          "top": 0,
+          "right": 0,
+          "bottom": 0,
+          "left": 0
+        },
+        "pass": true,
+        "shown": 0.7,
+        "controls": 1,
+        "safe": {
+          "x": 132,
+          "y": 0,
+          "width": 621,
+          "height": 1104
+        },
+        "findings": [
+          {
+            "check": "fills",
+            "severity": "warning",
+            "shown": 0.7
+          }
+        ],
+        "engineWarnings": [],
+        "contactSheet": "baseline-battle.jpg"
+      },
+      {
+        "name": "desktop",
+        "size": [
+          1920,
+          1080
+        ],
+        "insets": {
+          "top": 0,
+          "right": 0,
+          "bottom": 0,
+          "left": 0
+        },
+        "pass": true,
+        "shown": 0.32,
+        "controls": 1,
+        "safe": {
+          "x": 657,
+          "y": 0,
+          "width": 608,
+          "height": 1080
+        },
+        "findings": [
+          {
+            "check": "fills",
+            "severity": "warning",
+            "shown": 0.32
+          }
+        ],
+        "engineWarnings": [],
+        "contactSheet": "baseline-battle.jpg"
+      }
+    ],
+    "shop": [
+      {
+        "name": "phone-small",
+        "size": [
+          375,
+          667
+        ],
+        "insets": {
+          "top": 0,
+          "right": 0,
+          "bottom": 0,
+          "left": 0
+        },
+        "pass": true,
+        "shown": 1,
+        "controls": 12,
+        "safe": {
+          "x": 0,
+          "y": 0,
+          "width": 375,
+          "height": 667
+        },
+        "findings": [],
+        "engineWarnings": [],
+        "contactSheet": "baseline-shop.jpg"
+      },
+      {
+        "name": "phone-notch",
+        "size": [
+          393,
+          852
+        ],
+        "insets": {
+          "top": 59,
+          "right": 0,
+          "bottom": 34,
+          "left": 0
+        },
+        "pass": true,
+        "shown": 1,
+        "controls": 12,
+        "safe": {
+          "x": 0,
+          "y": 59,
+          "width": 393,
+          "height": 759
+        },
+        "findings": [],
+        "engineWarnings": [],
+        "contactSheet": "baseline-shop.jpg"
+      },
+      {
+        "name": "phone-notch-wide",
+        "size": [
+          852,
+          393
+        ],
+        "insets": {
+          "top": 0,
+          "right": 59,
+          "bottom": 21,
+          "left": 59
+        },
+        "pass": true,
+        "shown": 1,
+        "controls": 12,
+        "safe": {
+          "x": 59,
+          "y": 0,
+          "width": 734,
+          "height": 372
+        },
+        "findings": [],
+        "engineWarnings": [],
+        "contactSheet": "baseline-shop.jpg"
+      },
+      {
+        "name": "phone-tall",
+        "size": [
+          360,
+          800
+        ],
+        "insets": {
+          "top": 24,
+          "right": 0,
+          "bottom": 0,
+          "left": 0
+        },
+        "pass": true,
+        "shown": 1,
+        "controls": 12,
+        "safe": {
+          "x": 0,
+          "y": 24,
+          "width": 360,
+          "height": 776
+        },
+        "findings": [],
+        "engineWarnings": [],
+        "contactSheet": "baseline-shop.jpg"
+      },
+      {
+        "name": "tablet",
+        "size": [
+          768,
+          1024
+        ],
+        "insets": {
+          "top": 0,
+          "right": 0,
+          "bottom": 0,
+          "left": 0
+        },
+        "pass": true,
+        "shown": 1,
+        "controls": 12,
+        "safe": {
+          "x": 0,
+          "y": 0,
+          "width": 768,
+          "height": 1024
+        },
+        "findings": [],
+        "engineWarnings": [],
+        "contactSheet": "baseline-shop.jpg"
+      },
+      {
+        "name": "tablet-wide",
+        "size": [
+          1024,
+          768
+        ],
+        "insets": {
+          "top": 0,
+          "right": 0,
+          "bottom": 0,
+          "left": 0
+        },
+        "pass": true,
+        "shown": 1,
+        "controls": 17,
+        "safe": {
+          "x": 0,
+          "y": 0,
+          "width": 1024,
+          "height": 768
+        },
+        "findings": [],
+        "engineWarnings": [],
+        "contactSheet": "baseline-shop.jpg"
+      },
+      {
+        "name": "foldable",
+        "size": [
+          884,
+          1104
+        ],
+        "insets": {
+          "top": 0,
+          "right": 0,
+          "bottom": 0,
+          "left": 0
+        },
+        "pass": true,
+        "shown": 1,
+        "controls": 12,
+        "safe": {
+          "x": 0,
+          "y": 0,
+          "width": 883,
+          "height": 1104
+        },
+        "findings": [],
+        "engineWarnings": [],
+        "contactSheet": "baseline-shop.jpg"
+      },
+      {
+        "name": "desktop",
+        "size": [
+          1920,
+          1080
+        ],
+        "insets": {
+          "top": 0,
+          "right": 0,
+          "bottom": 0,
+          "left": 0
+        },
+        "pass": true,
+        "shown": 1,
+        "controls": 17,
+        "safe": {
+          "x": 0,
+          "y": 0,
+          "width": 1919,
+          "height": 1080
+        },
+        "findings": [],
+        "engineWarnings": [],
+        "contactSheet": "baseline-shop.jpg"
+      }
+    ],
+    "confirm": [
+      {
+        "name": "phone-small",
+        "size": [
+          375,
+          667
+        ],
+        "insets": {
+          "top": 0,
+          "right": 0,
+          "bottom": 0,
+          "left": 0
+        },
+        "pass": true,
+        "shown": 1,
+        "controls": 2,
+        "safe": {
+          "x": 0,
+          "y": 0,
+          "width": 375,
+          "height": 667
+        },
+        "findings": [],
+        "engineWarnings": [],
+        "contactSheet": "baseline-confirm.jpg"
+      },
+      {
+        "name": "phone-notch",
+        "size": [
+          393,
+          852
+        ],
+        "insets": {
+          "top": 59,
+          "right": 0,
+          "bottom": 34,
+          "left": 0
+        },
+        "pass": true,
+        "shown": 1,
+        "controls": 2,
+        "safe": {
+          "x": 0,
+          "y": 59,
+          "width": 393,
+          "height": 759
+        },
+        "findings": [],
+        "engineWarnings": [],
+        "contactSheet": "baseline-confirm.jpg"
+      },
+      {
+        "name": "phone-notch-wide",
+        "size": [
+          852,
+          393
+        ],
+        "insets": {
+          "top": 0,
+          "right": 59,
+          "bottom": 21,
+          "left": 59
+        },
+        "pass": true,
+        "shown": 1,
+        "controls": 2,
+        "safe": {
+          "x": 59,
+          "y": 0,
+          "width": 734,
+          "height": 372
+        },
+        "findings": [],
+        "engineWarnings": [],
+        "contactSheet": "baseline-confirm.jpg"
+      },
+      {
+        "name": "phone-tall",
+        "size": [
+          360,
+          800
+        ],
+        "insets": {
+          "top": 24,
+          "right": 0,
+          "bottom": 0,
+          "left": 0
+        },
+        "pass": true,
+        "shown": 1,
+        "controls": 2,
+        "safe": {
+          "x": 0,
+          "y": 24,
+          "width": 360,
+          "height": 776
+        },
+        "findings": [],
+        "engineWarnings": [],
+        "contactSheet": "baseline-confirm.jpg"
+      },
+      {
+        "name": "tablet",
+        "size": [
+          768,
+          1024
+        ],
+        "insets": {
+          "top": 0,
+          "right": 0,
+          "bottom": 0,
+          "left": 0
+        },
+        "pass": true,
+        "shown": 1,
+        "controls": 2,
+        "safe": {
+          "x": 0,
+          "y": 0,
+          "width": 768,
+          "height": 1024
+        },
+        "findings": [],
+        "engineWarnings": [],
+        "contactSheet": "baseline-confirm.jpg"
+      },
+      {
+        "name": "tablet-wide",
+        "size": [
+          1024,
+          768
+        ],
+        "insets": {
+          "top": 0,
+          "right": 0,
+          "bottom": 0,
+          "left": 0
+        },
+        "pass": true,
+        "shown": 1,
+        "controls": 2,
+        "safe": {
+          "x": 0,
+          "y": 0,
+          "width": 1024,
+          "height": 768
+        },
+        "findings": [],
+        "engineWarnings": [],
+        "contactSheet": "baseline-confirm.jpg"
+      },
+      {
+        "name": "foldable",
+        "size": [
+          884,
+          1104
+        ],
+        "insets": {
+          "top": 0,
+          "right": 0,
+          "bottom": 0,
+          "left": 0
+        },
+        "pass": true,
+        "shown": 1,
+        "controls": 2,
+        "safe": {
+          "x": 0,
+          "y": 0,
+          "width": 883,
+          "height": 1104
+        },
+        "findings": [],
+        "engineWarnings": [],
+        "contactSheet": "baseline-confirm.jpg"
+      },
+      {
+        "name": "desktop",
+        "size": [
+          1920,
+          1080
+        ],
+        "insets": {
+          "top": 0,
+          "right": 0,
+          "bottom": 0,
+          "left": 0
+        },
+        "pass": true,
+        "shown": 1,
+        "controls": 2,
+        "safe": {
+          "x": 0,
+          "y": 0,
+          "width": 1919,
+          "height": 1080
+        },
+        "findings": [],
+        "engineWarnings": [],
+        "contactSheet": "baseline-confirm.jpg"
+      }
+    ],
+    "pause": [
+      {
+        "name": "phone-small",
+        "size": [
+          375,
+          667
+        ],
+        "insets": {
+          "top": 0,
+          "right": 0,
+          "bottom": 0,
+          "left": 0
+        },
+        "pass": true,
+        "shown": 1,
+        "controls": 6,
+        "safe": {
+          "x": 0,
+          "y": 0,
+          "width": 375,
+          "height": 667
+        },
+        "findings": [],
+        "engineWarnings": [],
+        "contactSheet": "baseline-pause.jpg"
+      },
+      {
+        "name": "phone-notch",
+        "size": [
+          393,
+          852
+        ],
+        "insets": {
+          "top": 59,
+          "right": 0,
+          "bottom": 34,
+          "left": 0
+        },
+        "pass": true,
+        "shown": 1,
+        "controls": 6,
+        "safe": {
+          "x": 0,
+          "y": 59,
+          "width": 393,
+          "height": 759
+        },
+        "findings": [],
+        "engineWarnings": [],
+        "contactSheet": "baseline-pause.jpg"
+      },
+      {
+        "name": "phone-notch-wide",
+        "size": [
+          852,
+          393
+        ],
+        "insets": {
+          "top": 0,
+          "right": 59,
+          "bottom": 21,
+          "left": 59
+        },
+        "pass": true,
+        "shown": 1,
+        "controls": 6,
+        "safe": {
+          "x": 59,
+          "y": 0,
+          "width": 734,
+          "height": 372
+        },
+        "findings": [],
+        "engineWarnings": [],
+        "contactSheet": "baseline-pause.jpg"
+      },
+      {
+        "name": "phone-tall",
+        "size": [
+          360,
+          800
+        ],
+        "insets": {
+          "top": 24,
+          "right": 0,
+          "bottom": 0,
+          "left": 0
+        },
+        "pass": true,
+        "shown": 1,
+        "controls": 6,
+        "safe": {
+          "x": 0,
+          "y": 24,
+          "width": 360,
+          "height": 776
+        },
+        "findings": [],
+        "engineWarnings": [],
+        "contactSheet": "baseline-pause.jpg"
+      },
+      {
+        "name": "tablet",
+        "size": [
+          768,
+          1024
+        ],
+        "insets": {
+          "top": 0,
+          "right": 0,
+          "bottom": 0,
+          "left": 0
+        },
+        "pass": true,
+        "shown": 1,
+        "controls": 6,
+        "safe": {
+          "x": 0,
+          "y": 0,
+          "width": 768,
+          "height": 1024
+        },
+        "findings": [],
+        "engineWarnings": [],
+        "contactSheet": "baseline-pause.jpg"
+      },
+      {
+        "name": "tablet-wide",
+        "size": [
+          1024,
+          768
+        ],
+        "insets": {
+          "top": 0,
+          "right": 0,
+          "bottom": 0,
+          "left": 0
+        },
+        "pass": true,
+        "shown": 1,
+        "controls": 6,
+        "safe": {
+          "x": 0,
+          "y": 0,
+          "width": 1024,
+          "height": 768
+        },
+        "findings": [],
+        "engineWarnings": [],
+        "contactSheet": "baseline-pause.jpg"
+      },
+      {
+        "name": "foldable",
+        "size": [
+          884,
+          1104
+        ],
+        "insets": {
+          "top": 0,
+          "right": 0,
+          "bottom": 0,
+          "left": 0
+        },
+        "pass": true,
+        "shown": 1,
+        "controls": 6,
+        "safe": {
+          "x": 0,
+          "y": 0,
+          "width": 883,
+          "height": 1104
+        },
+        "findings": [],
+        "engineWarnings": [],
+        "contactSheet": "baseline-pause.jpg"
+      },
+      {
+        "name": "desktop",
+        "size": [
+          1920,
+          1080
+        ],
+        "insets": {
+          "top": 0,
+          "right": 0,
+          "bottom": 0,
+          "left": 0
+        },
+        "pass": true,
+        "shown": 1,
+        "controls": 6,
+        "safe": {
+          "x": 0,
+          "y": 0,
+          "width": 1919,
+          "height": 1080
+        },
+        "findings": [],
+        "engineWarnings": [],
+        "contactSheet": "baseline-pause.jpg"
+      }
+    ]
+  },
+  "afterZh": {
+    "title": [
+      {
+        "name": "phone-small",
+        "size": [
+          375,
+          667
+        ],
+        "insets": {
+          "top": 0,
+          "right": 0,
+          "bottom": 0,
+          "left": 0
+        },
+        "pass": true,
+        "shown": 1,
+        "controls": 9,
+        "safe": {
+          "x": 0,
+          "y": 0,
+          "width": 375,
+          "height": 667
+        },
+        "findings": [],
+        "engineWarnings": [],
+        "contactSheet": "zh-title.jpg"
+      },
+      {
+        "name": "phone-notch",
+        "size": [
+          393,
+          852
+        ],
+        "insets": {
+          "top": 59,
+          "right": 0,
+          "bottom": 34,
+          "left": 0
+        },
+        "pass": true,
+        "shown": 1,
+        "controls": 9,
+        "safe": {
+          "x": 0,
+          "y": 59,
+          "width": 393,
+          "height": 759
+        },
+        "findings": [],
+        "engineWarnings": [],
+        "contactSheet": "zh-title.jpg"
+      },
+      {
+        "name": "phone-notch-wide",
+        "size": [
+          852,
+          393
+        ],
+        "insets": {
+          "top": 0,
+          "right": 59,
+          "bottom": 21,
+          "left": 59
+        },
+        "pass": true,
+        "shown": 1,
+        "controls": 9,
+        "safe": {
+          "x": 59,
+          "y": 0,
+          "width": 734,
+          "height": 372
+        },
+        "findings": [],
+        "engineWarnings": [],
+        "contactSheet": "zh-title.jpg"
+      },
+      {
+        "name": "phone-tall",
+        "size": [
+          360,
+          800
+        ],
+        "insets": {
+          "top": 24,
+          "right": 0,
+          "bottom": 0,
+          "left": 0
+        },
+        "pass": true,
+        "shown": 1,
+        "controls": 9,
+        "safe": {
+          "x": 0,
+          "y": 24,
+          "width": 360,
+          "height": 776
+        },
+        "findings": [],
+        "engineWarnings": [],
+        "contactSheet": "zh-title.jpg"
+      },
+      {
+        "name": "tablet",
+        "size": [
+          768,
+          1024
+        ],
+        "insets": {
+          "top": 0,
+          "right": 0,
+          "bottom": 0,
+          "left": 0
+        },
+        "pass": true,
+        "shown": 1,
+        "controls": 9,
+        "safe": {
+          "x": 0,
+          "y": 0,
+          "width": 768,
+          "height": 1024
+        },
+        "findings": [],
+        "engineWarnings": [],
+        "contactSheet": "zh-title.jpg"
+      },
+      {
+        "name": "tablet-wide",
+        "size": [
+          1024,
+          768
+        ],
+        "insets": {
+          "top": 0,
+          "right": 0,
+          "bottom": 0,
+          "left": 0
+        },
+        "pass": true,
+        "shown": 1,
+        "controls": 9,
+        "safe": {
+          "x": 0,
+          "y": 0,
+          "width": 1024,
+          "height": 768
+        },
+        "findings": [],
+        "engineWarnings": [],
+        "contactSheet": "zh-title.jpg"
+      },
+      {
+        "name": "foldable",
+        "size": [
+          884,
+          1104
+        ],
+        "insets": {
+          "top": 0,
+          "right": 0,
+          "bottom": 0,
+          "left": 0
+        },
+        "pass": true,
+        "shown": 1,
+        "controls": 9,
+        "safe": {
+          "x": 0,
+          "y": 0,
+          "width": 883,
+          "height": 1104
+        },
+        "findings": [],
+        "engineWarnings": [],
+        "contactSheet": "zh-title.jpg"
+      },
+      {
+        "name": "desktop",
+        "size": [
+          1920,
+          1080
+        ],
+        "insets": {
+          "top": 0,
+          "right": 0,
+          "bottom": 0,
+          "left": 0
+        },
+        "pass": true,
+        "shown": 1,
+        "controls": 9,
+        "safe": {
+          "x": 0,
+          "y": 0,
+          "width": 1919,
+          "height": 1080
+        },
+        "findings": [],
+        "engineWarnings": [],
+        "contactSheet": "zh-title.jpg"
+      }
+    ],
+    "battle": [
+      {
+        "name": "phone-small",
+        "size": [
+          375,
+          667
+        ],
+        "insets": {
+          "top": 0,
+          "right": 0,
+          "bottom": 0,
+          "left": 0
+        },
+        "pass": true,
+        "shown": 1,
+        "controls": 1,
+        "safe": {
+          "x": 0,
+          "y": 0,
+          "width": 375,
+          "height": 667
+        },
+        "findings": [],
+        "engineWarnings": [],
+        "contactSheet": "zh-battle.jpg"
+      },
+      {
+        "name": "phone-notch",
+        "size": [
+          393,
+          852
+        ],
+        "insets": {
+          "top": 59,
+          "right": 0,
+          "bottom": 34,
+          "left": 0
+        },
+        "pass": true,
+        "shown": 1,
+        "controls": 1,
+        "safe": {
+          "x": 0,
+          "y": 59,
+          "width": 393,
+          "height": 759
+        },
+        "findings": [],
+        "engineWarnings": [],
+        "contactSheet": "zh-battle.jpg"
+      },
+      {
+        "name": "phone-notch-wide",
+        "size": [
+          852,
+          393
+        ],
+        "insets": {
+          "top": 0,
+          "right": 59,
+          "bottom": 21,
+          "left": 59
+        },
+        "pass": true,
+        "shown": 1,
+        "controls": 1,
+        "safe": {
+          "x": 59,
+          "y": 0,
+          "width": 734,
+          "height": 372
+        },
+        "findings": [],
+        "engineWarnings": [],
+        "contactSheet": "zh-battle.jpg"
+      },
+      {
+        "name": "phone-tall",
+        "size": [
+          360,
+          800
+        ],
+        "insets": {
+          "top": 24,
+          "right": 0,
+          "bottom": 0,
+          "left": 0
+        },
+        "pass": true,
+        "shown": 1,
+        "controls": 1,
+        "safe": {
+          "x": 0,
+          "y": 24,
+          "width": 360,
+          "height": 776
+        },
+        "findings": [],
+        "engineWarnings": [],
+        "contactSheet": "zh-battle.jpg"
+      },
+      {
+        "name": "tablet",
+        "size": [
+          768,
+          1024
+        ],
+        "insets": {
+          "top": 0,
+          "right": 0,
+          "bottom": 0,
+          "left": 0
+        },
+        "pass": true,
+        "shown": 1,
+        "controls": 1,
+        "safe": {
+          "x": 0,
+          "y": 0,
+          "width": 768,
+          "height": 1024
+        },
+        "findings": [],
+        "engineWarnings": [],
+        "contactSheet": "zh-battle.jpg"
+      },
+      {
+        "name": "tablet-wide",
+        "size": [
+          1024,
+          768
+        ],
+        "insets": {
+          "top": 0,
+          "right": 0,
+          "bottom": 0,
+          "left": 0
+        },
+        "pass": true,
+        "shown": 1,
+        "controls": 1,
+        "safe": {
+          "x": 0,
+          "y": 0,
+          "width": 1024,
+          "height": 768
+        },
+        "findings": [],
+        "engineWarnings": [],
+        "contactSheet": "zh-battle.jpg"
+      },
+      {
+        "name": "foldable",
+        "size": [
+          884,
+          1104
+        ],
+        "insets": {
+          "top": 0,
+          "right": 0,
+          "bottom": 0,
+          "left": 0
+        },
+        "pass": true,
+        "shown": 1,
+        "controls": 1,
+        "safe": {
+          "x": 0,
+          "y": 0,
+          "width": 883,
+          "height": 1104
+        },
+        "findings": [],
+        "engineWarnings": [],
+        "contactSheet": "zh-battle.jpg"
+      },
+      {
+        "name": "desktop",
+        "size": [
+          1920,
+          1080
+        ],
+        "insets": {
+          "top": 0,
+          "right": 0,
+          "bottom": 0,
+          "left": 0
+        },
+        "pass": true,
+        "shown": 1,
+        "controls": 1,
+        "safe": {
+          "x": 0,
+          "y": 0,
+          "width": 1919,
+          "height": 1080
+        },
+        "findings": [],
+        "engineWarnings": [],
+        "contactSheet": "zh-battle.jpg"
+      }
+    ],
+    "shop": [
+      {
+        "name": "phone-small",
+        "size": [
+          375,
+          667
+        ],
+        "insets": {
+          "top": 0,
+          "right": 0,
+          "bottom": 0,
+          "left": 0
+        },
+        "pass": true,
+        "shown": 1,
+        "controls": 12,
+        "safe": {
+          "x": 0,
+          "y": 0,
+          "width": 375,
+          "height": 667
+        },
+        "findings": [],
+        "engineWarnings": [],
+        "contactSheet": "zh-shop.jpg"
+      },
+      {
+        "name": "phone-notch",
+        "size": [
+          393,
+          852
+        ],
+        "insets": {
+          "top": 59,
+          "right": 0,
+          "bottom": 34,
+          "left": 0
+        },
+        "pass": true,
+        "shown": 1,
+        "controls": 12,
+        "safe": {
+          "x": 0,
+          "y": 59,
+          "width": 393,
+          "height": 759
+        },
+        "findings": [],
+        "engineWarnings": [],
+        "contactSheet": "zh-shop.jpg"
+      },
+      {
+        "name": "phone-notch-wide",
+        "size": [
+          852,
+          393
+        ],
+        "insets": {
+          "top": 0,
+          "right": 59,
+          "bottom": 21,
+          "left": 59
+        },
+        "pass": true,
+        "shown": 1,
+        "controls": 12,
+        "safe": {
+          "x": 59,
+          "y": 0,
+          "width": 734,
+          "height": 372
+        },
+        "findings": [],
+        "engineWarnings": [],
+        "contactSheet": "zh-shop.jpg"
+      },
+      {
+        "name": "phone-tall",
+        "size": [
+          360,
+          800
+        ],
+        "insets": {
+          "top": 24,
+          "right": 0,
+          "bottom": 0,
+          "left": 0
+        },
+        "pass": true,
+        "shown": 1,
+        "controls": 12,
+        "safe": {
+          "x": 0,
+          "y": 24,
+          "width": 360,
+          "height": 776
+        },
+        "findings": [],
+        "engineWarnings": [],
+        "contactSheet": "zh-shop.jpg"
+      },
+      {
+        "name": "tablet",
+        "size": [
+          768,
+          1024
+        ],
+        "insets": {
+          "top": 0,
+          "right": 0,
+          "bottom": 0,
+          "left": 0
+        },
+        "pass": true,
+        "shown": 1,
+        "controls": 17,
+        "safe": {
+          "x": 0,
+          "y": 0,
+          "width": 768,
+          "height": 1024
+        },
+        "findings": [],
+        "engineWarnings": [],
+        "contactSheet": "zh-shop.jpg"
+      },
+      {
+        "name": "tablet-wide",
+        "size": [
+          1024,
+          768
+        ],
+        "insets": {
+          "top": 0,
+          "right": 0,
+          "bottom": 0,
+          "left": 0
+        },
+        "pass": true,
+        "shown": 1,
+        "controls": 17,
+        "safe": {
+          "x": 0,
+          "y": 0,
+          "width": 1024,
+          "height": 768
+        },
+        "findings": [],
+        "engineWarnings": [],
+        "contactSheet": "zh-shop.jpg"
+      },
+      {
+        "name": "foldable",
+        "size": [
+          884,
+          1104
+        ],
+        "insets": {
+          "top": 0,
+          "right": 0,
+          "bottom": 0,
+          "left": 0
+        },
+        "pass": true,
+        "shown": 1,
+        "controls": 17,
+        "safe": {
+          "x": 0,
+          "y": 0,
+          "width": 883,
+          "height": 1104
+        },
+        "findings": [],
+        "engineWarnings": [],
+        "contactSheet": "zh-shop.jpg"
+      },
+      {
+        "name": "desktop",
+        "size": [
+          1920,
+          1080
+        ],
+        "insets": {
+          "top": 0,
+          "right": 0,
+          "bottom": 0,
+          "left": 0
+        },
+        "pass": true,
+        "shown": 1,
+        "controls": 17,
+        "safe": {
+          "x": 0,
+          "y": 0,
+          "width": 1919,
+          "height": 1080
+        },
+        "findings": [],
+        "engineWarnings": [],
+        "contactSheet": "zh-shop.jpg"
+      }
+    ],
+    "confirm": [
+      {
+        "name": "phone-small",
+        "size": [
+          375,
+          667
+        ],
+        "insets": {
+          "top": 0,
+          "right": 0,
+          "bottom": 0,
+          "left": 0
+        },
+        "pass": true,
+        "shown": 1,
+        "controls": 2,
+        "safe": {
+          "x": 0,
+          "y": 0,
+          "width": 375,
+          "height": 667
+        },
+        "findings": [],
+        "engineWarnings": [],
+        "contactSheet": "zh-confirm.jpg"
+      },
+      {
+        "name": "phone-notch",
+        "size": [
+          393,
+          852
+        ],
+        "insets": {
+          "top": 59,
+          "right": 0,
+          "bottom": 34,
+          "left": 0
+        },
+        "pass": true,
+        "shown": 1,
+        "controls": 2,
+        "safe": {
+          "x": 0,
+          "y": 59,
+          "width": 393,
+          "height": 759
+        },
+        "findings": [],
+        "engineWarnings": [],
+        "contactSheet": "zh-confirm.jpg"
+      },
+      {
+        "name": "phone-notch-wide",
+        "size": [
+          852,
+          393
+        ],
+        "insets": {
+          "top": 0,
+          "right": 59,
+          "bottom": 21,
+          "left": 59
+        },
+        "pass": true,
+        "shown": 1,
+        "controls": 2,
+        "safe": {
+          "x": 59,
+          "y": 0,
+          "width": 734,
+          "height": 372
+        },
+        "findings": [],
+        "engineWarnings": [],
+        "contactSheet": "zh-confirm.jpg"
+      },
+      {
+        "name": "phone-tall",
+        "size": [
+          360,
+          800
+        ],
+        "insets": {
+          "top": 24,
+          "right": 0,
+          "bottom": 0,
+          "left": 0
+        },
+        "pass": true,
+        "shown": 1,
+        "controls": 2,
+        "safe": {
+          "x": 0,
+          "y": 24,
+          "width": 360,
+          "height": 776
+        },
+        "findings": [],
+        "engineWarnings": [],
+        "contactSheet": "zh-confirm.jpg"
+      },
+      {
+        "name": "tablet",
+        "size": [
+          768,
+          1024
+        ],
+        "insets": {
+          "top": 0,
+          "right": 0,
+          "bottom": 0,
+          "left": 0
+        },
+        "pass": true,
+        "shown": 1,
+        "controls": 2,
+        "safe": {
+          "x": 0,
+          "y": 0,
+          "width": 768,
+          "height": 1024
+        },
+        "findings": [],
+        "engineWarnings": [],
+        "contactSheet": "zh-confirm.jpg"
+      },
+      {
+        "name": "tablet-wide",
+        "size": [
+          1024,
+          768
+        ],
+        "insets": {
+          "top": 0,
+          "right": 0,
+          "bottom": 0,
+          "left": 0
+        },
+        "pass": true,
+        "shown": 1,
+        "controls": 2,
+        "safe": {
+          "x": 0,
+          "y": 0,
+          "width": 1024,
+          "height": 768
+        },
+        "findings": [],
+        "engineWarnings": [],
+        "contactSheet": "zh-confirm.jpg"
+      },
+      {
+        "name": "foldable",
+        "size": [
+          884,
+          1104
+        ],
+        "insets": {
+          "top": 0,
+          "right": 0,
+          "bottom": 0,
+          "left": 0
+        },
+        "pass": true,
+        "shown": 1,
+        "controls": 2,
+        "safe": {
+          "x": 0,
+          "y": 0,
+          "width": 883,
+          "height": 1104
+        },
+        "findings": [],
+        "engineWarnings": [],
+        "contactSheet": "zh-confirm.jpg"
+      },
+      {
+        "name": "desktop",
+        "size": [
+          1920,
+          1080
+        ],
+        "insets": {
+          "top": 0,
+          "right": 0,
+          "bottom": 0,
+          "left": 0
+        },
+        "pass": true,
+        "shown": 1,
+        "controls": 2,
+        "safe": {
+          "x": 0,
+          "y": 0,
+          "width": 1919,
+          "height": 1080
+        },
+        "findings": [],
+        "engineWarnings": [],
+        "contactSheet": "zh-confirm.jpg"
+      }
+    ],
+    "pause": [
+      {
+        "name": "phone-small",
+        "size": [
+          375,
+          667
+        ],
+        "insets": {
+          "top": 0,
+          "right": 0,
+          "bottom": 0,
+          "left": 0
+        },
+        "pass": true,
+        "shown": 1,
+        "controls": 6,
+        "safe": {
+          "x": 0,
+          "y": 0,
+          "width": 375,
+          "height": 667
+        },
+        "findings": [],
+        "engineWarnings": [],
+        "contactSheet": "zh-pause.jpg"
+      },
+      {
+        "name": "phone-notch",
+        "size": [
+          393,
+          852
+        ],
+        "insets": {
+          "top": 59,
+          "right": 0,
+          "bottom": 34,
+          "left": 0
+        },
+        "pass": true,
+        "shown": 1,
+        "controls": 6,
+        "safe": {
+          "x": 0,
+          "y": 59,
+          "width": 393,
+          "height": 759
+        },
+        "findings": [],
+        "engineWarnings": [],
+        "contactSheet": "zh-pause.jpg"
+      },
+      {
+        "name": "phone-notch-wide",
+        "size": [
+          852,
+          393
+        ],
+        "insets": {
+          "top": 0,
+          "right": 59,
+          "bottom": 21,
+          "left": 59
+        },
+        "pass": true,
+        "shown": 1,
+        "controls": 6,
+        "safe": {
+          "x": 59,
+          "y": 0,
+          "width": 734,
+          "height": 372
+        },
+        "findings": [],
+        "engineWarnings": [],
+        "contactSheet": "zh-pause.jpg"
+      },
+      {
+        "name": "phone-tall",
+        "size": [
+          360,
+          800
+        ],
+        "insets": {
+          "top": 24,
+          "right": 0,
+          "bottom": 0,
+          "left": 0
+        },
+        "pass": true,
+        "shown": 1,
+        "controls": 6,
+        "safe": {
+          "x": 0,
+          "y": 24,
+          "width": 360,
+          "height": 776
+        },
+        "findings": [],
+        "engineWarnings": [],
+        "contactSheet": "zh-pause.jpg"
+      },
+      {
+        "name": "tablet",
+        "size": [
+          768,
+          1024
+        ],
+        "insets": {
+          "top": 0,
+          "right": 0,
+          "bottom": 0,
+          "left": 0
+        },
+        "pass": true,
+        "shown": 1,
+        "controls": 6,
+        "safe": {
+          "x": 0,
+          "y": 0,
+          "width": 768,
+          "height": 1024
+        },
+        "findings": [],
+        "engineWarnings": [],
+        "contactSheet": "zh-pause.jpg"
+      },
+      {
+        "name": "tablet-wide",
+        "size": [
+          1024,
+          768
+        ],
+        "insets": {
+          "top": 0,
+          "right": 0,
+          "bottom": 0,
+          "left": 0
+        },
+        "pass": true,
+        "shown": 1,
+        "controls": 6,
+        "safe": {
+          "x": 0,
+          "y": 0,
+          "width": 1024,
+          "height": 768
+        },
+        "findings": [],
+        "engineWarnings": [],
+        "contactSheet": "zh-pause.jpg"
+      },
+      {
+        "name": "foldable",
+        "size": [
+          884,
+          1104
+        ],
+        "insets": {
+          "top": 0,
+          "right": 0,
+          "bottom": 0,
+          "left": 0
+        },
+        "pass": true,
+        "shown": 1,
+        "controls": 6,
+        "safe": {
+          "x": 0,
+          "y": 0,
+          "width": 883,
+          "height": 1104
+        },
+        "findings": [],
+        "engineWarnings": [],
+        "contactSheet": "zh-pause.jpg"
+      },
+      {
+        "name": "desktop",
+        "size": [
+          1920,
+          1080
+        ],
+        "insets": {
+          "top": 0,
+          "right": 0,
+          "bottom": 0,
+          "left": 0
+        },
+        "pass": true,
+        "shown": 1,
+        "controls": 6,
+        "safe": {
+          "x": 0,
+          "y": 0,
+          "width": 1919,
+          "height": 1080
+        },
+        "findings": [],
+        "engineWarnings": [],
+        "contactSheet": "zh-pause.jpg"
+      }
+    ]
+  },
+  "afterEn": {
+    "title": [
+      {
+        "name": "phone-small",
+        "size": [
+          375,
+          667
+        ],
+        "insets": {
+          "top": 0,
+          "right": 0,
+          "bottom": 0,
+          "left": 0
+        },
+        "pass": true,
+        "shown": 1,
+        "controls": 9,
+        "safe": {
+          "x": 0,
+          "y": 0,
+          "width": 375,
+          "height": 667
+        },
+        "findings": [],
+        "engineWarnings": [],
+        "contactSheet": "en-title.jpg"
+      },
+      {
+        "name": "phone-notch",
+        "size": [
+          393,
+          852
+        ],
+        "insets": {
+          "top": 59,
+          "right": 0,
+          "bottom": 34,
+          "left": 0
+        },
+        "pass": true,
+        "shown": 1,
+        "controls": 9,
+        "safe": {
+          "x": 0,
+          "y": 59,
+          "width": 393,
+          "height": 759
+        },
+        "findings": [],
+        "engineWarnings": [],
+        "contactSheet": "en-title.jpg"
+      },
+      {
+        "name": "phone-notch-wide",
+        "size": [
+          852,
+          393
+        ],
+        "insets": {
+          "top": 0,
+          "right": 59,
+          "bottom": 21,
+          "left": 59
+        },
+        "pass": true,
+        "shown": 1,
+        "controls": 9,
+        "safe": {
+          "x": 59,
+          "y": 0,
+          "width": 734,
+          "height": 372
+        },
+        "findings": [],
+        "engineWarnings": [],
+        "contactSheet": "en-title.jpg"
+      },
+      {
+        "name": "phone-tall",
+        "size": [
+          360,
+          800
+        ],
+        "insets": {
+          "top": 24,
+          "right": 0,
+          "bottom": 0,
+          "left": 0
+        },
+        "pass": true,
+        "shown": 1,
+        "controls": 9,
+        "safe": {
+          "x": 0,
+          "y": 24,
+          "width": 360,
+          "height": 776
+        },
+        "findings": [],
+        "engineWarnings": [],
+        "contactSheet": "en-title.jpg"
+      },
+      {
+        "name": "tablet",
+        "size": [
+          768,
+          1024
+        ],
+        "insets": {
+          "top": 0,
+          "right": 0,
+          "bottom": 0,
+          "left": 0
+        },
+        "pass": true,
+        "shown": 1,
+        "controls": 9,
+        "safe": {
+          "x": 0,
+          "y": 0,
+          "width": 768,
+          "height": 1024
+        },
+        "findings": [],
+        "engineWarnings": [],
+        "contactSheet": "en-title.jpg"
+      },
+      {
+        "name": "tablet-wide",
+        "size": [
+          1024,
+          768
+        ],
+        "insets": {
+          "top": 0,
+          "right": 0,
+          "bottom": 0,
+          "left": 0
+        },
+        "pass": true,
+        "shown": 1,
+        "controls": 9,
+        "safe": {
+          "x": 0,
+          "y": 0,
+          "width": 1024,
+          "height": 768
+        },
+        "findings": [],
+        "engineWarnings": [],
+        "contactSheet": "en-title.jpg"
+      },
+      {
+        "name": "foldable",
+        "size": [
+          884,
+          1104
+        ],
+        "insets": {
+          "top": 0,
+          "right": 0,
+          "bottom": 0,
+          "left": 0
+        },
+        "pass": true,
+        "shown": 1,
+        "controls": 9,
+        "safe": {
+          "x": 0,
+          "y": 0,
+          "width": 883,
+          "height": 1104
+        },
+        "findings": [],
+        "engineWarnings": [],
+        "contactSheet": "en-title.jpg"
+      },
+      {
+        "name": "desktop",
+        "size": [
+          1920,
+          1080
+        ],
+        "insets": {
+          "top": 0,
+          "right": 0,
+          "bottom": 0,
+          "left": 0
+        },
+        "pass": true,
+        "shown": 1,
+        "controls": 9,
+        "safe": {
+          "x": 0,
+          "y": 0,
+          "width": 1919,
+          "height": 1080
+        },
+        "findings": [],
+        "engineWarnings": [],
+        "contactSheet": "en-title.jpg"
+      }
+    ],
+    "battle": [
+      {
+        "name": "phone-small",
+        "size": [
+          375,
+          667
+        ],
+        "insets": {
+          "top": 0,
+          "right": 0,
+          "bottom": 0,
+          "left": 0
+        },
+        "pass": true,
+        "shown": 1,
+        "controls": 1,
+        "safe": {
+          "x": 0,
+          "y": 0,
+          "width": 375,
+          "height": 667
+        },
+        "findings": [],
+        "engineWarnings": [],
+        "contactSheet": "en-battle.jpg"
+      },
+      {
+        "name": "phone-notch",
+        "size": [
+          393,
+          852
+        ],
+        "insets": {
+          "top": 59,
+          "right": 0,
+          "bottom": 34,
+          "left": 0
+        },
+        "pass": true,
+        "shown": 1,
+        "controls": 1,
+        "safe": {
+          "x": 0,
+          "y": 59,
+          "width": 393,
+          "height": 759
+        },
+        "findings": [],
+        "engineWarnings": [],
+        "contactSheet": "en-battle.jpg"
+      },
+      {
+        "name": "phone-notch-wide",
+        "size": [
+          852,
+          393
+        ],
+        "insets": {
+          "top": 0,
+          "right": 59,
+          "bottom": 21,
+          "left": 59
+        },
+        "pass": true,
+        "shown": 1,
+        "controls": 1,
+        "safe": {
+          "x": 59,
+          "y": 0,
+          "width": 734,
+          "height": 372
+        },
+        "findings": [],
+        "engineWarnings": [],
+        "contactSheet": "en-battle.jpg"
+      },
+      {
+        "name": "phone-tall",
+        "size": [
+          360,
+          800
+        ],
+        "insets": {
+          "top": 24,
+          "right": 0,
+          "bottom": 0,
+          "left": 0
+        },
+        "pass": true,
+        "shown": 1,
+        "controls": 1,
+        "safe": {
+          "x": 0,
+          "y": 24,
+          "width": 360,
+          "height": 776
+        },
+        "findings": [],
+        "engineWarnings": [],
+        "contactSheet": "en-battle.jpg"
+      },
+      {
+        "name": "tablet",
+        "size": [
+          768,
+          1024
+        ],
+        "insets": {
+          "top": 0,
+          "right": 0,
+          "bottom": 0,
+          "left": 0
+        },
+        "pass": true,
+        "shown": 1,
+        "controls": 1,
+        "safe": {
+          "x": 0,
+          "y": 0,
+          "width": 768,
+          "height": 1024
+        },
+        "findings": [],
+        "engineWarnings": [],
+        "contactSheet": "en-battle.jpg"
+      },
+      {
+        "name": "tablet-wide",
+        "size": [
+          1024,
+          768
+        ],
+        "insets": {
+          "top": 0,
+          "right": 0,
+          "bottom": 0,
+          "left": 0
+        },
+        "pass": true,
+        "shown": 1,
+        "controls": 1,
+        "safe": {
+          "x": 0,
+          "y": 0,
+          "width": 1024,
+          "height": 768
+        },
+        "findings": [],
+        "engineWarnings": [],
+        "contactSheet": "en-battle.jpg"
+      },
+      {
+        "name": "foldable",
+        "size": [
+          884,
+          1104
+        ],
+        "insets": {
+          "top": 0,
+          "right": 0,
+          "bottom": 0,
+          "left": 0
+        },
+        "pass": true,
+        "shown": 1,
+        "controls": 1,
+        "safe": {
+          "x": 0,
+          "y": 0,
+          "width": 883,
+          "height": 1104
+        },
+        "findings": [],
+        "engineWarnings": [],
+        "contactSheet": "en-battle.jpg"
+      },
+      {
+        "name": "desktop",
+        "size": [
+          1920,
+          1080
+        ],
+        "insets": {
+          "top": 0,
+          "right": 0,
+          "bottom": 0,
+          "left": 0
+        },
+        "pass": true,
+        "shown": 1,
+        "controls": 1,
+        "safe": {
+          "x": 0,
+          "y": 0,
+          "width": 1919,
+          "height": 1080
+        },
+        "findings": [],
+        "engineWarnings": [],
+        "contactSheet": "en-battle.jpg"
+      }
+    ],
+    "shop": [
+      {
+        "name": "phone-small",
+        "size": [
+          375,
+          667
+        ],
+        "insets": {
+          "top": 0,
+          "right": 0,
+          "bottom": 0,
+          "left": 0
+        },
+        "pass": true,
+        "shown": 1,
+        "controls": 12,
+        "safe": {
+          "x": 0,
+          "y": 0,
+          "width": 375,
+          "height": 667
+        },
+        "findings": [],
+        "engineWarnings": [],
+        "contactSheet": "en-shop.jpg"
+      },
+      {
+        "name": "phone-notch",
+        "size": [
+          393,
+          852
+        ],
+        "insets": {
+          "top": 59,
+          "right": 0,
+          "bottom": 34,
+          "left": 0
+        },
+        "pass": true,
+        "shown": 1,
+        "controls": 12,
+        "safe": {
+          "x": 0,
+          "y": 59,
+          "width": 393,
+          "height": 759
+        },
+        "findings": [],
+        "engineWarnings": [],
+        "contactSheet": "en-shop.jpg"
+      },
+      {
+        "name": "phone-notch-wide",
+        "size": [
+          852,
+          393
+        ],
+        "insets": {
+          "top": 0,
+          "right": 59,
+          "bottom": 21,
+          "left": 59
+        },
+        "pass": true,
+        "shown": 1,
+        "controls": 12,
+        "safe": {
+          "x": 59,
+          "y": 0,
+          "width": 734,
+          "height": 372
+        },
+        "findings": [],
+        "engineWarnings": [],
+        "contactSheet": "en-shop.jpg"
+      },
+      {
+        "name": "phone-tall",
+        "size": [
+          360,
+          800
+        ],
+        "insets": {
+          "top": 24,
+          "right": 0,
+          "bottom": 0,
+          "left": 0
+        },
+        "pass": true,
+        "shown": 1,
+        "controls": 12,
+        "safe": {
+          "x": 0,
+          "y": 24,
+          "width": 360,
+          "height": 776
+        },
+        "findings": [],
+        "engineWarnings": [],
+        "contactSheet": "en-shop.jpg"
+      },
+      {
+        "name": "tablet",
+        "size": [
+          768,
+          1024
+        ],
+        "insets": {
+          "top": 0,
+          "right": 0,
+          "bottom": 0,
+          "left": 0
+        },
+        "pass": true,
+        "shown": 1,
+        "controls": 17,
+        "safe": {
+          "x": 0,
+          "y": 0,
+          "width": 768,
+          "height": 1024
+        },
+        "findings": [],
+        "engineWarnings": [],
+        "contactSheet": "en-shop.jpg"
+      },
+      {
+        "name": "tablet-wide",
+        "size": [
+          1024,
+          768
+        ],
+        "insets": {
+          "top": 0,
+          "right": 0,
+          "bottom": 0,
+          "left": 0
+        },
+        "pass": true,
+        "shown": 1,
+        "controls": 17,
+        "safe": {
+          "x": 0,
+          "y": 0,
+          "width": 1024,
+          "height": 768
+        },
+        "findings": [],
+        "engineWarnings": [],
+        "contactSheet": "en-shop.jpg"
+      },
+      {
+        "name": "foldable",
+        "size": [
+          884,
+          1104
+        ],
+        "insets": {
+          "top": 0,
+          "right": 0,
+          "bottom": 0,
+          "left": 0
+        },
+        "pass": true,
+        "shown": 1,
+        "controls": 17,
+        "safe": {
+          "x": 0,
+          "y": 0,
+          "width": 883,
+          "height": 1104
+        },
+        "findings": [],
+        "engineWarnings": [],
+        "contactSheet": "en-shop.jpg"
+      },
+      {
+        "name": "desktop",
+        "size": [
+          1920,
+          1080
+        ],
+        "insets": {
+          "top": 0,
+          "right": 0,
+          "bottom": 0,
+          "left": 0
+        },
+        "pass": true,
+        "shown": 1,
+        "controls": 17,
+        "safe": {
+          "x": 0,
+          "y": 0,
+          "width": 1919,
+          "height": 1080
+        },
+        "findings": [],
+        "engineWarnings": [],
+        "contactSheet": "en-shop.jpg"
+      }
+    ],
+    "confirm": [
+      {
+        "name": "phone-small",
+        "size": [
+          375,
+          667
+        ],
+        "insets": {
+          "top": 0,
+          "right": 0,
+          "bottom": 0,
+          "left": 0
+        },
+        "pass": true,
+        "shown": 1,
+        "controls": 2,
+        "safe": {
+          "x": 0,
+          "y": 0,
+          "width": 375,
+          "height": 667
+        },
+        "findings": [],
+        "engineWarnings": [],
+        "contactSheet": "en-confirm.jpg"
+      },
+      {
+        "name": "phone-notch",
+        "size": [
+          393,
+          852
+        ],
+        "insets": {
+          "top": 59,
+          "right": 0,
+          "bottom": 34,
+          "left": 0
+        },
+        "pass": true,
+        "shown": 1,
+        "controls": 2,
+        "safe": {
+          "x": 0,
+          "y": 59,
+          "width": 393,
+          "height": 759
+        },
+        "findings": [],
+        "engineWarnings": [],
+        "contactSheet": "en-confirm.jpg"
+      },
+      {
+        "name": "phone-notch-wide",
+        "size": [
+          852,
+          393
+        ],
+        "insets": {
+          "top": 0,
+          "right": 59,
+          "bottom": 21,
+          "left": 59
+        },
+        "pass": true,
+        "shown": 1,
+        "controls": 2,
+        "safe": {
+          "x": 59,
+          "y": 0,
+          "width": 734,
+          "height": 372
+        },
+        "findings": [],
+        "engineWarnings": [],
+        "contactSheet": "en-confirm.jpg"
+      },
+      {
+        "name": "phone-tall",
+        "size": [
+          360,
+          800
+        ],
+        "insets": {
+          "top": 24,
+          "right": 0,
+          "bottom": 0,
+          "left": 0
+        },
+        "pass": true,
+        "shown": 1,
+        "controls": 2,
+        "safe": {
+          "x": 0,
+          "y": 24,
+          "width": 360,
+          "height": 776
+        },
+        "findings": [],
+        "engineWarnings": [],
+        "contactSheet": "en-confirm.jpg"
+      },
+      {
+        "name": "tablet",
+        "size": [
+          768,
+          1024
+        ],
+        "insets": {
+          "top": 0,
+          "right": 0,
+          "bottom": 0,
+          "left": 0
+        },
+        "pass": true,
+        "shown": 1,
+        "controls": 2,
+        "safe": {
+          "x": 0,
+          "y": 0,
+          "width": 768,
+          "height": 1024
+        },
+        "findings": [],
+        "engineWarnings": [],
+        "contactSheet": "en-confirm.jpg"
+      },
+      {
+        "name": "tablet-wide",
+        "size": [
+          1024,
+          768
+        ],
+        "insets": {
+          "top": 0,
+          "right": 0,
+          "bottom": 0,
+          "left": 0
+        },
+        "pass": true,
+        "shown": 1,
+        "controls": 2,
+        "safe": {
+          "x": 0,
+          "y": 0,
+          "width": 1024,
+          "height": 768
+        },
+        "findings": [],
+        "engineWarnings": [],
+        "contactSheet": "en-confirm.jpg"
+      },
+      {
+        "name": "foldable",
+        "size": [
+          884,
+          1104
+        ],
+        "insets": {
+          "top": 0,
+          "right": 0,
+          "bottom": 0,
+          "left": 0
+        },
+        "pass": true,
+        "shown": 1,
+        "controls": 2,
+        "safe": {
+          "x": 0,
+          "y": 0,
+          "width": 883,
+          "height": 1104
+        },
+        "findings": [],
+        "engineWarnings": [],
+        "contactSheet": "en-confirm.jpg"
+      },
+      {
+        "name": "desktop",
+        "size": [
+          1920,
+          1080
+        ],
+        "insets": {
+          "top": 0,
+          "right": 0,
+          "bottom": 0,
+          "left": 0
+        },
+        "pass": true,
+        "shown": 1,
+        "controls": 2,
+        "safe": {
+          "x": 0,
+          "y": 0,
+          "width": 1919,
+          "height": 1080
+        },
+        "findings": [],
+        "engineWarnings": [],
+        "contactSheet": "en-confirm.jpg"
+      }
+    ],
+    "pause": [
+      {
+        "name": "phone-small",
+        "size": [
+          375,
+          667
+        ],
+        "insets": {
+          "top": 0,
+          "right": 0,
+          "bottom": 0,
+          "left": 0
+        },
+        "pass": true,
+        "shown": 1,
+        "controls": 6,
+        "safe": {
+          "x": 0,
+          "y": 0,
+          "width": 375,
+          "height": 667
+        },
+        "findings": [],
+        "engineWarnings": [],
+        "contactSheet": "en-pause.jpg"
+      },
+      {
+        "name": "phone-notch",
+        "size": [
+          393,
+          852
+        ],
+        "insets": {
+          "top": 59,
+          "right": 0,
+          "bottom": 34,
+          "left": 0
+        },
+        "pass": true,
+        "shown": 1,
+        "controls": 6,
+        "safe": {
+          "x": 0,
+          "y": 59,
+          "width": 393,
+          "height": 759
+        },
+        "findings": [],
+        "engineWarnings": [],
+        "contactSheet": "en-pause.jpg"
+      },
+      {
+        "name": "phone-notch-wide",
+        "size": [
+          852,
+          393
+        ],
+        "insets": {
+          "top": 0,
+          "right": 59,
+          "bottom": 21,
+          "left": 59
+        },
+        "pass": true,
+        "shown": 1,
+        "controls": 6,
+        "safe": {
+          "x": 59,
+          "y": 0,
+          "width": 734,
+          "height": 372
+        },
+        "findings": [],
+        "engineWarnings": [],
+        "contactSheet": "en-pause.jpg"
+      },
+      {
+        "name": "phone-tall",
+        "size": [
+          360,
+          800
+        ],
+        "insets": {
+          "top": 24,
+          "right": 0,
+          "bottom": 0,
+          "left": 0
+        },
+        "pass": true,
+        "shown": 1,
+        "controls": 6,
+        "safe": {
+          "x": 0,
+          "y": 24,
+          "width": 360,
+          "height": 776
+        },
+        "findings": [],
+        "engineWarnings": [],
+        "contactSheet": "en-pause.jpg"
+      },
+      {
+        "name": "tablet",
+        "size": [
+          768,
+          1024
+        ],
+        "insets": {
+          "top": 0,
+          "right": 0,
+          "bottom": 0,
+          "left": 0
+        },
+        "pass": true,
+        "shown": 1,
+        "controls": 6,
+        "safe": {
+          "x": 0,
+          "y": 0,
+          "width": 768,
+          "height": 1024
+        },
+        "findings": [],
+        "engineWarnings": [],
+        "contactSheet": "en-pause.jpg"
+      },
+      {
+        "name": "tablet-wide",
+        "size": [
+          1024,
+          768
+        ],
+        "insets": {
+          "top": 0,
+          "right": 0,
+          "bottom": 0,
+          "left": 0
+        },
+        "pass": true,
+        "shown": 1,
+        "controls": 6,
+        "safe": {
+          "x": 0,
+          "y": 0,
+          "width": 1024,
+          "height": 768
+        },
+        "findings": [],
+        "engineWarnings": [],
+        "contactSheet": "en-pause.jpg"
+      },
+      {
+        "name": "foldable",
+        "size": [
+          884,
+          1104
+        ],
+        "insets": {
+          "top": 0,
+          "right": 0,
+          "bottom": 0,
+          "left": 0
+        },
+        "pass": true,
+        "shown": 1,
+        "controls": 6,
+        "safe": {
+          "x": 0,
+          "y": 0,
+          "width": 883,
+          "height": 1104
+        },
+        "findings": [],
+        "engineWarnings": [],
+        "contactSheet": "en-pause.jpg"
+      },
+      {
+        "name": "desktop",
+        "size": [
+          1920,
+          1080
+        ],
+        "insets": {
+          "top": 0,
+          "right": 0,
+          "bottom": 0,
+          "left": 0
+        },
+        "pass": true,
+        "shown": 1,
+        "controls": 6,
+        "safe": {
+          "x": 0,
+          "y": 0,
+          "width": 1919,
+          "height": 1080
+        },
+        "findings": [],
+        "engineWarnings": [],
+        "contactSheet": "en-pause.jpg"
+      }
+    ]
+  },
+  "direct": {
+    "pass": true,
+    "screens": [
+      {
+        "name": "phone-small",
+        "size": [
+          375,
+          667
+        ],
+        "insets": {
+          "top": 0,
+          "right": 0,
+          "bottom": 0,
+          "left": 0
+        },
+        "pass": true,
+        "shown": 1,
+        "controls": 9,
+        "safe": {
+          "x": 0,
+          "y": 0,
+          "width": 375,
+          "height": 667
+        },
+        "findings": [],
+        "engineWarnings": []
+      },
+      {
+        "name": "phone-notch",
+        "size": [
+          393,
+          852
+        ],
+        "insets": {
+          "top": 59,
+          "right": 0,
+          "bottom": 34,
+          "left": 0
+        },
+        "pass": true,
+        "shown": 1,
+        "controls": 9,
+        "safe": {
+          "x": 0,
+          "y": 59,
+          "width": 393,
+          "height": 759
+        },
+        "findings": [],
+        "engineWarnings": []
+      },
+      {
+        "name": "phone-notch-wide",
+        "size": [
+          852,
+          393
+        ],
+        "insets": {
+          "top": 0,
+          "right": 59,
+          "bottom": 21,
+          "left": 59
+        },
+        "pass": true,
+        "shown": 1,
+        "controls": 9,
+        "safe": {
+          "x": 59,
+          "y": 0,
+          "width": 734,
+          "height": 372
+        },
+        "findings": [],
+        "engineWarnings": []
+      },
+      {
+        "name": "phone-tall",
+        "size": [
+          360,
+          800
+        ],
+        "insets": {
+          "top": 24,
+          "right": 0,
+          "bottom": 0,
+          "left": 0
+        },
+        "pass": true,
+        "shown": 1,
+        "controls": 9,
+        "safe": {
+          "x": 0,
+          "y": 24,
+          "width": 360,
+          "height": 776
+        },
+        "findings": [],
+        "engineWarnings": []
+      },
+      {
+        "name": "tablet",
+        "size": [
+          768,
+          1024
+        ],
+        "insets": {
+          "top": 0,
+          "right": 0,
+          "bottom": 0,
+          "left": 0
+        },
+        "pass": true,
+        "shown": 1,
+        "controls": 9,
+        "safe": {
+          "x": 0,
+          "y": 0,
+          "width": 768,
+          "height": 1024
+        },
+        "findings": [],
+        "engineWarnings": []
+      },
+      {
+        "name": "tablet-wide",
+        "size": [
+          1024,
+          768
+        ],
+        "insets": {
+          "top": 0,
+          "right": 0,
+          "bottom": 0,
+          "left": 0
+        },
+        "pass": true,
+        "shown": 1,
+        "controls": 9,
+        "safe": {
+          "x": 0,
+          "y": 0,
+          "width": 1024,
+          "height": 768
+        },
+        "findings": [],
+        "engineWarnings": []
+      },
+      {
+        "name": "foldable",
+        "size": [
+          884,
+          1104
+        ],
+        "insets": {
+          "top": 0,
+          "right": 0,
+          "bottom": 0,
+          "left": 0
+        },
+        "pass": true,
+        "shown": 1,
+        "controls": 9,
+        "safe": {
+          "x": 0,
+          "y": 0,
+          "width": 883,
+          "height": 1104
+        },
+        "findings": [],
+        "engineWarnings": []
+      },
+      {
+        "name": "desktop",
+        "size": [
+          1920,
+          1080
+        ],
+        "insets": {
+          "top": 0,
+          "right": 0,
+          "bottom": 0,
+          "left": 0
+        },
+        "pass": true,
+        "shown": 1,
+        "controls": 9,
+        "safe": {
+          "x": 0,
+          "y": 0,
+          "width": 1919,
+          "height": 1080
+        },
+        "findings": [],
+        "engineWarnings": []
+      }
+    ]
+  },
+  "environment": "Windows, headless Chromium, emulated safe-area insets; not physical hardware"
+}

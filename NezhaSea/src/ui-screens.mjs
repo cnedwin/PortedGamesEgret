@@ -1,7 +1,7 @@
 import { Bitmap } from '@egret/engine';
 import { getLanguage, t } from './i18n.mjs';
 import { DANGER, HEROES, HERO_KINDS, WAVES } from './sim/data.mjs';
-import { GOLD, MUTED, button, label, layoutFor, panel, paper, primary, textWidth, wrap } from './ui-layout.mjs';
+import { GOLD, MUTED, button, label, viewSpace, showView, panel, paper, primary, textWidth, wrap } from './ui-layout.mjs';
 
 const center = (size, color = GOLD) => ({ size, color, bold: true, align: 'center' });
 const totalKeys = ['wavesStat', 'killsStat', 'mergesStat', 'divineStat'];
@@ -53,19 +53,29 @@ export function createScreens(game, app, actions) {
     });
   }
 
-  function title() {
-    const ui = layoutFor(game);
-    const portraitMode = innerWidth < innerHeight;
-    const short = ui.height < 500, narrow = ui.width < 470;
-    const w = Math.min(portraitMode ? 545 : short ? 490 : 545, ui.width - (narrow ? 28 : 48));
-    const side = portraitMode ? (ui.width - w) / 2 : 24;
-    const top = portraitMode ? 14 + Math.min(222, Math.max(90, ui.height * 0.27)) : Math.max(13, (ui.height - (short ? 353 : 535)) / 2);
-    const buttonH = 44, gap = 8;
+  // The engine selects these four descriptions using its own container/orientation
+  // classification. Each preserves the same semantic names and actions.
+  const profiles = {
+    root: { upright: false, compact: true, tablet: false, titleWidth: 520, dialogPadding: 12, settingsCols: 4 },
+    portrait: { upright: true, compact: false, tablet: false, titleWidth: 545, dialogPadding: 16, settingsCols: 2 },
+    tablet: { upright: false, compact: false, tablet: true, titleWidth: 630, dialogPadding: 24, settingsCols: 4 },
+    tabletPortrait: { upright: true, compact: false, tablet: true, titleWidth: 660, dialogPadding: 26, settingsCols: 2 }
+  };
+
+  function variants(make) {
+    const ui = viewSpace(game);
+    return Object.fromEntries(Object.entries(profiles).map(([name, profile]) => [name, make(ui, profile)]));
+  }
+
+  function buildTitle(ui, profile) {
+    const { upright, compact, tablet } = profile;
+    const w = Math.min(profile.titleWidth, ui.width - 28);
+    const buttonH = 46, gap = 8;
     const heroW = (w - gap * 2) / 3;
-    const heroH = short ? (missingArt.size > 0 ? 64 : 74) : Math.min(heroW / 0.87, ui.height * (portraitMode ? 0.2 : 0.26));
-    const titleSize = short ? (getLanguage() === 'zh' ? 50 : 37) :
-      portraitMode ? Math.min(72, Math.max(44, ui.width * 0.119)) : getLanguage() === 'zh' ? 91 : 73;
-    const lineSize = short ? 13 : 16;
+    const heroH = compact ? (missingArt.size > 0 ? 60 : 74) : Math.min(heroW / 0.87, tablet ? 166 : 136);
+    const titleSize = compact ? (getLanguage() === 'zh' ? 46 : 36) :
+      tablet ? (getLanguage() === 'zh' ? 78 : 62) : Math.min(65, Math.max(40, w * 0.12));
+    const lineSize = compact ? 13 : 16;
     let y = 0;
     const children = [], bind = {};
     const add = (part, tap, extra) => {
@@ -88,12 +98,12 @@ export function createScreens(game, app, actions) {
       y += h + 4;
     }
     const startW = Math.min(200, Math.max(120, w - 195));
-    const guideW = narrow ? Math.min(96, (w - startW - 16) * 0.52) : 112;
+    const guideW = Math.min(112, (w - startW - 16) * 0.52);
     const settingsW = Math.min(106, w - startW - guideW - 16);
     add(button('start', 0, y, startW, buttonH, t('start'), { ...primary, size: 20 }), actions.start);
-    add(button('guide', startW + gap, y, guideW, buttonH, t('howTitle'), { size: narrow ? 13 : 15 }), actions.guide);
+    add(button('guide', startW + gap, y, guideW, buttonH, t('howTitle'), { size: Math.min(15, (guideW - 10) / Math.max(1, textWidth(t('howTitle'), 1, true))) }), actions.guide);
     add(button('options', startW + guideW + gap * 2, y, settingsW, buttonH, t('settings')), actions.options);
-    y += buttonH + (short ? 4 : 11);
+    y += buttonH + (compact ? 4 : 11);
     add(label('chooseHero', 0, y, w, 23, t('chooseHero'), 17, { color: GOLD, bold: true }));
     y += 24;
 
@@ -104,19 +114,19 @@ export function createScreens(game, app, actions) {
       const note = !open ? t(HEROES[hero].unlock === 'win' ? 'unlockWin' : 'unlockWave10') :
         record > WAVES ? t('bestWon') : record ? t('bestWave', { n: record }) : t('noBest');
       const x = index * (heroW + gap);
-      const noteText = wrap(note, heroW - 10, short ? 10 : 11);
-      const noteH = noteText.split('\n').length * (short ? 11 : 13);
+      const noteText = wrap(note, heroW - 10, compact ? 10 : 11);
+      const noteH = noteText.split('\n').length * (compact ? 11 : 13);
       const heroNameSize = Math.min(15, (heroW - 10) / Math.max(1, textWidth(t(hero), 1, true)));
       add(button('hero_' + hero, x, y, heroW, heroH, t(hero), {
         color: open && app.hero === hero ? 0xa77849 : 0x193330,
         size: heroNameSize, textColor: 0x193330
       }), () => actions.hero(hero), { disabled: () => !open });
       add(label(undefined, x + 6, y + heroH - noteH - 23, heroW - 12, 17, t(hero), heroNameSize, { bold: true }));
-      add(label('record_' + hero, x + 6, y + heroH - noteH - 5, heroW - 12, noteH, noteText, short ? 10 : 11, { color: MUTED }));
+      add(label('record_' + hero, x + 6, y + heroH - noteH - 5, heroW - 12, noteH, noteText, compact ? 10 : 11, { color: MUTED }));
       if (app.hero === hero) add(panel(undefined, x + 4, y + 4, 18, 3, { color: 0xffdc99, alpha: 1 }));
     }
     y = heroTop + heroH + 3;
-    const noteSize = narrow ? 11 : 12;
+    const noteSize = compact ? 11 : 12;
     const heroNote = wrap(t(app.hero + 'Note'), w, noteSize);
     const heroNoteH = heroNote.split('\n').length * (noteSize + 3);
     add(label('heroNote', 0, y, w, heroNoteH, heroNote, noteSize, { color: MUTED }));
@@ -124,29 +134,36 @@ export function createScreens(game, app, actions) {
     add(label('chooseDanger', 0, y, w, 22, t('chooseDanger'), 17, { color: GOLD, bold: true }));
     y += 23;
     DANGER.forEach((_, danger) => add(button('danger' + danger, danger * (heroW + gap), y, heroW, buttonH, t('danger' + danger), {
-      size: narrow ? 12 : 15, color: app.danger === danger ? 0x45684e : 0x1a3a35
+      size: Math.min(15, (heroW - 8) / Math.max(1, textWidth(t('danger' + danger), 1, true))), color: app.danger === danger ? 0x45684e : 0x1a3a35
     }), () => actions.danger(danger)));
     y += buttonH + 2;
     add(label('dangerNote', 0, y, w, 18, t('danger' + app.danger + 'Note'), 12, { color: MUTED }));
+    y += 18;
     if (missingArt.size > 0) {
-      y += 25;
-      add(button('artworkRetry', 0, y, w, 44, t('artworkRetry'), { size: 14 }), () => location.reload());
-      y += 44;
+      y += 7;
+      add(button('artworkRetry', 0, y, w, 46, t('artworkRetry'), { size: 14 }), () => location.reload());
+      y += 46;
     }
 
-    const y0 = Math.min(top, Math.max(6, ui.height - y - 20));
-    return ui.show(t('title'), panel(undefined, side, y0, w, y + 18, { children }), {
-      bind, gamepad: true,
+    const root = panel(undefined, upright ? 0 : 14, upright ? 12 : 0, w, y, {
+      anchor: upright ? 'bottom' : 'left', children
+    });
+    return {root, bind};
+  }
+
+  function title() {
+    const made = variants(buildTitle);
+    return showView(game, t('title'), Object.fromEntries(Object.entries(made).map(([key, item]) => [key, item.root])), {
+      bind: made.root.bind, gamepad: true,
       built(view) {
         for (const hero of HERO_KINDS) portrait(view, 'hero_' + hero, hero, app.save.data.unlocked.includes(hero), true);
       }
     });
   }
 
-  function dialog(heading, render, { maxWidth = 620, artwork, semanticName = heading, dismiss, resume } = {}) {
-    const ui = layoutFor(game);
+  function buildDialog(heading, render, ui, profile, maxWidth) {
     const w = Math.min(maxWidth, ui.width - 24);
-    const p = ui.height < 500 ? 15 : 24;
+    const p = profile.dialogPadding;
     const body = w - 2 * p;
     const children = [], bind = {};
     let y = p;
@@ -154,7 +171,7 @@ export function createScreens(game, app, actions) {
       children.push(part);
       if (binding) bind[part.name] = binding;
     };
-    const row = (words, { name, size = 15, color = MUTED, bold = false, inset = 0, gap = 8 } = {}) => {
+    const row = (words, { name, size = 15, color = MUTED, bold = false, inset = 0, gap = profile.compact ? 5 : 8 } = {}) => {
       const content = wrap(words, body - inset, size, bold);
       const h = (size + 5) * content.split('\n').length;
       add(label(name, p + inset, y, body - inset, h, content, size, { color, bold }));
@@ -163,44 +180,49 @@ export function createScreens(game, app, actions) {
     const buttons = (list) => {
       const bw = (body - (list.length - 1) * 8) / list.length;
       list.forEach(([name, words, click, extra], index) => add(
-        button(name, p + index * (bw + 8), y, bw, 44, words, {
+        button(name, p + index * (bw + 8), y, bw, 46, words, {
           size: Math.min(15, (bw - 12) / Math.max(1, textWidth(words, 1, true))),
           ...extra
         }), { tap: click }
       ));
-      y += 53;
+      y += profile.compact ? 49 : 54;
     };
-    const context = { add, row, buttons, p, body, ui, get top() { return y; }, advance: (height) => { y += height; } };
-    if (heading) row(heading, { name: 'heading', size: ui.height < 500 ? 27 : 34, color: GOLD, bold: true, gap: 10 });
+    const context = { add, row, buttons, p, body, ui, profile, get top() { return y; }, advance: (height) => { y += height; } };
+    if (heading) row(heading, { name: 'heading', size: profile.compact ? 25 : 34, color: GOLD, bold: true, gap: profile.compact ? 6 : 10 });
     render(context);
     const h = y + p - 8;
-    return ui.show(semanticName, paper(children, (ui.width - w) / 2, Math.max(4, (ui.height - h) / 2), w, h), {
-      modal: true, bind, built: artwork, dismiss, resume
+    return {root: {...paper(children, 0, 0, w, h), anchor: 'center'}, bind};
+  }
+
+  function dialog(heading, render, { maxWidth = 620, artwork, semanticName = heading, dismiss, resume } = {}) {
+    const made = variants((ui, profile) => buildDialog(heading, render, ui, profile, maxWidth + (profile.tablet ? 100 : 0)));
+    return showView(game, semanticName, Object.fromEntries(Object.entries(made).map(([key, item]) => [key, item.root])), {
+      modal: true, bind: made.root.bind, built: artwork, dismiss, resume
     });
   }
 
-  function settings({ add, p, body, ui, top, advance, buttons }) {
+  function settings({ add, p, body, profile, top, advance }) {
     const names = ['sound', 'music', 'reducedMotion'];
-    const columns = body >= 470 ? 4 : 2;
+    const columns = profile.settingsCols;
     const bw = (body - (columns - 1) * 8) / columns;
     const s = app.save.data.settings;
     names.forEach((name, index) => {
       const words = t('switchState', { name: t(name), state: t(s[name] ? 'on' : 'off') });
       const x = p + index % columns * (bw + 8), y = top + Math.floor(index / columns) * 52;
-      add({ type: 'toggle', name, x, y, width: bw, height: 44, text: words, checked: s[name],
+      add({ type: 'toggle', name, x, y, width: bw, height: 46, text: words, checked: s[name],
         size: Math.max(10, Math.min(14, (bw - 59) / Math.max(1, textWidth(words, 1)))) },
       { tap: () => actions.setting(name) });
     });
     const index = names.length;
-    add(button('language', p + index % columns * (bw + 8), top + Math.floor(index / columns) * 52, bw, 44, t('language')), { tap: actions.language });
+    add(button('language', p + index % columns * (bw + 8), top + Math.floor(index / columns) * 52, bw, 46, t('language')), { tap: actions.language });
     advance(Math.ceil(4 / columns) * 52);
   }
 
   function guide() {
-    return dialog(t('howTitle'), ({ row, buttons, ui }) => {
-      const small = ui.height < 500;
+    return dialog(t('howTitle'), ({ row, buttons, profile }) => {
+      const small = profile.compact;
       row(game.device === 'touch' ? t('controlTouch') : t('controlKeys'), { name: 'controls', size: 14, gap: 9 });
-      for (const index of [1, 2, 3]) row(index + '. ' + t('how' + index), { name: 'how' + index, size: small ? 13 : 15 });
+      for (const index of [1, 2, 3]) row(index + '. ' + t('how' + index), { name: 'how' + index, size: small ? 12 : 15 });
       row(t('keysLine'), { name: 'keysLine', size: 12 });
       buttons([['start', t('start'), actions.start, primary], ['close', t('closed'), () => actions.title('guide')]]);
     }, { dismiss: () => actions.title('guide') });
@@ -226,11 +248,11 @@ export function createScreens(game, app, actions) {
     const result = app.result;
     const heading = t(result.won ? 'won' : 'lost');
     return dialog(null, context => {
-      const { add, row, buttons, p, body, top, advance, ui } = context;
-      const w = Math.min(190, body * 0.34);
-      const h = Math.min(164, Math.max(85, ui.height * 0.17));
+      const { add, row, buttons, p, body, top, advance, profile } = context;
+      const w = Math.min(profile.tablet ? 244 : 190, body * (profile.tablet ? 0.37 : 0.34));
+      const h = profile.tablet ? 184 : profile.compact ? 90 : 124;
       add(panel('resultPortrait', p, top, w, h, { color: 0x203d37 }));
-      const titleSize = Math.min(31, ui.width < 480 ? 25 : 31);
+      const titleSize = profile.tablet ? 34 : profile.upright ? 25 : 29;
       const words = wrap(heading, body - w - 14, titleSize, true);
       const titleH = (titleSize + 3) * words.split('\n').length;
       add(label('resultHeading', p + w + 14, top + 8, body - w - 14, titleH, words, titleSize, { color: GOLD, bold: true }));
@@ -238,13 +260,14 @@ export function createScreens(game, app, actions) {
       const noteH = note.split('\n').length * 16;
       add(label('resultNote', p + w + 14, top + 11 + titleH, body - w - 14, noteH, note, 13));
       advance(Math.max(h, titleH + noteH + 11) + 12);
-      const cellW = body / 4, totalsTop = context.top;
+      const columns = profile.upright || profile.tablet ? 2 : 4;
+      const cellW = body / columns, totalsTop = context.top;
       for (const [index, key] of totalKeys.entries()) {
-        add(panel(undefined, p + cellW * index + 2, totalsTop, cellW - 4, 47, { color: 0x0b2221, alpha: 1 }));
-        add(label(key, p + cellW * index, totalsTop, cellW, 19, t(key), 12, { align: 'center', color: MUTED }));
-        add(label(key + 'Value', p + cellW * index, totalsTop + 19, cellW, 25, result[totalFields[index]], 19, center(19)));
+        add(panel(undefined, p + cellW * (index % columns) + 2, totalsTop + 51 * Math.floor(index / columns), cellW - 4, 47, { color: 0x0b2221, alpha: 1 }));
+        add(label(key, p + cellW * (index % columns), totalsTop + 51 * Math.floor(index / columns), cellW, 19, t(key), 12, { align: 'center', color: MUTED }));
+        add(label(key + 'Value', p + cellW * (index % columns), totalsTop + 51 * Math.floor(index / columns) + 19, cellW, 25, result[totalFields[index]], 19, center(19)));
       }
-      advance(57);
+      advance(51 * Math.ceil(totalKeys.length / columns) + 6);
       if (result.best) row(t('newBest'), { name: 'newBest', color: GOLD, size: 13, gap: 3 });
       result.unlocked.forEach((hero) => row(t('unlocked', { name: t(hero) }), { name: 'unlocked_' + hero, size: 13, color: GOLD, gap: 3 }));
       if (!result.kept) row(t('saveRefused'), { name: 'saveNotice', size: 13, color: 0xffbda0 });

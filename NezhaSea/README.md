@@ -62,7 +62,13 @@ Nezha Stirs the Sea is a survival action game built with [Egret Rebuild](https:/
 
 | 引擎入口 / API · Entry / API | 在本游戏中的用途 · Use in this game | 文件 · File |
 |---|---|---|
-| `play`（`@egret/engine/play`） | 一次调用建好竖屏 540×960 的透明画布和帧循环 · the clear 540 × 960 canvas and the loop from one call | `src/main.mjs` |
+| `play`（`@egret/engine/play`） | 一次调用建好 540×960 竖屏设计及全窗透明画布、帧循环 · one call creates the 540 × 960 design, expanded transparent canvas and loop | `src/main.mjs` |
+| `play({ uiScale: { min: 1, max: 1.15 } })` | 手机视图保持 1 CSS px/单位，较大屏幕最多 1.15；尺寸由引擎统一变换，不逐控件换算 · native UI scale preserves phone sizes and caps larger screens at 1.15 CSS px per unit | [src/main.mjs](src/main.mjs), [src/ui-layout.mjs](src/ui-layout.mjs) |
+| `portrait`、`tablet`、`tabletPortrait`、`area: 'safe'` | 引擎判断方向及短边 600 CSS px 平板阈值；手机竖横版、平板双栏集市和结算统计网格 · engine selects orientation/tablet variants; dedicated tablet market and result layouts, safe-area anchors | [src/ui-screens.mjs](src/ui-screens.mjs), [src/ui-market.mjs](src/ui-market.mjs), [src/ui-hud.mjs](src/ui-hud.mjs) |
+| `fit: 'expand'` | 保持完整 540×960 战场，额外区域供 UI 使用；fixedWidth 横屏将裁掉大部分纵向战场（852×393 约 249 单位高），fixedHeight 在超窄竖屏存在横向裁切；fixedNarrow 是 expand 的别名而非改进；fixedWide 会裁切设计。非像素风无需 wholeScale · preserves the full battlefield; fixed-width would crop its height in landscape, fixed-height may crop its width, fixedNarrow is an alias for expand, and fixedWide crops the design. No wholeScale for the non-pixel art | [src/main.mjs](src/main.mjs) |
+| `game.orientation`、`game.screen`、`game.safe` | 输入和布局使用引擎屏幕信息，浮动摇杆仍以战场为起手区 · engine screen information and safe region, retaining full battlefield touch origins | [src/sea-stick.mjs](src/sea-stick.mjs), [src/ui-layout.mjs](src/ui-layout.mjs) |
+| game.pin（评估 / assessed） | 本作所有静态安全区 UI 都是原生视图锚点，无需再 pin；视图外仅有随触点移动的摇杆、拖放影像及战场坐标节点，固定 pin 会改变交互 · no suitable standalone static edge node: all static safe UI is anchored in views; drag ghosts, floating origins and world nodes must remain dynamic | [src/ui-hud.mjs](src/ui-hud.mjs), [src/sea-stick.mjs](src/sea-stick.mjs), [src/ui-market.mjs](src/ui-market.mjs) |
+| `verify --screens` | 八机型、五状态和模拟安全区检查 · eight device profiles, five states and simulated safe areas | [test/verify-screens.mjs](test/verify-screens.mjs), [QUALITY.md](QUALITY.md) |
 | `game.keys.axis()`、`game.touchStick({ floating })` | 键盘、手柄和触屏方向由引擎提供，浮动摇杆保留独立触点归属 · engine keyboard, gamepad and native floating touch input with independent contact ownership | `src/main.mjs`, `src/sea-stick.mjs` |
 | `game.show`、`createUiScreenStack` | 标题、设置、暂停、结算、升级与集市由白鹭绘制和管理；顶栏绑定血量、经验与滚动数字 · Egret views and navigation for all screens, with bound health, experience and rolling counters | `src/main.mjs`, `src/ui-screens.mjs`, `src/ui-hud.mjs`, `src/ui-market.mjs` |
 | `game.hints`、`game.dragAndDrop` | 随输入设备切换的操作提示；允许拖放合成两件匹配法宝 · device-aware hints and drag-and-drop merging | `src/ui-hud.mjs`, `src/ui-market.mjs` |
@@ -79,7 +85,7 @@ Nezha Stirs the Sea is a survival action game built with [Egret Rebuild](https:/
 ## 美术与玩法界面 · Art and interface
 
 - `assets/` 的陈塘关封面、战场、龙宫集市和三张形态立绘为本 Demo 生成的原创插画。三种哪吒战斗形态各有透明待机与滑行动作，合入共享角色图集；配乐、音效及图集源码一并收录。 · The cover, battlefield, market and three form portraits in `assets/` are original illustrations generated for this demo. The three battle forms each have transparent idle and glide poses on the shared actor atlas. Atlas, score and effect sources ship with the game.
-- 手机集市可切换「货架」和「我的法宝」。珍珠余额和「下一波」始终可见，选中法宝后可查看合成结果，也可直接将它拖到可合成的另一件上。 · On mobile, switch between stock and your treasures. The wallet and Next wave stay visible. Select a treasure to preview a merge, or drag it onto a matching treasure.
+- 手机集市可切换「货架」和「我的法宝」；短边达到 600 CSS px 后由白鹭选择平板双栏，同时显示货架和法宝。珍珠余额和「下一波」始终可见，选中法宝后可查看合成结果，也可直接将它拖到可合成的另一件上。 · On phones, switch between stock and your treasures. Egret selects a two-pane layout at the 600 CSS px tablet threshold. The wallet and Next wave stay visible. Select a treasure to preview a merge, or drag it onto a matching treasure.
 
 ## 已验证 · Verified
 
@@ -93,7 +99,7 @@ Nezha Stirs the Sea is a survival action game built with [Egret Rebuild](https:/
 
 ## 已解决 · Solved
 
-窄屏集市的购买、选中和合成分成两个切换页，下一波入口固定在底部。窄横屏波次与倒计时分行，实时缩放仍保持暂停触控区。暂停会清除战场摇杆的触点。 · The compact market separates stock from equipped treasures and pins the next-wave action. Narrow landscape HUDs stack the clock and preserve the Pause target through live resizing. Pause releases the battlefield touch stick.
+窄屏集市的购买、选中和合成分成两个切换页，下一波入口固定在底部。顶栏按安全区锚定，实时缩放仍保持暂停触控区。暂停会清除战场摇杆的触点。 · The compact market separates stock from equipped treasures and pins the next-wave action. The HUD anchors to the safe area and preserves the Pause target through live resizing. Pause releases the battlefield touch stick.
 
 浮动触屏摇杆采用白鹭原生捕获，保留原有 5 CSS 像素死区及响应幅度；触点越出战场仍受控。立绘加载失败时保留可读角色卡，标题提供重试。 · Egret handles floating-touch capture with the original five-CSS-pixel dead zone and movement response. Failed portrait downloads leave readable cards and an explicit title-screen retry.
 
@@ -124,7 +130,7 @@ Nezha Stirs the Sea is a survival action game built with [Egret Rebuild](https:/
 
 ## 引擎副本 · Engine copy
 
-引擎副本取自 [Egret_rebuild](https://github.com/cnedwin/Egret_rebuild) 的 main 提交 `94bd70fb26b1f81794c9c6fbbb258c655fcd19df`，生成记录见 [vendor/SOURCE.md](vendor/SOURCE.md)。集市与强化卡片使用原生标签绑定和多文字叶子按钮面板；仅 CSS 缩放由引擎 arrange 通知。 · Market and upgrade cards use native bound labels and leaf-button panels; the engine's arrange hook also covers CSS-only scaling.
+引擎副本取自 [Egret_rebuild](https://github.com/cnedwin/Egret_rebuild) 的 main 提交 `13d70b73904266c11b23de4c09c239240a7162db`，生成记录见 [vendor/SOURCE.md](vendor/SOURCE.md)。集市与强化卡片使用原生标签绑定和多文字叶子按钮面板；仅 CSS 缩放由引擎 arrange 通知。 · Market and upgrade cards use native bound labels and leaf-button panels; the engine's arrange hook also covers CSS-only scaling.
 
 The runtime is from Egret Rebuild main at the commit above. Run the following command in the engine checkout to reproduce it.
 

@@ -76,21 +76,22 @@ SwiftShader. Sections 4 and 5 use Chrome with hardware acceleration.
 - 建议：继续覆盖反复更新文字的高密度场景。768×1024 的测试录到 3 次缓存拒绝，最终显示恢复；保留预算观察与回收验收。 · Keep coverage for densely changing copy and budget recovery. The 768×1024 fixture reported three refusals, with all text ready at the final check.
 - 状态：`253bd197` 下集市原生文字、购买、刷新及合成的自动流程仍通过。 · The market's native labels, purchase, restocking and merging still pass the browser flow at `253bd197`.
 
-### 9. 确认框按舞台单位固定大小 · Confirmation sizes are fixed in design units — 未解决 / open
-<!-- engine-note: {"id": "NezhaSea#9", "status": "open", "topic": "play-confirm-css-targets", "workaround": ["src/ui-market.mjs"]} -->
+### 9. 确认框按舞台单位固定大小 · Confirmation sizes are fixed in design units — 尺寸已在 #510 解决，文案与主题部分解决 / sizing resolved in #510, copy and theme partly resolved
+<!-- engine-note: {"id": "NezhaSea#9", "status": "partly", "topic": "play-confirm-css-targets", "workaround": ["src/ui-market.mjs"]} -->
 
-- 现象：`game.confirm` 的按钮高 48 舞台单位。在 844×390 中约 19.5 CSS 像素。长标签和确认说明也不能自动换行。 · Native confirmation uses 48 design-unit buttons, about 19.5 CSS pixels at 844×390. Long labels and the question cannot wrap automatically.
-- 绕过办法：[`src/ui-market.mjs`](src/ui-market.mjs) 在原生按钮尺寸和文案能放下时走 `game.confirm`，其余用有明确焦点、可 Esc 取消的白鹭模态。 · Use `game.confirm` when its targets and copy fit, otherwise a measured Egret modal with explicit focus and Escape cancellation.
-- 建议：确认框支持主题、换行和 CSS 像素级最小点击区。 · Accept a theme, wrapping and a minimum target in CSS pixels.
-- 状态：当前原生 `game.confirm` 仍使用固定设计单位，保留适配。 · The current native confirm still uses fixed design units, so the measured modal remains.
+- 现象：旧 game.confirm 的按钮高 48 舞台单位，844×390 横屏约 19.5 CSS px。引擎 [#510](https://github.com/cnedwin/Egret_rebuild/pull/510) 后确认框遵循 uiScale，普通台词无需手动适配。当前 PlayConfirmOptions 仍只提供 yes/no/title、问题与按钮文字仍为单行，没有主题选项。 · Formerly a 48-design-unit button measured 19.5 CSS px in a landscape phone. #510 makes confirm follow uiScale. The current options still do not expose skins or paragraph wrapping.
+- 最小复现：540×960 的 play({ fit: 'expand', uiScale: {min:1,max:1.15} })，在 393×852 用 game.confirm 显示短问句和很长的问句，前者原生按钮进入安全区，长句无自动换行。 · With that Play configuration, show a short and a long question at 393×852; the short confirmation fits the safe area but long copy has no automatic paragraph layout.
+- 绕过办法：[src/ui-market.mjs](src/ui-market.mjs) 的普通出售使用 game.confirm，仅当长问句或按钮超宽时使用同样原生的 game.show 换行模态，保留取消焦点、Esc 和 B；没有手算 CSS 点击区，没有 HTML 对话框。 · Normal sales use game.confirm. Only text that cannot fit its native single lines uses an Egret wrapped view, with cancel focus, Esc and B; no CSS-sized targets or HTML dialog.
+- 建议：确认框提供主题和段落布局选项，按钮较长时可自动适应，避免每款游戏重建确认视图。 · Accept a skin and paragraph/long-label layout in confirm.
+- 状态：点击区缩放问题已在 #510 解决；文案/主题能力仍部分缺失。 · The sizing issue is solved by #510; long copy and theme options remain outstanding.
 
 ### 10. 声明式视图的集市组件 · Market building blocks in declarative views — 部分解决 / partly resolved
 <!-- engine-note: {"id": "NezhaSea#10", "status": "partly", "topic": "play-view-market-building-blocks", "workaround": ["src/ui-market.mjs"]} -->
 
-- 现象：`95897d78` 已支持声明式滚动区、段落和静态图片。市场仍需要应用组织货架、动态法宝格和语义页签。 · At `95897d78`, declarative scroll, paragraphs and static images are available. The market still arranges its stock, dynamic loadout and semantic tabs itself.
-- 绕过办法：[`src/ui-market.mjs`](src/ui-market.mjs) 按安全区生成货架和法宝格位，短屏分页查看属性、宝物和配方，合成、出售与下一波固定可用。画布图标和逐行排版保留原本信息。 · Generate bounded offer and gear positions from the safe area and paginate stats, items and recipes on short screens. Keep the next-wave action available. Canvas icons and measured lines retain the original information.
-- 建议：提供可变行数的数据源、可绑定的图片与具有语义的页签。 · Add data-driven rows, bound images and semantic tabs.
-- 状态：原生标签绑定与叶子按钮面板（引擎 #499）已接管集市语义名称、多行法宝格和强化卡片；不再包裹语义树或逐个添加自绘文字 Sprite。#506 提供键控集合和图片地址绑定。本作固定数量货架及法宝槽保留原有数据绑定，不需要反复增删行。仍需原生选中语义页签及小屏确认布局能力；拖放合成和分页保留各自逻辑。 · Native labels and leaf button panels (#499) now own market accessible names, the multiline relic cells and upgrade cards; the semantic wrapper and custom caption sprites are removed. #506 adds keyed collections and bound image addresses. Fixed-size offer and equipment slots keep ordinary bindings instead of churning rows. Selected tab semantics and responsive confirmation layout remain requests; paging and drag merging retain their game behavior.
+- 现象：原集市根据画布 CSS 大小手动分页。新版引擎扩充了原生视图能力。 · The previous market chose pages from hand-measured CSS dimensions; the new main expands native view facilities.
+- 游戏里：[src/ui-market.mjs](src/ui-market.mjs) 用原生不同布局、原生滚动面板、标签绑定、叶子按钮、多语言文字和引擎拖放，手机货架/法宝分页与平板同时可见的双栏布局共享命名控件和逻辑。下一波固定底部；没有手写 CSS 舞台投影。 · Native variants, scrolling, bound names, leaf buttons and drag-and-drop share the same controls between phone pages and tablet panes. The Next action stays at the bottom.
+- 建议：原生选中语义页签仍能减少应用绑定；带段落和主题的原生确认见第 9 条。 · Selected-tab semantics and a themed, wrapped native confirm would reduce application code further.
+- 状态：原生屏幕适配和视图缩放已接管原来手写部分；货架、法宝合成、统计和配方的选择是游戏自身逻辑，不是引擎绕过。 · Screen variants and independent scaling now replace the manual adaptation; stock, merge, stats and recipe selection remain application logic.
 
 ### 11. 默认纹理加载器支持 WebP · WebP in the default texture loader — 已在 `95897d78` 解决 / resolved in `95897d78`
 <!-- engine-note: {"id": "NezhaSea#11", "status": "resolved", "topic": "play-webp-loader", "workaround": ["src/ui-screens.mjs"]} -->
@@ -127,7 +128,17 @@ SwiftShader. Sections 4 and 5 use Chrome with hardware acceleration.
 ### 15. 嵌入画布仅缩放时未触发 arrange · CSS-only canvas resize does not notify arrange — 已解决 / resolved
 <!-- engine-note: {"id": "NezhaSea#15", "status": "resolved", "topic": "play-css-scale-arrange"} -->
 
-- 现象：将运行中的战斗从 540×960 浏览器视口改成 844×320，画布物理 CSS 尺寸变为 180×320，但舞台仍为 540×960。BrowserGame 的屏幕变化判断只比较设计宽高、安全区及逻辑方向，不比较 scale，造成 Play 的 arrange 未触发。暂停仍是 44 设计单位，相当于 14.7 CSS px。横屏上旧单行 HUD 的倒计时也可能盖住英文波次。 · Resize the active battle from 540×960 to 844×320. The canvas measures 180×320 CSS px while its stage stays 540×960. BrowserGame does not include scale in the screen-change condition, leaving the Pause button at about 14.7 CSS px. A narrow single-row HUD can also obscure English wave digits.
-- 绕过办法：旧版 `src/main.mjs` 额外观察实际画布 CSS 尺寸，触发重排。引擎 #503 已修复 scale 变化通知，删除该 ResizeObserver，仅保留原生 arrange。游戏自身的狭窄布局策略仍将计时置于波次下方，并维持独立 44 CSS px 暂停目标。 · The old game additionally observed physical canvas size. Engine #503 supplies scale-change notification directly, so only the native arrange hook remains. The game's narrow HUD still stacks the timer and keeps a separate 44-CSS-pixel Pause target.
-- 建议：当 `screen.scale` 或实际可见 CSS 尺寸发生变化但设计范围保持不变时，也发出屏幕变化事件；避免重复回调。用固定比例嵌入画布跑动态缩小、放大、旋转测试，确保 44 CSS px 控件尺寸、输入比例与焦点一致。 · Include scale or visible CSS size changes in screen notifications even when stage bounds stay fixed. Verify embed resizing, rotation, 44-CSS-pixel targets, input scaling and focus without redundant events.
-- 状态：旧版绕过的历史 Fold7 战斗转屏中暂停为 65×44、52×44、65×44 CSS px。新主干删除观察器后 Chromium 实时缩放回归再次通过，完整两位数波次及独立 44 CSS px Pause 保留；Fold7 新版集市两种实机方向及下一波入口通过。 · The earlier workaround measured a live Fold7 Pause target of 65×44, 52×44, and 65×44 CSS px. With the observer removed, the new main passed the Chromium live-resize regression, including two-digit waves and independent 44 CSS px Pause; actual Fold7 market orientation and next-wave controls also pass.
+- 现象：从 540×960 改为 844×320 的旧嵌入画布仍为 540×960 舞台，历史版本仅 CSS scale 改变不发屏幕变化，导致暂停按钮约 14.7 CSS px，英文波次与计时重叠。 · Earlier CSS-only changes did not trigger arrange, leaving a 14.7 CSS-px Pause control and overlapping clock text.
+- 游戏里：#503 已解决 scale 通知；本轮使用 #510 的 uiScale、安全区和原生视图布局，布局随引擎尺寸事件刷新，不再递归换算部件。全窗 expand 仍保留完整 540×960 设计。 · #503 fixed the notification. Native uiScale and safe-area views now handle control sizes, while the full-window expand mode retains the complete battlefield.
+- 最小复现/建议：实时从竖屏切到 844×320 横屏、再回竖屏，确认屏幕变化触发、独立 Pause 点击区≥44 CSS px，按住触点旋转后取消；保留此回归。 · Resize the running battle from portrait to 844×320, back to portrait, check the independent 44-CSS-px Pause control and cancellation of a held touch on resize.
+- 状态：#503/#510 已解决。Chromium 真实输入与模拟屏幕专项见 [QUALITY.md](QUALITY.md)，物理设备结论不从模拟外推。 · Resolved by #503/#510; see the current browser regressions in QUALITY.
+
+
+### 16. 多屏检查需要运行中界面入口 · Screen verification needs state entry — 已写入文档 / documented
+<!-- engine-note: {"id": "NezhaSea#16", "status": "documented", "topic": "verify-screens-state-entry", "workaround": ["test/verify-screens.mjs"]} -->
+
+- 现象：verify --screens 会打开指定页面并检查可见控件；同一个单页游戏进入战斗、集市、确认框和暂停后需要分别检查，但 CLI 没有预置操作/等待指定界面就绪的参数。 · The checker opens a page and inspects visible controls, but a single-page game needs distinct battle, market, confirmation and pause checks. There is no CLI action/readiness hook for those states.
+- 最小复现：在本目录按 README 生成引擎副本后执行 node vendor/egret.mjs verify --screens，检查的是默认加载入口；非默认界面需要另建入口页面。 · Run the screen verifier against the default game entry; a non-default state needs its own entry page.
+- 绕过办法：test/verify-screens.mjs 生成独立、可清理的测试入口并用现有语义测试操作定位状态，然后调用原版引擎检查器。不修改正式 HTML、规则或 vendor。 · Disposable fixture entries set up the desired state using existing test actions, then run the official checker without modifying production or vendor.
+- 建议：可选的场景就绪回调或操作脚本参数，复用同一 URL 和既有验收脚本，并记录实际检查的状态。 · Accept an optional readiness/action script for the same URL and report the captured state.
+- 状态：记录为工具增强建议，现有检查器可通过独立测试页稳定完成。 · Documented tooling improvement; isolated entry pages work.

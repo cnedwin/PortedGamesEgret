@@ -1,4 +1,4 @@
-// The battle stays 540 × 960. Menus are measured in CSS pixels and projected into Egret's expanded stage.
+// The battle stays 540 × 960. The engine scales views independently of the expanded stage.
 export const GOLD = 0xf5d695;
 export const PAPER = 0xfff2d6;
 export const MUTED = 0xc6d8c9;
@@ -34,25 +34,15 @@ export function wrap(words, width, size, bold = false) {
   return rows.join('\n');
 }
 
-export function layoutFor(game) {
-  const safe = game.safe;
-  const u = game.screen.width / Math.max(1, game.canvas.getBoundingClientRect().width);
-  const width = safe.width / u, height = safe.height / u;
-  const units = (value) => typeof value === 'number' ? value * u : value;
-  function map(part) {
-    const made = { ...part };
-    for (const key of ['x', 'y', 'width', 'height', 'size', 'padding', 'gap']) {
-      if (part[key] !== undefined) made[key] = units(part[key]);
-    }
-    if (part.children) made.children = part.children.map(map);
-    return made;
-  }
-  function show(label, root, { modal = false, skin = SKIN, ...options } = {}) {
-    return game.show({ label, root: map(root), modal, area: 'safe', skin: {
-      ...skin, radius: units(skin.radius ?? SKIN.radius)
-    } }, options);
-  }
-  return { u, width, height, safe, show };
+/** Available space in the engine's native view units; no per-part CSS projection. */
+export function viewSpace(game) {
+  const safe = game.safe, factor = game.uiScale;
+  return { width: safe.width / factor, height: safe.height / factor, safe, factor };
+}
+
+/** Keep all four native descriptions in the same view so orientation switches remain engine-owned. */
+export function showView(game, label, variants, { modal = false, skin = SKIN, ...options } = {}) {
+  return game.show({ label, ...variants, modal, area: 'safe', skin }, options);
 }
 
 export const panel = (name, x, y, width, height, extras) => ({ type: 'panel', name, x, y, width, height, ...extras });
