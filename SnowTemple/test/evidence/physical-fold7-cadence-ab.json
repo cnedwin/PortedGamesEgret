@@ -1,0 +1,636 @@
+{
+  "engine": "e15aabcf742ec7c82ba4a8e8c2de663137c18f71",
+  "quality": {
+    "scene": "mid",
+    "models": "low",
+    "seed": 7
+  },
+  "method": "Actual Galaxy Z Fold7 outer display, local version served via ADB reverse loopback, fresh disposable Chrome contexts, cache disabled, title idle 8s then tap ordinary yard mode and wait until first-wave game time 3s plus 9s naturally elapsed. No rules or saves written, no screen rotations, semantic/GL/audio hooks disabled, same minimal requestAnimationFrame and view.update interval/duration timestamps both versions, screenshots only after each measured interval. Temperature is battery sensor C, not GPU temperature.",
+  "old": {
+    "passed": true,
+    "device": {
+      "model": "SM-F966U1",
+      "android": "17",
+      "browser": "Chrome/157.0.8103.78",
+      "input": "CDP touch injection on physical Android",
+      "power": "USB connected"
+    },
+    "temperatureC": {
+      "before": 32.1,
+      "after": 32.1
+    },
+    "identity": {
+      "index.html": "70302713b4194af11dc9b49d57e1e80856175688da79b4e6d6c211bd81c21608",
+      "src/main.mjs": "4d767ed5d9838f4aafb84df251d4b76018f7891f2142c5b76d654e385fb96e04",
+      "src/hud.mjs": "4ae357978badd55c254c35f277d2f3df7092be4f0c28bcac7ac768054a66b91a",
+      "vendor/SOURCE.md": "a407080b961a44ed9cc7ffc86ee54b1da8169ea5219ce40b06bb14da7aefee4a"
+    },
+    "restoration": {
+      "rotation": true,
+      "stayOn": true,
+      "priorComponentRestored": true,
+      "priorIdsPreserved": true,
+      "ownedAbsent": true,
+      "leaseReleased": true,
+      "ephemeralContextDisposed": true,
+      "forwardRemoved": true,
+      "reverseRemoved": true
+    },
+    "errors": [],
+    "failed": [],
+    "title": {
+      "label": "stable-title",
+      "start": {
+        "stage": "road",
+        "time": 0,
+        "hp": 120,
+        "wave": 0,
+        "hero": [
+          -0.2,
+          24.2
+        ],
+        "foes": [
+          [
+            "blade",
+            "wait"
+          ],
+          [
+            "blade",
+            "wait"
+          ],
+          [
+            "bow",
+            "wait"
+          ],
+          [
+            "lu",
+            "wait"
+          ]
+        ],
+        "viewport": [
+          873,
+          325,
+          2.625
+        ],
+        "drawBuffer": [
+          1091,
+          406
+        ],
+        "statusFrames": 176,
+        "renderer": "ANGLE (Qualcomm, Adreno (TM) 830, OpenGL ES 3.2)",
+        "modelStage": {
+          "level": "low",
+          "phase": "ready",
+          "loaded": [
+            "hero",
+            "blade",
+            "shield",
+            "bow",
+            "lu"
+          ],
+          "failures": {}
+        },
+        "worldDraws": 75
+      },
+      "end": {
+        "stage": "road",
+        "time": 0,
+        "hp": 120,
+        "wave": 0,
+        "hero": [
+          -0.2,
+          24.2
+        ],
+        "foes": [
+          [
+            "blade",
+            "wait"
+          ],
+          [
+            "blade",
+            "wait"
+          ],
+          [
+            "bow",
+            "wait"
+          ],
+          [
+            "lu",
+            "wait"
+          ]
+        ],
+        "viewport": [
+          873,
+          325,
+          2.625
+        ],
+        "drawBuffer": [
+          1091,
+          406
+        ],
+        "statusFrames": 661,
+        "renderer": "ANGLE (Qualcomm, Adreno (TM) 830, OpenGL ES 3.2)",
+        "modelStage": {
+          "level": "low",
+          "phase": "ready",
+          "loaded": [
+            "hero",
+            "blade",
+            "shield",
+            "bow",
+            "lu"
+          ],
+          "failures": {}
+        },
+        "worldDraws": 75
+      },
+      "wallMs": 8011.4000000059605,
+      "raf": {
+        "samples": 483,
+        "p50": 16.59999999999991,
+        "p95": 16.699999999999818,
+        "max": 16.700000000000728,
+        "over33": 0,
+        "over50": 0
+      },
+      "viewInterval": {
+        "samples": 483,
+        "p50": 16.599999994039536,
+        "p95": 17.19999998807907,
+        "max": 18.599999994039536,
+        "over33": 0,
+        "over50": 0
+      },
+      "viewWork": {
+        "samples": 483,
+        "p50": 1.4000000059604645,
+        "p95": 1.7000000178813934,
+        "max": 2.100000023841858,
+        "over33": 0,
+        "over50": 0
+      }
+    },
+    "yard": {
+      "label": "yard-idle-first-wave",
+      "start": {
+        "stage": "yard",
+        "time": 3.1166666666666605,
+        "hp": 120,
+        "wave": 1,
+        "hero": [
+          0,
+          11
+        ],
+        "foes": [
+          [
+            "lu",
+            "wait"
+          ],
+          [
+            "bow",
+            "roam"
+          ],
+          [
+            "blade",
+            "roam"
+          ],
+          [
+            "blade",
+            "roam"
+          ]
+        ],
+        "viewport": [
+          873,
+          325,
+          2.625
+        ],
+        "drawBuffer": [
+          1091,
+          406
+        ],
+        "statusFrames": 962,
+        "renderer": "ANGLE (Qualcomm, Adreno (TM) 830, OpenGL ES 3.2)",
+        "modelStage": {
+          "level": "low",
+          "phase": "ready",
+          "loaded": [
+            "hero",
+            "blade",
+            "shield",
+            "bow",
+            "lu"
+          ],
+          "failures": {}
+        },
+        "worldDraws": 51
+      },
+      "end": {
+        "stage": "yard",
+        "time": 12.133333333333516,
+        "hp": 45,
+        "wave": 1,
+        "hero": [
+          -0.3695049370815183,
+          10.876787612907279
+        ],
+        "foes": [
+          [
+            "lu",
+            "wait"
+          ],
+          [
+            "bow",
+            "recover"
+          ],
+          [
+            "blade",
+            "roam"
+          ],
+          [
+            "blade",
+            "roam"
+          ]
+        ],
+        "viewport": [
+          873,
+          325,
+          2.625
+        ],
+        "drawBuffer": [
+          1091,
+          406
+        ],
+        "statusFrames": 1505,
+        "renderer": "ANGLE (Qualcomm, Adreno (TM) 830, OpenGL ES 3.2)",
+        "modelStage": {
+          "level": "low",
+          "phase": "ready",
+          "loaded": [
+            "hero",
+            "blade",
+            "shield",
+            "bow",
+            "lu"
+          ],
+          "failures": {}
+        },
+        "worldDraws": 47
+      },
+      "wallMs": 8968.299999982119,
+      "raf": {
+        "samples": 540,
+        "p50": 16.599999999998545,
+        "p95": 16.700000000000728,
+        "max": 16.700000000000728,
+        "over33": 0,
+        "over50": 0
+      },
+      "viewInterval": {
+        "samples": 540,
+        "p50": 16.600000023841858,
+        "p95": 17.899999976158142,
+        "max": 21,
+        "over33": 0,
+        "over50": 0
+      },
+      "viewWork": {
+        "samples": 540,
+        "p50": 2,
+        "p95": 2.9000000059604645,
+        "max": 6.100000023841858,
+        "over33": 0,
+        "over50": 0
+      }
+    }
+  },
+  "native": {
+    "passed": true,
+    "device": {
+      "model": "SM-F966U1",
+      "android": "17",
+      "browser": "Chrome/157.0.8103.78",
+      "input": "CDP touch injection on physical Android",
+      "power": "USB connected"
+    },
+    "temperatureC": {
+      "before": 32.1,
+      "after": 32.3
+    },
+    "identity": {
+      "index.html": "a26c7913c965f2b49cc22ca59ea3bfa7d79b12960f2f3be82573da61866f8d71",
+      "src/main.mjs": "7bd31be5bbc699c18d63c1534c68970c76b649b52fed8773aadebc7ab02f251b",
+      "src/hud.mjs": "3c336fa599a31e070f68027db83886b8e94528f0caf5439bb7f6627003aa3b75",
+      "vendor/SOURCE.md": "a407080b961a44ed9cc7ffc86ee54b1da8169ea5219ce40b06bb14da7aefee4a"
+    },
+    "restoration": {
+      "rotation": true,
+      "stayOn": true,
+      "priorComponentRestored": true,
+      "priorIdsPreserved": true,
+      "ownedAbsent": true,
+      "leaseReleased": true,
+      "ephemeralContextDisposed": true,
+      "forwardRemoved": true,
+      "reverseRemoved": true
+    },
+    "errors": [],
+    "failed": [],
+    "title": {
+      "label": "stable-title",
+      "start": {
+        "mode": "title",
+        "stage": "road",
+        "time": 0,
+        "hp": 120,
+        "wave": 0,
+        "hero": [
+          -0.2,
+          24.2
+        ],
+        "foes": [
+          [
+            "blade",
+            "wait"
+          ],
+          [
+            "blade",
+            "wait"
+          ],
+          [
+            "bow",
+            "wait"
+          ],
+          [
+            "lu",
+            "wait"
+          ]
+        ],
+        "viewport": [
+          873,
+          325,
+          2.625
+        ],
+        "drawBuffer": [
+          1091,
+          406
+        ],
+        "statusFrames": 166,
+        "renderer": "ANGLE (Qualcomm, Adreno (TM) 830, OpenGL ES 3.2)",
+        "modelStage": {
+          "level": "low",
+          "phase": "ready",
+          "loaded": [
+            "hero",
+            "blade",
+            "shield",
+            "bow",
+            "lu"
+          ],
+          "failures": {}
+        },
+        "overlay": {
+          "state": "running",
+          "steps": 181,
+          "frames": 58,
+          "skipped": 0,
+          "seconds": 3.2563700000000044
+        },
+        "worldDraws": 75
+      },
+      "end": {
+        "mode": "title",
+        "stage": "road",
+        "time": 0,
+        "hp": 120,
+        "wave": 0,
+        "hero": [
+          -0.2,
+          24.2
+        ],
+        "foes": [
+          [
+            "blade",
+            "wait"
+          ],
+          [
+            "blade",
+            "wait"
+          ],
+          [
+            "bow",
+            "wait"
+          ],
+          [
+            "lu",
+            "wait"
+          ]
+        ],
+        "viewport": [
+          873,
+          325,
+          2.625
+        ],
+        "drawBuffer": [
+          1091,
+          406
+        ],
+        "statusFrames": 651,
+        "renderer": "ANGLE (Qualcomm, Adreno (TM) 830, OpenGL ES 3.2)",
+        "modelStage": {
+          "level": "low",
+          "phase": "ready",
+          "loaded": [
+            "hero",
+            "blade",
+            "shield",
+            "bow",
+            "lu"
+          ],
+          "failures": {}
+        },
+        "overlay": {
+          "state": "running",
+          "steps": 666,
+          "frames": 58,
+          "skipped": 0,
+          "seconds": 11.295870000000036
+        },
+        "worldDraws": 75
+      },
+      "wallMs": 8015,
+      "raf": {
+        "samples": 483,
+        "p50": 16.59999999999991,
+        "p95": 16.69999999999891,
+        "max": 16.700000000000728,
+        "over33": 0,
+        "over50": 0
+      },
+      "viewInterval": {
+        "samples": 483,
+        "p50": 16.599999994039536,
+        "p95": 17.19999998807907,
+        "max": 25.299999982118607,
+        "over33": 0,
+        "over50": 0
+      },
+      "viewWork": {
+        "samples": 483,
+        "p50": 1.5999999940395355,
+        "p95": 1.7000000178813934,
+        "max": 2,
+        "over33": 0,
+        "over50": 0
+      }
+    },
+    "yard": {
+      "label": "yard-idle-first-wave",
+      "start": {
+        "mode": "play",
+        "stage": "yard",
+        "time": 3.21666666666666,
+        "hp": 120,
+        "wave": 1,
+        "hero": [
+          0,
+          11
+        ],
+        "foes": [
+          [
+            "lu",
+            "wait"
+          ],
+          [
+            "bow",
+            "windup"
+          ],
+          [
+            "blade",
+            "roam"
+          ],
+          [
+            "blade",
+            "roam"
+          ]
+        ],
+        "viewport": [
+          873,
+          325,
+          2.625
+        ],
+        "drawBuffer": [
+          1091,
+          406
+        ],
+        "statusFrames": 949,
+        "renderer": "ANGLE (Qualcomm, Adreno (TM) 830, OpenGL ES 3.2)",
+        "modelStage": {
+          "level": "low",
+          "phase": "ready",
+          "loaded": [
+            "hero",
+            "blade",
+            "shield",
+            "bow",
+            "lu"
+          ],
+          "failures": {}
+        },
+        "overlay": {
+          "state": "running",
+          "steps": 964,
+          "frames": 91,
+          "skipped": 2,
+          "seconds": 16.301970000000082
+        },
+        "worldDraws": 52
+      },
+      "end": {
+        "mode": "play",
+        "stage": "yard",
+        "time": 12.23333333333352,
+        "hp": 45,
+        "wave": 1,
+        "hero": [
+          -0.3695049370815183,
+          10.876787612907279
+        ],
+        "foes": [
+          [
+            "lu",
+            "wait"
+          ],
+          [
+            "bow",
+            "recover"
+          ],
+          [
+            "blade",
+            "roam"
+          ],
+          [
+            "blade",
+            "roam"
+          ]
+        ],
+        "viewport": [
+          873,
+          325,
+          2.625
+        ],
+        "drawBuffer": [
+          1091,
+          406
+        ],
+        "statusFrames": 1493,
+        "renderer": "ANGLE (Qualcomm, Adreno (TM) 830, OpenGL ES 3.2)",
+        "modelStage": {
+          "level": "low",
+          "phase": "ready",
+          "loaded": [
+            "hero",
+            "blade",
+            "shield",
+            "bow",
+            "lu"
+          ],
+          "failures": {}
+        },
+        "overlay": {
+          "state": "running",
+          "steps": 1508,
+          "frames": 431,
+          "skipped": 2,
+          "seconds": 25.319170000000042
+        },
+        "worldDraws": 51
+      },
+      "wallMs": 8984.700000017881,
+      "raf": {
+        "samples": 541,
+        "p50": 16.599999999998545,
+        "p95": 16.700000000000728,
+        "max": 16.700000000000728,
+        "over33": 0,
+        "over50": 0
+      },
+      "viewInterval": {
+        "samples": 541,
+        "p50": 16.69999998807907,
+        "p95": 20,
+        "max": 33.400000005960464,
+        "over33": 1,
+        "over50": 0
+      },
+      "viewWork": {
+        "samples": 541,
+        "p50": 1.5999999940395355,
+        "p95": 2.4000000059604645,
+        "max": 4.300000011920929,
+        "over33": 0,
+        "over50": 0
+      }
+    }
+  },
+  "limitations": "A/B order not randomized; one pair, 0.1s offset in actual game time/actor state, title and yard only. Not a fixed-camera boss load comparison or complete matched chapter. Native workload uses 340/544 overlay submissions/steps across natural first wave vs none on static title. Raw browser rAF and view-update callback intervals are not GPU execution/display latency. Separate full-chapter test observed view-update p95 higher and had additional instrumentation."
+}

@@ -1,0 +1,556 @@
+{
+  "engine": "e15aabcf742ec7c82ba4a8e8c2de663137c18f71",
+  "test": "official verify --screens, real desktop GPU, emulated size/insets; not physical device",
+  "passed": true,
+  "profiles": [
+    {
+      "profile": "phone-small",
+      "size": [
+        375,
+        667
+      ],
+      "insets": {
+        "top": 0,
+        "right": 0,
+        "bottom": 0,
+        "left": 0
+      },
+      "adapter": "ANGLE (NVIDIA, NVIDIA GeForce RTX 5090 Laptop GPU (0x00002C58) Direct3D11 vs_5_0 ps_5_0, D3D11)",
+      "states": [
+        {
+          "state": "title",
+          "pass": true,
+          "nativeControls": 4,
+          "errors": 0,
+          "warnings": 0,
+          "semanticMinCss": 44,
+          "fresh": true
+        },
+        {
+          "state": "settings",
+          "pass": true,
+          "nativeControls": 20,
+          "errors": 0,
+          "warnings": 0,
+          "semanticMinCss": 44,
+          "fresh": true
+        },
+        {
+          "state": "opening",
+          "pass": true,
+          "nativeControls": 2,
+          "errors": 0,
+          "warnings": 0,
+          "semanticMinCss": 44,
+          "fresh": true
+        },
+        {
+          "state": "road",
+          "pass": true,
+          "nativeControls": 11,
+          "errors": 0,
+          "warnings": 0,
+          "semanticMinCss": 44,
+          "fresh": true
+        },
+        {
+          "state": "bag",
+          "pass": true,
+          "nativeControls": 11,
+          "errors": 0,
+          "warnings": 0,
+          "semanticMinCss": 44,
+          "fresh": true
+        }
+      ]
+    },
+    {
+      "profile": "phone-notch",
+      "size": [
+        393,
+        852
+      ],
+      "insets": {
+        "top": 59,
+        "right": 0,
+        "bottom": 34,
+        "left": 0
+      },
+      "adapter": "ANGLE (NVIDIA, NVIDIA GeForce RTX 5090 Laptop GPU (0x00002C58) Direct3D11 vs_5_0 ps_5_0, D3D11)",
+      "states": [
+        {
+          "state": "title",
+          "pass": true,
+          "nativeControls": 5,
+          "errors": 0,
+          "warnings": 0,
+          "semanticMinCss": 44,
+          "fresh": true
+        },
+        {
+          "state": "settings",
+          "pass": true,
+          "nativeControls": 20,
+          "errors": 0,
+          "warnings": 0,
+          "semanticMinCss": 44,
+          "fresh": true
+        },
+        {
+          "state": "opening",
+          "pass": true,
+          "nativeControls": 2,
+          "errors": 0,
+          "warnings": 0,
+          "semanticMinCss": 44,
+          "fresh": true
+        },
+        {
+          "state": "road",
+          "pass": true,
+          "nativeControls": 11,
+          "errors": 0,
+          "warnings": 0,
+          "semanticMinCss": 44,
+          "fresh": true
+        },
+        {
+          "state": "bag",
+          "pass": true,
+          "nativeControls": 11,
+          "errors": 0,
+          "warnings": 0,
+          "semanticMinCss": 44,
+          "fresh": true
+        }
+      ]
+    },
+    {
+      "profile": "phone-notch-wide",
+      "size": [
+        852,
+        393
+      ],
+      "insets": {
+        "top": 0,
+        "right": 59,
+        "bottom": 21,
+        "left": 59
+      },
+      "adapter": "ANGLE (NVIDIA, NVIDIA GeForce RTX 5090 Laptop GPU (0x00002C58) Direct3D11 vs_5_0 ps_5_0, D3D11)",
+      "states": [
+        {
+          "state": "title",
+          "pass": true,
+          "nativeControls": 5,
+          "errors": 0,
+          "warnings": 0,
+          "semanticMinCss": 44,
+          "fresh": true
+        },
+        {
+          "state": "settings",
+          "pass": true,
+          "nativeControls": 18,
+          "errors": 0,
+          "warnings": 0,
+          "semanticMinCss": 44,
+          "fresh": true
+        },
+        {
+          "state": "opening",
+          "pass": true,
+          "nativeControls": 2,
+          "errors": 0,
+          "warnings": 0,
+          "semanticMinCss": 44,
+          "fresh": true
+        },
+        {
+          "state": "road",
+          "pass": true,
+          "nativeControls": 11,
+          "errors": 0,
+          "warnings": 0,
+          "semanticMinCss": 44,
+          "fresh": true
+        },
+        {
+          "state": "bag",
+          "pass": true,
+          "nativeControls": 11,
+          "errors": 0,
+          "warnings": 0,
+          "semanticMinCss": 44,
+          "fresh": true
+        }
+      ]
+    },
+    {
+      "profile": "phone-tall",
+      "size": [
+        360,
+        800
+      ],
+      "insets": {
+        "top": 24,
+        "right": 0,
+        "bottom": 0,
+        "left": 0
+      },
+      "adapter": "ANGLE (NVIDIA, NVIDIA GeForce RTX 5090 Laptop GPU (0x00002C58) Direct3D11 vs_5_0 ps_5_0, D3D11)",
+      "states": [
+        {
+          "state": "title",
+          "pass": true,
+          "nativeControls": 5,
+          "errors": 0,
+          "warnings": 0,
+          "semanticMinCss": 44,
+          "fresh": true
+        },
+        {
+          "state": "settings",
+          "pass": true,
+          "nativeControls": 20,
+          "errors": 0,
+          "warnings": 0,
+          "semanticMinCss": 44,
+          "fresh": true
+        },
+        {
+          "state": "opening",
+          "pass": true,
+          "nativeControls": 2,
+          "errors": 0,
+          "warnings": 0,
+          "semanticMinCss": 44,
+          "fresh": true
+        },
+        {
+          "state": "road",
+          "pass": true,
+          "nativeControls": 11,
+          "errors": 0,
+          "warnings": 0,
+          "semanticMinCss": 44,
+          "fresh": true
+        },
+        {
+          "state": "bag",
+          "pass": true,
+          "nativeControls": 11,
+          "errors": 0,
+          "warnings": 0,
+          "semanticMinCss": 44,
+          "fresh": true
+        }
+      ]
+    },
+    {
+      "profile": "tablet",
+      "size": [
+        768,
+        1024
+      ],
+      "insets": {
+        "top": 0,
+        "right": 0,
+        "bottom": 0,
+        "left": 0
+      },
+      "adapter": "ANGLE (NVIDIA, NVIDIA GeForce RTX 5090 Laptop GPU (0x00002C58) Direct3D11 vs_5_0 ps_5_0, D3D11)",
+      "states": [
+        {
+          "state": "title",
+          "pass": true,
+          "nativeControls": 4,
+          "errors": 0,
+          "warnings": 0,
+          "semanticMinCss": 58.51,
+          "fresh": true
+        },
+        {
+          "state": "settings",
+          "pass": true,
+          "nativeControls": 24,
+          "errors": 0,
+          "warnings": 0,
+          "semanticMinCss": 58.51,
+          "fresh": true
+        },
+        {
+          "state": "opening",
+          "pass": true,
+          "nativeControls": 2,
+          "errors": 0,
+          "warnings": 0,
+          "semanticMinCss": 58.51,
+          "fresh": true
+        },
+        {
+          "state": "road",
+          "pass": true,
+          "nativeControls": 11,
+          "errors": 0,
+          "warnings": 0,
+          "semanticMinCss": 56.08,
+          "fresh": true
+        },
+        {
+          "state": "bag",
+          "pass": true,
+          "nativeControls": 11,
+          "errors": 0,
+          "warnings": 0,
+          "semanticMinCss": 56.08,
+          "fresh": true
+        }
+      ]
+    },
+    {
+      "profile": "tablet-wide",
+      "size": [
+        1024,
+        768
+      ],
+      "insets": {
+        "top": 0,
+        "right": 0,
+        "bottom": 0,
+        "left": 0
+      },
+      "adapter": "ANGLE (NVIDIA, NVIDIA GeForce RTX 5090 Laptop GPU (0x00002C58) Direct3D11 vs_5_0 ps_5_0, D3D11)",
+      "states": [
+        {
+          "state": "title",
+          "pass": true,
+          "nativeControls": 4,
+          "errors": 0,
+          "warnings": 0,
+          "semanticMinCss": 51.2,
+          "fresh": true
+        },
+        {
+          "state": "settings",
+          "pass": true,
+          "nativeControls": 23,
+          "errors": 0,
+          "warnings": 0,
+          "semanticMinCss": 51.2,
+          "fresh": true
+        },
+        {
+          "state": "opening",
+          "pass": true,
+          "nativeControls": 2,
+          "errors": 0,
+          "warnings": 0,
+          "semanticMinCss": 51.2,
+          "fresh": true
+        },
+        {
+          "state": "road",
+          "pass": true,
+          "nativeControls": 11,
+          "errors": 0,
+          "warnings": 0,
+          "semanticMinCss": 49.07,
+          "fresh": true
+        },
+        {
+          "state": "bag",
+          "pass": true,
+          "nativeControls": 11,
+          "errors": 0,
+          "warnings": 0,
+          "semanticMinCss": 49.07,
+          "fresh": true
+        }
+      ]
+    },
+    {
+      "profile": "foldable-cover-wide",
+      "size": [
+        873,
+        325
+      ],
+      "insets": {
+        "top": 0,
+        "right": 0,
+        "bottom": 0,
+        "left": 0
+      },
+      "adapter": "ANGLE (NVIDIA, NVIDIA GeForce RTX 5090 Laptop GPU (0x00002C58) Direct3D11 vs_5_0 ps_5_0, D3D11)",
+      "states": [
+        {
+          "state": "title",
+          "pass": true,
+          "nativeControls": 4,
+          "errors": 0,
+          "warnings": 0,
+          "semanticMinCss": 44,
+          "fresh": true
+        },
+        {
+          "state": "settings",
+          "pass": true,
+          "nativeControls": 16,
+          "errors": 0,
+          "warnings": 0,
+          "semanticMinCss": 44,
+          "fresh": true
+        },
+        {
+          "state": "opening",
+          "pass": true,
+          "nativeControls": 2,
+          "errors": 0,
+          "warnings": 0,
+          "semanticMinCss": 44,
+          "fresh": true
+        },
+        {
+          "state": "road",
+          "pass": true,
+          "nativeControls": 11,
+          "errors": 0,
+          "warnings": 0,
+          "semanticMinCss": 44,
+          "fresh": true
+        },
+        {
+          "state": "bag",
+          "pass": true,
+          "nativeControls": 11,
+          "errors": 0,
+          "warnings": 0,
+          "semanticMinCss": 44,
+          "fresh": true
+        }
+      ]
+    },
+    {
+      "profile": "foldable",
+      "size": [
+        884,
+        1104
+      ],
+      "insets": {
+        "top": 0,
+        "right": 0,
+        "bottom": 0,
+        "left": 0
+      },
+      "adapter": "ANGLE (NVIDIA, NVIDIA GeForce RTX 5090 Laptop GPU (0x00002C58) Direct3D11 vs_5_0 ps_5_0, D3D11)",
+      "states": [
+        {
+          "state": "title",
+          "pass": true,
+          "nativeControls": 4,
+          "errors": 0,
+          "warnings": 0,
+          "semanticMinCss": 60,
+          "fresh": true
+        },
+        {
+          "state": "settings",
+          "pass": true,
+          "nativeControls": 24,
+          "errors": 0,
+          "warnings": 0,
+          "semanticMinCss": 60,
+          "fresh": true
+        },
+        {
+          "state": "opening",
+          "pass": true,
+          "nativeControls": 2,
+          "errors": 0,
+          "warnings": 0,
+          "semanticMinCss": 60,
+          "fresh": true
+        },
+        {
+          "state": "road",
+          "pass": true,
+          "nativeControls": 11,
+          "errors": 0,
+          "warnings": 0,
+          "semanticMinCss": 57.5,
+          "fresh": true
+        },
+        {
+          "state": "bag",
+          "pass": true,
+          "nativeControls": 11,
+          "errors": 0,
+          "warnings": 0,
+          "semanticMinCss": 57.5,
+          "fresh": true
+        }
+      ]
+    },
+    {
+      "profile": "desktop",
+      "size": [
+        1920,
+        1080
+      ],
+      "insets": {
+        "top": 0,
+        "right": 0,
+        "bottom": 0,
+        "left": 0
+      },
+      "adapter": "ANGLE (NVIDIA, NVIDIA GeForce RTX 5090 Laptop GPU (0x00002C58) Direct3D11 vs_5_0 ps_5_0, D3D11)",
+      "states": [
+        {
+          "state": "title",
+          "pass": true,
+          "nativeControls": 4,
+          "errors": 0,
+          "warnings": 0,
+          "semanticMinCss": 60,
+          "fresh": true
+        },
+        {
+          "state": "settings",
+          "pass": true,
+          "nativeControls": 24,
+          "errors": 0,
+          "warnings": 0,
+          "semanticMinCss": 60,
+          "fresh": true
+        },
+        {
+          "state": "opening",
+          "pass": true,
+          "nativeControls": 2,
+          "errors": 0,
+          "warnings": 0,
+          "semanticMinCss": 60,
+          "fresh": true
+        },
+        {
+          "state": "road",
+          "pass": true,
+          "nativeControls": 3,
+          "errors": 0,
+          "warnings": 0,
+          "semanticMinCss": 57.5,
+          "fresh": true
+        },
+        {
+          "state": "bag",
+          "pass": true,
+          "nativeControls": 3,
+          "errors": 0,
+          "warnings": 0,
+          "semanticMinCss": 57.5,
+          "fresh": true
+        }
+      ]
+    }
+  ]
+}

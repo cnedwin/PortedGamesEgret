@@ -135,21 +135,22 @@ python3 -m http.server 4180      # 模型查看器 · model viewer: /SnowTemple/
 # 在仓库根目录运行，然后打开 /SnowTemple/ · run at the repository root, then open /SnowTemple/
 ```
 
-地址参数 · Address options: `?auto`（规则玩家代打 · a rule-driven player takes over），`?at=yard|gate|boss|rage`（从后面开始 · begin further in），`?quality=low|mid|high`，`?models=low|mid|high`，`?tier=3`（这一次按第几重打 · play this visit at a tier），`?mode=yard`（配合 `?auto` 守草料场 · with `?auto`, hold the yard），`?seed=7`（固定骰子 · fix the dice），`?lights=direct|tiled`（不给或给火自己的光，不管画质 · leave fires without light of their own, or give it them, whatever the quality），`?noshadows`（关闭方向光阴影作对照诊断 · disable directional shadows for comparison），`?debug`（状态面板和引擎的性能读数，F3 开关 · state panel and the engine's performance readout, F3 toggles）。
+地址参数 · Address options: `?lang=zh|en`（切换显示语言 · choose display language）， `?auto`（规则玩家代打 · a rule-driven player takes over），`?at=yard|gate|boss|rage`（从后面开始 · begin further in），`?quality=low|mid|high`，`?models=low|mid|high`，`?tier=3`（这一次按第几重打 · play this visit at a tier），`?mode=yard`（配合 `?auto` 守草料场 · with `?auto`, hold the yard），`?seed=7`（固定骰子 · fix the dice），`?lights=direct|tiled`（不给或给火自己的光，不管画质 · leave fires without light of their own, or give it them, whatever the quality），`?noshadows`（关闭方向光阴影作对照诊断 · disable directional shadows for comparison），`?debug`（状态面板和引擎的性能读数，F3 开关 · state panel and the engine's performance readout, F3 toggles）。
 
 | 路径 · Path | 内容 · Contents |
 |---|---|
 | `src/rules/` | 地形、数值与战斗规则 · the ground, the numbers and the rules of the fight |
 | `src/view/` | 建模、场景、人物姿势、特效与镜头 · modelling, scenery, poses, effects and the camera |
-| `src/hud.mjs` `src/input.mjs` `src/audio.mjs` | 界面、输入、声音 · interface, input, sound |
+| `src/hud.mjs`、`src/ui/`、`src/i18n.mjs` | 原生界面、响应式叠加层及中英词表 · native interface, responsive overlay and bilingual word table |
+| `src/input.mjs`、`src/audio.mjs` | 输入、声音 · input and sound |
 | `src/progress.mjs` `src/saves.mjs` | 存在浏览器里的进度和设置，经引擎的存档库读写：带版本号，读不出的旧档另存不丢，写不进去也不报错 · progress and settings kept in the browser through the engine's save store: versioned, an unreadable save set aside rather than lost, a refused write never throws |
 | `tools/` `assets/` | 雕刻工具、模型定义与雕好的模型 · the sculptor, the model descriptions and the sculpted models |
 | `test/` | 规则测试与规则玩家 · rule tests and the rule-driven player |
 | `vendor/` | 引擎运行时副本，见 `vendor/SOURCE.md` · a copy of the engine runtime, see `vendor/SOURCE.md` |
 
-`vendor/` 中是新白鹭引擎的运行时副本，采用 Apache-2.0 许可，来源和版本见 [vendor/SOURCE.md](vendor/SOURCE.md)。它由引擎仓库里的 `tools/vendor-game.mjs` 生成：在构建好的引擎目录下运行 `node tools/vendor-game.mjs <本目录> @egret/engine @egret/engine/world3d @egret/engine/webgl2/world3d @egret/engine/kit @egret/engine/web/kit`，再把 `vendor/importmap.json` 的内容贴进 `index.html` 的 import map（有测试核对两者一致）。测试通过 `vendor/node-register.mjs` 在 Node 里按页面用的名字找到引擎。
+`vendor/` 中是新白鹭引擎的运行时副本，采用 Apache-2.0 许可，来源和版本见 [vendor/SOURCE.md](vendor/SOURCE.md)。它由引擎仓库里的 `tools/vendor-game.mjs` 生成：在构建好的引擎目录下运行 `node tools/vendor-game.mjs <本目录> @egret/engine @egret/engine/world3d @egret/engine/webgl2/world3d @egret/engine/kit @egret/engine/web/kit @egret/engine/ui @egret/engine/ui/semantics @egret/engine/web/semantics @egret/engine/ui/testing @egret/engine/input @egret/engine/bitmapfont @egret/engine/web/hover`，再把 `vendor/importmap.json` 的内容贴进 `index.html` 的 import map（有测试核对两者一致）。测试通过 `vendor/node-register.mjs` 在 Node 里按页面用的名字找到引擎。
 
-`vendor/` holds a copy of the Egret Rebuild runtime under the Apache-2.0 license; its source and version are in [vendor/SOURCE.md](vendor/SOURCE.md). It is made by `tools/vendor-game.mjs` in the engine's repository: from a built engine checkout run `node tools/vendor-game.mjs <this folder> @egret/engine @egret/engine/world3d @egret/engine/webgl2/world3d @egret/engine/kit @egret/engine/web/kit`, then paste the contents of `vendor/importmap.json` into the import map in `index.html` (a test checks that the two agree). Tests find the engine in Node, under the names the page uses, through `vendor/node-register.mjs`.
+`vendor/` holds a copy of the Egret Rebuild runtime under the Apache-2.0 license; its source and version are in [vendor/SOURCE.md](vendor/SOURCE.md). It is made by `tools/vendor-game.mjs` in the engine's repository: from a built engine checkout run `node tools/vendor-game.mjs <this folder> @egret/engine @egret/engine/world3d @egret/engine/webgl2/world3d @egret/engine/kit @egret/engine/web/kit @egret/engine/ui @egret/engine/ui/semantics @egret/engine/web/semantics @egret/engine/ui/testing @egret/engine/input @egret/engine/bitmapfont @egret/engine/web/hover`, then paste the contents of `vendor/importmap.json` into the import map in `index.html` (a test checks that the two agree). Tests find the engine in Node, under the names the page uses, through `vendor/node-register.mjs`.
 
 ## 引擎能力对照表 · Engine capabilities
 
@@ -169,7 +170,19 @@ python3 -m http.server 4180      # 模型查看器 · model viewer: /SnowTemple/
 | `@egret/engine/kit` `createMemorySaveStorage` | 页面存储无法读取时用本次会话的内存；可读取但拒绝写入时仍保留已存进度 · session memory when page storage cannot be read; existing progress remains readable if writes are refused | `src/saves.mjs` |
 | `@egret/engine/kit` `runHeadless` | `tools/balance.mjs` 用规则玩家无页面打各重 · the rule-driven player runs every tier without a page | `tools/balance.mjs` |
 
+| `createWorld3DOverlay`、`fit: 'expand'`、`portrait`、`uiScale`、`onScreenChange` | 原生透明 2D 叠加层随安全区布局，转屏保留原 3D 场景与状态 · native 2D overlay follows safe areas and keeps the 3D scene and state on rotation | [src/ui/host.mjs](src/ui/host.mjs) |
+| `renderMode: 'on-demand'`、`webgl2PageBatching: 'single-page'` | 静止 UI 保留上一帧；减少不需要的纹理分页管线 · retain static UI submissions and omit the unnecessary multi-page shader | [src/ui/host.mjs](src/ui/host.mjs) |
+| `createUiRoot`、`createUiLayerManager`、`createUiScreenStack` | 标题、设置、枪谱选习、战报、模态和焦点 · title, settings, manual choices, results, modals and focus | [src/ui/menus.mjs](src/ui/menus.mjs) |
+| `createActionControl`、`createControlKeys`、`createSelectionGroup`、`createHoverControl`、`createScrollControl` | 点选、键盘、选项、悬停、滚动 · native actions, keyboard controls, options, hover and scrolling | [src/ui/kit.mjs](src/ui/kit.mjs)、[src/ui/menus.mjs](src/ui/menus.mjs) |
+| `createMovementControl`、`createActionControl` | 浮动摇杆、多点按住出枪／格挡／踏雪及取消 · floating movement, independent held attack/guard/snow-step and cancellation | [src/ui/touch.mjs](src/ui/touch.mjs) |
+| `createBitmapText`、`parseBitmapFont` | 战斗数值和实时状态共用固定字形页 · combat counters and changing status use one fixed glyph page | [src/ui/combat-font.mjs](src/ui/combat-font.mjs) |
+| `createAtlasLabel`、`loadTexture` | 原生菜单文字图集、启动雪路图 · native atlas labels and opening snow-road painting | [src/ui/kit.mjs](src/ui/kit.mjs)、[src/ui/boot.mjs](src/ui/boot.mjs) |
+| `createUiSemantics`、`createBrowserSemantics`、`createUiTester` | 为真实控件投影名称与几何、按名称回归 · named control geometry and name-based acceptance | [src/ui/host.mjs](src/ui/host.mjs)、[test/accept.mjs](test/accept.mjs) |
+
 ## 已验证 · Verified
+
+- 2026-11-27 引擎 `e15aabcf`：103/103 Node；原生 UI、中文／英语词表及字幕、9 种模拟屏幕 45/45 检查点零错误零警告，真实 Windows RTX 与 Fold7 走完第一回（Fold7 还验证实际横竖转屏、枪谱拾取、重战、复起和读档）；同条件轻量对照 Fold7 首波 RAF P95 均 16.7 ms。详见 [QUALITY.md](QUALITY.md) 与 [UI-MIGRATION.md](UI-MIGRATION.md)。 · 103 Node tests; 45/45 checks across nine simulated screen profiles; the full chapter on real Windows RTX and Fold7, including real phone rotation, manual pickup, rematch, revival and save. Controlled Fold7 first-wave RAF p95 is 16.7 ms for both interfaces.
+- 正式硬件浏览器 41/41（含实际完整章、重战、旋转、改键、坏资源重试），三档模型设置与重载 3/3；新版软件浏览器开场 8/8；新截图基线复跑差异 1.09%；官方 verify 通过、零控制台错误和引擎警告。 · Full hardware acceptance 41/41 including real chapter, rematch, rotation, rebinding and asset Retry; all three model-tier reloads pass; native software opening smoke 8/8; 1.09% difference against the reviewed new reference; official verifier passes without console errors or engine warnings.
 
 - 2026-11-26 引擎 `8e70dcb3`：Node 92/92；Windows Edge 158 RTX 5090 Laptop 与 Galaxy Z Fold7 Android 17 Chrome 157 的硬件 WebGL2 均走完完整章节、结算、重战与刷新读档。实机阴影与分块灯光正常，手机章节采样 P95 17.2–17.4 ms，最大 37 ms。详见 [QUALITY.md](QUALITY.md)。 · Node 92/92 and the full chapter, result, rematch and reload on both physical devices; hardware shadows and tiled lights enabled. Fold7 chapter p95 17.2–17.4 ms, maximum 37 ms.
 - `node test/accept.mjs`：固定种子低档无头浏览器冒烟 7/7，标题截图基线差异 0.77%，进入章节且开场时钟正常推进。 · Fixed-seed low-detail headless smoke 7/7, title baseline difference 0.77%, Chapter entry and opening clock verified.
@@ -181,10 +194,12 @@ python3 -m http.server 4180      # 模型查看器 · model viewer: /SnowTemple/
 ## 已知问题 · Known issues
 
 - 网络慢时，相应角色的模型到了才开始战斗。 · On a slow network the fight waits until the roles it needs have arrived.
-- 标题「风雪山神庙」在 390 像素宽的屏幕上被截断（品质 I3）。 · The title is cut off on a 390-pixel-wide screen.
-- 品质验收未达标 · Quality items failing（[QUALITY.md](QUALITY.md)，2026-11-21，无头 Chromium + SwiftShader · headless, software rendering）：T2 触控区 ≥ 44×44 CSS px（3 of 12 under 44×44: 行囊0B 85×35; 全屏 64×35; 设置 64×35）；F1 桌面帧时间 p95 ≤ 16.7 ms（p95 2233.2 ms over 5 frames）；I1 中英文全可切换，英文下无中文（no way to choose English found）；I3 长英文不溢出（cut off: 风雪山神庙）；E2 资源失败有错误界面和重试（9 files refused; no uncaught error; no error screen with a retry）。
+- 移动端设置用原生滚动条和翻页按钮；当前引擎叠加层尚不支持手指直接拖动清单内容。见 ENGINE-NOTES 第 7 条。 · Mobile settings use a native scrollbar and page controls; the overlay does not yet support direct content panning (item 7).
+- 通用品质工具 F1 在无头 SwiftShader 软件渲染下仍不达标（P95 1300 ms，仅6帧），不代表实际 GPU；原生 T2、I1、I3、A3 和 E2 已实测通过。小数文字描边与按钮越界松手策略仍使用引擎已有接口组合处理，见 ENGINE-NOTES 第 5、6 条及 [QUALITY.md](QUALITY.md)。 · Software-rendered frame times do not describe hardware experience; fractional outlines and release-inside policy are composed using existing engine interfaces (items 5 and 6).
 
 ## 已解决 · Solved
+
+- 原 DOM 界面迁为原生 2D 层：标题、战斗 HUD、触屏、设置、枪谱、剧情和结算；新增中英文词表和设置项。原生加载失败页提供重试，角色模型的原有 fallback 保留。详见 [UI-MIGRATION.md](UI-MIGRATION.md)。 · The DOM interface is replaced by the engine's native overlay throughout, with bilingual text and language settings. A native startup failure view provides Retry while retaining the original role fallback.
 
 - 淡出的屋顶和松树、法阵、脚印、落枪等第一次出现时链接着色器卡顿：先是在加载时把隐藏网格画一帧（`43466ba`、`8e152a4`），引擎 `8b634fe` 之后改用 `renderer.preparePrograms`（`58554b3`）。现用普通弓弦、铜钱网格描述符与 `includeAutoInstancing: true` 准备自动实例化变体，同时保留透明淡出和自带 RGBA 实例颜色的足迹／落枪等请求（ENGINE-NOTES 第 1 条）。 · Late programs stalled on first use; first a hidden frame, then the engine's `preparePrograms`. The current descriptors use ordinary bowstrings and coins with `includeAutoInstancing: true`, preserving translucent fades and the effects' authored RGBA instance requests (item 1).
 - 湿石板倒影要在每次镜像绘制前后切换渲染器的色调映射：改为给镜像单独设色调映射（`58554b3`，ENGINE-NOTES 第 2 条）。 · The mirror switched the renderer's tone mapping around each draw; it now has its own (item 2).
@@ -195,8 +210,8 @@ python3 -m http.server 4180      # 模型查看器 · model viewer: /SnowTemple/
 
 ## 未完成 · Unfinished
 
-- 只有中文界面，没有英文切换（品质 I1）。 · Chinese only.
-- 资源加载失败时没有错误界面和重试（E2）。新版角色模型拿不到时会改用旧身体包，其他文件失败没有提示。 · No error screen with a retry when a file fails; only a missing character model falls back to the stock bodies.
+- 原中文表演语音保持不变；英文模式使用翻译字幕，不提供新的英语配音。 · Original Chinese acting remains; English mode uses translated subtitles, not a new dub.
+- 引擎原生叠加层的内容区滑动及不同平台文字字体覆盖仍待进一步验证和引擎改进。 · Direct content panning in overlay views and wider platform font coverage remain to be addressed.
 - 低端手机、更多显卡和长时间游戏的性能覆盖；真人手指操作与扬声器主观听感仍待验证。 · Wider hardware and long-session coverage, unaided human touch and subjective speaker listening remain to be verified.
 
 ## 目录结构 · Layout
@@ -205,8 +220,8 @@ python3 -m http.server 4180      # 模型查看器 · model viewer: /SnowTemple/
 
 ## 引擎副本 · Engine copy
 
-引擎副本取自 [Egret_rebuild](https://github.com/cnedwin/Egret_rebuild) 提交 `8e70dcb3a8a0b40c9966483c92cb9f691a1cefd8`，由引擎仓库的 `tools/vendor-game.mjs` 复制，见 [vendor/SOURCE.md](vendor/SOURCE.md)。
+引擎副本取自 [Egret_rebuild](https://github.com/cnedwin/Egret_rebuild) 提交 `e15aabcf742ec7c82ba4a8e8c2de663137c18f71`，由引擎仓库的 `tools/vendor-game.mjs` 复制，见 [vendor/SOURCE.md](vendor/SOURCE.md)。
 
-The engine copy is from [Egret_rebuild](https://github.com/cnedwin/Egret_rebuild) commit `8e70dcb3a8a0b40c9966483c92cb9f691a1cefd8`, copied by the engine's `tools/vendor-game.mjs`; see [vendor/SOURCE.md](vendor/SOURCE.md).
+The engine copy is from [Egret_rebuild](https://github.com/cnedwin/Egret_rebuild) commit `e15aabcf742ec7c82ba4a8e8c2de663137c18f71`, copied by the engine's `tools/vendor-game.mjs`; see [vendor/SOURCE.md](vendor/SOURCE.md).
 
-入口 · Entries: `@egret/engine`, `@egret/engine/world3d`, `@egret/engine/webgl2/world3d`, `@egret/engine/kit`, `@egret/engine/web/kit`.
+入口 · Entries: `@egret/engine`, `@egret/engine/world3d`, `@egret/engine/webgl2/world3d`, `@egret/engine/kit`, `@egret/engine/web/kit`, `@egret/engine/ui`, `@egret/engine/ui/semantics`, `@egret/engine/web/semantics`, `@egret/engine/ui/testing`, `@egret/engine/input`, `@egret/engine/bitmapfont`, `@egret/engine/web/hover`.

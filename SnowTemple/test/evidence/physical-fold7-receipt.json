@@ -1,0 +1,456 @@
+{
+  "engine": "e15aabcf742ec7c82ba4a8e8c2de663137c18f71",
+  "test": "physical SM-F966U1 outer display, Android 17, Chrome157, USB and disposable browser context, same scene and model quality",
+  "quality": {
+    "scene": "mid",
+    "models": "low"
+  },
+  "before": {
+    "passed": true,
+    "device": {
+      "model": "SM-F966U1",
+      "android": "17",
+      "browser": "Chrome/157.0.8103.78",
+      "input": "CDP touch injection on physical Android",
+      "power": "USB connected"
+    },
+    "viewport": [
+      873,
+      325
+    ],
+    "files": 527,
+    "errors": [],
+    "failed": [],
+    "render": {
+      "shadows": true,
+      "tiledLights": true,
+      "buffer": [
+        1091,
+        406
+      ],
+      "css": [
+        873,
+        325
+      ],
+      "compatibility": false
+    },
+    "models": {
+      "level": "low",
+      "phase": "ready",
+      "loaded": [
+        "hero",
+        "blade",
+        "shield",
+        "bow",
+        "lu"
+      ],
+      "failures": {}
+    },
+    "result": {
+      "mark": "甲",
+      "line": "第一回　完",
+      "time": "1:52",
+      "parries": "3",
+      "ripostes": "10",
+      "last-name": "倒地",
+      "last": "0",
+      "news": "上面还有一重：添兵。第二拨多两个人，其中一个是铁甲头目。"
+    },
+    "stickSpeed": {
+      "walk": 1.895744680851068,
+      "run": 4.933333333333349
+    },
+    "frameInterval": {
+      "road": {
+        "samples": 824,
+        "p50": 16.599999994039536,
+        "p95": 17.299999982118607,
+        "max": 29.099999994039536,
+        "over33": 0
+      },
+      "yard": {
+        "samples": 2488,
+        "p50": 16.599999994039536,
+        "p95": 17.400000005960464,
+        "max": 36.099999994039536,
+        "over33": 1
+      },
+      "gate": {
+        "samples": 327,
+        "p50": 16.599999994039536,
+        "p95": 17.5,
+        "max": 27.19999998807907,
+        "over33": 0
+      },
+      "boss-1": {
+        "samples": 1559,
+        "p50": 16.599999994039536,
+        "p95": 17.100000023841858,
+        "max": 20,
+        "over33": 0
+      },
+      "boss-2": {
+        "samples": 1523,
+        "p50": 16.599999994039536,
+        "p95": 17.5,
+        "max": 18.900000005960464,
+        "over33": 0
+      }
+    },
+    "restoration": {
+      "rotation": true,
+      "stayOn": true,
+      "priorComponentRestored": true,
+      "priorIdsPreserved": true,
+      "ownedAbsent": true,
+      "leaseReleased": true,
+      "ephemeralContextDisposed": true,
+      "forwardRemoved": true,
+      "reverseRemoved": true
+    }
+  },
+  "after": {
+    "passed": true,
+    "device": {
+      "model": "SM-F966U1",
+      "android": "17",
+      "browser": "Chrome/157.0.8103.78",
+      "input": "CDP touch injection on physical Android",
+      "power": "USB connected"
+    },
+    "viewport": [
+      873,
+      325
+    ],
+    "files": 536,
+    "errors": [],
+    "failed": [],
+    "render": {
+      "shadows": true,
+      "tiledLights": true,
+      "buffer": [
+        1091,
+        406
+      ],
+      "css": [
+        873,
+        325
+      ],
+      "compatibility": false
+    },
+    "models": {
+      "level": "low",
+      "phase": "ready",
+      "loaded": [
+        "hero",
+        "blade",
+        "shield",
+        "bow",
+        "lu"
+      ],
+      "failures": {}
+    },
+    "result": {
+      "heading": "风雪山神庙",
+      "time": "1:40",
+      "parries": 5,
+      "ripostes": 9,
+      "lastName": "倒地",
+      "last": 0,
+      "mark": "甲",
+      "news": "上面还有一重：添兵。第二拨多两个人，其中一个是铁甲头目。",
+      "actions": [
+        "climb",
+        "temple",
+        "chapter",
+        "title"
+      ],
+      "line": "第一回　完"
+    },
+    "stickSpeed": {
+      "walk": 1.743176610361161,
+      "run": 4.946171275453675
+    },
+    "frameInterval": {
+      "road": {
+        "samples": 1533,
+        "p50": 16.599999994039536,
+        "p95": 21.900000005960464,
+        "max": 105.59999999403954,
+        "over33": 15
+      },
+      "yard": {
+        "samples": 2063,
+        "p50": 16.600000023841858,
+        "p95": 24.900000005960464,
+        "max": 109.90000000596046,
+        "over33": 44
+      },
+      "gate": {
+        "samples": 448,
+        "p50": 16.69999998807907,
+        "p95": 22.400000005960464,
+        "max": 44,
+        "over33": 2
+      },
+      "boss-1": {
+        "samples": 1068,
+        "p50": 16.600000023841858,
+        "p95": 28.399999976158142,
+        "max": 116.19999998807907,
+        "over33": 32
+      },
+      "boss-2": {
+        "samples": 1148,
+        "p50": 16.599999994039536,
+        "p95": 28.400000005960464,
+        "max": 116.19999998807907,
+        "over33": 33
+      }
+    },
+    "restoration": {
+      "rotation": true,
+      "stayOn": true,
+      "priorComponentRestored": true,
+      "priorIdsPreserved": true,
+      "ownedAbsent": true,
+      "leaseReleased": true,
+      "ephemeralContextDisposed": true,
+      "forwardRemoved": true,
+      "reverseRemoved": true
+    },
+    "startup": {
+      "backendSelectMs": 0.20000001788139343,
+      "backendModuleMs": 33.19999998807907,
+      "hostCreateMs": 0.30000001192092896,
+      "engineOpenMs": 24.5,
+      "setupMs": 4.4000000059604645,
+      "readyMs": 62.60000002384186,
+      "firstSubmitMs": 115.90000000596046,
+      "webgl2": {
+        "generation": 1,
+        "contextMs": 5.5999999940395355,
+        "parallelPrograms": false,
+        "programPreparationMs": 0.09999999403953552,
+        "sampledMs": 4.0999999940395355,
+        "solidMs": 2.5,
+        "resolveMs": 3.5999999940395355,
+        "effectsMs": 7.200000017881393,
+        "pagedMs": 0,
+        "finishMs": 0.19999998807907104,
+        "totalMs": 23.299999982118607
+      }
+    },
+    "rotations": [
+      {
+        "name": "01-title",
+        "portrait": [
+          411,
+          813,
+          2.625
+        ],
+        "landscape": [
+          873,
+          325,
+          2.625
+        ],
+        "unchanged": true
+      },
+      {
+        "name": "02-settings",
+        "portrait": [
+          411,
+          813,
+          2.625
+        ],
+        "landscape": [
+          873,
+          325,
+          2.625
+        ],
+        "unchanged": true
+      },
+      {
+        "name": "03-results",
+        "portrait": [
+          411,
+          813,
+          2.625
+        ],
+        "landscape": [
+          873,
+          325,
+          2.625
+        ],
+        "unchanged": true
+      }
+    ],
+    "labels": [
+      {
+        "id": "attack",
+        "name": "出枪",
+        "height": 61.416666666666664,
+        "width": 61.41666809851382,
+        "bottom": 315.499989827474,
+        "available": true
+      },
+      {
+        "id": "guard",
+        "name": "格挡（按住）",
+        "height": 52.25,
+        "width": 52.25000121813862,
+        "bottom": 243.999989827474,
+        "available": true
+      },
+      {
+        "id": "stars",
+        "name": "寒星",
+        "height": 52.25,
+        "width": 52.25000121813862,
+        "bottom": 243.999989827474,
+        "available": true
+      },
+      {
+        "id": "rain",
+        "name": "梨花枪雨",
+        "height": 52.25,
+        "width": 52.25000121813862,
+        "bottom": 177.08332316080734,
+        "available": true
+      },
+      {
+        "id": "dodge",
+        "name": "闪避",
+        "height": 52.25,
+        "width": 52.25000121813862,
+        "bottom": 310.9166564941407,
+        "available": true
+      },
+      {
+        "id": "glide",
+        "name": "踏雪（按住）",
+        "height": 52.25,
+        "width": 52.25000121813862,
+        "bottom": 310.9166564941407,
+        "available": true
+      },
+      {
+        "id": "drink",
+        "name": "饮酒",
+        "height": 52.25,
+        "width": 52.25000121813862,
+        "bottom": 243.999989827474,
+        "available": true
+      }
+    ],
+    "touchOwnership": {
+      "inside": {
+        "stick": true,
+        "guard": true,
+        "value": {
+          "x": 0.7499999825147572,
+          "y": 0
+        },
+        "scroll": [
+          0,
+          0,
+          1
+        ]
+      },
+      "outside": {
+        "stick": true,
+        "guard": true,
+        "value": {
+          "x": 0.9948564469265178,
+          "y": -0.10129486664557405
+        },
+        "scroll": [
+          0,
+          0,
+          1
+        ]
+      },
+      "cancel": {
+        "stick": false,
+        "guard": false,
+        "value": {
+          "x": 0,
+          "y": 0
+        },
+        "scroll": [
+          0,
+          0,
+          1
+        ]
+      }
+    },
+    "manualPages": [
+      {
+        "frozen": 36.54999999999921,
+        "learned": "fiveStars"
+      }
+    ],
+    "victory": {
+      "time": 94.3166666666626,
+      "hp": 96,
+      "enemyHp": 0
+    },
+    "yardDefeat": {
+      "heading": "守草料场",
+      "time": "0:26",
+      "parries": 0,
+      "ripostes": 0,
+      "lastName": "击倒",
+      "last": 0,
+      "mark": null,
+      "news": "这是守得最久的一回。",
+      "actions": [
+        "yard",
+        "title"
+      ],
+      "line": "守到第 1 拨"
+    },
+    "progressReload": {
+      "readBefore": {
+        "version": 1,
+        "savedAt": "2026-11-27T09:24:18.157Z",
+        "data": {
+          "open": 2,
+          "tier": 1,
+          "marks": {
+            "1": "甲"
+          },
+          "wave": 0
+        }
+      },
+      "readAfter": {
+        "version": 1,
+        "savedAt": "2026-11-27T09:24:18.157Z",
+        "data": {
+          "open": 2,
+          "tier": 1,
+          "marks": {
+            "1": "甲"
+          },
+          "wave": 0
+        }
+      },
+      "settingsRetained": true
+    },
+    "dialogueSubtitleCount": 8
+  },
+  "observedFailure": {
+    "errors": [],
+    "message": "AssertionError [ERR_ASSERTION]: UI_INPUT_BUSY: The input of the UI is still busy with an earlier request.\n    at native-phone-chapter.mjs:473:5 (local QA route)",
+    "resolvedRoute": "real natural manual pickup and selection, complete chapter, retry/fall/revive, real reload, yard defeat after fix; actual prior modal contact count was not separately captured"
+  },
+  "screenshots": [
+    "fold7-native-before-after.jpg",
+    "fold7-native-portrait.jpg"
+  ],
+  "limitations": [
+    "Scenes were normal gameplay, not fixed-camera deterministic traces. View-update interval and added overlay rAF/texture probes differ; p95 view-update regression observed but its cause not established by the chapter run.",
+    "Phone outer display: real orientation. Folded inner display, Safari, Firefox, screen reader, real gamepad and acoustic listening not covered. Dialogue playback event count is not audibility.",
+    "Old and new static shots are different genuine gameplay timings, no edited game pixels."
+  ]
+}

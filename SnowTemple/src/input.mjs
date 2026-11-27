@@ -18,7 +18,7 @@ export function keyName(code) {
   return code;
 }
 
-export function createInput(canvas, keys) {
+export function createInput(canvas, keys, { uiOwnsKey = () => false } = {}) {
   // Tab is used to reach the settings and title buttons. Recover older
   // assignments without moving any other action to a different key.
   const configurable = Object.keys(DEFAULT_KEYS);
@@ -72,10 +72,27 @@ export function createInput(canvas, keys) {
     if (action) keyboard.delete(action);
   }
   addEventListener('keydown', (event) => {
+    // A settings rebind precedes the engine's menu shortcuts and never becomes
+    // a combat press. Tab remains native focus navigation.
+    if (asking) {
+      if (event.repeat) { event.preventDefault(); return; }
+      if (event.code !== 'Tab') event.stopImmediatePropagation?.();
+      press(event.code, event);
+      return;
+    }
+    if (event.defaultPrevented) return;
+    if (uiOwnsKey(event)) return;
     if (event.repeat) return void (actionOf(event.code) && event.preventDefault());
     listeners.any(event.code, event);
-    press(event.code, event);
-  });
+    if (!event.defaultPrevented) press(event.code, event);
+  }, true);
+  // While the prompt is open, desktop mouse buttons can also be rebound.
+  // Native control activation is suppressed for that one press only.
+  addEventListener('pointerdown', (event) => {
+    if (!asking || !desktopPointer(event)) return;
+    event.stopImmediatePropagation?.();
+    press('Mouse' + event.button, event);
+  }, true);
   addEventListener('keyup', (event) => release(event.code));
   function reset() {
     keyboard.clear();
@@ -84,13 +101,15 @@ export function createInput(canvas, keys) {
     pressed.clear();
     stick.x = stick.z = 0;
     pointer.seen = false;
+    const interrupted = asking;
     asking = null;
+    interrupted?.cancel?.('InputReset');
     listeners.reset();
   }
   addEventListener('blur', reset);
   document.addEventListener('visibilitychange', () => { if (document.hidden) reset(); });
   canvas.addEventListener('pointerdown', (event) => {
-    if (!desktopPointer(event)) return;
+    if (!desktopPointer(event) || event.defaultPrevented) return;
     canvas.focus();
     pointer.seen = true;
     const owner = { type: event.pointerType, buttons: new Map() };
@@ -117,8 +136,9 @@ export function createInput(canvas, keys) {
   addEventListener('pointercancel', (event) => reconcilePointer(event, true), true);
   addEventListener('pointermove', (event) => {
     if (!desktopPointer(event)) return;
-    pointer.x = event.clientX / innerWidth;
-    pointer.y = event.clientY / innerHeight;
+    const rect = canvas.getBoundingClientRect?.() ?? { left: 0, top: 0, width: canvas.clientWidth ?? globalThis.innerWidth, height: canvas.clientHeight ?? globalThis.innerHeight };
+    pointer.x = (event.clientX - rect.left) / Math.max(1, rect.width);
+    pointer.y = (event.clientY - rect.top) / Math.max(1, rect.height);
     pointer.seen = true;
     const owner = reconcilePointer(event);
     if (owner && event.target === canvas && (event.buttons & BUTTON_MASK[event.button]) !== 0 && !owner.buttons.has(event.button)) {
@@ -134,6 +154,7 @@ export function createInput(canvas, keys) {
       enabled = on;
       reset();
     },
+    get asking() { return !!asking; },
     on: (name, call) => (listeners[name] = call),
     /** Capture the next key or clear the prompt when the row is redrawn. */
     ask: (commit, cancel) => (asking = commit ? { commit, cancel } : null),
