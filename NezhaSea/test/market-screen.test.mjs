@@ -90,6 +90,12 @@ test('actual vendor view planner accepts all market variants and keeps the named
         const partVisible = id => showing(where(id));
         assert.equal(last.plan.variant, variant, name + ' ' + lang);
         const compact = variant === 'portrait' || variant === 'landscape';
+        assert.equal(where('marketTabs').part.role, 'tablist', name);
+        assert.equal(partVisible('marketTabs'), compact, name);
+        assert.equal(where('offersTab').part.role, 'tab', name);
+        assert.equal(where('gearTab').part.role, 'tab', name);
+        assert.equal(last.options.bind.offersTab.selected(last.options.state()), true, name);
+        assert.equal(last.options.bind.gearTab.selected(last.options.state()), false, name);
         assert.equal(partVisible('offersTab'), compact, name);
         assert.equal(partVisible('gearTab'), compact, name);
         assert.equal(partVisible('offerBuy0'), true, name);
@@ -99,10 +105,14 @@ test('actual vendor view planner accepts all market variants and keeps the named
         assert.ok(next.width >= 44 && next.height >= 44, name);
         if (compact) {
           last.options.bind.gearTab.tap();
+          assert.equal(last.options.bind.offersTab.selected(last.options.state()), false, name);
+          assert.equal(last.options.bind.gearTab.selected(last.options.state()), true, name);
           assert.equal(partVisible('offerBuy0'), false, name);
           assert.equal(partVisible('relic0'), true, name);
           assert.deepEqual(where('next').rect, next, name);
           last.options.bind.offersTab.tap();
+          assert.equal(last.options.bind.offersTab.selected(last.options.state()), true, name);
+          assert.equal(last.options.bind.gearTab.selected(last.options.state()), false, name);
           assert.equal(partVisible('offerBuy0'), true, name);
         }
       }

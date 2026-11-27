@@ -68,9 +68,11 @@ Nezha Stirs the Sea is a survival action game built with [Egret Rebuild](https:/
 | `fit: 'expand'` | 保持完整 540×960 战场，额外区域供 UI 使用；fixedWidth 横屏将裁掉大部分纵向战场（852×393 约 249 单位高），fixedHeight 在超窄竖屏存在横向裁切；fixedNarrow 是 expand 的别名而非改进；fixedWide 会裁切设计。非像素风无需 wholeScale · preserves the full battlefield; fixed-width would crop its height in landscape, fixed-height may crop its width, fixedNarrow is an alias for expand, and fixedWide crops the design. No wholeScale for the non-pixel art | [src/main.mjs](src/main.mjs) |
 | `game.orientation`、`game.screen`、`game.safe` | 输入和布局使用引擎屏幕信息，浮动摇杆仍以战场为起手区 · engine screen information and safe region, retaining full battlefield touch origins | [src/sea-stick.mjs](src/sea-stick.mjs), [src/ui-layout.mjs](src/ui-layout.mjs) |
 | game.pin（评估 / assessed） | 本作所有静态安全区 UI 都是原生视图锚点，无需再 pin；视图外仅有随触点移动的摇杆、拖放影像及战场坐标节点，固定 pin 会改变交互 · no suitable standalone static edge node: all static safe UI is anchored in views; drag ghosts, floating origins and world nodes must remain dynamic | [src/ui-hud.mjs](src/ui-hud.mjs), [src/sea-stick.mjs](src/sea-stick.mjs), [src/ui-market.mjs](src/ui-market.mjs) |
-| `verify --screens` | 八机型、五状态和模拟安全区检查 · eight device profiles, five states and simulated safe areas | [test/verify-screens.mjs](test/verify-screens.mjs), [QUALITY.md](QUALITY.md) |
+| `verify --screens --prepare` | 正式入口、八机型、五状态及中英文模拟安全区检查 · production entry, eight profiles, five states and bilingual simulated safe areas | [test/verify-screens.mjs](test/verify-screens.mjs), [test/prepare-screen.mjs](test/prepare-screen.mjs), [QUALITY.md](QUALITY.md) |
 | `game.keys.axis()`、`game.touchStick({ floating })` | 键盘、手柄和触屏方向由引擎提供，浮动摇杆保留独立触点归属 · engine keyboard, gamepad and native floating touch input with independent contact ownership | `src/main.mjs`, `src/sea-stick.mjs` |
 | `game.show`、`createUiScreenStack` | 标题、设置、暂停、结算、升级与集市由白鹭绘制和管理；顶栏绑定血量、经验与滚动数字 · Egret views and navigation for all screens, with bound health, experience and rolling counters | `src/main.mjs`, `src/ui-screens.mjs`, `src/ui-hud.mjs`, `src/ui-market.mjs` |
+| `game.confirm(question, { skin, noColor })` | 集市所有出售统一使用原生主题、长文案自动换行/滚动与缩放保留确认焦点 · native themed sale confirmation wraps or scrolls long copy and preserves focus on resize | [src/ui-market.mjs](src/ui-market.mjs) |
+| `role: tablist / tab`、`bind.selected` | 原生页签选中状态、键盘与辅助技术语义 · native selected tab state and keyboard/accessibility semantics | [src/ui-market.mjs](src/ui-market.mjs) |
 | `game.hints`、`game.dragAndDrop` | 随输入设备切换的操作提示；允许拖放合成两件匹配法宝 · device-aware hints and drag-and-drop merging | `src/ui-hud.mjs`, `src/ui-market.mjs` |
 | `createUiSemantics`、`createBrowserSemantics`、`createUiTester` | 浏览器无障碍树和按名称验收；白鹭处理键盘及手柄焦点 · browser accessibility tree, named-control testing and native keyboard and gamepad focus | `src/ui-input.mjs`, `test/accept.mjs` |
 | Pointer Events | 兼容桌面原有的鼠标及触控笔拖动 · retains the original mouse and pen steering on desktop | `src/sea-stick.mjs` |
@@ -93,6 +95,8 @@ Nezha Stirs the Sea is a survival action game built with [Egret Rebuild](https:/
 
 引擎 UI 版的验收环境、测量及覆盖限制见 [QUALITY.md](QUALITY.md)。Windows PC 与三星 Fold7 使用 WebGPU 从新档正常打败第 10 波夜叉，均在第 11 波败退、解锁莲花并刷新验档。最终构建独立通过新角色、集市和实时旋转检查。 · On both Windows and a Samsung Fold7 using WebGPU, a fresh normal run defeated the wave-10 Yaksha, ended at wave 11, unlocked the lotus form and survived reload. The final build separately passed character, market and live-rotation checks.
 
+本轮引擎 #519：Node 38/38、Chromium 157 SwiftShader 核心 84/84、三尺寸流程 26/26、HUD/摇杆 23/23；正式入口的八设备 × 五状态 × 双语 80/80 均零告警。PC Edge 158 / RTX 5090 Laptop / WebGPU 实际键鼠最终 25/25；三星 Fold7 Android 17 / Chrome 157 / WebGPU 首波与市场 26/26，最终实机双向旋转专项 6/6。原标题和结算基线差异均 0.00%。详见 [本轮品质记录](QUALITY.md)。 · #519 passes 38 Node, 84 browser acceptance, 26 screen journeys, 23 HUD/touch and 80 screen checks; hardware PC 25/25, real Fold7 first-wave/market 26/26 and final rotation 6/6. The approved title/result baselines are unchanged. Device input is injected into the physical browser; the physical controller and complete natural twenty-wave game were not tested.
+
 ## 已知问题 · Known issues
 
 白鹭输入、透明画布和软件渲染的历史测量与复现见 [ENGINE-NOTES.md](ENGINE-NOTES.md)。 · See the engine notes for input, transparent canvas and software-rendering measurements.
@@ -104,6 +108,8 @@ Nezha Stirs the Sea is a survival action game built with [Egret Rebuild](https:/
 浮动触屏摇杆采用白鹭原生捕获，保留原有 5 CSS 像素死区及响应幅度；触点越出战场仍受控。立绘加载失败时保留可读角色卡，标题提供重试。 · Egret handles floating-touch capture with the original five-CSS-pixel dead zone and movement response. Failed portrait downloads leave readable cards and an explicit title-screen retry.
 
 首领登场提示显示在独立的血条下方，文字不会被顶栏盖住。 · Boss introductions appear directly below the boss health bar.
+
+引擎 #519 解决长文案确认主题、旋转时下层模态顺序，以及页签选中语义。旧出售确认视图、应用量宽和独立测试入口均已移除；见 ENGINE-NOTES 9、10、16、17。 · #519 resolves themed long confirmation copy, covered modal priority on rotation and selected-tab semantics. The fallback sale view, local width gate and separate test entries have been removed. See ENGINE-NOTES 9, 10, 16 and 17.
 
 ## 未完成 · Unfinished
 
@@ -130,7 +136,7 @@ Nezha Stirs the Sea is a survival action game built with [Egret Rebuild](https:/
 
 ## 引擎副本 · Engine copy
 
-引擎副本取自 [Egret_rebuild](https://github.com/cnedwin/Egret_rebuild) 的 main 提交 `13d70b73904266c11b23de4c09c239240a7162db`，生成记录见 [vendor/SOURCE.md](vendor/SOURCE.md)。集市与强化卡片使用原生标签绑定和多文字叶子按钮面板；仅 CSS 缩放由引擎 arrange 通知。 · Market and upgrade cards use native bound labels and leaf-button panels; the engine's arrange hook also covers CSS-only scaling.
+引擎副本取自 [Egret_rebuild](https://github.com/cnedwin/Egret_rebuild) 的 main 提交 `c54c16c946f777970ed1ac838cc663d349246982`，生成记录见 [vendor/SOURCE.md](vendor/SOURCE.md)。集市与强化卡片使用原生标签绑定和多文字叶子按钮面板；仅 CSS 缩放由引擎 arrange 通知。 · Market and upgrade cards use native bound labels and leaf-button panels; the engine's arrange hook also covers CSS-only scaling.
 
 The runtime is from Egret Rebuild main at the commit above. Run the following command in the engine checkout to reproduce it.
 

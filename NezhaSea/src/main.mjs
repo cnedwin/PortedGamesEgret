@@ -58,7 +58,7 @@ function back() {
   if (game.asking) return false;
   if (app.screen === 'guide' || app.screen === 'options') showTitle(app.screen);
   else if (app.screen === 'menu') resume();
-  else if (app.screen === 'shop') return market.dismissSale() || market.deselect();
+  else if (app.screen === 'shop') return market.deselect();
   else return false;
   return true;
 }
@@ -98,6 +98,8 @@ function renderScreen(name, focus) {
 function redraw() {
   ui.resize();
   stick?.arrange();
+  // A pending native sale owns the top layer. Do not rebuild the HUD above it.
+  if (app.screen === 'shop' && market?.deferResize()) return;
   if (hud && app.run && ['play', 'menu', 'shop', 'levelUp'].includes(app.screen)) {
     hud.arrange();
     hud.enable(app.screen === 'play');
@@ -342,7 +344,9 @@ try {
 if (!loadFailed) {
   hud = createHud(game, app, rules, pause);
   stick = createSeaStick(game, () => app.screen === 'play', hud.exclude);
-  market = createMarketUi({ game, app, rules, sound, say, present, chooseLevel, nextWave, focusPart: ui.pick });
+  market = createMarketUi({ game, app, rules, sound, say, present, chooseLevel, nextWave, focusPart: ui.pick,
+    suspendHud: () => hud.close(),
+    restoreHud: () => { hud.arrange(); hud.enable(false); } });
   wireKeys();
   showTitle();
   ready = true;

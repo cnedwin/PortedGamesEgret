@@ -75,8 +75,8 @@ try {
     }
     const shot = name => out ? page.screenshot({path:resolve(out,id+'-'+name+'.png')}) : Promise.resolve();
     const confirmation = async () => {
-      await until(()=>window.nezhaSea.game.asking||window.nezhaSea.ui.tree.publish().nodes.some(n=>!n.inert&&!n.hidden&&n.id.endsWith(':sellConfirm')));
-      return (await exists('sellConfirm'))?'sellConfirm':'yes';
+      await until(()=>window.nezhaSea.game.asking && window.nezhaSea.ui.tree.publish().nodes.some(n=>!n.inert&&!n.hidden&&n.id.endsWith(':yes')));
+      return 'yes';
     };
     try {
       await until(()=>window.nezhaSea?.ready&&window.nezhaSea.screen==='title');

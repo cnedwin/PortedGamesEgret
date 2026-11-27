@@ -274,17 +274,37 @@ try {
 
   await pressPart('relic1');
   await pressPart('sell');
-  await until(page, () => window.nezhaSea.ui.tree.snapshot.nodes.some((n) => !n.inert && n.role === 'button' && /^Sell \d+/.test(n.name)));
+  await until(page, () => window.nezhaSea.game.asking && window.nezhaSea.ui.part === 'no');
+  check((await byPart('no'))?.role === 'button' && (await byPart('yes'))?.role === 'button', 'sale uses the native confirmation and initially focuses Cancel');
+  const saleViewport = page.viewportSize();
+  const lowerNodes = async () => (await nodes()).filter((node) => !node.hidden && /:(hp|wave|pause|next|gearTab|relic0|sell)$/.test(node.id));
+  check((await lowerNodes()).length > 0, 'an unrotated sale keeps the dimmed background market and HUD');
+  await page.setViewportSize({ width: 390, height: 844 });
+  await until(page, () => {
+    const { game, ui } = window.nezhaSea, plan = game.browser.screen;
+    return game.asking && ui.part === 'no' && Math.abs(plan.width * plan.scale - 390) < 2 && Math.abs(plan.height * plan.scale - 844) < 2;
+  });
+  check(await state(() => window.nezhaSea.app.run.weapons.length === 2), 'resizing the sale keeps the pending confirmation and Cancel focus');
+  check((await lowerNodes()).length === 0, 'rotation suspends stale lower market and HUD geometry');
+  await state(() => window.nezhaSea.refresh());
+  check((await lowerNodes()).length === 0, 'market refresh cannot reveal the covered layers during a sale');
+  if (saleViewport) await page.setViewportSize(saleViewport);
+  await page.waitForFunction((size) => {
+    const { game, ui } = window.nezhaSea, plan = game.browser.screen;
+    return game.asking && ui.part === 'no' && Math.abs(plan.width * plan.scale - size.width) < 2 && Math.abs(plan.height * plan.scale - size.height) < 2;
+  }, saleViewport);
+  check((await lowerNodes()).length === 0, 'rotating back keeps both lower layers suspended until the answer');
   await page.keyboard.press('Escape');
-  await until(page, () => !window.nezhaSea.ui.tree.snapshot.nodes.some((n) => !n.inert && n.role === 'button' && /^Sell \d+/.test(n.name)));
+  await until(page, () => !window.nezhaSea.game.asking && window.nezhaSea.ui.part === 'sell');
   check(await state(() => window.nezhaSea.app.run.weapons.length === 2), 'Escape cancels the sale without changing the loadout');
+  const restored = await lowerNodes();
+  check(restored.some((node) => node.id.endsWith(':hp')) && restored.some((node) => node.id.endsWith(':next')), 'Cancel restores HUD and current market with the original sale focus');
   if (!await byPart('sell')) await pressPart('relic1');
   await pressPart('sell');
-  await until(page, () => window.nezhaSea.ui.tree.snapshot.nodes.some((n) => !n.inert && n.role === 'button' && /^Sell \d+/.test(n.name)));
-  const sale = (await nodes()).find((n) => !n.inert && n.role === 'button' && /^Sell \d+/.test(n.name));
+  await until(page, () => window.nezhaSea.game.asking && window.nezhaSea.ui.part === 'no');
   const namedBefore = await state(() => window.nezhaSea.app.run.pearls);
-  await press('button:' + sale.name);
-  await until(page, () => window.nezhaSea.app.run.weapons.length === 1);
+  await pressPart('yes');
+  await until(page, () => window.nezhaSea.app.run.weapons.length === 1 && !window.nezhaSea.game.asking);
   check(await state((pearls) => window.nezhaSea.app.run.pearls > pearls, namedBefore), 'the confirmation button sells the selected treasure and awards pearls');
 
   check(await tabTo('next', true), 'Shift+Tab reaches Next wave');
@@ -406,8 +426,13 @@ try {
   for (let i = 0; i < 8 && await state(() => window.nezhaSea.screen === 'levelUp'); i++) await pressPart('upgrade0');
   await waitScreen('shop');
   check(Boolean(await byPart('offerBuy0')) && !await byPart('relic0'), 'the narrow market opens to Offers');
+  const offersTab = await byPart('offersTab'), gearTab = await byPart('gearTab');
+  check(offersTab?.role === 'tab' && offersTab.selected === true && gearTab?.role === 'tab' && gearTab.selected === false, 'the native tablist identifies Offers as selected');
   const nextOnOffers = await pointOf('next');
-  await pressPart('gearTab');
+  check(await tabTo('gearTab'), 'Tab reaches the native Gear tab');
+  await page.keyboard.press('Enter');
+  await until(page, () => window.nezhaSea.ui.tree.publish().nodes.some(n => !n.inert && !n.hidden && n.id.endsWith(':gearTab') && n.selected === true));
+  check((await byPart('gearTab'))?.selected === true && (await byPart('offersTab'))?.selected === false, 'the selected native tab follows the displayed page');
   check(Boolean(await byPart('relic0')) && !await byPart('offerBuy0'), 'Gear shows the equipped treasures instead of offers');
   const nextOnGear = await pointOf('next');
   check(Math.abs(nextOnOffers.x - nextOnGear.x) < 1 && Math.abs(nextOnOffers.y - nextOnGear.y) < 1, 'Next wave stays fixed when switching pages');

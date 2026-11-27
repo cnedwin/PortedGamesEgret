@@ -1,6 +1,6 @@
 import { DIVINE, HEROES, ITEMS, SHOP } from './sim/data.mjs';
 import { getLanguage, t } from './i18n.mjs';
-import { viewSpace, showView, textWidth, wrap as wrapText } from './ui-layout.mjs';
+import { viewSpace, showView, wrap as wrapText } from './ui-layout.mjs';
 
 const GOLD = 0xffdfa0;
 const INK = 0x102a28;
@@ -50,10 +50,10 @@ function partsFor() {
     return { type: 'text', name, text: dynamic ? '' : value, ...box(x, y, w, h), size, ...display };
   }
   function button(name, value, x, y, w, h, size, tap, options = {}) {
-    const { disabled, visible, color, textColor, label } = options;
+    const { disabled, visible, color, textColor, label, role, selected } = options;
     bind[name] = { tap, ...(disabled ? { disabled } : {}), ...(visible ? { visible } : {}), ...(typeof color === 'function' ? { color } : {}),
-      ...(label ? { label } : {}), ...(typeof value === 'function' ? { text: value } : {}) };
-    return { type: 'button', name, text: typeof value === 'function' ? '' : value, ...box(x, y, w, h), size, ...(typeof color === 'number' ? { color } : {}), ...(textColor ? { textColor } : {}) };
+      ...(label ? { label } : {}), ...(selected ? { selected } : {}), ...(typeof value === 'function' ? { text: value } : {}) };
+    return { type: 'button', name, ...(role ? { role } : {}), text: typeof value === 'function' ? '' : value, ...box(x, y, w, h), size, ...(typeof color === 'number' ? { color } : {}), ...(textColor ? { textColor } : {}) };
   }
   // A single accessible card with native, separately positioned labels.
   function cardButton(name, x, y, w, h, children, tap, { disabled, visible, color, label } = {}) {
@@ -108,14 +108,15 @@ function cardSlot(index, cols, width, gap, height) {
   return { x: (index % cols) * (span + gap), y: Math.floor(index / cols) * (height + gap), w: span, h: height };
 }
 
-export function createMarketUi({ game, app, rules, sound, say, present, chooseLevel, nextWave, focusPart }) {
+export function createMarketUi({ game, app, rules, sound, say, present, chooseLevel, nextWave, focusPart, suspendHud, restoreHud }) {
   let pane = 'offers';
   let note;
   let detailsOpen = false;
   let detailPage = 0;
   let shop;
   let upgrades;
-  let sale;
+  let sale = false;
+  let suspended = false;
   let drag;
   let ghost;
   let ghostMark;
@@ -198,45 +199,13 @@ export function createMarketUi({ game, app, rules, sound, say, present, chooseLe
   }
 
   async function askSale(question, yes, no) {
-    const { w } = metrics(game);
-    const innerConfirmWidth = Math.min(440, Math.max(240, w - 32)) - 40;
-    // Native confirm now shares uiScale. It still uses one line and its own fixed skin.
-    if (textWidth(question, 24) <= innerConfirmWidth && [yes, no].every((label) => textWidth(label, 24) <= (innerConfirmWidth - 12) / 2)) {
-      sale = { native: true };
-      try {
-        const asked = game.confirm(question, { yes, no });
-        queueMicrotask(() => focusPart?.('no'));
-        return await asked;
-      }
-      finally { sale = undefined; }
-    }
-    // Long bilingual labels need the wrapped themed native view; confirm has no wrapping/skin options.
-    return new Promise((resolve) => {
-      const { panel, text, button, bind } = partsFor();
-      const width = Math.min(400, w - 24);
-      const rows = wrap(question, width - 36, 17);
-      const height = 94 + rows.length * 22;
-      const answer = (accepted) => {
-        sale.view.close();
-        sale = undefined;
-        resolve(accepted);
-      };
-      const view = game.show({ label: question, modal: true, skin: SKIN,
-        root: { ...panel(undefined, 0, 0, width, height, [
-          ...rows.map((row, i) => text(`sellQuestion${i}`, row, 16, 13 + i * 22, width - 32, 22, 17, { align: 'center', color: GOLD, bold: true })),
-          button('sellCancel', no, 14, height - 58, (width - 36) / 2, 44, 14, () => answer(false)),
-          button('sellConfirm', yes, width / 2 + 4, height - 58, (width - 36) / 2, 44, 14, () => answer(true), { color: CTA, textColor: CTA_TEXT })
-        ], { color: INK }), anchor: 'center' }
-      }, { bind, dismiss: dismissSale, initialFocus: 'sellCancel' });
-      sale = { view, answer };
-      focusPart?.('sellCancel', view);
-    });
-  }
-
-  function dismissSale() {
-    if (!sale?.answer) return false;
-    sale.answer(false);
-    return true;
+    sale = true;
+    try {
+      const asked = game.confirm(question, { yes, no, skin: { ...SKIN, button: CTA, buttonText: CTA_TEXT }, noColor: 0x275548 });
+      // The engine defaults to Yes; a treasure sale must start at Cancel.
+      queueMicrotask(() => focusPart?.('no'));
+      return await asked;
+    } finally { sale = false; }
   }
 
   function deselect() {
@@ -349,10 +318,12 @@ export function createMarketUi({ game, app, rules, sound, say, present, chooseLe
         showShop({ focus: id });
       };
       body.push(
-        button('offersTab', t('offers'), pad, headH + 5, content / 2 - 4, 44, 14, tab('offers', 'offersTab'),
-          { visible: (s) => s.compact, color: () => pane === 'offers' ? 0x5b6041 : 0x21443a }),
-        button('gearTab', (s) => t('marketGear', s.count), pad + content / 2 + 4, headH + 5, content / 2 - 4, 44, 14, tab('gear', 'gearTab'),
-          { visible: (s) => s.compact, color: () => pane === 'gear' ? 0x5b6041 : 0x21443a }),
+        panel('marketTabs', pad, headH + 5, content, 44, [
+          button('offersTab', t('offers'), 0, 0, content / 2 - 4, 44, 14, tab('offers', 'offersTab'),
+            { role: 'tab', selected: () => pane === 'offers', visible: (s) => s.compact, color: () => pane === 'offers' ? 0x5b6041 : 0x21443a }),
+          button('gearTab', (s) => t('marketGear', s.count), content / 2 + 4, 0, content / 2 - 4, 44, 14, tab('gear', 'gearTab'),
+            { role: 'tab', selected: () => pane === 'gear', visible: (s) => s.compact, color: () => pane === 'gear' ? 0x5b6041 : 0x21443a })
+        ], { role: 'tablist', label: ownTitle }, { visible: (s) => s.compact }),
         text('offersTitle', t('offers'), offerX, bodyY, offerWidth, 26, 17, { color: GOLD, bold: true, visible: (s) => !s.compact })
       );
 
@@ -455,6 +426,13 @@ export function createMarketUi({ game, app, rules, sound, say, present, chooseLe
   }
 
   function showShop({ focus, fresh = false, renew = false } = {}) {
+    // Keep the pending engine confirmation foremost; its native layout owns a resize.
+    if (sale && shop) return shop.view;
+    if (suspended) {
+      suspended = false;
+      // Restore the HUD first so the current-size market is drawn on top.
+      restoreHud();
+    }
     if (fresh || shop?.wave !== app.run.wave) {
       pane = 'offers';
       note = undefined;
@@ -504,24 +482,36 @@ export function createMarketUi({ game, app, rules, sound, say, present, chooseLe
     return view;
   }
 
+  function deferResize() {
+    if (!sale) return false;
+    if (shop && !suspended && shop.key !== metrics(game).key) {
+      // Native confirm reflows immediately. Keep stale lower geometry out of
+      // that modal until it resolves, even if the player rotates back.
+      suspended = true;
+      disposeDrag();
+      shop.view.hide();
+      suspendHud();
+    }
+    return true;
+  }
+
   function layout() {
     const key = metrics(game).key;
     if (app.screen === 'shop' && shop?.key !== key) {
-      if (sale?.view) dismissSale();
-      showShop();
+      if (!sale) showShop();
     } else if (app.screen === 'levelUp' && upgrades?.key !== key) showLevelUp();
   }
 
   function reset() {
     disposeDrag();
-    dismissSale();
     pane = 'offers';
     note = undefined;
     detailsOpen = false;
     detailPage = 0;
     shop = undefined;
     upgrades = undefined;
+    suspended = false;
   }
 
-  return { showShop, showLevelUp, layout, reset, deselect, dismissSale, disposeDrag, get dragging() { return drag?.dragging; } };
+  return { showShop, showLevelUp, layout, deferResize, reset, deselect, disposeDrag, get dragging() { return drag?.dragging; } };
 }
