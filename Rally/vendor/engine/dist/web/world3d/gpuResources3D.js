@@ -39,6 +39,13 @@ export class GpuResources3D {
         return { programs: this.#programs.size, geometries: this.#geometries.size, textures: this.#textures.size };
     }
     // ---- programs ------------------------------------------------------------
+    get hasPendingPrograms() {
+        return this.#pendingPrograms.size > 0;
+    }
+    canUsePreparedAlternative(key, alternativeKey) {
+        // Preparation owns completion polling and publishes the linked program for the next draw.
+        return this.#pendingPrograms.has(key) && this.#programs.has(alternativeKey);
+    }
     program(key, sources) {
         const cached = this.#programs.get(key);
         if (cached)
