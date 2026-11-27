@@ -14,15 +14,17 @@ export function createPlayViewScrolls(game) {
         }
         return undefined;
     };
-    const localY = (panel, contact) => panel.viewport.globalToLocal(contact.globalX, contact.globalY).y;
+    const localPoint = (panel, contact) => panel.viewport.globalToLocal(contact.globalX, contact.globalY);
     const observe = ({ kind, contact, target }) => {
-        const { session, globalX: x, globalY: y } = contact;
+        const { session } = contact;
         if (session.pointerType !== 'touch')
             return;
         if (kind === 'begin') {
             const panel = closest(target);
-            if (panel !== undefined && ![...hands.values()].some(hand => hand.panel === panel))
-                hands.set(session, { panel, x, y, localY: localY(panel, contact), offset: panel.offset, dragging: false });
+            if (panel !== undefined && ![...hands.values()].some(hand => hand.panel === panel)) {
+                const local = localPoint(panel, contact);
+                hands.set(session, { panel, localX: local.x, localY: local.y, offset: panel.offset, dragging: false });
+            }
             return;
         }
         const hand = hands.get(session);
@@ -33,8 +35,10 @@ export function createPlayViewScrolls(game) {
             hands.delete(session);
             return;
         }
+        // The viewport's axes may differ from the stage axes after rotation or scaling.
+        const local = localPoint(panel, contact);
         if (!hand.dragging) {
-            const dx = x - hand.x, dy = y - hand.y;
+            const dx = local.x - hand.localX, dy = local.y - hand.localY;
             if (Math.abs(dy) <= PAN_SLOP || Math.abs(dx) > Math.abs(dy))
                 return;
             // Once a pan wins, end it on an empty target so a return to the starting point cannot press a button.
@@ -44,7 +48,7 @@ export function createPlayViewScrolls(game) {
             }
             hand.dragging = true;
         }
-        panel.scrollTo(hand.offset + hand.localY - localY(panel, contact));
+        panel.scrollTo(hand.offset + hand.localY - local.y);
     };
     const create = (viewport, offset, enabled) => {
         const content = game.sprite(undefined, viewport);

@@ -1,0 +1,259 @@
+{
+  "schema": "tea-road-engine-upgrade/1",
+  "date": "2026-11-27",
+  "base": "461d9d51bb43cb55c3dc0f5e3ddea05e2dc60a99",
+  "from": "8637ace9a40667714abd6d74157e8dcf4587232d",
+  "to": "72be4978226951c0727262e81da87f1aa7e15242",
+  "officialVendorFileCount": 323,
+  "entryCount": 16,
+  "localPatches": 0,
+  "fileComparisons": [
+    {
+      "file": "vendor/engine/dist/web/WebGL2Host.js",
+      "bytes": 122741,
+      "sha256": "a2746d013f5b83743affefda8405f31f2500f1d1fabbebdeae1e6042fa13c049",
+      "sameAsOfficialDistWithoutSourceMap": true
+    },
+    {
+      "file": "vendor/engine/dist/web/webgl2Native.js",
+      "bytes": 23864,
+      "sha256": "791874b609817f470bade42a82ffa501ccb5cc0867405f9c6de5fd60151e2e4d",
+      "sameAsOfficialDistWithoutSourceMap": true
+    },
+    {
+      "file": "vendor/engine/dist/rendering/world3d/PhysicsMesh3D.js",
+      "bytes": 21857,
+      "sha256": "7092646bca2c289ee4ee6e21c45105a275848c3aeb2fbb59c5a1d854b375c85f",
+      "sameAsOfficialDistWithoutSourceMap": true
+    }
+  ],
+  "baseline": {
+    "nodeTests": {
+      "pass": 36,
+      "total": 36
+    },
+    "oldShortLandscapeAndDesktopDirectScreens": [
+      {
+        "viewport": [
+          844,
+          390
+        ],
+        "stage": [
+          1298,
+          600
+        ],
+        "hudControls": [
+          {
+            "name": "暂停 Pause",
+            "role": "button",
+            "bounds": {
+              "x": 1213,
+              "y": 19,
+              "width": 66,
+              "height": 62
+            }
+          },
+          {
+            "name": "喇叭 Horn",
+            "role": "button",
+            "bounds": {
+              "x": 1043,
+              "y": 408,
+              "width": 96,
+              "height": 64
+            }
+          },
+          {
+            "name": "视角 View",
+            "role": "button",
+            "bounds": {
+              "x": 1151,
+              "y": 378,
+              "width": 96,
+              "height": 64
+            }
+          },
+          {
+            "name": "方向 Steering",
+            "role": "slider",
+            "bounds": {
+              "x": 22,
+              "y": 476,
+              "width": 362,
+              "height": 108
+            }
+          },
+          {
+            "name": "油门 Throttle",
+            "role": "button",
+            "bounds": {
+              "x": 1151,
+              "y": 450,
+              "width": 121,
+              "height": 128
+            }
+          },
+          {
+            "name": "刹车 Brake",
+            "role": "button",
+            "bounds": {
+              "x": 1023,
+              "y": 483,
+              "width": 102,
+              "height": 95
+            }
+          }
+        ],
+        "consoleMessages": [
+          "Failed to load resource: the server responded with a status of 404 (Not Found)",
+          "Failed to load resource: the server responded with a status of 404 (Not Found)"
+        ]
+      },
+      {
+        "viewport": [
+          1280,
+          800
+        ],
+        "stage": [
+          1152,
+          720
+        ],
+        "hudControls": [
+          {
+            "name": "暂停 Pause",
+            "role": "button",
+            "bounds": {
+              "x": 1067,
+              "y": 19,
+              "width": 66,
+              "height": 62
+            }
+          },
+          {
+            "name": "喇叭 Horn",
+            "role": "button",
+            "bounds": {
+              "x": 897,
+              "y": 528,
+              "width": 96,
+              "height": 64
+            }
+          },
+          {
+            "name": "视角 View",
+            "role": "button",
+            "bounds": {
+              "x": 1005,
+              "y": 498,
+              "width": 96,
+              "height": 64
+            }
+          },
+          {
+            "name": "方向 Steering",
+            "role": "slider",
+            "bounds": {
+              "x": 22,
+              "y": 596,
+              "width": 362,
+              "height": 108
+            }
+          },
+          {
+            "name": "油门 Throttle",
+            "role": "button",
+            "bounds": {
+              "x": 1005,
+              "y": 570,
+              "width": 121,
+              "height": 128
+            }
+          },
+          {
+            "name": "刹车 Brake",
+            "role": "button",
+            "bounds": {
+              "x": 877,
+              "y": 603,
+              "width": 102,
+              "height": 95
+            }
+          }
+        ],
+        "consoleMessages": [
+          "Failed to load resource: the server responded with a status of 404 (Not Found)"
+        ]
+      }
+    ],
+    "guideHelpNote": "Old Windows checkout frontmatter parsed with CRLF and legacy command did not provide verification. Direct baseline title/HUD captured; generic 404 messages lacked request URLs and are retained. The old title capture still contained the loading fade; only stable driving HUD captures are used for the visual comparison."
+  },
+  "isolatedUpgrade": {
+    "unchangedGameplayAndUi": true,
+    "nodeTests": {
+      "pass": 36,
+      "total": 36
+    },
+    "verify": {
+      "type": "headless Chromium / SwiftShader (installed Chromium selected via launcher adapter)",
+      "checks": {
+        "noErrors": {
+          "pass": true,
+          "errors": [],
+          "failedRequests": []
+        },
+        "noExternalRequests": {
+          "pass": true,
+          "externalRequests": []
+        },
+        "hasCanvas": {
+          "pass": true,
+          "canvases": [
+            {
+              "x": 0,
+              "y": 0,
+              "w": 960,
+              "h": 640,
+              "pixelWidth": 960,
+              "pixelHeight": 640
+            },
+            {
+              "x": 0,
+              "y": 0,
+              "w": 960,
+              "h": 640,
+              "pixelWidth": 1080,
+              "pixelHeight": 720
+            }
+          ]
+        },
+        "drawsSomething": {
+          "pass": true,
+          "colors": 547,
+          "dominant": 0.09436686197916666,
+          "note": "colours are counted in steps of sixteen; dominant is the share of the commonest colour"
+        },
+        "keepsRunning": {
+          "pass": true,
+          "framesPerSecondIdle": 16,
+          "framesPerSecondPlaying": 18.8,
+          "note": "software rendering: frames must keep advancing while idle and during input"
+        },
+        "reactsOrMoves": {
+          "pass": true,
+          "changedAfterFirstInputs": 0.9590087890625,
+          "changedAtEnd": 0.9627978515625,
+          "changedMostDuringInput": 0.9647705078125
+        },
+        "makesSound": {
+          "pass": true,
+          "audioContexts": 1,
+          "soundsStarted": 30
+        }
+      },
+      "engineWarnings": [],
+      "consoleWarnings": [],
+      "pass": true
+    }
+  },
+  "limits": "No actual physical hardware, Safari/Firefox/WeChat, screen-reader or browser KHR parallel-compile path tested in this stage. Node guards simulate extension availability."
+}

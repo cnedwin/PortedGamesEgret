@@ -143,11 +143,14 @@ body {
   border: 1px solid #e8b56894;
   border-radius: 8px;
   padding: 12px 18px;
+  min-width: 44px;
+  min-height: 44px;
   color: #fff0cd;
   background: #6b382a;
   font: 600 14px system-ui, sans-serif;
 }
-@media (orientation: portrait) and (pointer: coarse) {
+/* The rotate prompt is for phones, not portrait tablets or narrow desktop windows. */
+@media (orientation: portrait) and (pointer: coarse) and (max-width: 599px) {
   #rotate {
     display: grid;
   }

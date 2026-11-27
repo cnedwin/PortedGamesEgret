@@ -29,10 +29,11 @@ export function createMarkers(container, camera, { stations, followers }) {
     container.append(div);
     return { div, arrow, small: div.querySelector('small') };
   };
+  let margin = 54;
+  const stationMarker = (div, station) => markers.add(div, { target: [station.x, station.y + 8, station.z], clampToEdge: true, margin });
   const stationMarkers = stations.map((station) => {
     const made = element('marker', station.zh, '');
-    const marker = markers.add(made.div, { target: [station.x, station.y + 8, station.z], clampToEdge: true, margin: 54 });
-    return { station, marker, ...made };
+    return { station, marker: stationMarker(made.div, station), ...made };
   });
   const friendMarkers = followers.map((follower) => {
     const made = element('marker friend', follower.zh);
@@ -57,6 +58,16 @@ export function createMarkers(container, camera, { stations, followers }) {
       markers.update();
       // The arrow of a marker held at the edge turns toward its target.
       for (const { marker, arrow } of [...stationMarkers, ...friendMarkers]) if (marker.onEdge) arrow.style.transform = `rotate(${marker.angle + Math.PI / 2}rad)`;
+    },
+    // Engine note #29: the engine captures margin when a marker is added; replace just the marker registration,
+    // retaining its element and anchor. No re-projection or overlay rebuild is needed.
+    setMargin(cssPixels) {
+      if (cssPixels === margin) return;
+      margin = cssPixels;
+      for (const entry of stationMarkers) {
+        entry.marker.dispose();
+        entry.marker = stationMarker(entry.div, entry.station);
+      }
     },
     set visible(on) {
       shown = on;

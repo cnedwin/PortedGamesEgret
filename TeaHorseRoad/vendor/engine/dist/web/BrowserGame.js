@@ -4,6 +4,7 @@
 import { EgretError } from '@egret/runtime';
 import { Bitmap, copyImageData2DPixels, createAssetRef, createAssetType, createEngineForProfile, createImageData2D, createTexture, isTexture, SHARED_FRAME_PROFILE_2D, Sprite } from '@egret/engine';
 import { createBrowserTextureProvider } from './image.js';
+import { createBrowserStaticLayers } from './browserStaticLayers.js';
 import { decodeBrowserImage, sniffBrowserImageFormat } from './BrowserImageTextures.js';
 import { createTextField, createTextRasterCache } from '@egret/engine/text';
 import { createBrowserFrameLoop } from './loop.js';
@@ -11,6 +12,19 @@ import { createBrowserPointerInput } from './pointer.js';
 import { createBrowserKeyboardInput } from './keyboard.js';
 import { createBrowserStatsPanel } from './BrowserStatsPanel.js';
 import { planScreen } from './screen.js';
+const GAME_FITS = [
+    'none',
+    'contain',
+    'cover',
+    'stretch',
+    'expand',
+    'fixedWidth',
+    'fixedHeight',
+    'fixedNarrow',
+    'fixedWide'
+];
+/** The fits of which the stage follows the plan of the screen, its size included. */
+const plannedFit = (fit) => fit === 'none' || fit === 'cover' || fit === 'stretch' ? undefined : fit;
 const invalid = () => new EgretError('BROWSER_GAME_OPTIONS_INVALID');
 const whole = (value) => typeof value === 'number' && Number.isSafeInteger(value) && value > 0;
 const finite = (value) => typeof value === 'number' && Number.isFinite(value);
@@ -67,6 +81,32 @@ async function chooseBackend(asked) {
         return 'webgl2';
     }
 }
+/** Tells a tool's `globalThis.__egretAgent.warning`, where a page has one, of a warning; what it throws is the tool's. */
+function tellAgent(warning) {
+    const agent = globalThis.__egretAgent;
+    if (typeof agent?.warning !== 'function')
+        return;
+    try {
+        agent.warning(warning);
+    }
+    catch {
+        /* The tool's own failure, not the game's. */
+    }
+}
+/**
+ * The safe-area insets a tool's `globalThis.__egretAgent.insets` gives, in the window's CSS pixels, to fit the game as
+ * a phone with a notch would; undefined where a page has none, or none of 0 or more on each side.
+ */
+function agentInsets() {
+    const agent = globalThis.__egretAgent;
+    const insets = agent?.insets;
+    if (insets === null || typeof insets !== 'object')
+        return undefined;
+    const sides = [insets.top, insets.right, insets.bottom, insets.left];
+    if (!sides.every(side => typeof side === 'number' && Number.isFinite(side) && side >= 0))
+        return undefined;
+    return { top: insets.top, right: insets.right, bottom: insets.bottom, left: insets.left };
+}
 /**
  * What a game does with the diagnostics of its Engine. An error the Engine can only report, such as a listener of
  * pointer input that threw, which ends that input, is told as a failure of the loop is: to `onError`, or to the page,
@@ -98,7 +138,11 @@ export async function createBrowserGame(options) {
         throw invalid();
     const { canvas, width, height, update, onError, onWarning } = options;
     const asked = options.backend ?? 'auto', clearColor = options.clearColor ?? 0, clearAlpha = options.clearAlpha ?? 1, blendSpace = options.blendSpace ?? 'linear', enableEffects = options.effects ?? false;
-    const device = Number(globalThis.devicePixelRatio), pixelRatio = options.pixelRatio ?? (device > 0 ? Math.min(device, 2) : 1);
+    const deviceRatio = () => {
+        const ratio = Number(globalThis.devicePixelRatio);
+        return ratio > 0 && Number.isFinite(ratio) ? ratio : 1;
+    };
+    const wholeScale = options.wholeScale ?? false, pixelRatio = options.pixelRatio ?? (wholeScale ? 1 : Math.min(deviceRatio(), 2));
     if (canvas === null ||
         typeof canvas !== 'object' ||
         typeof canvas.getBoundingClientRect !== 'function' ||
@@ -117,9 +161,19 @@ export async function createBrowserGame(options) {
         typeof enableEffects !== 'boolean' ||
         (update !== undefined && typeof update !== 'function') ||
         (onError !== undefined && typeof onError !== 'function') ||
+        (options.beforeRender !== undefined && typeof options.beforeRender !== 'function') ||
+        (options.renderRetry !== undefined &&
+            (options.renderRetry === null ||
+                typeof options.renderRetry !== 'object' ||
+                !Number.isSafeInteger(options.renderRetry.maxConsecutive) ||
+                options.renderRetry.maxConsecutive < 1 ||
+                options.renderRetry.maxConsecutive > 8 ||
+                typeof options.renderRetry.shouldRetry !== 'function')) ||
         (onWarning !== undefined && typeof onWarning !== 'function') ||
-        [options.pointer, options.keyboard, options.hover, options.autoStart, options.stats].some(flag => flag !== undefined && typeof flag !== 'boolean') ||
-        !['none', 'contain', 'cover', 'stretch', 'expand'].includes(options.fit ?? 'none') ||
+        [options.pointer, options.keyboard, options.hover, options.autoStart, options.stats, options.staticLayers].some(flag => flag !== undefined && typeof flag !== 'boolean') ||
+        !GAME_FITS.includes(options.fit ?? 'none') ||
+        typeof wholeScale !== 'boolean' ||
+        (wholeScale && (plannedFit(options.fit ?? 'none') === undefined || pixelRatio !== 1)) ||
         (options.fitTo !== undefined && (options.fitTo === null || typeof options.fitTo !== 'object')))
         throw invalid();
     // The plan of the stage: refused here, before anything is made, when the portrait size or the insets are not valid.
@@ -127,7 +181,8 @@ export async function createBrowserGame(options) {
         box,
         design: { width, height },
         ...(options.portrait === undefined ? {} : { portrait: options.portrait }),
-        fit: options.fit === 'expand' ? 'expand' : 'contain',
+        fit: plannedFit(options.fit ?? 'none') ?? 'contain',
+        ...(wholeScale ? { wholeScale, pixelRatio: deviceRatio() } : {}),
         ...(insets === undefined ? {} : { insets })
     });
     try {
@@ -142,9 +197,10 @@ export async function createBrowserGame(options) {
     const host = backend === 'webgpu'
         ? (await import('./webgpu.js')).createSharedWebGPUHost({ canvas, pixelRatio, blendSpace, enableEffects })
         : (await import('./webgl2.js')).createSharedWebGL2Host({ canvas, pixelRatio, blendSpace, enableEffects });
+    const staticCache = options.staticLayers === true && 'createSharedLayer2D' in host ? createBrowserStaticLayers(host) : undefined;
     let engine;
     try {
-        engine = await createEngineForProfile({ host, onDiagnostic: gameDiagnostics(onError) }, SHARED_FRAME_PROFILE_2D);
+        engine = await createEngineForProfile({ host: staticCache?.adapter ?? host, onDiagnostic: gameDiagnostics(onError) }, SHARED_FRAME_PROFILE_2D);
     }
     catch (cause) {
         try {
@@ -189,6 +245,7 @@ export async function createBrowserGame(options) {
         });
         let nearLimit = false, refusing = false;
         const warn = (warning) => {
+            tellAgent(Object.freeze(warning));
             if (onWarning === undefined)
                 return;
             try {
@@ -282,6 +339,8 @@ export async function createBrowserGame(options) {
             engine: drawing,
             host,
             frame: frameNow,
+            ...(options.beforeRender === undefined ? {} : { beforeRender: options.beforeRender }),
+            ...(options.renderRetry === undefined ? {} : { renderRetry: options.renderRetry }),
             ...(onError === undefined ? {} : { onError }),
             update(seconds) {
                 if (panel !== undefined) {
@@ -409,7 +468,7 @@ export async function createBrowserGame(options) {
                     texture.dispose();
             }
         };
-        // The canvas in its element: sized now and whenever the element changes size. With "contain" and "expand" the
+        // The canvas in its element: sized now and whenever the element changes size. With the planned fits the
         // stage follows the plan of the screen: its size, and, with a portrait size, its shape.
         const fit = options.fit ?? 'none', holder = options.fitTo ?? canvas.parentElement;
         const screenListeners = new Set();
@@ -437,13 +496,20 @@ export async function createBrowserGame(options) {
                 page.body.appendChild(probe);
             }
             const style = view.getComputedStyle(probe), read = (value) => (Number.isFinite(parseFloat(value)) ? Math.max(0, parseFloat(value)) : 0);
+            // A tool may stand in for a phone's notch and home bar, which a headless browser does not have.
+            const standIn = agentInsets(), edges = standIn ?? {
+                top: read(style.paddingTop),
+                right: read(style.paddingRight),
+                bottom: read(style.paddingBottom),
+                left: read(style.paddingLeft)
+            };
             // Insets are of the window; the element may be anywhere in it.
             const box = (holder ?? canvas).getBoundingClientRect(), across = view.innerWidth, down = view.innerHeight;
             return {
-                top: Math.max(0, read(style.paddingTop) - box.top),
-                left: Math.max(0, read(style.paddingLeft) - box.left),
-                right: Math.max(0, read(style.paddingRight) - (finite(across) ? across - box.right : 0)),
-                bottom: Math.max(0, read(style.paddingBottom) - (finite(down) ? down - box.bottom : 0))
+                top: Math.max(0, edges.top - box.top),
+                left: Math.max(0, edges.left - box.left),
+                right: Math.max(0, edges.right - (finite(across) ? across - box.right : 0)),
+                bottom: Math.max(0, edges.bottom - (finite(down) ? down - box.bottom : 0))
             };
         };
         if (fit !== 'none' && holder !== null) {
@@ -471,10 +537,14 @@ export async function createBrowserGame(options) {
                     frame = Object.freeze({ width: next.width, height: next.height, clearColor, clearAlpha });
                 style.width = next.width * next.scale + 'px';
                 style.height = next.height * next.scale + 'px';
+                // Whole steps are enlarged as they are, a canvas pixel to a square of the device's.
+                if (wholeScale)
+                    style.imageRendering = 'pixelated';
                 style.marginLeft = next.left + 'px';
                 style.marginTop = next.top + 'px';
                 const moved = next.width !== before.width ||
                     next.height !== before.height ||
+                    next.scale !== before.scale ||
                     next.orientation !== before.orientation ||
                     ['x', 'y', 'width', 'height'].some(key => next.safe[key] !== before.safe[key]);
                 if (moved)
@@ -588,6 +658,8 @@ export async function createBrowserGame(options) {
                 italic: false,
                 lineHeight: 0,
                 color: 0xffffff,
+                strokeWidth: 0,
+                strokeColor: 0,
                 locale: 'en',
                 direction: 'ltr'
             };
@@ -603,7 +675,9 @@ export async function createBrowserGame(options) {
                 locale: now.locale,
                 direction: now.direction,
                 density: pixelRatio,
-                fillColor: now.color
+                fillColor: now.color,
+                strokeWidth: now.strokeWidth,
+                strokeColor: now.strokeColor
             });
             const enterLabelLane = () => {
                 if (labelsDrawing < LABEL_LANES) {
@@ -912,6 +986,8 @@ export async function createBrowserGame(options) {
                 italic: false,
                 lineHeight: 0,
                 color: 0xffffff,
+                strokeWidth: 0,
+                strokeColor: 0,
                 locale: 'en',
                 direction: 'ltr'
             };
@@ -973,7 +1049,9 @@ export async function createBrowserGame(options) {
                             locale: now.locale,
                             direction: now.direction,
                             density: pixelRatio,
-                            fillColor: now.color
+                            fillColor: now.color,
+                            strokeWidth: now.strokeWidth,
+                            strokeColor: now.strokeColor
                         };
                         let prepared;
                         try {
@@ -1141,6 +1219,7 @@ export async function createBrowserGame(options) {
             backend,
             engine,
             host,
+            ...(staticCache === undefined ? {} : { staticLayers: staticCache.api }),
             stage: engine.stage,
             scope,
             get frame() {

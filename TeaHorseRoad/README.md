@@ -55,8 +55,11 @@ Every item below is done through the engine's API; the table says where it shows
 | `createDecal3D` | 车轮压过地面留下的车辙（地形的 `createDecal`）；蹚水和在土路上快跑时溅到车身上的泥点（直接对车身网格用 `createDecal3D`） · tyre tracks pressed into the ground (the terrain's `createDecal`); mud flung onto the trucks' bodies through water and at speed on earth (`createDecal3D` on the body mesh) | `src/play/effects.mjs` |
 | `Font3D` + `createTextGeometry3D` | 驿站石碑、路牌、牌坊和垭口石碑上的立体字；字形由 `tools/make-glyphs.py` 按笔画画出 · the raised letters of the station steles, the road signs, the gate and the pass; the glyphs are drawn stroke by stroke by `tools/make-glyphs.py` | `src/art/font.mjs`, `src/models/buildings.mjs` |
 | `createAudioListener3D` + `createPositionalAudio3D` | 听者挂在相机上；每辆车的发动机（音高随车速）和马铃、浅滩和河谷的水声都在场景里定位；喇叭、狼嚎、吆喝、撞击在发生处响起 · the listener rides on the camera; each truck's engine (pitched by its speed) and bells, and the water at the ford and in the gorge are placed in the scene; the horn, howls, shouts and knocks sound where they happen | `src/audio/soundscape.mjs` |
-| `createScreenMarkers3D` | 下一个驿站（带距离）和两辆队友车的屏幕标记，出了画面贴边并用箭头指向 · markers for the next station (with its distance) and the two other trucks, held at the edge with an arrow when off the picture | `src/ui/markers.mjs` |
+| `createScreenMarkers3D` | 下一个驿站和队友车的原生投影，离屏驿站在当前最大安全区内缩之外贴边 · native route/convoy markers; off-screen stations clamp using the largest safe-area inset | `src/ui/markers.mjs` |
 | `createWorld3DOverlay` | 所有 2D 界面（标题、HUD、触屏控件、卡片）画在 3D 画面上的引擎 2D 舞台里；按在空白处的拖动交给 3D 画布（扎营时转相机、拖手柄） · the whole 2D interface (title, HUD, touch controls, cards) is drawn on the engine's 2D stage over the 3D picture; drags on empty parts go to the 3D canvas (turning the camp camera, dragging the handles) | `src/main.mjs`, `src/ui/*.mjs` |
+| `fit: expand`, `game.screen.safe`, `game.onScreenChange` | 单一 1066×600 横版设计，随 3D 画布扩展舞台；以当前安全区摆放 HUD、触控键和卡片，保留转屏时的控件及营地状态，不重建叠加层。 · One expanding landscape overlay; safe-area anchors, persistent cards, controls and camp state through rotation | `src/main.mjs`, `src/ui/hud.mjs`, `src/ui/card.mjs`, `src/ui/screens.mjs` |
+| `createBrowserSemantics().sync({width,height})` | 同一个语义投影跟随逻辑舞台尺寸变化及更新的节点边界 · update logical projection dimensions in place | `src/main.mjs` |
+| `verify --screens --play` | 八种窗口模拟真实 UI 路线、拍摄安全区检查点；叠加层当前版本缺少控件收据，另核对真实语义与 CSS 边界 · eight device profiles and route checkpoints, with independent semantic geometry checks | `test/play.mjs`, `test/rotation.mjs`, `QUALITY.md` |
 | `createTransformControls3D`（其手柄即 `TransformGizmo3D` · whose handles are a `TransformGizmo3D`）+ `createOrbitControls3D` | 扎营：移动、旋转营地物件，带吸附；相机绕营地转 · the camp: moving and turning pieces with snapping; the camera circling the yard | `src/play/camp.mjs` |
 | `serializeScene3D` + `deserializeScene3D` | 营地写成场景文档存进存档，下次路过时读回来摆好；物件的几何按名字存（`geometryKey` / `resolveGeometry`） · the camp is written as a scene document into the save and read back on later journeys, its pieces' geometries stored by name | `src/play/camp.mjs`, `src/main.mjs` |
 | `createWater3D` | 浅滩、峡谷里的江和高原湖；车轮蹚水时按水深溅起水花、不起车尘；高画质下湖面有倒影 · the ford, the river in the gorge and the plateau lake; wading wheels throw spray by the depth and raise no dust; the lake reflects on High | `src/world/water.mjs`, `src/play/effects.mjs` |
@@ -115,25 +118,29 @@ The tests check the road (its length, grades, the order of stations and ambushes
 | `media/` | 结尾短片 · the closing film |
 | `vendor/` | 引擎副本，见 `vendor/SOURCE.md` · the engine copy |
 
-引擎副本取自 Egret_rebuild 提交 `8637ace`，由引擎仓库的 `tools/vendor-game.mjs` 复制；带着两处本地补丁，见 `vendor/SOURCE.md` 和 ENGINE-NOTES 第 25、26 条。The engine copy is from Egret_rebuild commit `8637ace`, copied by the engine's `tools/vendor-game.mjs`, with two local patches (see `vendor/SOURCE.md` and ENGINE-NOTES items 25 and 26).
+引擎副本取自 Egret_rebuild 提交 `72be497`，由引擎仓库的 `tools/vendor-game.mjs` 生成，无本地补丁。 · Official engine copy at `72be497`, with no local patches.
 
 ## 已验证 · Verified
 
 - `node --test test/*.test.mjs`：路（长度、坡度、驿站与埋伏的次序、路面高度）、存档、合成声音、引擎副本的 import map。 · The Node tests: the road, the save, the synthesized sound and the engine copy's import map.
 - 无头 Chromium（SwiftShader 软件渲染）：自动驾驶从出发跑到结局，没有控制台错误；手机横屏触屏模拟（844×390）下踏板、方向滑条、喇叭可用，能开到第一个驿站；营地存档后刷新能读回。这些在提交 `0899e4a` 上跑过。 · In headless Chromium with software rendering: an autopilot journey from the start to the ending with a clean console; touch on an emulated phone held sideways (844 × 390) driving to the first station; a saved camp read back after a reload — run at commit `0899e4a`.
 - GitHub Pages 上的线上页面在 `0899e4a` 部署后打开、开始并能驾驶。 · The live page on GitHub Pages opened, started and drove after `0899e4a` was deployed.
-- 升级到引擎 `8637ace` 后，在本地无头 Chromium（SwiftShader）里：自动驾驶从起点跑到结尾短片（经过两个驿站和沿路的埋伏），没有控制台错误；开出 370 米后车上篷布和捆绳的包围球仍在车上，跟车视角和升级前的截图一致；标题画面的「设置」、Esc 暂停都能直接打开卡片（宽屏和 844×390 触屏）；扎营时拖手柄移动物件、相机不动，拖空白处转相机；营地保存后刷新能读回；窗口小幅变窄时界面保持比例，变窄超过一成时按新宽度重建。 · After the move to engine `8637ace`, in local headless Chromium with software rendering: an autopilot run from the start to the closing film, through two stations and the ambushes, with a clean console; tarps and lashings still bounded on their trucks after 370 m, the chase view matching the pictures from before; Settings and Esc opening their cards at once (wide and 844 × 390 touch); camp handles moving a piece with the camera still, and empty ground turning it; a saved camp read back after a reload; the interface keeping its shape when the window narrows a little and rebuilt at the new width past a tenth.
+- 升级到引擎 `8637ace` 后，在本地无头 Chromium（SwiftShader）里：自动驾驶从起点跑到结尾短片（经过两个驿站和沿路的埋伏），没有控制台错误；开出 370 米后车上篷布和捆绳的包围球仍在车上，跟车视角和升级前的截图一致；标题画面的「设置」、Esc 暂停都能直接打开卡片（宽屏和 844×390 触屏）；扎营时拖手柄移动物件、相机不动，拖空白处转相机；营地保存后刷新能读回。 · After the move to engine `8637ace`, in local headless Chromium with software rendering: an autopilot run from the start to the closing film, through two stations and the ambushes, with a clean console; tarps and lashings still bounded on their trucks after 370 m, the chase view matching the pictures from before; Settings and Esc opening their cards at once (wide and 844 × 390 touch); camp handles moving a piece with the camera still, and empty ground turning it; a saved camp read back after a reload.
+
+- `72be497` 升级与原生屏幕适配：指定正式文件 3/3 字节一致，Node 36/36，官方浏览器 7/7，普通八屏 8/8、流程八屏 8/8（59 检查点和 291 项活动控件边界），四状态双向旋转 4/4。触屏最小实测边长 45.00 CSS px，首站与营地正常保存，未修改规则。软件渲染，使用隔离的驿站接近段测试定位；未进行真机 GPU 测试。详见 [QUALITY.md](QUALITY.md)。 · Official patch-free engine, eight device profiles, route/rotation and persistent control geometry checked with software rendering; no hardware claim.
+
+- #278 实际公开版的 PC RTX 5090 / Edge 与三星 Fold7 / Chrome 确认四状态转屏、输入、营地保存及刷新；专项发现的矮横屏设置、续档标题及窄桌面字幕问题已在候选布局中修正。40/40 Node、8/8 短屏软件检查点通过，真机公开回归区别报告。 · Real public-device observations and the targeted short-screen repair, separate from software results; see [QUALITY.md](QUALITY.md).
 
 ## 已知问题 · Known issues
 
-- 真显卡和真手机上没有运行过，帧率没有测过。 · Not run on a real GPU or phone; frame rates were not measured.
+- 通用品质表为软件渲染；真机专项与未覆盖范围单独列在 QUALITY.md。 · Generic quality is software-rendered; physical device observations and coverage limits are recorded separately.
 - 软件渲染下天空盒是黑的（见 ENGINE-NOTES），截图里天顶偏暗。 · Under software rendering the skybox is black (see ENGINE-NOTES), so pictures show a dark zenith.
-- 比 4:3 还窄的屏幕上，界面上下会露出几十像素的场景（舞台最窄 4:3，叠加层按比例放进画面）。 · On a screen narrower than 4:3 a few dozen pixels of the scene show above and below the interface (the stage is 4:3 at its narrowest and fitted whole).
-- 引擎副本带着两处本地补丁（2D 着色器开局并行链接、地形碰撞体从 Worker 交回），以后升级引擎要再带上，直到引擎收进这两处（ENGINE-NOTES 第 25、26 条）。 · The engine copy carries two local patches (parallel 2D program links at the start, terrain colliders handed back from a worker) that each upgrade must carry until the engine takes them in (ENGINE-NOTES items 25 and 26).
 - 一趟的时长只按自动驾驶估计：全程最快约 4.7 分钟驾驶，真人估计十分钟上下，没有实测。 · A journey's length is estimated from the autopilot alone (about 4.7 minutes of driving at best); no player was timed.
-- 品质验收未达标 · Quality items failing（[QUALITY.md](QUALITY.md)，2026-11-20，无头 Chromium + SwiftShader · headless, software rendering）：F1 桌面帧时间 p95 ≤ 16.7 ms（p95 483.2 ms over 19 frames）；I1 中英文全可切换，英文下无中文（no way to choose English found）；E2 资源失败有错误界面和重试（1 files refused; no uncaught error; no error screen with a retry）。
+- 品质验收未达标 · Quality items failing（[QUALITY.md](QUALITY.md)，2026-11-27，无头 Chromium + SwiftShader · headless, software rendering）：F1 桌面帧时间 p95 ≤ 16.7 ms（p95 287.5 ms over 29 frames）；I1 中英文全可切换，英文下无中文（no way to choose English found）；E2 资源失败有错误界面和重试（14 files refused; no uncaught error; no error screen with a retry）。
 
 ## 已解决 · Solved
+
+- 引擎 #524/#525 已正式支持 Worker 碰撞体交还与 2D 宿主启动/恢复的着色器批处理，旧两处本地补丁不再保留（ENGINE-NOTES 25、26）。 · Official #524/#525 replace both carried patches with engine implementations.
 
 - 车上的篷布和捆绳开出几十米后消失：引擎布料与绳子的网格包围球不随顶点更新，被视锥剔除。先是关掉这几块网格的剔除；引擎 #425 修好后，升级到 `8637ace` 时恢复了默认剔除（ENGINE-NOTES 第 1 条）。 · Tarps and lashings vanished a few dozen metres on: the cloth and rope meshes kept stale bounds and were culled. At first those meshes were not culled; since engine #425 fixed the bounds, the move to `8637ace` put the usual culling back (ENGINE-NOTES item 1).
 - 升级到 `8637ace` 时去掉的其他绕过办法：建卡片前等一次投递结束（第 20 条）、拖手柄时关掉轨道相机（第 21 条）、自己留着发动机声的节点改音高（第 15 条）、自己装 `AudioBuffer`（第 16 条）；营地几何按名字存（第 22 条）。 · Other workarounds dropped in the move to `8637ace`: waiting out the delivery before a card (item 20), switching the orbit camera off while a handle drags (item 21), keeping the engine sound's node to re-pitch it (item 15), filling an `AudioBuffer` by hand (item 16); and the camp's geometries are now saved by name (item 22).
@@ -153,8 +160,8 @@ The tests check the road (its length, grades, the order of stations and ambushes
 
 ## 引擎副本 · Engine copy
 
-引擎副本取自 [Egret_rebuild](https://github.com/cnedwin/Egret_rebuild) 提交 `8637ace9a40667714abd6d74157e8dcf4587232d`，由引擎仓库的 `tools/vendor-game.mjs` 复制，见 [vendor/SOURCE.md](vendor/SOURCE.md)。复制后带上了 `687037a` 副本里的两处本地补丁（ENGINE-NOTES 第 25、26 条）。
+引擎副本取自 [Egret_rebuild](https://github.com/cnedwin/Egret_rebuild) 提交 `72be4978226951c0727262e81da87f1aa7e15242`，由引擎仓库的 `tools/vendor-game.mjs` 生成，见 [vendor/SOURCE.md](vendor/SOURCE.md)。无需本地补丁。
 
-The engine copy is from [Egret_rebuild](https://github.com/cnedwin/Egret_rebuild) commit `8637ace9a40667714abd6d74157e8dcf4587232d`, copied by the engine's `tools/vendor-game.mjs`; see [vendor/SOURCE.md](vendor/SOURCE.md). The two local patches of the `687037a` copy were carried over (ENGINE-NOTES items 25 and 26).
+The engine copy is from [Egret_rebuild](https://github.com/cnedwin/Egret_rebuild) commit `72be4978226951c0727262e81da87f1aa7e15242`, generated by the engine's `tools/vendor-game.mjs`; see [vendor/SOURCE.md](vendor/SOURCE.md). No local patches.
 
 入口 · Entries: `@egret/engine`, `@egret/engine/world3d`, `@egret/engine/webgl2/world3d`, `@egret/engine/webgpu/world3d`, `@egret/engine/bitmapfont`, `@egret/engine/ui`, `@egret/engine/ui/semantics`, `@egret/engine/web/semantics`, `@egret/engine/kit`, `@egret/engine/web/kit`, `@egret/engine/web/game`, `@egret/engine/web/video`, `@egret/engine/web/gamepad`, `@egret/engine/input/gamepad`, `@egret/engine/text`, `@egret/engine/web/text`.
