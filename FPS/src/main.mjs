@@ -1,5 +1,4 @@
 // One native Play clock advances the existing 3D view, game rules and UI.
-import { play } from '@egret/engine/play';
 import { createUiSemantics } from '@egret/engine/ui/semantics';
 import { createUiTester } from '@egret/engine/ui/testing';
 import { createBrowserSemantics } from '@egret/engine/web/semantics';
@@ -32,6 +31,7 @@ const modelsReady=params.get('art')==='original'?Promise.resolve({bundle:null}):
   strict:true,onProgress({complete,total}){status.assetProgress={complete,total};}
 }).then(bundle=>({bundle}),error=>({error}));
 let menus,combatHud,input,touchControls,worldView;
+let cancelPendingLock=()=>false;
 function fail(cause){
   const message=cause?.code==='MODEL_LOAD_FAILED'
     ? (chinese()?'美术资源加载未完成，请检查网络后重试。':'Game art could not finish loading. Check your connection and retry.')
@@ -51,7 +51,7 @@ async function setup(p){
   const noContextMenu=event=>event.preventDefault();
   gameArea.addEventListener('contextmenu',noContextMenu);
   scope.use({dispose(){gameArea.removeEventListener('contextmenu',noContextMenu);}});
-  let game,bot,deployed=false,mode='title',mouseAttempt=0,time=0,endIn=0,view,renderer,focusOn=true,stats,atmosphere,baseFov=settings.fov,statText,lastStats=0,menuWeapon='';
+  let worldOptions,game,bot,deployed=false,mode='title',mouseAttempt=0,time=0,endIn=0,view,renderer,focusOn=true,stats,atmosphere,baseFov=settings.fov,statText,lastStats=0,menuWeapon='';
   const SUNLIGHT=[-.72,-.4,-.56],auto=params.get('auto')==='1';
   let deploy=()=>{},resume=()=>{},pause=()=>{},setMode=()=>{},applyQuality=()=>{},openBag=()=>{},closeBag=()=>{};
   const audio=createAudio();audio.setVolume(settings.volume);
@@ -154,9 +154,9 @@ async function setup(p){
       // Request in the real native control activation; do not run rules until lock is confirmed.
       setMode('pause');menus.setMouseStatus('waiting');
       const attempt=mouseAttempt;
-      void input.capture().then(locked=>{
+      void input.capture(settings.mouseMode==='raw').then(locked=>{
         if(attempt!==mouseAttempt)return;
-        if(locked&&input.locked&&document.hasFocus()&&!document.hidden)setMode('play');
+        if(locked&&input.locked&&document.hasFocus()&&!document.hidden&&!menus.snapshot().panel)setMode('play');
         else{input.release();menus.setMouseStatus('failed');}
       });
     };
@@ -166,7 +166,11 @@ async function setup(p){
     // the actual Close/weapon control gesture, with the existing retry path.
     openBag=()=>{if(mode!=='play'||menus.bagOpen)return;input.setEnabled(false);input.release();menus.toggleBag(true);};
     closeBag=()=>{if(mode!=='play'||!menus.bagOpen)return;menus.toggleBag(false);resume();};
-    deploy=()=>{if(!view||!input)return;if(deployed)newGame();deployed=true;combatHud.reset();endIn=0;resume();};
+    deploy=()=>{if(!view||!input||input.capturePending)return;if(deployed)newGame();deployed=true;combatHud.reset();endIn=0;resume();};
+    cancelPendingLock=()=>{
+      if(!input.capturePending)return false;
+      mouseAttempt++;input.release();menus.setMouseStatus('released');return true;
+    };
     pause=reason=>{
       if(!(mode==='play'&&game.state!=='dead'&&game.state!=='won')&&!input.capturePending)return;
       setMode('pause');menus.setMouseStatus(reason);
@@ -256,20 +260,34 @@ async function setup(p){
     Object.assign(status.warmup,view.warm(renderer,game),{finishedAt:performance.now()});
     performance.mark('fps.boot.first-view.end');
     menus.hideBoot();setMode('title');
-    // Both surfaces share p.engine.clock; there is no second World3D loop.
-    worldView=backend.createWorld3DView(p.engine,scope,{renderer,scene,camera,maxPixelRatio:Number(params.get('ratio'))||1.5,onUpdate:frame,onError:fail});
+    // Attach the configured world through the public single-clock companion after warmup.
+    worldOptions={renderer,scene,camera,maxPixelRatio:Number(params.get('ratio'))||1.5,onUpdate:frame,onError:fail};
   }catch(cause){
     void modelsReady.then(art=>{if(!status.models)art.bundle?.dispose();});fail(cause);
   }
   status.menuBack=()=>{if(mode!=='play')menus.handleBack();};
+  // An asset failure keeps the native retry interface active without an attached world.
+  return worldOptions;
 }
 try{
-  await play({
+  const session=await backend.play3dAttached({
     parent:gameArea,width:960,height:540,portrait:{width:420,height:760},fit:'expand',
-    uiScale:{min:44/48,max:1.25},transparent:true,audio:false,semantics,
+    uiScale:{min:44/48,max:1.25},audio:false,semantics,
     // Independent 2D raster density keeps small labels sharp on ordinary DPR=1 desktops as well.
     backend:useWebGPU?'webgpu':'webgl2',renderMode:'on-demand',pixelRatio:2,
-    setup,onError:fail,onWarning:warning=>{status.warnings??=[];if(status.warnings.length<50)status.warnings.push(String(warning?.message??warning));},
-    update(dt,p){if((status.mode!=='play'||status.ui?.menus.bagOpen)&&p.keys.pressed('Escape','pad:b'))status.ui?.menus.bagOpen?status.ui.menus.handleBack():status.menuBack?.();}
+    world:setup,onError:fail,onWarning:warning=>{status.warnings??=[];if(status.warnings.length<50)status.warnings.push(String(warning?.message??warning));},
+    update(dt,p){
+      try{
+        if(p.keys.pressed('Escape','pad:b')&&!cancelPendingLock()&&(status.mode!=='play'||status.ui?.menus.bagOpen)){
+          status.ui?.menus.bagOpen?status.ui.menus.handleBack():status.menuBack?.();
+        }
+      }finally{
+        // The native key, mouse and relative-delta snapshot survives every
+        // World3D substep of this browser frame, then clears after Play.update.
+        input?.endFrame();
+      }
+    }
   });
+  worldView=session.view;
+  Object.defineProperty(status,'worldView',{enumerable:true,get:()=>session.view});
 }catch(cause){fail(cause);}

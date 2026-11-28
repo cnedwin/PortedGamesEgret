@@ -1,0 +1,986 @@
+{
+  "provenance": {
+    "baselineEngine": "33897768c4f7933d289f083e4f34b3209b0aef31",
+    "finalEngine": "4f08d2bcd25de3aafa7295f3b349970f8003ed71",
+    "finalVendorSourceHash": "cf0327035b990300c6c281418895b204dbad1a02a8dea8b2bfce7b8f63594bf5"
+  },
+  "match": {
+    "pc": true,
+    "fold": true
+  },
+  "before": {
+    "engine": "33897768c4f7933d289f083e4f34b3209b0aef31",
+    "pc": {
+      "desktop": {
+        "profile": {
+          "name": "desktop",
+          "width": 1280,
+          "height": 800,
+          "touch": false
+        },
+        "gpu": "ANGLE (NVIDIA, NVIDIA GeForce RTX 5090 Laptop GPU (0x00002C58) Direct3D11 vs_5_0 ps_5_0, D3D11)",
+        "checks": {
+          "passed": true,
+          "count": 22,
+          "errors": 0,
+          "httpErrors": 0,
+          "hashes": 8,
+          "rotations": 0
+        },
+        "title": {
+          "intervals": 1200,
+          "p50": 4.199999999998909,
+          "p95": 4.299999999999272,
+          "max": 4.700000000000728,
+          "over50": 0,
+          "worldFrames": 1202,
+          "overlayFrames": 0,
+          "overlaySteps": 1202,
+          "worldDraws": 116
+        },
+        "play": {
+          "intervals": 1201,
+          "p50": 4.199999999998909,
+          "p95": 4.299999999999272,
+          "max": 4.799999999999272,
+          "over50": 0,
+          "worldFrames": 1204,
+          "overlayFrames": 743,
+          "overlaySteps": 1204,
+          "worldDraws": 123
+        },
+        "world": null
+      },
+      "mobile-geometry": {
+        "profile": {
+          "name": "mobile-geometry",
+          "width": 873,
+          "height": 325,
+          "touch": true
+        },
+        "gpu": "ANGLE (NVIDIA, NVIDIA GeForce RTX 5090 Laptop GPU (0x00002C58) Direct3D11 vs_5_0 ps_5_0, D3D11)",
+        "checks": {
+          "passed": true,
+          "count": 16,
+          "errors": 0,
+          "httpErrors": 0,
+          "hashes": 8,
+          "rotations": 10
+        },
+        "title": {
+          "intervals": 1200,
+          "p50": 4.199999999999818,
+          "p95": 4.299999999999272,
+          "max": 4.800000000000182,
+          "over50": 0,
+          "worldFrames": 1203,
+          "overlayFrames": 0,
+          "overlaySteps": 1203,
+          "worldDraws": 127
+        },
+        "play": {
+          "intervals": 1104,
+          "p50": 4.199999999998909,
+          "p95": 8.299999999999272,
+          "max": 12.5,
+          "over50": 0,
+          "worldFrames": 1107,
+          "overlayFrames": 866,
+          "overlaySteps": 1107,
+          "worldDraws": 125
+        },
+        "world": null
+      }
+    },
+    "fold": {
+      "device": {
+        "model": "SM-F966U1",
+        "android": "17",
+        "browser": "Chrome/158.0.8127.44",
+        "input": "CDP touch injection on physical Android",
+        "power": "USB connected",
+        "gpu": "ANGLE (Qualcomm, Adreno (TM) 830, OpenGL ES 3.2)"
+      },
+      "viewport": [
+        873,
+        325,
+        2.625
+      ],
+      "drawBuffer": [
+        1309,
+        487
+      ],
+      "temperature": {
+        "before": 30.2,
+        "after": 31.1
+      },
+      "title": {
+        "intervals": 302,
+        "p50": 16.600000000000364,
+        "p95": 16.69999999999891,
+        "max": 16.700000000000728,
+        "over50": 0,
+        "worldFrames": 304,
+        "overlayFrames": 0,
+        "overlaySteps": 304,
+        "worldDraws": 126
+      },
+      "play": {
+        "intervals": 215,
+        "p50": 16.600000000002183,
+        "p95": 33.200000000004366,
+        "max": 49.80000000000291,
+        "over50": 0,
+        "worldFrames": 218,
+        "overlayFrames": 191,
+        "overlaySteps": 218,
+        "worldDraws": 125
+      },
+      "passed": true,
+      "errors": 0,
+      "httpErrors": 0,
+      "hashes": 11,
+      "models": 36,
+      "rotations": [
+        {
+          "name": "title",
+          "observations": [
+            {
+              "viewport": [
+                411,
+                813,
+                2.625
+              ],
+              "identity": true
+            },
+            {
+              "viewport": [
+                873,
+                325,
+                2.625
+              ],
+              "identity": true
+            }
+          ]
+        },
+        {
+          "name": "settings",
+          "observations": [
+            {
+              "viewport": [
+                411,
+                813,
+                2.625
+              ],
+              "identity": true
+            },
+            {
+              "viewport": [
+                873,
+                325,
+                2.625
+              ],
+              "identity": true
+            }
+          ]
+        },
+        {
+          "name": "play",
+          "observations": [
+            {
+              "viewport": [
+                411,
+                813,
+                2.625
+              ],
+              "identity": true
+            },
+            {
+              "viewport": [
+                873,
+                325,
+                2.625
+              ],
+              "identity": true
+            }
+          ]
+        },
+        {
+          "name": "bag",
+          "observations": [
+            {
+              "viewport": [
+                411,
+                813,
+                2.625
+              ],
+              "identity": true
+            },
+            {
+              "viewport": [
+                873,
+                325,
+                2.625
+              ],
+              "identity": true
+            }
+          ]
+        },
+        {
+          "name": "pause",
+          "observations": [
+            {
+              "viewport": [
+                411,
+                813,
+                2.625
+              ],
+              "identity": true
+            },
+            {
+              "viewport": [
+                873,
+                325,
+                2.625
+              ],
+              "identity": true
+            }
+          ]
+        }
+      ],
+      "touch": {
+        "before": {
+          "x": 0,
+          "y": 0
+        },
+        "inside": {
+          "x": 0,
+          "y": -0.5714285714285713
+        },
+        "outside": {
+          "x": 0.9932076792018365,
+          "y": -0.1163550857268467
+        },
+        "contactsOutside": 2,
+        "cancel": {
+          "x": 0,
+          "y": 0
+        },
+        "contactsAfterCancel": 0,
+        "scrollUnchanged": true
+      },
+      "restoration": {
+        "rotation": true,
+        "stayOn": true,
+        "priorIdsPreserved": true,
+        "ownedAbsent": true,
+        "leaseReleased": true,
+        "ephemeralContextDisposed": true,
+        "forwardRemoved": true,
+        "reverseRemoved": true
+      }
+    },
+    "screens": {
+      "pass": true,
+      "profiles": [
+        {
+          "name": "phone-small",
+          "size": [
+            375,
+            667
+          ],
+          "pass": true,
+          "checkpoints": 10,
+          "errors": 0,
+          "warnings": 0,
+          "engineWarnings": 0,
+          "warningDetails": [],
+          "fresh": true,
+          "playControls": 0
+        },
+        {
+          "name": "phone-notch",
+          "size": [
+            393,
+            852
+          ],
+          "pass": true,
+          "checkpoints": 10,
+          "errors": 0,
+          "warnings": 0,
+          "engineWarnings": 0,
+          "warningDetails": [],
+          "fresh": true,
+          "playControls": 0
+        },
+        {
+          "name": "phone-notch-wide",
+          "size": [
+            852,
+            393
+          ],
+          "pass": true,
+          "checkpoints": 10,
+          "errors": 0,
+          "warnings": 0,
+          "engineWarnings": 0,
+          "warningDetails": [],
+          "fresh": true,
+          "playControls": 0
+        },
+        {
+          "name": "phone-tall",
+          "size": [
+            360,
+            800
+          ],
+          "pass": true,
+          "checkpoints": 10,
+          "errors": 0,
+          "warnings": 0,
+          "engineWarnings": 0,
+          "warningDetails": [],
+          "fresh": true,
+          "playControls": 0
+        },
+        {
+          "name": "tablet",
+          "size": [
+            768,
+            1024
+          ],
+          "pass": true,
+          "checkpoints": 10,
+          "errors": 0,
+          "warnings": 0,
+          "engineWarnings": 0,
+          "warningDetails": [],
+          "fresh": true,
+          "playControls": 0
+        },
+        {
+          "name": "tablet-wide",
+          "size": [
+            1024,
+            768
+          ],
+          "pass": true,
+          "checkpoints": 10,
+          "errors": 0,
+          "warnings": 0,
+          "engineWarnings": 0,
+          "warningDetails": [],
+          "fresh": true,
+          "playControls": 0
+        },
+        {
+          "name": "foldable-cover-wide",
+          "size": [
+            873,
+            325
+          ],
+          "pass": true,
+          "checkpoints": 10,
+          "errors": 0,
+          "warnings": 0,
+          "engineWarnings": 0,
+          "warningDetails": [],
+          "fresh": true,
+          "playControls": 0
+        },
+        {
+          "name": "foldable",
+          "size": [
+            884,
+            1104
+          ],
+          "pass": true,
+          "checkpoints": 10,
+          "errors": 0,
+          "warnings": 0,
+          "engineWarnings": 0,
+          "warningDetails": [],
+          "fresh": true,
+          "playControls": 0
+        },
+        {
+          "name": "desktop",
+          "size": [
+            1920,
+            1080
+          ],
+          "pass": true,
+          "checkpoints": 10,
+          "errors": 0,
+          "warnings": 0,
+          "engineWarnings": 0,
+          "warningDetails": [],
+          "fresh": true,
+          "playControls": 0
+        }
+      ],
+      "checkpoints": 90,
+      "errors": 0,
+      "warnings": 0,
+      "engineWarnings": 0
+    }
+  },
+  "after": {
+    "engine": "4f08d2bcd25de3aafa7295f3b349970f8003ed71",
+    "pc": {
+      "desktop": {
+        "profile": {
+          "name": "desktop",
+          "width": 1280,
+          "height": 800,
+          "touch": false
+        },
+        "gpu": "ANGLE (NVIDIA, NVIDIA GeForce RTX 5090 Laptop GPU (0x00002C58) Direct3D11 vs_5_0 ps_5_0, D3D11)",
+        "checks": {
+          "passed": true,
+          "count": 33,
+          "errors": 0,
+          "httpErrors": 0,
+          "hashes": 9,
+          "rotations": 0
+        },
+        "title": {
+          "intervals": 1200,
+          "p50": 4.199999999998909,
+          "p95": 4.299999999999272,
+          "max": 4.5,
+          "over50": 0,
+          "worldFrames": 1203,
+          "overlayFrames": 0,
+          "overlaySteps": 1203,
+          "worldDraws": 116
+        },
+        "play": {
+          "intervals": 1167,
+          "p50": 4.200000000000728,
+          "p95": 4.300000000001091,
+          "max": 8.5,
+          "over50": 0,
+          "worldFrames": 1170,
+          "overlayFrames": 823,
+          "overlaySteps": 1170,
+          "worldDraws": 123
+        },
+        "world": {
+          "exists": true,
+          "active": true,
+          "sameRenderer": true,
+          "sameScene": true,
+          "sameCamera": true,
+          "borrowedCanvas": true,
+          "separateCanvas": true,
+          "toneMapping": "aces",
+          "openScope": true
+        }
+      },
+      "mobile-geometry": {
+        "profile": {
+          "name": "mobile-geometry",
+          "width": 873,
+          "height": 325,
+          "touch": true
+        },
+        "gpu": "ANGLE (NVIDIA, NVIDIA GeForce RTX 5090 Laptop GPU (0x00002C58) Direct3D11 vs_5_0 ps_5_0, D3D11)",
+        "checks": {
+          "passed": true,
+          "count": 17,
+          "errors": 0,
+          "httpErrors": 0,
+          "hashes": 9,
+          "rotations": 10
+        },
+        "title": {
+          "intervals": 1197,
+          "p50": 4.199999999999818,
+          "p95": 4.299999999999272,
+          "max": 16.699999999999818,
+          "over50": 0,
+          "worldFrames": 1199,
+          "overlayFrames": 0,
+          "overlaySteps": 1199,
+          "worldDraws": 127
+        },
+        "play": {
+          "intervals": 818,
+          "p50": 4.200000000000728,
+          "p95": 8.400000000001455,
+          "max": 12.600000000000364,
+          "over50": 0,
+          "worldFrames": 821,
+          "overlayFrames": 716,
+          "overlaySteps": 821,
+          "worldDraws": 125
+        },
+        "world": {
+          "exists": true,
+          "active": true,
+          "sameRenderer": true,
+          "sameScene": true,
+          "sameCamera": true,
+          "borrowedCanvas": true,
+          "separateCanvas": true,
+          "toneMapping": "aces",
+          "openScope": true
+        }
+      }
+    },
+    "fold": {
+      "device": {
+        "model": "SM-F966U1",
+        "android": "17",
+        "browser": "Chrome/158.0.8127.44",
+        "input": "CDP touch injection on physical Android",
+        "power": "USB connected",
+        "gpu": "ANGLE (Qualcomm, Adreno (TM) 830, OpenGL ES 3.2)"
+      },
+      "viewport": [
+        873,
+        325,
+        2.625
+      ],
+      "drawBuffer": [
+        1309,
+        487
+      ],
+      "temperature": {
+        "before": 29.7,
+        "after": 30.8
+      },
+      "title": {
+        "intervals": 303,
+        "p50": 16.600000000000364,
+        "p95": 16.700000000000728,
+        "max": 16.700000000000728,
+        "over50": 0,
+        "worldFrames": 306,
+        "overlayFrames": 0,
+        "overlaySteps": 306,
+        "worldDraws": 126
+      },
+      "play": {
+        "intervals": 205,
+        "p50": 16.600000000002183,
+        "p95": 33.29999999999927,
+        "max": 66.30000000000291,
+        "over50": 4,
+        "worldFrames": 208,
+        "overlayFrames": 184,
+        "overlaySteps": 208,
+        "worldDraws": 125
+      },
+      "passed": true,
+      "errors": 0,
+      "httpErrors": 0,
+      "hashes": 11,
+      "models": 36,
+      "rotations": [
+        {
+          "name": "title",
+          "observations": [
+            {
+              "viewport": [
+                411,
+                813,
+                2.625
+              ],
+              "identity": true
+            },
+            {
+              "viewport": [
+                873,
+                325,
+                2.625
+              ],
+              "identity": true
+            }
+          ]
+        },
+        {
+          "name": "settings",
+          "observations": [
+            {
+              "viewport": [
+                411,
+                813,
+                2.625
+              ],
+              "identity": true
+            },
+            {
+              "viewport": [
+                873,
+                325,
+                2.625
+              ],
+              "identity": true
+            }
+          ]
+        },
+        {
+          "name": "play",
+          "observations": [
+            {
+              "viewport": [
+                411,
+                813,
+                2.625
+              ],
+              "identity": true
+            },
+            {
+              "viewport": [
+                873,
+                325,
+                2.625
+              ],
+              "identity": true
+            }
+          ]
+        },
+        {
+          "name": "bag",
+          "observations": [
+            {
+              "viewport": [
+                411,
+                813,
+                2.625
+              ],
+              "identity": true
+            },
+            {
+              "viewport": [
+                873,
+                325,
+                2.625
+              ],
+              "identity": true
+            }
+          ]
+        },
+        {
+          "name": "pause",
+          "observations": [
+            {
+              "viewport": [
+                411,
+                813,
+                2.625
+              ],
+              "identity": true
+            },
+            {
+              "viewport": [
+                873,
+                325,
+                2.625
+              ],
+              "identity": true
+            }
+          ]
+        }
+      ],
+      "touch": {
+        "before": {
+          "x": 0,
+          "y": 0
+        },
+        "inside": {
+          "x": 0,
+          "y": -0.5714285714285713
+        },
+        "outside": {
+          "x": 0.9932076792018365,
+          "y": -0.1163550857268467
+        },
+        "contactsOutside": 2,
+        "cancel": {
+          "x": 0,
+          "y": 0
+        },
+        "contactsAfterCancel": 0,
+        "scrollUnchanged": true
+      },
+      "restoration": {
+        "rotation": true,
+        "stayOn": true,
+        "priorIdsPreserved": true,
+        "ownedAbsent": true,
+        "leaseReleased": true,
+        "ephemeralContextDisposed": true,
+        "forwardRemoved": true,
+        "reverseRemoved": true
+      }
+    },
+    "screens": {
+      "pass": true,
+      "profiles": [
+        {
+          "name": "phone-small",
+          "size": [
+            375,
+            667
+          ],
+          "pass": true,
+          "checkpoints": 10,
+          "errors": 0,
+          "warnings": 0,
+          "engineWarnings": 0,
+          "warningDetails": [],
+          "fresh": true,
+          "playControls": 11
+        },
+        {
+          "name": "phone-notch",
+          "size": [
+            393,
+            852
+          ],
+          "pass": true,
+          "checkpoints": 10,
+          "errors": 0,
+          "warnings": 0,
+          "engineWarnings": 0,
+          "warningDetails": [],
+          "fresh": true,
+          "playControls": 11
+        },
+        {
+          "name": "phone-notch-wide",
+          "size": [
+            852,
+            393
+          ],
+          "pass": true,
+          "checkpoints": 10,
+          "errors": 0,
+          "warnings": 0,
+          "engineWarnings": 0,
+          "warningDetails": [],
+          "fresh": true,
+          "playControls": 11
+        },
+        {
+          "name": "phone-tall",
+          "size": [
+            360,
+            800
+          ],
+          "pass": true,
+          "checkpoints": 10,
+          "errors": 0,
+          "warnings": 0,
+          "engineWarnings": 0,
+          "warningDetails": [],
+          "fresh": true,
+          "playControls": 11
+        },
+        {
+          "name": "tablet",
+          "size": [
+            768,
+            1024
+          ],
+          "pass": true,
+          "checkpoints": 10,
+          "errors": 0,
+          "warnings": 0,
+          "engineWarnings": 0,
+          "warningDetails": [],
+          "fresh": true,
+          "playControls": 11
+        },
+        {
+          "name": "tablet-wide",
+          "size": [
+            1024,
+            768
+          ],
+          "pass": true,
+          "checkpoints": 10,
+          "errors": 0,
+          "warnings": 0,
+          "engineWarnings": 0,
+          "warningDetails": [],
+          "fresh": true,
+          "playControls": 11
+        },
+        {
+          "name": "foldable-cover-wide",
+          "size": [
+            873,
+            325
+          ],
+          "pass": true,
+          "checkpoints": 10,
+          "errors": 0,
+          "warnings": 0,
+          "engineWarnings": 0,
+          "warningDetails": [],
+          "fresh": true,
+          "playControls": 11
+        },
+        {
+          "name": "foldable",
+          "size": [
+            884,
+            1104
+          ],
+          "pass": true,
+          "checkpoints": 10,
+          "errors": 0,
+          "warnings": 0,
+          "engineWarnings": 0,
+          "warningDetails": [],
+          "fresh": true,
+          "playControls": 11
+        },
+        {
+          "name": "desktop",
+          "size": [
+            1920,
+            1080
+          ],
+          "pass": true,
+          "checkpoints": 10,
+          "errors": 0,
+          "warnings": 0,
+          "engineWarnings": 0,
+          "warningDetails": [],
+          "fresh": true,
+          "playControls": 0
+        }
+      ],
+      "checkpoints": 90,
+      "errors": 0,
+      "warnings": 0,
+      "engineWarnings": 0
+    }
+  },
+  "nativeInput": {
+    "normal": {
+      "result": "locked",
+      "locked": true,
+      "pending": false,
+      "mask": 0,
+      "ownsCanvas": true,
+      "mode": "play",
+      "mouseStatus": null
+    },
+    "raw": {
+      "result": "locked",
+      "locked": true,
+      "pending": false,
+      "mask": 0,
+      "ownsCanvas": true,
+      "mode": "play",
+      "mouseStatus": null,
+      "requests": [
+        {
+          "argumentCount": 1,
+          "raw": true
+        }
+      ]
+    },
+    "resume": {
+      "result": "locked",
+      "locked": true,
+      "pending": false,
+      "mask": 0,
+      "ownsCanvas": true,
+      "mode": "play",
+      "mouseStatus": null
+    },
+    "masks": [
+      {
+        "type": "mousedown",
+        "button": 2,
+        "buttons": 2,
+        "native": 2,
+        "pressed": 2,
+        "released": 0,
+        "trusted": true
+      },
+      {
+        "type": "mousedown",
+        "button": 0,
+        "buttons": 3,
+        "native": 3,
+        "pressed": 1,
+        "released": 0,
+        "trusted": true
+      },
+      {
+        "type": "mouseup",
+        "button": 0,
+        "buttons": 2,
+        "native": 2,
+        "pressed": 0,
+        "released": 1,
+        "trusted": true
+      },
+      {
+        "type": "mouseup",
+        "button": 2,
+        "buttons": 0,
+        "native": 0,
+        "pressed": 0,
+        "released": 2,
+        "trusted": true
+      }
+    ]
+  },
+  "retry": {
+    "requests": 2,
+    "uiOnly": true,
+    "recovered": true,
+    "models": 36,
+    "world": {
+      "exists": true,
+      "active": true,
+      "sameRenderer": true,
+      "sameScene": true,
+      "sameCamera": true,
+      "borrowedCanvas": true,
+      "separateCanvas": true,
+      "toneMapping": "aces",
+      "openScope": true
+    }
+  },
+  "limits": [
+    "rAF interval is callback cadence, not displayed FPS or GPU execution duration",
+    "PC touch profiles are geometry emulation, not a handset",
+    "Fold7 uses protocol-injected touch on an actual phone, not human fingers",
+    "Finite initial route, not a complete real-device mission; thermals and browser caches not controlled across sessions",
+    "No claim of Safari, Firefox, true gamepad, audio perception, or physical notch coverage beyond the recorded outer panel"
+  ],
+  "software": {
+    "passed": true,
+    "checks": [
+      {
+        "name": "software",
+        "checks": [
+          {
+            "ok": true,
+            "what": "healthy renderer ANGLE (Google, Vulkan 1.3.0 (SwiftShader Device (Subzero) (0x0000C0DE)), SwiftShader driver)"
+          },
+          {
+            "ok": true,
+            "what": "public attached World3D retains exact configured renderer, scene, camera and separate canvas"
+          },
+          {
+            "ok": true,
+            "what": "native title baseline 4.05% difference"
+          }
+        ],
+        "errors": 0,
+        "httpErrors": 0
+      }
+    ]
+  }
+}

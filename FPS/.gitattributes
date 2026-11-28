@@ -1,0 +1,3 @@
+# Preserve LF for the generated CLI guide and engine notes on Windows.
+vendor/egret/guide/** text eol=lf
+ENGINE-NOTES.md text eol=lf

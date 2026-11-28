@@ -21,6 +21,7 @@ import { createDragAndDrop, createGestures } from './gestures.js';
 import { createPlayViews } from './playView.js';
 import { createBadges, createRequest, formatCompact } from './viewParts.js';
 import { pointerTapActivation, semanticTapActivation } from './playActivation.js';
+import { collectNativeScreenControls } from './screenControlGeometry.js';
 /** A line of text: a sprite to place, fade, tween and remove like any other, with words that can be changed. */
 export class PlayText extends Sprite {
     #text;
@@ -518,6 +519,7 @@ export async function play(options) {
     const badges = createBadges();
     // Keys: a set of what is held, and what changed since the last update.
     const physicalKeys = new Set(), gameplayPadCodes = new Set(), held = new Set(), wentDown = new Set(), cameUp = new Set();
+    const keyClaims = new Set();
     const typing = (target) => {
         const element = target;
         return (element?.isContentEditable === true ||
@@ -528,15 +530,27 @@ export async function play(options) {
     const keyDown = (event) => {
         if (typing(event.target) || (embedded && event.target !== surface) || event.defaultPrevented)
             return;
-        if ((!widgets.asking || views.modalActive) && views.keyDown(event, embedded)) {
+        let claimed = false;
+        if (!widgets.asking &&
+            !views.modalActive &&
+            (embedded || page.activeElement === surface || page.activeElement === page.body)) {
+            try {
+                claimed = [...keyClaims].some(entry => entry.code === event.code && entry.when());
+            }
+            catch (cause) {
+                failure ??= { cause };
+                return;
+            }
+        }
+        if (!claimed && (!widgets.asking || views.modalActive) && views.keyDown(event, embedded)) {
             device = 'keyboard';
             event.preventDefault();
             return;
         }
         // An embedded view's final control leaves Tab to the page.
-        if (embedded && event.code === 'Tab')
+        if (!claimed && embedded && event.code === 'Tab')
             return;
-        if (KEPT_FROM_PAGE.has(event.code))
+        if (claimed || KEPT_FROM_PAGE.has(event.code))
             event.preventDefault();
         if (event.repeat)
             return;
@@ -572,6 +586,9 @@ export async function play(options) {
         gameplayPadCodes.clear();
         padActive = false;
         pointerOwner = undefined;
+        pointerKind = undefined;
+        clearMouseButtons();
+        cancelPointerLock();
     };
     const any = (set, keys) => keys.some(key => set.has(codeOf(String(key))));
     // A gamepad, where the page has them: polled once a step. Its sticks count in `axis` and `look`.
@@ -662,6 +679,17 @@ export async function play(options) {
     // Keys a finger holds through a button on the glass, and where a stick on the glass is.
     const touchHeld = new Set(), touchStick = { x: 0, y: 0 };
     const keys = {
+        claim(name, when) {
+            if (typeof name !== 'string' || name.trim() === '' || typeof when !== 'function')
+                throw invalid('claim takes a key and a predicate');
+            if (disposed)
+                return () => { };
+            const entry = { code: codeOf(name), when };
+            keyClaims.add(entry);
+            return () => {
+                keyClaims.delete(entry);
+            };
+        },
         down: (...names) => any(held, names),
         pressed: (...names) => any(wentDown, names),
         released: (...names) => any(cameUp, names),
@@ -689,6 +717,9 @@ export async function play(options) {
         wheel: 0,
         pressed: false,
         released: false,
+        buttons: 0,
+        pressedButtons: 0,
+        releasedButtons: 0,
         swipe: undefined,
         fromX: 0,
         fromY: 0
@@ -697,8 +728,44 @@ export async function play(options) {
     let seenMove = false;
     // This convenience view follows one drag; the shared UI router still receives every contact.
     let pointerOwner;
+    let pointerKind;
+    let mouseOwned = false;
+    const ownsLock = () => page.pointerLockElement === surface;
+    const setMouseButtons = (value) => {
+        if (!Number.isSafeInteger(value) || value < 0 || value > 0xffffffff)
+            return;
+        const next = value >>> 0;
+        point.pressedButtons = (point.pressedButtons | (next & ~point.buttons)) >>> 0;
+        point.releasedButtons = (point.releasedButtons | (point.buttons & ~next)) >>> 0;
+        point.buttons = next;
+    };
+    const clearMouseButtons = () => {
+        mouseOwned = false;
+        point.buttons = point.pressedButtons = point.releasedButtons = 0;
+    };
+    const mouseButtons = (event) => {
+        if (event.type === 'mousedown' && (ownsLock() || event.target === surface))
+            mouseOwned = true;
+        if (!mouseOwned && !ownsLock())
+            return;
+        setMouseButtons(event.buttons);
+        if (event.buttons === 0)
+            mouseOwned = false;
+    };
     const moved = (event) => {
         touch.move(event);
+        if (event.pointerType === 'mouse' && ownsLock()) {
+            setMouseButtons(event.buttons);
+            if (finite(event.movementX))
+                point.dx += event.movementX;
+            if (finite(event.movementY))
+                point.dy += event.movementY;
+            seenMove = true;
+            place(event);
+            return;
+        }
+        if (event.pointerType === 'mouse' && mouseOwned)
+            setMouseButtons(event.buttons);
         if (pointerOwner !== undefined
             ? event.pointerId !== pointerOwner
             : event.pointerType === 'touch' || event.buttons !== 0)
@@ -812,27 +879,6 @@ export async function play(options) {
     };
     // A tool that runs the game for an agent (tools/verify-screens.mjs) is told, about four times a second, where the
     // nodes that take taps are on the page and where the safe part is, in CSS pixels, to check them on many screens.
-    /** Whether `top` is drawn after `under` on the stage, and so over it where they meet; false for its own ancestor. */
-    const drawnOver = (top, under) => {
-        const chain = (node) => {
-            const list = [];
-            for (let at = node; at !== undefined; at = at.parent)
-                list.unshift(at);
-            return list;
-        };
-        const a = chain(top), b = chain(under);
-        let i = 0;
-        while (i < a.length && i < b.length && a[i] === b[i])
-            i++;
-        if (i === a.length)
-            return false;
-        if (i === b.length)
-            return true;
-        const parent = a[i - 1];
-        if (parent?.getChildIndex === undefined)
-            return false;
-        return parent.getChildIndex(a[i]) > parent.getChildIndex(b[i]);
-    };
     let toldControls = Infinity;
     const tellControls = (seconds) => {
         const agent = globalThis.__egretAgent;
@@ -842,59 +888,39 @@ export async function play(options) {
         if (toldControls < 0.25)
             return;
         toldControls = 0;
-        const box = surface.getBoundingClientRect(), across = box.width / shown.width, down = box.height / shown.height;
-        const page = (r) => ({
-            x: box.left + r.x * across,
-            y: box.top + r.y * down,
-            width: r.width * across,
-            height: r.height * down
-        });
-        const shows = (node) => {
-            for (let at = node; at !== undefined; at = at.parent)
-                if (!at.visible || at.alpha <= 0)
-                    return false;
-            return true;
-        };
-        // Each tappable node that shows, with its box on the page.
-        const seen = [];
-        for (const node of tappable) {
-            if (node.isDisposed || !onStage(node) || !shows(node))
-                continue;
-            const local = node.hitArea ?? node.getBounds();
-            if (!(local.width > 0 && local.height > 0))
-                continue;
-            const corners = [
-                node.localToGlobal(local.x, local.y),
-                node.localToGlobal(local.x + local.width, local.y + local.height)
-            ];
-            const x = Math.min(corners[0].x, corners[1].x), y = Math.min(corners[0].y, corners[1].y);
-            const label = node.label;
-            seen.push({
-                node,
-                name: node.name || tapNames.get(node) || (label instanceof PlayText ? label.text : ''),
-                rect: page({
-                    x,
-                    y,
-                    width: Math.abs(corners[1].x - corners[0].x),
-                    height: Math.abs(corners[1].y - corners[0].y)
-                })
-            });
-        }
-        // A node over the whole canvas takes taps anywhere: the backdrop of a modal view, or "tap to go on". It is no
-        // control, and what it is drawn over cannot be tapped while it shows.
-        const whole = (r) => r.x <= box.left + 1 && r.y <= box.top + 1 && r.x + r.width >= box.right - 1 && r.y + r.height >= box.bottom - 1;
-        const blockers = seen.filter(item => whole(item.rect)).map(item => item.node);
-        const controls = seen
-            .filter(item => !blockers.includes(item.node) && !blockers.some(blocker => drawnOver(blocker, item.node)))
-            .map(item => ({ name: item.name, ...item.rect }));
         try {
+            const box = surface.getBoundingClientRect(), across = box.width / shown.width, down = box.height / shown.height;
+            const canvas = { x: box.left, y: box.top, width: box.width, height: box.height };
+            if (!(canvas.width > 0 && canvas.height > 0))
+                return;
+            const page = (r) => ({
+                x: box.left + r.x * across,
+                y: box.top + r.y * down,
+                width: r.width * across,
+                height: r.height * down
+            });
+            const registered = new Set(tappable);
+            const claims = options.semantics?.snapshot.nodes;
+            const controls = collectNativeScreenControls({
+                stage: browser.stage,
+                pointer: browser.pointer,
+                page,
+                canvas,
+                ...(claims === undefined ? {} : { claims }),
+                legacyName(node) {
+                    if (!registered.has(node))
+                        return undefined;
+                    const label = node.label;
+                    return node.name || tapNames.get(node) || (label instanceof PlayText ? label.text : '');
+                }
+            });
             agent.controls(controls, {
                 safe: page(shown.safe),
-                canvas: { x: box.left, y: box.top, width: box.width, height: box.height }
+                canvas
             });
         }
         catch {
-            /* The tool's own failure, not the game's. */
+            /* A tooling observation must never stop the game or its input. */
         }
     };
     const areaFromBounds = (node) => {
@@ -912,6 +938,10 @@ export async function play(options) {
     let tapButtonCount = 0;
     const pointerDown = (event) => {
         device = event.pointerType === 'touch' ? 'touch' : 'mouse';
+        if (event.pointerType === 'mouse') {
+            mouseOwned = true;
+            setMouseButtons(event.buttons);
+        }
         if (embedded)
             surface.focus({ preventScroll: true });
         // A finger on a stick or a button on the glass is that control's, and not the game's pointer.
@@ -922,6 +952,7 @@ export async function play(options) {
         if (pointerOwner !== undefined)
             return;
         pointerOwner = event.pointerId;
+        pointerKind = event.pointerType;
         place(event);
         tappable = tappable.filter(node => !node.isDisposed);
         point.pressed = !tappable.some(node => pointer.over(node));
@@ -932,11 +963,14 @@ export async function play(options) {
             win.focus?.();
     };
     const pointerUp = (event) => {
+        if (event.pointerType === 'mouse' && (mouseOwned || ownsLock()))
+            mouseButtons(event);
         if (touch.end(event))
             return;
         if (event.pointerId !== pointerOwner)
             return;
         pointerOwner = undefined;
+        pointerKind = undefined;
         place(event);
         point.released = true;
         const dx = point.x - point.fromX, dy = point.y - point.fromY;
@@ -946,9 +980,81 @@ export async function play(options) {
     const pointerCancel = (event) => {
         if (touch.end(event))
             return;
-        if (event.pointerId === pointerOwner)
+        if (event.pointerType === 'mouse')
+            clearMouseButtons();
+        if (event.pointerId === pointerOwner) {
             pointerOwner = undefined;
+            pointerKind = undefined;
+        }
     };
+    let lockRequest;
+    let lastLock = ownsLock();
+    let lockListeners = true;
+    const exitLock = () => {
+        try {
+            if (ownsLock())
+                page.exitPointerLock?.();
+        }
+        catch {
+            /* browser refused */
+        }
+    };
+    const removeLockListeners = () => {
+        if (!lockListeners)
+            return;
+        lockListeners = false;
+        page.removeEventListener('pointerlockchange', lockChange);
+        page.removeEventListener('pointerlockerror', lockError);
+    };
+    const settleLock = (request, status) => {
+        if (lockRequest !== request)
+            return;
+        lockRequest = undefined;
+        if (request.abort !== undefined)
+            request.signal?.removeEventListener('abort', request.abort);
+        const result = request.canceled || disposed ? 'canceled' : status;
+        if (!request.settled) {
+            request.settled = true;
+            request.resolve({ status: result });
+        }
+        if (result !== 'locked' && ownsLock())
+            exitLock();
+        if (disposed)
+            removeLockListeners();
+    };
+    const lockChange = () => {
+        const locked = ownsLock();
+        if (locked !== lastLock) {
+            lastLock = locked;
+            clearMouseButtons();
+            point.dx = point.dy = 0;
+            seenMove = false;
+            if (pointerKind === 'mouse') {
+                pointerOwner = undefined;
+                pointerKind = undefined;
+            }
+            invalidate();
+        }
+        if (locked && lockRequest !== undefined)
+            settleLock(lockRequest, 'locked');
+    };
+    const lockError = () => {
+        if (lockRequest !== undefined)
+            settleLock(lockRequest, 'denied');
+    };
+    const cancelPointerLock = () => {
+        const request = lockRequest;
+        if (request !== undefined && !request.canceled) {
+            request.canceled = request.settled = true;
+            if (request.abort !== undefined)
+                request.signal?.removeEventListener('abort', request.abort);
+            request.resolve({ status: 'canceled' });
+        }
+        clearMouseButtons();
+        exitLock();
+    };
+    page.addEventListener('pointerlockchange', lockChange);
+    page.addEventListener('pointerlockerror', lockError);
     const pointer = {
         get x() {
             return point.x;
@@ -965,6 +1071,15 @@ export async function play(options) {
         get released() {
             return point.released;
         },
+        get buttons() {
+            return point.buttons;
+        },
+        get pressedButtons() {
+            return point.pressedButtons;
+        },
+        get releasedButtons() {
+            return point.releasedButtons;
+        },
         get swipe() {
             return point.swipe;
         },
@@ -977,28 +1092,69 @@ export async function play(options) {
         get wheel() {
             return point.wheel;
         },
-        lock() {
+        lock(options = {}) {
+            if (options === null ||
+                typeof options !== 'object' ||
+                (options.unadjustedMovement !== undefined && typeof options.unadjustedMovement !== 'boolean') ||
+                (options.signal !== undefined &&
+                    (typeof options.signal.aborted !== 'boolean' ||
+                        typeof options.signal.addEventListener !== 'function' ||
+                        typeof options.signal.removeEventListener !== 'function')))
+                throw invalid('lock takes a raw movement option and an abort signal');
+            if (disposed || options.signal?.aborted)
+                return Promise.resolve({ status: 'canceled' });
+            if (lockRequest !== undefined)
+                return lockRequest.canceled ? Promise.resolve({ status: 'canceled' }) : lockRequest.promise;
+            if (ownsLock())
+                return Promise.resolve({ status: 'locked' });
+            const ask = surface.requestPointerLock;
+            if (typeof ask !== 'function')
+                return Promise.resolve({ status: 'unavailable' });
+            let resolve;
+            const promise = new Promise(done => {
+                resolve = done;
+            });
+            const request = {
+                promise,
+                resolve,
+                signal: options.signal,
+                abort: undefined,
+                canceled: false,
+                settled: false
+            };
+            lockRequest = request;
+            if (options.signal !== undefined) {
+                request.abort = () => {
+                    if (lockRequest === request)
+                        cancelPointerLock();
+                };
+                options.signal.addEventListener('abort', request.abort, { once: true });
+            }
             try {
-                const asked = surface.requestPointerLock?.();
-                // A browser that answers with a promise refuses through it, as when no click came first.
-                if (asked !== null && typeof asked === 'object' && 'catch' in asked)
-                    asked.catch(() => { });
+                const asked = options.unadjustedMovement === undefined
+                    ? ask.call(surface)
+                    : ask.call(surface, { unadjustedMovement: options.unadjustedMovement });
+                if (asked !== null && typeof asked === 'object' && 'then' in asked)
+                    Promise.resolve(asked).then(() => {
+                        if (ownsLock())
+                            settleLock(request, 'locked');
+                    }, () => settleLock(request, 'denied'));
+                if (ownsLock())
+                    settleLock(request, 'locked');
             }
             catch {
-                // Not allowed now: the game goes on with the mouse free.
+                settleLock(request, 'denied');
             }
+            return promise;
+        },
+        get lockPending() {
+            return lockRequest !== undefined && !lockRequest.canceled;
         },
         unlock() {
-            try {
-                if (page.pointerLockElement === surface)
-                    page.exitPointerLock?.();
-            }
-            catch {
-                // As above.
-            }
+            cancelPointerLock();
         },
         get locked() {
-            return page.pointerLockElement === surface;
+            return ownsLock();
         },
         over(node) {
             if (!seen(node))
@@ -1020,7 +1176,19 @@ export async function play(options) {
         [win, 'pointermove', moved],
         [surface, 'wheel', turned],
         [win, 'pointerup', pointerUp],
-        [win, 'pointercancel', pointerCancel]
+        [win, 'pointercancel', pointerCancel],
+        [win, 'mousedown', mouseButtons],
+        [win, 'mouseup', mouseButtons],
+        [
+            page,
+            'visibilitychange',
+            () => {
+                if (page.hidden) {
+                    clearMouseButtons();
+                    cancelPointerLock();
+                }
+            }
+        ]
     ];
     if (embedded)
         listening.push([surface, 'blur', leaveCanvas]);
@@ -1559,7 +1727,6 @@ export async function play(options) {
         frameSeconds = 0;
         if (!disposed) {
             placeAllPinned(false);
-            tellControls(seconds);
             views.tick(seconds);
             syncLabelVisibility();
             if (options.semantics !== undefined)
@@ -1569,6 +1736,8 @@ export async function play(options) {
                 catch (cause) {
                     failure ??= { cause };
                 }
+            // The receipt describes the same freshly published names and geometry.
+            tellControls(seconds);
         }
         endRemoved();
         touch.sync();
@@ -1576,6 +1745,7 @@ export async function play(options) {
         cameUp.clear();
         point.pressed = false;
         point.released = false;
+        point.pressedButtons = point.releasedButtons = 0;
         point.swipe = undefined;
         point.dx = point.dy = point.wheel = 0;
     };
@@ -1748,6 +1918,8 @@ export async function play(options) {
     const kept = new Map();
     const saveKey = (key) => 'egret.play:' + (options.saveKey ?? win.location?.pathname ?? '') + ':' + key;
     function resetRound() {
+        keyClaims.clear();
+        clearMouseButtons();
         endMusic(0.3);
         widgets.reset();
         views.reset();
@@ -2512,6 +2684,10 @@ export async function play(options) {
             disposal = close.promise;
             disposed = true;
             api = undefined;
+            keyClaims.clear();
+            cancelPointerLock();
+            if (lockRequest === undefined)
+                removeLockListeners();
             unwatchMotion();
             // Caller-controlled loading can outlive the game. Release its waiters now;
             // late completion cannot re-enable updates or restart the closed loop.

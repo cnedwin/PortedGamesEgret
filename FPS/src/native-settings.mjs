@@ -50,6 +50,11 @@ export function createSettingsStore({ storage = browserSaveStorage(), onProblem 
       return {
         ...defaults, ...saved,
         adsSensitivity: Number.isFinite(saved.adsSensitivity) ? Math.max(0.2, Math.min(1.5, saved.adsSensitivity)) : defaults.adsSensitivity,
+        // Missing mode keeps the historical ordinary-lock default and legacy
+        // object shape; explicit supported modes survive the versioned save.
+        ...(Object.hasOwn(saved, 'mouseMode') ? {
+          mouseMode: ['lock', 'raw', 'drag'].includes(saved.mouseMode) ? saved.mouseMode : 'lock',
+        } : {}),
         ...(params.get('lang') ? { lang: defaults.lang } : {}),
         ...(params.get('quality') ? { quality: params.get('quality') } : {}),
       };

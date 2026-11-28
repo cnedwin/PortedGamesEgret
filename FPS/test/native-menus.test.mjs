@@ -64,7 +64,8 @@ test('setting steppers quantize all old ranges, bound values, and invoke changed
 });
 test('deploy and resume actions are called synchronously, and waiting disables capture',async()=>{
   const {buildMenuView}=await menus(),s=defaultState(),events=[];
-  const callbacks={...actions,click:()=>events.push('click'),deploy:()=>events.push('deploy'),resume:()=>events.push('resume')};
+  const callbacks={...actions,click:()=>events.push('click'),deploy:()=>events.push('deploy'),resume:()=>events.push('resume'),
+    openPanel:name=>events.push(name),restart:()=>events.push('restart'),toggleFullscreen:()=>events.push('fullscreen')};
   const title=buildMenuView('title',s,callbacks);
   title.bind.deploy.tap(s);
   assert.deepEqual(events,['click','deploy']);
@@ -73,8 +74,24 @@ test('deploy and resume actions are called synchronously, and waiting disables c
   assert.deepEqual(events,['click','deploy','click','resume']);
   s.mouseStatus='waiting';assert.equal(pause.bind.resume.disabled(s),true);
   assert.equal(pause.bind.dragLook.visible(s),false);
+  // A second activation while the first trusted request is pending must not
+  // immediately replace the modal that owns it or restart the game.
+  const before=events.filter(name=>name!=='click');
+  for(const name of ['resume','settings','controls','restart','fullscreen']){
+    assert.equal(pause.bind[name].disabled?.(s)??false,true,name+' while lock pending');
+    pause.bind[name].tap(s); // any already queued native activation is harmless
+  }
+  assert.deepEqual(events.filter(name=>name!=='click'),before);
   s.mouseStatus='failed';assert.equal(pause.bind.retryLabel?.text?.(s)??pause.bind.resume.text(s),'重试鼠标锁定');
   assert.equal(pause.bind.dragLook.visible(s),true);
+  for(const status of [null,'failed','released']){
+    s.mouseStatus=status;
+    for(const name of ['settings','controls','restart','fullscreen']){
+      assert.equal(pause.bind[name].disabled?.(s)??false,false,name+' after request settles');
+    }
+  }
+  for(const name of ['settings','controls','restart','fullscreen'])pause.bind[name].tap(s);
+  assert.deepEqual(events.filter(name=>name!=='click'),[...before,'settings','controls','restart','fullscreen']);
 });
 test('language, boot/result and backpack presentation do not mutate supplied game data',async()=>{
   const {snapshotDebrief,snapshotBag}=await menus();
@@ -133,7 +150,7 @@ test('native stack menu lifecycle preserves the active modal, live bag and synch
 test('native settings expose explicit pointer mode and reduced-motion choices with reliable defaults',async()=>{
   const {buildMenuView}=await menus(),s=defaultState(),changed=[];
   const buttons=buildMenuView('panel',s,{...actions,changed:key=>changed.push(key)}).bind;
-  assert.equal(buttons.mouseModeLabel.text(s),'鼠标模式');
+  assert.equal(buttons.mouseModeLabel.text(s),'鼠标模式 · 原始锁定可选');
   assert.equal(buttons.mouseModeLock.text(s),'锁定');
   assert.equal(buttons.mouseModeDrag.text(s),'拖动');
   assert.equal(buttons.reducedMotionSystem.text(s),'跟随系统');
@@ -151,7 +168,7 @@ test('native settings expose explicit pointer mode and reduced-motion choices wi
   buttons.mouseModeLock.tap(s);assert.equal(s.settings.mouseMode,'lock');
   assert.deepEqual(changed,['mouseMode','reducedMotion','reducedMotion','reducedMotion','mouseMode']);
   s.settings.lang='en';
-  assert.equal(buttons.mouseModeLabel.text(s),'Mouse mode');
+  assert.equal(buttons.mouseModeLabel.text(s),'Mouse mode · Raw optional');
   assert.equal(buttons.mouseModeLock.text(s),'Lock');
   assert.equal(buttons.mouseModeDrag.text(s),'Drag');
   assert.equal(buttons.reducedMotionSystem.text(s),'System');
@@ -246,4 +263,48 @@ test('help separates keyboard, touchscreen and mapped gamepad descriptions in bo
   assert.equal(bind.padKey0.text(s),'L Stick');assert.equal(bind.padKey11.text(s),'Start');
   s.settings.lang='en';assert.equal(bind.padHeader.text(s),'Gamepad');assert.equal(bind.padDesc11.text(s),'Pause');
   assert.match([0,1,2,3].map(i=>bind['padHelp'+i].text(s)).join(' '),/Tab \/ Shift\+Tab/);
+});
+
+test('optional raw mouse lock is localized and cannot silently replace ordinary lock',async()=>{
+  const {buildMenuView}=await menus(),s=defaultState(),changes=[];
+  const panel=buildMenuView('panel',s,{...actions,changed:key=>changes.push(key)}),b=panel.bind;
+  assert.equal(b.mouseModeRaw.text(s),'原始锁定');
+  assert.match(b.mouseModeLabel.text(s),/原始锁定可选/);
+  assert.notEqual(b.mouseModeLock.color(s),b.mouseModeRaw.color(s));
+  b.mouseModeLock.tap(s);assert.deepEqual(changes,[]);
+  b.mouseModeRaw.tap(s);assert.equal(s.settings.mouseMode,'raw');assert.deepEqual(changes,['mouseMode']);
+  assert.notEqual(b.mouseModeRaw.color(s),b.mouseModeLock.color(s));
+  b.mouseModeRaw.tap(s);assert.deepEqual(changes,['mouseMode']);
+  s.mouseStatus='failed';
+  const pause=buildMenuView('pause',s,actions).bind;
+  const notes=()=>[0,1,2].map(i=>pause['pointerNote'+i].text(s)).join('');
+  assert.match(notes(),/普通锁定/);assert.match(notes(),/设置/);
+  s.settings.lang='en';
+  assert.equal(b.mouseModeRaw.text(s),'Raw lock');assert.match(b.mouseModeLabel.text(s),/Raw optional/);
+  assert.match(notes(),/Choose Lock/);
+  b.mouseModeLock.tap(s);assert.equal(s.settings.mouseMode,'lock');assert.deepEqual(changes,['mouseMode','mouseMode']);
+  assert.match(notes(),/The browser could not lock/);
+});
+
+test('all three native pointer choices fit nine actual screen-profile geometries without an extra row',async()=>{
+  const {buildMenuView}=await menus(),s=defaultState(),profiles=[
+    [375,667,0,0,0,0],[393,852,0,59,0,34],[852,393,59,0,59,21],[360,800,0,24,0,0],
+    [768,1024,0,0,0,0],[1024,768,0,0,0,0],[873,325,0,0,0,0],[884,1104,0,0,0,0],[1920,1080,0,0,0,0]];
+  for(const lang of ['zh','en']){
+    s.settings.lang=lang;s.settingsPage='input';
+    const {description}=buildMenuView('panel',s,actions);
+    for(const [w,h,l,t,r,b] of profiles){
+      const upright=h>w,base=Math.min(w/(upright?420:960),h/(upright?760:540)),scale=Math.min(1.25,Math.max(44/48,base));
+      const frame={screen:{x:0,y:0,width:w/scale,height:h/scale},safe:{x:l/scale,y:t/scale,width:(w-l-r)/scale,height:(h-t-b)/scale},orientation:upright?'portrait':'landscape',form:Math.min(w,h)>=600?'tablet':'phone'};
+      const plan=planView(description,frame);
+      const items=['mouseModeLock','mouseModeRaw','mouseModeDrag'].map(name=>plan.parts.find(p=>p.part.name===name)?.rect);
+      assert.ok(items.every(r=>r&&r.width*scale>=43.9&&r.height*scale>=43.9),lang+' '+w+'x'+h);
+      assert.ok(items.every(r=>Math.abs(r.y-items[0].y)<.01),'one existing preference row');
+      const safe=frame.safe;
+      for(let i=0;i<items.length;i++){
+        const a=items[i];assert.ok(a.x>=safe.x-.01&&a.y>=safe.y-.01&&a.x+a.width<=safe.x+safe.width+.01&&a.y+a.height<=safe.y+safe.height+.01);
+        if(i)assert.ok(items[i-1].x+items[i-1].width<a.x);
+      }
+    }
+  }
 });
