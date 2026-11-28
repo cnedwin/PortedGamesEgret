@@ -41,3 +41,13 @@
 | 键鼠、手柄和焦点 | `native-input.mjs`, `input-mapping.mjs`: Play routes named inputs, official lower-level snapshot only for missing raw channels. Previous runtime gamepad adapter removed. |
 
 保持原战斗分支、数值、AI、技能、场景、动画、结算和存档不变；新增控件只调用既有命令。 · Native controls invoke existing commands without changing the rules, animation, rewards or saves. Parent-owned expand layout retains the original classic board coordinate mapping; portrait and short screen arrange through engine geometry.
+## 最终运行时文案、文字与几何（第五批） · Runtime copy, text and geometry (batch 5)
+
+| 范围 · Area | 原生实现 · Native implementation |
+|---|---|
+| 程序生成的地图、提示、商店、奖励、状态和存档文字 | `runtime-words.mjs`: `createTextTable` / `pickLanguage`, verbatim source values; same event state in both languages. |
+| 范围效果的伤害数字 | `fixed-labels.mjs`: one immutable engine glyph page and `createBitmapText`; arbitrary text remains native atlas labels. Conditional native 4 ms text work only for known ≥8 fallback labels. |
+| 战场首次几何上传 | `prepare-battle-resources.mjs`: official program and unique real geometry preparation, bounded slices, report both costs; a program-only stand-in is still required for billboard variants. |
+| 首屏 | Independent native title and background data validation retained. Existing monolithic archive must finish validation before actual play. Extra broad preloads did not improve both early-title and full readiness, so were not adopted. |
+
+不修改原资料、游戏规则、存档格式或者源叙事。 · No changes to source data, gameplay rules, save format or source narrative. See QUALITY for actual PC, Fold7, Windows WebKit, multi-screen and synthetic renderer results, and ENGINE-NOTES for remaining API gaps.

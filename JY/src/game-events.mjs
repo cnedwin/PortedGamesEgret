@@ -67,6 +67,9 @@ export async function playGameEvent({ program, run, game, catalog, sceneId, even
   let shouldSave = false;
   let ended;
   let lastBattle = game.save?.lastBattle;
+  // Only application-owned generated status/choice copy is localized. Source
+  // dialogue and source names still pass through untouched.
+  const generated=(key,values,fallback)=>typeof view.words==='function'?view.words(key,values):fallback;
 
   function role(id) {
     if (roles.has(id)) return roles.get(id);
@@ -169,7 +172,9 @@ export async function playGameEvent({ program, run, game, catalog, sceneId, even
     const before = member[field];
     member[field] = clamp(before + amount, cap);
     if (hpField) member[hpField] = clamp(member[hpField] + amount, member[field]);
-    await view.message(`${member.name}${label}增加${member[field] - before}`);
+    const value=member[field]-before;
+    const stat=generated('stat.'+field,{},label);
+    await view.message(generated('event.statIncreased',{name:member.name,stat,amount:value},member.name+label+'增加'+value));
   }
 
   async function learn(id, magicId, hide) {
@@ -183,15 +188,15 @@ export async function playGameEvent({ program, run, game, catalog, sceneId, even
       const index = Array.from({ length: 10 }, (_, slot) => slot).find(slot => !slots.some(entry => entry.slot === slot));
       if (index !== undefined) setMagic(member, index, magicId, 0);
     }
-    if (!hide) await view.message(`${member.name}習得武學${magic.name}`);
+    if(!hide)await view.message(generated('event.learned',{name:member.name,skill:magic.name},member.name+'習得武學'+magic.name));
   }
 
   const hosts = {
     talk, newtalk: talk, oldtalk: oldTalk,
     modifyevent: modify,
-    askjoin: () => view.ask('是否要求加入？'),
-    askbattle: () => view.ask('是否與之過招？'),
-    askrest: () => view.ask('請選擇是或否？'),
+    askjoin:()=>view.ask(generated('event.askJoin',{},'是否要求加入？')),
+    askbattle:()=>view.ask(generated('event.askBattle',{},'是否與之過招？')),
+    askrest:()=>view.ask(generated('event.askRest',{},'請選擇是或否？')),
     trybattle: battle,
     join,
     leaveteam(id) { if (id !== 0 && party.includes(id)) party.splice(party.indexOf(id), 1); },
@@ -274,8 +279,8 @@ export async function playGameEvent({ program, run, game, catalog, sceneId, even
       hero.fame += amount;
       if (before <= 200 && hero.fame > 200) await modify(70, 11, 0, 11, 932, -1, -1, 7968, 7968, 7968, 0, 18, 21);
     },
-    showmorality: () => view.message(`你的道德指數為${role(0).morality}`),
-    showfame: () => view.message(`你的聲望為${role(0).fame}`),
+    showmorality:()=>{const value=role(0).morality;return view.message(generated('event.morality',{value},'你的道德指數為'+value));},
+    showfame:()=>{const value=role(0).fame;return view.message(generated('event.fame',{value},'你的聲望為'+value));},
     rest,
     zeroallmp() { for (const id of party) role(id).mp = 0; },
     setroleusepoison(id, value) { role(id).usePoison = value; },

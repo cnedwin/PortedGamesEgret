@@ -19,9 +19,9 @@ this file; items by hand or on a device are marked not run until someone runs th
 
 ## 测量环境 · Where it was measured
 
-- 日期 · Date: 2026-11-20
-- 浏览器 · Browser: 无头 Chromium 153.0.8010.12，SwiftShader 软件渲染（没有显卡） · headless, software rendering, no GPU
-- 机器 · Machine: Linux 容器 · a Linux container, linux x64, Node v22.23.4
+- 日期 · Date: 2026-11-29 (final rerun)
+- 浏览器 · Browser: 无头 Chromium 157.0.8103.6，SwiftShader 软件渲染（没有使用设备显卡） · headless, software rendering, no GPU
+- 机器 · Machine: Windows x64, Node v26.7.0
 - 首屏一项的限速 · Start-up throttling: 下行 10 Mbps、上行 5 Mbps、往返 40 ms，CPU 降速 ×4 · down 10 Mbps, up 5 Mbps, 40 ms round trip, CPU slowed ×4
 - 帧时间是软件渲染下的数字，只说明无头环境里的情况，不代表真机 · Frame times are from software rendering and say nothing of real devices.
 
@@ -29,30 +29,30 @@ this file; items by hand or on a device are marked not run until someone runs th
 
 | 编号 · Item | 标准 · Standard | 方式 · How | 结果 · Result | 测量 · Measured |
 |---|---|---|---|---|
-| T1 | 触屏走完主流程 · The whole game by touch | 真机 · device | 未运行 · not run |  |
-| T2 | 触控区 ≥ 44×44 CSS px · Touch targets ≥ 44 × 44 CSS px | 自动 · automatic | 达标 · pass | 5 controls, all at least 44×44 |
-| T3 | 不误触下拉刷新和双击缩放 · No pull-to-refresh or double-tap zoom | 自动 · automatic | 不达标 · fail | overscroll free, touch-action auto, double-tap zoom on |
-| F1 | 桌面帧时间 p95 ≤ 16.7 ms · Desktop frame time p95 ≤ 16.7 ms | 自动 · automatic | 达标 · pass | p95 16.7 ms over 242 frames |
+| T1 | 触屏走完主流程 · The whole game by touch | 真机 · device | 部分验证 · partial | real Fold7 opening, travel, battle48 victory with explicit Auto after manual commands, reward/reload; not full campaign |
+| T2 | 触控区 ≥ 44×44 CSS px · Touch targets ≥ 44 × 44 CSS px | 自动 · automatic | 达标 · pass | 8 controls, all at least 44×44 |
+| T3 | 不误触下拉刷新和双击缩放 · No pull-to-refresh or double-tap zoom | 自动 · automatic | 达标 · pass | overscroll held, touch-action none, double-tap zoom off |
+| F1 | 桌面帧时间 p95 ≤ 16.7 ms · Desktop frame time p95 ≤ 16.7 ms | 自动 · automatic | 达标 · pass | p95 4.2 ms over 944 frames |
 | F2 | 中端手机帧时间 p95 ≤ 33 ms · Mid-range phone frame time p95 ≤ 33 ms | 真机 · device | 未运行 · not run |  |
-| L1 | 首屏 ≤ 3 s（10/5 Mbps、40 ms、CPU ×4） · Start-up ≤ 3 s (10/5 Mbps, 40 ms, CPU ×4) | 自动 · automatic | 不达标 · fail | 37.9 s to the first playable screen, 37.5 MB |
+| L1 | 首屏 ≤ 3 s（10/5 Mbps、40 ms、CPU ×4） · Start-up ≤ 3 s (10/5 Mbps, 40 ms, CPU ×4) | 自动 · automatic | 达标 · pass | 2.2 s to native usable title, 2.5 MB; not data and first scene ready |
 | O1 | 横竖屏与窗口尺寸 · Orientation and window sizes | 自动 · automatic | 达标 · pass | 1280×800, 390×844, 844×390, 768×1024 and live resizing: fits, no errors |
-| I1 | 中英文全可切换，英文下无中文 · Both languages; no Chinese left in English | 自动 · automatic | 不达标 · fail | no way to choose English found |
-| I2 | 画布上的字也随语言切换 · Words drawn on the canvas follow the language | 人工 · by hand | 未运行 · not run |  |
+| I1 | 中英文全可切换，英文下无中文 · Both languages; no Chinese left in English | 自动 · automatic | 部分达标 · partly | generic title check passes; original story and data remain Chinese by design |
+| I2 | 画布上的字也随语言切换 · Words drawn on the canvas follow the language | 人工 · by hand | 部分验证 · partial | named English native title, map/dialogue controls and battle shown; source text intentionally unchanged |
 | I3 | 长英文不溢出 · Long English does not overflow | 自动 · automatic | 达标 · pass | no page text cut off at 390 px in English |
-| A1 | 键盘可到达控件，焦点可见 · The keyboard reaches controls; focus shows | 自动 · automatic | 达标 · pass | Tab → "讀取存檔" (outline) |
+| A1 | 键盘可到达控件，焦点可见 · The keyboard reaches controls; focus shows | 自动 · automatic | 达标 · pass | Tab → "開始新旅程" (owned active descendant) |
 | A1m | 只用键盘走完主流程 · The whole game by keyboard alone | 人工 · by hand | 未运行 · not run |  |
-| A2 | 读屏读出主要按钮 · A screen reader names the main buttons | 自动 · automatic | 达标 · pass | 5 named controls, e.g. button "繼續遊戲", button "開始新遊戲", button "讀取存檔" |
+| A2 | 读屏读出主要按钮 · A screen reader names the main buttons | 自动 · automatic | 达标 · pass | 5 named controls, e.g. button "繼續旅程", button "開始新旅程", button "讀取紀錄" |
 | A3 | 尊重 prefers-reduced-motion · prefers-reduced-motion is honoured | 自动 · automatic | 达标 · pass | the code reads prefers-reduced-motion or offers a setting |
-| S1 | 存档损坏不崩溃 · A broken save does not crash | 自动 · automatic | 不适用 · n/a | the game keeps nothing in browser storage |
-| S2 | 存档版本不匹配不崩溃 · A save of another version does not crash | 自动 · automatic | 不适用 · n/a | the game keeps nothing in browser storage |
+| S1 | 存档损坏不崩溃 · A broken save does not crash | 自动 · automatic | 专项验证 · dedicated | generic n/a does not inspect IndexedDB; incompatible record preserved/recovery backup tested, see below |
+| S2 | 存档版本不匹配不崩溃 · A save of another version does not crash | 自动 · automatic | 专项验证 · dedicated | generic n/a does not inspect IndexedDB; incompatible record preserved/recovery backup tested, see below |
 | S3 | 存储不可用不崩溃 · Refused storage does not crash | 自动 · automatic | 达标 · pass | storage refused: started without an uncaught error |
-| S4 | 存档出问题时提示并可重开 · A save problem is told and a fresh start offered | 人工 · by hand | 未运行 · not run |  |
+| S4 | 存档出问题时提示并可重开 · A save problem is told and a fresh start offered | 人工 · by hand | 达标 · pass (fixture) | explicit recovery dialog, cancel preserves old record, backup and valid new revision |
 | E1 | 无控制台错误 · No console errors | 自动 · automatic | 达标 · pass | 0 errors |
-| E2 | 资源失败有错误界面和重试 · A failed file shows an error and a retry | 自动 · automatic | 达标 · pass | 1 files refused; no uncaught error; offers to try again |
+| E2 | 资源失败有错误界面和重试 · A failed file shows an error and a retry | 自动 · automatic | 不达标 · fail | generic runner refused 2 files, no uncaught error; actual named zh/en Retry and Cancel separately pass |
 | E3 | 切到后台再回来不出错 · Hidden and shown again without errors | 自动 · automatic | 达标 · pass | no errors; the game or the engine loop watches visibility |
 | E4 | 切回后声音和计时正常 · Sound and timers right after coming back | 真机 · device | 未运行 · not run |  |
 
-自动项不达标 · Automatic items failing: T3, L1, I1。真机项（T1、F2、E4）和人工项（I2、A1m、S4）未运行，除非上表另有记录 · Device and by-hand items were not run unless the table says otherwise.
+自动项 · Automatic runner: T3/L1 pass; E2 fails its generic matcher although named retry works, I1 only tests the title. Actual device/manual scope is separately recorded above. 2026-11-29 first generic run sampled across the root-to-runtime navigation and lost its page context; a successful second run supplies these numbers.
 
 ## WebKit 开场事件 691 回归 · WebKit opening event 691 (2026-11-28)
 
@@ -115,3 +115,29 @@ Both 3 s windows had zero rAF samples >33.4 ms. rAF dispatch and native render c
 - Auto toggle contrast repaired against bright snow with actual native dark card and unchanged role/hit geometry; final PC/device route and screenshots separate below. / 短屏增补实际对比。
 - Windows Edge 158 / RTX 5090 Laptop native acceptance final run R6: **684/684**, 23 inspected captures; 0 unexpected console/HTTP errors or warnings (three injected faults are expected). Actual randomized battle42 courtyard: item quantity/usage both changed, Rest 2→3, movement tick403→429, skill cast tick440→473; then the named Auto control was explicitly used, resulting in loss at round6/tick840. Continue recorded revision2/losses1 and actual refresh directly resumed scene70/revision2. Across 873×325, 393×852, 768×1024, 1280×800, and 844×390, the selection, native host and canvas identity were retained and controls did not overlap; minimum targets respectively 56×56, 72×83, 106.4×106.4, 78.4×78.4 and 60.7×60.7 CSS px. Result reflowed in portrait and landscape without replacing the host; Continue ≥83 CSS px. / 实际胜败、存档及转屏回归；并非全程手动胜利。
 - Galaxy Z Fold7 SM-F966U1, Android 17 Chrome, actual cover-screen landscape 873×325, local isolated origin: battle52 accepted movement tick122→325 and confirmed skill preview (cast cue not captured before round2 defeat); Continue returned and wrote revision2/losses1. A separate real restore from the same test origin at scene70 (19,19) opened ordinary randomized battle7, item quantity/usage changed, Rest advanced round2→3, naturally lost round3/tick609; Continue wrote revision3/losses2, actual refresh directly restored scene70/revision3. Physical test did not capture a successful skill cast or win; unattainable manual families remain failed in those individual receipts. Real phone screenshot showed readable native defeat card and Continue. Device session restored the original stay-awake state and closed only owned tabs. / 两次真实手机触控战败和回档通畅；分开覆盖移动、药品、休息，手机武学命中与胜利、实机内屏/转屏仍未验证。Browser rotation measurements above are not physical-device rotation.
+## 第五批最终验收 · Final native migration (2026-11-29)
+
+- Engine pin `212972678e633b1f3667f345d0646b0fba907ee1`, official 17 public entries; generated runtime hints 240/88. 148/148 Node tests including bilingual event-state equality and fixed-label/preparation lifetimes. Program-generated headings, notices, shops, rewards, status, save metadata and UI action labels use `createTextTable` and `pickLanguage`. All source dialogue, names, skills and data remain verbatim. No rule or save format changed. / 各界面中的原版内容不翻译；英文界面只覆盖程序生成内容。
+- Windows Edge 158 / RTX 5090 Laptop D3D11 hardware route **683/683**, 0 unexpected errors/warnings. Local sample Start to scene 3.006 s and accepted native host 3.018 s, full opening 33 acknowledgments 7.976 s. Actual 692 randomly selected courtyard battle48; item/usage changed, skill cast tick164→200, Rest 3→4, move319→344; explicit native Auto after four manual command families, victory round15/tick1208, reward, save revision2 and browser refresh direct resume. Rotations used browser viewport resizing, not physical rotation. / 全部四类实际手动指令，随后原有自动战斗；非全程手打。
+- Physical Samsung Galaxy Z Fold7 SM-F966U1 Android17 Chrome, cover landscape 873×325 CSS, original isolated QA save from earlier device encounters: 30/30 named device checks, no target warnings/exceptions; courtyard battle48, item/usage changed, rest2→3, move667→966, cast1026→1415; then explicit Auto won round12/tick2093, reward and revision4 restored after direct refresh. Real screenshots verified readable skill preview and result. Original device settings and unrelated tabs restored; no personal profile/save changed. / 本轮从保存的实际测试进度复跑；不声称原作全战役、实机转屏或整局手动胜利。
+- Windows WebKit 26.6 iPhone device profile (not iOS hardware), English first scene and actual touch Continue 1/2→2/2: all visible application UI controls named in English, source name/dialogue retained in Chinese, no unexpected page/console/HTTP/request errors. Actual DOM structure has no old app controls; semantic ownership is the native canvas.
+- Official exported `verifyScreens` using installed Chromium157 (default CLI shell pin absent): all 9 profiles title pass, 0 errors/warnings, all screenshots reviewed (including safe-area red bands). The live battle route separately retains the same host and selected command over five viewport sizes; simulated rotation does not substitute for real Fold7 inner screen or physical iPhone. / 标题多屏与实际战斗多尺寸分别记录，不把软件检查当成真机。
+
+| 同样 fixture / Identical renderer fixture | Windows WebKit | Chromium SwiftShader |
+|---|---:|---:|
+| 120 changing integer labels, atlas measure/fill/readback → fixed | 120/120/120 → 0/0/0 | 120/120/120 → 0/0/0 |
+| One-time fixed page preparation | 54 ms | 59.9 ms |
+| First batch atlas → fixed (excluding one-time page) | 91 → 33 ms | 147.1 → 16.2 ms |
+| 12 batches atlas → fixed | 337 → 219 ms | 572.9 → 392.6 ms |
+| 32 arbitrary fallback labels, budgeted vs unbounded maximum callback | 78 → 36 ms | 83.3 → 79.1 ms |
+| Same 32-label all-ready latency | 68 → 202 ms | 109.3 → 142.9 ms |
+| Actual geometry upload before draw / on first draw | 4 / 0 | 4 / 0 |
+| Program link before draw / on first draw | 1 / 0 | 1 / 0 |
+
+Both vendored fixtures 6/6 and the exact production real-geometry helper passed. Chromium visible procedural geometry confirmed; raw default Windows WebKit one-shot screenshot after idle is black on both paths. With explicit preserveDrawingBuffer in the test only, visible green geometry and immediate center RGBA [155,201,143,255] were observed; the actual game route also visibly works. Budget pacing changes readiness latency and is limited to known ≥8 arbitrary labels, never applied globally to startup. Neither preparation nor a submitted frame is actual GPU completion. No whole-battle FPS reduction or VRAM saving claimed from these fixtures. / 固定字形、程序及几何测试不是完整战场帧率；真实 GPU 完成和显存另测。
+
+Startup same browser 10/5 Mbps 40 ms CPU×4 isolated A/B (separate from generic quality numbers): baseline title 4.796 s / full data+title 43.339 s; broad 63 preloads 4.536 / 44.430 s; 117 preloads 4.880 / 44.302 s. Both alternatives rejected: total time regressed. Generic L1 2.2 s qualifies early title on its runner, but these independent samples and public latency can exceed 3 s, and full compressed pack validation remains mandatory. Do not move this wait back before the title. / 不以自动验收数值承诺所有网络三秒可玩。不改变现有数据包、校验和许可。
+
+Remaining validation: physical iPhone/Safari, Firefox, WeChat, physical gamepad/screen reader, device inner screen/rotation, full campaign and full audio/VRAM/frame timing under dense encounters. Standard checker still has unrelated missing items in MechanismCity and TeaHorseRoad; JY, showcase and generated engine/capability ledgers pass. / 未覆盖部分保留，不改其他项目。
+- 实际密集战斗补充 · Dense encounter: Windows Edge 158 / RTX 5090 Laptop **159/159** (15 actual captures, no page errors/warnings), isolated native opening earned normally followed by the pre-existing QA save fixture for 133. This is fixture-based, not natural campaign progression. Actual player input entered arena 133, move tick11→40 and skill cast436→463; remained manual. 20 unique real geometries and 35 program requests, no shader-only stand-in needed in this scene; program146.4 ms, geometry106.4 ms, parallel preparation146.5 ms, fixed glyph page8.9 ms. During an actual 10.0035 s sampled segment: rAF 2348 intervals p95 4.3 ms / max16.6 ms, zero >33.4 ms; 587 World3D draws (~58.68/s), 9 fixed numeric label jobs, 0 atlas fallback jobs; host refusal/retry0 and backpressure10. The segment naturally reached defeat by its end; Continue/reload was not tested in this dense case. These are observed CPU/dispatch/render counts, not GPU duration or a winning battle. / 未实测 133 全场结算、实体手机 133 或显存；同机旧版完整 133 没有等条件对照，因此不声称整个战场提升了多少百分比。
+- Final root shell-only baseline regression: 271/271 named checks, all eight root title/settings screenshots match existing approved references, zero unexpected errors or warnings; no baseline rewritten. The prior full title/runtime baseline regression covered 12 references. · 不覆盖全部新战斗场景的像素基线，实机截图另行检查。

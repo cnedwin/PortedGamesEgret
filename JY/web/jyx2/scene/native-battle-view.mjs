@@ -6,6 +6,7 @@ import {
 } from '@egret/engine/world3d';
 import { loadGltfFromUrl3D, loadTexture3D } from '@egret/engine/webgl2/world3d';
 import { createWorldRenderer } from './world3d-renderer.mjs';
+import { prepareBattleResources } from './prepare-battle-resources.mjs';
 import { createBattleSpriteMaterial, createNativeBattleSprites } from './native-battle-sprites.mjs';
 import { createBattleCharacterArt } from './native-battle-character-art.mjs';
 import { battleModelFor } from '../actors/battle-models.mjs';
@@ -163,7 +164,7 @@ export async function createNativeBattleArena(overlay, spec, width, height, scal
   const characterArt = createBattleCharacterArt();
   const impacts = [], poseBySprite = new Map();
   const own = resource => { resources.add(resource); return resource; };
-  let renderer, sprites, active = false, disposed = false, lost = false, previousFrame;
+  let renderer, sprites, active = false, disposed = false, lost = false, previousFrame, preparationStats;
 
   function dispose() {
     if (disposed) return;
@@ -241,7 +242,7 @@ export async function createNativeBattleArena(overlay, spec, width, height, scal
       return actors.get(index);
     }
 
-    async function prepareOpeningPrograms(roles) {
+    async function prepareOpeningPrograms(roles, { signal } = {}) {
       for (const [index, role] of roles.entries()) ensureActor(index, role);
       const requests = [];
       scene.traverse(mesh => {
@@ -253,17 +254,21 @@ export async function createNativeBattleArena(overlay, spec, width, height, scal
           if (renderer.shadowsEnabled && mesh.castShadow) requests.push({ mesh, material, pass: 'shadow' });
         }
       });
-      // Billboard actors have no scene meshes until their first draw. Only the program
-      // matters here, so the existing contact plane and texture stand in for the sprite art.
+      // Billboard actors have no scene meshes until their first draw. The contact
+      // plane and material still describe only a program variant, not an upload.
       const spriteMaterial = roles.some(role => !models.has(role.id))
         ? createBattleSpriteMaterial(contactMap, 'mask') : undefined;
+      const programOnlyRequests = [];
       if (spriteMaterial) {
         const mesh = new Mesh3D(shadowGeometry, spriteMaterial);
         mesh.receiveShadow = false;
-        requests.push({ mesh, material: spriteMaterial });
+        programOnlyRequests.push({ mesh, material: spriteMaterial });
       }
       try {
-        await renderer.preparePrograms(requests);
+        // Let both operations settle before the optional stand-in material is
+        // disposed; cancellation of a geometry slice must not race the program.
+        await prepareBattleResources(renderer, requests, programOnlyRequests, { signal,
+          onMeasured: stats => { preparationStats = stats; } });
       } finally {
         spriteMaterial?.dispose();
       }
@@ -346,6 +351,7 @@ export async function createNativeBattleArena(overlay, spec, width, height, scal
     }
 
     return { name, actors: sourceModels, draw, dispose, prepareOpeningPrograms,
+      getPreparationStats: () => preparationStats && { ...preparationStats },
       hasRole: id => models.has(Number(id)),
       setSpriteArt(art) {
         sprites?.dispose();

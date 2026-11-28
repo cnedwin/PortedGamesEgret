@@ -4,9 +4,9 @@
 
 Made by `node tools/engine-notes.mjs --write` from the ENGINE-NOTES of the games; do not edit by hand, and `--check` says whether it is out of date. What the engine resolved is copied from the engine's `guide/resolved.json` into [engine-resolved.json](engine-resolved.json) (15 entries). The form of a note is in part 3 of [GAME-STANDARD.md](GAME-STANDARD.md).
 
-24 个游戏、265 条笔记：未解决 63，部分解决 24，游戏侧绕过 18，已写入文档 41，已解决 119。
+24 个游戏、265 条笔记：未解决 63，部分解决 23，游戏侧绕过 18，已写入文档 41，已解决 120。
 
-265 notes from 24 games: 63 open, 24 partly resolved, 18 worked around in the game, 41 documented, 119 resolved.
+265 notes from 24 games: 63 open, 23 partly resolved, 18 worked around in the game, 41 documented, 120 resolved.
 
 ## 1. 引擎已经解决、游戏还标着未解决 · Resolved by the engine, still open in a game
 
@@ -102,7 +102,6 @@ Write the lesson as a card of the engine's guide (`guide/cards` in the engine re
 | `spine-deferred-display` | LanternShadows#10 背压时 Spine 语义推进与绘制网格不能独立调度 · Spine semantic advance and display mesh publication are coupled under backpressure | 未解决 · open |
 | `spine-instance-limit` | LanternShadows#3 同一份骨骼数据最多 128 个 Spine 实例 · At most 128 Spine instances of one skeleton | 未解决 · open |
 | `still-layer-cache` | CanalWatch#3 静止的大图每帧重画，软件渲染下帧时间翻倍 · A still map drawn again each frame doubles the frame time under software rendering | 部分解决 · partly |
-| `text-cache-budget-batch` | JY#1 同时准备很多文字时超出文字缓存的预算 · Preparing many texts at once passes the text cache's budget | 部分解决 · partly |
 | `text-font-quoted-generic` | OperaDrums#22 引擎要的字体是带引号的 `"sans-serif"` · The engine asks for `"sans-serif"` in quotes | 未解决 · open |
 | `ui-root-active-contacts-admission` | SnowTemple#8 按住触点时动态创建模态根拒绝 · Creating a modal root while contacts are held is refused | 未解决 · open |
 | `vertex-hook-error` | StarBanner#2 只有顶点钩子的着色器写进 `glsl` 时报错不直观 · A vertex-only hook given as `glsl` fails with an unhelpful error | 未解决 · open |
@@ -138,7 +137,7 @@ Write the lesson as a card of the engine's guide (`guide/cards` in the engine re
 | [FPS](../FPS/ENGINE-NOTES.md) | 17 | 3 | 3 | 0 | 2 | 9 | 0 | `82561d6` |
 | [InquestScrolls](../InquestScrolls/ENGINE-NOTES.md) | 13 | 0 | 1 | 3 | 1 | 8 | 0 | `82561d6` |
 | [jelly-pandas](../jelly-pandas/ENGINE-NOTES.md) | 9 | 2 | 2 | 0 | 0 | 5 | 0 | `82561d6` |
-| [JY](../JY/ENGINE-NOTES.md) | 6 | 3 | 2 | 0 | 0 | 1 | 0 | `2129726` |
+| [JY](../JY/ENGINE-NOTES.md) | 6 | 3 | 1 | 0 | 0 | 2 | 0 | `2129726` |
 | [LanternShadows](../LanternShadows/ENGINE-NOTES.md) | 13 | 2 | 1 | 3 | 2 | 5 | 0 | `82561d6` |
 | [LoveElective](../LoveElective/ENGINE-NOTES.md) | 8 | 2 | 1 | 0 | 0 | 5 | 0 | `82561d6` |
 | [LubanBridge](../LubanBridge/ENGINE-NOTES.md) | 6 | 4 | 0 | 1 | 1 | 0 | 0 | `82561d6` |

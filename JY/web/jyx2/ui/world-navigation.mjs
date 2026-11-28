@@ -20,9 +20,9 @@ function description(upright) {
 export function createWorldNavigation(game,{cancel,signal,language=()=> 'zh'}={}) {
  const guide=game.sprite(undefined,game.effects);
  guide.visible=false;
- let state='',name='',message='',timer,visible=false,drawn='',closed=false;
+ let state='',name='',message='',timer,visible=false,drawn='',closed=false,localized=false;
  const view=game.show({label:'Travel route',area:'safe',skin,root:description(false),portrait:description(true),tablet:description(false),tabletPortrait:description(true)}, {bind:{
-  'route-card':{visible:()=>visible},'route-destination':{text:()=>name},'route-status':{text:()=>navigationWords(state,message,language())},
+  'route-card':{visible:()=>visible},'route-destination':{text:()=>name},'route-status':{text:()=>localized?message:navigationWords(state,message,language())},
   'route-cancel':{visible:()=>state==='walking',disabled:()=>state!=='walking',text:()=>language()==='en'?'Cancel route':'取消尋路',tap:()=>cancel?.()}
  }});
  const refresh=()=>{view.refresh();game.invalidate?.();};
@@ -31,7 +31,7 @@ export function createWorldNavigation(game,{cancel,signal,language=()=> 'zh'}={}
  if(signal?.aborted)close();else signal?.addEventListener('abort',close,{once:true});
  return Object.freeze({
   hide,
-  show(next,destination,detail){clearTimeout(timer);state=next;name=destination;message=detail;visible=true;if(state!=='walking'){guide.visible=false;timer=setTimeout(hide,3200)}refresh();},
+  show(next,destination,detail,alreadyLocalized=false){clearTimeout(timer);state=next;name=destination;message=detail;localized=alreadyLocalized;visible=true;if(state!=='walking'){guide.visible=false;timer=setTimeout(hide,3200)}refresh();},
   draw(project,position,steps,target){
    if(signal?.aborted)return;
    const points=routePoints(project,position,steps,game.screen);

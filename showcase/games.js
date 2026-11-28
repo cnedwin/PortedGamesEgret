@@ -225,6 +225,11 @@ export const GAMES = [
         description: { zh: "战场上成片的树木和草实例化绘制，进入战斗前在加载画面里预编译着色器。", en: "Trees and grass on the battlefield are instanced, and its shaders are prepared under the loading screen before a fight." },
         source: 'web/jyx2/scene/native-battle-terrain.mjs',
       },
+      {
+        title: { zh: "固定字形与分批网格准备", en: "Fixed glyphs and sliced geometry preparation" },
+        description: { zh: "战斗数值共享引擎字形图集；真实战场网格在首次绘制前分批准备，减少首绘工作。", en: "Changing battle numbers share an engine glyph page; live battlefield geometry is prepared in bounded slices before its first draw." },
+        source: 'web/jyx2/ui/native/fixed-labels.mjs',
+      },
     ],
   },
   {

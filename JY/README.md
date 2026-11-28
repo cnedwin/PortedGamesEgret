@@ -122,7 +122,12 @@ PC 上悬停可预览移动路线，单击执行；武学和暗器选好目标�
 
 | `game.show`, `createUiScreenStack` 与 toggle / bar 绑定 | 战斗指令、目标/体力预览、确认及结算 · battle commands, target/resource readouts, confirmation and settlement | [web/jyx2/ui/native/battle-ui.mjs](web/jyx2/ui/native/battle-ui.mjs)、[web/jyx2/ui/native/battle-result-ui.mjs](web/jyx2/ui/native/battle-result-ui.mjs) |
 | `Sprite.graphics` | 以原格点坐标显示移动/目标预览，稳定画面复用图形 · movement/target markers in original board coordinates, retained graphics | [web/battle-view.mjs](web/battle-view.mjs) |
+| `game.browser.createGlyphFont` / `createBitmapText`, `textWorkBudgetMs` / `textWorkBudgetWhen` | 共享固定数字字形、密集非数字原生工作预算 · shared immutable numeric glyphs and conditional engine text work | [web/jyx2/ui/native/fixed-labels.mjs](web/jyx2/ui/native/fixed-labels.mjs)、[web/battle-view.mjs](web/battle-view.mjs) |
+| `renderer.prepareGeometries` | 已存在真实网格分批上传，不上传程序预热替身几何 · sliced preparation of unique real geometries | [web/jyx2/scene/prepare-battle-resources.mjs](web/jyx2/scene/prepare-battle-resources.mjs) |
+| `createTextTable` / `pickLanguage` | 程序生成的运行时界面文字，资料原文不变 · generated runtime interface copy without rewriting source data | [web/jyx2/ui/native/runtime-words.mjs](web/jyx2/ui/native/runtime-words.mjs) |
 ## 已验证 · Verified
+
+- 2026-11-29：最终第五批 Windows Edge 158 RTX 5090 Laptop **683/683** 具名检查（原 691、692 战斗48、四类手动指令、原有自动战斗结束、胜利奖励与自动存档刷新）；Fold7 SM-F966U1 外屏实机在真实测试存档上完成同一战场的四类手动指令、原有自动战斗结束、胜利领奖及刷新 revision4。屏幕九配置标题零错误/警告，实际战斗五尺寸保留同一宿主。Native renderer fixture jointly verifies fixed glyphs and preparation; see QUALITY for measured results and untested cases. · Final hardware desktop and physical Fold7 native controls and victory/reload; these were not all-manual victories or complete-campaign runs.
 
 - 2026-11-29：第三批原生宿主、地图 HUD、探索控制、行囊与队伍菜单、对白/回看。PC RTX 5090 Laptop 138/138 具名路线检查，完成 691 并进入原生 3D 世界；Fold7 真实横屏完成 691、出门与菜单，短帧采样 p95 16.7 ms；大地图曾回退至 2D，修复原因及最终回归见 QUALITY。 · Native in-game host, travel, bag/party, dialogue and journal. Hardware PC route and physical Fold7 opening checks, with the 3D-world fallback diagnosis and regression recorded separately.
 
@@ -141,20 +146,20 @@ PC 上悬停可预览移动路线，单击执行；武学和暗器选好目标�
 ## 已知问题 · Known issues
 
 - 完整数据仍为单一压缩包，进入实际游戏前必须验证完成；标题及设置可先使用。 · The existing pack is monolithic; validation is required before play, while title and preferences are usable earlier.
-- 标题、帮助、设置、资料准备、地图菜单、探索和对白控件支持中英文，战斗指令和结算也已迁到原生界面；残余的英文状态文字待最后整理。源数据的剧情、人物或物品说明保留原文。 · Native title, travel menus and dialogue controls are bilingual; battle controls and results are native; remaining generated English status copy will be polished. Source narrative and data names remain unchanged.
+- 程序产生的标题、设置、资料准备、地图、对白控件、战斗、结算、提示、存档及选择列表支持中英文。原版剧情、人名、场景地名、道具与武学原始文字仍保持原文；英文模式不是完整剧情翻译。 · Generated interface copy is bilingual; original story, names, places, item/skill descriptions and other source text are unchanged. English mode is not a translation of the source narrative.
 - 品质验收及限制见 [QUALITY.md](QUALITY.md)。2026-11-29 首屏与禁止误触检测通过，页面到真实可玩的耗时另计。 · See QUALITY for current measurements. Early title readiness and full data readiness are reported separately.
 
 ## 已解决 · Solved
 
-- 范围攻击一次出现很多不同的伤害数字，超出文字缓存一次能栅格化的数量，报 `TEXT_CACHE_BUDGET`：数字改为排队逐个准备，缓存忙时下一帧重试（`04313eb`，ENGINE-NOTES 第 1 条）。 · An area attack showed more distinct numbers than the text cache could rasterize at once; they are now prepared in turn (item 1).
+- 范围攻击一次出现很多不同的伤害数字，超出文字缓存一次能栅格化的数量，报 `TEXT_CACHE_BUDGET`：原手写队列已移除；整数采用共享引擎字形图集，其他文字走原生 Atlas 和工作预算（ENGINE-NOTES 第 1 条）。 · The manual queue is removed; integers share a fixed engine glyph page and other labels use the native atlas and cooperative work budget (item 1).
 - 第一次进战斗时链接着色器卡顿：在加载画面里对战场所有网格调用 `renderer.preparePrograms`；还没有网格的纸片人用替身网格预编译（`58783c3`、`e8db2ea`，ENGINE-NOTES 第 2 条）。 · The first battle stalled on shader links; every battlefield mesh is prepared under the loading screen, with a stand-in for the billboard actors (item 2).
 - 经典战斗的结算错误（`04313eb`）；手机横屏下战斗按钮和结算按钮被挤出屏幕、竖屏对白超出短屏（`7e61c85`、`6f33093`、`58783c3`）。 · Classic battle settlement; battle and settlement controls pushed off short landscape screens, and dialogue overflowing short portrait screens.
 
 ## 未完成 · Unfinished
 
-- 固定数字文字渲染、剩余英文界面、首屏与密集战斗最终回归。 · Fixed-glyph labels, remaining English shell copy and final startup/mass-battle regression.
+- 实体 iPhone、实体手柄、读屏软件及全战役的覆盖仍不完整；单一归档的分段传输和 JY#2 原生材质预热缺口仍保留。 · Physical iOS, hardware gamepad, assistive reader and full-campaign coverage remain incomplete; archive segmentation and the native material-only preparation gap are outstanding.
 - 已将标题和资料准备解耦；现有归档尚未按场景拆分。 · Title and data preparation are decoupled; the existing archive is not split by scene.
-- 真机上的整局验收和帧时间测量。 · A whole-game run and frame-time measurement on real devices.
+- 实体折叠屏内屏与转屏、密集战斗的同机显存/GPU 时间及完整流程音频复验。 · Inner-screen/physical rotation, measured VRAM/GPU duration for mass encounters and whole-flow audio qualification.
 
 ## 目录结构 · Layout
 
@@ -183,4 +188,4 @@ The engine copy was built from [Egret_rebuild](https://github.com/cnedwin/Egret_
 node --experimental-vm-modules tools/generate-startup-preloads.mjs
 ```
 
-本次副本使用的正式入口 · Actual vendor entries: `@egret/engine`, `@egret/engine/text`, `@egret/engine/web/audio`, `@egret/engine/web/gamepad`, `@egret/engine/web/keyboard`, `@egret/engine/web/text`, `@egret/engine/webgl2`, `@egret/engine/webgl2/world3d`, `@egret/engine/world3d`, `@egret/engine/play`, `@egret/engine/kit`, `@egret/engine/web/kit`, `@egret/engine/ui`, `@egret/engine/ui/semantics`, `@egret/engine/ui/testing`, `@egret/engine/web/semantics`.
+本次副本使用的正式入口 · Actual vendor entries: `@egret/engine`, `@egret/engine/text`, `@egret/engine/web/audio`, `@egret/engine/web/gamepad`, `@egret/engine/web/keyboard`, `@egret/engine/web/text`, `@egret/engine/webgl2`, `@egret/engine/webgl2/world3d`, `@egret/engine/world3d`, `@egret/engine/play`, `@egret/engine/kit`, `@egret/engine/web/kit`, `@egret/engine/ui`, `@egret/engine/ui/semantics`, `@egret/engine/ui/testing`, `@egret/engine/web/semantics`, `@egret/engine/web/view`（测试 / tests）.

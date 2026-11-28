@@ -2,6 +2,7 @@ import { Bitmap, Sprite, createAssetRef, createAssetType, createSharedMaterial2D
 import { combatArtGroup, createCombatArt, impactArtId } from './jyx2/effects/combat-art.mjs';
 import { loadActorArt } from './jyx2/actors/actor-art.mjs';
 import { createProjectedGrid } from './projected-grid.mjs';
+import { createFloatingLabels } from './jyx2/ui/native/fixed-labels.mjs';
 
 const smap = 'smap';
 const groupFor = role => role.fightGroup ?? `fight/fight${String(role.headId).padStart(3, '0')}`;
@@ -25,7 +26,7 @@ function motion(role, tick) {
 }
 
 export async function createBattleView({ engine, browser, worldParent = engine.stage, overlayParent = engine.stage,
-  spec, width, height, scale, loadArt, bakeGround, json, itemEffectIds,
+  spec, width, height, scale, loadArt, bakeGround, json, itemEffectIds, textPressure,
   visualStyle, outputAlpha = 'opaque', arena }) {
   const project = (x, y) => [(x - y) * 18 * scale, (x + y) * 9 * scale];
   const floor = [];
@@ -104,11 +105,10 @@ export async function createBattleView({ engine, browser, worldParent = engine.s
     const grid = createProjectedGrid(gridSprite.graphics, { width, height, project, root, scale });
     const flash = overlays.addChild(scope.use(new Bitmap(leases.get(artKey('title', 203)))));
     flash.visible = false;
-    const numberNodes = new Map();
-    scope.use({ dispose() {
-      for (const number of numberNodes.values()) number.scope.dispose();
-      numberNodes.clear();
-    } });
+    // Prepare one fixed signed-digit page in the existing battle loading phase.
+    // Arbitrary words and an unavailable glyph page retain native atlas labels.
+    const numberLabels = await createFloatingLabels({ engine, browser, scope, parent: overlays, textPressure,
+      onError: error => console.warn('Battle presentation label unavailable', error), });
     const groundNodes = new Map();
     const objectNodes = new Map();
     const gaugeNodes = new Map();
@@ -174,40 +174,10 @@ export async function createBattleView({ engine, browser, worldParent = engine.s
     }
 
     function drawNumbers(texts, zoom) {
-      const active = new Set(texts.map(text => text.key));
-      for (const [key, number] of numberNodes) if (!active.has(key)) {
-        number.scope.dispose();
-        numberNodes.delete(key);
-      }
-      for (const entry of texts) {
-        let number = numberNodes.get(entry.key);
-        if (!number) {
-          const owned = engine.createScope();
-          number = { scope: owned, node: undefined, x: 0, y: 0 };
-          numberNodes.set(entry.key, number);
-          const pending = number;
-          // The BrowserGame owns its one text cache and schedules atlas raster
-          // work. A retired visual id cannot attach its late label.
-          void browser.createAtlasLabel({ text: entry.text, fontFamily: 'Microsoft YaHei',
-            fontSize: entry.size, lineHeight: entry.size + 4, fontWeight: 700,
-            locale: 'zh-TW', color: entry.color, scope: owned }).then(label => {
-            if (owned.signal.aborted || numberNodes.get(entry.key) !== pending) return;
-            pending.node = overlays.addChild(label.display);
-            pending.node.x = pending.x;
-            pending.node.y = pending.y;
-            browser.invalidate();
-          }, error => {
-            if (!owned.signal.aborted) console.warn(error);
-          });
-        }
+      numberLabels.update(texts, entry => {
         const [px, py] = project(entry.x, entry.y);
-        number.x = Math.round(root.x + px * zoom);
-        number.y = Math.round(root.y + py * zoom);
-        if (number.node) {
-          number.node.x = number.x;
-          number.node.y = number.y;
-        }
-      }
+        return [Math.round(root.x + px * zoom), Math.round(root.y + py * zoom)];
+      });
     }
 
     function tileAt(px, py) {
@@ -302,7 +272,7 @@ export async function createBattleView({ engine, browser, worldParent = engine.s
       grid.draw(state, cursor, preview);
     }
 
-    return { draw, tileAt, close() { scope.dispose(); art.clear(); } };
+    return { draw, tileAt, getNumberLabelStats: () => numberLabels.getStats(), close() { scope.dispose(); art.clear(); } };
   } catch (error) {
     scope.dispose();
     art.clear();

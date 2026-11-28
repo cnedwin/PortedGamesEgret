@@ -5,7 +5,7 @@
 This game uses Egret Rebuild `21297267`. The integration notes and remaining game-side handling use the format in part 3 of
 [docs/GAME-STANDARD.md](../docs/GAME-STANDARD.md).
 
-2026-11-29：按正式工具生成最新副本 `212972678e633b1f3667f345d0646b0fba907ee1`（包含 WebKit 稳定呈现及共享帧诊断改进），仍使用现有底层宿主。第三批已换原生 Play 2D 宿主，原 3D 渲染器独立拥有上下文。JY#1 手写栅格队列已换引擎图集标签，固定数字与密集战斗验收仍待完成；JY#2 保留；JY#3 原生游戏标签已兼容。 · Native Play now owns the 2D host and clock while the scene renderers keep their own contexts. The legacy text cache queue is replaced with engine atlas labels; fixed glyph/dense encounter evidence remains outstanding.
+2026-11-29：按正式工具生成最新副本 `212972678e633b1f3667f345d0646b0fba907ee1`（包含 WebKit 稳定呈现及共享帧诊断改进），仍使用现有底层宿主。第三批已换原生 Play 2D 宿主，原 3D 渲染器独立拥有上下文。JY#1 手写栅格队列已换引擎固定字形与图集标签；JY#2 对真实几何增加原生分批准备，程序替身仍保留；JY#3 原生游戏标签已兼容。 · Native Play now owns the 2D host and clock while the scene renderers keep their own contexts. The legacy queue is replaced with engine fixed glyphs and atlas labels; real geometry is prepared separately from the shader-only stand-in.
 
 ## 已交给引擎 · Moved to the engine
 
@@ -22,19 +22,19 @@ This game uses Egret Rebuild `21297267`. The integration notes and remaining gam
 | 触控和场景选择 · Touch and picking | 场景已用 `Raycaster3D`。触屏方向键和悬停目前由 DOM 监听处理，可逐步迁到引擎输入入口。格子判定、角色可见区域和路径规则属于游戏层。 · Scene picking uses `Raycaster3D`. Browser pointer input can take over capture and hover in stages. Grid selection, actor visibility rules, and pathfinding remain gameplay logic. |
 | 阴影兼容 · Shadow compatibility | 仍对 RTX 5090 Laptop 的指定 ANGLE D3D11 路径关闭阴影。需在原硬件上开启阴影复跑骨骼人物，确认上下文稳定后才移除。 · The driver-specific shadow guard stays until a hardware run with shadowed skinned actors confirms context stability. |
 
-### 1. 同时准备很多文字时超出文字缓存的预算 · Preparing many texts at once passes the text cache's budget — 部分解决 / partly resolved
-<!-- engine-note: {"id": "JY#1", "status": "partly", "topic": "text-cache-budget-batch", "workaround": ["web/battle-view.mjs"]} -->
+### 1. 同时准备很多文字时超出文字缓存的预算 · Preparing many texts at once passes the text cache's budget — 已解决 / resolved
+<!-- engine-note: {"id": "JY#1", "status": "resolved", "topic": "text-cache-budget-batch"} -->
 
 - 现象 · What happens：范围攻击一次打中多人，同一帧出现十几个不同的伤害数字，各自调用 `node.prepare()`，部分失败并报 `TEXT_CACHE_BUDGET`，数字不显示。 · An area attack put a dozen distinct damage numbers on screen in one frame; some `prepare()` calls failed with `TEXT_CACHE_BUDGET` and those numbers never showed.
-- 游戏里 · In the game：原手写 `prepareNumbers` 排队已撤除，现用 `game.browser.createAtlasLabel` 的引擎栅格工作与场景作用域；新 Play 的文字缓存是唯一所有者。 · Removed the manual queue. Engine-owned atlas labels and scoped lifetimes now share the browser game text cache.
+- 游戏里 · In the game：原手写 `prepareNumbers` 排队已撤除。数字用 `game.browser.createGlyphFont` 与 `createBitmapText` 共用 12 字形页；其他文字走 `createAtlasLabel`，仅已知大批次启用 4 ms 工作预算，作用域统一回收。 · Share a fixed 12-glyph engine page for signed integers; arbitrary labels remain native atlas labels, with cooperative 4 ms pacing only for known dense fallback batches.
 - 建议 · Suggestion：文字节点的 `prepare()` 在缓存忙时排队等待，而不是抛错；或者给出一个"可以重试"的明确标志。 · Let a text node's `prepare()` wait its turn when the cache is busy instead of throwing, or mark the error as retryable.
-- 状态 · Status：引擎队列正式接入，JY 不再创建第二个文字缓存。固定数字位图及密集战斗实测仍待完成，暂保留 partly。 · Public engine queue is integrated; no second cache. Dense battle and fixed digit font qualification remain.
+- 状态 · Status：正式引擎接口已接入，实际同序列 120 个变化数字在 Windows WebKit / Chromium 的更新均为零文字栅格工作；普通战斗 PC 与 Fold7 通过。真实 133 测试存档样本 9 个固定数字、0 个 Atlas 回退、未出现预算错误；单一标签仍可能超过预算，不将其当作帧时间上限。 · Native fixed-glyph updating performs zero repeated raster work in both tested browsers. Ordinary hardware encounters and a checkpoint-based dense 133 segment pass; a cooperative work budget is not a hard frame deadline.
 
 ### 2. 预编译着色器要求给出已经存在的网格 · Preparing programs needs meshes that already exist — 未解决 / open
 <!-- engine-note: {"id": "JY#2", "status": "open", "topic": "prepare-programs-meshes", "workaround": ["web/jyx2/scene/native-battle-view.mjs"]} -->
 
 - 现象 · What happens：第一次进入战斗时，战场网格和人物材质的着色器在第一帧才链接，出现卡顿。纸片人（没有 3D 模型的角色）在第一次绘制前没有任何网格，`renderer.preparePrograms` 找不到可以描述的对象。 · The first battle stalled while its programs linked on the first frame. Billboard actors have no mesh before their first draw, so there is nothing to hand to `preparePrograms`.
-- 游戏里 · In the game：`web/jyx2/scene/native-battle-view.mjs` 在加载画面里先建好所有角色，遍历场景对每个网格和材质（含阴影通道）调用 `renderer.preparePrograms`；纸片人用接触阴影的平面和贴图做替身材质预编译，然后丢掉（`58783c3`、`e8db2ea`）。 · Under the loading screen every actor is made, every mesh and material (and shadow pass) is prepared, and the billboard actors are prepared with a stand-in material that is then disposed.
+- 游戏里 · In the game：`web/jyx2/scene/native-battle-view.mjs` 在加载画面里先建好所有角色，遍历场景对每个网格和材质（含阴影通道）调用 `renderer.preparePrograms`；真实网格集合通过 `prepareGeometries` 分批上传；纸片人用接触阴影平面和贴图仅作为程序描述、不上传替身几何，准备结束即回收。 · Under the loading screen every actor is made, every mesh and material (and shadow pass) is prepared, and actual geometries use `prepareGeometries`; the billboard stand-in supplies program descriptors only and is disposed after preparation.
 - 建议 · Suggestion：提供按材质描述（不需要网格）的预编译，或者 `renderer.prepareScene(scene)` 自动收集场景里的全部变体。 · Allow preparing from a material description without a mesh, or offer `prepareScene(scene)` that gathers every variant.
 - 状态 · Status：游戏里已绕过；引擎还没有这样的接口 · worked around here; no such call in the engine.
 
