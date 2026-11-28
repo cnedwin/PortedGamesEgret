@@ -1,0 +1,311 @@
+{
+  "profiles": [
+    {
+      "name": "phone-small",
+      "size": [
+        375,
+        667
+      ],
+      "rows": [
+        {
+          "state": "title",
+          "errors": 0,
+          "warnings": 0
+        },
+        {
+          "state": "settings",
+          "errors": 0,
+          "warnings": 0
+        },
+        {
+          "state": "opening",
+          "errors": 0,
+          "warnings": 0
+        },
+        {
+          "state": "road",
+          "errors": 0,
+          "warnings": 0
+        },
+        {
+          "state": "bag",
+          "errors": 0,
+          "warnings": 0
+        }
+      ]
+    },
+    {
+      "name": "phone-notch",
+      "size": [
+        393,
+        852
+      ],
+      "rows": [
+        {
+          "state": "title",
+          "errors": 0,
+          "warnings": 0
+        },
+        {
+          "state": "settings",
+          "errors": 0,
+          "warnings": 0
+        },
+        {
+          "state": "opening",
+          "errors": 0,
+          "warnings": 0
+        },
+        {
+          "state": "road",
+          "errors": 0,
+          "warnings": 0
+        },
+        {
+          "state": "bag",
+          "errors": 0,
+          "warnings": 0
+        }
+      ]
+    },
+    {
+      "name": "phone-notch-wide",
+      "size": [
+        852,
+        393
+      ],
+      "rows": [
+        {
+          "state": "title",
+          "errors": 0,
+          "warnings": 0
+        },
+        {
+          "state": "settings",
+          "errors": 0,
+          "warnings": 0
+        },
+        {
+          "state": "opening",
+          "errors": 0,
+          "warnings": 0
+        },
+        {
+          "state": "road",
+          "errors": 0,
+          "warnings": 0
+        },
+        {
+          "state": "bag",
+          "errors": 0,
+          "warnings": 0
+        }
+      ]
+    },
+    {
+      "name": "phone-tall",
+      "size": [
+        360,
+        800
+      ],
+      "rows": [
+        {
+          "state": "title",
+          "errors": 0,
+          "warnings": 0
+        },
+        {
+          "state": "settings",
+          "errors": 0,
+          "warnings": 0
+        },
+        {
+          "state": "opening",
+          "errors": 0,
+          "warnings": 0
+        },
+        {
+          "state": "road",
+          "errors": 0,
+          "warnings": 0
+        },
+        {
+          "state": "bag",
+          "errors": 0,
+          "warnings": 0
+        }
+      ]
+    },
+    {
+      "name": "tablet",
+      "size": [
+        768,
+        1024
+      ],
+      "rows": [
+        {
+          "state": "title",
+          "errors": 0,
+          "warnings": 0
+        },
+        {
+          "state": "settings",
+          "errors": 0,
+          "warnings": 0
+        },
+        {
+          "state": "opening",
+          "errors": 0,
+          "warnings": 0
+        },
+        {
+          "state": "road",
+          "errors": 0,
+          "warnings": 0
+        },
+        {
+          "state": "bag",
+          "errors": 0,
+          "warnings": 0
+        }
+      ]
+    },
+    {
+      "name": "tablet-wide",
+      "size": [
+        1024,
+        768
+      ],
+      "rows": [
+        {
+          "state": "title",
+          "errors": 0,
+          "warnings": 0
+        },
+        {
+          "state": "settings",
+          "errors": 0,
+          "warnings": 0
+        },
+        {
+          "state": "opening",
+          "errors": 0,
+          "warnings": 0
+        },
+        {
+          "state": "road",
+          "errors": 0,
+          "warnings": 0
+        },
+        {
+          "state": "bag",
+          "errors": 0,
+          "warnings": 0
+        }
+      ]
+    },
+    {
+      "name": "foldable-cover-wide",
+      "size": [
+        873,
+        325
+      ],
+      "rows": [
+        {
+          "state": "title",
+          "errors": 0,
+          "warnings": 0
+        },
+        {
+          "state": "settings",
+          "errors": 0,
+          "warnings": 0
+        },
+        {
+          "state": "opening",
+          "errors": 0,
+          "warnings": 0
+        },
+        {
+          "state": "road",
+          "errors": 0,
+          "warnings": 0
+        },
+        {
+          "state": "bag",
+          "errors": 0,
+          "warnings": 0
+        }
+      ]
+    },
+    {
+      "name": "foldable",
+      "size": [
+        884,
+        1104
+      ],
+      "rows": [
+        {
+          "state": "title",
+          "errors": 0,
+          "warnings": 0
+        },
+        {
+          "state": "settings",
+          "errors": 0,
+          "warnings": 0
+        },
+        {
+          "state": "opening",
+          "errors": 0,
+          "warnings": 0
+        },
+        {
+          "state": "road",
+          "errors": 0,
+          "warnings": 0
+        },
+        {
+          "state": "bag",
+          "errors": 0,
+          "warnings": 0
+        }
+      ]
+    },
+    {
+      "name": "desktop",
+      "size": [
+        1920,
+        1080
+      ],
+      "rows": [
+        {
+          "state": "title",
+          "errors": 0,
+          "warnings": 0
+        },
+        {
+          "state": "settings",
+          "errors": 0,
+          "warnings": 0
+        },
+        {
+          "state": "opening",
+          "errors": 0,
+          "warnings": 0
+        },
+        {
+          "state": "road",
+          "errors": 0,
+          "warnings": 0
+        },
+        {
+          "state": "bag",
+          "errors": 0,
+          "warnings": 0
+        }
+      ]
+    }
+  ],
+  "pass": true
+}

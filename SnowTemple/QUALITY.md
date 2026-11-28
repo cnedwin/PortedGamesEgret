@@ -5,6 +5,38 @@
 Checked against QUALITY-CHECKLIST.md. The automatic items were measured by `node tools/quality.mjs SnowTemple`, which writes
 this file; items by hand or on a device are marked not run until someone runs them.
 
+## 2026-11-28：雪夜画面与演出 · Winter presentation
+
+引擎更新到 `a1d6bc6215ce1fd9af1e9361286525ae737ad347`（7.0.3 发布准备）。由官方工具生成副本，核对原 `e15aabcf` 与新版：包内容、浏览器运行时代码及导入表逐文件一致，仅 `vendor/SOURCE.md` 更新。此处画面收益来自游戏现有 World3D 能力的运用，而非新版运行时提速。 · The official vendor refresh reaches a1d6bc6. The distributed runtime and import map are byte-identical to the previous copy; provenance alone changed. Visual improvements come from the game's use of existing World3D abilities, not a new runtime speedup.
+
+- 雪与湿石分开调色、粗糙度和霜层，灯光减弱过曝，雪地颜色更中性，冷暖轮廓更易分辨。山坡边墙改为随地形分段，但仍为一个网格（24→768 个三角形），未改变碰撞。 · Distinct snow and wet paving, more controlled warm lighting and neutral snow, and a terrain-following wall (one mesh, 24→768 triangles; unchanged collision).
+- 保留原有五个角色及模型档位；调整冷暖材质轮廓、受击闪烁、首领转阶段表现和原有特效的可辨识度；不新增资产、渲染通道或着色程序变体。原命中、数值、音频及存档不变。 · Existing roles and model tiers are retained, with clearer color separation, hit flashes, boss transition and effect layers. No new asset, render pass or shader program variant; simulation, numbers, recordings and saves unchanged.
+- 原版实机 PC 页面离开时两次报 `UI_CONTROL_CLOSED`（visibilitychange → reset → releaseTouch → disposed control）。新增测试先复现，再在控件销毁后阻止迟到的 release/activate/enable；保持正常释放。新版七个同构图诊断状态零错误。标注气血、气力、枪意；黑边层只在 HUD 背后，剧情字幕仍位于前景。 · Two real late teardown errors in the old browser route, reproduced by a regression test and fixed by respecting the control lifetime. The new seven-state visual route reports zero errors. Named bars and correct letterbox compositing improve usability.
+
+### 实拍与回归 · Captures and regression
+
+Windows Edge / RTX 5090 Laptop / ANGLE D3D11，高画质高模型、1280×800、seed 7，同构图标题、开场、雪路、草料场、登场、首领预警和转阶段：后两类对照采用原有诊断入口，非自然完整游玩；另有正式正常路线 41/41，含原生设置、语言、真实完整胜利、枪谱、重战、倒地复起、读档、守草料场败局及故意拒绝资源后的重试。Node 112/112。SwiftShader 8/8；因画面有意改动，目视核查并重拍唯一 `native-title.png`，第二次复跑差异 0.61%。 · Seven RTX hardware visual captures, with existing diagnostic entrances for boss/rage; separate 41/41 real hardware input acceptance covers the legitimate full chapter and recovery. Node 112/112; SwiftShader opening smoke 8/8; intentional appearance change reviewed before recapturing the native title reference, then 0.61% pixel difference on repeat.
+
+实拍对照 · [PC shots](test/evidence/pc-winter-polish-before-after.jpg) · [PC receipt](test/evidence/pc-winter-polish-receipt.json).
+
+官方多屏 `verify --screens` 复跑 9 个尺寸 × 标题、设置、开场、雪路、行囊，45/45 零错误零警告（[summary](test/evidence/winter-polish-screen-summary.json)）。RTX 硬件浏览器模拟尺寸和切口，非九台实机；逐张目视复核，安全区内的交互保持可用。极窄竖屏开场的 3D 电影式构图仍可能裁掉角色一侧，属于构图改进点而非控件布局错误。 · Official screen verifier: nine emulated profiles, five states, 45/45 with no warnings or errors. Reviewed screenshots, with narrow portrait cinematic framing still occasionally clipping the side of a character; no control safe-area failure.
+
+### Fold7 实机对照 · Physical Fold7 comparison
+
+同一 Galaxy Z Fold7 (SM-F966U1, Android 17, Chrome 157, Adreno 830)，外屏横放 873×325 CSS、DPR 2.625、中画质/低模型、seed 7、真实本机手机浏览器，经 CDP 实际触屏交互，独立新会话；两次自然战斗路径及掉落不完全一致，不能当严格 GPU 同帧基准。旧版正常胜利后，验收脚本在重载新文档时因未定义的 `__snow` 失败，故旧版整份报告未通过；修正脚本后新版完整通过，非游戏错误。新版真实两次枪谱、8 条语音事件、5 个角色 ready、胜利（85.62 s，甲，HP88）、重战和正常存档重载均通过；536/536 资源指纹吻合，0 页面/HTTP 错误。 · Same actual Fold7, local serving, physical touch via CDP in distinct disposable contexts. Combat paths and loot differ. Old victory is proved, but its harness accessed an undeclared identifier during reload and did not finish the hash sweep. The corrected candidate route passes the entire chapter, two manuals, eight dialogue events, all five low-tier models, victory, rematch, reload, and 536/536 file hashes with no HTTP/page errors.
+
+| 路段 · Phase | 旧 view-update P95 ms | 新 view-update P95 ms | 旧→新 RAF P95 ms |
+|---|---:|---:|---:|
+| 雪路 · Road | 20.5 | 20.1 | 16.7→16.7 |
+| 草料场 · Yard | 25.4 | 24.4 | 16.7→16.7 |
+| 山门 · Gate | 23.1 | 22.5 | 16.7→16.7 |
+| 首领一段 · Boss 1 | 29.5 | 29.7 | 16.7→16.7 |
+| 首领二段 · Boss 2 | 29.1 | 29.1 | 16.7→16.7 |
+
+长帧峰值 149.3→132.7 ms，超过 50 ms 共 38→31 次（样本时长不同，不证明优化归因）；首次 3D 帧 946.6→1139.7 ms（单次、非公网冷启动，保留该劣化观察，不能推断趋势）。主观画面：新版雪和石层次清晰、暖灯仍清楚，状态文字可读；低模型边缘仍有像素阶梯。未测：内屏、iOS、其他手机、真实人手操作和扬声器主观听感；未测独立 GPU 执行时间。 · Rare long frames remain; counts differ in duration and cannot establish a gain. One local first-3D sample is slower; it is not a network or controlled multi-run startup benchmark. Close-up low-tier edge aliasing remains. No inner-screen, iOS, other handset, human dexterity, speaker listening, or isolated GPU timing measurement in this round.
+
+[手机场景 · Phone scenes](test/evidence/quality-fold7-scenes-before-after.jpg) · [战斗 · Combat](test/evidence/quality-fold7-battle-before-after.jpg) · [结算 · Ending](test/evidence/quality-fold7-ending-before-after.jpg) · [实测收据 · Receipt](test/evidence/quality-physical-fold7-quality-comparison.json).
+
 ## 2026-11-27：原生 UI · Native UI acceptance
 
 引擎 `e15aabcf742ec7c82ba4a8e8c2de663137c18f71`，同一游戏规则、模型、存档及音频文件。UI 改为原生 2D 叠加层，新增英语字幕及界面（原中文表演语音不变）。 · Engine e15aabcf, with identical simulation, assets, saves and recordings. The interface uses a native 2D overlay and adds English display text/subtitles while retaining Chinese speech.

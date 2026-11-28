@@ -1,8 +1,8 @@
 # 引擎笔记 · Engine notes
 
-本游戏发现的新白鹭引擎（最初为提交 `c049bc3`，2026-11-21 升级到 `b5628eb`，2026-11-26 升级到 `8e70dcb3`，2026-11-27 升级到 `e15aabcf`）的缺陷与建议，格式见 [docs/GAME-STANDARD.md](../docs/GAME-STANDARD.md) 第 3 节。
+本游戏发现的新白鹭引擎（最初为提交 `c049bc3`，2026-11-21 升级到 `b5628eb`，2026-11-26 升级到 `8e70dcb3`，2026-11-27 升级到 `e15aabcf`，2026-11-28 刷新至 `a1d6bc6`）的缺陷与建议，格式见 [docs/GAME-STANDARD.md](../docs/GAME-STANDARD.md) 第 3 节。
 
-The faults found in the new Egret engine (first `c049bc3`, `b5628eb` since 2026-11-21, `8e70dcb3` since 2026-11-26, and `e15aabcf` since 2026-11-27) while making this game, and suggestions,
+The faults found in the new Egret engine (first `c049bc3`, `b5628eb` since 2026-11-21, `8e70dcb3` since 2026-11-26, `e15aabcf` since 2026-11-27, and `a1d6bc6` since 2026-11-28) while making this game, and suggestions,
 written as in part 3 of [docs/GAME-STANDARD.md](../docs/GAME-STANDARD.md).
 
 ### 1. 迟出现的着色器在第一次绘制时链接 · Late programs link on their first draw — 已在 `8b634fe` 解决 / resolved in `8b634fe`

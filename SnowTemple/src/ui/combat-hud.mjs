@@ -89,6 +89,9 @@ export async function createCombatHud(host,input,{onUiSound=()=>{},locale}={}){
     };
   }
   const heroGroup=group(root),heroHp=bar(heroGroup,0xe2473c,0x8f1712,{lag:true}),heroSt=bar(heroGroup,0xf0d28a,0xb98b2e),heroWill=bar(heroGroup,0xbfe2ff,0x5f9fe0);
+  // One shared glyph atlas labels each meter without dynamic canvas uploads.
+  const statLabels=[font.label(heroGroup,'',0xffd8d2),font.label(heroGroup,'',0xf0d28a),font.label(heroGroup,'',0xbfe2ff)];
+  const statNames=['气血','气力','枪意'];
   const purse=font.label(heroGroup,'',GOLD),lore=font.label(heroGroup,'',0xf1dcae);
   const chips=['wine','edge','full'].map((name,i)=>{
     const node=group(heroGroup),back=panel(node,i===1?0x23394b:0x080d16,.78,i===0?GOLD:i===1?FROST:0x536077,3),label=font.label(node,'',i===0?0xffd9a8:i===1?FROST:DIM);
@@ -273,15 +276,17 @@ export async function createCombatHud(host,input,{onUiSound=()=>{},locale}={}){
   function layout(){
     const {safe,screen,scale,touch,portrait}=host.metrics(),{x,y,width:w,height:h}=safe,right=x+w,bottom=y+h,
       compact=h<450||w<560,vertical=portrait||h>w,margin=compact?10:16,minTap=Math.ceil(44/Math.max(.01,scale));
-    const heroW=Math.min(vertical?Math.max(170,w*.55):w*.36,compact?250:300),heroX=x+margin,heroY=y+margin,heroH=touch?82:131;
+    const heroW=Math.min(vertical?Math.max(170,w*.55):w*.36,compact?250:300),heroX=x+margin,heroY=y+margin,heroH=touch?86:136;
     const actualScreen=screen??{width:w,height:h},padLayout=combatPadLayout(safe,scale),bagAtTop=touch||vertical||w<650;
     geometry={safe,screen:actualScreen,scale,touch,portrait:vertical,padLayout,heroW,heroX,heroY,heroH,compact};
     hurtNode.scaleX=actualScreen.width;hurtNode.scaleY=actualScreen.height;
     at(heroGroup,heroX,heroY);
-    heroHp.rect(0,0,heroW,13);heroSt.rect(0,17,heroW,8);heroWill.rect(0,29,heroW,6);
-    purse.rect(0,37,heroW,21,17,'left');const chipW=(heroW-8)/3;
-    for(let i=0;i<chips.length;i++){const c=chips[i];at(c.node,i*(chipW+4),60);c.back.rect(0,0,chipW,19);c.label.rect(2,0,chipW-4,19,12,'center');}
-    lore.rect(0,84,heroW,46,13,'left',true);shown(lore.root,!touch);
+    const labelWidth=Math.min(64,Math.max(47,heroW*.25)),barX=labelWidth+5,barWidth=heroW-barX;
+    statLabels.forEach((label,index)=>label.rect(0,index*15,labelWidth,14,12,'left'));
+    heroHp.rect(barX,1,barWidth,13);heroSt.rect(barX,18,barWidth,9);heroWill.rect(barX,33,barWidth,7);
+    purse.rect(0,45,heroW,16,16,'left');const chipW=(heroW-8)/3;
+    for(let i=0;i<chips.length;i++){const c=chips[i];at(c.node,i*(chipW+4),64);c.back.rect(0,0,chipW,19);c.label.rect(2,0,chipW-4,19,12,'center');}
+    lore.rect(0,89,heroW,46,13,'left',true);shown(lore.root,!touch);
     // Keep the game objective clear of both the hero bars and top-right tool
     // buttons. Narrow portrait uses a second line beneath the toolbar.
     const toolW=Math.min(228,w*.55),toolBottom=y+Math.min(48,Math.max(6,h*.07))+48,
@@ -403,6 +408,7 @@ export async function createCombatHud(host,input,{onUiSound=()=>{},locale}={}){
     const now=wall(),hero=game.hero,lu=game.boss;
     gameNow=game.time;lastGame=game;lastView=view;
     heroHp.set(hero.hp/HERO.hp,now);heroSt.set(hero.stamina/HERO.stamina,now);heroWill.set(hero.will/HERO.will,now,hero.will>=HERO.will);
+    statLabels.forEach((label,index)=>label.setText(t(statNames[index])));
     heroData={hp:hero.hp,stamina:hero.stamina,will:hero.will,coins:game.coins,tipsy:Math.ceil(hero.tipsy),edge:hero.edge>0,gourd:hero.gourd,maxGourd:hero.maxGourd,
       counter:hero.counter>0&&hero.state!=='dead',state:hero.state,boons:[...game.boons]};
     purse.setText(t('银钱')+' '+game.coins);
@@ -499,7 +505,7 @@ export async function createCombatHud(host,input,{onUiSound=()=>{},locale}={}){
       if(lastGame!==game){heroHp.reset(game.hero.hp/HERO.hp);heroSt.reset(game.hero.stamina/HERO.stamina);heroWill.reset(game.hero.will/HERO.will);bossHp.reset(game.boss.hp/game.boss.maxHp);bagStamp='';}
       refresh(game,view);
     },
-    snapshot:()=>({visible,staged,interactive,hero:heroData,boss:bossData,goal:[goal.text,goalSub.text].filter(Boolean).join(' · '),
+    snapshot:()=>({visible,staged,interactive,hero:heroData,boss:bossData,statLabels:statLabels.map(label=>label.text),goal:[goal.text,goalSub.text].filter(Boolean).join(' · '),
       bag:{open:bagOpen,total:bagTotal,page:bagPage,rows:bagRows.map(r=>({...r,name:r.name?t(r.name):t('空'),desc:r.desc?t(r.desc):''}))},
       hint:{text:hintText.text,action:hintData?.action,visible:Boolean(hintData)},notes:notePool.filter(p=>p.data).map(p=>p.label.text),
       stick:{available:stick.available,active:stick.active,value:stick.value,origin:stick.origin,box:stick.box,radius:48/(geometry?.scale??1),radiusCss:48,deadZone:.2},

@@ -8,7 +8,10 @@ export function createSnowStory(host,{locale}={}){
   const shade=host.scope.use(new Sprite()),speechLayer=host.scope.use(new DisplayObjectContainer()),
     cardLayer=host.scope.use(new DisplayObjectContainer()),veilLayer=host.scope.use(new Sprite()),
     waitLayer=host.scope.use(new DisplayObjectContainer());
-  for(const node of [shade,speechLayer,cardLayer,veilLayer,waitLayer])root.addChild(node);
+  // The letterbox belongs to the scene, not the menu plane. When a shot
+  // ends, the newly playable native HUD stays legible during the fade.
+  host.stage.addChildAt(shade,host.stage.getChildIndex(host.combatLayer));
+  for(const node of [speechLayer,cardLayer,veilLayer,waitLayer])root.addChild(node);
   const slots={speech:{root:speechLayer},card:{root:cardLayer},wait:{root:waitLayer}};
   let staged=false,shadeK=0,veiled=false,veilK=0,waiting=false,closed=false;
   const redraw=(name)=>{
@@ -78,6 +81,6 @@ export function createSnowStory(host,{locale}={}){
         who:t(slots[name].data.who??''),under:t(slots[name].data.under??''),alpha:slots[name].root.alpha}:null;
       return {staged,veiled,waiting,speech:active('speech'),card:active('card')};
     },
-    dispose(){if(closed)return;closed=true;stopUpdate();stopLayout();for(const slot of Object.values(slots))slot.scope?.dispose();root.dispose();}
+    dispose(){if(closed)return;closed=true;stopUpdate();stopLayout();for(const slot of Object.values(slots))slot.scope?.dispose();shade.dispose();root.dispose();}
   };
 }

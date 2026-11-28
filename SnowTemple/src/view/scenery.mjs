@@ -12,10 +12,10 @@ import {
 import { PLACES, ROUNDS, WALLS, WET, ZONES, edge } from '../rules/arena.mjs';
 import { createBuilder, rgb, shade } from './build.mjs';
 
-const SNOW = rgb(0xdfe7f2),
-  SNOW_DIM = rgb(0xa9b6cc),
+const SNOW = rgb(0xe4e5e7),
+  SNOW_DIM = rgb(0xb5babe),
   STONE = rgb(0x5d636e),
-  STONE_DARK = rgb(0x3c4048),
+  STONE_DARK = rgb(0x41444a),
   TIMBER = rgb(0x4a2a1c),
   LACQUER = rgb(0x7a1f1a),
   TILE = rgb(0x2c3038),
@@ -122,8 +122,10 @@ vec4 customFragment(vec4 color, vec3 worldPosition, vec3 normal, vec2 uv) {
     float crust = gNoise(p * 5.3);
     float grain = gHash(floor(p * 26.0)) - 0.5;
     float glint = step(0.992, gHash(floor(p * 34.0))) * smoothstep(0.55, 1.0, color.b);
-    vec3 c = color.rgb * (0.83 + streak * 0.20 + crust * 0.10 + grain * fine * 0.095);
-    return vec4(c + glint * fine * 0.14, color.a);
+    // Broader packed/swept contrast and restrained crystal glints, keeping the
+    // moonlit snow neutral before lighting. No additional noise or texture read.
+    vec3 c = color.rgb * (0.80 + streak * 0.23 + crust * 0.09 + grain * fine * 0.075);
+    return vec4(c + glint * fine * 0.085, color.a);
 }`;
 const GROUND_NORMAL_GLSL = `
 float snowGrain(vec2 p) {
@@ -227,8 +229,12 @@ vec4 customFragment(vec4 color, vec3 worldPosition, vec3 normal, vec2 uv) {
     // Frost belongs to the whole path. Drift shapes continue across neighbouring flags.
     float drift = pNoise(p * 0.73 + vec2(24.1, -8.5)) * 0.83 + mottled * 0.17;
     float frost = smoothstep(0.46, 0.80, drift) * uCustom[0].y;
-    vec3 detail = vec3(0.73 + mottled * 0.38 + (pores - 0.5) * 0.14 * fine - pits * 0.16 - fracture * 0.21);
-    return vec4(color.rgb * (detail + deposit * vec3(0.18, 0.17, 0.15) + frost * vec3(0.31, 0.35, 0.41)), color.a);
+    // Charcoal fissures reveal the worn mineral below, while deposits and frost
+    // blend toward a pale separate surface rather than bleaching every stone blue.
+    float detail = 0.71 + mottled * 0.43 + (pores - 0.5) * 0.13 * fine - pits * 0.18 - fracture * 0.27;
+    vec3 mineral = color.rgb * (vec3(detail) + deposit * vec3(0.20, 0.18, 0.16));
+    vec3 ice = vec3(0.48, 0.50, 0.53) * (0.89 + mottled * 0.20);
+    return vec4(mix(mineral, ice, frost * 0.27), color.a);
 }`;
 const PAVING_NORMAL_GLSL = `
 vec3 customNormal(vec3 normal, vec3 worldPosition, vec2 uv) {
@@ -299,7 +305,7 @@ function meltRunnel(builder, x, z, width, length, angle, rand) {
 function buildPaving(scene) {
   const rand = scatter(20261117);
   const flags = createBuilder(), sheen = createBuilder();
-  const stone = [0x686c72, 0x505c65, 0x6b6763, 0x596366, 0x5e5e6c, 0x707272].map(rgb);
+  const stone = [0x74716d, 0x545b5c, 0x77736a, 0x656b69, 0x5c5e62, 0x8a8680].map(rgb);
   const damp = WET; // the same patches the rules let a dodge slide on
   const runnels = [[1.18, 24.5, 0.42, 0.9, -0.24], [-1.1, 17.2, 0.35, 0.82, 0.24], [2.8, 10.1, 0.35, 0.79, 0.42], [-2.45, -2.1, 0.28, 0.70, 0.33]];
   const { x: cx, z: cz } = PLACES.court;
@@ -313,7 +319,7 @@ function buildPaving(scene) {
       const frost = pavingSnow(x, z);
       if (z > 4 && rand() < frost * (z - 4) * 0.094) continue;
       const wet = frost < 0.64 && damp.some(([px, pz, reach]) => Math.hypot(x - px, (z - pz) * 0.78) < reach);
-      const tint = shade(stone[Math.floor(rand() * stone.length)], (0.89 + rand() * 0.34) * (wet ? 0.77 : 1.0));
+      const tint = shade(stone[Math.floor(rand() * stone.length)], (0.86 + rand() * 0.38) * (wet ? 0.72 : 1.0));
       flagstone(wet ? sheen : flags, x, z, width - 0.039, depth - 0.034, (rand() - 0.5) * 0.058, 0.020 + rand() * 0.025, tint, rand);
     }
     baseZ += depth;
@@ -358,8 +364,8 @@ function buildPaving(scene) {
     scene.addChild(mesh);
     return { material, mesh };
   }
-  surface(flags, 0.83, 0.68, 1);
-  const wet = surface(sheen, 0.35, 0.30, 0.34);
+  surface(flags, 0.79, 0.62, 1);
+  const wet = surface(sheen, 0.30, 0.26, 0.24);
   return { ...wet, nearReflection: (x, z) => damp.some(([px, pz]) => Math.hypot(x - px, z - pz) < 10.5) };
 }
 
@@ -385,13 +391,13 @@ vec3 customVertex(vec3 worldPosition, vec3 localPosition, vec3 normal, vec2 uv, 
 function buildGrass(scene, rand, density) {
   // Broken dry leaves and pale frost tips share the single instanced tuft.
   const b = createBuilder(),
-    low = rgb(0x605862),
-    straw = rgb(0xc4ae91),
-    frost = rgb(0xc4c5d2);
+    low = rgb(0x776a60),
+    straw = rgb(0xbba587),
+    frost = rgb(0xd3d6d3);
   for (let i = 0; i < 5; i++) {
     const a = (i / 5) * Math.PI * 2 + 0.4,
       lean = 0.16 + (i % 2) * 0.14,
-      w = i % 2 === 0 ? 0.036 : 0.021,
+      w = i % 2 === 0 ? 0.043 : 0.026,
       dx = Math.cos(a),
       dz = Math.sin(a),
       h = 0.48 + (i % 3) * 0.17,
@@ -490,6 +496,19 @@ function buildCart(mesh, x, z) {
 }
 
 
+/** The far wings are scenery beyond the collision walls. Bury every section in
+ * both corners of the real slope; one center-height box floated at the inner end. */
+export function gateWallPlan() {
+  const { x, z } = PLACES.gate, segments = [], width = 2, depth = 0.9;
+  for (const side of [-1, 1]) for (let i = 0; i < 8; i++) {
+    const center = x + side * (9.2 + width * (i + 0.5));
+    const heights = [-width / 2, 0, width / 2].flatMap(dx =>
+      [-depth / 2, 0, depth / 2].map(dz => height(center + dx, z + dz)));
+    segments.push({ x: center, z, width, depth,
+      bottom: Math.min(...heights) - 0.23, top: Math.max(...heights) + 2.48 });
+  }
+  return segments;
+}
 function buildGate(scene, rand, material, tall, models) {
   const { x, z } = PLACES.gate,
     place = (name, mat) => {
@@ -501,10 +520,22 @@ function buildGate(scene, rand, material, tall, models) {
       return mesh;
     };
   place('gate', material);
-  // The wall runs on into the trees to either side.
-  const far = createBuilder();
-  for (const side of [1, -1]) far.box(x + side * 17.2, 1.4 + height(side * 17, z), z, 16, 3.4, 0.9, { tint: rgb(0x77716a), top: SNOW });
-  scene.addChild(far.mesh(material));
+  // The wall continues as stepped masonry into the trees. Every foundation is
+  // fitted to the slope, with a dark plinth, a dressed course and a snowy cap.
+  // The sixteen sections are still a single mesh/material, and their footprint
+  // sits beyond the original walkable bounds; no rule or collision is changed.
+  const far = createBuilder(), mortar = rgb(0x645e57), cap = rgb(0x444951);
+  for (const section of gateWallPlan()) {
+    const { x: wallX, z: wallZ, width, depth, bottom, top } = section;
+    const tint = shade(mortar, 0.88 + hash(wallX, wallZ) * 0.22);
+    far.box(wallX, (bottom + top) / 2, wallZ, width, top - bottom, depth, { tint });
+    far.box(wallX, bottom + 0.16, wallZ, width, 0.31, depth + 0.06, { tint: shade(STONE_DARK, 0.91) });
+    far.box(wallX, top - 0.47, wallZ, width, 0.14, depth + 0.055, { tint: shade(tint, 1.12) });
+    far.box(wallX, top + 0.07, wallZ, width, 0.18, depth + 0.15, { tint: cap, top: SNOW });
+  }
+  const wall = far.mesh(material);
+  wall.name = 'gate-wing-foundation';
+  scene.addChild(wall);
   void rand;
   // The roof is its own piece: the camera may need to see through it.
   const cover = createStandardMaterial3D({ vertexColors: true, roughness: 0.8 }),
@@ -613,22 +644,22 @@ function buildProps(scene, rand, material, glow, tall, lights, models, propAtlas
           b.limb([x + dx, 0.18 + i * 0.021, z + r * 0.65], [x + dx + 0.38 * Math.sin(turn), 0.09, z + r * 1.03],
             0.09, 0.035, { tint: char, tintB: fibre, sides: 6 });
         }
-        lights.push({ x, y: 5, z, color: 0xff6a20, intensity: 15, range: 17, flicker: 0.4 });
+        lights.push({ x, y: 5, z, color: 0xff6a20, intensity: 13.0, range: 17, flicker: 0.4 });
       }
     }
     else if (round.kind === 'rock') stand('rock', x, z, r * 0.95, rand() * 6);
     else if (round.kind === 'lantern') {
       stand('lantern', x, z, 1, 0, sculpted ?? stone);
       glow.box(x, height(x, z) + 1.29, z, 0.26, 0.3, 0.26, { tint: [1, 0.62, 0.25] });
-      lights.push({ x, y: 1.4, z, color: 0xffb66b, intensity: 11, range: 8.5, flicker: 0.1 });
+      lights.push({ x, y: 1.4, z, color: 0xffb66b, intensity: 8.5, range: 8.5, flicker: 0.1 });
     } else if (round.kind === 'brazier') {
       brazier(b, glow, x, z);
-      lights.push({ x, y: 1.3, z, color: 0xff8f48, intensity: 20, range: 11, flicker: 0.25, fire: true });
+      lights.push({ x, y: 1.3, z, color: 0xff8f48, intensity: 15.5, range: 11, flicker: 0.25, fire: true });
     } else if (round.kind === 'cart') {
       buildCart(b, x, z);
     } else if (round.kind === 'censer') {
       stand('censer', x, z, 1, 0, sculpted ?? bronze);
-      lights.push({ x, y: 2.6, z, color: 0xffb070, intensity: 30, range: 16, flicker: 0.2, fire: true });
+      lights.push({ x, y: 2.6, z, color: 0xffb070, intensity: 24, range: 16, flicker: 0.2, fire: true });
     } else if (round.kind === 'lion') {
       stand('lion', x, z, 0.9, x < 0 ? 0.25 : -0.25, sculpted ?? stone);
     } else if (round.kind === 'stele') {
@@ -672,7 +703,7 @@ export function buildScenery(scene, models, { density = 1, propAtlas } = {}) {
   // Seed the dressing after the former shared paving stream so unaffected scenery keeps its layout.
   const rand = scatter(1683703667),
     material = createStandardMaterial3D({ vertexColors: true, roughness: 0.85, metallic: 0 }),
-    glowMaterial = createStandardMaterial3D({ vertexColors: true, roughness: 1, emissive: 0xff8a3a, emissiveIntensity: 2.4 }),
+    glowMaterial = createStandardMaterial3D({ vertexColors: true, roughness: 1, emissive: 0xff8a3a, emissiveIntensity: 1.55 }),
     glow = createBuilder(),
     tall = [],
     lamps = [];

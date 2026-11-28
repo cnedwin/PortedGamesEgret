@@ -68,6 +68,28 @@ async function fixture(t){
   return{engine,hud,game,view,host,locale,inputs,begin,move,end,cancel,get uploads(){return uploads;},resize(next){screen=next;layout();}};
 }
 
+test('combat meters have clearly labeled native glyphs in both languages without new texture leases', async t=>{
+  const {hud,game,view,locale,host,...f}=await fixture(t);
+  hud.setVisible(true);hud.setInteractive(true);hud.update(game,view);
+  assert.deepEqual(hud.snapshot().statLabels,['气血','气力','枪意']);
+  locale.set('en');hud.setLanguage();hud.update(game,view);
+  assert.deepEqual(hud.snapshot().statLabels,['Health','Stamina','Resolve']);
+  assert.equal(hud.snapshot().font.pages,1);
+  assert.equal(f.uploads,1);
+});
+
+test('a late visibilitychange reset after native HUD scope teardown is harmless', async t=>{
+  const {hud,game,view,host,inputs}=await fixture(t);
+  hud.setVisible(true);hud.setInteractive(true);hud.update(game,view);
+  const controls=hud.snapshot();
+  assert.equal(controls.pads.guard.available,true);
+  // pagehide disposes the overlay before the browser can deliver its final
+  // visibilitychange; the same reset callback still clears the gameplay input.
+  host.scope.dispose();
+  assert.doesNotThrow(()=>hud.releaseTouch());
+  assert.equal(inputs.held.size,0);
+});
+
 test('native HUD honors and watches the system reduced-motion preference',async t=>{
   const original=globalThis.matchMedia;let listener;
   globalThis.matchMedia=query=>{

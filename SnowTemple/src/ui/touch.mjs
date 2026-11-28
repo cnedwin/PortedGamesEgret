@@ -30,17 +30,17 @@ export function bindSnowAction(host,target,{name,onHeld,onActivate,onPaint}={}){
     if(!next&&activation&&owner)owner=undefined;
     onHeld?.(name,next);if(!closing){onPaint?.(next);host.requestPublish?.();}
   },onActivate(){if(activation&&releaseOK&&!closing)onActivate();releaseOK=false;}});
-  scope.use({dispose(){closing=true;control.dispose();}});
+  scope.use({dispose(){closing=true;available=false;owner=undefined;releaseOK=false;control.dispose();}});
   control.setEnabled(false);target.visible=false;target.touchEnabled=false;
   return {
     control,get held(){return pressed;},get available(){return available;},
     setAvailable(next){
-      next=Boolean(next);if(next===available)return;
+      next=Boolean(next);if(closing||next===available)return;
       available=next;control.setEnabled(next);target.visible=next;target.touchEnabled=next;
       if(!next){owner=undefined;releaseOK=false;}
     },
-    release(){if(available){control.setEnabled(false);control.setEnabled(true);}owner=undefined;releaseOK=false;},
-    activate(){if(available){control.press();control.release();}}
+    release(){if(!closing&&available){control.setEnabled(false);control.setEnabled(true);}owner=undefined;releaseOK=false;},
+    activate(){if(!closing&&available){control.press();control.release();}}
   };
 }
 
