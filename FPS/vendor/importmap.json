@@ -29,6 +29,7 @@
     "@egret/engine/web/semantics": "./vendor/engine/dist/web/semantics.js",
     "@egret/engine/web/audio": "./vendor/engine/dist/web/audio.js",
     "@egret/engine/input": "./vendor/engine/dist/input.js",
-    "@egret/engine/web/hover": "./vendor/engine/dist/web/hover.js"
+    "@egret/engine/web/hover": "./vendor/engine/dist/web/hover.js",
+    "@egret/engine/web/view": "./vendor/engine/dist/web/view.js"
   }
 }

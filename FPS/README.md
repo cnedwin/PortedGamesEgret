@@ -34,7 +34,7 @@ On PC, Deploy and Resume request mouse lock so you can turn by moving the mouse.
 
 - 三把武器：全自动突击步枪、备弹无限的手枪，以及带瞄准镜的半自动精确射手步枪；另有手雷和绷带。物资箱里能找到前握把（降低后坐力）和扩容弹匣，捡到即装在步枪上。瞄准时散布更小、后坐力更低，移动、跳跃和连发都会让准星张开。
 - 右上角的小地图随视角转动，标出建筑、终端、撤离点、没搜过的物资箱和已经暴露位置的敌人。
-- 背包只有十二格。装满后新搜到的贵重物品只能留在原地；按 Tab 查看背包、武器、配件和补给。
+- 背包只有十二格。装满后新搜到的贵重物品只能留在原地；按 Tab 查看背包、武器、配件和补给；背包内 Tab 用于焦点导航，点关闭或按 Esc 返回游戏。
 - 护甲先吸收大部分伤害；生命只会自行恢复到一小截，其余要靠绷带。
 - 三种敌人：保持距离点射的步枪兵、贴脸冲锋的突击兵，以及血厚火力猛的重装兵。爆头伤害更高。他们打空弹匣要换弹，挨打或换弹时会跑到掩体后蹲下，再起身还击。一段时间打不到你，他们会绕到侧面，或者朝你藏身的地方扔手雷——屏幕上会有警告。交火时他们会互相喊话。守卫没发现你时不会开火，枪声会把附近的人都引来。
 - 一局预计六到八分钟。每次接入一处终端，按任务栏进度在十二米内守备。每处都有两次链路校准，靠近琥珀色标记、停留两秒即可继续传输。增援分三批接近，完成一处后可从机柜补充护甲、绷带和备用弹药。
@@ -43,16 +43,16 @@ On PC, Deploy and Resume request mouse lock so you can turn by moving the mouse.
 
 - Three weapons: an automatic assault rifle, a pistol that never runs out of spare rounds, and a semi-automatic marksman rifle with a scope, plus grenades and bandages. Crates can hold a foregrip (less recoil) and an extended magazine; both go straight onto the assault rifle. Aiming tightens the spread and softens the recoil; moving, jumping and long bursts open the crosshair.
 - The minimap in the top right turns with the view and shows buildings, terminals, the helipad, crates not yet searched and enemies who have given themselves away.
-- The backpack has twelve slots. Once it is full, further valuables stay where they are; Tab shows the backpack, weapons, attachments and supplies.
+- The backpack has twelve slots. Once it is full, further valuables stay where they are; Tab opens the backpack, weapons, attachments and supplies; inside it Tab navigates focus, while Close or Esc returns to play.
 - Armour takes most of a hit first. Health only comes back a little by itself; the rest takes a bandage.
 - Three kinds of enemy: riflemen who keep their distance and fire bursts, assaulters who rush in close, and heavies with thick armour and a machine gun. Headshots hurt more. They run dry and change magazines, and when hit or reloading they run for cover, kneel behind it, and come up shooting. When they cannot hit you for a while they work round to the side, or throw a grenade at where you are hiding — a warning appears on screen. They call out to each other in a fight. Guards do not shoot until they notice you, and gunfire brings everyone nearby.
 - Allow six to eight minutes per run. Link one terminal at a time and stay within twelve metres. Stay near each amber relay marker for two seconds to resume the transfer. Reinforcements arrive in three waves. Each completed terminal can replenish armour, bandages and spare ammunition.
 - After the third terminal, the helicopter is sixty-four seconds out from the south-east helipad. Use cover on the way and hold on the pad for four seconds once the helicopter is in position.
 - Ten supply crates hold ammunition, bandages, armour plates, grenades and valuables coloured by rarity. The debrief grades the run on time, accuracy, damage taken and the total value carried out.
 
-设置里可以调整画质（高、中、低）、视角灵敏度、视野、音量、纵轴反转和语言。帧率不足时请调低画质。
+设置里可以调整画质（高、中、低）、视角和鼠标瞄准灵敏度、视野、音量、鼠标模式、动效偏好、纵轴反转和语言。帧率不足时请调低画质。
 
-Settings cover graphics quality (high, medium, low), look sensitivity, field of view, volume, Y inversion and language. Lower the quality if the frame rate drops.
+Settings cover graphics quality (high, medium, low), look and mouse aim sensitivity, field of view, volume, mouse mode, motion preference, Y inversion and language. Lower the quality if the frame rate drops.
 
 ## 运行与开发 · Running and development
 
@@ -121,7 +121,16 @@ The game uses Egret World3D and draws with WebGL2 by default; add `?backend=webg
 | `createSpotLight3D` 投射阴影，加可见光锥 · casting shadows, with visible beams | 探照灯 · Floodlights | `src/view.mjs` |
 | `createParticleEmitter3D`，`createPointLight3D` | 枪口火光、尘土、火花、爆炸、水雾 · Muzzle flash, dust, sparks, blasts, mist | `src/view.mjs` |
 | 程序绘制的 `CubeTexture3D`（云、日晕），线性雾 · a painted `CubeTexture3D` (clouds, sun glow), linear fog | 天空与雾 · Sky and haze | `src/textures.mjs` |
-| Engine 时钟 · Engine clock，`createWorld3DView`，`startWorld3DLoop` | 帧循环 · Frame loop | `src/main.mjs` |
+| `play` + `createWorld3DView` | 透明 2D UI 与原生 3D 共用一个引擎时钟 · shared Engine clock for the transparent 2D UI and native 3D | `src/main.mjs` |
+| `game.show`，`createUiScreenStack` | 原生标题、设置、暂停、背包、结算、错误，具名屏幕与焦点 · native menus, inventory, results and named focus | `src/ui/menus.mjs` |
+| `fit: 'expand'`，`portrait`，`uiScale`，`game.safe` | 横竖屏、安全区及独立 2D 2× 栅格密度 · adaptive safe layout and independent 2× UI raster | `src/main.mjs` |
+| `game.keys`，`game.pointer`，`game.touchStick`，`createActionControl` | 键鼠、手柄、原生触点归属、浮动摇杆与按住按钮 · native desktop, pad and touch controls | `src/input.mjs`，`src/ui/touch.mjs` |
+| `game.hints`，`projectToViewport3D`，`Sprite`/`Graphics` | 原生操作提示、世界标记、指南针、准星、小地图 · native hints, markers, compass and minimap | `src/ui/hud.mjs` |
+| `createUiSemantics`，`createBrowserSemantics`，`createUiTester` | 具名控件、绑定状态、读屏投影与按名称验收 · named controls, accessibility projection and named testing | `src/main.mjs`，`test/accept.mjs` |
+| `game.loading`，`renderer.preparePrograms` | 原生加载界面及材质预编译 · loading view and program preparation | `src/main.mjs`，`src/view.mjs` |
+| `createSaveStore`，`browserSaveStorage` | 向后兼容的设置存储 · backward-compatible settings | `src/native-settings.mjs` |
+| `createWorld3DStats` | 区分游戏、视图与提交时间 · frame-stage timing | `src/native-stats.mjs` |
+| `createBrowserAudio` | 原生主混音、解锁及限幅，保留游戏合成配乐 · native mixer, unlock and limiter around retained sound recipes | `src/audio.mjs` |
 | 级联阴影、环境遮蔽、泛光、FXAA、ACES 色调映射 · cascaded shadows, ambient occlusion, bloom, FXAA, ACES tone mapping | 画面 · Look | `src/main.mjs` |
 
 角色、枪械外观和水电站道具使用经过减面、贴图压缩和挂点校准的 Tripo GLB。白鹭的 glTF 加载器读取内嵌材质，重复的场景道具共享实例批次。角色关节、换弹、终端交互和撤离演出由游戏驱动。枪声在山谷和厂房使用不同的实时混响，音序器随敌人逼近逐层加入贝斯和鼓。
@@ -130,6 +139,8 @@ Characters, weapon visuals and station props use Tripo GLB assets simplified, te
 
 ## 已验证 · Verified
 
+- 2026-11-28：更新引擎至 `33897768`，先独立通过原 51 项测试和 PC 基线，再迁移透明 Play 原生 UI；真显卡的布局、键鼠、指针锁定、全屏、高画质阴影、资源失败重试及旧设置兼容见 [QUALITY.md](QUALITY.md)。迁移架构、界面对应关系和复跑方法见 [UI-MIGRATION.md](UI-MIGRATION.md)。 · On 2026-11-28 the engine is refreshed to `33897768`; the standalone upgrade passed all 51 existing tests and the hardware baseline before the native interface migration. Hardware measurements and test boundaries are in QUALITY.md; architecture and reproduction are in UI-MIGRATION.md.
+
 - 2026-11-21 引擎副本升级到 `b5628eb` 后：51 项 Node 测试通过；无头 Chromium 下标题画面与升级前逐像素相同，`?auto=1` 自动游玩 40–60 秒无控制台错误，中等画质下 `renderer.info.lightsTiled` 为 2。 · After the engine update on 2026-11-21: 51 tests pass, the title is pixel for pixel as before, and automatic play runs clean.
 - 2026-11-21 在提交 `fc1dacb`、Node 22.23.4 下运行 `node --test test/*.test.mjs`：51 项全部通过（规则、输入、美术载入、模型挂点、连续蒙皮、投影代理、启动预绘）。 · `node --test` at commit `fc1dacb` with Node 22.23.4: all 51 tests pass.
 - 2026-11-20 `node tools/quality.mjs FPS` 在无头 Chromium + SwiftShader 下测了 16 个自动项，结果见 [QUALITY.md](QUALITY.md)；软件渲染下 3D 场景几乎画不动，帧时间一项不代表真机。 · The 16 automatic quality items in headless Chromium with software rendering, see QUALITY.md; its frame time says nothing of real devices.
@@ -137,32 +148,31 @@ Characters, weapon visuals and station props use Tripo GLB assets simplified, te
 
 ## 已知问题 · Known issues
 
-- 低画质下只点亮离镜头最近的五盏灯（中、高画质下全部点亮）；`?lights=near` 可在任何画质下回到这种做法 · At low quality only the nearest five lamps are lit (all of them at medium and high); `?lights=near` asks for that at any quality.
 - 杉树在阴影里偏黑，背光时层次看不清 · Firs go nearly black in shade.
 - 代打程序（`?auto=1`）不搜物资箱，自动演示里看不到搜集和背包 · The stand-in player never searches crates.
 - 阵亡后从头开始；配件只作用于突击步枪，捡到即装、不能卸下 · Death restarts the run; attachments fit only the assault rifle.
-- RTX 5090 Laptop + ANGLE D3D11 上没有实时阴影（为避免丢失上下文而关闭） · No live shadows on that one adapter.
-- 品质验收未达标 · Quality items failing（[QUALITY.md](QUALITY.md)，2026-11-21，无头 Chromium + SwiftShader · headless, software rendering）：T2 触控区 ≥ 44×44 CSS px（3 of 3 under 44×44: Deploy 132×43; Settings 132×43; Controls 132×43）；F1 桌面帧时间 p95 ≤ 16.7 ms（p95 7849.7 ms over 2 frames）；I1 中英文全可切换，英文下无中文（html lang "en", Chinese left: 断流行动 第一人称射击 移动 鼠标瞄准 左键开火）。
+- 原生 Play 指针不提供 raw unadjustedMovement 与锁请求结果；数据视图缺少连续滑杆和响应式 touchButton 接口。见 [ENGINE-NOTES.md](ENGINE-NOTES.md) 第 6–10 条。 · Native Play has no raw mouse option or request result, no data slider or responsive touchButton API; see ENGINE-NOTES 6–10.
 
 ## 已解决 · Solved
 
 - 第一次出现补给箱时约 130 ms 的两次停顿：启动时在加载提示下把两种材质路径真实预绘一遍（`src/view.mjs` 的 `view.warm`），见 ENGINE-NOTES 第 4 条。 · Two stalls of about 130 ms when the first crate appeared: both material paths are drawn once under the loading screen (ENGINE-NOTES item 4).
 - 加色混合的太阳光晕、枪口火光、红点画成不透明方块：材质设 `alphaMode: 'blend'`、`blending: 'additive'`（ENGINE-NOTES 第 2 条）。 · Additive glows drew as opaque squares (item 2).
-- 超过八盏的点光源不生效：先是只点亮最近的五盏并按距离渐隐；引擎有了分块照明之后，中、高画质下所有灯都点亮（ENGINE-NOTES 第 1 条）。 · Lights past the eighth had no effect; now every lamp is lit at medium and high quality through the engine's tiled lights (item 1).
+- 超过八盏的点光源不生效：三个画质档使用引擎分块照明，仅显式 `?lights=near` 留作性能历史对照（ENGINE-NOTES 第 1 条）。 · All three presets now use the native tiled lighting; `?lights=near` remains an explicit historical comparison (item 1).
 - 系统"减少动态效果"打开时镜头仍在晃：改用引擎的 `prefersReducedMotion()` / `watchReducedMotion()`，开启时不晃镜头、爆炸闪光减弱（ENGINE-NOTES 第 5 条）。 · The camera shook even with reduced motion asked for; the engine's reduced-motion helpers now turn the shake off (item 5).
-- RTX 5090 Laptop 的 ANGLE D3D11 下接收阴影的着色器丢失 WebGL 上下文：只对这一适配器关闭实时阴影（ENGINE-NOTES 第 3 条）。 · The shadow shader lost the context on one adapter; shadows are off for that adapter only (item 3).
+- 历史 RTX 5090 Laptop 的 ANGLE D3D11 阴影上下文丢失：新版中画质硬件浏览器通过，恢复正常阴影开关，详见 ENGINE-NOTES 第 3 条与 QUALITY。 · The historical adapter-specific shadow switch was removed after actual medium-quality hardware verification; see item 3 and QUALITY.
+- 标题、设置、操作、暂停、背包、结算和 HUD 全部改为原生 Play，删除旧 DOM/CSS 界面和第二套输入监听，设置通过兼容旧数据的引擎存储。 · The native Play interface and compatible engine save store replace the old DOM UI and its parallel input path.
 - 带护甲中弹时界面报错、守卫在出生点就发现干员、新增箱体挡路、枪在阴影里纯黑、瞄准镜被枪身挡住、一局不到一分钟等，完整清单见 [STATUS.md](STATUS.md)「已经解决的问题」。 · The rest (an error when hit with armour, guards spotting the start, blocked posts, a black rifle, the scope view, runs under a minute) are listed in STATUS.md.
 
 ## 未完成 · Unfinished
 
 - WebGPU 后端没有做过单独的真机验收；覆盖整块显示屏的原生全屏、真人难度评估和专门的听音检查都没做（STATUS.md「验收边界」）。 · No device test of the WebGPU backend, native full-monitor fullscreen, human difficulty assessment or listening test.
-- 没有检查点和难度选择，只有一张地图、一个任务；背包是等大的十二格，不能丢弃；只有三把枪、两种配件；敌人没有小队配合，喊话没有语音；没有手柄支持。完整清单与下一步建议见 [STATUS.md](STATUS.md)。 · No checkpoints, difficulty or second map; a twelve-slot backpack; three guns and two attachments; no squad tactics or voiced callouts; no gamepad. See STATUS.md.
+- 没有检查点和难度选择，只有一张地图、一个任务；背包是等大的十二格，不能丢弃；只有三把枪、两种配件；敌人没有小队配合，喊话没有语音；未做真手柄验收。完整清单与下一步建议见 [STATUS.md](STATUS.md)。 · No checkpoints, difficulty or second map; a twelve-slot backpack; three guns and two attachments; no squad tactics or voiced callouts; physical gamepad not yet qualified. See STATUS.md.
 
 ## 目录 · Layout
 
 | 路径 · Path | 内容 · Contents |
 |---|---|
-| `index.html`，`style.css` | 页面、界面样式 · the page and interface styles |
+| `index.html`，`style.css` | 页面、仅页面宿主样式 · page host styles only |
 | `src/main.mjs` | 入口：启动引擎，驱动每一帧 · entry point: starts the engine and runs each frame |
 | `src/sim.mjs` | 规则：干员、武器、敌人、终端、物资、撤离，不含任何绘制 · the rules: operator, weapons, enemies, terminals, loot, extraction, with no drawing in them |
 | `src/data.mjs` | 数值 · tuning numbers |
@@ -172,10 +182,11 @@ Characters, weapon visuals and station props use Tripo GLB assets simplified, te
 | `src/soldier.mjs`，`src/soldier-skin.mjs`，`src/gun.mjs` | 连续角色蒙皮与动画、手中的武器 · continuous character skinning and animation, the weapon in hand |
 | `assets/models/`，`src/asset-models.mjs` | GLB 美术和角色、道具的挂载清单 · GLB assets and the visual slot manifest |
 | `src/build.mjs`，`src/textures.mjs`，`src/grime.mjs` | 几何体拼装、程序纹理、风化着色器 · geometry building, generated textures, the weathering shader |
-| `src/hud.mjs`，`src/text.mjs` | 界面与中英文文字 · interface and its Chinese and English text |
-| `src/input.mjs`，`src/audio.mjs`，`src/music.mjs` | 键鼠与触屏、合成音效、随战况变化的配乐 · keyboard, mouse and touch; synthesised sound; a score that follows the fight |
-| `src/stats.mjs` | `?stats=1` 的性能读数 · the performance readout for `?stats=1` |
-| `test/`，`tools/` | 规则测试、无页面整局试玩 · tests of the rules, whole runs without a page |
+| `src/ui/menus.mjs`，`src/ui/hud.mjs`，`src/ui/hud-state.mjs`，`src/text.mjs` | 原生数据菜单、状态 HUD、图形与双语文字 · native data menus, HUD state/graphics and bilingual text |
+| `src/ui/touch.mjs`，`src/input.mjs` | 原生触屏控件、按键与指针适配 · native touch, keyboard and pointer adapter |
+| `src/audio.mjs`，`src/music.mjs` | 原生混音及合成音效、随游戏状态变化的配乐 · native mixer and retained synthesised audio |
+| `src/native-stats.mjs`，`src/native-settings.mjs` | 原生 World3D 统计、兼容历史设置 · native World3D statistics and compatible settings |
+| `test/`，`tools/` | 规则、原生界面验收、多屏截图及无页面整局试玩 · rules, native UI acceptance, multi-screen screenshots and whole runs without a page |
 | `STATUS.md` | 现状与待办：验证情况、已知问题、未完成的功能、模型细节 · status and backlog: what is verified, known issues, unfinished features, model detail |
 | `vendor/` | 引擎运行时副本，来源见 `vendor/SOURCE.md` · a copy of the engine runtime, see `vendor/SOURCE.md` |
 
@@ -185,4 +196,4 @@ Characters, weapon visuals and station props use Tripo GLB assets simplified, te
 
 The engine copy is from [Egret_rebuild](https://github.com/cnedwin/Egret_rebuild) commit `33897768c4f7933d289f083e4f34b3209b0aef31`, copied by the engine's `tools/vendor-game.mjs`; see [vendor/SOURCE.md](vendor/SOURCE.md).
 
-入口 · Entries: `@egret/engine`, `@egret/engine/world3d`, `@egret/engine/webgl2/world3d`, `@egret/engine/webgpu/world3d`, `@egret/engine/web/kit`, `@egret/engine/play`, `@egret/engine/kit`, `@egret/engine/ui`, `@egret/engine/ui/semantics`, `@egret/engine/ui/testing`, `@egret/engine/web/semantics`, `@egret/engine/web/audio`, `@egret/engine/input`, `@egret/engine/web/hover`.
+入口 · Entries: `@egret/engine`, `@egret/engine/world3d`, `@egret/engine/webgl2/world3d`, `@egret/engine/webgpu/world3d`, `@egret/engine/web/kit`, `@egret/engine/play`, `@egret/engine/kit`, `@egret/engine/ui`, `@egret/engine/ui/semantics`, `@egret/engine/ui/testing`, `@egret/engine/web/semantics`, `@egret/engine/web/audio`, `@egret/engine/input`, `@egret/engine/web/hover`, `@egret/engine/web/view`.

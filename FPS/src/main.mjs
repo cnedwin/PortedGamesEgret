@@ -1,461 +1,275 @@
-// Operation Cutoff: the page's entry point. It starts the engine, builds the
-// scene, and runs the loop that passes input to the rules and what the rules
-// report to the view, the screen text and the sound.
-//
-// Options in the address:
-//   ?backend=webgpu  draw with WebGPU instead of WebGL2
-//   ?lang=zh|en      interface language (defaults to the browser's)
-//   ?quality=low|medium|high
-//   ?post=0  ?ssao=0  ?shadows=0  ?reflect=0  ?dof=0   switch single features off
-//   ?ratio=1         cap on the device pixel ratio (default 1.5)
-//   ?seed=123        replay the same run
-//   ?auto=1          let the stand-in player play
-//   ?stats=1         show frame timings and what was drawn
-import { createEngine } from '@egret/engine';
+// One native Play clock advances the existing 3D view, game rules and UI.
+import { play } from '@egret/engine/play';
+import { createUiSemantics } from '@egret/engine/ui/semantics';
+import { createUiTester } from '@egret/engine/ui/testing';
+import { createBrowserSemantics } from '@egret/engine/web/semantics';
 import { prefersReducedMotion, watchReducedMotion } from '@egret/engine/web/kit';
 import { Scene3D, createPerspectiveCamera3D } from '@egret/engine/world3d';
 import { loadModels } from './asset-models.mjs';
 import { createAudio } from './audio.mjs';
 import { createBot } from './bot.mjs';
-import { createHud } from './hud.mjs';
 import { createInput } from './input.mjs';
 import { createGame } from './sim.mjs';
-import { createStats } from './stats.mjs';
-import { pickLanguage } from './text.mjs';
+import { createStats } from './native-stats.mjs';
+import { loadSettings, saveSettings } from './native-settings.mjs';
+import { createMenus } from './ui/menus.mjs';
+import { createCombatHud } from './ui/hud.mjs';
+import { createTouchControls } from './ui/touch.mjs';
 import { createView } from './view.mjs';
 
-const gameArea = document.querySelector('#game');
-// Cancel the browser menu over both the canvas and its controls. Mouse buttons reach the input handler as usual.
-gameArea.addEventListener('contextmenu', (event) => event.preventDefault());
-
-const params = new URLSearchParams(location.search);
-const useWebGPU = params.get('backend') === 'webgpu';
-const backend = await (useWebGPU ? import('@egret/engine/webgpu/world3d') : import('@egret/engine/webgl2/world3d'));
-const { createWorld3DHost, createWorld3DView, startWorld3DLoop } = backend;
-
-const canvas = document.querySelector('#stage');
-const boot = document.querySelector('#boot');
-
-/** State for the browser console and for automated checks; the game never reads it. */
-const status = { error: '', frames: 0, mode: 'boot', game: undefined, buildVersion: new URL(import.meta.url).searchParams.get('v') ?? 'development' };
-globalThis.__cutoff = status;
-const bootChinese = pickLanguage(params.get('lang')) === 'zh';
-const bootStatus = document.querySelector('#boot-status');
-const modelsReady = params.get('art') === 'original' ? Promise.resolve({ bundle: null }) : loadModels(backend.loadGltfFromUrl3D, {
-  strict: true,
-  onProgress({ complete, total }) {
-    if (bootStatus) bootStatus.textContent = bootChinese ? `正在载入美术资源 ${complete} / ${total}` : `Loading game art ${complete} / ${total}`;
-    boot.classList.add('loading');
-    boot.querySelector('.boot-bar i').style.width = Math.max(2, complete / total * 100) + '%';
-  },
-}).then(bundle => ({ bundle }), error => ({ error }));
-
-function fail(cause) {
-  const box = document.querySelector('#error');
-  const artFailure = cause?.code === 'MODEL_LOAD_FAILED';
-  const message = artFailure
-    ? (bootChinese ? '美术资源加载未完成。请检查网络后重新加载。' : 'Game art could not finish loading. Check your connection and reload.')
-    : '出错了 / Error: ' + (cause?.message ?? cause);
-  box.textContent = message;
-  const retry = document.createElement('button');
-  retry.type = 'button';
-  retry.textContent = bootChinese ? '重新加载' : 'Reload';
-  retry.addEventListener('click', () => location.reload());
-  box.appendChild(document.createElement('br'));
-  box.appendChild(retry);
-  box.hidden = false;
-  status.error = String(cause?.stack ?? cause);
-  if (artFailure) {
-    status.models = { loaded: [], failures: cause.failures };
-    if (bootStatus) bootStatus.textContent = message;
-  }
+const gameArea=document.querySelector('#game'), canvas=document.querySelector('#stage'), boot=document.querySelector('#boot');
+const params=new URLSearchParams(location.search), useWebGPU=params.get('backend')==='webgpu';
+const status={error:'',frames:0,mode:'boot',game:undefined,buildVersion:new URL(import.meta.url).searchParams.get('v')??'development'};
+globalThis.__cutoff=status;
+const settings=loadSettings(params), semantics=createUiSemantics();
+const chinese=()=>settings.lang==='zh';
+const reduced=()=>settings.reducedMotion==='reduce'||(settings.reducedMotion!=='normal'&&prefersReducedMotion());
+function pageLanguage(){document.documentElement.lang=chinese()?'zh-CN':'en';document.title=chinese()?'断流行动 / Operation Cutoff':'Operation Cutoff / 断流行动';}
+pageLanguage();
+const backend=await (useWebGPU?import('@egret/engine/webgpu/world3d'):import('@egret/engine/webgl2/world3d'));
+// Model loads run concurrently with creation of the native UI and renderer.
+const modelsReady=params.get('art')==='original'?Promise.resolve({bundle:null}):loadModels(backend.loadGltfFromUrl3D,{
+  strict:true,onProgress({complete,total}){status.assetProgress={complete,total};}
+}).then(bundle=>({bundle}),error=>({error}));
+let menus,combatHud,input,touchControls,worldView;
+function fail(cause){
+  const message=cause?.code==='MODEL_LOAD_FAILED'
+    ? (chinese()?'美术资源加载未完成，请检查网络后重试。':'Game art could not finish loading. Check your connection and retry.')
+    : (chinese()?'出错了：':'Error: ')+(cause?.message??cause);
+  if(status.error)return;
+  status.error=String(cause?.stack??cause);status.mode='error';
+  if(cause?.code==='MODEL_LOAD_FAILED')status.models={loaded:[],failures:cause.failures};
+  input?.setEnabled(false);input?.release();if(worldView)worldView.paused=true;
+  combatHud?.setVisible(false);touchControls?.setVisible(false);
+  if(menus){menus.setError(message);boot.hidden=true;}else{boot.hidden=false;boot.textContent=message;}
 }
-
-// ---- saved choices -------------------------------------------------------------------------
-const SETTINGS_KEY = 'operation-cutoff';
-function loadSettings() {
-  const defaults = {
-    quality: 'high',
-    sensitivity: 1,
-    adsSensitivity: 0.62,
-    invertY: false,
-    volume: 0.8,
-    fov: 74,
-    lang: pickLanguage(params.get('lang')),
-  };
-  try {
-    const saved = JSON.parse(localStorage.getItem(SETTINGS_KEY) ?? '{}');
-    return {
-      ...defaults,
-      ...saved,
-      adsSensitivity: Number.isFinite(saved.adsSensitivity) ? Math.max(0.2, Math.min(1.5, saved.adsSensitivity)) : defaults.adsSensitivity,
-      ...(params.get('lang') ? { lang: defaults.lang } : {}),
-      ...(params.get('quality') ? { quality: params.get('quality') } : {}),
-    };
-  } catch {
-    return defaults;
-  }
-}
-function saveSettings(settings) {
-  // Private windows may refuse storage; the choices then last for this visit only.
-  try {
-    localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
-  } catch {
-    /* ignored */
-  }
-}
-
-async function main() {
-  // ---- engine, renderer and scene ----------------------------------------------------------
-  const engine = await createEngine({ host: createWorld3DHost(canvas) });
-  const scope = engine.createScope();
-  const renderer = useWebGPU
-    ? await backend.createWebGPURenderer3D({
-        canvas,
-        antialias: true,
-        toneMapping: 'aces',
-        onDeviceLost: (message) => fail(message || 'device lost'),
-      })
-    : backend.createWebGL2Renderer3D({ canvas, antialias: true, toneMapping: 'aces' });
-  scope.use(renderer);
-  const gl = useWebGPU ? null : renderer.context;
-  const debugRenderer = gl?.getExtension('WEBGL_debug_renderer_info');
-  const adapter = debugRenderer ? gl.getParameter(debugRenderer.UNMASKED_RENDERER_WEBGL) : '';
-  // The shadow-receiving shader loses the context on this ANGLE D3D11 adapter.
-  const shadowCompatible = !/ANGLE .*RTX 5090 Laptop GPU \(0x00002C58\) Direct3D11\b/i.test(adapter);
-  Object.assign(renderer.postProcess, {
-    bloom: true,
-    bloomThreshold: 1.15,
-    bloomIntensity: 0.4,
-    fxaa: true,
-    saturation: 1.04,
-    contrast: 1.07,
-    vignette: 0.28,
-    ssaoRadius: 0.6,
-    ssaoIntensity: 1,
-  });
-  // Mist lying in the valley and shafts of low sunlight through it.
-  const atmosphere = backend.createAtmosphere3D({
-    fogColor: 0xcfb7a2,
-    fogDensity: 0.0065,
-    fogHeight: 0,
-    fogFalloff: 0.07,
-    shaftIntensity: 0.5,
-    shaftLength: 0.7,
-  });
-  renderer.postProcess.custom = atmosphere.post;
-  const SUNLIGHT = [-0.72, -0.4, -0.56];
-  const stats = createStats(renderer, params.get('stats') === '1', gameArea);
-  status.stats = stats;
-
-  const settings = loadSettings();
-  const art = await modelsReady;
-  if (art.error) throw art.error;
-  const modelBundle = art.bundle;
-  if (modelBundle) scope.use(modelBundle);
-  const models = modelBundle?.models ?? {};
-  status.models = { loaded: Object.keys(models), failures: modelBundle?.failures ?? {} };
-  const scene = new Scene3D();
-  const camera = createPerspectiveCamera3D({ fov: settings.fov, near: 0.03, far: 460 });
-  scene.addChild(camera);
-  const view = createView(scene, camera, { fov: settings.fov, models });
-  status.scene = scene;
-  status.renderer = renderer;
-  // Less motion when the system asks for it, and again whenever the player changes the setting.
-  view.reducedMotion = prefersReducedMotion();
-  scope.use({ dispose: watchReducedMotion((reduced) => (view.reducedMotion = reduced)) });
-  status.camera = camera;
-
-  let focusOn = true;
-  /**
-   * Picture quality. High: everything. Medium: no contact shading, smaller
-   * shadow maps. Low: no post-processing, no shadows and no mirror image on
-   * the wet ground. The address options
-   * can switch single features off on top of that.
-   */
-  function applyQuality() {
-    const high = settings.quality === 'high',
-      low = settings.quality === 'low',
-      off = (name) => params.get(name) === '0';
-    renderer.postProcess.enabled = !low && !off('post');
-    renderer.postProcess.ssao = high && !off('ssao');
-    renderer.shadowsEnabled = !low && !off('shadows') && shadowCompatible;
-    view.setShadowSize(high ? 2048 : 1024);
-    view.setReflections(!low && !off('reflect'));
-    focusOn = high && !off('dof');
-    // Every lamp lit, those past the eighth by screen tile, except at low quality or with `?lights=near`.
-    renderer.tiledLights = !low && params.get('lights') !== 'near';
-    view.setTiledLamps(renderer.tiledLights === true);
-    if (!focusOn) renderer.postProcess.dof = false;
-  }
-  applyQuality();
-
-  const audio = createAudio();
-  audio.setVolume(settings.volume);
-
-  // ---- the run -----------------------------------------------------------------------------
-  const auto = params.get('auto') === '1';
-  let game,
-    bot,
-    deployed = false,
-    mode = 'title',
-    mouseAttempt = 0,
-    time = 0,
-    endIn = 0;
-  function newGame() {
-    const seed = Number(params.get('seed')) || (Date.now() % 100000) + 1;
-    game = createGame({ seed });
-    bot = auto ? createBot(game) : undefined;
-    view.attach(game);
-    status.game = game;
-  }
-  function setMode(next) {
-    mouseAttempt++;
-    mode = next;
-    status.mode = next;
-    hud.show(next === 'play' ? 'none' : next);
-    hud.setMouseStatus(null);
-    input.setEnabled(next === 'play');
-    hud.toggleBag(false);
-    hud.setTouch(input.touchMode && next === 'play');
-    audio.setPaused(next !== 'play' && next !== 'title');
-    if (next !== 'play') {
-      input.dragLook = false;
-      input.release();
-    }
-  }
-  function resume() {
-    if (input.capturePending) return;
-    audio.resume();
-    if (auto || input.touchMode) return setMode('play');
-    // Keep the simulation paused until the native request from this click succeeds.
-    setMode('pause');
-    hud.setMouseStatus('waiting');
-    const attempt = mouseAttempt;
-    void input.capture().then(locked => {
-      if (attempt !== mouseAttempt) return;
-      if (locked && input.locked && document.hasFocus() && !document.hidden) setMode('play');
-      else {
-        input.release();
-        hud.setMouseStatus('failed');
-      }
-    });
-  }
-  function deploy() {
-    // The title previews a fresh run without advancing its rules. Keep it on first deploy.
-    if (deployed) newGame();
-    deployed = true;
-    hud.reset();
-    endIn = 0;
-    resume();
-  }
-
-  function pause(reason) {
-    if (!(mode === 'play' && game.state !== 'dead' && game.state !== 'won') && !input.capturePending) return;
-    setMode('pause');
-    hud.setMouseStatus(reason);
-  }
-
-  const hud = createHud(document.querySelector('#ui'), gameArea, settings, {
-    deploy,
-    restart: deploy,
-    selectWeapon(weapon) {
-      if (mode === 'play') input.selectWeapon(weapon);
-    },
-    resume,
-    'drag-look'() {
-      if (mode !== 'pause' || input.capturePending) return;
-      audio.resume();
-      input.dragLook = true;
-      setMode('play');
-    },
-    click: () => {
-      audio.resume();
-      audio.click();
-    },
-    changed(key) {
+async function setup(p){
+  const scope=p.scope;
+  const projection=createBrowserSemantics({semantics,canvas:p.canvas,width:p.browser.frame.width,height:p.browser.frame.height,label:chinese()?'断流行动':'Operation Cutoff',onError:fail});
+  const stopProjection=p.browser.onScreenChange(()=>projection.sync(p.browser.frame));
+  scope.use({dispose(){stopProjection();projection.dispose();}});
+  const noContextMenu=event=>event.preventDefault();
+  gameArea.addEventListener('contextmenu',noContextMenu);
+  scope.use({dispose(){gameArea.removeEventListener('contextmenu',noContextMenu);}});
+  let game,bot,deployed=false,mode='title',mouseAttempt=0,time=0,endIn=0,view,renderer,focusOn=true,stats,atmosphere,baseFov=settings.fov,statText,lastStats=0,menuWeapon='';
+  const SUNLIGHT=[-.72,-.4,-.56],auto=params.get('auto')==='1';
+  let deploy=()=>{},resume=()=>{},pause=()=>{},setMode=()=>{},applyQuality=()=>{},openBag=()=>{},closeBag=()=>{};
+  const audio=createAudio();audio.setVolume(settings.volume);
+  scope.use({dispose:()=>audio.dispose?.()});
+  const actions={
+    deploy:()=>deploy(),restart:()=>deploy(),resume:()=>resume(),
+    selectWeapon(weapon){if(mode==='play'&&['rifle','pistol','marksman'].includes(weapon))menuWeapon=weapon;},
+    requestCloseBag(){closeBag();},
+    'drag-look'(){if(mode!=='pause'||input.capturePending)return;audio.resume();input.dragLook=true;setMode('play');},
+    click(){audio.resume();audio.click();},
+    changed(key){
       saveSettings(settings);
-      if (key === 'quality') applyQuality();
-      if (key === 'volume') audio.setVolume(settings.volume);
-      if (key === 'fov') view.setFov(settings.fov);
-      input.sensitivity = settings.sensitivity;
-      input.adsSensitivity = settings.adsSensitivity;
-      input.invertY = settings.invertY;
-    },
-  });
-  const input = createInput(canvas, hud.touch, {
-    gameArea,
-    onBag() {
-      if (mode === 'play') hud.toggleBag();
-    },
-    onPause: pause,
-    onTouch() {
-      mouseAttempt++;
-      hud.touchMode = true;
-      hud.setTouch(mode === 'play');
-      hud.setMouseStatus(null);
-    },
-    onMouse() {
-      hud.touchMode = false;
-      hud.setTouch(false);
-      if (!auto) pause('released');
-    },
-  });
-  hud.touchMode = input.touchMode;
-  input.sensitivity = settings.sensitivity;
-  input.adsSensitivity = settings.adsSensitivity;
-  input.invertY = settings.invertY;
-  let wasFullscreen = document.fullscreenElement === gameArea;
-  document.addEventListener('fullscreenchange', () => {
-    const fullscreen = document.fullscreenElement === gameArea;
-    if (wasFullscreen && !fullscreen && !input.touchMode && !auto) pause('released');
-    wasFullscreen = fullscreen;
-  });
-  newGame();
-
-  // ---- how the picture reacts: focus, and what being hurt does to it ------------------------
-  const BASE = { saturation: 1.04, contrast: 1.07, vignette: 0.28 };
-  renderer.postProcess.dofRadius = 0;
-  let focus = 30,
-    focusIn = 0,
-    hurt = 0,
-    deadFor = 0;
-  /** Note a blow, so the picture flinches: `amount` in health points. */
-  function flinch(amount) {
-    hurt = Math.min(1.2, hurt + 0.25 + amount / 35);
-  }
-  function grade(dt) {
-    const post = renderer.postProcess,
-      p = game.player,
-      playing = mode === 'play';
-    hurt = Math.max(0, hurt - dt * 1.4);
-    deadFor = playing && game.state === 'dead' ? deadFor + dt : 0;
-    // Badly hurt, the colour drains and the edges close in; a fresh blow adds a jolt of both.
-    const low = playing ? Math.max(0, 1 - p.health / 45) : 0,
-      gone = Math.min(1, deadFor / 1.5);
-    post.saturation = BASE.saturation * (1 - Math.min(0.9, low * 0.55 + hurt * 0.25 + gone * 0.9));
-    post.vignette = BASE.vignette + low * 0.3 + hurt * 0.3 + gone * 0.35;
-    post.contrast = BASE.contrast + hurt * 0.12;
-    if (!focusOn) return;
-    post.dof = true;
-    if (!playing) {
-      // Behind a menu the scene goes soft; the title screen keeps it sharp.
-      post.dofFocus = 0.4;
-      post.dofRange = 0.2;
-      post.dofRadius += ((mode === 'title' ? 0 : 5) - post.dofRadius) * Math.min(1, dt * 6);
-      return;
-    }
-    // Focus on whatever is under the crosshair, looked up a few times a second.
-    focusIn -= dt;
-    if (focusIn <= 0) {
-      focusIn = 0.12;
-      focus += (Math.max(1.5, game.sightDistance()) - focus) * 0.5;
-    }
-    post.dofFocus = focus;
-    // Aiming narrows the sharp zone so the weapon and the near ground blur; a blow or a wound smears everything a little.
-    post.dofRange = Math.max(2.5, focus * (1.1 - 0.45 * p.aim));
-    post.dofRadius += (p.aim * 3.2 + hurt * 3 + low * 1.6 + gone * 5 - post.dofRadius) * Math.min(1, dt * 10);
-  }
-
-  // ---- one frame ---------------------------------------------------------------------------
-  const STEP = 1 / 60;
-  function frame(dt) {
-    stats.begin();
-    status.frames++;
-    if (status.frames === 1) requestAnimationFrame(() => {
-      if (status.error) return;
-      boot.classList.add('done');
-      if (auto) deploy();
+      if(key==='quality')applyQuality();
+      if(key==='volume')audio.setVolume(settings.volume);
+      if(key==='fov')view?.setFov(settings.fov);
+      if(key==='lang'){
+        pageLanguage();combatHud?.setLanguage(settings.lang);touchControls?.setLanguage(settings.lang);
+        p.canvas.setAttribute('aria-label',chinese()?'断流行动':'Operation Cutoff');
+      }
+      if(key==='reducedMotion'&&view)view.reducedMotion=reduced();
+      if(input){input.sensitivity=settings.sensitivity;input.adsSensitivity=settings.adsSensitivity;input.invertY=settings.invertY;}
+    },onError:fail
+  };
+  menus=createMenus(p,gameArea,settings,actions);
+  scope.use({dispose:()=>menus.dispose()});
+  status.ui={game:p,canvas:p.canvas,semantics,tester:createUiTester({semantics}),menus,ready:()=>Promise.resolve()};
+  boot.hidden=true;
+  try{
+    const rendererReady=useWebGPU
+      ? backend.createWebGPURenderer3D({canvas,antialias:true,toneMapping:'aces',onDeviceLost:message=>fail(message||'device lost')})
+      : Promise.resolve(backend.createWebGL2Renderer3D({canvas,antialias:true,toneMapping:'aces'}));
+    const [created,art]=await p.loading([rendererReady,modelsReady],{label:chinese()?'正在载入场景与美术':'Loading scene and art'});
+    renderer=created;scope.use(renderer);
+    if(art.error)throw art.error;
+    if(art.bundle)scope.use(art.bundle);
+    const models=art.bundle?.models??{};
+    status.models={loaded:Object.keys(models),failures:art.bundle?.failures??{}};
+    status.renderer=renderer;
+    const gl=useWebGPU?null:renderer.context,ext=gl?.getExtension('WEBGL_debug_renderer_info');
+    status.adapter=ext?gl.getParameter(ext.UNMASKED_RENDERER_WEBGL):'';
+    Object.assign(renderer.postProcess,{bloom:true,bloomThreshold:1.15,bloomIntensity:.4,fxaa:true,saturation:1.04,contrast:1.07,vignette:.28,ssaoRadius:.6,ssaoIntensity:1});
+    atmosphere=backend.createAtmosphere3D({fogColor:0xcfb7a2,fogDensity:.0065,fogHeight:0,fogFalloff:.07,shaftIntensity:.5,shaftLength:.7});
+    renderer.postProcess.custom=atmosphere.post;
+    const scene=new Scene3D(),camera=createPerspectiveCamera3D({fov:settings.fov,near:.03,far:460});
+    scene.addChild(camera);status.scene=scene;status.camera=camera;
+    // Keep the existing scene and custom rendering configuration, rather than play3d's default lights and preset.
+    view=createView(scene,camera,{fov:settings.fov,models});status.view=view;
+    view.reducedMotion=reduced();
+    scope.use({dispose:watchReducedMotion(value=>{if(!settings.reducedMotion||settings.reducedMotion==='system')view.reducedMotion=value;})});
+    stats=createStats(renderer);scope.use(stats);status.stats=stats;
+    if(params.get('stats')==='1'){statText=p.text('',{size:14,color:0xa4f5cb,layer:'ui'});p.pin(statText,{left:7,top:7});}
+    combatHud=createCombatHud(p,{camera,stage:canvas,settings,actions});status.ui.hud=combatHud;
+    input=createInput(p,{gameArea,canLook:()=>!menus.bagOpen,
+      onBag(){if(mode==='play'&&!menus.bagOpen)openBag();},
+      onPause(reason){if(menus.handleBack())return;pause(reason);},
+      onTouch(){mouseAttempt++;menus.setTouch(true);combatHud.setTouch(true);menus.setMouseStatus(null);},
+      onMouse(){menus.setTouch(false);combatHud.setTouch(false);if(!auto)pause('released');}
     });
-    dt = Math.min(dt, 0.1);
-    time += dt;
-    if (mode === 'play' && dt > 1e-5) {
-      const record = bot ? bot.think(dt) : input.sample();
-      if (record.weapon === 'swap' || record.weapon === 'next' || record.weapon === 'previous') {
-        // The wheel and the touch button step through the weapons in order.
-        const order = ['rifle', 'pistol', 'marksman'],
-          at = order.indexOf(game.player.weapon);
-        record.weapon = order[(at + (record.weapon === 'previous' ? order.length - 1 : 1)) % order.length];
+    input.sensitivity=settings.sensitivity;input.adsSensitivity=settings.adsSensitivity;input.invertY=settings.invertY;
+    touchControls=createTouchControls(p,input,semantics,settings);status.ui.touch=touchControls;status.input=input;
+    menus.setTouch(input.touchMode);combatHud.setTouch(input.touchMode);
+    let wasFullscreen=document.fullscreenElement===gameArea;
+    const fullscreenChanged=()=>{
+      const current=document.fullscreenElement===gameArea;
+      if(wasFullscreen&&!current&&!input.touchMode&&!auto)pause('released');
+      wasFullscreen=current;
+    };
+    document.addEventListener('fullscreenchange',fullscreenChanged);
+    scope.use({dispose(){document.removeEventListener('fullscreenchange',fullscreenChanged);}});
+    applyQuality=()=>{
+      const high=settings.quality==='high',low=settings.quality==='low',off=name=>params.get(name)==='0';
+      renderer.postProcess.enabled=!low&&!off('post');
+      renderer.postProcess.ssao=high&&!off('ssao');
+      renderer.shadowsEnabled=!low&&!off('shadows');
+      view.setShadowSize(high?2048:1024);
+      view.setReflections(!low&&!off('reflect'));
+      focusOn=high&&!off('dof');
+      renderer.tiledLights=params.get('lights')!=='near';
+      view.setTiledLamps(renderer.tiledLights===true);
+      if(!focusOn)renderer.postProcess.dof=false;
+    };
+    applyQuality();
+    function newGame(){
+      const seed=Number(params.get('seed'))||(Date.now()%100000)+1;
+      game=createGame({seed});menuWeapon='';bot=auto?createBot(game):undefined;view.attach(game);status.game=game;
+    }
+    setMode=next=>{
+      mouseAttempt++;mode=next;status.mode=next;
+      menus.show(next==='play'?'none':next);menus.setMouseStatus(null);
+      input.setEnabled(next==='play');menus.toggleBag(false);
+      combatHud.setVisible(next==='play');combatHud.setTouch(input.touchMode);menus.setTouch(input.touchMode);
+      audio.setPaused(next!=='play'&&next!=='title');
+      if(next!=='play'){input.dragLook=false;input.release();}
+    };
+    resume=()=>{
+      if(!input||input.capturePending)return;
+      audio.resume();
+      if(auto||input.touchMode||p.device==='gamepad')return setMode('play');
+      if(settings.mouseMode==='drag'){input.dragLook=true;return setMode('play');}
+      // Request in the real native control activation; do not run rules until lock is confirmed.
+      setMode('pause');menus.setMouseStatus('waiting');
+      const attempt=mouseAttempt;
+      void input.capture().then(locked=>{
+        if(attempt!==mouseAttempt)return;
+        if(locked&&input.locked&&document.hasFocus()&&!document.hidden)setMode('play');
+        else{input.release();menus.setMouseStatus('failed');}
+      });
+    };
+    // A real inventory is an interactive native view: give it the cursor and
+    // prevent menu contacts from becoming gameplay input. Rules keep running
+    // exactly as before while the bag is open; resume requests lock again from
+    // the actual Close/weapon control gesture, with the existing retry path.
+    openBag=()=>{if(mode!=='play'||menus.bagOpen)return;input.setEnabled(false);input.release();menus.toggleBag(true);};
+    closeBag=()=>{if(mode!=='play'||!menus.bagOpen)return;menus.toggleBag(false);resume();};
+    deploy=()=>{if(!view||!input)return;if(deployed)newGame();deployed=true;combatHud.reset();endIn=0;resume();};
+    pause=reason=>{
+      if(!(mode==='play'&&game.state!=='dead'&&game.state!=='won')&&!input.capturePending)return;
+      setMode('pause');menus.setMouseStatus(reason);
+    };
+    newGame();
+
+    // Existing picture response and rule update order.
+    const BASE={saturation:1.04,contrast:1.07,vignette:.28};
+    renderer.postProcess.dofRadius=0;
+    let focus=30,focusIn=0,hurt=0,deadFor=0;
+    function flinch(amount){hurt=Math.min(1.2,hurt+.25+amount/35);}
+    function grade(dt){
+      const post=renderer.postProcess,player=game.player,playing=mode==='play';
+      hurt=Math.max(0,hurt-dt*1.4);
+      deadFor=playing&&game.state==='dead'?deadFor+dt:0;
+      const low=playing?Math.max(0,1-player.health/45):0,gone=Math.min(1,deadFor/1.5);
+      post.saturation=BASE.saturation*(1-Math.min(.9,low*.55+hurt*.25+gone*.9));
+      post.vignette=BASE.vignette+low*.3+hurt*.3+gone*.35;
+      post.contrast=BASE.contrast+hurt*.12;
+      if(!focusOn)return;post.dof=true;
+      if(!playing){
+        post.dofFocus=.4;post.dofRange=.2;
+        post.dofRadius+=((mode==='title'?0:5)-post.dofRadius)*Math.min(1,dt*6);return;
       }
-      // Long frames are played as several short steps so nothing tunnels or stalls.
-      for (let left = dt; left > 1e-5; left -= STEP) {
-        game.update(Math.min(STEP, left), record);
-        record.lookYaw = record.lookPitch = 0;
-        record.firePressed = false;
-        record.weapon = '';
-      }
-      for (const event of game.events) {
-        if (event.type === 'playerHit') flinch(event.amount);
-        view.handle(event, game);
-        hud.handle(event);
-        audio.handle(event, game);
-      }
-      game.events.length = 0;
-      // The end of a run lingers a moment before its screen comes up.
-      if (game.state === 'dead' || game.state === 'won') {
-        endIn += dt;
-        if (endIn > (game.state === 'dead' ? 1.8 : 4)) {
-          if (game.state === 'dead') hud.setDead(game);
-          else hud.setDebrief(game);
-          setMode(game.state === 'dead' ? 'dead' : 'debrief');
+      focusIn-=dt;if(focusIn<=0){focusIn=.12;focus+=(Math.max(1.5,game.sightDistance())-focus)*.5;}
+      post.dofFocus=focus;post.dofRange=Math.max(2.5,focus*(1.1-.45*player.aim));
+      post.dofRadius+=(player.aim*3.2+hurt*3+low*1.6+gone*5-post.dofRadius)*Math.min(1,dt*10);
+    }
+    const STEP=1/60;
+    function frame(dt){
+      stats.begin();status.frames++;
+      if(status.frames===1&&auto)queueMicrotask(deploy);
+      dt=Math.min(dt,.1);time+=dt;
+      if(mode==='play'&&dt>1e-5){
+        const record=bot?bot.think(dt):input.sample(dt);
+        if(mode==='play'){
+          if(!menus.bagOpen&&menuWeapon){record.weapon=menuWeapon;menuWeapon='';}
+          if(record.weapon==='swap'||record.weapon==='next'||record.weapon==='previous'){
+            const order=['rifle','pistol','marksman'],at=order.indexOf(game.player.weapon);
+            record.weapon=order[(at+(record.weapon==='previous'?order.length-1:1))%order.length];
+          }
+          for(let left=dt;left>1e-5;left-=STEP){
+            game.update(Math.min(STEP,left),record);
+            record.lookYaw=record.lookPitch=0;record.firePressed=false;record.weapon='';
+          }
+          for(const event of game.events){
+            if(event.type==='playerHit')flinch(event.amount);
+            view.handle(event,game);combatHud.handle(event);audio.handle(event,game);
+          }
+          game.events.length=0;
+          if(game.state==='dead'||game.state==='won'){
+            endIn+=dt;
+            if(endIn>(game.state==='dead'?1.8:4)){
+              if(game.state==='dead')menus.setDead(game);else menus.setDebrief(game);
+              setMode(game.state==='dead'?'dead':'debrief');
+            }
+          }
         }
       }
+      stats.lap('rules');
+      camera.fov=baseFov;
+      view.update(mode==='pause'?0:dt,game,mode==='title'?'title':'play',time);
+      baseFov=camera.fov;
+      // Same documented keepWidthBelow projection for the retained low-level Camera3D, not a changed game rule.
+      if(camera.aspect<1)camera.fov=Math.min(170,2*Math.atan(Math.tan(baseFov*Math.PI/360)/camera.aspect)*180/Math.PI);
+      if(mode!=='title'){
+        const player=game.player;
+        combatHud.update(game,dt,{x:player.x,y:player.y+player.eye,z:player.z,yaw:player.yaw,pitch:player.pitch+player.kick,fov:camera.fov,aspect:camera.aspect});
+      }
+      menus.updateBag(game);
+      touchControls.setVisible(mode==='play'&&input.touchMode&&!menus.bagOpen);touchControls.update();
+      if(statText&&time-lastStats>=.25){
+        lastStats=time;statText.text=Math.round(stats.fps)+' FPS | '+stats.average.frame.toFixed(1)+' ms | '+stats.drawCalls+' draws';
+      }
+      atmosphere.update(camera,SUNLIGHT);audio.update(dt,game,view.helicopter,mode);grade(dt);view.renderReflection(renderer);
+      stats.lap('view');stats.end(game.aliveCount());
     }
-    stats.lap('rules');
-    view.update(mode === 'pause' ? 0 : dt, game, mode === 'title' ? 'title' : 'play', time);
-    if (mode !== 'title') {
-      const p = game.player;
-      hud.update(game, dt, {
-        x: p.x,
-        y: p.y + p.eye,
-        z: p.z,
-        yaw: p.yaw,
-        pitch: p.pitch + p.kick,
-        fov: camera.fov,
-        aspect: canvas.clientWidth / Math.max(1, canvas.clientHeight),
-      });
-    }
-    atmosphere.update(camera, SUNLIGHT);
-    audio.update(dt, game, view.helicopter, mode);
-    grade(dt);
-    view.renderReflection(renderer);
-    stats.lap('view');
-    stats.end(game.aliveCount());
+    stats.measure=options=>renderer.measureFrame?.(()=>{view.renderReflection(renderer);renderer.render(scene,camera);},options);
+    menus.setBoot({message:chinese()?'正在准备画面…':'Preparing the view…',loaded:0,total:2});
+    await new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)));
+    const pixelRatio=Math.min(typeof devicePixelRatio==='number'?devicePixelRatio:1,Number(params.get('ratio'))||1.5);
+    renderer.resizeToDisplaySize(pixelRatio);if(canvas.height>0)camera.aspect=canvas.width/canvas.height;
+    status.warmup={startedAt:performance.now()};performance.mark('fps.boot.first-view.start');
+    status.warmup.prepared=await view.prepare(renderer);
+    menus.setBoot({message:chinese()?'正在上传场景资源…':'Uploading scene resources…',loaded:1,total:2});
+    // Native preparation compiles variants; the bounded initial draw still uploads the existing mesh/texture data.
+    Object.assign(status.warmup,view.warm(renderer,game),{finishedAt:performance.now()});
+    performance.mark('fps.boot.first-view.end');
+    menus.hideBoot();setMode('title');
+    // Both surfaces share p.engine.clock; there is no second World3D loop.
+    worldView=backend.createWorld3DView(p.engine,scope,{renderer,scene,camera,maxPixelRatio:Number(params.get('ratio'))||1.5,onUpdate:frame,onError:fail});
+  }catch(cause){
+    void modelsReady.then(art=>{if(!status.models)art.bundle?.dispose();});fail(cause);
   }
-
-  // The Engine clock calls `frame`, then the view draws the scene.
-  createWorld3DView(engine, scope, {
-    renderer,
-    scene,
-    camera,
-    maxPixelRatio: Number(params.get('ratio')) || 1.5,
-    onUpdate: frame,
-    onError: fail,
-  });
-  // For the console and automated checks: draw one extra frame and return what each pass cost (WebGL2 only).
-  stats.measure = (options) =>
-    renderer.measureFrame?.(() => {
-      view.renderReflection(renderer);
-      renderer.render(scene, camera);
-    }, options);
-  if (bootStatus) bootStatus.textContent = bootChinese ? '正在准备首场战斗画面…' : 'Preparing the first combat view…';
-  // A second animation callback lets the loading message paint before the real
-  // reflection and main draws. The game clock and audio have not started.
-  await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
-  const pixelRatio = Math.min(typeof devicePixelRatio === 'number' ? devicePixelRatio : 1, Number(params.get('ratio')) || 1.5);
-  // World3DView resizes on its first tick; these earlier draws need that size now.
-  renderer.resizeToDisplaySize(pixelRatio);
-  if (canvas.height > 0) camera.aspect = canvas.width / canvas.height;
-  status.warmup = { startedAt: performance.now() };
-  performance.mark('fps.boot.first-view.start');
-  Object.assign(status.warmup, view.warm(renderer, game), { finishedAt: performance.now() });
-  performance.mark('fps.boot.first-view.end');
-  setMode('title');
-  startWorld3DLoop(engine, fail);
+  status.menuBack=()=>{if(mode!=='play')menus.handleBack();};
 }
-
-main().catch(cause => {
-  // Downloads may finish after renderer initialization failed. Release that unused art too.
-  void modelsReady.then(art => art.bundle?.dispose());
-  fail(cause);
-});
+try{
+  await play({
+    parent:gameArea,width:960,height:540,portrait:{width:420,height:760},fit:'expand',
+    uiScale:{min:44/48,max:1.25},transparent:true,audio:false,semantics,
+    // Independent 2D raster density keeps small labels sharp on ordinary DPR=1 desktops as well.
+    backend:useWebGPU?'webgpu':'webgl2',renderMode:'on-demand',pixelRatio:2,
+    setup,onError:fail,onWarning:warning=>{status.warnings??=[];if(status.warnings.length<50)status.warnings.push(String(warning?.message??warning));},
+    update(dt,p){if((status.mode!=='play'||status.ui?.menus.bagOpen)&&p.keys.pressed('Escape','pad:b'))status.ui?.menus.bagOpen?status.ui.menus.handleBack():status.menuBack?.();}
+  });
+}catch(cause){fail(cause);}

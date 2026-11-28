@@ -56,3 +56,42 @@ test('a failed boot draw removes the temporary mesh and restores the title witho
     assert.deepEqual(f.lights.map(light=>light.intensity),lighting);
   }
 });
+
+
+test('native program preparation covers ordinary supply, main and mirror without a draw or game mutation', async () => {
+  const f=fixture(),before=f.snapshot(),titleCamera=Array.from(f.camera.position),lighting=f.lights.map(light=>light.intensity);
+  const calls=[];
+  const renderer={shadowsEnabled:true,postProcess:{enabled:true},preparePrograms(requests,options){calls.push({requests,options});return Promise.resolve();},
+    render(){throw Error('Program preparation must not render');}};
+  const result=await f.view.prepare(renderer);
+  assert.equal(result.supported,true);assert.equal(calls.length,1);
+  assert.equal(calls[0].options.includeAutoInstancing,true);
+  const requests=calls[0].requests,ordinary=requests.filter(r=>r.mesh.name==='boot-supply-program');
+  assert.equal(ordinary.length,2,'ordinary supply has exactly one main and one mirror color request');
+  for(const r of ordinary){
+    assert.equal(r.mesh.geometry,f.geometry);assert.equal(r.material,f.material);
+    assert.equal(r.pass,undefined);assert.equal(r.mesh.castShadow,false);assert.equal(r.mesh.receiveShadow,true);
+    assert.notEqual(r.mesh.renderOrder,0);assert.equal(r.mesh.parent,undefined);
+  }
+  assert(ordinary.some(r=>!r.reflection&&r.receiveShadows===true));
+  assert(ordinary.some(r=>r.reflection&&r.reflection.shadows===false&&r.receiveShadows===false));
+  assert(requests.some(r=>r.pass==='shadow'));
+  assert.equal(result.requests,requests.length);
+  assert.equal(f.snapshot(),before);assert.deepEqual(Array.from(f.camera.position),titleCamera);
+  assert.deepEqual(f.lights.map(light=>light.intensity),lighting);
+  assert.equal(f.geometry.isDisposed,false);assert.equal(f.material.isDisposed,false);
+});
+
+test('native preparation honors disabled features, absent WebGPU API and failures without touching the game',async()=>{
+  const f=fixture(),before=f.snapshot(),titleCamera=Array.from(f.camera.position);
+  const noApi=await f.view.prepare({});assert.equal(noApi.supported,false);
+  f.view.setReflections(false);
+  await f.view.prepare({shadowsEnabled:false,postProcess:{enabled:false},preparePrograms(requests){
+    assert(requests.length>0);assert(requests.every(r=>!r.reflection&&r.pass!=='shadow'&&r.receiveShadows!==true));
+    return Promise.resolve();
+  }});
+  const failure=Error('forced native prepare failure');
+  await assert.rejects(()=>f.view.prepare({shadowsEnabled:true,postProcess:{enabled:true},preparePrograms(){return Promise.reject(failure);}}),error=>error===failure);
+  assert.equal(f.snapshot(),before);assert.deepEqual(Array.from(f.camera.position),titleCamera);
+  assert.equal(f.geometry.isDisposed,false);assert.equal(f.material.isDisposed,false);
+});

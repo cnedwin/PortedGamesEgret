@@ -12,11 +12,13 @@ This document records where this version stands: problems already solved, parts 
 | 武器 · Weapons | 突击步枪、手枪、带瞄准镜的精确射手步枪、手雷；前握把和扩容弹匣两种配件 · assault rifle, pistol, scoped marksman rifle, grenades; two attachments, a foregrip and an extended magazine |
 | 敌人 · Enemies | 步枪兵、突击兵、重装兵；会换弹、找掩体、包抄、扔手雷、喊话，中弹后变成布娃娃 · riflemen, assaulters, heavies; they reload, take cover, flank, throw grenades and call out, and go limp when shot |
 | 搜集 · Looting | 十个物资箱，十二格背包，按稀有度分色，结算计总价值 · ten crates, a twelve-slot backpack, items coloured by rarity, total value at the debrief |
-| 界面 · Interface | 指南针、目标列表、世界标记、小地图、背包面板、瞄准镜视野、受击方向、中英文切换、触屏按钮 · compass, objective list, world markers, minimap, backpack panel, scope view, hit direction, Chinese and English, touch buttons |
+| 界面 · Interface | 原生 Play 数据界面、屏幕栈、语义树、指南针、目标列表、小地图、三页背包、横竖屏、双语及原生触控 · native Play data views, screen stack, semantics, compass, objective list, minimap, three inventory tabs, landscape/portrait, languages and native contacts |
 | 画面 · Picture | 三级级联阴影、投影探照灯、雨、湿地面镜面反射、掉漆锈蚀、贴花弹孔、景深、受伤调色、大气散射、泛光、环境光遮蔽 · three shadow cascades, shadow-casting floodlights, rain, mirror reflection on wet ground, chipped paint and rust, decal bullet marks, depth of field, hurt grading, atmospheric scattering, bloom, ambient occlusion |
-| 声音 · Sound | 全部合成：枪声、脚步、环境循环、两种混响空间、随战况变化的配乐 · all synthesised: gunfire, footsteps, ambience loops, two reverb spaces, a score that follows the fight |
+| 声音 · Sound | 保留合成配乐与音效、环境循环、两种混响空间，白鹭原生主混音与限幅 · retained synthesised score/effects, ambience and two reverb spaces with Egret master mixer and limiter |
 
 ## 验证情况 · What has been verified
+
+- 2026-11-28 原生 UI 迁移和最新引擎适配的实际设备及性能边界见 [QUALITY.md](QUALITY.md)，界面映射与复跑步骤见 [UI-MIGRATION.md](UI-MIGRATION.md)。下列历史整局数据不能代替新版实机结果。 · For the native UI migration and current engine adaptation, see QUALITY.md for actual devices and measured limits, and UI-MIGRATION.md for the implementation and replay steps. The historical full runs below are not current device acceptance.
 
 - 白鹭运行时更新为 main 的 `33897768c4f7933d289f083e4f34b3209b0aef31`（2026-11-28 从 `b5628eb9` 升级；更新前后均通过 51 项 Node 自动检查，新增原生 UI/音频入口均已通过导入验证，本项不代替设备验收）。51 项自动测试覆盖规则、输入、完整美术载入、模型挂点、连续蒙皮、硬表面保形、投影代理、共享实例、启动预绘及动态部件。
 - 本次美术修复在 PC 与三星 SM-F966U1 的真实 WebGL2 上检查了三类角色的持枪、侧面步行和蹲姿。角色诊断是受控相机检查，不能代替完整游玩。第一人称枪械另检查了瞄准、后坐、换弹和近裁切；场景保留原 UV、法线和金属粗糙度。公开版本整局与性能复跑结果见 [PR #82 的验收记录](https://github.com/cnedwin/PortedGamesEgret/pull/82)。
@@ -24,7 +26,7 @@ This document records where this version stands: problems already solved, parts 
 - PC 使用 RTX 5090 Laptop 和 Edge 157，在 1440×900、高画质下从正常标题页开始，以实际键鼠事件完成三终端、六次校准和登机结算，用时 360.85 秒。模型首帧加载齐全，无回退。以下整局帧间隔是比例修订前的设备基线。最后一次手套比例微调另做了 PC 瞄准、射击、换弹、切枪和暂停恢复复测。
 - 三星 SM-F966U1、Android 17 的 Chrome 真机在原生触屏视口 873×325 下，通过 CDP 触控事件从普通标题页进入并完成完整撤离，用时 384.22 秒，六次校准全部通过。23,164 帧平均约 60.31 FPS，P95/P99 为 16.7 毫秒，最大 33.2 毫秒。另用自动控制模式完成 356.73 秒整局。移动、转向与射击并发、触屏切枪、开镜、暂停恢复另有真机输入检查。
 - 历史 PC 整局 P95 为 4.3 毫秒，最大帧间隔 175.1 毫秒，有两次相邻长任务。缺少对应的性能追踪，原因未定。样本包含约 5.6 秒辅助计算并行，应保留该测量条件。
-- 该 PC 的 ANGLE D3D11 阴影路径曾丢失 WebGL 上下文，目前仅对识别到的 RTX 5090 Laptop 适配器关闭实时阴影，SSAO、反射和后处理保留。三星高画质包含实时阴影。
+- 历史 PC 的 ANGLE D3D11 阴影路径曾丢失 WebGL 上下文，当时对识别到的 RTX 5090 Laptop 关闭实时阴影；新版验证结果另见 QUALITY.md。
 
 The runtime was refreshed to the Egret main commit recorded above. The 51 Node checks pass before and after the engine refresh, and the new native UI/audio entries import successfully. This result does not constitute physical-device acceptance. This revision checks continuous characters on physical PC and Samsung WebGL2 using controlled pose diagnostics, plus first-person aiming, recoil, reload and near-plane checks. The complete-run numbers above are historical, preceding this art repair. See [PR #82](https://github.com/cnedwin/PortedGamesEgret/pull/82) for current public-run results. The adapter-specific PC shadow fallback preserves the other high-quality effects.
 
@@ -43,7 +45,6 @@ This batch focuses on WebGL2. Full-monitor native PC fullscreen, dedicated WebGP
 
 | 问题 · Issue | 影响 · Effect |
 | --- | --- |
-| 低画质下只点亮最近的五盏灯 · At low quality only the nearest five lamps are lit | 中、高画质下所有灯都亮，第八盏以后由引擎按屏幕分块照亮；低画质为省开销仍只点亮最近的五盏 · at medium and high every lamp is lit, those past the eighth by screen tile; low quality keeps the nearest five to save cost |
 | 杉树在阴影里偏黑 · Firs go nearly black in shade | 背光时层次看不清 · the tiers are hard to read against the light |
 | 代打程序不搜物资箱 · The stand-in player never searches crates | 自动演示里看不到搜集和背包 · the automatic demo shows no looting or backpack |
 | 阵亡后从头开始 · Death restarts the whole run | 当前没有任务检查点 · the mission currently has no checkpoints |
@@ -54,7 +55,7 @@ This batch focuses on WebGL2. Full-monitor native PC fullscreen, dedicated WebGP
 - 点击开始时，普通双面补给箱的主图和镜面材质首次同步链接，造成约 130 毫秒的两次停顿。启动时在加载提示下真实预绘这两种路径，完成后恢复标题，不推进游戏时间。
 - 护甲条的查找会误中受击方向指示，带护甲中弹时界面报错。
 - 加色混合的材质没有设为混合模式时会画成不透明方块（太阳光晕、枪口火光、红点）。
-- 点光源超过八盏后多出的不生效，改为只点亮最近的几盏。
+- 点光源超过八盏后多出的不生效，旧版曾只点亮最近的几盏，现已通过引擎原生分块灯光接管全部画质档。
 - 守卫在出生点就能发现干员，增加了未警觉时的视距上限。
 - 新增的箱体挡住了守卫、增援入口或物资箱的位置，已挪开并由测试检查可达性。
 - 枪在阴影里几乎纯黑，瞄具没有镜片。
@@ -65,7 +66,7 @@ This batch focuses on WebGL2. Full-monitor native PC fullscreen, dedicated WebGP
 
 - The armour bar lookup could match a hit indicator instead, which raised an error when hit while wearing armour.
 - Additive materials drew as opaque squares unless set to blend (sun halo, muzzle flash, red dot).
-- Point lights beyond the eighth had no effect; only the nearest few are now lit.
+- Point lights beyond the eighth had no effect; the old version limited nearest lamps; native tiled lighting now handles every quality preset.
 - Guards could spot the operator at the starting point; unalerted guards now see a shorter distance.
 - New boxes blocked a guard post, a reinforcement entry or a crate; they were moved and a test now checks they can be reached.
 - The rifle was almost pure black in shade and its sight had no lens.
@@ -115,12 +116,12 @@ This batch focuses on WebGL2. Full-monitor native PC fullscreen, dedicated WebGP
 - 只有一张地图、一个任务、一个撤离点、一个时间和天气。
 - 没有难度选择、检查点、战前配装。
 - 小地图没有放大的全图，不显示枪声方向。
-- 没有手柄支持。
+- 已接入引擎手柄按键和双摇杆；尚未连接真实手柄验收。
 
 - One map, one mission, one way out, one time of day and weather.
 - No difficulty choice, checkpoint or loadout before a run.
 - The minimap has no full-size view and does not show where gunfire came from.
-- No gamepad support.
+- Native gamepad mappings and stick input are present; physical gamepad qualification is pending.
 
 ## 模型细节 · Model detail
 

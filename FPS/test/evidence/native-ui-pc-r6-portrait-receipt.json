@@ -1,0 +1,753 @@
+{
+  "engine": "33897768",
+  "method": "Actual Windows Edge RTX5090 D3D11, seed7/medium/WebGL2/zh, separate fresh contexts. Desktop 1280×800 and desktop-emulated coarse pointer 873×325. Ordinary actual UI inputs; no game-state writes. Same 5s stable title and first normal gameplay rAF samples, actual world-draw and native-overlay counters. rAF interval is callback cadence, not GPU execution or displayed FPS.",
+  "baseline": [
+    {
+      "profile": {
+        "name": "desktop",
+        "width": 1280,
+        "height": 800,
+        "touch": false
+      },
+      "passed": true,
+      "gpu": "ANGLE (NVIDIA, NVIDIA GeForce RTX 5090 Laptop GPU (0x00002C58) Direct3D11 vs_5_0 ps_5_0, D3D11)",
+      "contextLost": false,
+      "hashes": 6,
+      "geometry": [
+        {
+          "name": "title",
+          "controls": 4,
+          "min": 44.66666793823242,
+          "below44": 0
+        },
+        {
+          "name": "settings",
+          "controls": 19,
+          "min": 16,
+          "below44": 15
+        },
+        {
+          "name": "controls",
+          "controls": 7,
+          "min": 28,
+          "below44": 3
+        },
+        {
+          "name": "play",
+          "controls": 0,
+          "min": null,
+          "below44": 0
+        },
+        {
+          "name": "moved",
+          "controls": 0,
+          "min": null,
+          "below44": 0
+        },
+        {
+          "name": "pause",
+          "controls": 5,
+          "min": 44.66666793823242,
+          "below44": 0
+        }
+      ],
+      "title": {
+        "p95": 4.299999999999272,
+        "max": 6.100000000000364,
+        "samples": 1200
+      },
+      "game": {
+        "p95": 4.299999999999272,
+        "max": 4.30000000000291,
+        "samples": 1200,
+        "over50": 0,
+        "worldDraws": 123,
+        "simDelta": 2.366699999999998
+      }
+    },
+    {
+      "profile": {
+        "name": "mobile-geometry",
+        "width": 873,
+        "height": 325,
+        "touch": true
+      },
+      "passed": true,
+      "gpu": "ANGLE (NVIDIA, NVIDIA GeForce RTX 5090 Laptop GPU (0x00002C58) Direct3D11 vs_5_0 ps_5_0, D3D11)",
+      "contextLost": false,
+      "hashes": 6,
+      "geometry": [
+        {
+          "name": "title",
+          "controls": 3,
+          "min": 44.66666793823242,
+          "below44": 0
+        },
+        {
+          "name": "settings",
+          "controls": 16,
+          "min": 16,
+          "below44": 13
+        },
+        {
+          "name": "controls",
+          "controls": 6,
+          "min": 28,
+          "below44": 3
+        },
+        {
+          "name": "play",
+          "controls": 12,
+          "min": 42,
+          "below44": 2
+        },
+        {
+          "name": "moved",
+          "controls": 12,
+          "min": 42,
+          "below44": 2
+        },
+        {
+          "name": "pause",
+          "controls": 4,
+          "min": 44.66666793823242,
+          "below44": 0
+        }
+      ],
+      "title": {
+        "p95": 4.299999999999272,
+        "max": 4.600000000000364,
+        "samples": 1200
+      },
+      "game": {
+        "p95": 4.299999999999272,
+        "max": 4.399999999999636,
+        "samples": 1200,
+        "over50": 0,
+        "worldDraws": 125,
+        "simDelta": 2.1374999999999993
+      }
+    }
+  ],
+  "native": [
+    {
+      "profile": {
+        "name": "desktop",
+        "width": 1280,
+        "height": 800,
+        "touch": false
+      },
+      "passed": true,
+      "gpu": "ANGLE (NVIDIA, NVIDIA GeForce RTX 5090 Laptop GPU (0x00002C58) Direct3D11 vs_5_0 ps_5_0, D3D11)",
+      "contextLost": false,
+      "checks": [
+        {
+          "ok": true,
+          "what": "healthy renderer ANGLE (NVIDIA, NVIDIA GeForce RTX 5090 Laptop GPU (0x00002C58) Direct3D11 vs_5_0 ps_5_0, D3D11)"
+        },
+        {
+          "ok": true,
+          "what": "high setting actually renders shadow maps in healthy context"
+        },
+        {
+          "ok": true,
+          "what": "actual Tab focus and Enter reach native controls tab"
+        },
+        {
+          "ok": true,
+          "what": "real named settings value persisted"
+        },
+        {
+          "ok": true,
+          "what": "normal step restores look setting"
+        },
+        {
+          "ok": true,
+          "what": "native language changed through menu"
+        },
+        {
+          "ok": true,
+          "what": "Chinese restored"
+        },
+        {
+          "ok": true,
+          "what": "real native fullscreen enters"
+        },
+        {
+          "ok": true,
+          "what": "real native fullscreen exits"
+        },
+        {
+          "ok": true,
+          "what": "trusted Deploy acquires actual native pointer lock"
+        },
+        {
+          "ok": true,
+          "what": "trusted left/right chord retains existing right-button game state"
+        },
+        {
+          "ok": true,
+          "what": "original right-button game input still responds"
+        },
+        {
+          "ok": true,
+          "what": "ordinary genuine movement responds"
+        },
+        {
+          "ok": true,
+          "what": "ordinary backpack keeps the mission running while input is owned by UI"
+        },
+        {
+          "ok": true,
+          "what": "real native equipment selection closes backpack and updates existing game selection"
+        },
+        {
+          "ok": true,
+          "what": "native bag selection reacquires pointer lock"
+        },
+        {
+          "ok": true,
+          "what": "native bag Close reacquires pointer lock"
+        },
+        {
+          "ok": true,
+          "what": "pause stops actual chapter time"
+        },
+        {
+          "ok": true,
+          "what": "trusted native contextmenu event is prevented inside game area"
+        },
+        {
+          "ok": true,
+          "what": "normal resume"
+        },
+        {
+          "ok": true,
+          "what": "served source hashes"
+        },
+        {
+          "ok": true,
+          "what": "no unexpected runtime or HTTP errors"
+        }
+      ],
+      "errors": [],
+      "failed": [],
+      "hashes": 8,
+      "highShadows": {
+        "enabled": true,
+        "maps": 4,
+        "post": true,
+        "contextLost": false
+      },
+      "title": {
+        "p95": 4.299999999999272,
+        "p50": 4.199999999998909,
+        "max": 4.700000000000728,
+        "samples": 1200,
+        "over50": 0,
+        "worldFrames": 1202,
+        "worldDraws": 116,
+        "simDelta": 0,
+        "overlayDraws": 0,
+        "overlaySteps": 1202,
+        "camera": {
+          "before": [
+            0,
+            0,
+            28.5
+          ],
+          "yaw": 0,
+          "pitch": 0,
+          "fov": 53.558453515478476
+        }
+      },
+      "game": {
+        "p95": 4.299999999999272,
+        "p50": 4.199999999998909,
+        "max": 4.799999999999272,
+        "samples": 1201,
+        "over50": 0,
+        "worldFrames": 1204,
+        "worldDraws": 123,
+        "simDelta": 2.3041000000001866,
+        "overlayDraws": 743,
+        "overlaySteps": 1204,
+        "camera": {
+          "before": [
+            0,
+            0,
+            28.5
+          ],
+          "yaw": 0,
+          "pitch": 0,
+          "fov": 74
+        }
+      }
+    },
+    {
+      "profile": {
+        "name": "mobile-geometry",
+        "width": 873,
+        "height": 325,
+        "touch": true
+      },
+      "passed": true,
+      "gpu": "ANGLE (NVIDIA, NVIDIA GeForce RTX 5090 Laptop GPU (0x00002C58) Direct3D11 vs_5_0 ps_5_0, D3D11)",
+      "contextLost": false,
+      "checks": [
+        {
+          "ok": true,
+          "what": "healthy renderer ANGLE (NVIDIA, NVIDIA GeForce RTX 5090 Laptop GPU (0x00002C58) Direct3D11 vs_5_0 ps_5_0, D3D11)"
+        },
+        {
+          "ok": true,
+          "what": "high setting actually renders shadow maps in healthy context"
+        },
+        {
+          "ok": true,
+          "what": "real named settings value persisted"
+        },
+        {
+          "ok": true,
+          "what": "normal step restores look setting"
+        },
+        {
+          "ok": true,
+          "what": "native language changed through menu"
+        },
+        {
+          "ok": true,
+          "what": "Chinese restored"
+        },
+        {
+          "ok": true,
+          "what": "all eleven native touch controls are at least 44 CSS pixels inside safe screen"
+        },
+        {
+          "ok": true,
+          "what": "mobile ammunition card does not obscure any touch action"
+        },
+        {
+          "ok": true,
+          "what": "mobile radio message does not cover objective or touch controls"
+        },
+        {
+          "ok": true,
+          "what": "ordinary genuine movement responds"
+        },
+        {
+          "ok": true,
+          "what": "ordinary backpack keeps the mission running while input is owned by UI"
+        },
+        {
+          "ok": true,
+          "what": "real native equipment selection closes backpack and updates existing game selection"
+        },
+        {
+          "ok": true,
+          "what": "pause stops actual chapter time"
+        },
+        {
+          "ok": true,
+          "what": "normal resume"
+        },
+        {
+          "ok": true,
+          "what": "served source hashes"
+        },
+        {
+          "ok": true,
+          "what": "no unexpected runtime or HTTP errors"
+        }
+      ],
+      "errors": [],
+      "failed": [],
+      "hashes": 8,
+      "highShadows": {
+        "enabled": true,
+        "maps": 4,
+        "post": true,
+        "contextLost": false
+      },
+      "title": {
+        "p95": 4.299999999999272,
+        "p50": 4.199999999999818,
+        "max": 4.800000000000182,
+        "samples": 1200,
+        "over50": 0,
+        "worldFrames": 1203,
+        "worldDraws": 127,
+        "simDelta": 0,
+        "overlayDraws": 0,
+        "overlaySteps": 1203,
+        "camera": {
+          "before": [
+            0,
+            0,
+            28.5
+          ],
+          "yaw": 0,
+          "pitch": 0,
+          "fov": 60.07099665475913
+        }
+      },
+      "game": {
+        "p95": 8.299999999999272,
+        "p50": 4.199999999998909,
+        "max": 12.5,
+        "samples": 1104,
+        "over50": 0,
+        "worldFrames": 1107,
+        "worldDraws": 125,
+        "simDelta": 2.262400000000131,
+        "overlayDraws": 866,
+        "overlaySteps": 1107,
+        "camera": {
+          "before": [
+            0,
+            0,
+            28.5
+          ],
+          "yaw": 0,
+          "pitch": 0,
+          "fov": 74
+        }
+      },
+      "rotations": {
+        "title": [
+          {
+            "viewport": {
+              "width": 393,
+              "height": 852
+            },
+            "identical": true
+          },
+          {
+            "viewport": {
+              "width": 873,
+              "height": 325
+            },
+            "identical": true
+          }
+        ],
+        "settings": [
+          {
+            "viewport": {
+              "width": 393,
+              "height": 852
+            },
+            "identical": true
+          },
+          {
+            "viewport": {
+              "width": 873,
+              "height": 325
+            },
+            "identical": true
+          }
+        ],
+        "play": [
+          {
+            "viewport": {
+              "width": 393,
+              "height": 852
+            },
+            "identical": true
+          },
+          {
+            "viewport": {
+              "width": 873,
+              "height": 325
+            },
+            "identical": true
+          }
+        ],
+        "bag": [
+          {
+            "viewport": {
+              "width": 393,
+              "height": 852
+            },
+            "identical": true
+          },
+          {
+            "viewport": {
+              "width": 873,
+              "height": 325
+            },
+            "identical": true
+          }
+        ],
+        "pause": [
+          {
+            "viewport": {
+              "width": 393,
+              "height": 852
+            },
+            "identical": true
+          },
+          {
+            "viewport": {
+              "width": 873,
+              "height": 325
+            },
+            "identical": true
+          }
+        ]
+      },
+      "clearance": {
+        "ammo": {
+          "x": 672.82592159864,
+          "y": 102.66666666666667,
+          "width": 190.66490544181033,
+          "height": 56.83333333333334
+        },
+        "objective": {
+          "x": 9.322831992394745,
+          "y": 9.166666666666666,
+          "width": 357.4966977033944,
+          "height": 128.33333333333334
+        },
+        "radio": {
+          "x": 209.5565281678829,
+          "y": 180.66666158040363,
+          "width": 453.70060269707943,
+          "height": 49.5
+        },
+        "touch": [
+          {
+            "name": "换弹",
+            "box": {
+              "x": 710.6589054581599,
+              "y": 162.66665649414065,
+              "width": 47.99955661472145,
+              "height": 48
+            }
+          },
+          {
+            "name": "瞄准",
+            "box": {
+              "x": 763.6584158869149,
+              "y": 162.66665649414065,
+              "width": 47.99955661472145,
+              "height": 48
+            }
+          },
+          {
+            "name": "开火",
+            "box": {
+              "x": 816.65792631567,
+              "y": 162.66665649414065,
+              "width": 47.99955661472145,
+              "height": 48
+            }
+          },
+          {
+            "name": "蹲下",
+            "box": {
+              "x": 710.6589054581599,
+              "y": 215.66665649414062,
+              "width": 47.99955661472145,
+              "height": 48
+            }
+          },
+          {
+            "name": "按住互动",
+            "box": {
+              "x": 763.6584158869149,
+              "y": 215.66665649414062,
+              "width": 47.99955661472145,
+              "height": 48
+            }
+          },
+          {
+            "name": "跳跃",
+            "box": {
+              "x": 816.65792631567,
+              "y": 215.66665649414062,
+              "width": 47.99955661472145,
+              "height": 48
+            }
+          },
+          {
+            "name": "使用绷带",
+            "box": {
+              "x": 710.6589054581599,
+              "y": 268.6666564941406,
+              "width": 47.99955661472145,
+              "height": 48
+            }
+          },
+          {
+            "name": "手雷",
+            "box": {
+              "x": 763.6584158869149,
+              "y": 268.6666564941406,
+              "width": 47.99955661472145,
+              "height": 48
+            }
+          },
+          {
+            "name": "切换武器",
+            "box": {
+              "x": 816.65792631567,
+              "y": 268.6666564941406,
+              "width": 47.99955661472145,
+              "height": 48
+            }
+          },
+          {
+            "name": "背包",
+            "box": {
+              "x": 643.6595243501113,
+              "y": 8,
+              "width": 47.99955661472145,
+              "height": 48
+            }
+          },
+          {
+            "name": "暂停",
+            "box": {
+              "x": 696.6590347788663,
+              "y": 8,
+              "width": 47.99955661472145,
+              "height": 48
+            }
+          }
+        ]
+      }
+    }
+  ],
+  "assetRetry": {
+    "name": "actual-asset-retry",
+    "passed": true,
+    "requests": 2,
+    "recovered": true,
+    "models": {
+      "loaded": [
+        "soldier-rifle",
+        "soldier-rush",
+        "soldier-heavy",
+        "weapon-rifle",
+        "weapon-pistol",
+        "operator-hands",
+        "weapon-marksman",
+        "booth",
+        "terminal",
+        "helicopter",
+        "dam",
+        "water-tower",
+        "supply-crate",
+        "truck",
+        "plant",
+        "office",
+        "container",
+        "crate",
+        "barrier",
+        "sandbag",
+        "canopy",
+        "console",
+        "desk",
+        "sofa",
+        "barrel",
+        "tyres",
+        "pallet",
+        "generator",
+        "cabinet",
+        "server",
+        "transformer",
+        "reel",
+        "forklift",
+        "grenade",
+        "penstock",
+        "pipe-rack"
+      ],
+      "failures": {}
+    }
+  },
+  "previousDefects": [
+    {
+      "run": "R1",
+      "failure": "InvalidStateError: Failed to execute 'setPointerCapture' on 'Element': InvalidStateError\n    at dom (local/FPS/vendor/engine/dist/web/BrowserPointerInput.js:193:27)\n    at acquireNative (local/FPS/vendor/engine/dist/web/BrowserPointerInput.js:395:17)\n    at pointer (local/FPS/vendor/engine/dist/web/BrowserPointerInput.js:437:17)\n    at local/FPS/vendor/engine/dist/web/BrowserPointerInput.js:485:56\n    at local/FPS/vendor/engine/dist/web/BrowserPointerInput.js:454:21\n    at guard (local/FPS/vendor/engine/dist/web/BrowserPointerInput.js:332:17)\n    at HTMLCanvasElement.listener (local/FPS/vendor/engine/dist/web/BrowserPointerInput.js:452:39)",
+      "case": "Actual mouse input under pointer lock triggered illegal setPointerCapture; root game-side narrowly scoped bridge."
+    },
+    {
+      "run": "R2",
+      "failure": "page.waitForFunction: Timeout 30000ms exceeded.\n    at wait (FPS/test\\accept.mjs:7:40)\n    at FPS/test\\accept.mjs:29:80",
+      "mode": "pause",
+      "case": "Actual Tab in embedded Play leaves focus and releases lock; narrow scoped game input bridge. R2 right-button/chord now passed."
+    },
+    {
+      "run": "R4",
+      "problem": "Semantic query names included / separators from ammo text, split by path grammar; both native equipment lookups timed out; actual bag tabs and time advancing had passed.",
+      "resolution": "Stable weapon names separate semantic label from ammo display; R5 actual P-17 selection and desktop relock verified."
+    }
+  ],
+  "physicalPhone": {
+    "tested": false,
+    "reason": "ADB enumeration: List of devices attached with no entries. Expected SM-F966U1 count 0. No lease acquired or device settings changed. PC touch layout is emulation only.",
+    "failure": "AssertionError [ERR_ASSERTION]: One authorized Samsung SM-F966U1 required"
+  },
+  "visual": [
+    "desktop-before-after-final.jpg",
+    "mobile-geometry-before-after-final.jpg",
+    "desktop-native-menus-final.jpg",
+    "mobile-geometry-native-menus-final.jpg"
+  ],
+  "limits": [
+    "This is a short native UI flow, not a full mission run on a device; separate simulation test evidence is not physical acceptance.",
+    "Desktop actual fullscreen, locked mouse/button chord, lock release/pause/resume, Tab backpack and contextmenu prevention passed. Mobile emulated touch movement, bag, pause and 5×2 orientation transitions passed. Actual graphics/setting high shadows4 and retry manifest503→36 models restored.",
+    "Keyboard W and Tab were real; full title/menu keyboard focus navigation and true gamepad hardware not covered by this R3. Mouse mode and reduced motion sliders/buttons have source/Node coverage; setting step & language actual.",
+    "Mobile emulated stable first gameplay rAF p95 increased 4.3→8.3ms (max12.5, no >50). Cannot infer Fold7 result because phone unavailable. Native static title did no additional 2D submissions; gameplay dynamic overlay submits measured. Single run per profile and camera movement differs slightly.",
+    "Pending full standard software reference comparison and broader screen checks separately."
+  ],
+  "testRun": "native-hardware-r6/report.json (input gate final, before portrait-only HUD correction)",
+  "visualReview": "Reviewed full sheets: same existing 3D scenery, designed title/settings cards, paginated settings and backpack, larger 48px mobile combat actions clear of passive cards, visible dark-backed HUD text and normalized compass, touch stick appears when touched. Actual input route and UI tests complete; screenshots after movement are natural different timing, not pixel-identical poses. Additional portrait-only correction was tested separately after these landscape comparisons.",
+  "portrait": {
+    "run": "portrait-focused-r2/report.json",
+    "method": "Two hardware-rendered, mobile-size browser profiles, not a phone. Native semantic geometry read-only; real named Deploy and CDP two-contact gesture/cancel.",
+    "profiles": [
+      {
+        "size": [
+          375,
+          667
+        ],
+        "language": "zh",
+        "safe": {
+          "x": 0.125,
+          "y": 0,
+          "width": 374.734375,
+          "height": 667
+        },
+        "targetCount": 11,
+        "minimumTarget": 47.99816719275023,
+        "vitalsRight": 181.6691291513933,
+        "objectiveClockSeparate": true,
+        "completeRadioTwoLines": true,
+        "pass": true,
+        "image": "portrait-focused-r2/phone-small/checkpoint-1.png"
+      },
+      {
+        "size": [
+          393,
+          852
+        ],
+        "language": "en",
+        "safe": {
+          "x": 0,
+          "y": 59,
+          "width": 393,
+          "height": 759
+        },
+        "targetCount": 11,
+        "minimumTarget": 48,
+        "vitalsRight": 190.13714285714283,
+        "objectiveClockSeparate": true,
+        "completeRadioThreeLines": true,
+        "pass": true,
+        "image": "portrait-focused-r2/phone-notch/checkpoint-1.png"
+      }
+    ],
+    "checked": "All four passive cards inside safe area and clear of all 11 actions on both profiles. Actual two-contact cancellation completed without runtime error."
+  }
+}

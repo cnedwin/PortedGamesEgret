@@ -1,369 +1,99 @@
-// Keyboard, mouse and touch, gathered into the input record the rules read.
-// The mouse is captured while playing; losing the capture pauses the game.
+// Convert Egret Play's native input snapshot into the established game record.
+// All gameplay values are kept in the simulation; this adapter owns only UI intentions.
 import { idleInput } from './sim.mjs';
+const WEAPONS=['rifle','pistol','marksman'];
+const PULSE=new Set(['fire','reload','heal','grenade','jump']);
+const HOLD={jump:['Space','pad:a'],reload:['KeyR','pad:x'],heal:['KeyQ','pad:up'],grenade:['KeyG','pad:y'],interact:['KeyF','KeyE','pad:b']};
+const GAME_KEYS=[...new Set([...Object.values(HOLD).flat(),'Escape','KeyP','Tab','pad:start','pad:select','Digit1','Digit2','Digit3','pad:r1','pad:l1','pad:l2','pad:r2','pad:l3','pad:r3','ShiftLeft','ShiftRight','KeyC','ControlLeft'])];
+const RADIANS_PER_PIXEL=.0022,TOUCH_RADIANS_PER_PIXEL=.0052,TOUCH_AIM=.62;
+export function createInputPort(play,options={}){
+  const record=idleInput(),held=new Map(),pulses=new Map(),blockedKeys=new Set();let enabled=false,touch=play.device==='touch',mask=0,mouseEdge=false,toggleAim=false,toggleCrouch=false,lookX=0,lookY=0,weapon='',suppress=false,blockedAxis=false;
+  const has=(name)=>[...held.values()].includes(name),pulse=name=>[...pulses.values()].includes(name);
+  const cancel=()=>{held.clear();pulses.clear();mask=0;mouseEdge=false;toggleAim=toggleCrouch=false;lookX=lookY=0;weapon='';suppress=true;blockedAxis=true;};
+  const key=(...names)=>names.some(name=>!blockedKeys.has(name)&&play.keys.down(name)),edge=(...names)=>names.some(name=>!blockedKeys.has(name)&&play.keys.pressed(name));
+  const blockHeldKeys=()=>{blockedKeys.clear();for(const name of GAME_KEYS)if(play.keys.down(name)||play.keys.pressed(name))blockedKeys.add(name);};
+  const input={sensitivity:1,adsSensitivity:.62,invertY:false,dragLook:false,
+    get touchMode(){return play.device==='touch';},get enabled(){return enabled;},get aim(){return toggleAim;},get crouch(){return toggleCrouch;},
+    get locked(){return play.pointer.locked;},get capturePending(){return false;},
+    cancel,setEnabled(on){enabled=Boolean(on);if(!enabled)cancel();else {suppress=true;blockedAxis=Math.hypot(play.keys.axis().x,play.keys.axis().y)>.05;blockHeldKeys();}},
+    mouse(buttons){if(!enabled)return;const value=Number(buttons)||0;if((value&1)&&!(mask&1))mouseEdge=true;mask=value;},
+    hold(name,id,on,canceled=false){if(!enabled)return;if(on){held.set(id,name);if(PULSE.has(name))pulses.set(id,name);}else{held.delete(id);if(canceled)pulses.delete(id);}},
+    toggle(name){if(!enabled)return;if(name==='aim')toggleAim=!toggleAim;else if(name==='crouch')toggleCrouch=!toggleCrouch;},
+    touchLook(dx,dy){if(!enabled||!Number.isFinite(dx)||!Number.isFinite(dy))return;const scale=TOUCH_RADIANS_PER_PIXEL*input.sensitivity*(toggleAim?TOUCH_AIM:1);lookX+=dx*scale;lookY+=dy*scale;},
+    selectWeapon(name){if(enabled&&WEAPONS.includes(name))weapon=name;},
+    action(name){if(!enabled)return;if(name==='pause')options.onPause?.();else if(name==='bag')options.onBag?.();else if(name==='swap')weapon='swap';else if(name==='aim'||name==='crouch')input.toggle(name);else if(PULSE.has(name))pulses.set('semantic-'+name,name);},
+    sample(dt=1/60){
+      const nowTouch=play.device==='touch';if(nowTouch!==touch){touch=nowTouch;cancel();if(touch)options.onTouch?.();else options.onMouse?.();}
+      if(!enabled){Object.assign(record,idleInput());return record;}
+      for(const name of blockedKeys)if(!play.keys.down(name)&&!play.keys.pressed(name))blockedKeys.delete(name);
+      let axis=play.keys.axis();if(blockedAxis){if(Math.hypot(axis.x,axis.y)>.05)axis={x:0,y:0};else blockedAxis=false;}
+      const mouseAllowed=!touch&&(play.pointer.locked||input.dragLook),aimMouse=mouseAllowed&&Boolean(mask&2),fireMouse=mouseAllowed&&Boolean(mask&1);
+      const padAim=key('pad:l2'),padFire=key('pad:r2');
+      const dx=suppress?0:play.pointer.dx,dy=suppress?0:play.pointer.dy,wheel=suppress?0:play.pointer.wheel;suppress=false;
+      // Browser movement deltas are already CSS pixels, including inside native pointer lock.
+      if(mouseAllowed&&(play.pointer.locked||mask)){const multiplier=RADIANS_PER_PIXEL*input.sensitivity*(aimMouse?input.adsSensitivity:1);lookX+=dx*multiplier;lookY+=dy*multiplier;}
+      const pad=play.keys.look();lookX+=pad.x*dt*2.2*input.sensitivity*(padAim?input.adsSensitivity:1);lookY+=pad.y*dt*2.2*input.sensitivity*(padAim?input.adsSensitivity:1);
+      if(edge('Escape','KeyP','pad:start'))options.onPause?.();else if(edge('pad:select')||(options.nativeTab!==false&&edge('Tab')))options.onBag?.();
+      if(!enabled){Object.assign(record,idleInput());return record;}
+      for(let i=0;i<WEAPONS.length;i++)if(edge('Digit'+(i+1)))weapon=WEAPONS[i];
+      if(wheel)weapon=wheel>0?'next':'previous';else if(edge('pad:r1'))weapon='next';else if(edge('pad:l1'))weapon='previous';
+      const pressed=name=>key(...HOLD[name])||edge(...HOLD[name])||has(name)||pulse(name);
+      record.moveX=axis.x;record.moveZ=-axis.y;record.lookYaw=-lookX;record.lookPitch=input.invertY?lookY:-lookY;lookX=lookY=0;
+      record.firePressed=(mouseAllowed&&mouseEdge)||edge('pad:r2')||pulse('fire');record.fire=fireMouse||padFire||has('fire')||record.firePressed;record.aim=aimMouse||padAim||toggleAim;
+      record.sprint=key('ShiftLeft','ShiftRight','pad:l3')||(touch&&record.moveZ>.92&&!record.fire);record.crouch=key('KeyC','ControlLeft','pad:r3')||toggleCrouch;
+      record.jump=pressed('jump');record.reload=pressed('reload');record.heal=pressed('heal');record.grenade=pressed('grenade');record.interact=key(...HOLD.interact)||has('interact');record.weapon=weapon;
+      weapon='';mouseEdge=false;pulses.clear();return record;
+    }
+  };return input;
+}
 
-const KEYS = {
-  forward: ['KeyW', 'ArrowUp'],
-  back: ['KeyS', 'ArrowDown'],
-  left: ['KeyA', 'ArrowLeft'],
-  right: ['KeyD', 'ArrowRight'],
-  jump: ['Space'],
-  sprint: ['ShiftLeft', 'ShiftRight'],
-  crouch: ['KeyC', 'ControlLeft'],
-  reload: ['KeyR'],
-  interact: ['KeyF', 'KeyE'],
-  heal: ['KeyQ'],
-  grenade: ['KeyG'],
-};
-const KEY_ACTION = new Map(Object.entries(KEYS).flatMap(([action, codes]) => codes.map((code) => [code, action])));
-const WEAPON_KEYS = new Map([['Digit1', 'rifle'], ['Digit2', 'pistol'], ['Digit3', 'marksman']]);
-const WEAPON_CHOICES = new Set(WEAPON_KEYS.values());
-const TAP_ACTIONS = new Set(['fire', 'jump', 'reload', 'heal', 'grenade']);
-const AIM_DRAG_SCALE = 0.62;
-const CAPTURE_TIMEOUT_MS = 1800;
-
-/**
- * `canvas` takes the mouse; `touchRoot` holds the on-screen controls built
- * by the HUD. `options.onPause` is called when the player asks to pause or
- * the mouse capture is lost; `onTouch` and `onMouse` report device switches.
+/** PlayPointer.lock() has a void public result; keep the minimal confirmation/loss adapter.
+ * The actual request is made synchronously by the native control's gesture.
+ * This intentionally never retries with a different browser locking policy.
  */
-export function createInput(canvas, touchRoot, options = {}) {
-  const keys = new Set(),
-    mouseButtons = new Set(),
-    touches = new Map(),
-    taps = new Set(),
-    touchTaps = new Set(),
-    record = idleInput(),
-    touchState = { moveX: 0, moveZ: 0, aim: false, crouch: false };
-  const keyDown = (action) => KEYS[action].some((code) => keys.has(code));
-  function hasTouchAction(owners, action) {
-    for (const owner of owners.values()) if (owner.action === action) return true;
-    return false;
-  }
-  const touchDown = (action) => hasTouchAction(touches, action);
-  const tapped = (action) => taps.has(action) || hasTouchAction(touchTaps, action);
-  const actionDown = (action) => keyDown(action) || touchDown(action) || tapped(action);
-  let lookX = 0,
-    lookY = 0,
-    weapon = '',
-    enabled = false,
-    captureRequest,
-    ownsLock = false,
-    tryRaw = true;
-  const input = {
-    sensitivity: 1,
-    adsSensitivity: AIM_DRAG_SCALE,
-    invertY: false,
-    dragLook: false,
-    /** Handheld browsers start with controls. A touchscreen can still take over on hybrids. */
-    touchMode: matchMedia('(pointer: coarse)').matches,
-    get locked() {
-      return document.pointerLockElement === canvas;
-    },
-    get capturePending() {
-      return Boolean(captureRequest && !captureRequest.canceled);
-    },
-    /** The native request starts during the calling gesture. Resolve only after checking the actual lock. */
-    async capture() {
-      if (input.touchMode || !canvas.requestPointerLock) return false;
-      let request = captureRequest;
-      if (request?.canceled) return false;
-      if (!request) {
-        if (input.locked) return ownsLock;
-        request = { canceled: false, legacy: false };
-        request.result = new Promise(resolve => { request.resolve = resolve; });
-        captureRequest = request;
-        request.timer = setTimeout(() => finishCapture(request, input.locked), CAPTURE_TIMEOUT_MS);
-        requestLock(request);
-      }
-      return (await request.result) && ownsLock && input.locked;
-    },
-    release() {
-      ownsLock = false;
-      if (captureRequest && !captureRequest.canceled) {
-        // Keep the abandoned request until it settles so a late lock cannot satisfy a newer attempt.
-        captureRequest.canceled = true;
-        captureRequest.resolve(false);
-      }
-      if (input.locked) document.exitPointerLock?.();
-    },
-    selectWeapon(key) {
-      if (enabled && WEAPON_CHOICES.has(key)) weapon = key;
-    },
-    /** Release physical holds and toggle state together, even without a final browser up event. */
-    cancel() {
-      keys.clear();
-      mouseButtons.clear();
-      touches.clear();
-      taps.clear();
-      touchTaps.clear();
-      resetTouchMotion();
-      setTouchToggle('aim', false);
-      setTouchToggle('crouch', false);
-      lookX = lookY = 0;
-      weapon = '';
-    },
-    /** Take input while a run is on; let go of everything otherwise. */
-    setEnabled(on) {
-      enabled = on;
-      if (!on) input.cancel();
-    },
-    /** The input since the last call, ready for `game.update`. */
-    sample() {
-      const r = record;
-      r.moveX = Number(keyDown('right')) - Number(keyDown('left')) + touchState.moveX;
-      r.moveZ = Number(keyDown('forward')) - Number(keyDown('back')) + touchState.moveZ;
-      r.lookYaw = -lookX;
-      r.lookPitch = input.invertY ? lookY : -lookY;
-      lookX = lookY = 0;
-      r.firePressed = tapped('fire');
-      r.fire = mouseButtons.has(0) || touchDown('fire') || r.firePressed;
-      r.aim = mouseButtons.has(2) || touchState.aim;
-      r.sprint = keyDown('sprint') || (touchState.moveZ > 0.92 && !r.fire);
-      r.crouch = keyDown('crouch') || touchState.crouch;
-      r.jump = actionDown('jump');
-      r.reload = actionDown('reload');
-      r.interact = keyDown('interact') || touchDown('interact');
-      r.heal = actionDown('heal');
-      r.grenade = actionDown('grenade');
-      r.weapon = weapon;
-      taps.clear();
-      touchTaps.clear();
-      weapon = '';
-      return r;
-    },
-  };
+export function createPointerCapture(pointer,page,{onLost,timeoutMs=1800}={}){
+  let request,owned=false,closed=false;
+  function finish(req,success){if(request!==req)return;clearTimeout(req.timer);request=undefined;owned=Boolean(success&&!req.canceled&&pointer.locked&&!closed);req.resolve(owned);if(!owned&&pointer.locked)pointer.unlock();}
+  function change(){if(pointer.locked){if(request)finish(request,true);else if(!owned)pointer.unlock();}else if(owned){owned=false;onLost?.();}}
+  function failure(){if(request)finish(request,false);}
+  page.addEventListener('pointerlockchange',change);page.addEventListener('pointerlockerror',failure);
+  const api={get owned(){return owned},get pending(){return Boolean(request&&!request.canceled)},capture(){
+    if(closed)return Promise.resolve(false);if(request)return request.canceled?Promise.resolve(false):request.promise;if(pointer.locked)return Promise.resolve(owned);
+    const req={canceled:false};req.promise=new Promise(resolve=>{req.resolve=resolve;});request=req;req.timer=setTimeout(()=>finish(req,false),timeoutMs);try{pointer.lock();if(pointer.locked&&request===req)finish(req,true);}catch{finish(req,false);}return req.promise.then(value=>value&&owned&&pointer.locked);
+  },release(){owned=false;if(request&&!request.canceled){request.canceled=true;request.resolve(false);}if(pointer.locked)pointer.unlock();},dispose(){if(closed)return;closed=true;api.release();if(request){clearTimeout(request.timer);request=undefined;}page.removeEventListener('pointerlockchange',change);page.removeEventListener('pointerlockerror',failure);}};return api;
+}
 
-  function finishCapture(request, acquired) {
-    if (captureRequest !== request) return;
-    clearTimeout(request.timer);
-    captureRequest = undefined;
-    ownsLock = acquired && !request.canceled && !input.touchMode && input.locked;
-    if (!ownsLock && input.locked) document.exitPointerLock?.();
-    request.resolve(ownsLock);
-  }
+/** Browser pointer capture is prohibited during Pointer Lock. In 33897768
+ * BrowserPointerInput otherwise attempts setPointerCapture on a locked mouse.
+ * Suspend only the contact router while locked; native Play still provides
+ * relative movement, wheel and keys. Bridge the browser button bitmask in
+ * this narrow interval, then restore the engine's normal pointer routing. */
+export function bindLockedMouse(pointer,port,page,win,feed){
+ let suspended=false;
+ const sync=()=>{const locked=Boolean(pointer.locked);if(locked===suspended)return;suspended=locked;port.setInteractive(!locked);if(!locked)feed(0);};
+ const buttons=event=>{if(suspended&&pointer.locked)feed(event.buttons);};
+ page.addEventListener('pointerlockchange',sync);win.addEventListener('mousedown',buttons);win.addEventListener('mouseup',buttons);
+ sync();return()=>{page.removeEventListener('pointerlockchange',sync);win.removeEventListener('mousedown',buttons);win.removeEventListener('mouseup',buttons);if(suspended){suspended=false;port.setInteractive(true);feed(0);}};
+}
 
-  function requestLock(request) {
-    const raw = tryRaw;
-    const failed = (error) => {
-      if (captureRequest !== request) return;
-      // Denials keep their original result. Only lack of raw support permits retrying.
-      if (!request.canceled && raw && (error?.name === 'NotSupportedError' || error?.name === 'TypeError')) {
-        tryRaw = false;
-        requestLock(request);
-      } else finishCapture(request, false);
-    };
-    try {
-      const result = raw ? canvas.requestPointerLock({ unadjustedMovement: true }) : canvas.requestPointerLock();
-      request.legacy = typeof result?.then !== 'function';
-      if (request.legacy) {
-        if (input.locked) finishCapture(request, true);
-      } else {
-        Promise.resolve(result).then(() => {
-          if (input.locked) finishCapture(request, true);
-        }, failed);
-      }
-    } catch (error) {
-      failed(error);
-    }
-  }
+/** Embedded Play reserves Tab for page navigation. Only active gameplay owns
+ * the inventory shortcut; menu and accessibility navigation remain native. */
+export function bindGameplayTab(win,enabled,activate){
+ const tap=event=>{if(event.code!=='Tab'||!enabled())return;event.preventDefault();event.stopPropagation();if(!event.repeat)activate();};
+ win.addEventListener('keydown',tap,true);return()=>win.removeEventListener('keydown',tap,true);
+}
 
-  function loseFocus() {
-    const wasPlaying = enabled && !input.touchMode && (ownsLock || input.locked || input.dragLook);
-    input.cancel();
-    input.release();
-    if (wasPlaying) options.onPause?.('released');
-  }
-
-  // ---- keyboard ----------------------------------------------------------------------------
-  addEventListener('keydown', (event) => {
-    if (!enabled) return;
-    const code = event.code;
-    const name = KEY_ACTION.get(code);
-    if (name) {
-      event.preventDefault();
-      if (!event.repeat && !keys.has(code)) {
-        keys.add(code);
-        if (TAP_ACTIONS.has(name)) taps.add(name);
-      }
-    } else if (code === 'Escape' || code === 'KeyP') {
-      if (!event.repeat) options.onPause?.();
-    } else if (code === 'Tab') {
-      event.preventDefault();
-      if (!event.repeat) options.onBag?.();
-    } else if (!event.repeat) {
-      input.selectWeapon(WEAPON_KEYS.get(code));
-    }
-  });
-  addEventListener('keyup', (event) => keys.delete(event.code));
-  addEventListener('blur', loseFocus);
-  document.addEventListener('visibilitychange', () => {
-    if (document.hidden) loseFocus();
-  });
-
-  // ---- mouse -------------------------------------------------------------------------------
-  const RADIANS_PER_PIXEL = 0.0022;
-  addEventListener('mousemove', (event) => {
-    if (!enabled || input.touchMode || (!input.locked && (!input.dragLook || !mouseButtons.size))) return;
-    const scale = RADIANS_PER_PIXEL * input.sensitivity * (mouseButtons.has(2) ? input.adsSensitivity : 1);
-    lookX += event.movementX * scale;
-    lookY += event.movementY * scale;
-  });
-  canvas.addEventListener('mousedown', (event) => {
-    if (!enabled || input.touchMode || (!input.locked && !input.dragLook)) return;
-    if (event.button === 0 && !mouseButtons.has(0)) taps.add('fire');
-    mouseButtons.add(event.button);
-    event.preventDefault();
-  });
-  addEventListener('mouseup', (event) => mouseButtons.delete(event.button));
-  canvas.addEventListener(
-    'wheel',
-    (event) => {
-      if (enabled && event.deltaY) weapon = event.deltaY > 0 ? 'next' : 'previous';
-      event.preventDefault();
-    },
-    { passive: false },
-  );
-  document.addEventListener('pointerlockchange', () => {
-    if (input.locked) {
-      if (captureRequest) finishCapture(captureRequest, true);
-      else if (!ownsLock) document.exitPointerLock?.();
-    } else if (ownsLock) {
-      ownsLock = false;
-      input.cancel();
-      if (enabled && !input.touchMode) options.onPause?.('released');
-    }
-  });
-  document.addEventListener('pointerlockerror', () => {
-    if (captureRequest?.legacy) finishCapture(captureRequest, false);
-  });
-
-  // ---- touch -------------------------------------------------------------------------------
-  let stickId = -1,
-    stickX = 0,
-    stickY = 0,
-    lookId = -1,
-    lookLastX = 0,
-    lookLastY = 0;
-  const TOUCH_RADIANS_PER_PIXEL = 0.0052;
-  const startTouch = () => {
-    if (input.touchMode) return;
-    input.touchMode = true;
-    input.cancel();
-    input.release();
-    options.onTouch?.();
-  };
-  const gameArea = options.gameArea ?? canvas;
-  gameArea.addEventListener('pointerdown', (event) => {
-    if (!event.isTrusted) return;
-    if (event.pointerType === 'touch') startTouch();
-    else if (event.pointerType === 'mouse' && input.touchMode) {
-      input.cancel();
-      input.touchMode = false;
-      options.onMouse?.(event);
-    }
-  }, true);
-  const stickNub = () => touchRoot?.querySelector('.stick i');
-  function setTouchToggle(name, pressed) {
-    touchState[name] = pressed;
-    const button = touchRoot?.querySelector(`[data-t="${name}"]`);
-    button?.classList.toggle('on', pressed);
-    button?.setAttribute('aria-pressed', String(pressed));
-  }
-  function resetTouchMotion() {
-    stickId = lookId = -1;
-    touchState.moveX = touchState.moveZ = 0;
-    const nub = stickNub();
-    if (nub) nub.style.transform = '';
-  }
-  canvas.addEventListener(
-    'touchstart',
-    (event) => {
-      if (!event.isTrusted) return;
-      startTouch();
-      if (!enabled) return;
-      for (const touch of event.changedTouches) {
-        if (touch.clientX < innerWidth * 0.4 && stickId < 0) {
-          stickId = touch.identifier;
-          stickX = touch.clientX;
-          stickY = touch.clientY;
-        } else if (lookId < 0) {
-          lookId = touch.identifier;
-          lookLastX = touch.clientX;
-          lookLastY = touch.clientY;
-        }
-      }
-      event.preventDefault();
-    },
-    { passive: false },
-  );
-  const moveTouch = (event) => {
-    if (!enabled) return;
-    for (const touch of event.changedTouches) {
-      if (touch.identifier === stickId) {
-        const dx = (touch.clientX - stickX) / 56,
-          dy = (touch.clientY - stickY) / 56,
-          size = Math.max(1, Math.hypot(dx, dy));
-        touchState.moveX = dx / size;
-        touchState.moveZ = -dy / size;
-        const nub = stickNub();
-        if (nub) nub.style.transform = `translate(${touchState.moveX * 34}px, ${-touchState.moveZ * 34}px)`;
-      } else if (touch.identifier === lookId) {
-        const scale = TOUCH_RADIANS_PER_PIXEL * input.sensitivity * (touchState.aim ? AIM_DRAG_SCALE : 1);
-        lookX += (touch.clientX - lookLastX) * scale;
-        lookY += (touch.clientY - lookLastY) * scale;
-        lookLastX = touch.clientX;
-        lookLastY = touch.clientY;
-      }
-    }
-  };
-  const endTouch = (event) => {
-    for (const touch of event.changedTouches) {
-      if (event.type === 'touchcancel') touchTaps.delete(touches.get(touch.identifier));
-      touches.delete(touch.identifier);
-      if (touch.identifier === stickId) {
-        stickId = -1;
-        touchState.moveX = touchState.moveZ = 0;
-        const nub = stickNub();
-        if (nub) nub.style.transform = '';
-      } else if (touch.identifier === lookId) lookId = -1;
-    }
-  };
-  addEventListener('touchmove', moveTouch, { passive: true });
-  addEventListener('touchend', endTouch);
-  addEventListener('touchcancel', endTouch);
-  if (touchRoot) {
-    // Buttons: some are held, some toggle. Dragging on the fire button also turns the view.
-    touchRoot.addEventListener(
-      'touchstart',
-      (event) => {
-        if (!event.isTrusted) return;
-        startTouch();
-        const button = event.target.closest('button[data-t]');
-        if (!button || !enabled) return;
-        const name = button.dataset.t;
-        if (name === 'pause') options.onPause?.();
-        else if (name === 'bag') options.onBag?.();
-        else if (name === 'aim' || name === 'crouch') setTouchToggle(name, !touchState[name]);
-        else if (name === 'swap') weapon = 'swap';
-        else {
-          const newPress = !touchDown(name) && TAP_ACTIONS.has(name);
-          for (const touch of event.changedTouches) {
-            const owner = { action: name };
-            touches.set(touch.identifier, owner);
-            if (newPress) touchTaps.add(owner);
-            if (name === 'fire' && lookId < 0) {
-              lookId = touch.identifier;
-              lookLastX = touch.clientX;
-              lookLastY = touch.clientY;
-            }
-          }
-        }
-        event.preventDefault();
-      },
-      { passive: false },
-    );
-  }
-
-  return input;
+/** One scope lives with native Play. Observe the engine's contacts rather than adding a competing input stream. */
+export function createInput(play,{onPause,onBag,onTouch,onMouse,gameArea,canLook=()=>true,document:page=globalThis.document,window:win=globalThis}={}){
+ const input=createInputPort(play,{onPause,onBag,onTouch,onMouse,nativeTab:false}),port=play.browser.pointer;const unbindTab=bindGameplayTab(win,()=>input.enabled,()=>onBag?.());const cap=createPointerCapture(play.pointer,page,{onLost(){input.cancel();if(input.enabled&&!input.touchMode)onPause?.('released')}});const unbindLocked=bindLockedMouse(play.pointer,port,page,win,flags=>input.mouse(flags));let lookContact,lookAt,lookTarget,blockedTargets=new Set();const remove=port.observe(({kind,contact,target,reason})=>{
+  const s=contact.session;if(s.pointerType==='mouse'){input.mouse(kind==='cancel'||kind==='end'?0:contact.buttons);return;}
+  if(s.pointerType!=='touch')return;
+  const pos=play.fromStage(contact.globalX,contact.globalY),safe=play.safe;const own=(node,base)=>{for(let n=node;n;n=n.parent)if(n===base)return true;return false;};
+  if(kind==='begin'&&input.enabled&&canLook()&&!lookContact&&pos.x>=safe.x+safe.width*.40){
+   const control=[...blockedTargets].some(node=>own(target,node));if(!control||own(target,lookTarget)){lookContact=s;lookAt=pos;}
+  }else if(s===lookContact){if(kind==='move'&&canLook()){const box=play.canvas.getBoundingClientRect(),frame=play.browser.frame;input.touchLook((pos.x-lookAt.x)*box.width/frame.width,(pos.y-lookAt.y)*box.height/frame.height);lookAt=pos;}else{lookContact=lookAt=undefined;}}
+ });
+ const clear=()=>{lookContact=lookAt=undefined;input.cancel();};const lose=()=>{const live=input.enabled&&!input.touchMode&&(cap.owned||input.dragLook);clear();cap.release();if(live)onPause?.('released');};const hidden=()=>{if(page.hidden)lose();};win.addEventListener('blur',lose);page.addEventListener('visibilitychange',hidden);
+ const baseCancel=input.cancel,baseSet=input.setEnabled;input.cancel=()=>{baseCancel();lookContact=lookAt=undefined;};input.setEnabled=on=>{baseSet(on);if(!on)lookContact=lookAt=undefined;};input.capture=()=>input.touchMode?Promise.resolve(false):cap.capture();input.release=()=>cap.release();Object.defineProperty(input,'capturePending',{get:()=>cap.pending});input.setTouchTargets=(nodes,fire)=>{blockedTargets=new Set(nodes);lookTarget=fire;};
+ play.scope.use({dispose(){remove();cap.dispose();unbindLocked();unbindTab();win.removeEventListener('blur',lose);page.removeEventListener('visibilitychange',hidden);clear();}});return input;
 }

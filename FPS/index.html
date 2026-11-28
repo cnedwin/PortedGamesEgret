@@ -6,7 +6,7 @@
   <title>断流行动 / Operation Cutoff</title>
   <meta name="description" content="断流行动：基于新白鹭引擎开发的第一人称战术射击 Demo。 / Operation Cutoff, a first-person tactical shooter demo built with Egret Rebuild.">
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Crect width='16' height='16' fill='%230c1114'/%3E%3Cpath d='M8 2v4M8 10v4M2 8h4M10 8h4' stroke='%235fe8b0' stroke-width='1.6'/%3E%3C/svg%3E">
-  <link rel="stylesheet" href="./style.css?v=20261128-engine-33897768">
+  <link rel="stylesheet" href="./style.css?v=20261128-native-ui">
   <!-- The engine is a copy inside this folder (see vendor/SOURCE.md), so the game runs from any static host. -->
   <script type="importmap">
     {
@@ -41,39 +41,43 @@
         "@egret/engine/web/audio": "./vendor/engine/dist/web/audio.js",
         "@egret/engine/input": "./vendor/engine/dist/input.js",
         "@egret/engine/web/hover": "./vendor/engine/dist/web/hover.js",
-        "./src/asset-models.mjs": "./src/asset-models.mjs?v=20261128-engine-33897768",
-        "./src/audio.mjs": "./src/audio.mjs?v=20261128-engine-33897768",
-        "./src/bot.mjs": "./src/bot.mjs?v=20261128-engine-33897768",
-        "./src/build.mjs": "./src/build.mjs?v=20261128-engine-33897768",
-        "./src/data.mjs": "./src/data.mjs?v=20261128-engine-33897768",
-        "./src/grime.mjs": "./src/grime.mjs?v=20261128-engine-33897768",
-        "./src/gun.mjs": "./src/gun.mjs?v=20261128-engine-33897768",
-        "./src/hud.mjs": "./src/hud.mjs?v=20261128-engine-33897768",
-        "./src/input.mjs": "./src/input.mjs?v=20261128-engine-33897768",
-        "./src/level.mjs": "./src/level.mjs?v=20261128-engine-33897768",
-        "./src/main.mjs": "./src/main.mjs?v=20261128-engine-33897768",
-        "./src/model-shadows.mjs": "./src/model-shadows.mjs?v=20261128-engine-33897768",
-        "./src/music.mjs": "./src/music.mjs?v=20261128-engine-33897768",
-        "./src/scene-modules.mjs": "./src/scene-modules.mjs?v=20261128-engine-33897768",
-        "./src/scenery.mjs": "./src/scenery.mjs?v=20261128-engine-33897768",
-        "./src/sim.mjs": "./src/sim.mjs?v=20261128-engine-33897768",
-        "./src/soldier-skin.mjs": "./src/soldier-skin.mjs?v=20261128-engine-33897768",
-        "./src/soldier.mjs": "./src/soldier.mjs?v=20261128-engine-33897768",
-        "./src/stats.mjs": "./src/stats.mjs?v=20261128-engine-33897768",
-        "./src/text.mjs": "./src/text.mjs?v=20261128-engine-33897768",
-        "./src/textures.mjs": "./src/textures.mjs?v=20261128-engine-33897768",
-        "./src/view.mjs": "./src/view.mjs?v=20261128-engine-33897768"
+        "@egret/engine/web/view": "./vendor/engine/dist/web/view.js",
+        "./src/asset-models.mjs": "./src/asset-models.mjs?v=20261128-native-ui",
+        "./src/audio.mjs": "./src/audio.mjs?v=20261128-native-ui",
+        "./src/bot.mjs": "./src/bot.mjs?v=20261128-native-ui",
+        "./src/build.mjs": "./src/build.mjs?v=20261128-native-ui",
+        "./src/data.mjs": "./src/data.mjs?v=20261128-native-ui",
+        "./src/grime.mjs": "./src/grime.mjs?v=20261128-native-ui",
+        "./src/gun.mjs": "./src/gun.mjs?v=20261128-native-ui",
+        "./src/input.mjs": "./src/input.mjs?v=20261128-native-ui",
+        "./src/level.mjs": "./src/level.mjs?v=20261128-native-ui",
+        "./src/main.mjs": "./src/main.mjs?v=20261128-native-ui",
+        "./src/model-shadows.mjs": "./src/model-shadows.mjs?v=20261128-native-ui",
+        "./src/music.mjs": "./src/music.mjs?v=20261128-native-ui",
+        "./src/native-settings.mjs": "./src/native-settings.mjs?v=20261128-native-ui",
+        "./src/native-stats.mjs": "./src/native-stats.mjs?v=20261128-native-ui",
+        "./src/scene-modules.mjs": "./src/scene-modules.mjs?v=20261128-native-ui",
+        "./src/scenery.mjs": "./src/scenery.mjs?v=20261128-native-ui",
+        "./src/sim.mjs": "./src/sim.mjs?v=20261128-native-ui",
+        "./src/soldier-skin.mjs": "./src/soldier-skin.mjs?v=20261128-native-ui",
+        "./src/soldier.mjs": "./src/soldier.mjs?v=20261128-native-ui",
+        "./src/text.mjs": "./src/text.mjs?v=20261128-native-ui",
+        "./src/textures.mjs": "./src/textures.mjs?v=20261128-native-ui",
+        "./src/view.mjs": "./src/view.mjs?v=20261128-native-ui",
+        "./src/ui/hud-state.mjs": "./src/ui/hud-state.mjs?v=20261128-native-ui",
+        "./src/ui/hud.mjs": "./src/ui/hud.mjs?v=20261128-native-ui",
+        "./src/ui/menus.mjs": "./src/ui/menus.mjs?v=20261128-native-ui",
+        "./src/ui/touch.mjs": "./src/ui/touch.mjs?v=20261128-native-ui"
       }
     }
   </script>
 </head>
 <body>
   <main id="game">
-    <canvas id="stage" tabindex="0" aria-label="断流行动：第一人称射击。WASD 移动，鼠标瞄准，左键开火，右键瞄准，F 互动。 / Operation Cutoff: a first-person shooter. W A S D to move, mouse to look, left button to fire, right button to aim, F to use."></canvas>
-    <div id="ui"></div>
-    <div id="boot"><div class="boot-mark">断流行动</div><div class="boot-sub">OPERATION CUTOFF</div><div class="boot-bar"><i></i></div><div id="boot-status" role="status">正在准备场景…</div></div>
-    <div id="error" role="alert" hidden></div>
+    <canvas id="stage" aria-hidden="true"></canvas>
+    <p id="boot" role="status">正在准备场景… / Preparing the scene…</p>
+    <noscript>请启用 JavaScript。 / Please enable JavaScript.</noscript>
   </main>
-  <script type="module" src="./src/main.mjs?v=20261128-engine-33897768"></script>
+  <script type="module" src="./src/main.mjs?v=20261128-native-ui"></script>
 </body>
 </html>

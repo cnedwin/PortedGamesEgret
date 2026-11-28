@@ -2,26 +2,34 @@
 // are shaped noise, clicks and thumps; the valley wind, the generators' hum
 // and the helicopter are loops built from filtered noise and a few tones.
 
+import { createBrowserAudio } from '@egret/engine/web/audio';
 import { createMusic } from './music.mjs';
 
 export function createAudio() {
-  let context, master, noiseBuffer, ambience, rooms, music;
+  let context, nativeAudio, master, noiseBuffer, ambience, rooms, music;
+  let closed = false, disposing;
   let inside = false,
     chirpIn = 3;
   let volume = 0.8;
   const audio = { ready: false };
 
   function start() {
+    if (closed) return false;
     if (context) return true;
     const Context = globalThis.AudioContext ?? globalThis.webkitAudioContext;
     if (!Context) return false;
     context = new Context();
-    const squash = context.createDynamicsCompressor();
-    squash.threshold.value = -14;
-    squash.ratio.value = 5;
-    master = context.createGain();
-    master.gain.value = volume;
-    master.connect(squash).connect(context.destination);
+    // Keep one lazily created context for the procedural score and effects.
+    // Egret owns the host master/limiter; all existing graph tails still
+    // connect to this master. Explicit compressor defaults preserve the old
+    // Web Audio sound, rather than adopting the engine's different preset.
+    nativeAudio = createBrowserAudio({
+      context, volume,
+      limiter: { threshold: -14, knee: 30, ratio: 5, attack: 0.003, release: 0.25 },
+      // Non-gameplay pause/visibility behavior is unchanged by this migration.
+      pauseWhenHidden: false,
+    });
+    master = nativeAudio.output;
     // Two seconds of white noise, reused by every noisy sound.
     noiseBuffer = context.createBuffer(1, context.sampleRate * 2, context.sampleRate);
     const data = noiseBuffer.getChannelData(0);
@@ -35,11 +43,29 @@ export function createAudio() {
   }
   /** Browsers only allow sound after a click or key press; call this from one. */
   audio.resume = () => {
-    if (start() && context.state === 'suspended') context.resume();
+    // The first caller is already inside a trusted gesture. Because the
+    // graph is created lazily, the engine's newly attached gesture listener
+    // may not have seen this event; resume now and let it track later unlocks.
+    if (start() && context.state === 'suspended') void context.resume().catch(() => {});
   };
   audio.setVolume = (value) => {
-    volume = value;
-    if (master) master.gain.value = value;
+    if (!Number.isFinite(value)) return;
+    volume = Math.max(0, Math.min(1, value));
+    nativeAudio?.mixer.master.setVolume(volume);
+  };
+  audio.dispose = () => {
+    if (disposing) return disposing;
+    closed = true;
+    audio.ready = false;
+    const owningContext = context, host = nativeAudio;
+    context = nativeAudio = master = noiseBuffer = ambience = rooms = music = undefined;
+    // The engine disposes its buses/listeners. This context is ours; closing
+    // it also retires every looping procedural source and its custom graph.
+    disposing = (async () => {
+      try { host?.dispose(); }
+      finally { if (owningContext && owningContext.state !== 'closed') await owningContext.close(); }
+    })();
+    return disposing;
   };
   audio.setPaused = (paused) => {
     if (ambience) ambience.out.gain.setTargetAtTime(paused ? 0.25 : 1, context.currentTime, 0.2);
