@@ -337,12 +337,6 @@ export async function play(options) {
         throw invalid('audio is true or false');
     if (options.reducedMotion !== undefined && typeof options.reducedMotion !== 'boolean')
         throw invalid('reducedMotion is true or false');
-    // Given, it is the game's; not given, it follows the system's setting.
-    let reduced = options.reducedMotion ?? prefersReducedMotion(), followSystem = options.reducedMotion === undefined;
-    const unwatchMotion = watchReducedMotion(next => {
-        if (followSystem)
-            reduced = next;
-    });
     const blendSpace = options.blendSpace ?? 'srgb';
     if (blendSpace !== 'linear' && blendSpace !== 'srgb')
         throw invalid("blendSpace is 'srgb' or 'linear'");
@@ -350,6 +344,19 @@ export async function play(options) {
     if (page === undefined)
         throw invalid('play needs a page');
     const win = page.defaultView ?? globalThis;
+    // Omitted audio is a convenience: a host without either native live audio constructor
+    // still starts the game. Explicit true is a requirement and fails before owning page resources.
+    const audioAvailable = typeof globalThis.AudioContext === 'function' ||
+        typeof globalThis.webkitAudioContext === 'function';
+    if (options.audio === true && !audioAvailable)
+        throw new EgretError('AUDIO_HOST_UNAVAILABLE');
+    const enableAudio = options.audio ?? audioAvailable;
+    // Given, it is the game's; not given, it follows the system's setting.
+    let reduced = options.reducedMotion ?? prefersReducedMotion(), followSystem = options.reducedMotion === undefined;
+    const unwatchMotion = watchReducedMotion(next => {
+        if (followSystem)
+            reduced = next;
+    });
     // The canvas: the caller's as it stands, or one of our own in a holder it is fitted into.
     const embedded = options.parent !== undefined || options.canvas !== undefined;
     let holder, canvas = options.canvas;
@@ -385,6 +392,7 @@ export async function play(options) {
         effects: true,
         ...(options.staticLayers === undefined ? {} : { staticLayers: options.staticLayers }),
         autoStart: false,
+        renderMode,
         keyboard: false,
         ...(holder === undefined ? {} : { fit: fitAsked, fitTo: holder, ...(wholeScale ? { wholeScale } : {}) }),
         ...(options.portrait === undefined ? {} : { portrait: options.portrait }),
@@ -611,13 +619,9 @@ export async function play(options) {
     };
     const any = (set, keys) => keys.some(key => set.has(codeOf(String(key))));
     // A gamepad, where the page has them: polled once a step. Its sticks count in `axis` and `look`.
-    let pads;
-    try {
-        pads = scope.use(createBrowserGamepadInput());
-    }
-    catch {
-        pads = undefined;
-    }
+    const pads = typeof globalThis.navigator?.getGamepads === 'function'
+        ? scope.use(createBrowserGamepadInput({ optional: true }))
+        : undefined;
     const stick = (name) => {
         const pad = pads?.input.pads[0];
         if (pad === undefined)
@@ -1225,7 +1229,7 @@ export async function play(options) {
     for (const [target, type, listener] of listening)
         target.addEventListener(type, listener, { passive: false });
     // Only the built-in mixer belongs to this game. Opting out also skips its browser gesture listeners.
-    const mixer = options.audio === false ? undefined : scope.use(createBrowserAudio({ limiter: true })).mixer;
+    const mixer = enableAudio ? scope.use(createBrowserAudio({ limiter: true })).mixer : undefined;
     const sounds = new Map();
     const RATE = 22050;
     const make = async (name, recipe) => {
@@ -1469,6 +1473,9 @@ export async function play(options) {
             throw invalid('the options of a text are an object');
         const { size = 24, color = 0xffffff, align = 'left', bold = false } = o;
         const { fontFamily, fontWeight = bold ? 700 : 400, italic = false } = o;
+        if (o.retainLastText !== undefined && typeof o.retainLastText !== 'boolean')
+            throw invalid('retainLastText is a boolean');
+        const retainLastText = o.retainLastText === true;
         if (fontFamily !== undefined && (typeof fontFamily !== 'string' || !fontFamily.trim() || fontFamily.length > 256))
             throw invalid('fontFamily is one nonempty family, at most 256 characters');
         if (!Number.isInteger(fontWeight) || fontWeight < 1 || fontWeight > 1000 || typeof italic !== 'boolean')
@@ -1490,7 +1497,7 @@ export async function play(options) {
             : verticalPlayWords(words, typeof vertical === 'object' ? (vertical.column ?? Infinity) : Infinity);
         // The words are drawn on pages shared with the game's other texts, so a screen of many short texts takes few of
         // the images a frame may hold.
-        let label, rasterActive = true, gone = false, alignRaster = false;
+        let label, rasterActive = true, gone = false, alignRaster = false, rasterReleasedAfterFailure = false;
         const round = generation;
         const newRevision = () => {
             const next = pending();
@@ -1508,10 +1515,11 @@ export async function play(options) {
             revision.reject(cause);
             pendingReady = undefined;
         };
-        const changeRevision = () => {
+        const changeRevision = (keepFlight = false) => {
             revision.reject(new DOMException('Text revision was superseded', 'AbortError'));
             revision = newRevision();
-            pendingReady = undefined;
+            if (!keepFlight)
+                pendingReady = undefined;
             if (creationFailure !== undefined)
                 revision.reject(creationFailure.cause);
             else if (!rasterActive)
@@ -1550,6 +1558,30 @@ export async function play(options) {
                 return;
             const request = { ready, revision };
             pendingReady = request;
+            // The retained branch sends one snapshot at a time to the atlas. Setting new words
+            // on every animation tick would supersede an in-progress raster indefinitely.
+            const advanceQueued = () => {
+                const latest = drawn(node.text);
+                if (!retainLastText || latest === made.text)
+                    return false;
+                made.text = latest;
+                settle();
+                return true;
+            };
+            const failed = (cause) => {
+                if (pendingReady !== request)
+                    return;
+                pendingReady = undefined;
+                if (retainLastText) {
+                    made.display.visible = false;
+                    if (advanceQueued())
+                        return;
+                    // A failed revision is not a license to keep outdated pixels or a hidden atlas borrow.
+                    made.setRasterActive(false);
+                    rasterReleasedAfterFailure = true;
+                }
+                revision.reject(cause);
+            };
             void ready
                 .then(() => {
                 if (gone || pendingReady !== request)
@@ -1559,15 +1591,11 @@ export async function play(options) {
                     return;
                 position(made);
                 made.display.visible = true;
-                request.revision.resolve();
-            }, cause => {
-                if (pendingReady === request)
-                    request.revision.reject(cause);
-            })
-                .catch(cause => {
-                if (pendingReady === request)
-                    request.revision.reject(cause);
-            });
+                pendingReady = undefined;
+                if (!advanceQueued())
+                    revision.resolve();
+            }, failed)
+                .catch(failed);
         };
         const removeText = () => {
             if (gone)
@@ -1580,12 +1608,21 @@ export async function play(options) {
         const node = scope.use(new PlayText(String(given), next => {
             if (gone)
                 return;
-            changeRevision();
-            if (label === undefined)
+            const latest = drawn(next);
+            const keep = retainLastText && rasterActive && label !== undefined && /\S/u.test(label.text) && /\S/u.test(latest);
+            // Preserve the one underlying flight, but reject every superseded public revision as before.
+            const defer = keep && pendingReady !== undefined;
+            changeRevision(defer);
+            if (label === undefined || defer)
                 return;
-            // A label's old wording must not describe an action after its semantic name changed.
-            label.display.visible = false;
-            label.text = drawn(next);
+            // Strict/action text, empty words, and style changes hide the old raster immediately.
+            if (!keep)
+                label.display.visible = false;
+            label.text = latest;
+            if (rasterReleasedAfterFailure && rasterActive) {
+                rasterReleasedAfterFailure = false;
+                label.setRasterActive(true);
+            }
             settle();
         }, color, size, style => {
             if (gone)
@@ -1595,12 +1632,18 @@ export async function play(options) {
                 return;
             label.display.visible = false;
             label.set({
+                // A retained text revision may still be queued when a strict style change supersedes it.
+                ...(retainLastText && label.text !== drawn(node.text) ? { text: drawn(node.text) } : {}),
                 ...(style.color === undefined ? {} : { color: style.color }),
                 ...(style.size === undefined ? {} : { fontSize: style.size }),
                 ...(style.size !== undefined && vertical !== undefined && vertical !== false
                     ? { lineHeight: style.size * 1.1 }
                     : {})
             });
+            if (rasterReleasedAfterFailure && rasterActive) {
+                rasterReleasedAfterFailure = false;
+                label.setRasterActive(true);
+            }
             settle();
         }, () => revision.promise, removeText));
         node.x = finite(o.x) ? o.x : 0;
@@ -1647,6 +1690,12 @@ export async function play(options) {
                 if (label !== undefined) {
                     label.display.visible = false;
                     label.setRasterActive(next);
+                    if (next)
+                        rasterReleasedAfterFailure = false;
+                    // Hiding ends the outstanding flight and releases the existing raster. Capture
+                    // any unsent latest words while inactive, ready for the next reveal.
+                    if (!next && retainLastText && label.text !== drawn(node.text))
+                        label.text = drawn(node.text);
                 }
                 if (next)
                     settle();
@@ -1681,11 +1730,12 @@ export async function play(options) {
             node.addChild(made.display);
             made.setRasterActive(rasterActive);
             syncVisibility();
-            if (node.text !== words)
+            if (node.text !== words && !(retainLastText && rasterActive && /\S/u.test(words) && /\S/u.test(node.text)))
                 made.text = drawn(node.text);
             // What was set while the words were being made.
             if (node.color !== color || node.size !== size)
                 made.set({
+                    ...(retainLastText && made.text !== drawn(node.text) ? { text: drawn(node.text) } : {}),
                     color: node.color,
                     fontSize: node.size,
                     ...(vertical === undefined || vertical === false ? {} : { lineHeight: node.size * 1.1 })

@@ -3,3 +3,4 @@ export { createTexturedGeometry2D, isTexturedGeometry2D } from './TexturedGeomet
 export { createSharedMaterial2D, isSharedMaterial2D } from './SharedMaterial2D.js';
 export { createSharedGeometry2D, isSharedGeometry2D } from './SharedGeometry2D.js';
 export { SHARED_FRAME_PROFILE_2D } from './SharedRenderFrame2D.js';
+export { decodeSRGBByte } from './srgbBytes.js';
