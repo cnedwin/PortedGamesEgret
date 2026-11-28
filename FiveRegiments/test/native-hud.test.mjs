@@ -44,3 +44,23 @@ test('battle HUD builds native shapes and named status for old duel data',()=>{
   hud.dispose();semantics.dispose();ui.dispose();
 });
 
+test('HUD labels rasterize at matching stage density without changing CSS size',()=>{
+  const ui=new Sprite(),screen={x:0,y:0,width:1280,height:720};let scale=.45;const labels=[];
+  const browser={get screen(){return {scale};},onScreenChange:()=>()=>{}};
+  const game={ui,screen,safe:screen,browser,text(value,o){
+    const n=new Sprite();n.text=String(value);Object.assign(n,{x:o.x??0,y:o.y??0,size:o.size??16,color:o.color});o.layer.addChild(n);labels.push(n);return n;}};
+  const hud=createHud(game);
+  const f=createFight({hero:{regiment:'tiger'},foes:[{regiment:'archer'}]});
+  hud.setup(f);hud.show(true);
+  const title=labels.find(n=>n.text==='虎步营'||n.text==='Tiger Step');
+  // The exact role name can differ by localization; the self name is the nonempty 16-CSS-pixel label.
+  const self=title??labels.find(n=>n.text&&Math.abs(n.size*n.scaleX-16)<.01);
+  assert(self);
+  assert(Math.abs(self.size-16/scale)<.01);
+  assert(Math.abs(self.scaleX-scale)<.001);
+  assert(Math.abs(self.size*self.scaleX-16)<.01);
+  scale=.75;hud.show(true);
+  assert(Math.abs(self.size-16/scale)<.01);
+  assert(Math.abs(self.size*self.scaleX-16)<.01);
+  hud.dispose();ui.dispose();
+});

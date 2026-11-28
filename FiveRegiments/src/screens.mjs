@@ -13,9 +13,9 @@ const PLACE_WORD = {
 };
 export const placeName = (p) => t(PLACE_WORD[p]);
 
-const ink=0x211310, paper=0xf6e8cf, muted=0xcfbca1, gold=0xe0bb76, bronze=0x795f3a,
-  lacquer=0x38221b, selected=0x79512b, vermilion=0x891f1a;
-const skin={text:paper,panel:ink,panelAlpha:.94,button:lacquer,buttonText:paper,disabled:0x62544a,accent:gold,track:0x483327,radius:3,size:16,dim:.52};
+const ink=0x1a1411, paper=0xffecd1, muted=0xd5c4a8, gold=0xe0ba78, bronze=0x806744,
+  lacquer=0x32271e, selected=0x735130, vermilion=0x90251c, edge=0xb28d54;
+const skin={text:paper,panel:ink,panelAlpha:.9,button:lacquer,buttonText:paper,disabled:0x62544a,accent:gold,track:0x483327,radius:3,size:16,dim:.52};
 const bodyFont=()=>getLanguage()==='zh'?'Microsoft YaHei':'Arial';
 const titleFont=()=>getLanguage()==='zh'?'SimSun':'Georgia';
 const col=(children,props={})=>({type:'panel',name:props.name,layout:'column',width:'100%',height:'fill',gap:8,children,...props});
@@ -27,6 +27,20 @@ const scroll=(children)=>col(children,{name:'page-scroll',scroll:'vertical',heig
 const labelFor=(label,words)=>label+' · '+words;
 const roughUnits=(value)=>[...String(value)].reduce((n,c)=>n+(c.codePointAt(0)>255?1:.62),0);
 const split=(arr,count)=>Array.from({length:Math.ceil(arr.length/count)},(_,i)=>arr.slice(i*count,(i+1)*count));
+const ornament=(width,height,anchor,x=0,y=0,color=gold)=>({type:'panel',width,height,anchor,x,y,color,semantic:false});
+function seal(){
+  return {type:'panel',layout:'free',width:26,height:26,color:vermilion,border:{color:edge,width:1},semantic:false,children:[
+    ornament(14,2,'top',0,6),ornament(2,12,'center'),ornament(14,2,'bottom',0,6),
+    ornament(2,8,'left',6),ornament(2,8,'right',6)
+  ]};
+}
+function frameMotif(){
+  const corners=['top-left','top-right','bottom-left','bottom-right'];
+  return {type:'panel',layout:'free',width:'100%',height:'100%',semantic:false,children:corners.flatMap(anchor=>[
+    ornament(20,2,anchor,3,3,edge),ornament(2,20,anchor,3,3,edge),
+    ornament(10,1,anchor,7,7,bronze),ornament(1,10,anchor,7,7,bronze)
+  ])};
+}
 
 export function createScreens(game,{onLanguage,coarse=false,paragraphCache}={}) {
   // Keep one cache for menu lifetimes. All prepared borrows are owned by the views.
@@ -67,9 +81,9 @@ export function createScreens(game,{onLanguage,coarse=false,paragraphCache}={}) 
     const shade=()=>primary?vermilion:read(chosen)?selected:lacquer;
     bind[id]={tap:action,label:()=>read(label),...(typeof words==='function'?{text:words}:{}),
       ...(typeof chosen==='function'?{color:shade}:{})};
-    return {type:'button',name:id,text:read(words),height:48,width:'fill',size:15,fontFamily:bodyFont(),fontWeight:primary?700:500,
+    return {type:'button',name:id,text:read(words),height:48,width:'fill',size:15,fontFamily:bodyFont(),fontWeight:primary?700:600,
       color:shade(),textColor:paper,
-      border:{color:primary?0xd46c53:typeof chosen==='function'?bronze:read(chosen)?gold:bronze,width:read(chosen)&&typeof chosen!=='function'?2:1},...rest};
+      border:{color:primary?0xd9875f:typeof chosen==='function'?bronze:read(chosen)?gold:bronze,width:read(chosen)&&typeof chosen!=='function'?2:1},...rest};
   }
   function tab(id,words,action,chosen,props={}){
     const result=button(id,words,action,{chosen,...props,role:'tab',selected:read(chosen)});
@@ -95,21 +109,32 @@ export function createScreens(game,{onLanguage,coarse=false,paragraphCache}={}) 
   function footer(back,go,backId='back',goId='go',backLabel=t('back'),goLabel=t('begin')){
     return row([...(back?[button(backId,backLabel,back)]:[]),...(go?[button(goId,goLabel,go,{primary:true})]:[])],{name:'page-footer',height:48});
   }
-  function pane(kind,d,body,actions,props={}){
+  function panelMetrics(kind,d) {
     const lateral=kind==='title'||kind==='choose',titleSide=kind==='title';
-    const max=kind==='loadout'?960:kind==='free'?820:kind==='result'?680:kind==='settings'?740:lateral?480:640;
-    const width=Math.max(200,Math.min(max,d.width-12,lateral&&!d.portrait?Math.max(320,d.width*.55):d.width-12));
-    const height=lateral?(d.portrait?Math.min(d.height-10,Math.max(300,d.height*(titleSide?.64:.73))):d.height-10)
-      :Math.min(d.height-10,kind==='loadout'?780:kind==='free'||kind==='settings'?700:kind==='result'?510:430);
-    return col([...body,...(actions?[rule(),actions]:[])],{name:'menu-panel',width,height,
-      anchor:lateral?(d.portrait?'bottom':titleSide?'left':'right'):'center',padding:d.short?8:14,gap:d.short?5:8,
-      color:ink,alpha:.94,border:{color:bronze,width:1},...props});
+    const cap=kind==='title'?(d.portrait?400:350):kind==='choose'?420:kind==='loadout'?960:kind==='free'?820:kind==='result'?680:kind==='settings'?740:640;
+    const margin=d.short?5:12;
+    const width=Math.max(200,Math.min(cap,d.width-2*margin,lateral&&!d.portrait?Math.max(286,d.width*.43):d.width-2*margin));
+    const height=titleSide?(d.short?d.height-10:d.portrait?Math.min(d.height-10,Math.max(318,Math.min(416,d.height*.50))):Math.min(d.height-24,466))
+      :kind==='choose'?(d.portrait?Math.min(d.height-10,Math.max(306,d.height*.68)):d.height-2*margin)
+      :Math.min(d.height-2*margin,kind==='loadout'?780:kind==='free'||kind==='settings'?700:kind==='result'?510:430);
+    return {width,height,anchor:lateral?(d.portrait?'bottom':titleSide?'left':'right'):'center',
+      x:lateral&&!d.portrait?margin:0,y:lateral&&d.portrait?margin:0,padding:d.short?10:17,gap:d.short?6:9};
   }
-  function paneWidth(kind,d){
-    const cap={title:480,choose:480,loadout:960,free:820,result:680,settings:740}[kind]??640;
-    return Math.max(200,Math.min(cap,d.width-12,(kind==='title'||kind==='choose')&&!d.portrait?Math.max(320,d.width*.55):d.width-12))-(d.short?16:28);
+  function pane(kind,d,body,actions,props={}){
+    const {padding,gap,...outer}=panelMetrics(kind,d);
+    // Bronze corners are drawn as native decorative parts, never focus targets.
+    // The camera can frame the actual menu-panel rect, including this rim.
+    return {type:'panel',name:'menu-panel',layout:'free',...outer,color:ink,alpha:.91,
+      border:{color:edge,width:1},...props,children:[
+        frameMotif(),
+        col([...body,...(actions?[rule(),actions]:[])],{name:'pane-content',width:'100%',height:'100%',padding,gap})
+      ]};
   }
-  function sectionTitle(words){return heading('screen-title',words,{height:34,size:25});}
+  function paneWidth(kind,d){const {width,padding}=panelMetrics(kind,d);return width-2*padding;}
+  function sectionTitle(words){
+    const size=Math.max(14,Math.min(24,Math.floor((partWidth-38)/Math.max(1,roughUnits(words)))));
+    return row([seal(),heading('screen-title',words,{height:36,size,width:'fill'})],{height:38,gap:8,align:'center'});
+  }
   function render(){
     if(!current||!slot)return;
     const d=dims(),model=current;
@@ -191,25 +216,38 @@ export function createScreens(game,{onLanguage,coarse=false,paragraphCache}={}) 
     hide:()=>show(null), get current(){return current?.kind??null;},get view(){return mountedModel===current?view:null;},update,
     snapshot(){
       if(!current)return {kind:null};
-      const {kind,selected,veteran,pick,series,choice,progress,text:message,arts}=current;
-      return {kind,...(selected?{selected}:{}),...(veteran!==undefined?{veteran}:{}),
+      const {kind,selected,veteran,pick,series,choice,progress,text:message,arts,help}=current;
+      return {kind,...(typeof help==='boolean'?{help}:{}),...(selected?{selected}:{}),...(veteran!==undefined?{veteran}:{}),
         ...(pick?{skills:[...pick.skills],talents:[...pick.talents],arts}:{}),
         ...(choice?{me:choice.me,foes:[...choice.foes],place:choice.place,series:!!series}:{}),
         ...(progress!==undefined?{progress,text:message}:{})};
     },
     title({onRoad,onExpedition,onFree,onSeries,onSettings,best,note=''}) {
-      const m={kind:'title',label:t('title'),initial:'road',primary:onRoad,draw(d){
-        const choices=[button('road',t('road'),onRoad,{primary:true}),button('expedition',t('expedition'),onExpedition),
-          button('free',t('free'),onFree),button('series',t('duelSeries'),onSeries),button('settings',t('settings'),onSettings)];
-        return pane(m.kind,d,[heading('title-heading',t('title'),{color:paper,size:d.short?32:43,height:d.short?42:60}),rule(),
-          scroll([paragraph('tagline',t('tagline'),partWidth,{color:gold,size:16}),...buttons(choices,d.short?3:d.portrait?2:1),
-            ...(best?[paragraph('best',best)]:[]),...(note?[paragraph('title-note',note)]:[]),
-            paragraph('controls',t(coarse?'touchText':'controlsText'),partWidth,{size:13})])],
-          row([button('lang',t('language'),onLanguage,{width:120}),{type:'space',width:'fill',height:48}],{height:48}));
-      }};
+      const m={kind:'title',label:t('title'),initial:'road',primary:onRoad,help:false,
+        back(){if(m.help){toggleHelp();}},
+        draw(d){
+          const choices=m.help?[]:[
+            button('road',t('road'),onRoad,{primary:true,size:17,fontFamily:titleFont()}),
+            button('expedition',t('expedition'),onExpedition,{size:17,fontFamily:titleFont(),color:0x594025,border:{color:edge,width:1}}),
+            button('free',t('free'),onFree,{size:14}),button('series',t('duelSeries'),onSeries,{size:14})
+          ];
+          const routes=m.help?[]:d.short?buttons(choices,2):[row([choices[0]]),row([choices[1]]),row(choices.slice(2))];
+          const header=heading('title-heading',t('title'),{color:paper,size:d.short?29:48,height:d.short?38:59});
+          const intro=paragraph('tagline',t('tagline'),partWidth,{color:gold,size:d.short?13:15});
+          const helpBody=paragraph('controls',t(coarse?'touchText':'controlsText'),partWidth,{size:15});
+          const nav=row([button('settings',t('settings'),onSettings,{size:14}),button('help',t(m.help?'back':'howto'),toggleHelp,{size:14}),
+            button('lang',t('language'),onLanguage,{size:14})],{height:48});
+          return pane(m.kind,d,[header,
+            ...(d.short?[]:[row([ornament('fill',1,'center'),seal(),ornament('fill',1,'center')],{height:26,align:'center',gap:7})]),
+            scroll(m.help?[heading('help-heading',t('howto'),{size:18,height:29}),helpBody]
+              :[intro,...routes,...(best?[paragraph('best',best,partWidth,{color:gold})]:[]),...(note?[paragraph('title-note',note)]:[])])],nav);
+        }};
+      function toggleHelp(){
+        m.help=!m.help;refresh();
+        try{view.scroll('page-scroll').scrollTo(0);}catch{}
+      }
       show(m);
-    },
-    choose({selected:regiment='yulin',onPick,onLook,onBack,title=t('chooseRegiment'),veteran=null,onDifficulty}) {
+    },    choose({selected:regiment='yulin',onPick,onLook,onBack,title=t('chooseRegiment'),veteran=null,onDifficulty}) {
       const m={kind:'choose',label:title,initial:'pick',selected:regiment,veteran,back:onBack,
         primary:()=>onPick(m.selected),cycle(delta){m.selected=ORDER[(ORDER.indexOf(m.selected)+delta+ORDER.length)%ORDER.length];onLook?.(m.selected);refresh();},
         draw(d){
@@ -351,6 +389,8 @@ export function createScreens(game,{onLanguage,coarse=false,paragraphCache}={}) 
     lang:getLanguage
   };
 }
+
+
 
 
 

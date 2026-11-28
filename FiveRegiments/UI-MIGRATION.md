@@ -17,3 +17,9 @@ The transparent Play interface is attached to the existing World3D renderer with
 浏览器页面只承载画布、引擎语义树与启动失败前的文本。 / The page holds the canvases, engine-managed accessibility projection and pre-start fallback text only.
  
 验收 / Verification: native menu/HUD semantics and layout tests; complete legacy browser flow 21/21 (including one and two opponents, loadout edits, save settings and both languages). Native pointer-lock and CDP touch acceptance also passed (browser automation, not physical phone). The original golden images were retained for the V2 gate; candidate images differed intentionally because of the UI replacement. Details of final visual reference changes and physical acceptance are below.
+
+## V3 — 美术和画面 · Visual quality
+
+- 原生漆木、铜线框饰、分层入口及独立操作指南；跟随实际菜单可见矩形调整预览镜头。 / Native lacquer-and-bronze framing, hierarchical choices, a dedicated guide and preview camera framing around the menu.
+- 地表宏观色调和连续纹理、道路磨损、校正竹林和雪地雾、场景环境照明。远景山体候选因实拍呈单色板状而撤回；地形、碰撞和场景路线不变。 / Ground and path detail, corrected fog and lighting. An opaque horizon candidate was rejected after visual review; gameplay terrain remains unchanged.
+- 190/190 Node checks. On Windows RTX 5090 Laptop GPU, headed high-quality fixed-seed scene captures: five routes passed, four duel samples p95 4.3 ms, maxima 4.4–12.4 ms without screenshotting during sampling. Public baseline and local candidate differ in network and code, so startup comparisons are not causal. Phone-sized viewport captures are not physical-phone tests.

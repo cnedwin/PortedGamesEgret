@@ -37,6 +37,7 @@ import { createEffects } from './view/effects.mjs';
 import { skillSweepStyle } from './view/effect-profiles.mjs';
 import { ARMS } from './view/weapons.mjs';
 import { createCameraRig } from './view/camera.mjs';
+import { previewFrame } from './view/menu-framing.mjs';
 import { createMountedPresentation } from './view/mounted-presentation.mjs';
 import { createMountedContactPresentation, mountedContactBody } from './view/mounted-contact.mjs';
 import { createContactAccent } from './view/contact-accent.mjs';
@@ -114,7 +115,7 @@ async function main() {
     parent: document.querySelector('#ui'),
     width: 1280, height: 720, portrait: { width: 540, height: 960 },
     fit: 'expand', uiScale: { min: 1, max: 1.25 },
-    renderMode: 'on-demand', semantics, onError: fail,
+    renderMode: 'on-demand', pixelRatio: Math.min(2, Math.max(1.5, globalThis.devicePixelRatio || 1)), semantics, onError: fail,
     world: () => ({
       renderer, scene, camera, autoResize: false, onError: fail,
       onUpdate(dt) {
@@ -960,13 +961,14 @@ async function main() {
             lineup.figs[i].update(m, lineup.game, dt);
           });
           const f = lineup.focus;
-          if (f === null || f === undefined) {
-            const a = clock * 0.08;
-            cam.frame(dt, [Math.sin(a) * 2.5, 2.1, 7.6 + Math.cos(a) * 0.6], [0, 1.25, 0], 1.5);
-          } else {
+          if (screens.current === 'title' || screens.current === 'choose') {
+            const panel = screens.view?.visibleRect('menu-panel');
+            const focus = f === null || f === undefined ? null : lineup.game.men[f];
+            const shot = previewFrame({ screen: ui.screen, panel, focus, clock });
+            cam.frame(dt, shot.from, shot.to, shot.speed);
+          } else if (f !== null && f !== undefined) {
             const m = lineup.game.men[f];
-            if (m.mounted) cam.frame(dt, [m.x + 1.4, 2.4, m.z + 4.6], [m.x, 1.75, m.z], 3);
-            else cam.frame(dt, [m.x + 0.9, 1.65, m.z + 3.0], [m.x, 1.2, m.z], 3);
+            cam.frame(dt, [m.x + 0.9, 1.8, m.z + (m.mounted ? 4.6 : 3)], [m.x, m.mounted ? 1.65 : 1.2, m.z], 3);
           }
         }
       }

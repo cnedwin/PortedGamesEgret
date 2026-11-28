@@ -14,7 +14,7 @@ function harness(width=852,height=393){
     keys:{pressed:(...values)=>values.some(x=>keys.has(x))},
     onScreenChange(fn){onScreenChange=fn;return ()=>{};},
     show(desc,opts){
-      checkView(desc);
+      const names=checkView(desc);for(const id of Object.keys(opts.bind))assert.ok(names.has(id),'binding belongs to the current native view: '+id);
       const screen={x:0,y:0,...game.screen};
       const plan=planView(desc,{screen,safe:screen,orientation:screen.width<screen.height?'portrait':'landscape'});
       for(const {part,rect} of plan.parts)if(part.type==='button'||part.type==='toggle'){assert.ok(rect.width>=44,part.name+' width '+rect.width);assert.ok(rect.height>=44,part.name+' height '+rect.height);}
@@ -108,6 +108,22 @@ test('all native screens plan valid target sizes in both languages on nine viewp
       let retries=0;s.error(t('error'),()=>retries++);await h.ready();await h.press('retry');assert.equal(retries,1);
     }
   }
+  setLanguage('zh');
+});
+
+
+test('the framed title keeps all main actions and makes full controls separately accessible',async()=>{
+  const h=harness(1280,800),noop=()=>{};setLanguage('en');
+  h.screens.title({onRoad:noop,onExpedition:noop,onFree:noop,onSeries:noop,onSettings:noop});
+  let v=await h.ready();
+  assert.ok(v.desc.root.width<=360,'slim cinematic title rail');
+  assert.ok(nodes(v).some(x=>x.name==='help'),'controls entry');
+  assert.ok(!nodes(v).some(x=>x.name==='controls'),'instructions do not crowd the initial menu');
+  await h.press('help');assert.equal(h.screens.snapshot().help,true);
+  assert.ok(nodes(await h.ready()).some(x=>x.name==='controls'&&x.text===t('controlsText')),'all original instructions are available');
+  await h.resize(873,325);assert.equal(h.screens.snapshot().help,true);
+  await h.press('help');assert.equal(h.screens.snapshot().help,false);
+  assert.ok(nodes(await h.ready()).some(x=>x.name==='road'));
   setLanguage('zh');
 });
 

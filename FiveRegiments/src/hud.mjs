@@ -21,18 +21,39 @@ function disk(n,r,fill,alpha=1,edge=null){
   const g=n.graphics;g.clear();if(edge!==null){g.beginFill(edge,.95).drawCircle(0,0,r).endFill();r-=2;}
   g.beginFill(fill,alpha).drawCircle(0,0,r).endFill();
 }
+// Play's text raster is prepared in its own stage units. A CSS-sized HUD layer
+// expands on short screens, so compensate on the label rather than upscaling
+// the texture. Only scale changes or actual text/style changes request a raster.
+const labelLayout=new WeakMap();
+const textFactor=scale=>clamp(1/scale,1,3);
+function setFont(label,cssSize){
+  const info=labelLayout.get(label);
+  if(!info){label.size=cssSize;return;}
+  info.cssSize=cssSize;
+  const actual=cssSize*info.factor;
+  if(label.size!==actual)label.size=actual;
+  const inverse=1/info.factor;
+  if(label.scaleX!==inverse)label.scaleX=label.scaleY=inverse;
+}
 function word(game,parent,value='',opt={}){
-  return game.text(value,{size:15,color:C.paper,layer:parent,fontFamily:'serif',...opt});
+  const cssSize=opt.size??15,factor=textFactor(game.browser.screen.scale);
+  const label=game.text(value,{color:C.paper,layer:parent,fontFamily:'Arial',...opt,size:cssSize*factor});
+  labelLayout.set(label,{cssSize,factor});setFont(label,cssSize);return label;
+}
+function rescaleLabels(node,factor){
+  const info=labelLayout.get(node);
+  if(info){if(info.factor!==factor){info.factor=factor;setFont(node,info.cssSize);}return;}
+  for(let i=0;i<(node.numChildren??0);i++)rescaleLabels(node.getChildAt(i),factor);
 }
 function txt(label,value){const next=String(value??'');if(label.text!==next)label.text=next;}
-function fit(label,w,max,min=10){label.size=Math.min(max,Math.max(min,(w-8)/Math.max(4,[...label.text].length*.75)));}
+function fit(label,w,max,min=10){setFont(label,Math.min(max,Math.max(min,(w-8)/Math.max(4,[...label.text].length*.75))));}
 function tag(game,parent,name,w,h,value='',options={}){
   const root=add(parent,name),bg=add(root,'frame'),label=word(game,root,value,{x:w/2,y:h/2,align:'center',baseline:'middle',bold:true,...options});
   box(bg,w,h);return {root,bg,label,w,h,resize(w,h){this.w=w;this.h=h;box(bg,w,h);put(label,w/2,h/2);}};
 }
 function gauge(game,parent,name,w,h,color,{number=false,trail=false}={}){
   const root=add(parent,name),base=add(root,'background'),lag=add(root,'trail'),fill=add(root,'fill');
-  box(base,w,h,C.ink,C.edge,.9);box(lag,w-4,h-4,0x654b3e,null,.95);box(fill,w-4,h-4,color,null,1);put(lag,2,2);put(fill,2,2);visible(lag,trail);
+  box(base,w,h,C.ink,C.edge,.9);box(lag,w-4,h-4,0x654b3e,null,.95);box(fill,w-4,h-4,color,null,1);fill.graphics.beginFill(0xffffff,.22).drawRect(0,0,w-4,Math.min(2,(h-4)/2)).endFill();put(lag,2,2);put(fill,2,2);visible(lag,trail);
   const label=number?word(game,root,'',{x:w/2,y:h/2,size:12,bold:true,align:'center',baseline:'middle'}):null;
   return {root,label,set(v,total,shown=v,low=false){const k=clamp(total?v/total:0,0,1);fill.scaleX=Math.max(.0001,k);visible(fill,k>0);if(trail)lag.scaleX=Math.max(.0001,clamp(total?shown/total:0,0,1));
     if(label){txt(label,Math.max(0,Math.round(v))+'/'+Math.round(total));label.color=low?C.danger:C.paper;}}};
@@ -44,7 +65,7 @@ export function hudMetrics(game){
   return {scale,screen:{left:0,top:0,right:w,bottom:h,width:w,height:h},safe:{left:L,top:T,right:L+aw,bottom:T+ah,width:aw,height:ah},
     project:(x,y)=>[s.x+x/scale,s.y+y/scale]};
 }
-function cssLayer(game,root){const m=hudMetrics(game);put(root,game.screen.x,game.screen.y);root.scaleX=root.scaleY=1/m.scale;return m;}
+function cssLayer(game,root){const m=hudMetrics(game);put(root,game.screen.x,game.screen.y);root.scaleX=root.scaleY=1/m.scale;const f=textFactor(m.scale);if(root._textFactor!==f){root._textFactor=f;rescaleLabels(root,f);}return m;}
 const hitBox=(x,y,width,height)=>({x,y,width,height});
 export function touchLayout(safe,ids){
   const {left,top,right,bottom,width,height}=safe,short=height<470;
@@ -92,13 +113,17 @@ export function createHud(game,{touch=false,semantics}={}){
   const horse=add(me,'horse'),horseTitle=word(game,horse,'',{x:8,y:0,size:12,color:C.muted}),pace=word(game,horse,'',{x:200,y:0,size:12,align:'right',color:C.gold});
   const horseHp=gauge(game,horse,'horse-hp',194,12,C.horse,{number:true}),horseSt=gauge(game,horse,'horse-st',194,6,C.st);
   put(horse,0,79);put(horseHp.root,8,16);put(horseSt.root,8,31);
-  const skills=add(equipment,'skills'),slots=add(equipment,'slots'),modeLine=word(game,keys,'',{size:12,bold:true,align:'right',color:C.gold});
-  const keyLabels=Array.from({length:15},(_,i)=>word(game,keys,'',{y:19+i*17,size:12,align:'right'}));
+  const skills=add(equipment,'skills'),slots=add(equipment,'slots');
+  const keyFrame=add(keys,'hint-frame'),mode=add(panels,'modes'),modeFrame=add(mode,'mode-frame'),modeLine=word(game,mode,'',{size:12,bold:true,align:'right',baseline:'middle',color:C.gold});
+  let keyWidth=220,modeWidth=220,keySignature='',modeSignature='';
+  const keyLabels=Array.from({length:15},(_,i)=>word(game,keys,'',{x:-8,y:6+i*17,size:12,align:'right'}));
   const tell=tag(game,cross,'incoming',280,28,'',{size:14}),cover=tag(game,cross,'recovery',300,26,'',{size:13,color:C.gold});
   const banner=add(root,'banner'),bannerBg=add(banner,'frame'),bannerTitle=word(game,banner,'',{size:42,bold:true,align:'center'}),bannerSub=word(game,banner,'',{size:16,align:'center',color:C.muted});
   const toast=tag(game,root,'feedback',300,26,'',{size:14}),hint=tag(game,root,'click-hint',300,35,'',{size:15}),objective=tag(game,panels,'objective',320,28,'',{size:13,color:C.gold});
-  const pool=Array.from({length:24},()=>({label:word(game,numbers,'',{size:19,bold:true,align:'center',color:C.gold}),life:0,x:0,y:0}));
-  for(const n of pool)visible(n.label,false);
+  const pool=Array.from({length:24},()=>{
+    const root=add(numbers,'floating-number'),back=add(root,'backdrop'),label=word(game,root,'',{size:19,bold:true,align:'center',color:C.gold});
+    visible(root,false);return {root,back,label,life:0,x:0,y:0};
+  });
   for(const n of [tell.root,cover.root,banner,toast.root,hint.root,objective.root])visible(n,false);
   let currentHero=null,meShown=0,plateViews=[],slotViews=[],skillViews=[],bannerTimer=0,toastTimer=0,kind='',layoutKey='';
   function place(force=false){
@@ -107,19 +132,22 @@ export function createHud(game,{touch=false,semantics}={}){
     const short=a.height<440,portrait=a.height>a.width;
     cw=Math.min(touch&&portrait?a.width-24:300,Math.max(132,a.width-(touch&&!portrait?310:42)));
     box(compassBg,cw,34,C.ink,C.edge,.70);put(compass,mid-cw/2,a.top+5);put(needle,cw/2-1,1);
-    box(meBg,210,currentHero?.horse?122:79,C.ink,C.edge,.76);
+    box(meBg,210,currentHero?.horse?122:79,C.ink,C.edge,.86);
     put(me,a.left+8,touch?(portrait?a.top+46:a.top+7):a.bottom-(currentHero?.horse?136:91));
     const sw=Math.max(1,slotViews.length*38-4),aw=Math.max(1,skillViews.length*92-4),w=Math.max(sw,aw);
     visible(equipment,!touch);const scale=touch?1:clamp((a.width-260)/w,.6,1);equipment.scaleX=equipment.scaleY=scale;
     put(equipment,mid-w*scale/2,a.bottom-90*scale);put(slots,(w-sw)/2,42);put(skills,(w-aw)/2,0);
-    put(keys,a.right-14,a.top+Math.max(45,(a.height-245)/2));
+    keyWidth=Math.min(248,Math.max(170,a.width*.24));modeWidth=Math.min(275,Math.max(170,a.width*.27));
+    put(keys,a.right-14,a.top+Math.max(39,(a.height-245)/2));
+    put(mode,a.right-12,a.bottom-34);put(modeLine,-8,14);
+    visible(mode,!touch);
     const cx=m.screen.width/2,cy=m.screen.height/2;put(cross,cx,cy);cross.scaleX=cross.scaleY=short?.78:1;
     const msgW=Math.min(310,a.width-20);tell.resize(msgW,28);cover.resize(msgW,26);
     put(tell.root,-msgW/2,-91);put(cover.root,-msgW/2,62);toast.resize(msgW,26);hint.resize(msgW,35);
     put(toast.root,mid-msgW/2,Math.min(a.bottom-40,cy+82));put(hint.root,mid-msgW/2,cy+46);
     const objW=Math.min(320,a.width-16);objective.resize(objW,28);put(objective.root,mid-objW/2,a.top+(touch&&portrait?174:43));
     put(banner,mid,a.top+(kind==='start'?(short?40:53):a.height*.25));
-    const size=Math.min(kind==='start'?38:64,Math.max(24,a.width*.075));bannerTitle.size=size;put(bannerTitle,0,0);put(bannerSub,0,size+7);
+    const size=Math.min(kind==='start'?38:64,Math.max(24,a.width*.075));setFont(bannerTitle,size);put(bannerTitle,0,0);put(bannerSub,0,size+7);
     const bw=Math.min(a.width-16,Math.max(270,a.width*.52));box(bannerBg,bw,size+30,C.ink,null,.55);put(bannerBg,-bw/2,-3);
     return m;
   }
@@ -153,14 +181,15 @@ export function createHud(game,{touch=false,semantics}={}){
       const meter=gauge(game,node,'progress',80,6,C.st);put(meter.root,4,32);put(node,i*92,0);box(bg,88,40);
       return {root:node,bg,title,note,meter,slot,art:isArt};
     });
-    visible(objective.root,false);visible(exit,false);for(const n of pool){n.life=0;visible(n.label,false);}place(true);
+    visible(objective.root,false);visible(exit,false);for(const n of pool){n.life=0;visible(n.root,false);}place(true);
   }
   function paintCross(selected,prepared,threat,guard,locked,bow,draw,window){
     const steps=Math.round(clamp(draw||0,0,1)*18),k=[selected,prepared,threat,guard,locked,bow,steps,window].join(':');
     if(shape._paint===k)return;shape._paint=k;const g=shape.graphics;g.clear();
     for(const [l,points] of Object.entries(CROSS)){
       const active=l===(prepared??selected),danger=l===threat;
-      polygon(g,points,danger?C.danger:active?C.paper:0xffffff,bow ? .25 : active||danger ? .95 : .24);
+      polygon(g,points.map(([x,y])=>[x*1.055,y*1.16]),0x0c0806,.74);
+      polygon(g,points,danger?C.danger:active?C.paper:0xcbbba3,bow ? .25 : active||danger ? .98 : .36);
       if(l===prepared)line(g,PREP[l],C.gold,2.3);
     }
     g.beginFill(locked?C.danger:C.paper,.95).drawCircle(0,0,2.5).endFill();
@@ -170,6 +199,24 @@ export function createHud(game,{touch=false,semantics}={}){
 
 
   const arrows={R:'→',L:'←',O:'↑',T:'↓'};
+  // Use the measured native label width once glyph preparation completes. An initial
+  // estimate avoids a backdrop flashing too wide while the atlas is still preparing.
+  function compactFrame(frame,labels,cap,height,minimum,measured=false){
+    const widthOf=label=>{
+      if(measured&&Number.isFinite(label.width)&&label.width>0)return label.width;
+      const size=labelLayout.get(label)?.cssSize??12;
+      return [...label.text].reduce((n,c)=>n+size*(c.codePointAt(0)>255?1:.58),0);
+    };
+    const w=Math.ceil(clamp(Math.max(0,...labels.map(widthOf))+20,minimum,cap));
+    box(frame,w,height,C.ink,C.edge,.76);put(frame,-w,0);
+  }
+  function refreshHintFrame(frame,labels,cap,height,min,signature,isCurrent){
+    compactFrame(frame,labels,cap,height,min);
+    // The promise is tied to this text revision, not refreshed every battle tick.
+    Promise.allSettled(labels.map(label=>label.ready)).then(()=>{
+      if(!root.isDisposed&&isCurrent(signature))compactFrame(frame,labels,cap,height,min,true);
+    });
+  }
   function update(dt,fight,{line:selected,preparedLine,incoming,guard,locked,project,yaw=0,input={}}){
     const h=fight.hero,m=place(),a=m.safe;
     visible(panels,!input.hidePanels);
@@ -189,7 +236,7 @@ export function createHud(game,{touch=false,semantics}={}){
     });
     function bearing(node,x,z,on){
       const off=wrap(Math.atan2(x-h.x,z-h.z)-yaw),p=center-off*180/Math.PI*2;
-      visible(node,on&&p>6&&p<cw-6);put(node,p,30);node.alpha=Math.abs(off)>Math.PI/2?.5:1;
+      visible(node,on&&p>6&&p<cw-6);put(node,p,30);node.alpha=Math.abs(off)>Math.PI/2 ? .5 : 1;
     }
     visible(exit,false);if(fight.exit)bearing(exit,fight.exit.x,fight.exit.z,!plateViews.some(p=>p.man.alive));
     for(const p of plateViews){
@@ -210,15 +257,25 @@ export function createHud(game,{touch=false,semantics}={}){
       txt(s.note,note||(wait>0?String(Math.ceil(wait)):''));fit(s.note,80,10,8);
       const value=s.art?(item.rage?Math.min(1,h.rage/item.rage):1):1-clamp(wait/item.cool,0,1);
       s.meter.set(value,1);const ready=s.art&&value>=1&&wait<=0;
-      box(s.bg,88,40,note?0x302923:ready?0x735132:C.ink,ready?C.gold:C.edge,.86);s.root.alpha=note?.7:1;
+      box(s.bg,88,40,note?0x302923:ready?0x735132:C.ink,ready?C.gold:C.edge,.86);s.root.alpha=note ? .75 : 1;
     }
-    visible(keys,!touch&&!!input.keyHints);
+    visible(keys,!touch&&!!input.keyHints);visible(mode,!touch);
     if(!touch){
-      txt(modeLine,'B '+(input.combo?t('combo'):t('single'))+'  V '+(input.view==='first'?t('viewFirst'):t('viewThird'))+(locked?'  '+t('lock'):''));
+      const modeText='B '+(input.combo?t('combo'):t('single'))+'  V '+(input.view==='first'?t('viewFirst'):t('viewThird'))+(locked?'  '+t('lock'):'');
+      const nextMode=[m.scale,modeWidth,modeText].join(':');
+      if(nextMode!==modeSignature){
+        modeSignature=nextMode;txt(modeLine,modeText);fit(modeLine,modeWidth-6,12,10);
+        refreshHintFrame(modeFrame,[modeLine],modeWidth,28,92,nextMode,s=>s===modeSignature);
+      }
       const motion=h.mounted?[['W S',t('horseRein')],['A D',t('horseSteer')],['Shift',t('horseGallop')]]:[['F',t('kick')],['Space',t('jump')],['Shift',t('sprint')]];
       const rows=[['X',t('art')],...(ARTS[h.r.offArt]?[['Z',t('artShield')]]:[]),['R T',t('skills')],...motion,['1 2',t('weapons')],['3',t('dressing')]];
       if(h.horse)rows.unshift(['E',h.mounted?t('getDown'):t('mountUp')],['U',t('callHorse')]);rows.push(['Tab',t('hidePanels')],['Esc',t('menu')]);
-      txt(keyLabels[0],t('keysTitle')+' · Ctrl+H');keyLabels.slice(1).forEach((l,i)=>{const r=rows[i];txt(l,r?r.join('  '):'');visible(l,!!r);});
+      const labels=[t('keysTitle')+' · Ctrl+H',...rows.map(r=>r.join('  '))],nextKeys=[m.scale,keyWidth,input.keyHints,...labels].join(':');
+      if(nextKeys!==keySignature){
+        keySignature=nextKeys;keyLabels[0].color=C.gold;
+        keyLabels.forEach((l,i)=>{txt(l,labels[i]??'');fit(l,keyWidth-8,12,10);visible(l,i<labels.length);});
+        refreshHintFrame(keyFrame,keyLabels.slice(0,labels.length),keyWidth,labels.length*17+12,110,nextKeys,s=>s===keySignature);
+      }
     }
     const bow=h.regiment==='archer'&&!h.knife,guardLine=bow?null:incoming?.line,window=recoveryGuardWindow(h);
     paintCross(selected,preparedLine,guardLine,guard,locked,bow,h.draw?Math.min(1,h.draw.t/h.r.bow.draw):0,window);
@@ -233,7 +290,7 @@ export function createHud(game,{touch=false,semantics}={}){
     if(window){txt(cover.label,t(h.prev?.guard?'guardRecoveryRetry':'guardRecovery'));fit(cover.label,cover.w,13,10);}
     if(bannerTimer>0){bannerTimer-=dt;visible(banner,bannerTimer>0);}
     if(toastTimer>0){toastTimer-=dt;visible(toast.root,toastTimer>0);}
-    for(const n of pool)if(n.life>0){n.life-=dt;visible(n.label,n.life>0);if(n.life>0){put(n.label,n.x,n.y-(.9-n.life)*32);n.label.alpha=Math.min(1,n.life*4);}}
+    for(const n of pool)if(n.life>0){n.life-=dt;visible(n.root,n.life>0);if(n.life>0){put(n.root,n.x,n.y-(.9-n.life)*32);n.root.alpha=Math.min(1,n.life*4);}}
   }
   const handles=[];
   if(semantics)for(const [id,node,label,value] of [['hp',hp.root,()=>t('health'),()=>currentHero?.hp],['st',st.root,()=>t('stamina'),()=>currentHero?.st]]){
@@ -245,7 +302,8 @@ export function createHud(game,{touch=false,semantics}={}){
     banner(value,sub='',seconds=2.2,type=''){kind=type;bannerTimer=seconds;txt(bannerTitle,value);txt(bannerSub,sub);bannerTitle.color=kind==='lose'?C.danger:C.gold;visible(banner,true);place(true);},
     hideBanner(){visible(banner,false);bannerTimer=0;},
     toast(value,type=''){txt(toast.label,value);fit(toast.label,toast.w,14,10);toast.label.color=type==='bad'?C.danger:type==='good'?C.good:C.paper;toastTimer=.9;visible(toast.root,true);},
-    number(at,value,type=''){if(!at)return;const n=pool.find(x=>x.life<=0)??pool.reduce((a,b)=>a.life<b.life?a:b);n.x=at[0];n.y=at[1];n.life=.9;visible(n.label,true);txt(n.label,value);n.label.color=type.includes('bad')?C.danger:type==='horse'?C.horse:type.includes('crit')?C.gold:C.paper;put(n.label,n.x,n.y);n.label.alpha=1;},
+    number(at,value,type=''){if(!at)return;const n=pool.find(x=>x.life<=0)??pool.reduce((a,b)=>a.life<b.life?a:b);n.x=at[0];n.y=at[1];n.life=.9;visible(n.root,true);txt(n.label,value);n.label.color=type.includes('bad')?C.danger:type==='horse'?C.horse:type.includes('crit')?C.gold:C.paper;
+      const w=Math.min(92,Math.max(28,String(value).length*11+10));box(n.back,w,23,0x0c0907,null,.61);put(n.back,-w/2,-1);put(n.root,n.x,n.y);n.root.alpha=1;},
     hint(value){txt(hint.label,value);fit(hint.label,hint.w,15,10);visible(hint.root,!!value);},
     snapshot(){return {visible:root.visible,skillCount:skillViews.length,slotCount:slotViews.length,compass:compass.visible,plates:plateViews.length};},
     touch,dispose(){stopResize();for(const h of handles)h.remove();root.dispose();}
@@ -278,8 +336,9 @@ export function createTouchControls(game,input,{onPause=()=>{},semantics}={}){
     display[id]={node,bg,label,sub,key,enabled:true,w:48,h:48};node.touchEnabled=true;
   }
   function style(id,{active=false,ready=false,waiting=false,disabled=false,highlight=false}={}){
-    const d=display[id],color=disabled?0x393530:active?0x98743e:ready?0x655137:waiting?0x3c342c:0x34281e;
-    box(d.bg,d.w,d.h,color,highlight||active||ready?C.gold:C.edge,.9);d.node.alpha=disabled?.48:1;
+    const d=display[id],base=id==='attack'?0x61291e:id==='guard'?0x294e45:id==='pause'?0x4e4030:0x34281e;
+    const color=disabled?0x393530:active?0xa47b42:ready?0x655137:waiting?0x3c342c:base;
+    box(d.bg,d.w,d.h,color,highlight||active||ready?C.gold:C.edge,.9);d.node.alpha=disabled ? .48 : 1;
     d.enabled=!disabled;d.node.touchEnabled=!disabled;d.label.color=disabled?C.muted:C.paper;
   }
   const markDevice=()=>{st.lastDevice='touch';};
@@ -325,7 +384,7 @@ export function createTouchControls(game,input,{onPause=()=>{},semantics}={}){
     movement.setGeometry({radius:50/m.scale,deadZone:0});
     for(const [id] of spec){
       const d=display[id],v=b[id];visible(d.node,!!v);if(!v){d.control?.setEnabled(false);continue;}
-      targetBox(d.node,v);d.w=v.width;d.h=v.height;put(d.label,v.width/2,v.height/2);put(d.sub,v.width/2,v.height-11);d.label.size=14;style(id);
+      targetBox(d.node,v);d.w=v.width;d.h=v.height;put(d.label,v.width/2,v.height/2);put(d.sub,v.width/2,v.height-11);setFont(d.label,14);style(id);
       d.control?.setEnabled(shown);
     }
   }
