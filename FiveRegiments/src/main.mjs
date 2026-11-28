@@ -45,6 +45,7 @@ import { advanceVirtualFrame } from './view/virtual-clock.mjs';
 import { applyLook, buildPlace, describePlace } from './view/stage.mjs';
 import { assetDownloads, startupSpan, startupTrace, titleAssetUrls } from './view/asset-downloads.mjs';
 import { prepareTitlePrograms } from './view/title-programs.mjs';
+import { createFrameProfile } from './view/frame-profile.mjs';
 
 const params = new URLSearchParams(location.search);
 const canvas = document.querySelector('#stage');
@@ -126,14 +127,17 @@ async function main() {
   const semantics = createUiSemantics();
   const resolution = useFixedWorldResolution(globalThis.navigator) ? null : createDynamicResolution3D();
   let lastQuality = app.quality;
+  const frameProfile = params.has('frame-profile') ? createFrameProfile() : null;
   let session;
   try { session = await play3dAttached({
     parent: document.querySelector('#ui'),
     width: 1280, height: 720, portrait: { width: 540, height: 960 },
     fit: 'expand', uiScale: { min: 1, max: 1.25 },
     renderMode: 'on-demand', audio: false, pixelRatio: Math.min(2, Math.max(1.5, globalThis.devicePixelRatio || 1)), semantics, onError: fail,
+    ...(frameProfile ? {onFrameTiming: sample=>frameProfile.record('play',sample)} : {}),
     world: () => ({
       renderer, scene, camera, autoResize: false, updateParticles: false, onError: fail,
+      ...(frameProfile ? {onFrameTiming: sample=>frameProfile.record('world',sample)} : {}),
       onUpdate(dt) {
         if (lastQuality !== app.quality) { lastQuality = app.quality; resolution?.reset(); }
         resolution?.update(dt);
@@ -1042,13 +1046,13 @@ async function main() {
           if (screens.current === 'title' || screens.current === 'choose') {
             const panel = screens.view?.visibleRect('menu-panel');
             const focus = f === null || f === undefined ? null : lineup.game.men[f];
-            const shot = previewFrame({ screen: { x: 0, y: 0, width: ui.browser.frame.width, height: ui.browser.frame.height }, panel, focus, clock: fixedStep ? 0 : clock });
+            const shot = previewFrame({ screen: { x: 0, y: 0, width: ui.browser.frame.width, height: ui.browser.frame.height }, panel, focus, clock: fixedStep || reduceMotion.matches ? 0 : clock });
             // Fixed capture mode uses a repeatable menu camera independent of load time.
             if (fixedStep) cam.snap(shot.from, shot.to);
-            else cam.frame(dt, shot.from, shot.to, shot.speed);
+            else cam.frame(dt, shot.from, shot.to, shot.speed,{reducedMotion:reduceMotion.matches});
           } else if (f !== null && f !== undefined) {
             const m = lineup.game.men[f];
-            cam.frame(dt, [m.x + 0.9, 1.8, m.z + (m.mounted ? 4.6 : 3)], [m.x, m.mounted ? 1.65 : 1.2, m.z], 3);
+            cam.frame(dt, [m.x + 0.9, 1.8, m.z + (m.mounted ? 4.6 : 3)], [m.x, m.mounted ? 1.65 : 1.2, m.z], 3,{reducedMotion:reduceMotion.matches});
           }
         }
       }
@@ -1056,6 +1060,7 @@ async function main() {
 
   window.egretGame = {
     status, uiGame: ui, semantics, tester, hud, touch, input, startupTrace,
+    ...(frameProfile ? {frameProfile: ()=>frameProfile.snapshot()} : {}),
     ...(params.has('presentation-profile') ? { presentationStats: () => fx.presentationStats() } : {}),
     get game() {
       return game;

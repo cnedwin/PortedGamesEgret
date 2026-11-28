@@ -2,10 +2,12 @@
 // view. It eases toward where it should be, kicks on heavy blows and pulls in a little while he guards, and it
 // does not pass through the posts of the field.
 import { floorAt } from '../sim/terrain.mjs';
+import { createCinematicFrame } from './cinematic-frame.mjs';
 
 const wrap = (a) => Math.atan2(Math.sin(a), Math.cos(a));
 
 export function createCameraRig(camera) {
+  const staging = createCinematicFrame();
   const rig = {
     at: [0, 1.6, -4],
     look: [0, 1.4, 0],
@@ -21,6 +23,8 @@ export function createCameraRig(camera) {
    * Returns the yaw the camera settled on (locking turns it).
    */
   rig.update = (dt, { hero, yaw, pitch, target, targetYaw, place, guard = false, dead = false, finish = 0, mounted = false, view = 'third', zoom = 1, eye = null, aimingBow = false, reducedMotion = false }) => {
+    // The interactive view never inherits motion from a menu camera.
+    staging.clear();
     if (target) {
       const want = targetYaw ?? Math.atan2(target.x - hero.x, target.z - hero.z);
       yaw += wrap(want - yaw) * (1 - Math.exp(-dt * 7));
@@ -105,16 +109,13 @@ export function createCameraRig(camera) {
     }
   };
   /** A camera somewhere fixed, for the title and between fights. */
-  rig.frame = (dt, from, to, rate = 2) => {
-    const k = 1 - Math.exp(-dt * rate);
-    for (let i = 0; i < 3; i++) {
-      rig.at[i] += (from[i] - rig.at[i]) * k;
-      rig.look[i] += (to[i] - rig.look[i]) * k;
-    }
+  rig.frame = (dt, from, to, rate = 2, options = {}) => {
+    staging.update(rig.at, rig.look, from, to, dt, rate, options);
     camera.setPosition(rig.at[0], rig.at[1], rig.at[2]);
     camera.lookAt(rig.look[0], rig.look[1], rig.look[2]);
   };
   rig.snap = (from, to) => {
+    staging.clear();
     rig.at = [...from];
     rig.look = [...to];
     rig.bowFrame = 0;

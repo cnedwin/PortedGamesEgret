@@ -6,6 +6,7 @@ import { recoveryGuardWindow } from './sim/fight.mjs';
 import { t, say } from './i18n.mjs';
 import { noticeOpacity } from './view/presentation-envelope.mjs';
 import { FEEDBACK_LIFETIME, floatingFeedback, feedbackLook } from './view/hud-feedback.mjs';
+import { sceneBannerOpacity, sceneBannerOutline } from './view/scene-presentation.mjs';
 
 const C={ink:0x1e1812,edge:0xa98b51,gold:0xf4dca3,paper:0xf7eddb,muted:0xd5c5ae,hp:0xad3b31,st:0xceac59,horse:0x79a882,danger:0xff604a,good:0x87dfa5};
 const clamp=(v,a,b)=>Math.min(b,Math.max(a,v)),wrap=a=>Math.atan2(Math.sin(a),Math.cos(a));
@@ -91,6 +92,18 @@ function feedbackPlate(node,look){
   polygon(g,[[-w/2+7,1],[w/2-7,1],[w/2-1,7],[w/2-1,h-7],[w/2-7,h-1],[-w/2+7,h-1],[-w/2+1,h-7],[-w/2+1,7]],fill,.88);
   line(g,[[-w/2+9,2],[w/2-9,2]],0xffffff,1,.16);
 }
+function bannerPlaque(node,w,h){
+  const key='scene-banner:'+w+':'+h;
+  if(node._paint===key)return;node._paint=key;
+  const g=node.graphics;g.clear();
+  polygon(g,sceneBannerOutline(w,h),0x8e7045,.82);
+  polygon(g,sceneBannerOutline(w-2,h-2).map(([x,y])=>[x+1,y+1]),0x201914,.84);
+  const ornament=Math.min(w*.23,100);
+  line(g,[[12,5],[12+ornament,5]],C.gold,1,.62);
+  line(g,[[w-12-ornament,5],[w-12,5]],C.gold,1,.62);
+  line(g,[[12,h-5],[12+ornament,h-5]],0x8e7045,1,.68);
+  line(g,[[w-12-ornament,h-5],[w-12,h-5]],0x8e7045,1,.68);
+}
 const CROSS={R:[[18,-8],[43,0],[18,8]],L:[[-18,-8],[-43,0],[-18,8]],O:[[-8,-18],[0,-43],[8,-18]],T:[[-8,18],[0,43],[8,18]]};
 const PREP={R:[[56,-8],[47,0],[56,8]],L:[[-56,-8],[-47,0],[-56,8]],O:[[-8,-56],[0,-47],[8,-56]],T:[[-8,56],[0,47],[8,56]]};
 function itemIcon(node,name){
@@ -138,7 +151,7 @@ export function createHud(game,{touch=false,semantics}={}){
     visible(root,false);return {root,back,label,life:0,x:0,y:0};
   });
   for(const n of [tell.root,cover.root,banner,toast.root,hint.root,objective.root])visible(n,false);
-  let currentHero=null,meShown=0,plateViews=[],slotViews=[],skillViews=[],bannerTimer=0,toastTimer=0,kind='',layoutKey='';
+  let currentHero=null,meShown=0,plateViews=[],slotViews=[],skillViews=[],bannerTimer=0,bannerDuration=0,toastTimer=0,kind='',layoutKey='';
   function place(force=false){
     const m=cssLayer(game,root),a=m.safe,mid=a.left+a.width/2,k=[a.left,a.top,a.width,a.height,touch,currentHero?.horse?1:0].join(':');
     if(!force&&layoutKey===k)return m;layoutKey=k;
@@ -179,7 +192,7 @@ export function createHud(game,{touch=false,semantics}={}){
     const by=start?(touch&&portrait?objY+(objective.root.visible?34:0)+5:a.top+(objective.root.visible?77:43)):a.top+a.height*.25;
     put(banner,bx,by);
     const size=Math.min(start?38:64,Math.max(24,a.width*.075));setFont(bannerTitle,size);put(bannerTitle,0,0);put(bannerSub,0,size+7);
-    fit(bannerSub,bw,16,11);box(bannerBg,bw,size+30,C.ink,null,.55);put(bannerBg,-bw/2,-3);
+    fit(bannerSub,bw,16,11);bannerPlaque(bannerBg,bw,size+30);put(bannerBg,-bw/2,-3);
     return m;
   }
   const stopResize=game.browser.onScreenChange(()=>place(true));
@@ -319,7 +332,7 @@ export function createHud(game,{touch=false,semantics}={}){
     }
     visible(cover.root,window);
     if(window){txt(cover.label,t(h.prev?.guard?'guardRecoveryRetry':'guardRecovery'));fit(cover.label,cover.w,13,10);}
-    if(bannerTimer>0){bannerTimer-=dt;visible(banner,bannerTimer>0);}
+    if(bannerTimer>0){bannerTimer=Math.max(0,bannerTimer-dt);banner.alpha=sceneBannerOpacity(bannerTimer,bannerDuration,!!reducedMotion?.matches);visible(banner,bannerTimer>0);}
     if(toastTimer>0){toastTimer=Math.max(0,toastTimer-dt);const alpha=noticeOpacity(toastTimer);if(toast.root.alpha!==alpha)toast.root.alpha=alpha;visible(toast.root,toastTimer>0);}
     for(const n of pool)if(n.life>0){n.life=Math.max(0,n.life-dt);visible(n.root,n.life>0);if(n.life>0){
       const shown=floatingFeedback(FEEDBACK_LIFETIME-n.life,!!reducedMotion?.matches);
@@ -333,8 +346,8 @@ export function createHud(game,{touch=false,semantics}={}){
   return {
     root,setup,update,show(on){visible(root,on);if(on)place(true);},
     objective(value){txt(objective.label,value);fit(objective.label,objective.w,13,10);const shown=objective.root.visible;visible(objective.root,!!value);if(shown!==!!value)place(true);},
-    banner(value,sub='',seconds=2.2,type=''){kind=type;bannerTimer=seconds;txt(bannerTitle,value);txt(bannerSub,sub);bannerTitle.color=kind==='lose'?C.danger:C.gold;visible(banner,true);place(true);},
-    hideBanner(){visible(banner,false);bannerTimer=0;},
+    banner(value,sub='',seconds=2.2,type=''){kind=type;bannerTimer=bannerDuration=seconds;txt(bannerTitle,value);txt(bannerSub,sub);bannerTitle.color=kind==='lose'?C.danger:C.gold;banner.alpha=sceneBannerOpacity(seconds,seconds,!!reducedMotion?.matches);visible(banner,seconds>0);place(true);},
+    hideBanner(){visible(banner,false);bannerTimer=bannerDuration=0;},
     toast(value,type=''){txt(toast.label,value);fit(toast.label,toast.w,14,10);toast.label.color=type==='bad'?C.danger:type==='good'?C.good:C.paper;toastTimer=.9;toast.root.alpha=1;visible(toast.root,true);},
     number(at,value,type=''){if(!at)return;const n=pool.find(x=>x.life<=0)??pool.reduce((a,b)=>a.life<b.life?a:b),look=feedbackLook(type,value);n.x=at[0];n.y=at[1];n.life=FEEDBACK_LIFETIME;visible(n.root,true);txt(n.label,value);n.label.color=look.text;
       setFont(n.label,Math.max(10,Math.min(look.size,(look.width-14)/Math.max(1,[...String(value)].length*.66))));feedbackPlate(n.back,look);put(n.label,0,look.height/2);put(n.root,n.x,n.y);
