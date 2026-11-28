@@ -426,13 +426,3 @@ export function createScreens(game,{onLanguage,onError,coarse=false,paragraphCac
     lang:getLanguage
   };
 }
-
-
-
-
-
-
-
-
-
-

@@ -445,4 +445,3 @@ export function createTouchControls(game,input,{onPause=()=>{},semantics}={}){
   return {root,targets,show(on,h){if(h)hero=h;shown=!!on;visible(root,shown);reset();for(const o of owners)o.setEnabled(shown);for(const c of controls)c.setEnabled(shown);place(true);if(hero&&shown)cool(hero);},
     cool,dispose(){shown=false;reset();stopClear();stopResize();for(const o of owners)o.dispose();for(const c of controls)c.dispose();for(const h of handles)h.remove();root.dispose();}};
 }
-

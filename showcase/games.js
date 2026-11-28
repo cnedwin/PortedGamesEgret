@@ -83,14 +83,19 @@ export const GAMES = [
   {
     id: 'regiments', folder: 'FiveRegiments', kind: '3d',
     scenes: [
-      { zh: "王城宫前 · 黄昏以一敌二：陷阵营抡起长斧，迎着骑马冲来的银翎卫，武射史在后", en: "Before the palace · One against two at dusk: the Berserker Battalion raises his long axe at the charging Silver Wing Guard, the Archer behind" },
-      { zh: "竹林古道 · 薄雾里银翎卫骑马冲向武射史", en: "Bamboo path · The Silver Wing Guard rides at the Archer through the mist" },
-      { zh: "卷首 · 五营列阵县城校场", en: "Title · The five regiments drawn up on the county drill ground" },
+      { zh: "卷首 · 五营挺拔列阵与漆木铜饰原生菜单", en: "Title · Five upright regiments and the native lacquer-and-bronze menu" },
+      { zh: "竹林古道 · 雾、竹影与原生战斗 HUD", en: "Bamboo path · Layered fog, bamboo shadows and the native combat HUD" },
+      { zh: "县城校场 · PC 实机战斗画面", en: "County drill ground · Live PC combat view" },
     ],
     zh: "五营争锋", en: "Five Regiments",
     genre: { zh: "第三人称冷兵器对决", en: "Third-person cold-steel duels" },
     summary: { zh: "从羽林卫、虎步、陷阵营、银翎卫、武射史里选一营，技能、天赋、战技和生命值按原作的公告与物品面板，伤害公式按武器和护甲面板推算，一刀一成血、打得有来有回。在校场、桃林、竹林、雪原单挑另外四营，最后在王城宫前以一敌二；银翎卫骑马作战、马上架枪。", en: "Choose one of five regiments; skills, talents, weapon arts and health follow the original's notes and item cards, and a damage formula worked out from the weapon and armour cards makes each blow take about a tenth of a man's health, so fights go back and forth. Beat the other four, then two at once before the palace; the Silver Wing Guard fights from the saddle and couches his ji." },
     features: [
+      {
+        title: { zh: "World3D 原生界面与输入", en: "Native Play interface over World3D" },
+        description: { zh: "透明原生 UI 与 3D 共用帧时钟，具名控件和多屏布局支持键鼠、触屏及手柄输入。", en: "Transparent native UI and 3D share a frame clock; named controls and screen-aware layouts support mouse, keys, touch and gamepad." },
+        source: 'src/screens.mjs',
+      },
       {
         title: { zh: "动作捕捉与反向动力学", en: "Motion capture and inverse kinematics" },
         description: { zh: "每帧把动作捕捉姿态写进骨骼，再叠加反向动力学和腰身扭转；骑手按战马脊骨的位置坐稳。", en: "Each frame the captured pose goes into the bones with inverse kinematics and a waist twist on top; riders sit where the horse’s spine puts the saddle." },
@@ -105,11 +110,6 @@ export const GAMES = [
         title: { zh: "刀光、火花与动态几何", en: "Blade trails, sparks and live geometry" },
         description: { zh: "刀光拖尾和剑气是每帧改写的动态几何；火花、血雾、落花和飘雪由 CPU 与 GPU 粒子发出。", en: "Blade trails and flying cuts are geometry rewritten every frame; sparks, blood mist, petals and snow come from CPU and GPU particles." },
         source: 'src/view/effects.mjs',
-      },
-      {
-        title: { zh: "读刀的对战规则", en: "Fight rules that read the blade" },
-        description: { zh: "刀路、格挡和伤害公式独立于画面，电脑对手按你出刀的方向应对。", en: "Lines of attack, guards and the damage formula live apart from the picture, and the computer answers the line you cut along." },
-        source: 'src/sim/fight.mjs',
       },
       {
         title: { zh: "三档 glTF 模型", en: "glTF models in three sets" },

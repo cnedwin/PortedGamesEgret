@@ -111,4 +111,3 @@ try{
   });
   console.log('Native routed touch: cancellation, 3 contacts, quick guard, pause/resume, mounted reins and charged release verified.');
 }finally{await browser.close();await server.close();}
-

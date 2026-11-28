@@ -15,7 +15,7 @@
 The transparent Play interface is attached to the existing World3D renderer with `play3dAttached`, using a single active frame clock. The renderer retains quality presets, shadows, post-processing and dynamic resolution. Native views use expanded screen fit, portrait dimensions and bounded physical UI size without recreating the world.
 
 浏览器页面只承载画布、引擎语义树与启动失败前的文本。 / The page holds the canvases, engine-managed accessibility projection and pre-start fallback text only.
- 
+
 验收 / Verification: native menu/HUD semantics and layout tests; complete legacy browser flow 21/21 (including one and two opponents, loadout edits, save settings and both languages). Native pointer-lock and CDP touch acceptance also passed (browser automation, not physical phone). The original golden images were retained for the V2 gate; candidate images differed intentionally because of the UI replacement. Details of final visual reference changes and physical acceptance are below.
 
 ## V3 — 美术和画面 · Visual quality

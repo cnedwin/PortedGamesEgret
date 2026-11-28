@@ -118,8 +118,3 @@ finally{
   await browser.close();await server.close();
   report('FiveRegiments native UI acceptance (headless Chromium, SwiftShader)',checks,problems);
 }
-
-
-
-
-
