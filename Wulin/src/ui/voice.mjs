@@ -73,17 +73,16 @@ export function createVoice(storage, synth = globalThis.speechSynthesis, { clips
       if (active !== line) return;
       const context = clips.context;
       const source = context.createBufferSource();
-      const gain = context.createGain();
-      gain.gain.value = settings.volume;
+      const input = clips.createInput('voice', { volume: settings.volume });
       source.buffer = buffer;
-      source.connect(gain).connect(context.destination);
+      source.connect(input.input);
       source.onended = () => {
         source.disconnect();
-        gain.disconnect();
+        input.dispose();
         finish(line);
       };
       line.source = source;
-      line.gain = gain;
+      line.input = input;
       onSpeaking(true);
       source.start();
     } catch {
@@ -114,7 +113,7 @@ export function createVoice(storage, synth = globalThis.speechSynthesis, { clips
       if (Number.isFinite(change.volume)) settings.volume = clampVolume(change.volume);
       try { storage?.setItem(KEY, JSON.stringify(settings)); } catch {}
       if (!settings.on || settings.volume === 0) stop();
-      else if (active?.gain) active.gain.gain.setTargetAtTime(settings.volume, clips.context.currentTime, .04);
+      else if (active?.input) active.input.setVolume(settings.volume, { timeConstant: .04 });
     },
     say,
     /** Warm only the current lineup's calls, without delaying entry or filling the network queue. */

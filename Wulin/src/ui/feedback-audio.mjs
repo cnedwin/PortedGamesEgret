@@ -42,7 +42,7 @@ function createBrush(context) {
   return buffer;
 }
 
-export function createFeedbackAudio(storage, Audio = globalThis.AudioContext ?? globalThis.webkitAudioContext) {
+export function createFeedbackAudio(storage, clips) {
   let on = true;
   let volume = DEFAULT_VOLUME;
   try {
@@ -53,17 +53,13 @@ export function createFeedbackAudio(storage, Audio = globalThis.AudioContext ?? 
     // Unavailable storage leaves the default sound setting in effect.
   }
 
-  let context, master, resuming, brushBuffer;
+  let master, brushBuffer, hidden = globalThis.document?.hidden ?? false;
+  const active = new Set();
   let last = { at: -Infinity, priority: -1, gap: 0 };
 
   function applyVolume() {
     if (!master) return;
-    const gain = master.gain;
-    const now = context.currentTime;
-    if (typeof gain.setTargetAtTime === 'function' && now > 0) {
-      gain.cancelScheduledValues(now);
-      gain.setTargetAtTime(on ? volume : 0, now, .009);
-    } else gain.setValueAtTime(on ? volume : 0, now);
+    master.setVolume(on ? volume : 0, { timeConstant: .009 });
   }
 
   return {
@@ -79,26 +75,17 @@ export function createFeedbackAudio(storage, Audio = globalThis.AudioContext ?? 
         // Preferences can still be changed for this session.
       }
     },
-    unlock(event) {
-      if (!event?.isTrusted || typeof Audio !== 'function') return false;
-      try {
-        if (!context) {
-          context = new Audio();
-          master = context.createGain();
-          master.connect(context.destination);
-          applyVolume();
-        }
-        if (context.state !== 'running' && !resuming) {
-          resuming = context.resume().catch(() => {}).finally(() => { resuming = undefined; });
-        }
-        return context.state === 'running' || !!resuming;
-      } catch {
-        return false;
-      }
+    setHidden(value) {
+      hidden = value;
+      if (!hidden || !clips.context) return;
+      for (const source of active) try { source.stop(clips.context.currentTime); } catch {}
+      last = { at: -Infinity, priority: -1, gap: 0 };
     },
     play(cue, { preview = false } = {}) {
       const sound = Object.hasOwn(CUES, cue) && CUES[cue];
-      if (!on || !volume || !sound || !context || !master || (context.state !== 'running' && !resuming)) return false;
+      const context = clips.context;
+      if (!on || !volume || !sound || hidden || !clips.ready || !context) return false;
+      master ??= clips.createInput('effects', { volume });
       const now = context.currentTime;
       // A result can follow a selection immediately, but repeated actions and notices stay quiet.
       if (!preview && now - last.at < last.gap && sound.priority <= last.priority) return false;
@@ -110,8 +97,9 @@ export function createFeedbackAudio(storage, Audio = globalThis.AudioContext ?? 
           const note = context.createOscillator();
           const duration = decay * life;
           note.frequency.setValueAtTime(frequency * ratio, start);
-          const envelope = connectStrike(context, master, note, start, duration, level * strength, ratio === 1 ? .006 : .003);
-          note.onended = () => { note.disconnect(); envelope.disconnect(); };
+          const envelope = connectStrike(context, master.input, note, start, duration, level * strength, ratio === 1 ? .006 : .003);
+          active.add(note);
+          note.onended = () => { active.delete(note); note.disconnect(); envelope.disconnect(); };
           note.start(start);
           note.stop(start + duration + .004);
         }
@@ -126,8 +114,9 @@ export function createFeedbackAudio(storage, Audio = globalThis.AudioContext ?? 
         filter.frequency.value = frequency;
         filter.Q.value = q;
         source.connect(filter);
-        const envelope = connectStrike(context, master, filter, start, duration, level, .003);
-        source.onended = () => { source.disconnect(); filter.disconnect(); envelope.disconnect(); };
+        const envelope = connectStrike(context, master.input, filter, start, duration, level, .003);
+        active.add(source);
+        source.onended = () => { active.delete(source); source.disconnect(); filter.disconnect(); envelope.disconnect(); };
         source.start(start);
         source.stop(start + duration + .005);
       }

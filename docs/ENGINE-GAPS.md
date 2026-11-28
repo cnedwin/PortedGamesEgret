@@ -4,9 +4,9 @@
 
 Made by `node tools/engine-notes.mjs --write` from the ENGINE-NOTES of the games; do not edit by hand, and `--check` says whether it is out of date. What the engine resolved is copied from the engine's `guide/resolved.json` into [engine-resolved.json](engine-resolved.json) (15 entries). The form of a note is in part 3 of [GAME-STANDARD.md](GAME-STANDARD.md).
 
-24 个游戏、246 条笔记：未解决 62，部分解决 24，游戏侧绕过 7，已写入文档 42，已解决 111。
+24 个游戏、248 条笔记：未解决 63，部分解决 22，游戏侧绕过 7，已写入文档 42，已解决 114。
 
-246 notes from 24 games: 62 open, 24 partly resolved, 7 worked around in the game, 42 documented, 111 resolved.
+248 notes from 24 games: 63 open, 22 partly resolved, 7 worked around in the game, 42 documented, 114 resolved.
 
 ## 1. 引擎已经解决、游戏还标着未解决 · Resolved by the engine, still open in a game
 
@@ -39,7 +39,7 @@ Write the lesson as a card of the engine's guide (`guide/cards` in the engine re
 | `action-control-outside-release` | Rally#6 原生按钮拖出后释放仍激活 · Native action activates on release outside | 未解决 · open |
 | `action-release-inside-policy` | SnowTemple#6 菜单 ActionControl 越界松手仍激活 · Menu actions activate after releasing outside | 未解决 · open |
 | `animation-retarget-rigs` | FiveRegiments#4 `retargetAnimationClip3D` 不处理朝向不同的骨架，也不能截段、去根转、镜像 · `retargetAnimationClip3D` takes no account of rigs facing different ways, and cannot cut, still the root or mirror | 未解决 · open |
-| `audio-custom-source-ducking-spatial-filter` | Wulin#3 声音混音与定位 · Audio mixing and localization | 未解决 · open |
+| `audio-custom-source-ducking-spatial-filter` | Wulin#3 声音混音与定位 · Audio mixing and localization | 部分解决 · partly |
 | `body-angle-degrees` | LubanBridge#2 刚体的 `angle` 是角度，文档和类型都没说 · A body's `angle` is in degrees, which neither the documents nor the types say | 未解决 · open |
 | `browser-game-css-fit-pixel-ratio` | FengshenChronicle#5 固定 DPR 与 CSS 放大后的画质 · Fixed DPR and CSS-upscaled field quality | 已在游戏侧绕过 · worked around |
 | `burst-layer` | OperaDrums#20 `game.burst` 没有图层 · `game.burst` has no layer | 未解决 · open |
@@ -54,19 +54,17 @@ Write the lesson as a card of the engine's guide (`guide/cards` in the engine re
 | `instanced-lod` | TeaHorseRoad#2 实例网格没有距离剔除和 LOD · No distance culling or LOD for instanced meshes | 部分解决 · partly |
 | `managed-editor-focus` | InquestScrolls#12 笔录托管编辑器创建和失焦 · Managed editor creation and blur | 已在游戏侧绕过 · worked around |
 | `mouse-right-button` | LubanBridge#5 `web/input` 的鼠标输入只认左键 · The mouse input of `web/input` knows only the left button | 未解决 · open |
-| `native-file-and-choice-controls` | Wulin#4 文件交换与原生表单 · File exchange and native forms | 部分解决 · partly |
 | `native-scrolling` | PeachCreek#2 经营单子的原生滚动 · Native scrolling for county inspectors | 部分解决 · partly |
-| `native-toast-placement-contrast` | Wulin#6 原生通知位置与配色 · Native toast placement and contrast | 部分解决 · partly |
 | `native-ui-artwork-slot` | LoveElective#5 运行时生成插画的视图挂载点 · Native view mount slots for generated artwork | 未解决 · open |
 | `native-ui-dense-spine-frame-time` | LanternShadows#9 百个 Spine 角色与原生 HUD 的手机密集帧 · Dense mobile frames with 100 Spine puppets and native HUD | 部分解决 · partly |
 | `native-ui-font-style` | LoveElective#4 原生短文字的字体控制和就绪 · Native short-label typography and readiness | 部分解决 · partly |
 | `native-ui-hover-style` | LoveElective#6 高阶原生 View 的悬停皮肤 · Declarative hover styling | 未解决 · open |
+| `native-view-image-failure-recovery` | Wulin#8 数据视图图片失败后的恢复 · Recovery from native view image failures | 未解决 · open |
 | `nav-agent-forward-axis` | TeaHorseRoad#27 导航体转身以 -Z 为前方 · A navigation agent turns with -Z as its front | 未解决 · open |
 | `navmesh-heightfield-holes` | TeaHorseRoad#28 从高度场铺导航网格：只能是一块高度场，洞只按顶点挖 · A navigation mesh from a height field takes one field, and holes go by vertices | 未解决 · open |
 | `notes-parser-crlf` | FPS#10 引擎笔记工具不能识别 CRLF 标题 · Engine notes CLI misses CRLF headings | 未解决 · open |
 | `on-demand-rendering` | NineProvinces#5 画面不变时帧循环也每帧整屏合成 · The frame loop composites the whole stage every frame even when nothing changes | 部分解决 · partly |
 | `overlay-scroll-content-pan` | SnowTemple#7 3D 原生叠加层滚动控件缺少手指拖动内容 · Native 3D overlay scroll control lacks direct content panning | 未解决 · open |
-| `paragraph-cache-budget` | Wulin#1 长名册与弹窗的段落缓存上限 · Paragraph capacity in rosters and dialogs | 部分解决 · partly |
 | `paragraph-image-size-limit` | InquestScrolls#11 段落图像超过尺寸上限 · Paragraph image exceeds the size limit | 已在游戏侧绕过 · worked around |
 | `particle-burst-fraction` | SandScroll#2 粒子 `burst` 传小数时报"选项无效"，并让整个帧循环停下 · A fractional `burst` count reports invalid options and stops the frame loop | 未解决 · open |
 | `particles-without-map` | FiveRegiments#2 粒子不给贴图时是方块 · Particles without a map are squares | 未解决 · open |
@@ -85,6 +83,7 @@ Write the lesson as a card of the engine's guide (`guide/cards` in the engine re
 | `radial-gradient-triangles` | MechanismCity#6 径向渐变的三角形很多 · Radial gradients cost many triangles | 未解决 · open |
 | `save-update-return` | PeachCreek#6 存档更新与预制绘图对象 · Save updates and convenience drawing objects | 部分解决 · partly |
 | `screen-verifier-state-coverage` | TaiwanMahjong#12 多螢幕 CLI 只能檢查啟動狀態 · Multi-screen CLI is limited to the launch state | 未解决 · open |
+| `secondary-pointer-drag` | Wulin#7 次要鼠标键的镜头拖动 · Secondary-button camera drag | 未解决 · open |
 | `semantic-bounds-transform` | PeachCreek#1 变换和裁剪后的语义区域 · Semantic bounds after transforms and clipping | 部分解决 · partly |
 | `semantic-button-pressed-state` | Rally#5 原生语义按钮没有按住状态 · A native semantic button cannot report its held state | 未解决 · open |
 | `semantic-projection-resize` | LanternShadows#6 扩展画布的语义投影尺寸 · Semantic projection on an expanding canvas | 已在游戏侧绕过 · worked around |
@@ -151,4 +150,4 @@ Write the lesson as a card of the engine's guide (`guide/cards` in the engine re
 | [StarBanner](../StarBanner/ENGINE-NOTES.md) | 11 | 1 | 0 | 0 | 4 | 6 | 0 | `0e7b293` |
 | [TaiwanMahjong](../TaiwanMahjong/ENGINE-NOTES.md) | 12 | 4 | 0 | 0 | 3 | 5 | 0 | `13d70b7` |
 | [TeaHorseRoad](../TeaHorseRoad/ENGINE-NOTES.md) | 31 | 6 | 1 | 0 | 7 | 17 | 0 | `2fbe556` |
-| [Wulin](../Wulin/ENGINE-NOTES.md) | 6 | 1 | 3 | 0 | 0 | 2 | 0 | `39560b3` |
+| [Wulin](../Wulin/ENGINE-NOTES.md) | 8 | 2 | 1 | 0 | 0 | 5 | 0 | `dfd8cc6` |

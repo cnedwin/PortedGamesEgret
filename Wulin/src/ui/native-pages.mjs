@@ -14,18 +14,20 @@ import { BOOK_LEVEL, TEACH_LEVEL, bookOffers, commonArts, heldArts } from '../co
 import { SEAT_PLOTS } from '../core/seat-layout.mjs';
 import { SHOP_LIMIT, beds, ledger, membersOf, openingPeaceYears, openingProtection, placesOf, residents, strength, upgradeAvailability, usedCells } from '../core/world.mjs';
 import { prologue } from './opening.mjs';
-import { text, button, row, col, scroll, image, bar, field, choice } from './native-kit.mjs';
+import { text, button, row, col, scroll, image, bar, field, choice, COLORS, TITLE_FONT, commandSeal } from './native-kit.mjs';
 
-const C = { ink: 0x202a26, dark: 0x23302b, paper: 0xf3edde, muted: 0x6c6658, gold: 0x88612f, goldLight: 0xe8cb8c, red: 0x8e3d30, green: 0x38604f, line: 0xb8a78b, night: 0x15221f };
-const SERIF = 'SimSun';
+const C={...COLORS,red:COLORS.vermillion,green:COLORS.jade,line:COLORS.edge,night:COLORS.deep};
+const SERIF=TITLE_FONT;
 const n = value => Math.round(value ?? 0).toLocaleString('en-US');
 const heading = (title, props={}) => text(title,{size:24,height:34,bold:true,fontFamily:SERIF,color:C.ink,...props});
 const caption = (value, props={}) => text(value,{size:15,height:46,lines:2,color:C.muted,...props});
 const copy = (value, lines=2, props={}) => text(value,{size:17,height:Math.max(30,Math.ceil((props.size??17)*1.5)*lines+2),lines,color:C.ink,...props});
-const action = (label,act,data={},props={}) => button(label, act, data, {height:48, ...props});
-const tab = (label,act,data,active,props={}) => action(label,act,data,{role:'tab',selected:active,color:active?C.gold:C.dark,textColor:C.paper,border:{color:active?C.goldLight:0x526157,width:1},...props});
-const primary = (label,act,data={},props={}) => action(label,act,data,{kind:'primary',color:C.gold,textColor:C.paper,border:{color:C.goldLight,width:1},...props});
-const warn = (label,act,data={},props={}) => action(label,act,data,{kind:'danger',color:C.red,textColor:C.paper,...props});
+const action = (label,act,data={},props={}) => button(label, act, data, {kind:'paper',height:48, ...props});
+const tab = (label,act,data,active,props={}) => action(label,act,data,{role:'tab',selected:active,color:active?C.gold:C.wash,textColor:active?C.cream:C.ink,border:{color:active?C.goldLight:C.edge,width:active?2:1},...props});
+const inkTab=(label,act,data,active,props={})=>tab(label,act,data,active,{color:active?C.gold:C.dark,textColor:C.cream,border:{color:active?C.goldLight:0x76865e,width:active?2:1},...props});
+const sceneAction=(label,act,data={},props={})=>action(label,act,data,{kind:'scene',...props});
+const primary = (label,act,data={},props={}) => action(label,act,data,{kind:'primary',color:C.gold,textColor:C.cream,border:{color:C.goldLight,width:2},...props});
+const warn = (label,act,data={},props={}) => action(label,act,data,{kind:'danger',color:C.red,textColor:C.cream,...props});
 const facts = (label,value) => row([text(label,{size:15,width:'40%',height:'fill',color:C.muted}),copy(String(value),2,{width:'fill',height:'fill',bold:true})],{height:48,gap:8});
 const listRows = (items, empty='暂无记录。') => items.length?items:[caption(empty)];
 const transparent = (children, props={}) => col(children,{layout:'free',width:'100%',height:'100%',...props});
@@ -51,8 +53,18 @@ const plotLabel=i=>'第 '+(i+1)+' 块地 · '+(SEAT_PLOTS[i].x<0?'西侧':'东�
 function layouts(build){return {root:build('wide'),portrait:build('portrait'),tablet:build('tablet'),tabletPortrait:build('tabletPortrait')};}
 const upright=mode=>mode==='portrait'||mode==='tabletPortrait';
 const large=mode=>mode==='tablet'||mode==='tabletPortrait';
+function framedHeading(part){
+  return row([commandSeal({width:30,height:30}),{...part,width:'fill',height:38,color:C.cream,bold:true,fontWeight:700},col([],{width:5,height:27,color:C.vermillion,semantic:false})],
+    {height:46,padding:4,gap:7,color:C.deep,card:true,border:{color:C.goldLight,width:1}});
+}
 function windowPanel(children, mode, {staged=false}={}) {
-  return col(children,{card:true,color:C.paper,border:{color:C.line,width:1},padding:10,gap:8,
+  const [first,...rest]=children;
+  let content=children;
+  if(first?.type==='text')content=[framedHeading(first),...rest];
+  else if(first?.type==='panel'&&first.scroll&&first.children?.[0]?.type==='text'){
+    content=[{...first,children:[framedHeading(first.children[0]),...first.children.slice(1)]},...rest];
+  }
+  return col(content,{card:true,color:C.paper,alpha:1,border:{color:C.goldLight,width:2},padding:9,gap:8,
     width:staged?(upright(mode)?'96%':large(mode)?440:350):upright(mode)?'96%':'94%',
     height:staged?(upright(mode)?'53%':large(mode)?'72%':'62%'):(large(mode)||upright(mode)?'72%':'64%'),
     anchor:staged&&!upright(mode)?'bottom-right':'bottom',y:61,x:staged&&!upright(mode)?8:0});
@@ -64,15 +76,16 @@ function pageHeader(title,description,body,mode,{actions=[]}={}) {
 
 function title(ctx,mode) {
   const {ui,music}=ctx, narrow=upright(mode), short=mode==='wide';
-  const lang=row([tab('中文','language',{language:'zh'},ui.language!=='en'),tab('English','language',{language:'en'},ui.language==='en')],{height:48,gap:5,role:'tablist',width:'fill'});
+  const lang=row([inkTab('中文','language',{language:'zh'},ui.language!=='en'),inkTab('English','language',{language:'en'},ui.language==='en')],{height:48,gap:5,role:'tablist',width:'fill'});
   return transparent([backdrop(ctx,'title',mode),col([scroll([
-    text('大昭 · 承和元年',{size:15,height:short?24:27,color:C.goldLight,fontFamily:SERIF}),
-    text('武林天下',{size:large(mode)?56:short?40:44,height:short?54:76,color:C.paper,fontFamily:SERIF,bold:true}),
+    row([commandSeal({width:34,height:34}),text('大昭 · 承和元年',{size:15,height:34,color:C.goldLight,fontFamily:SERIF,width:'fill',bold:true})],{height:34,gap:8}),
+    text('武林天下',{size:large(mode)?58:short?42:46,height:short?54:76,color:C.cream,fontFamily:SERIF,bold:true,fontWeight:700}),
+    row([col([],{width:56,height:3,color:C.vermillion,semantic:false}),col([],{width:'fill',height:1,color:C.goldLight,semantic:false})],{height:3,gap:5}),
     text(ui.language==='en'?'The edict falls. The gate stands.':'禁武令已下。山门未闭。',{size:18,height:32,color:C.paper,lines:1}),
-    row([primary('开创新局','page',{page:'prologue'}),action('载入存档','sheet',{kind:'load'})],{layout:short?'row':'column',height:short?48:101,gap:5}),
-    row([action(music.on&&music.unlocked?'静音背景音乐':'开启背景音乐','title-music'),lang],{layout:short?'row':'column',height:short?48:101,gap:5}),
+    row([primary('开创新局','page',{page:'prologue'}),sceneAction('载入存档','sheet',{kind:'load'})],{layout:short?'row':'column',height:short?48:101,gap:5}),
+    row([sceneAction(music.on&&music.unlocked?'静音背景音乐':'开启背景音乐','title-music'),lang],{layout:short?'row':'column',height:short?48:101,gap:5}),
   ],{height:'fill',width:'100%',gap:7,justify:'center'})],
-    {card:true,color:C.dark,alpha:0.96,border:{color:C.goldLight,width:2},padding:15,gap:7,width:narrow?'92%':short?390:350,
+    {card:true,color:C.deep,alpha:0.91,border:{color:C.goldLight,width:1},padding:15,gap:7,width:narrow?'92%':short?390:340,
       height:narrow?420:large(mode)?430:'96%',anchor:narrow?'bottom':'left',x:narrow?0:18,y:narrow?14:0,justify:'center'})]);
 }
 function prologuePage(ctx,mode) {
@@ -87,7 +100,7 @@ function prologuePage(ctx,mode) {
       text(chapter.speaker,{size:20,bold:true,color:C.goldLight,height:30}),copy(chapter.line,storyLines,{color:C.paper})
     ],{width:'fill',height:'fill',gap:5})],{height:storyLines*26+42,gap:10})]),
     row([text('第 '+(ui.prologue+1)+' 幕 / '+prologue.length,{size:16,color:C.goldLight,width:'fill',height:48}),primary(last?'踏入江湖':'继续','prologue-next',{}, {width:'50%'})],{height:48,gap:6}),
-    row([action('返回标题','page',{page:'title'}),action('跳过序章','skip-prologue')],{height:48,gap:6}),
+    row([sceneAction('返回标题','page',{page:'title'}),sceneAction('跳过序章','skip-prologue')],{height:48,gap:6}),
   ],{card:true,color:C.dark,border:{color:C.gold,width:1},padding:12,gap:7,width:upright(mode)?'96%':large(mode)?760:'94%',height:upright(mode)?'56%':large(mode)?310:'94%',anchor:'bottom',y:8})]);
 }
 
@@ -95,7 +108,7 @@ function sectPage(ctx,mode) {
   const {ui,helpers:h}=ctx;
   const sect=SECT_BY_ID[ui.chosen], seat=PLACE_BY_ID[sect.seat], own=ui.founding;
   const tall=upright(mode), spacious=large(mode)&&!tall;
-  const selections=SECTS.map(s=>tab((own?PLACE_BY_ID[s.seat].name:s.name)+(ui.language==='en'?'':' · '+(own?CLASSES[s.main].name:PLACE_BY_ID[s.seat].name)),'choose-sect',{sect:s.id},s.id===sect.id,{
+  const selections=SECTS.map(s=>inkTab((own?PLACE_BY_ID[s.seat].name:s.name)+(ui.language==='en'?'':' · '+(own?CLASSES[s.main].name:PLACE_BY_ID[s.seat].name)),'choose-sect',{sect:s.id},s.id===sect.id,{
     size:15,border:{color:s.id===sect.id?C.goldLight:0x46554a,width:1}}));
   const founder=own?{portraitId:'founder-male',name:'开山掌门'}:h.founder(sect);
   const summary=scroll([
@@ -140,15 +153,15 @@ function legacyPage(ctx,mode) {
   ],{card:true,color:C.paper,border:{color:C.gold,width:2},padding:13,gap:7,width:upright(mode)?'96%':large(mode)?610:'76%',height:'94%',anchor:'center'})]);
 }
 function zoomLine(act='zoom') {
-  return row([action('＋',''+act,{dir:'in'},{label:'拉近',width:48}),action('−',act,{dir:'out'},{label:'拉远',width:48}),action('全景',act,{dir:'reset'},{width:60})],{height:48,gap:5});
+  return row([sceneAction('＋',''+act,{dir:'in'},{label:'拉近',width:48}),sceneAction('−',act,{dir:'out'},{label:'拉远',width:48}),sceneAction('全景',act,{dir:'reset'},{width:60})],{height:48,gap:5});
 }
 function sceneTools(ctx,mode,label,children=[]) {
   // The safe width shrinks on a notched landscape display; command cards
   // occupy its right side. Keep all left controls inside that remaining strip.
   const beside = !upright(mode) && !ctx.ui.commandCollapsed;
-  const buttons = beside ? children.map(child=>({...child,width:'fill'})) : children;
-  return col([row([action(ctx.ui.commandCollapsed?label:'观景','command-toggle',{}, {width:112}),...buttons],{height:48,gap:4})],
-    {width:upright(mode)?'96%':beside?'46%':large(mode)?'55%':400,height:48,anchor:'top-left',x:8,y:upright(mode)?148:112});
+  const buttons=children.map(child=>({...child,color:C.deep,textColor:C.cream,border:{color:0x516a51,width:1},...(beside?{width:'fill'}:{})}));
+  return col([row([sceneAction(ctx.ui.commandCollapsed?label:'观景','command-toggle',{}, {width:96,color:C.jade,textColor:C.cream,border:{color:C.goldLight,width:1}}),...buttons],{height:48,gap:4})],
+    {width:upright(mode)?'96%':large(mode)?(children.length>1?'32%':'25%'):(children.length>1?'46%':'34%'),height:48,anchor:'top-left',x:8,y:upright(mode)?148:112});
 }
 function seatScreen(ctx,mode) {
   const {world,ui,picture,helpers:h}=ctx, me=h.me(), b=h.books();
@@ -212,7 +225,7 @@ function seatScreen(ctx,mode) {
     ...(protection?.active?[caption('立足期余 '+n(protection.daysLeft)+' 日',{color:C.green})]:[])
   ];
   return transparent([
-    ...(!picture.stage?[backdrop(ctx,'seat')]:[]),sceneTools(ctx,mode,'山门指令',[...(picture.stage?[action(ui.tags?'隐藏建筑名':'显示建筑名','tags',{},{width:'fill',size:15})]:[]),action(ui.language==='en'?'Handbook':'掌门手札','guide-open',{},{label:'掌门手札',width:'fill',size:15})]),
+    ...(!picture.stage&&!picture.loading?[backdrop(ctx,'seat')]:[]),sceneTools(ctx,mode,'山门指令',[...(picture.stage?[action(ui.tags?'隐藏建筑名':'显示建筑名','tags',{},{width:'fill',size:15})]:[]),action(ui.language==='en'?'Handbook':'掌门手札','guide-open',{},{label:'掌门手札',width:'fill',size:15})]),
     ...(picture.stage?[col([zoomLine()],{width:166,height:48,anchor:upright(mode)?'top-left':'bottom-left',x:8,y:upright(mode)?201:ctx.ui.commandCollapsed?104:64})]:[]),
     ...(!ui.commandCollapsed?[windowPanel([scrollBody(page)],mode,{staged:true})]:[])
   ]);
@@ -264,18 +277,22 @@ function disciples(ctx,mode){
     const line=RANKS[p.rank].name+' · '+p.level+' 级'+(many?' · '+PLACE_BY_ID[p.place].name:'');
     const values=ui.rosterView==='table'&&!ui.picking?TABLE_KEYS.map(key=>rankingLabel(key)+' '+n(rankingValue(p,key))).join(' · '):
       '战力 '+n(prowess(p))+(ranking&&ui.sortKey!=='prowess'?' · '+rankingLabel(ui.sortKey)+' '+n(rankingValue(p,ui.sortKey)):'');
-    const selected=ui.picking&&ui.batch.has(p.id);
+    const selected=ui.picking&&ui.batch.has(p.id),table=ui.rosterView==='table'&&!ui.picking,tall=upright(mode);
+    const spacious=large(mode)&&!tall,english=ui.language==='en';
+    const detailLines=table?(english?(tall?5:spacious?3:4):(tall?4:spacious?2:3)):(spacious&&!english?1:2);
+    const detailHeight=detailLines*23+2,nameHeight=46,summaryHeight=spacious&&!english?28:48,jobHeight=27;
+    const cardHeight=nameHeight+summaryHeight+detailHeight+jobHeight+8+4*4+4+12;
     return row([
-      portrait(ctx,p,'bust',{width:58,height:86}),
-      col([action((selected?'✓ ':'')+suffix,ui.picking?'batch-toggle':'person',{id:p.id},{name:'disciple-'+p.id,selected,color:selected?C.gold:C.dark,height:46,size:16}),
-        caption(line+' · '+art,{height:42}),
-        copy(values,ui.rosterView==='table'&&!ui.picking?3:2,{height:ui.rosterView==='table'&&!ui.picking?74:48,color:C.gold,size:15}),
-        caption(job+' · 忠诚 '+n(p.loyalty)+' %',{height:30,lines:1}),
+      portrait(ctx,p,'bust',{width:tall?64:76,height:tall?92:112,border:{color:C.goldLight,width:1}}),
+      col([action((selected?'✓ ':'')+suffix,ui.picking?'batch-toggle':'person',{id:p.id},{name:'disciple-'+p.id,selected,color:selected?C.gold:C.panel,textColor:selected?C.cream:C.ink,border:{color:selected?C.goldLight:C.edge,width:selected?2:1},height:nameHeight,size:17}),
+        caption(line+' · '+art,{height:summaryHeight,lines:summaryHeight>28?2:1}),
+        copy(values,detailLines,{height:detailHeight,color:C.ink,size:15}),
+        caption(job+' · 忠诚 '+n(p.loyalty)+' %',{height:jobHeight,lines:1}),
         bar(Math.max(0,Math.min(1,p.loyalty/100)),{height:8,label:'忠诚',color:p.loyalty<30?C.red:C.green})],
       {width:'fill',height:'fill',gap:4,padding:2})
-    ],{height:ui.rosterView==='table'&&!ui.picking?217:197,card:true,color:0xe5dac3,gap:8,padding:6,name:'disciple-row-'+p.id});
+    ],{height:cardHeight,card:true,color:C.wash,border:{color:C.edge,width:1},gap:8,padding:6,name:'disciple-row-'+p.id});
   };
-  const filters=scroll([...common],{name:'roster-controls',width:upright(mode)?'100%':'40%',height:upright(mode)?'45%':'100%',gap:6,padding:4,color:0xe8deca,card:true});
+  const filters=scroll([...common],{name:'roster-controls',width:upright(mode)?'100%':'40%',height:upright(mode)?'45%':'100%',gap:6,padding:4,color:C.wash,card:true,border:{color:C.edge,width:1}});
   const entries=scrollBody([text(list.length+' / '+all.length+' 人',{size:16,height:27,bold:true,color:C.gold}),
     ...listRows(paginate(ctx,'roster',list,card,5),'暂无符合条件的弟子。')]);
   return windowPanel([heading('门中弟子',{height:30,size:22}),
@@ -330,17 +347,19 @@ function arts(ctx,mode){
 
 function worldPage(ctx,mode){
   const {world,ui,picture,helpers:h}=ctx,me=h.me();
+  const unlocked=h.open('world');
   ui.mapPlace??=SECT_BY_ID[me].seat;
   const spec=PLACE_BY_ID[ui.mapPlace], place=world.places[spec.id], owner=SECT_BY_ID[place.owner], deal=h.placeDeal(spec.id);
   const guard=place.owner?residents(world,spec.id):[], relation=owner&&owner.id!==me?Math.round(h.books().relations[owner.id]):null;
-  const actionsFor={
+  const actionsFor=unlocked?{
     mine:[primary('前往此处山门','look',{place:spec.id,go:'1'})],
     far:[caption('不与本派据点相邻，鞭长莫及。')],
     open:[primary('开设分舵（'+n(ECONOMY.settleCost??1500)+'两）','sheet',{kind:'settle',place:spec.id})],
     foe:[primary('商议出兵','sheet',{kind:'march',place:spec.id}),action('馈赠 500 两','gift',{sect:place.owner})]
-  }[deal.kind];
+  }[deal.kind]:deal.kind==='mine'?[primary('前往此处山门','look',{place:spec.id,go:'1'})]:[];
   const detail=[
     heading(spec.name+' · '+(owner?.name??'无主')),copy(spec.note,3),
+    ...(!unlocked?[copy(ui.language==='en'?'Browse only. Branches, gifts and campaigns unlock after the first 10 days or first objective.':'先观览天下：首旬或完成首项要务后，开放分舵、馈赠和出兵。',4,{color:C.gold})]:[]),
     facts('地块容量',spec.cells+' 格'),facts('物产',RESOURCES.filter(key=>spec.resources[key]>=2).map(key=>RESOURCE_NAMES[key]).join('、')||'平平'),
     ...(owner?[facts('守卫',guard.length+' 人 · 战力 '+n(strength(guard)))]:[]),
     ...(relation!==null?[facts('与本派关系',relation)]:[]),
@@ -350,7 +369,7 @@ function worldPage(ctx,mode){
     heading('天下据点'),
     ...paginate(ctx,'strongholds',PLACES,s=>tab(s.name+' · '+(SECT_BY_ID[world.places[s.id].owner]?.name??'无主'),'place',{place:s.id},s.id===ui.mapPlace,{name:'stronghold-'+s.id}))
   ];
-  const model=picture.stage&&ui.map3d;
+  const model=(picture.stage||picture.loading)&&ui.map3d;
   if(!model){
     const url=ctx.helpers.sceneUrl('world');
     const zoom=Math.max(1,Math.min(3,ui.map?.zoom??1));
@@ -359,13 +378,13 @@ function worldPage(ctx,mode){
     // painting itself stays underneath, leaving room for the native commands.
     return transparent([map,sceneTools(ctx,mode,'据点详情',[
       ...(picture.stage?[action('改看沙盘','mapmode',{}, {width:112})]:[]),
-      ...(h.open('diplomacy')?[action('门派往来','sheet',{kind:'diplomacy'},{width:112})]:[])
+      ...(unlocked&&h.open('diplomacy')?[action('门派往来','sheet',{kind:'diplomacy'},{width:112})]:[])
     ]),
     col([zoomLine('mapzoom')],{width:166,height:48,anchor:upright(mode)?'top-left':'bottom-left',x:8,y:upright(mode)?201:ctx.ui.commandCollapsed?104:64}),
     ...(!ui.commandCollapsed?[windowPanel([scrollBody(detail)],mode,{staged:true})]:[])]);
   }
   return transparent([
-    sceneTools(ctx,mode,'据点详情',[action('画卷','mapmode',{},{width:78}),...(h.open('diplomacy')?[action('门派往来','sheet',{kind:'diplomacy'},{width:130})]:[])]),
+    sceneTools(ctx,mode,'据点详情',[action('画卷','mapmode',{},{width:78}),...(unlocked&&h.open('diplomacy')?[action('门派往来','sheet',{kind:'diplomacy'},{width:130})]:[])]),
     col([zoomLine()],{width:166,height:48,anchor:upright(mode)?'top-left':'bottom-left',x:8,y:upright(mode)?201:ctx.ui.commandCollapsed?104:64}),
     ...(!ui.commandCollapsed?[windowPanel([scrollBody(detail)],mode,{staged:true})]:[])
   ]);
@@ -399,18 +418,18 @@ function battlePage(ctx,mode){
   const clock=String(Math.floor(battle.time/60)).padStart(2,'0')+':'+String(Math.floor(battle.time%60)).padStart(2,'0');
   const marked=battle.units.find(u=>u.id===battle.orders[mine].focus&&!u.down);
   const controls=[
-    tab(arena.paused?'继续':'暂停','fight-pause',{},arena.paused),
-    ...[1,2,4].map(s=>tab(s+'×','fight-speed',{speed:s},s===arena.speed&&!arena.paused,{width:48})),
+    inkTab(arena.paused?'继续':'暂停','fight-pause',{},arena.paused),
+    ...[1,2,4].map(s=>inkTab(s+'×','fight-speed',{speed:s},s===arena.speed&&!arena.paused,{width:48})),
     primary(battle.rallied[mine]>0?'号令中':'号令','fight-rally',{}, {disabled:battle.rallied[mine]!==0})
   ];
   const secondary=[
-    ...[['attack','攻'],['even','衡'],['defend','守']].map(([id,label])=>tab(label,'fight-stance',{stance:id},battle.stances[mine]===id,
+    ...[['attack','攻'],['even','衡'],['defend','守']].map(([id,label])=>inkTab(label,'fight-stance',{stance:id},battle.stances[mine]===id,
       {label:({attack:'攻势加一成，防御减一成',even:'攻守均衡',defend:'防御加一成，攻势减一成'})[id],width:50})),
-    action('速决','fight-skip'),warn('撤退','sheet',{kind:'retreat'},{disabled:battle.orders[mine].retreat})
+    sceneAction('速决','fight-skip'),warn('撤退','sheet',{kind:'retreat'},{disabled:battle.orders[mine].retreat})
   ];
   const portraitMode=upright(mode);
   return transparent([
-    col([row([army(0),text(clock,{width:58,height:44,size:17,color:C.goldLight,bold:true,align:'center'}),army(1),action('战报','battle-log',{}, {width:64,height:44,size:14})],{height:46,gap:4}),
+    col([row([army(0),text(clock,{width:58,height:44,size:17,color:C.goldLight,bold:true,align:'center'}),army(1),sceneAction('战报','battle-log',{}, {width:64,height:44,size:14})],{height:46,gap:4}),
       text(title+' · '+(battle.done?'胜负已分':arena.paused?'已暂停':'交战中'),{height:18,size:13,color:C.paper,bold:true,align:'center'})],
       {width:'98%',height:70,anchor:'top',y:4,padding:3,gap:0,color:C.dark,card:true}),
     col([caption(marked?'集火：'+marked.name+'（再点一次取消）':'点选敌人下令集火',{color:C.paper,height:17,lines:1}),
@@ -429,7 +448,19 @@ function chronicle(ctx,mode){
   const relicHome=id=>Object.entries(world.sects).find(([,b])=>b.relics?.includes(id))?.[0];
   const counts={arts:shelf.filter(a=>held.has(a.id)).length+' / '+shelf.length,wanderers:WANDERERS.filter(w=>met[w.id]==='joined').length+' / '+WANDERERS.length,relics:RELICS.filter(r=>relicHome(r.id)===me).length+' / '+RELICS.length};
   const tabs=[['annals','编年'],['arts','武学谱 '+counts.arts],['wanderers','奇人录 '+counts.wanderers],['relics','神兵谱 '+counts.relics]];
-  const entry=(got,title,about)=>col([text(got?title:'？？？',{size:18,height:33,bold:true,color:got?C.gold:C.muted}),copy(about,3)],{height:111,gap:4,card:true,color:0xe8dcc6,padding:5});
+  // Short entries need not occupy an entire four-line paragraph. The longer
+  // entries retain a real native paragraph and generous room on narrow screens.
+  const journalCopy=value=>{
+    const units=[...String(value)].reduce((n,ch)=>n+((ch.codePointAt(0)??0)>=0x2e80?1:.55),0);
+    const across=upright(mode)?18:large(mode)?56:33;
+    const lines=Math.max(ui.language==='en'?2:1,Math.min(6,Math.ceil(units*(ui.language==='en'?1.8:1)/across)));
+    return copy(value,lines,{size:16,height:lines*24+3,color:C.ink});
+  };
+  const entry=(got,title,about)=>{
+    const body=journalCopy(about);
+    return col([text(got?title:'？？？',{size:18,height:31,bold:true,color:got?C.ink:C.muted}),body],
+      {height:31+body.height+18,gap:4,card:true,color:C.wash,border:{color:C.edge,width:1},padding:6});
+  };
   let lastYear=null;
   const book={
     annals:()=>[
@@ -438,7 +469,9 @@ function chronicle(ctx,mode){
         const y=1+Math.floor(r.day/360);
         const head=y!==lastYear?'承和 '+y+' 年 · ':'';
         lastYear=y;
-        return col([text(head+h.dayText(r.day).replace(/^承和\d+年/,'')+' · '+(LOG_TYPES[r.type]??'江湖'),{size:16,height:30,color:r.sect===me?C.gold:C.muted,bold:true}),copy(r.text,4)],{height:130,card:true,color:0xe7dcc8,padding:6,gap:3});
+        const body=journalCopy(r.text);
+        return col([row([col([],{width:4,height:22,color:r.sect===me?C.vermillion:C.jade,semantic:false}),text(head+h.dayText(r.day).replace(/^承和\d+年/,'')+' · '+(LOG_TYPES[r.type]??'江湖'),{size:16,width:'fill',height:28,color:C.ink,bold:true})],{height:30,gap:7}),body],
+          {height:30+body.height+15,card:true,color:C.panel,border:{color:C.edge,width:1},padding:6,gap:3});
       }), '暂无记录。')
     ],
     arts:()=>[

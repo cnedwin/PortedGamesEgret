@@ -71,6 +71,18 @@ test('opening the construction sheet retains the selected kind and validates it 
   assert.match(JSON.stringify(view), /兴建/);
 });
 
+test('the locked battle navigation explains the unchanged requirement in both languages',()=>{
+  const ctx=fixture('unlock');
+  ctx.ui.sheet={kind:'unlock',locked:true,features:[{name:'战阵与擂台',about:'让弟子登擂扬名；与邻派为敌时，在此商议出兵。三年一度的论剑大会也在这里看。'}]};
+  const chinese=createSheet(ctx);
+  assert.match(JSON.stringify(chinese),/开派满一季（九十日）或完成前五项要务/);
+  assert.equal(chinese.footer[0]._action,'close');
+  ctx.ui.language='en';
+  const english=createSheet(ctx);
+  assert.match(JSON.stringify(english),/five objectives or reach the first season \(90 days\)/);
+  assert.equal(english.footer[0]._action,'close');
+});
+
 test('the editor exposes forms for its actual rule operations', () => {
   const ctx = fixture('editor', { sect: 'shaolin' });
   const view = createSheet(ctx);

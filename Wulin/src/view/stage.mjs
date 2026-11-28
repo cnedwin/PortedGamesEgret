@@ -23,7 +23,7 @@ export function pickQuality(params = new URLSearchParams(globalThis.location?.se
  * Starts the renderer on a canvas.
  * @returns the stage, or `null` when the device cannot draw 3D (the game then stays with its panels)
  */
-export async function createStage(canvas, { onError = () => {}, quality = pickQuality(), webgpu = false, game, pointerSurface } = {}) {
+export async function createStage(canvas, { onError = () => {}, onPresented = () => {}, quality = pickQuality(), webgpu = false, game, pointerSurface } = {}) {
   let backend, engine, renderer;
   try {
     backend = await (webgpu ? import('@egret/engine/webgpu/world3d') : import('@egret/engine/webgl2/world3d'));
@@ -63,7 +63,7 @@ export async function createStage(canvas, { onError = () => {}, quality = pickQu
   const blank = { scene: new Scene3D(), camera: createPerspectiveCamera3D({ fov: 45, near: 0.3, far: 600 }), update() {} };
   blank.scene.addChild(blank.camera);
   let current = blank;
-  let asleep = !!game, warming = false, generation = 0;
+  let asleep = !!game, warming = false, presented = false, generation = 0;
   const prepared = new WeakSet();
   const collectVariants = (scene) => {
     const requests = [];
@@ -98,6 +98,7 @@ export async function createStage(canvas, { onError = () => {}, quality = pickQu
     stats,
     ready: Promise.resolve(),
     get preparing() { return warming; },
+    get presented() { return presented; },
     translate: (text) => text,
     setTranslator(translate) { stage.translate = typeof translate === 'function' ? translate : text => text; },
     markers(camera, layer) { return makeSceneMarkers(stage, camera, layer, backend); },
@@ -108,6 +109,8 @@ export async function createStage(canvas, { onError = () => {}, quality = pickQu
       if (current === next) return stage.ready;
       current.leave?.();
       current = next ?? blank;
+      presented = false;
+      if (game) stage.orbit.setInputEnabled(false);
       viewOptions.maxPixelRatio = quality === 'high' ? 1.5 : quality === 'low' ? current.lowPixelRatio ?? 1 : 1;
       view.scene = current.scene;
       view.camera = current.camera;
@@ -161,7 +164,13 @@ export async function createStage(canvas, { onError = () => {}, quality = pickQu
       stats?.lap('scene');
     },
     onError,
-    ...(stats ? { onFrameTiming: () => { stats.lap('render'); stats.end(); } } : {}),
+    onFrameTiming(sample) {
+      if (stats) { stats.lap('render'); stats.end(); }
+      if (!presented && current !== blank && sample.outcome === 'rendered') {
+        presented = true;
+        onPresented(current);
+      }
+    },
   };
   const view = backend.createWorld3DView(engine, scope, viewOptions);
   view.paused = asleep;

@@ -6,4 +6,9 @@ body{touch-action:none}
 #overlay canvas{display:block;touch-action:none;outline:none}
 #loading{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);margin:0;color:#f3edde;font:1rem serif;pointer-events:none}
 #loading[hidden]{display:none}
+/* A terminated graphics host cannot draw its own retry control. The status
+   line becomes a readable, keyboard-accessible emergency reload affordance. */
+#loading[role=alert]{box-sizing:border-box;width:min(400px,86vw);padding:20px;background:#14251f;border:2px solid #d9b575;color:#fff1d4;text-align:center;font:16px/1.5 sans-serif;pointer-events:auto;z-index:10}
+#loading[role=alert] a{display:flex;align-items:center;justify-content:center;min-height:44px;margin-top:16px;background:#895d2b;color:#fff1d4;text-decoration:none;font-weight:bold;border:1px solid #d9b575}
+#loading[role=alert] a:focus-visible{outline:2px solid #fff1d4;outline-offset:3px}
 noscript{position:absolute;inset:2rem;color:white}

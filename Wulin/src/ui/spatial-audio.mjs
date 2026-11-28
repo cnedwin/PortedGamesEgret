@@ -1,3 +1,5 @@
+import { createInputGroup } from './audio-graph.mjs';
+
 const DIRECTORY = new URL('../../assets/audio/world/', import.meta.url);
 // Ranges are in each scene's world units. The bell carries farther than the work yards.
 const VOICES = {
@@ -30,32 +32,27 @@ export function createSpatialAudio(clips, settings) {
   const voices = new Map();
   const pending = new Map();
   const retryAfter = new Map();
-  let scene, bus, ducked = false, hidden = globalThis.document?.hidden ?? false;
+  let scene, ducked = false, hidden = globalThis.document?.hidden ?? false;
 
   const enabled = () => !!scene && clips.ready && settings.on && settings.volume > 0 && !hidden;
-  function mix() {
-    if (!bus) return;
-    const now = clips.context.currentTime;
-    bus.gain.cancelScheduledValues(now);
-    bus.gain.setTargetAtTime(enabled() ? settings.volume * .72 * (ducked ? .30 : 1) : 0, now, ducked ? .025 : .12);
-  }
+  const mixLevel = () => enabled() ? settings.volume * .72 * (ducked ? .30 : 1) : 0;
+  const group = createInputGroup(clips, 'ambience', mixLevel, () => ducked ? .025 : .12);
+  const mix = () => group.refresh();
 
-  function stop(kind) {
+  function stop(kind, immediate = false) {
     pending.delete(kind);
     const voice = voices.get(kind);
-    if (!voice || voice.stopping) return;
+    if (!voice || (voice.stopping && !immediate)) return;
     voice.stopping = true;
     const now = clips.context.currentTime;
-    voice.gain.gain.cancelScheduledValues(now);
-    voice.gain.gain.setTargetAtTime(0, now, .055);
-    voice.source.stop(now + .24);
+    if (!immediate) voice.input.setVolume(0, { timeConstant: .055 });
+    try { voice.source.stop(now + (immediate ? 0 : .24)); } catch {}
   }
 
   function updateVoice(voice, { gain, pan, cutoff }) {
-    const now = clips.context.currentTime;
-    voice.gain.gain.setTargetAtTime(gain, now, .085);
-    voice.filter.frequency.setTargetAtTime(cutoff, now, .12);
-    voice.panner?.pan.setTargetAtTime(pan, now, .075);
+    voice.input.setVolume(gain, { timeConstant: .085 });
+    voice.input.setLowpass?.(cutoff, { timeConstant: .12 });
+    voice.input.setPan?.(pan, { timeConstant: .075 });
   }
 
   function play(kind, placement) {
@@ -75,34 +72,18 @@ export function createSpatialAudio(clips, settings) {
     pending.set(kind, next);
     void clips.load(new URL('spatial-' + kind + '.mp3', DIRECTORY)).then(buffer => {
       if (pending.get(kind) !== next || !enabled() || next.placement.gain <= .003) return;
-      if (!bus) {
-        bus = context.createGain();
-        bus.gain.value = 0;
-        bus.connect(context.destination);
-        mix();
-      }
       const source = context.createBufferSource();
-      const gain = context.createGain();
-      const filter = context.createBiquadFilter();
-      const panner = context.createStereoPanner?.();
+      const { cutoff, pan } = next.placement;
+      const input = group.add({ volume: 0, lowpass: cutoff, pan });
       source.buffer = buffer;
       source.loop = true;
-      gain.gain.value = 0;
-      filter.type = 'lowpass';
-      filter.frequency.value = next.placement.cutoff;
-      source.connect(filter).connect(gain);
-      if (panner) {
-        panner.pan.value = next.placement.pan;
-        gain.connect(panner).connect(bus);
-      } else gain.connect(bus);
-      const voice = { source, gain, filter, panner, stopping: false };
+      source.connect(input.input);
+      const voice = { source, input, stopping: false };
       voices.set(kind, voice);
       source.onended = () => {
         if (voices.get(kind) === voice) voices.delete(kind);
         source.disconnect();
-        filter.disconnect();
-        gain.disconnect();
-        panner?.disconnect();
+        group.remove(input);
       };
       updateVoice(voice, next.placement);
       source.start();
@@ -113,9 +94,9 @@ export function createSpatialAudio(clips, settings) {
     });
   }
 
-  function clear() {
+  function clear(immediate = false) {
     pending.clear();
-    for (const kind of voices.keys()) stop(kind);
+    for (const kind of voices.keys()) stop(kind, immediate);
   }
 
   return {
@@ -133,8 +114,9 @@ export function createSpatialAudio(clips, settings) {
       for (const kind of pending.keys()) if (!kinds.has(kind)) stop(kind);
       for (const source of sources) play(source.kind, spatialPlacement(source, orbit));
     },
+    refresh() { mix(); },
     settingsChanged() { if (!enabled()) clear(); mix(); },
-    setHidden(value) { hidden = value; if (hidden) clear(); mix(); },
+    setHidden(value) { hidden = value; if (hidden) clear(true); mix(); },
     duck(value) { ducked = value; mix(); },
   };
 }

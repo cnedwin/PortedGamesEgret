@@ -369,7 +369,7 @@ export const GAMES = [
       },
       {
         title: { zh: "原生经营界面与三维同钟", en: "Native management UI and shared 3D clock" },
-        description: { zh: "页面、弹出单、名册、屏幕适配和语义焦点由白鹭原生数据视图驱动，战斗与山门共用引擎时钟。", en: "Native data views drive screens, dialogs, scrollable lists, adaptive layout and semantic focus on the same engine clock as the 3D world." },
+        description: { zh: "原生数据视图覆盖页面、弹出单、长名册、表单、通知与语义焦点，战斗和山门共用引擎时钟。", en: "Native data views drive screens, dialogs, lists, forms, positioned notices and semantic focus on the same engine clock as the 3D world." },
         source: 'src/ui/native-shell.mjs',
       },
     ],

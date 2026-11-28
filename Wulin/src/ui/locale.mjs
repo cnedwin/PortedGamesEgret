@@ -20,6 +20,8 @@ const EXTRA = parsePairs(`
 点按|Tap
 正在展开画卷|Opening the scroll
 载入失败|Loading failed
+无法导出存档文件。|Could not export the save file.
+文件过大或无法读取。|The file is too large or could not be read.
 战报|Report
 主要功能|Main functions
 请确认|Please confirm

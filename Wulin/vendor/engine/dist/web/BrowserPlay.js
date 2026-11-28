@@ -2634,6 +2634,10 @@ export async function play(options) {
             return device;
         },
         confirm: (question, confirmOptions) => views.confirm(question, confirmOptions),
+        select: (choices, selectOptions) => views.select(choices, selectOptions),
+        get editing() {
+            return views.editing;
+        },
         hints: list => views.hints(list),
         get uiScale() {
             return uiScaleNow();
@@ -2703,6 +2707,7 @@ export async function play(options) {
                 }
                 try {
                     stopLoops();
+                    views.reset();
                     resizeObserver?.disconnect();
                     for (const [target, type, listener] of listening)
                         target.removeEventListener(type, listener);

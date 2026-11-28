@@ -57,6 +57,28 @@ test('native screens keep the opening and every management branch reachable', ()
   assert.ok(descriptor(ctx).includes('own-leader'));
 });
 
+test('a locked early realm is explorable but exposes no settlement or warfare orders',()=>{
+  const ctx=context('world');
+  const visit=node=>[node,...(node.children??[]).flatMap(visit)];
+  ctx.helpers.open=id=>!['world','battle','diplomacy'].includes(id);
+  const map=Object.keys(ctx.world.places);
+  for(const place of map){
+    ctx.ui.mapPlace=place;
+    for(const root of Object.values(createPage(ctx))){
+      const controls=visit(root);
+      assert.ok(controls.some(x=>x._action==='place'),'stronghold browsing '+place);
+      assert.ok(controls.some(x=>String(x.text??'').includes('先观览天下')));
+      assert.ok(!controls.some(x=>['gift','settle','march'].includes(x._action)||x._action==='sheet'&&['settle','march','diplomacy'].includes(x._data?.kind)),'early commands '+place);
+    }
+  }
+  ctx.helpers.open=()=>true;
+  ctx.ui.mapPlace=map.find(id=>ctx.helpers.placeDeal(id).kind==='foe');
+  assert.ok(ctx.ui.mapPlace);
+  const unlocked=visit(createPage(ctx).root);
+  assert.ok(unlocked.some(x=>x._action==='sheet'&&x._data?.kind==='march'));
+  assert.ok(unlocked.some(x=>x._action==='gift'));
+});
+
 test('all stationary pages compile to engine-valid responsive variants', async()=>{
   const {compile,SKIN}=await import('../src/ui/native-kit.mjs');
   const {checkView,planView}=await import('../vendor/engine/dist/web/view.js');

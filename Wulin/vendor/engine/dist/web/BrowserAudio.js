@@ -4,6 +4,9 @@ import { createAudioMixer } from '@egret/engine/audio';
 const LIMITER = { threshold: -6, knee: 4, ratio: 12, attack: 0.003, release: 0.16 };
 /** Shorter than a click can be heard, long enough that a step in volume makes none. */
 const SMOOTH = 0.005;
+/** Bound caller-owned strips separately from decoded/streamed voices. */
+const MAX_INPUTS = 64;
+const inRange = (value, min, max) => typeof value === 'number' && Number.isFinite(value) && value >= min && value <= max;
 const gestures = ['pointerdown', 'pointerup', 'touchend', 'keydown', 'click'];
 const passive = Object.freeze({ capture: true, passive: true });
 const at = (line, time) => time >= line.end
@@ -53,6 +56,8 @@ export function createWebAudioBackend(options = {}) {
         limiter.connect(context.destination);
     }
     const nodes = new WeakMap();
+    const namedInputs = new Map();
+    const inputs = new Set();
     const streams = new WeakMap();
     /** The media elements that should be heard now. */
     const sounding = new Set();
@@ -78,6 +83,122 @@ export function createWebAudioBackend(options = {}) {
         parameter.setValueAtTime(from, time);
         parameter.linearRampToValueAtTime(value, end);
         return { from, to: value, start: time, end };
+    }
+    /** Continuous parameter automation for a strip, even when a new glide interrupts the old one. */
+    function parameterControl(parameter, initial, valid, active) {
+        parameter.value = initial;
+        const time = context.currentTime;
+        let line = { from: initial, to: initial, start: time, end: time };
+        return (value, options) => {
+            if (!valid(value) ||
+                (options !== undefined && (options === null || typeof options !== 'object' || Array.isArray(options))))
+                throw new EgretError('AUDIO_OPTIONS_INVALID');
+            const constant = options?.timeConstant;
+            if (constant !== undefined && !inRange(constant, Number.MIN_VALUE, 60))
+                throw new EgretError('AUDIO_OPTIONS_INVALID');
+            if (!active())
+                return;
+            const now = context.currentTime;
+            const from = 'timeConstant' in line
+                ? line.to + (line.from - line.to) * Math.exp(-Math.max(0, now - line.start) / line.timeConstant)
+                : at(line, now);
+            parameter.cancelScheduledValues(now);
+            parameter.setValueAtTime(from, now);
+            if (constant === undefined) {
+                const end = now + SMOOTH;
+                parameter.linearRampToValueAtTime(value, end);
+                line = { from, to: value, start: now, end };
+            }
+            else {
+                parameter.setTargetAtTime(value, now, constant);
+                line = { from, to: value, start: now, timeConstant: constant };
+            }
+        };
+    }
+    function disconnectAll(stages) {
+        const failures = [];
+        for (const stage of stages)
+            try {
+                stage.disconnect();
+            }
+            catch (cause) {
+                failures.push(cause);
+            }
+        return failures;
+    }
+    function createInput(name, inputOptions = {}) {
+        if (closed)
+            throw new EgretError('AUDIO_CLOSED');
+        if (mixer === undefined)
+            throw new EgretError('AUDIO_OPTIONS_INVALID');
+        const bus = namedInputs.get(name);
+        if (bus === undefined)
+            throw new EgretError('AUDIO_BUS_UNKNOWN');
+        if (inputOptions === null || typeof inputOptions !== 'object' || Array.isArray(inputOptions))
+            throw new EgretError('AUDIO_OPTIONS_INVALID');
+        const { volume = 1, duck = 1, pan, lowpass } = inputOptions;
+        const isLevel = (value) => inRange(value, 0, 1);
+        const isPan = (value) => inRange(value, -1, 1);
+        const isCutoff = (value) => inRange(value, Number.MIN_VALUE, context.sampleRate / 2);
+        if (!isLevel(volume) ||
+            !isLevel(duck) ||
+            (pan !== undefined && !isPan(pan)) ||
+            (lowpass !== undefined && !isCutoff(lowpass)))
+            throw new EgretError('AUDIO_OPTIONS_INVALID');
+        if (inputs.size >= MAX_INPUTS)
+            throw new EgretError('AUDIO_BUDGET');
+        const stages = [];
+        let disposed = false;
+        const active = () => !disposed;
+        const stage = (node) => {
+            stages.push(node);
+            return node;
+        };
+        try {
+            const input = stage(context.createGain());
+            const filter = lowpass === undefined ? undefined : stage(context.createBiquadFilter());
+            if (filter !== undefined)
+                filter.type = 'lowpass';
+            const setLowpass = filter === undefined ? undefined : parameterControl(filter.frequency, lowpass, isCutoff, active);
+            const gain = stage(context.createGain());
+            const setVolume = parameterControl(gain.gain, volume, isLevel, active);
+            // An older host can still render the input in the middle, precisely as a game without a panner does.
+            const panner = pan === undefined || typeof context.createStereoPanner !== 'function'
+                ? undefined
+                : stage(context.createStereoPanner());
+            const setPan = panner === undefined ? undefined : parameterControl(panner.pan, pan, isPan, active);
+            const attenuation = stage(context.createGain());
+            const setDuck = parameterControl(attenuation.gain, duck, isLevel, active);
+            for (let i = 0; i < stages.length; i++)
+                stages[i].connect(stages[i + 1] ?? bus.node);
+            const face = Object.freeze({
+                input,
+                get disposed() {
+                    return disposed;
+                },
+                setVolume,
+                setDuck,
+                ...(setPan === undefined ? {} : { setPan }),
+                ...(setLowpass === undefined ? {} : { setLowpass }),
+                dispose() {
+                    if (disposed)
+                        return;
+                    disposed = true;
+                    inputs.delete(face);
+                    bus.inputs.delete(face);
+                    const failed = disconnectAll(stages);
+                    if (failed.length)
+                        throw new EgretError('AUDIO_CLEANUP_FAILED', { cause: failed[0], cleanupErrors: failed.slice(1) });
+                }
+            });
+            inputs.add(face);
+            bus.inputs.add(face);
+            return face;
+        }
+        catch (cause) {
+            const failed = disconnectAll(stages);
+            throw new EgretError('AUDIO_BACKEND_FAILED', { cause, cleanupErrors: failed });
+        }
     }
     function listen(list, target, type, listener) {
         target.addEventListener(type, listener, passive);
@@ -309,6 +430,7 @@ export function createWebAudioBackend(options = {}) {
             if (live.state !== 'running')
                 arm();
         },
+        createInput,
         get time() {
             return context.currentTime;
         },
@@ -374,7 +496,9 @@ export function createWebAudioBackend(options = {}) {
             streams.set(sound, { element, node });
             return sound;
         },
-        createBus(parent) {
+        createBus(parent, name) {
+            if (name !== undefined && namedInputs.has(name))
+                throw new EgretError('AUDIO_OPTIONS_INVALID');
             const node = context.createGain(), target = parent === undefined ? (limiter ?? context.destination) : nodes.get(parent);
             if (target === undefined)
                 throw new EgretError('AUDIO_BACKEND_FAILED');
@@ -387,10 +511,28 @@ export function createWebAudioBackend(options = {}) {
                 },
                 release() {
                     nodes.delete(bus);
-                    node.disconnect();
+                    const failures = [];
+                    if (name !== undefined) {
+                        const entry = namedInputs.get(name);
+                        if (entry?.node === node) {
+                            namedInputs.delete(name);
+                            for (const input of [...entry.inputs])
+                                try {
+                                    input.dispose();
+                                }
+                                catch (cause) {
+                                    failures.push(cause);
+                                }
+                        }
+                    }
+                    failures.push(...disconnectAll([node]));
+                    if (failures.length)
+                        throw new EgretError('AUDIO_CLEANUP_FAILED', { cause: failures[0], cleanupErrors: failures.slice(1) });
                 }
             };
             nodes.set(bus, node);
+            if (name !== undefined)
+                namedInputs.set(name, { node, inputs: new Set() });
             return bus;
         },
         start(request, ended) {
@@ -452,6 +594,15 @@ export function createWebAudioBackend(options = {}) {
             if (closed)
                 return;
             closed = true;
+            // The standalone backend can be closed too, not only through the mixer that owns its buses.
+            for (const input of [...inputs])
+                try {
+                    input.dispose();
+                }
+                catch (cause) {
+                    report(cause);
+                }
+            namedInputs.clear();
             unlisten(armed);
             unlisten(pairs);
             limiter?.disconnect();
@@ -495,6 +646,7 @@ export function createBrowserAudio(options = {}) {
         mixer,
         context: backend.context,
         output: backend.output,
+        createInput: backend.createInput,
         dispose() {
             mixer.dispose();
         }

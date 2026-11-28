@@ -89,19 +89,25 @@ function noise(x, y) {
 }
 const rough = (x, y) => noise(x, y) * 0.5 + noise(x * 2.1, y * 2.1) * 0.27 + noise(x * 4.3, y * 4.3) * 0.15 + noise(x * 8.9, y * 8.9) * 0.08;
 
-/** The distance from a point to a path of straight pieces. */
-function awayFrom(path, u, v) {
-  let best = Infinity;
-  for (let i = 0; i < path.length - 1; i++) {
-    const [ax, ay] = path[i],
-      [bx, by] = path[i + 1];
-    const dx = bx - ax,
-      dy = by - ay;
-    const t = Math.max(0, Math.min(1, ((u - ax) * dx + (v - ay) * dy) / (dx * dx + dy * dy)));
-    best = Math.min(best, Math.hypot(u - ax - dx * t, v - ay - dy * t));
-  }
-  return best;
+/** Exact distance inside a river's cutting margin; farther points cannot affect the terrain. */
+export function createCutDistance(path, margin) {
+  const pieces=path.slice(1).map(([bx,by],i)=>{
+    const [ax,ay]=path[i],dx=bx-ax,dy=by-ay;
+    return {ax,ay,dx,dy,denominator:dx*dx+dy*dy,left:Math.min(ax,bx)-margin,right:Math.max(ax,bx)+margin,top:Math.min(ay,by)-margin,bottom:Math.max(ay,by)+margin};
+  });
+  const left=Math.min(...pieces.map(p=>p.left)),right=Math.max(...pieces.map(p=>p.right)),top=Math.min(...pieces.map(p=>p.top)),bottom=Math.max(...pieces.map(p=>p.bottom));
+  return (u,v)=>{
+    if(u<left||u>right||v<top||v>bottom) return Infinity;
+    let best=Infinity;
+    for(const p of pieces){
+      if(u<p.left||u>p.right||v<p.top||v>p.bottom) continue;
+      const t=Math.max(0,Math.min(1,((u-p.ax)*p.dx+(v-p.ay)*p.dy)/p.denominator));
+      best=Math.min(best,Math.hypot(u-p.ax-p.dx*t,v-p.ay-p.dy*t));
+    }
+    return best<margin?best:Infinity;
+  };
 }
+const riverCuts=RIVERS.map(river=>createCutDistance(river,3));
 /** The point a share `t` of the way along a path, and the way it is heading there. */
 function along(path, t) {
   const lengths = path.slice(1).map(([x, y], i) => Math.hypot(x - path[i][0], y - path[i][1]));
@@ -135,8 +141,8 @@ function heightOf(u, v) {
   let y = 1.3 + n * 1.5 + mountains * (3 + ridge * ridge * 13.5);
   y = lerp(-4 + n * 1.5, y, smooth(inland(u, v) / 5));
   // The rivers and the lake cut down to the water.
-  for (const river of RIVERS) {
-    const d = awayFrom(river, u, v);
+  for (const distance of riverCuts) {
+    const d = distance(u, v);
     if (d < 3) y = lerp(Math.min(y, -0.5), y, smooth((d - 0.5) / 2.4));
   }
   const lake = Math.hypot(u - LAKE[0], (v - LAKE[1]) * 1.25);
@@ -161,7 +167,7 @@ function landColour(u, v, y) {
   grass = shade(grass, 0.88 + speckle * 0.24);
   // Fields in strips and squares on the low ground near towns and cities.
   let near = 99;
-  for (const place of PLACES) if (kindOf(place.id) !== 'mountain') near = Math.min(near, Math.hypot(u - place.at.x, v - place.at.y));
+  if (y < 2.6) for (const place of PLACES) if (kindOf(place.id) !== 'mountain') near = Math.min(near, Math.hypot(u - place.at.x, v - place.at.y));
   if (y < 2.6 && near < 7.5 && near > 1.6) {
     const patch = Math.sin(Math.floor(u * 1.4) * 12.9898 + Math.floor(v * 1.4) * 78.233) * 43758.5453;
     const pick = patch - Math.floor(patch);
@@ -171,12 +177,73 @@ function landColour(u, v, y) {
   return grass;
 }
 
+/** Pure terrain generation: the visual lattice and claims do not depend on the live world. */
+function* terrainRows(quality) {
+  const n=(DETAIL[quality]??DETAIL.medium).grid, count=(n+1)*(n+1),step=(SPAN/n)*S;
+  const gridU=i=>50-SPAN/2+(i/n)*SPAN;
+  const heights=new Float32Array(count);
+  for(let j=0;j<=n;j++){
+    for(let i=0;i<=n;i++) heights[j*(n+1)+i]=heightOf(gridU(i),gridU(j));
+    yield;
+  }
+  const positions=[],normals=[],indices=[],base=[];
+  const first=new Int16Array(count).fill(-1),second=new Int16Array(count).fill(-1),firstDistance=new Float64Array(count),secondDistance=new Float64Array(count);
+  for(let j=0;j<=n;j++){
+    for(let i=0;i<=n;i++){
+      const k=j*(n+1)+i,y=heights[k],u=gridU(i),v=gridU(j);
+      positions.push((u-50)*S,y,(v-50)*S);
+      const dx=(heights[j*(n+1)+Math.min(n,i+1)]-heights[j*(n+1)+Math.max(0,i-1)])/(2*step),
+        dz=(heights[Math.min(n,j+1)*(n+1)+i]-heights[Math.max(0,j-1)*(n+1)+i])/(2*step),
+        length=Math.hypot(dx,1,dz);
+      normals.push(-dx/length,1/length,-dz/length);
+      const colour=landColour(u,v,y);
+      base.push(y>0.5&&length>1.45?mix(colour,0x556167,Math.min(0.85,(length-1.45)*1.6)):colour);
+      // Claim boundaries depend on geography; calculate the original nearest-two ordering once.
+      if(y>0.3){
+        let d1=99,d2=99,a=-1,b=-1;
+        for(let index=0;index<PLACES.length;index++){
+          const place=PLACES[index],d=Math.hypot(u-place.at.x,v-place.at.y);
+          if(d<d1){b=a;d2=d1;a=index;d1=d;}else if(d<d2){b=index;d2=d;}
+        }
+        first[k]=a;second[k]=b;firstDistance[k]=d1;secondDistance[k]=d2;
+      }
+    }
+    yield;
+  }
+  for(let j=0;j<n;j++){
+    for(let i=0;i<n;i++){
+      const a=j*(n+1)+i;
+      indices.push(a,a+n+1,a+1,a+1,a+n+1,a+n+2);
+    }
+    yield;
+  }
+  return {n,heights,positions,normals,indices,base,first,second,firstDistance,secondDistance};
+}
+function drainRows(rows){let row;do{row=rows.next();}while(!row.done);return row.value;}
+/** The model inspection tool still assembles a complete scene synchronously. */
+export function buildRealmTerrain(quality){return drainRows(terrainRows(quality));}
+/** Yield between bounded batches. Nothing is attached to the live view until construction completes. */
+async function runRows(rows,{isCurrent=()=>true,clock=()=>performance.now(),schedule=()=>new Promise(resolve=>requestAnimationFrame(resolve)),budgetMs=5}={}){
+  await schedule(); // allow the native loading picture to appear first
+  while(isCurrent()){
+    const started=clock();let row;
+    do{
+      row=rows.next();
+      if(row.done) return isCurrent()?row.value:null;
+    }while(clock()-started<budgetMs);
+    await schedule();
+  }
+  rows.return();
+  return null;
+}
+export async function prepareRealmTerrain(quality,options){return runRows(terrainRows(quality),options);}
+
 /**
  * @param stage  the stage from stage.mjs
  * @param world  gives the world; read, never changed
  * @param options.layer  an element over the canvas for the strongholds' name tags
  */
-export function createRealm(stage, world, { layer = null, onAudio, onSelect } = {}) {
+function* realmAssembly(stage, world, { layer = null, onAudio, onSelect, terrain } = {}) {
   const detail = DETAIL[stage.quality] ?? DETAIL.medium;
   const scene = new Scene3D();
   const camera = createPerspectiveCamera3D({ fov: 38, near: 4, far: 1400 });
@@ -186,13 +253,11 @@ export function createRealm(stage, world, { layer = null, onAudio, onSelect } = 
   scene.fog = { ...scene.fog, near: 330, far: 1100 };
   if (light.sun.shadow) light.sun.shadow.cascadeDistance = 300;
   const random = scatter(20261114);
+  const assemblyOwners=Object.fromEntries(PLACES.map(place=>[place.id,world().places[place.id].owner]));
+  yield;
 
   // ---- the land: heights once, colours whenever lands change hands ----------------------------------------
-  const n = detail.grid,
-    step = (SPAN / n) * S,
-    gridU = (i) => 50 - SPAN / 2 + (i / n) * SPAN;
-  const heights = new Float32Array((n + 1) * (n + 1));
-  for (let j = 0; j <= n; j++) for (let i = 0; i <= n; i++) heights[j * (n + 1) + i] = heightOf(gridU(i), gridU(j));
+  const {n,heights,positions,normals,indices,base,first,second,firstDistance,secondDistance}=terrain?.n===detail.grid?terrain:buildRealmTerrain(stage.quality);
   /** The height of the land under a point of the model. */
   const groundAt = (x, z) => {
     const fi = Math.max(0, Math.min(n - 0.001, ((x / S + SPAN / 2) / SPAN) * n)),
@@ -202,62 +267,21 @@ export function createRealm(stage, world, { layer = null, onAudio, onSelect } = 
       a = j * (n + 1) + i;
     return lerp(lerp(heights[a], heights[a + 1], fi - i), lerp(heights[a + n + 1], heights[a + n + 2], fi - i), fj - j);
   };
-  const positions = [],
-    normals = [],
-    indices = [],
-    base = [];
-  for (let j = 0; j <= n; j++)
-    for (let i = 0; i <= n; i++) {
-      const y = heights[j * (n + 1) + i];
-      positions.push((gridU(i) - 50) * S, y, (gridU(j) - 50) * S);
-      const dx = (heights[j * (n + 1) + Math.min(n, i + 1)] - heights[j * (n + 1) + Math.max(0, i - 1)]) / (2 * step),
-        dz = (heights[Math.min(n, j + 1) * (n + 1) + i] - heights[Math.max(0, j - 1) * (n + 1) + i]) / (2 * step),
-        length = Math.hypot(dx, 1, dz);
-      normals.push(-dx / length, 1 / length, -dz / length);
-      // Steep ground shows its rock.
-      const colour = landColour(gridU(i), gridU(j), y);
-      base.push(y > 0.5 && length > 1.45 ? mix(colour, 0x556167, Math.min(0.85, (length - 1.45) * 1.6)) : colour);
-    }
-  for (let j = 0; j < n; j++)
-    for (let i = 0; i < n; i++) {
-      const a = j * (n + 1) + i;
-      indices.push(a, a + n + 1, a + 1, a + 1, a + n + 1, a + n + 2);
-    }
   // The land is shaded smoothly, unlike the figures and buildings, so that slopes read as slopes.
   const landMaterial = createStandardMaterial3D({ color: 0xffffff, vertexColors: true, roughness: 0.96, metallic: 0 });
   let land = null;
-  function paintLand() {
-    const owners = PLACES.map((place) => ({ u: place.at.x, v: place.at.y, owner: world().places[place.id].owner }));
-    const colors = new Float32Array(base.length * 3);
-    for (let j = 0; j <= n; j++)
-      for (let i = 0; i <= n; i++) {
-        const k = j * (n + 1) + i,
-          u = gridU(i),
-          v = gridU(j);
-        let colour = base[k];
-        if (heights[k] > 0.3) {
-          // The nearest stronghold claims the ground; where two sects' claims meet there is an edge.
-          let first = null,
-            second = null,
-            d1 = 99,
-            d2 = 99;
-          for (const place of owners) {
-            const d = Math.hypot(u - place.u, v - place.v);
-            if (d < d1) (second = first), (d2 = d1), (first = place), (d1 = d);
-            else if (d < d2) (second = place), (d2 = d);
-          }
-          if (first.owner && d1 < 14.6) {
-            const tint = hexOf(SECT_BY_ID[first.owner].color);
-            // Stronger toward the edge of the claim, like a wash laid inside a drawn line.
-            const edge = second && second.owner !== first.owner ? 0.2 * smooth(1 - (d2 - d1) / 3) : 0.2 * smooth((d1 - 11) / 3.6);
-            colour = mix(colour, shade(tint, 0.9), 0.2 + edge);
-          }
-        }
-        const c = rgb(colour);
-        colors[k * 3] = c[0];
-        colors[k * 3 + 1] = c[1];
-        colors[k * 3 + 2] = c[2];
+  function paintLand(owners) {
+    const colors=new Float32Array(base.length*3);
+    for(let k=0;k<base.length;k++){
+      let colour=base[k];
+      const a=first[k],b=second[k],owner=a<0?null:owners[a],d1=firstDistance[k],d2=secondDistance[k];
+      if(owner&&d1<14.6){
+        const tint=hexOf(SECT_BY_ID[owner].color);
+        const edge=b>=0&&owners[b]!==owner?0.2*smooth(1-(d2-d1)/3):0.2*smooth((d1-11)/3.6);
+        colour=mix(colour,shade(tint,0.9),0.2+edge);
       }
+      const c=rgb(colour);colors[k*3]=c[0];colors[k*3+1]=c[1];colors[k*3+2]=c[2];
+    }
     if (land) scene.removeChild(land);
     land = new Mesh3D(createGeometry3D({ positions, normals, colors, indices }), landMaterial);
     land.receiveShadow = true;
@@ -336,11 +360,12 @@ export function createRealm(stage, world, { layer = null, onAudio, onSelect } = 
     scene.addChild(banks);
   }
 
+  yield;
   // ---- borders: a clean line wherever two sects' lands meet, and round the rim of each sect's reach --------
   const borderMaterial = createStandardMaterial3D({ color: 0xffffff, vertexColors: true, roughness: 0.8, metallic: 0 });
   let borders = null;
-  function drawBorders() {
-    const owned = PLACES.map((place) => ({ u: place.at.x, v: place.at.y, owner: world().places[place.id].owner }));
+  function drawBorders(owners) {
+    const owned = PLACES.map((place,index) => ({ u: place.at.x, v: place.at.y, owner: owners[index] }));
     const out = { p: [], n: [], c: [], i: [] };
     /** Whether a point belongs to this stronghold's claim: on land, and no other stronghold nearer. */
     const nearest = (u, v, mine, also = null) => {
@@ -463,6 +488,7 @@ export function createRealm(stage, world, { layer = null, onAudio, onSelect } = 
     scene.addChild(model(towers));
   }
 
+  yield;
   // ---- strongholds ------------------------------------------------------------------------------------------
   /** Houses everywhere are two instanced shapes: a body and a roof. */
   const houses = [];
@@ -477,7 +503,7 @@ export function createRealm(stage, world, { layer = null, onAudio, onSelect } = 
     sites[place.id] = { x: cx, y, z: cz, kind };
     const put = (what, dx, dz, scale, turn = 0) => {
       if (detail.towns < 2 && what !== 'hall') return;
-      const node = createBuilding(what, what === 'hall' ? 3 : 2, world().places[place.id].owner);
+      const node = createBuilding(what, what === 'hall' ? 3 : 2, assemblyOwners[place.id]);
       node.setPosition(cx + dx, groundAt(cx + dx, cz + dz), cz + dz);
       node.setScale(scale);
       node.setRotation(0, turn, 0);
@@ -540,6 +566,7 @@ export function createRealm(stage, world, { layer = null, onAudio, onSelect } = 
         break;
       }
     }
+    yield;
   }
   // Pillars of rock round Guilin.
   for (let i = 0; i < 26; i++) {
@@ -602,23 +629,26 @@ export function createRealm(stage, world, { layer = null, onAudio, onSelect } = 
   }
   for (const [x, y, z, tone] of paddies) fixed.push([BOX, [x, y + 0.03, z], [1.42, 0.08, 1.42], 0x686b51], [BOX, [x, y + 0.05, z], [1.22, 0.08, 1.22], mix(0x5d7e73, 0x879872, tone)]);
   scene.addChild(model(fixed));
+  yield;
   {
     const turned = new Float32Array(4);
     // White shapes, coloured house by house.
     const bodies = new InstancedMesh3D(build([[BOX, [0, 0, 0], 1, 0xffffff]]), TOON, houses.length),
       roofs = new InstancedMesh3D(build([[PYRAMID, [0, 0, 0], 1, 0xffffff]]), TOON, houses.length);
-    houses.forEach((h, i) => {
-      const y = groundAt(h.x, h.z);
+    for(let i=0;i<houses.length;i++){
+      if(i&&i%256===0) yield;
+      const h=houses[i],y=groundAt(h.x,h.z);
       bodies.setTransformAt(i, [h.x, y + h.size * 0.35, h.z], quatFromEuler(turned, 0, h.turn, 0), [h.size * 1.3, h.size * 0.7, h.size]);
       roofs.setTransformAt(i, [h.x, y + h.size * 0.95, h.z], quatFromEuler(turned, 0, h.turn + Math.PI / 4, 0), [h.size * 1.15, h.size * 0.55, h.size * 0.95]);
       bodies.setColorAt(i, ...rgb(h.wall));
       roofs.setColorAt(i, ...rgb(h.roof));
-    });
+    }
     bodies.castShadow = roofs.castShadow = stage.quality !== 'low';
     scene.addChild(bodies);
     scene.addChild(roofs);
   }
 
+  yield;
   // ---- forests ------------------------------------------------------------------------------------------------
   {
     const pine = build([[TAPER, [0, 0.25, 0], [0.09, 0.5, 0.09], 0x6e4a2b], [SPIKE, [0, 0.95, 0], [0.42, 1.1, 0.42], 0x203b35], [SPIKE, [0, 1.45, 0], [0.3, 0.8, 0.3], 0x294841]]),
@@ -632,6 +662,7 @@ export function createRealm(stage, world, { layer = null, onAudio, onSelect } = 
     const towns = Object.values(sites);
     // Reeds stand at the water's edge and boulders lie on the high ground.
     for (let i = 0; i < detail.trees * 0.5; i++) {
+      if(i&&i%256===0) yield;
       const u = 50 - SPAN / 2 + random() * SPAN,
         v = 50 - SPAN / 2 + random() * SPAN,
         x = (u - 50) * S,
@@ -641,6 +672,7 @@ export function createRealm(stage, world, { layer = null, onAudio, onSelect } = 
       else if (y > 7.5 && y < 17 && random() < 0.5) spots[6].push([x, y, z]);
     }
     for (let tries = 0; tries < detail.trees * 4 && spots[0].length + spots[1].length < detail.trees; tries++) {
+      if(tries&&tries%256===0) yield;
       const u = 50 - SPAN / 2 + random() * SPAN,
         v = 50 - SPAN / 2 + random() * SPAN,
         x = (u - 50) * S,
@@ -657,19 +689,24 @@ export function createRealm(stage, world, { layer = null, onAudio, onSelect } = 
       spots[kind].push([x, y, z]);
     }
     const turned = new Float32Array(4);
-    [pine, leafy, maple, blossom, bamboo, reed, boulder].forEach((geometry, kind) => {
-      if (!spots[kind].length) return;
-      const trees = new InstancedMesh3D(geometry, TOON, spots[kind].length);
-      spots[kind].forEach(([x, y, z], i) => {
+    const geometries=[pine,leafy,maple,blossom,bamboo,reed,boulder];
+    for(let kind=0;kind<geometries.length;kind++){
+      if(!spots[kind].length) continue;
+      const trees=new InstancedMesh3D(geometries[kind],TOON,spots[kind].length);
+      for(let i=0;i<spots[kind].length;i++){
+        if(i&&i%256===0) yield;
+        const [x,y,z]=spots[kind][i];
         trees.setTransformAt(i, [x, y - 0.05, z], quatFromEuler(turned, 0, random() * 6.28, 0), 0.75 + random() * 0.6);
         const tone = kind === 4 ? 0.5 + random() * 0.2 : (kind > 1 ? 0.82 : 0.7) + random() * (kind > 1 ? 0.18 : 0.3);
         trees.setColorAt(i, tone, tone, tone * (kind > 1 ? 1 : 0.9));
-      });
+      }
       trees.castShadow = stage.quality === 'high' && kind < 5;
       scene.addChild(trees);
-    });
+      yield;
+    }
   }
 
+  yield;
   // ---- boats, clouds, banners and the mark on the chosen stronghold -------------------------------------------
   // A river junk: a hull high at bow and stern, a cabin under matting, and two sails of brown matting stiffened with battens.
   const sail = (z, tall, wide) => [[ROD, [0, tall / 2 + 0.2, z], [0.03, tall + 0.3, 0.03], 0x4a3a2a], [BOX, [0, tall / 2 + 0.36, z + 0.03], [wide, tall * 0.84, 0.03], 0xb5884a, [0, 0.25, 0]], ...[0.2, 0.4, 0.6, 0.8].map((k) => [BOX, [0, 0.36 + tall * 0.84 * k + tall * 0.08 - tall * 0.42 + tall / 2 - tall * 0.08, z + 0.05], [wide + 0.06, 0.025, 0.035], 0x6a4a2a, [0, 0.25, 0]])];
@@ -760,17 +797,18 @@ export function createRealm(stage, world, { layer = null, onAudio, onSelect } = 
   /** Name tags over the strongholds. */
   const tags = {};
   let marks = null;
-  function refresh() {
-    const now = PLACES.map((place) => world().places[place.id].owner ?? '-').join();
-    if (now === signature) return;
-    signature = now;
-    paintLand();
-    drawBorders();
+  function* refreshSteps() {
+    const owners=PLACES.map(place=>world().places[place.id].owner),now=owners.map(owner=>owner??'-').join();
+    if(now===signature) return;
+    signature=now;
+    paintLand(owners);
+    yield;
+    drawBorders(owners);
+    yield;
     scene.removeChild(banners);
     const parts = [];
-    for (const place of PLACES) {
-      const owner = world().places[place.id].owner,
-        site = sites[place.id];
+    for (const [index,place] of PLACES.entries()) {
+      const owner=owners[index],site=sites[place.id];
       const colour = owner ? hexOf(SECT_BY_ID[owner].color) : 0xb9a77d;
       // A tall banner in the owner's colour, and smaller flags round a place that is held.
       parts.push([ROD, [site.x - 3.4, site.y + 2.6, site.z + 2.6], [0.07, 5.2, 0.07], 0x4a3a2a], [BOX, [site.x - 2.75, site.y + 4.2, site.z + 2.6], [1.2, 1.9, 0.05], colour], [BOX, [site.x - 2.75, site.y + 5.2, site.z + 2.6], [1.4, 0.12, 0.09], shade(colour, 0.6)]);
@@ -785,6 +823,7 @@ export function createRealm(stage, world, { layer = null, onAudio, onSelect } = 
     banners = model(parts);
     scene.addChild(banners);
   }
+  function refresh(){drainRows(refreshSteps());}
   /** Tells the model which roads are traded along: `[{ from, to }]`. Carts are shared out among them. */
   function setTrade(routes) {
     // Refreshing an overlay should leave moving carts and their sound positions intact.
@@ -796,7 +835,8 @@ export function createRealm(stage, world, { layer = null, onAudio, onSelect } = 
     carts.count = trade.length;
     heardCart = undefined;
   }
-  refresh();
+  yield;
+  yield* refreshSteps();
 
   const turned = new Float32Array(4);
   let clock = 0;
@@ -986,4 +1026,12 @@ export function createRealm(stage, world, { layer = null, onAudio, onSelect } = 
     },
   };
   return realm;
+}
+
+export function createRealm(stage,world,options={}){return drainRows(realmAssembly(stage,world,options));}
+/** Build the same scene in ordered slices. An abandoned scene never enters the renderer or installs markers. */
+export async function createRealmAsync(stage,world,options={}){
+  const terrain=options.terrain??await prepareRealmTerrain(stage.quality,options);
+  if(!terrain||options.isCurrent?.()===false) return null;
+  return runRows(realmAssembly(stage,world,{...options,terrain}),options);
 }

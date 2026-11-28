@@ -496,10 +496,6 @@ export const MATRIX = {
     {
      "game": "InquestScrolls",
      "file": "InquestScrolls/src/view/verdict.mjs"
-    },
-    {
-     "game": "Wulin",
-     "file": "Wulin/src/ui/native-shell.mjs"
     }
    ]
   },
@@ -1061,6 +1057,10 @@ export const MATRIX = {
     {
      "game": "StarBanner",
      "file": "StarBanner/src/audio/sound.mjs"
+    },
+    {
+     "game": "Wulin",
+     "file": "Wulin/src/main.mjs"
     }
    ]
   },
@@ -1417,10 +1417,6 @@ export const MATRIX = {
     {
      "game": "InquestScrolls",
      "file": "InquestScrolls/src/view/notes.mjs"
-    },
-    {
-     "game": "Wulin",
-     "file": "Wulin/src/ui/native-shell.mjs"
     }
    ]
   },
