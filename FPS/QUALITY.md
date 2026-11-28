@@ -47,6 +47,12 @@ After the portrait fix, both actual-GPU emulated 375×667 Chinese and 393×852 E
 
 Final enhanced screen replay passed all nine configurations × ten checkpoints with zero errors/warnings. Each touch gameplay checkpoint additionally verifies eleven named native controls, 44 CSS px minimum, safe containment and non-overlap with each other and primary HUD cards. All screenshots were reviewed; the red regions are simulated insets. See the linked compact screenshots and machine-readable summary above. These are PC emulations, not device measurements.
 
+### 软件浏览器兼容 · Software browser smoke
+
+`node test/accept.mjs` 默认软件路径实际退出码 0：本机未安装 Playwright 自带浏览器，使用仓库支持的 `CHROMIUM_PATH` 指向已安装 Edge，ANGLE Google Vulkan SwiftShader 而非 RTX 硬件；全量美术标题与已审核 640×420 基线差异 0.12%，未重拍基线。设置、操作说明、返回正常，0 控制台/HTTP 异常。此路径不作为 GPU 性能测量。
+
+Default `node test/accept.mjs` smoke exited 0 with the installed Edge executable via the supported CHROMIUM_PATH setting (bundled Playwright browser unavailable) and Google Vulkan SwiftShader, not the RTX hardware. Complete title art differed from the reviewed 640×420 baseline by 0.12%, with no baseline replacement; settings, controls and return succeeded without unexpected errors or HTTP failures. This is compatibility evidence, not a frame-rate measurement.
+
 ### 验收边界 · Limits
 
 - 2026-11-28 在 PC 端两次运行 `adb devices -l` 均无任何设备；无法连接原 Galaxy Z Fold7 / SM-F966U1。本轮没有 Fold7 真机帧率、实体触屏、真实刘海或扬声器实听结果。上表的 873×325 只是在 PC 模拟视口。
