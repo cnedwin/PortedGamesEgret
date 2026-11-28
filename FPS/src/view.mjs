@@ -29,6 +29,7 @@ import { setRain } from './grime.mjs';
 import { BOXES, PLACES } from './level.mjs';
 import { buildScenery } from './scenery.mjs';
 import { createSoldierFactory } from './soldier.mjs';
+import { createSupplyCrateBodyGeometry, createSupplyCrateInteriorGeometry } from './supply-crate-art.mjs';
 import { canvasTexture, createSurfaces, dotTexture, skyTexture } from './textures.mjs';
 
 /** Colours for the six rarities of loot, common to rarest, as [r, g, b] in 0..1. */
@@ -285,11 +286,8 @@ export function createView(scene, camera, options = {}) {
   relayBeacon.addChild(relayPost);
   scene.addChild(relayBeacon);
 
-  // ---- supply crates: a box, a lid that swings up, and a glow once searched ---------------
-  const crateBody = createBuilder()
-      .box(0, 0.26, 0, 1.05, 0.52, 0.62, { tint: rgb(0x4b5a3d) })
-      .box(0, 0.26, -0.315, 0.22, 0.14, 0.02, { tint: rgb(0xd9a520) })
-      .finish(),
+  // ---- supply crates: a recessed lining and a lid that swings up once searched ---------------
+  const crateBody = createSupplyCrateBodyGeometry(),
     crateLid = createBuilder()
       .box(0, 0.04, -0.31, 1.07, 0.08, 0.64, { tint: rgb(0x55664a) })
       .finish();
@@ -298,6 +296,12 @@ export function createView(scene, camera, options = {}) {
   const crateMount = authoredCrate?.parts.body && authoredCrate.parts.lid ? uniformMount(authoredCrate, 1.05, 0) : undefined;
   const hinge = crateMount ? [0, mountedPoint(crateMount, [0, authoredCrate.parts.body.bounds[4], 0])[1],
     mountedPoint(crateMount, [0, 0, authoredCrate.bounds[5]])[2]] : [0, 0.52, 0.31];
+  // Match the actual mounted case shell; the procedural original-art fallback
+  // retains its old exterior size. Share a mesh/material for each quality tag.
+  const crateBounds = crateMount ? authoredCrate.parts.body.bounds.map((v, i) => v * crateMount.scale + crateMount.position[i % 3])
+    : [-0.525, 0, -0.31, 0.525, 0.52, 0.31];
+  const interiorMaterial = createStandardMaterial3D({ color: 0xffffff, vertexColors: true, roughness: .96, metallic: .02 });
+  const interiorByRarity = new Map();
   function buildCrates(game) {
     for (const crate of crates) crate.node.removeFromParent();
     crates = game.crates.map((crate) => {
@@ -308,20 +312,21 @@ export function createView(scene, camera, options = {}) {
         lid = visual(crateLid, plainMaterial, models['supply-lid'] ?? authoredCrate?.parts.lid, {
           transform: crateMount && { scale: crateMount.scale, position: crateMount.position.map((value, axis) => value - hinge[axis]) },
         });
+      body.name = 'supply-crate-body';
+      lid.name = 'supply-crate-lid';
       lid.setPosition(...hinge);
       node.addChild(body);
       node.addChild(lid);
-      const best = Math.max(...crate.items.map((item) => item.rarity)),
-        [r, g, b] = RARITY_COLOURS[best];
-      const glow = new Mesh3D(
-        createBoxGeometry3D({ width: 0.9, height: 0.03, depth: 0.5 }),
-        createUnlitMaterial3D({ color: [r, g, b], toneMapped: false }),
-      );
-      glow.setPosition(0, hinge[1] - 0.02, 0);
-      glow.visible = false;
-      node.addChild(glow);
+      const best = Math.max(0, ...crate.items.map((item) => item.rarity));
+      if (!interiorByRarity.has(best)) interiorByRarity.set(best,
+        createSupplyCrateInteriorGeometry(crateBounds, RARITY_COLOURS[best] ?? RARITY_COLOURS[0]));
+      const interior = new Mesh3D(interiorByRarity.get(best), interiorMaterial);
+      interior.name = 'supply-crate-interior';
+      interior.castShadow = false;
+      interior.visible = false;
+      node.addChild(interior);
       scene.addChild(node);
-      return { crate, node, lid, glow, open: 0 };
+      return { crate, node, lid, interior, open: 0 };
     });
   }
 
@@ -968,7 +973,7 @@ export function createView(scene, camera, options = {}) {
       if (item.open !== want) {
         item.open += Math.sign(want - item.open) * Math.min(Math.abs(want - item.open), dt * 4);
         orient(item.lid, 0, item.open * 1.9);
-        item.glow.visible = item.open > 0.3;
+        item.interior.visible = item.open > 0.3;
       }
     }
     // Beacons breathe so they read as signals.

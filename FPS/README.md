@@ -159,12 +159,13 @@ Characters, weapon visuals and station props use Tripo GLB assets simplified, te
 
 - 软件渲染下复杂 3D 场景可能低于验收器的动画回调门槛；真实标题已显示时仍可能报告等待帧循环超时，这不是首屏黑图误判或真实硬件性能结论。 · Complex 3D under software rendering can fall below the verifier's animation-callback threshold even after the real title is visible; this is neither a premature black screenshot nor a hardware performance measurement.
 
-- 杉树在阴影里偏黑，背光时层次看不清 · Firs go nearly black in shade.
 - 代打程序（`?auto=1`）不搜物资箱，自动演示里看不到搜集和背包 · The stand-in player never searches crates.
 - 阵亡后从头开始；配件只作用于突击步枪，捡到即装、不能卸下 · Death restarts the run; attachments fit only the assault rifle.
 - 原生数据视图的连续滑杆、调用方 canvas 的自适应和完整数据式 hold/touchButton 接口仍有缺口；设置保留原生步进按钮，触屏使用原生动作控件。原始锁定仅在浏览器支持和授权时生效，不承诺任何环境都可获得。见 [ENGINE-NOTES.md](ENGINE-NOTES.md) 第 7–10 条。 · Declarative sliders, caller-owned canvas fitting and complete data-view hold/touch controls remain gaps; native steppers and action controls are retained. Raw lock remains browser-dependent and permission-dependent. See ENGINE-NOTES 7–10.
 
 ## 已解决 · Solved
+
+- 泄洪白块、黑色重叠积水、积木状树木及物资箱的发光实心内板：已更换为羽化水纹、单层积水、带树皮/枝叶纹理的原生实例与受光凹入内衬，保留地图、碰撞、开箱和搜集规则；见 [QUALITY.md](QUALITY.md) 与 [实机同机位对照](test/evidence/scene-art-before-after.jpg)。 · The sluice slabs, stacked dark puddles, primitive trees and luminous crate insert have been replaced with feathered water, masked instanced foliage and recessed lit case contents without changing collision or loot rules.
 
 - 通用 verify 在启动就绪前过早保存第一张图的问题由引擎 [PR #555](https://github.com/cnedwin/Egret_rebuild/pull/555) 修复；现在先等可见画布、有效画面和动画回调，超时会明确报告原因而不提前操作。具名功能路线仍保留，见 ENGINE-NOTES 第 15 条。 · PR #555 fixes premature generic verification by waiting for a visible canvas, nonblank picture and advancing animation callbacks before input; bounded timeouts report why readiness was not established. Named functional routes remain (ENGINE-NOTES 15).
 
@@ -194,6 +195,7 @@ Characters, weapon visuals and station props use Tripo GLB assets simplified, te
 | `src/level.mjs` | 地图方块、关键位置、行走网格 · map blocks, named places, the walking grid |
 | `src/bot.mjs` | 代打玩家，用于自动检查和 `?auto=1` · a stand-in player for automated checks and `?auto=1` |
 | `src/view.mjs`，`src/scenery.mjs` | 场景、灯光、特效 · scene, lights, effects |
+| `src/vegetation.mjs`，`src/water-details.mjs`，`src/supply-crate-art.mjs` | 本地生成的植被纹理、水面和箱内细节 · locally generated foliage textures, water and case interior art |
 | `src/soldier.mjs`，`src/soldier-skin.mjs`，`src/gun.mjs` | 连续角色蒙皮与动画、手中的武器 · continuous character skinning and animation, the weapon in hand |
 | `assets/models/`，`src/asset-models.mjs` | GLB 美术和角色、道具的挂载清单 · GLB assets and the visual slot manifest |
 | `src/build.mjs`，`src/textures.mjs`，`src/grime.mjs` | 几何体拼装、程序纹理、风化着色器 · geometry building, generated textures, the weathering shader |

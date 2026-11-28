@@ -1,0 +1,390 @@
+{
+  "baseline": "3ca60f0edb0898f4b3222f7a93c67bafab099b61",
+  "engine": "d2e28f46182a563fd594cc51847240429ab0a5b5",
+  "scope": "controlled scene art + bounded actual-device interaction; no full device mission",
+  "pc": {
+    "adapter": "RTX 5090 Laptop GPU / Edge / WebGL2 D3D11",
+    "viewport": "1400x900",
+    "seed": 7,
+    "quality": "medium",
+    "before": {
+      "conditions": {
+        "seed": 7,
+        "quality": "medium",
+        "viewport": "1400x900",
+        "phase": "normal deployment; no rule modifications, seven seconds at starting area"
+      },
+      "adapter": "ANGLE (NVIDIA, NVIDIA GeForce RTX 5090 Laptop GPU (0x00002C58) Direct3D11 vs_5_0 ps_5_0, D3D11)",
+      "models": 36,
+      "passed": true,
+      "trials": [
+        {
+          "before": {
+            "mode": "play",
+            "state": "intro",
+            "t": 0,
+            "health": 100,
+            "armor": 60,
+            "position": [
+              0,
+              0,
+              28.5
+            ],
+            "yaw": 0,
+            "pitch": 0,
+            "fov": 74,
+            "frames": 376,
+            "worldDraws": 123,
+            "tris": 8456504,
+            "world": {
+              "frame": 4.1641785343560125,
+              "rules": 0.09539480875717167,
+              "view": 0.4641446807229843,
+              "draw": 1.535613791391553
+            },
+            "overlay": {
+              "state": "running",
+              "steps": 377,
+              "frames": 5,
+              "skipped": 0,
+              "seconds": 1.966699999999996
+            },
+            "pointerLocked": true,
+            "fullScreen": null
+          },
+          "after": {
+            "mode": "play",
+            "state": "play",
+            "t": 5.75830000000012,
+            "health": 100,
+            "armor": 60,
+            "position": [
+              0,
+              0.018333333333333313,
+              28.5
+            ],
+            "yaw": 0,
+            "pitch": 0,
+            "fov": 74,
+            "frames": 2048,
+            "worldDraws": 126,
+            "tris": 8519971,
+            "world": {
+              "frame": 4.172266593242127,
+              "rules": 0.07338587455234415,
+              "view": 0.4324749620231818,
+              "draw": 1.5022219315980452
+            },
+            "overlay": {
+              "state": "running",
+              "steps": 2049,
+              "frames": 17,
+              "skipped": 0,
+              "seconds": 8.983400000000128
+            },
+            "pointerLocked": true,
+            "fullScreen": null
+          },
+          "samples": 1668,
+          "wall": 7001.600000023842,
+          "p50": 4.199999999998909,
+          "p95": 4.299999999999272,
+          "max": 12.5,
+          "over50": 0,
+          "frameDelta": 1672,
+          "simDelta": 5.75830000000012
+        }
+      ],
+      "errors": [],
+      "httpErrors": []
+    },
+    "final": {
+      "conditions": {
+        "seed": 7,
+        "quality": "medium",
+        "viewport": "1400x900",
+        "phase": "normal deployment; no rule modifications, seven seconds at starting area"
+      },
+      "adapter": "ANGLE (NVIDIA, NVIDIA GeForce RTX 5090 Laptop GPU (0x00002C58) Direct3D11 vs_5_0 ps_5_0, D3D11)",
+      "models": 36,
+      "passed": true,
+      "trials": [
+        {
+          "before": {
+            "mode": "play",
+            "state": "intro",
+            "t": 0,
+            "health": 100,
+            "armor": 60,
+            "position": [
+              0,
+              0,
+              28.5
+            ],
+            "yaw": 0,
+            "pitch": 0,
+            "fov": 73.99999999421705,
+            "frames": 373,
+            "worldDraws": 127,
+            "tris": 8466746,
+            "world": {
+              "frame": 4.165023962275473,
+              "rules": 0.053014882857071684,
+              "view": 0.267000338304263,
+              "draw": 1.0527638795226801
+            },
+            "overlay": {
+              "state": "running",
+              "steps": 374,
+              "frames": 155,
+              "skipped": 50,
+              "seconds": 1.9127000000000025
+            },
+            "pointerLocked": true,
+            "fullScreen": null
+          },
+          "after": {
+            "mode": "play",
+            "state": "play",
+            "t": 5.658300000000115,
+            "health": 100,
+            "armor": 60,
+            "position": [
+              0,
+              0.02406455666666696,
+              28.5
+            ],
+            "yaw": 0,
+            "pitch": 0,
+            "fov": 73.9999999999999,
+            "frames": 2053,
+            "worldDraws": 130,
+            "tris": 8530213,
+            "world": {
+              "frame": 4.174051669540094,
+              "rules": 0.0488213585679946,
+              "view": 0.26828474000611746,
+              "draw": 1.0554200487345144
+            },
+            "overlay": {
+              "state": "running",
+              "steps": 2054,
+              "frames": 167,
+              "skipped": 50,
+              "seconds": 8.92130000000013
+            },
+            "pointerLocked": true,
+            "fullScreen": null
+          },
+          "samples": 1678,
+          "wall": 7001.29999999404,
+          "p50": 4.199999999998909,
+          "p95": 4.299999999999272,
+          "max": 8.300000000001091,
+          "over50": 0,
+          "frameDelta": 1680,
+          "simDelta": 5.658300000000115
+        }
+      ],
+      "errors": [],
+      "httpErrors": []
+    },
+    "artBefore": [
+      {
+        "name": "sluice-wide",
+        "camera": [
+          -20,
+          2.200000047683716,
+          -20.899999618530273
+        ],
+        "draws": 42,
+        "triangles": 940259,
+        "frame": 94
+      },
+      {
+        "name": "sluice-close",
+        "camera": [
+          -24.5,
+          1.7999999523162842,
+          -24.5
+        ],
+        "draws": 40,
+        "triangles": 844894,
+        "frame": 96
+      },
+      {
+        "name": "puddle",
+        "camera": [
+          -23.799999237060547,
+          2.5999999046325684,
+          15.100000381469727
+        ],
+        "draws": 53,
+        "triangles": 2289109,
+        "frame": 98
+      },
+      {
+        "name": "trees",
+        "camera": [
+          -31,
+          2.0999999046325684,
+          26.5
+        ],
+        "draws": 42,
+        "triangles": 803170,
+        "frame": 100
+      },
+      {
+        "name": "pine",
+        "camera": [
+          31.399999618530273,
+          2.299999952316284,
+          10.199999809265137
+        ],
+        "draws": 41,
+        "triangles": 984685,
+        "frame": 102
+      },
+      {
+        "name": "crate",
+        "camera": [
+          -33,
+          1.9199999570846558,
+          21.5
+        ],
+        "draws": 49,
+        "triangles": 1598214,
+        "frame": 104
+      }
+    ],
+    "artFinal": [
+      {
+        "name": "sluice-wide",
+        "camera": [
+          -20,
+          2.200000047683716,
+          -20.899999618530273
+        ],
+        "draws": 46,
+        "triangles": 950499,
+        "frame": 97
+      },
+      {
+        "name": "sluice-close",
+        "camera": [
+          -24.5,
+          1.7999999523162842,
+          -24.5
+        ],
+        "draws": 44,
+        "triangles": 855134,
+        "frame": 99
+      },
+      {
+        "name": "puddle",
+        "camera": [
+          -23.799999237060547,
+          2.5999999046325684,
+          15.100000381469727
+        ],
+        "draws": 57,
+        "triangles": 2299349,
+        "frame": 101
+      },
+      {
+        "name": "trees",
+        "camera": [
+          -31,
+          2.0999999046325684,
+          26.5
+        ],
+        "draws": 45,
+        "triangles": 813398,
+        "frame": 103
+      },
+      {
+        "name": "pine",
+        "camera": [
+          31.399999618530273,
+          2.299999952316284,
+          10.199999809265137
+        ],
+        "draws": 44,
+        "triangles": 994913,
+        "frame": 105
+      },
+      {
+        "name": "crate",
+        "camera": [
+          -33,
+          1.9199999570846558,
+          21.5
+        ],
+        "draws": 52,
+        "triangles": 1608630,
+        "frame": 107
+      }
+    ],
+    "acceptance": 33,
+    "mobileEmulation": 17,
+    "officialVerifier": 7,
+    "sourceChecks": 13
+  },
+  "fold7": {
+    "adapter": "Galaxy Z Fold7 / Adreno 830 / WebGL2",
+    "viewport": "873x325",
+    "seed": 7,
+    "quality": "medium",
+    "pairs": [
+      {
+        "new": {
+          "max": 49.8,
+          "p95": 33.2,
+          "hz": 50.34
+        },
+        "old": {
+          "max": 33.2,
+          "p95": 16.7,
+          "hz": 59.76
+        },
+        "order": "old-new"
+      },
+      {
+        "new": {
+          "max": 33.2,
+          "p95": 16.7,
+          "hz": 59.76
+        },
+        "old": {
+          "max": 66.3,
+          "p95": 49.7,
+          "hz": 39.79
+        },
+        "order": "new-old"
+      }
+    ],
+    "final": {
+      "max": 82.9,
+      "seconds": 7.0282,
+      "restored": true,
+      "over50": 2,
+      "vegetationSHA256": "7124a3d39535b9ec9d411d3495071c48f349bb00147b2d661ae2499465a733a8",
+      "touchMoveCancelPauseResume": true,
+      "models": 36,
+      "hz": 50.23,
+      "sourceChecks": 35,
+      "p95": 33.2,
+      "callbacks": 353,
+      "errors": 0
+    }
+  },
+  "node": {
+    "failed": 0,
+    "passed": 107,
+    "ruleRunsSeconds": [
+      357,
+      358,
+      357
+    ]
+  }
+}

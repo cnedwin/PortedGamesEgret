@@ -42,21 +42,22 @@ Before formal API adoption, the runtime's refresh to `33897768` passed 51 Node c
 - 自动输入与自动控制用于可复跑验收，真实玩家的难度和熟练度分布还需要玩家反馈。
 - 音乐和声音沿用现有合成实现，本轮未做专门的人工听音验收。
 - 角色使用完整连续网格、原始 UV/PBR、预烘权重和独立的 16 骨白鹭骨架；不再把身体切成刚性片。动作仍由程序驱动；左右各一组指节闭握，并非逐指动捕。
-- 地形、植被、地面、栏杆、标识和灯光等辅助元素沿用既有实现。
+- 地形、栏杆、标识及灯光沿用既有实现；植被、水闸水流、积水和物资箱内饰已升级，见 QUALITY 的同机位实测。
 
-The historical device acceptance focused on WebGL2. Consult the formal-adoption record above before attributing full-monitor native PC fullscreen, dedicated game WebGPU qualification, human difficulty assessment or listening checks to the current version. Characters use continuous original-UV surfaces with baked weights and independent sixteen-bone Egret skeletons, driven procedurally rather than by motion capture. Terrain, foliage, ground, rails, signs and lighting retain their existing implementation.
+The historical device acceptance focused on WebGL2. Consult the formal-adoption record above before attributing full-monitor native PC fullscreen, dedicated game WebGPU qualification, human difficulty assessment or listening checks to the current version. Characters use continuous original-UV surfaces with baked weights and independent sixteen-bone Egret skeletons, driven procedurally rather than by motion capture. Terrain, rails, signs and lighting retain their existing implementation; foliage, sluice water, puddles and case interiors have a new visual implementation, documented in QUALITY.
 
 ## 已知问题 · Known issues
 - Fold7高负载时偶发长帧仍存在，P95约49.8ms；本轮已减少2D提交，但不是完全解决。 · Fold7 heavy-load hitches remain, p95 around49.8ms in the matched Demo-side A/B; native submissions decrease without a uniform tail-latency fix.
 
 | 问题 · Issue | 影响 · Effect |
 | --- | --- |
-| 杉树在阴影里偏黑 · Firs go nearly black in shade | 背光时层次看不清 · the tiers are hard to read against the light |
 | 代打程序不搜物资箱 · The stand-in player never searches crates | 自动演示里看不到搜集和背包 · the automatic demo shows no looting or backpack |
 | 阵亡后从头开始 · Death restarts the whole run | 当前没有任务检查点 · the mission currently has no checkpoints |
 | 扩容弹匣和前握把只作用于突击步枪 · Attachments fit only the assault rifle | 捡到即装，不能卸下或换到别的枪上 · fitted on pickup, cannot be removed or moved |
 
 ## 已经解决的问题 · Problems already solved
+
+- 积水黑色叠层、泄洪白块、低细节树木及物资箱发光实心内板已修复；53 株树使用带纹理原生实例，水面使用单层原生网格，箱内显示非功能性的物资包装与隔层。 · The overlapping black puddles, white sluice slabs, primitive tree shapes and luminous solid crate insert are corrected. See QUALITY for matched GPU evidence.
 
 - 点击开始时，普通双面补给箱的主图和镜面材质首次同步链接，造成约 130 毫秒的两次停顿。启动时在加载提示下真实预绘这两种路径，完成后恢复标题，不推进游戏时间。
 - 护甲条的查找会误中受击方向指示，带护甲中弹时界面报错。
