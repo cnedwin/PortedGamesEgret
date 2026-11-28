@@ -66,7 +66,30 @@ const perType={
 };
 const normalizeName=s=>String(s).replace(/[^a-zA-Z0-9_.-]/g,'_');
 function hash(s){let h=0;for(const char of s)h=Math.imul(h,31)+char.charCodeAt(0)|0;return (h>>>0).toString(36);}
-export function compile(root,{translate=String,dispatch=()=>{},badge=()=>false,fieldValue=(id,fallback)=>fallback,live}={}) {
+// Native Paragraph rasters are independent of Play's glyph atlas: match the
+// observed backing pixels per UI unit, but keep the existing density-2 budget.
+// A screen resize is reported before the renderer has resized the canvas.
+export function createParagraphDensity(){
+  let backingDensity=2,lastFrame,lastBacking,waitingForDraw=false;
+  const same=(a,b)=>a&&a[0]===b[0]&&a[1]===b[1];
+  return (frame,canvas,uiScale=1)=>{
+    const nextFrame=[frame?.width,frame?.height],nextBacking=[canvas?.width,canvas?.height];
+    if([...nextFrame,...nextBacking].every(n=>Number.isFinite(n)&&n>0)){
+      if(lastFrame&&!same(lastFrame,nextFrame))waitingForDraw=same(lastBacking,nextBacking);
+      if(lastBacking&&!same(lastBacking,nextBacking))waitingForDraw=false;
+      if(!waitingForDraw){
+        const sx=nextBacking[0]/nextFrame[0],sy=nextBacking[1]/nextFrame[1];
+        // Integer canvas edges can round up by one backing pixel per axis.
+        if(Math.min(sx,sy)>=.5&&Math.abs(sx-sy)<=1/nextFrame[0]+1/nextFrame[1])backingDensity=Math.round(Math.min(sx,sy)*1000)/1000;
+      }
+      lastFrame=nextFrame;lastBacking=nextBacking;
+    }
+    const scale=Number.isFinite(uiScale)&&uiScale>0?uiScale:1;
+    return Math.max(.25,Math.min(2,Math.round(backingDensity*scale*1000)/1000));
+  };
+}
+export function compile(root,{translate=String,dispatch=()=>{},badge=()=>false,fieldValue=(id,fallback)=>fallback,paragraphDensity=2,live}={}) {
+  const density=Number.isFinite(paragraphDensity)?Math.max(.25,Math.min(2,paragraphDensity)):2;
   const bind={}, used=new Set();
   function visit(node,path,parentRole) {
     if(!node||!perType[node.type]) throw new Error('Unknown screen part: '+node?.type);
@@ -83,11 +106,11 @@ export function compile(root,{translate=String,dispatch=()=>{},badge=()=>false,f
     if('text' in out)out.text=translate(out.text);
     if('label' in out)out.label=translate(out.label);
     if(node.type==='text'&&node._lines>1){
-      out.paragraph={fontFamilies:paragraphFonts(out.fontFamily),lineHeight:Math.ceil((out.size??16)*1.5),maxLines:node._lines,density:2,locale:'zh-CN'};
+      out.paragraph={fontFamilies:paragraphFonts(out.fontFamily),lineHeight:Math.ceil((out.size??16)*1.5),maxLines:node._lines,density,locale:'zh-CN'};
     }
     if(node.type==='button'&&node._detail){
       out.description=translate(node._detail);
-      out.paragraph={fontFamilies:paragraphFonts(BODY_FONT),lineHeight:20,maxLines:node._lines??3,density:2,locale:'zh-CN'};
+      out.paragraph={fontFamilies:paragraphFonts(BODY_FONT),lineHeight:20,maxLines:node._lines??3,density,locale:'zh-CN'};
     }
     if(live && node.type!=='space'){
       let rec=live.next[name]={};
