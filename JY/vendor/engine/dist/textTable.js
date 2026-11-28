@@ -111,4 +111,3 @@ export function pickLanguage(languages, wanted) {
     }
     return languages[0];
 }
-//# sourceMappingURL=textTable.js.map

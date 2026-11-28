@@ -182,4 +182,3 @@ export class WebGL2FrameMetrics3D {
         this.#pending.length = 0;
     }
 }
-//# sourceMappingURL=webGL2FrameMetrics3D.js.map

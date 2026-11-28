@@ -225,4 +225,3 @@ export class Vehicle3D {
 export function createVehicle3D(world, chassis, options) {
     return new Vehicle3D(world, chassis, options);
 }
-//# sourceMappingURL=Vehicle3D.js.map

@@ -39,4 +39,3 @@ export function hasMatchingSequenceTimeline(source, candidate) {
         first.length === second.length &&
         first.every((end, index) => end === second[index]));
 }
-//# sourceMappingURL=contentFactoryState.js.map

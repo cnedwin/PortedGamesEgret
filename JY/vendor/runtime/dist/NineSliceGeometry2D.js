@@ -123,4 +123,3 @@ export function createNineSliceGeometry2D(options) {
     // Intentional zero-width cells retain the canonical 16/54 grid topology.
     return createTexturedGeometry2D({ positions, uvs, lightColors, indices });
 }
-//# sourceMappingURL=NineSliceGeometry2D.js.map

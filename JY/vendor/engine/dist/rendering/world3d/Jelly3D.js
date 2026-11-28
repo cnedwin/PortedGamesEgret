@@ -264,4 +264,3 @@ export class Jelly3D {
 export function createJelly3D(target, options = {}) {
     return new Jelly3D(target, options);
 }
-//# sourceMappingURL=Jelly3D.js.map

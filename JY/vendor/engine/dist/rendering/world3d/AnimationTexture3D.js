@@ -600,4 +600,3 @@ export function worldRenderSphere3D(mesh) {
 export function createSkinnedInstancedMesh3D(geometry, material, animations, capacity, instanceColorSize = 3) {
     return new SkinnedInstancedMesh3D(geometry, material, animations, capacity, instanceColorSize);
 }
-//# sourceMappingURL=AnimationTexture3D.js.map

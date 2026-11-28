@@ -78,4 +78,3 @@ export function queryDisplayPoint(receiver, x, y, options, inverse) {
         live(current);
     return Object.freeze({ x: result.x === 0 ? 0 : result.x, y: result.y === 0 ? 0 : result.y });
 }
-//# sourceMappingURL=displayCoordinates.js.map

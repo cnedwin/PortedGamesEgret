@@ -700,4 +700,3 @@ export function decompressZstd3D(source, options = {}) {
         throw bad('zstd data holds no frame');
     return out.result();
 }
-//# sourceMappingURL=Compression3D.js.map

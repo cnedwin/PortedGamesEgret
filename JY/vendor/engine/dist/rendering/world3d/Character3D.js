@@ -302,4 +302,3 @@ export function createCharacterMotor3D(world, options = {}) {
 export function createFollowCamera3D(camera, target, options = {}) {
     return new FollowCamera3D(camera, target, options);
 }
-//# sourceMappingURL=Character3D.js.map

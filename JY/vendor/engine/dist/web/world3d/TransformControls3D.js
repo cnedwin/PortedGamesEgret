@@ -125,4 +125,3 @@ export class TransformControls3D {
 export function createTransformControls3D(camera, element, options = {}) {
     return new TransformControls3D(camera, element, options);
 }
-//# sourceMappingURL=TransformControls3D.js.map

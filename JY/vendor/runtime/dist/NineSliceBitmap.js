@@ -161,4 +161,3 @@ export class NineSliceBitmap extends DisplayObject {
         apply(originalDispose, this, []);
     }
 }
-//# sourceMappingURL=NineSliceBitmap.js.map

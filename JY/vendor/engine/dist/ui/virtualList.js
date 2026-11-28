@@ -102,4 +102,3 @@ export function revealScroll(view, intent, current, height) {
     }
     return view.clampScroll(target, height);
 }
-//# sourceMappingURL=virtualList.js.map

@@ -177,4 +177,3 @@ export function snapshotParagraphTextGeometry(data, request, metrics) {
     });
     return geometry;
 }
-//# sourceMappingURL=geometry.js.map

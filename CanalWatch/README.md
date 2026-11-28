@@ -104,7 +104,7 @@ node tools/balance.mjs 12
 
 ## 已验证 · Verified
 
-- 2026-11-28：WebKit 无音频宿主时仍可进入寻常首关；35 项 Node 测试通过。 · WebKit reaches the Normal map without an audio host; 35 Node tests passed. 使用 Windows Playwright WebKit 的 iPhone 15 Pro 配置，不是 iPhone 真机；详见 [QUALITY.md](QUALITY.md)。 · iPhone 15 Pro device profile on Windows Playwright WebKit, not a physical iPhone; see QUALITY.md.
+- 2026-11-28：WebKit 能进入寻常并操作叫波，首波计时和动作文字在 1.1 s 后可见；39 项 Node 测试通过。 · WebKit enters Normal and calls wave one with readable captions; 39 Node tests passed. 使用 Windows Playwright WebKit 的 iPhone 15 Pro 配置，不是 iPhone 真机；详见 [QUALITY.md](QUALITY.md)。 · iPhone 15 Pro device profile on Windows Playwright WebKit, not a physical iPhone; see QUALITY.md.
 
 - Node 26：35/35 规则、存档、双语、引擎副本及三种屏幕布局几何测试。· 35/35 rule, save, locale, vendor and geometry tests.
 - 浏览器验收：51/51；标题、地图、结算三张新基线差异 0.00%，无控制台或页面错误。覆盖键盘、鼠标、模拟触屏、双语、横竖屏、建塔/升级/拆除、关闸、速度、暂停、胜败、存档及真实生成的载人船点击预判。· 51/51 browser checks and 0.00% differences against the three reviewed new baselines; keyboard, mouse, emulated touch, both languages, layout, tower actions, gates, speed, pause, results, saves and actual carrier preview.

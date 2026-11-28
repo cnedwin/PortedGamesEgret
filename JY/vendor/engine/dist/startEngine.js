@@ -28,4 +28,3 @@ export async function startEngine(options, timeoutMs, ports, clockOptions) {
         throw new EgretError('ENGINE_START_FAILED', { cause, cleanupErrors });
     }
 }
-//# sourceMappingURL=startEngine.js.map

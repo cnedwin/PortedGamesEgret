@@ -212,4 +212,3 @@ export function createBitmapBindingOwner(context, targets) {
         }
     });
 }
-//# sourceMappingURL=bitmapBindingTicket.js.map

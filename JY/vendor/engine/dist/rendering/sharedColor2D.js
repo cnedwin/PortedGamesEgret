@@ -188,4 +188,3 @@ export function copySharedPagePixels(image, diagnostics, levels = 1) {
             diagnostics.scratchBytes -= source.byteLength;
     }
 }
-//# sourceMappingURL=sharedColor2D.js.map

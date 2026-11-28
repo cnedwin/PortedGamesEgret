@@ -129,4 +129,3 @@ export function createOrthographicCamera3D(options = {}) {
     camera.updateProjectionMatrix();
     return camera;
 }
-//# sourceMappingURL=Camera3D.js.map

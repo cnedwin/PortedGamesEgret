@@ -260,4 +260,3 @@ export function exportGlb3D(source, options = {}) {
     }
     return out;
 }
-//# sourceMappingURL=Export3D.js.map

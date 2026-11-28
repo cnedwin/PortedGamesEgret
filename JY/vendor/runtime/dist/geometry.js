@@ -308,4 +308,3 @@ export class Matrix {
         return `(a=${this.a}, b=${this.b}, c=${this.c}, d=${this.d}, tx=${this.tx}, ty=${this.ty})`;
     }
 }
-//# sourceMappingURL=geometry.js.map

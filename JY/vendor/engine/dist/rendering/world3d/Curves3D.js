@@ -457,4 +457,3 @@ function segmentsCross(p1, p2, p3, p4) {
     const d1 = d(p3, p4, p1), d2 = d(p3, p4, p2), d3 = d(p1, p2, p3), d4 = d(p1, p2, p4);
     return ((d1 > 0 && d2 < 0) || (d1 < 0 && d2 > 0)) && ((d3 > 0 && d4 < 0) || (d3 < 0 && d4 > 0));
 }
-//# sourceMappingURL=Curves3D.js.map

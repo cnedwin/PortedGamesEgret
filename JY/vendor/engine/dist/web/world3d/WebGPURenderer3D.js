@@ -1913,4 +1913,3 @@ export async function createWebGPURenderer3D(options) {
         throw cause;
     }
 }
-//# sourceMappingURL=WebGPURenderer3D.js.map

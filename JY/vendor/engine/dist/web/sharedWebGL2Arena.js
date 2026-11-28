@@ -74,4 +74,3 @@ export function checkSharedWebGL2ArenaCapacity(plan, owner) {
     pending(owner.pendingUniformArenaBytes, plan.uniformBytes, PENDING_UNIFORM);
     pending(owner.pendingVertexArenaBytes + owner.pendingUniformArenaBytes, plan.vertexBytes + plan.uniformBytes, PENDING_TOTAL);
 }
-//# sourceMappingURL=sharedWebGL2Arena.js.map

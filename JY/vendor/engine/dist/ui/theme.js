@@ -163,4 +163,3 @@ export function applyUiTheme(tree, bindings, theme) {
     }
     return captureUiLayout(copy(tree.root));
 }
-//# sourceMappingURL=theme.js.map

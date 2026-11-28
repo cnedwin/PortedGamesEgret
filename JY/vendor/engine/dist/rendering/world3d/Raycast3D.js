@@ -244,4 +244,3 @@ function pickTree(geometry, faceCount) {
     pickTrees.set(geometry, tree);
     return tree;
 }
-//# sourceMappingURL=Raycast3D.js.map

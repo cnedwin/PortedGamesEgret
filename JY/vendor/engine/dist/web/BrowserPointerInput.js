@@ -2,6 +2,7 @@ import { EgretError } from '@egret/runtime';
 import { bindPointerSurface, createPointerInput } from '#egret-pointer-input';
 const APPLY = Reflect.apply;
 const ownedSurfaces = new WeakSet();
+const claimedDowns = new WeakSet();
 function getter(prototype, name) {
     const operation = prototype === undefined ? undefined : Object.getOwnPropertyDescriptor(prototype, name)?.get;
     if (typeof operation !== 'function')
@@ -20,15 +21,32 @@ function finite(value) {
 function sameRectangle(a, b) {
     return a.left === b.left && a.top === b.top && a.width === b.width && a.height === b.height;
 }
+/** Private Play control arbitration on the existing browser pointer surface. */
+export function claimBrowserPointerBegin(input, callback) {
+    return bindPointerSurface(input).claimBegin(callback);
+}
+export function wasBrowserPointerDownClaimed(event) {
+    return claimedDowns.has(event);
+}
 /** Pointer Events adapter for the explicit connected, untransformed Canvas profile. */
 export function createBrowserPointerInput(options) {
     if (options === null || typeof options !== 'object' || Array.isArray(options))
         throw new EgretError('POINTER_INPUT_OPTIONS_INVALID');
     const configuration = { ...options };
-    const { width, height, onContact } = configuration;
+    const { width, height, onContact, size } = configuration;
     if (onContact !== undefined && typeof onContact !== 'function')
         throw new EgretError('POINTER_INPUT_OPTIONS_INVALID');
+    if (size !== undefined && typeof size !== 'function')
+        throw new EgretError('POINTER_INPUT_OPTIONS_INVALID');
+    // The stage's size now: what `size` says while it says a size above 0, the size given otherwise.
+    const stageSize = () => {
+        const now = size?.();
+        return now !== undefined && finite(now.width) && finite(now.height) && now.width > 0 && now.height > 0
+            ? now
+            : { width, height };
+    };
     const sessions = new Map();
+    const logicalMouse = new Set();
     let ownedSurface;
     const pairs = [];
     let closed = false;
@@ -65,8 +83,9 @@ export function createBrowserPointerInput(options) {
                 failures.push(cause);
             }
         // Clear logical native ownership before release can synchronously emit lostcapture.
-        const ids = [...sessions.keys()];
+        const ids = [...sessions].filter(([, session]) => !logicalMouse.has(session)).map(([id]) => id);
         sessions.clear();
+        logicalMouse.clear();
         for (const id of ids)
             try {
                 releaseNative(id);
@@ -103,7 +122,8 @@ export function createBrowserPointerInput(options) {
                 if (sessions.get(session.pointerId) === session) {
                     sessions.delete(session.pointerId);
                     try {
-                        releaseNative(session.pointerId);
+                        if (!logicalMouse.delete(session))
+                            releaseNative(session.pointerId);
                     }
                     catch (cause) {
                         failures.push(cause);
@@ -139,6 +159,8 @@ export function createBrowserPointerInput(options) {
         const connected = getter(globalThis.Node?.prototype, 'isConnected');
         const defaultView = getter(globalThis.Document?.prototype, 'defaultView');
         const visibility = getter(globalThis.Document?.prototype, 'visibilityState');
+        // Pointer Lock is optional on a browser host. If present, read the native getter once.
+        const lockElement = Object.getOwnPropertyDescriptor(globalThis.Document?.prototype ?? {}, 'pointerLockElement')?.get;
         const inlineStyle = getter(globalThis.HTMLElement?.prototype, 'style');
         const styleValue = method(globalThis.CSSStyleDeclaration?.prototype, 'getPropertyValue');
         const stylePriority = method(globalThis.CSSStyleDeclaration?.prototype, 'getPropertyPriority');
@@ -177,6 +199,8 @@ export function createBrowserPointerInput(options) {
             assertOpen();
             return value;
         }
+        const lockedHere = () => lockElement !== undefined && dom(lockElement, document) === surface;
+        let mouseLocked = lockedHere();
         function css(style, name) {
             const value = dom(styleValue, style, [name]);
             if (typeof value !== 'string')
@@ -360,9 +384,10 @@ export function createBrowserPointerInput(options) {
             if (!finite(x) || !finite(y) || !finite(heldButtons) || !finite(time) || !finite(p) || !finite(w) || !finite(h))
                 throw new EgretError('POINTER_INPUT_EVENT_INVALID');
             // Map CSS coordinates once. Device pixel ratio belongs to rendering only.
+            const stage = stageSize();
             return {
-                globalX: ((x - rect.left) * width) / rect.width,
-                globalY: ((y - rect.top) * height) / rect.height,
+                globalX: ((x - rect.left) * stage.width) / rect.width,
+                globalY: ((y - rect.top) * stage.height) / rect.height,
                 buttons: heldButtons,
                 timestamp: time,
                 pressure: p,
@@ -411,12 +436,17 @@ export function createBrowserPointerInput(options) {
             if (kind === 'down') {
                 if (sessions.has(identity.id) || input.state !== 'active' || dom(visibility, document) !== 'visible')
                     return;
-                const session = input.begin({ pointerId: identity.id, pointerType: identity.type, ...update(event, rect) });
+                const session = bridge.begin({ pointerId: identity.id, pointerType: identity.type, ...update(event, rect) }, () => claimedDowns.add(event));
                 // A begin observer may synchronously cancel, suspend or close the input.
                 if (session === undefined || closed || !input.contacts.some(contact => contact.session === session))
                     return;
                 sessions.set(identity.id, session);
-                acquireNative(identity.id, session);
+                // Browsers reject setPointerCapture while this mouse is pointer-locked.
+                // Window move/up delivery still maintains its logical contact.
+                if (identity.type === 'mouse' && lockedHere())
+                    logicalMouse.add(session);
+                else
+                    acquireNative(identity.id, session);
                 return;
             }
             const session = sessions.get(identity.id);
@@ -426,7 +456,7 @@ export function createBrowserPointerInput(options) {
                 input.move(session, update(event, rect));
             else if (kind === 'up')
                 input.end(session, update(event, rect));
-            else
+            else if (kind !== 'lost' || !logicalMouse.has(session))
                 input.cancel(session, kind === 'cancel' ? 'pointercancel' : 'lostcapture');
         }
         function listen(target, type, capture, action) {
@@ -469,6 +499,17 @@ export function createBrowserPointerInput(options) {
         listen(win, 'pointerup', true, event => pointer(event, 'up'));
         listen(win, 'pointercancel', true, event => pointer(event, 'cancel'));
         listen(surface, 'lostpointercapture', false, event => pointer(event, 'lost'));
+        if (lockElement !== undefined)
+            listen(document, 'pointerlockchange', false, () => {
+                const next = lockedHere();
+                if (next === mouseLocked)
+                    return;
+                mouseLocked = next;
+                // A lock transition changes mouse ownership, not an independent touch.
+                for (const session of [...sessions.values()])
+                    if (session.pointerType === 'mouse')
+                        input.cancel(session, 'lostcapture');
+            });
         listen(win, 'blur', false, () => cancel('blur'));
         listen(win, 'pagehide', false, () => cancel('pagehide'));
         listen(document, 'visibilitychange', false, () => {
@@ -508,4 +549,3 @@ export function createBrowserPointerInput(options) {
         throw new EgretError('POINTER_INPUT_SURFACE_INVALID', { cause });
     }
 }
-//# sourceMappingURL=BrowserPointerInput.js.map

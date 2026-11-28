@@ -113,4 +113,3 @@ export class TextBudget {
         return freeze({ ...this.counters });
     }
 }
-//# sourceMappingURL=budget.js.map

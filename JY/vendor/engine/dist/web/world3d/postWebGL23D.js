@@ -234,4 +234,3 @@ export class PostChainWebGL23D {
         this.maskMaterial.dispose();
     }
 }
-//# sourceMappingURL=postWebGL23D.js.map

@@ -30,4 +30,3 @@ export function assertAssetRef(ref) {
     if (typeof ref !== "object" || ref === null || !references.has(ref))
         throw new EgretError("ASSET_REF_INVALID");
 }
-//# sourceMappingURL=AssetRef.js.map

@@ -385,4 +385,3 @@ export function writeTiledLights3D(data, table, lights, viewProjection, width, h
     data[F.tileInfo + 3] = originY;
     return count;
 }
-//# sourceMappingURL=frame3D.js.map

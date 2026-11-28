@@ -116,4 +116,3 @@ export function after(engine, scope, seconds, callback) {
         }
     };
 }
-//# sourceMappingURL=timer.js.map

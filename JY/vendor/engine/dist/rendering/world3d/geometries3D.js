@@ -607,4 +607,3 @@ export function transformGeometry3D(geometry, matrix) {
     geometry.invalidateBounds();
     return geometry;
 }
-//# sourceMappingURL=geometries3D.js.map

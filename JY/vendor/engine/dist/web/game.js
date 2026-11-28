@@ -3,4 +3,3 @@
 // panel of what a frame takes.
 export { createBrowserGame } from './BrowserGame.js';
 export { createBrowserStatsPanel } from './BrowserStatsPanel.js';
-//# sourceMappingURL=game.js.map

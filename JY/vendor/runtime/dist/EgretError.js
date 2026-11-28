@@ -33,4 +33,3 @@ export class EgretError extends Error {
         this.cleanupErrors = Object.freeze([...(options.cleanupErrors ?? [])]);
     }
 }
-//# sourceMappingURL=EgretError.js.map

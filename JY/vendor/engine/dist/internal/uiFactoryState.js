@@ -170,4 +170,3 @@ export function registerUiKeyboardInput(input, engine, claim) {
         throw new EgretError('UI_ENGINE_INVALID');
     keyboards.set(input, { token: identity.token, input, claim });
 }
-//# sourceMappingURL=uiFactoryState.js.map

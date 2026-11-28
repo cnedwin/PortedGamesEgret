@@ -18,4 +18,3 @@ export { ByteWriter, BYTE_WRITER_LIMITS } from '@egret/runtime';
 export { createNineSliceGeometry2D } from '@egret/runtime';
 export { NineSliceBitmap } from '@egret/runtime';
 export { createSpriteSheet } from '@egret/runtime';
-//# sourceMappingURL=index.js.map

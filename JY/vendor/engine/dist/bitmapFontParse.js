@@ -243,4 +243,3 @@ export function parseBitmapFont(source) {
         throw refuse('a string or an object');
     return 'frames' in source ? finish(readEgret(source), 'egret') : finish(readJson(source), 'json');
 }
-//# sourceMappingURL=bitmapFontParse.js.map

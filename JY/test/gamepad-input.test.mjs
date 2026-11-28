@@ -2,13 +2,11 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { registerHooks } from 'node:module';
 import { test } from 'node:test';
-import { enginePackages, makeGameImports } from '../src/browser-imports.mjs';
+import { makeGameImports } from '../src/browser-imports.mjs';
 import { attachGamepadInput } from '../web/gamepad-input.mjs';
 
 const vendor = new URL('../vendor/', import.meta.url);
-const manifests = await Promise.all(enginePackages.map(async folder => [
-  folder, JSON.parse(await readFile(new URL(`${folder}/package.json`, vendor), 'utf8')),
-]));
+const manifests = JSON.parse(await readFile(new URL('importmap.json', vendor), 'utf8'));
 const imports = makeGameImports(manifests, (folder, target) => new URL(`${folder}/${target}`, vendor).href, name => name);
 const hook = registerHooks({
   resolve(specifier, context, nextResolve) {

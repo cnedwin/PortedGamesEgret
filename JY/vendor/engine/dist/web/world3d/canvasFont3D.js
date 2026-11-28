@@ -162,4 +162,3 @@ export function createCanvasFont3D(options = {}) {
         }
     });
 }
-//# sourceMappingURL=canvasFont3D.js.map

@@ -96,4 +96,3 @@ export class Resource3D {
             throw new World3DError('WORLD3D_DISPOSED', this.name || undefined);
     }
 }
-//# sourceMappingURL=core3D.js.map

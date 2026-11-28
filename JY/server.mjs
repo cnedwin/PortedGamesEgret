@@ -119,7 +119,8 @@ const start = {
   saveIdentity: createHash('sha256').update(initialArchive).digest('hex'),
 };
 
-const manifests = await Promise.all(enginePackages.map(async folder =>
+const generatedImports = await readOptional(join(vendorRoot, 'importmap.json'), 'utf8');
+const manifests = generatedImports ? JSON.parse(generatedImports) : await Promise.all(enginePackages.map(async folder =>
   [folder, JSON.parse(await readFile(join(vendorRoot, folder, 'package.json'), 'utf8'))]));
 const imports = makeGameImports(manifests, (folder, name) => `/vendor/${folder}/${name}`, name => `/music-lib/${name}/index.js`);
 

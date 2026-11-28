@@ -3,4 +3,3 @@
 export { createUiDisplayOperations } from './displayCommit.js';
 export { captureUiLayout, planUiLayout } from './layout.js';
 export { UiHeightIndex } from './heightIndex.js';
-//# sourceMappingURL=index.js.map

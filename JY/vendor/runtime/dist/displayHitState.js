@@ -94,4 +94,3 @@ export function writeDisplayHitArea(receiver, source) {
     }
     state.hitArea = Object.freeze({ x, y, width, height });
 }
-//# sourceMappingURL=displayHitState.js.map

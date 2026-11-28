@@ -35,4 +35,3 @@ export function composeDisplayTransform(p, s) {
         ty: p.b * localX + p.d * localY + p.ty
     };
 }
-//# sourceMappingURL=displayTransform.js.map

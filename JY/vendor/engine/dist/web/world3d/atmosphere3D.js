@@ -190,4 +190,3 @@ export class Atmosphere3D {
 export function createAtmosphere3D(options = {}) {
     return new Atmosphere3D(options);
 }
-//# sourceMappingURL=atmosphere3D.js.map

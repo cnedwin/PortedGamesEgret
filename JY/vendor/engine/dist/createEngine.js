@@ -22,4 +22,3 @@ export async function createEngine(options) {
     const clockOptions = admitGameClockOptions(clockValue);
     return startEngine(stableOptions, timeoutMs, { shared: undefined, sharedProfile: undefined }, clockOptions);
 }
-//# sourceMappingURL=createEngine.js.map

@@ -5,6 +5,7 @@
 // view, rising to look down as it draws back and lowering as it comes near; it pans, zooms and glides smoothly to a
 // place; a point on the screen can be turned into a point on the ground.
 import { createWorld3DApp } from '@egret/engine/webgl2/world3d';
+import { useFixedWorldResolution } from './canvas-policy.mjs';
 import { Raycaster3D, Scene3D, createDirectionalLight3D, createGradientCubeTexture3D, createHemisphereLight3D, createPerspectiveCamera3D } from '@egret/engine/world3d';
 import { MAP } from '../data/map.mjs';
 
@@ -13,6 +14,7 @@ export const ZOOM = { near: 20, far: 300 };
 /** Start the 3D world on a canvas. */
 export async function createStage(canvas, { quality, onError } = {}) {
   const app = await createWorld3DApp(canvas, {
+    ...(useFixedWorldResolution(globalThis.navigator) ? { dynamicResolution: false } : {}),
     toneMapping: 'aces',
     exposure: 0.85,
     ...(quality ? { quality } : {}),

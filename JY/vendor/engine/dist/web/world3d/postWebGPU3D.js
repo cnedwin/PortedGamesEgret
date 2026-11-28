@@ -252,4 +252,3 @@ export class PostChainWebGPU3D {
         this.maskMaterial.dispose();
     }
 }
-//# sourceMappingURL=postWebGPU3D.js.map

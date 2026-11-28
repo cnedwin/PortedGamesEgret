@@ -626,4 +626,3 @@ export function deserializeScene3D(saved, options = {}) {
     }
 }
 void RenderTarget3D;
-//# sourceMappingURL=Serialize3D.js.map

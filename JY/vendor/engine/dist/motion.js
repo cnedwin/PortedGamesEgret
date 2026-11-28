@@ -203,4 +203,3 @@ export function animate(engine, scope, target) {
     };
     return motion;
 }
-//# sourceMappingURL=motion.js.map

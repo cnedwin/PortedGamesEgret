@@ -18,6 +18,7 @@ import { linearColor3D } from '../../rendering/world3d/GeometryBuilder3D.js';
 import { Raycaster3D } from '../../rendering/world3d/Raycast3D.js';
 import { mat4Identity, mat4Multiply, quatToEuler, vec3TransformMat4 } from '../../rendering/world3d/math3D.js';
 import { createWorld3DApp } from './app3D.js';
+import { createWorld3DView } from './World3DView.js';
 const invalid = (why) => new EgretError('PLAY_OPTIONS_INVALID', { cause: new TypeError(why) });
 const finite = (value) => typeof value === 'number' && Number.isFinite(value);
 const above = (value) => finite(value) && value > 0;
@@ -387,6 +388,100 @@ export const PLAY_LOOKS_3D = Object.freeze({
         fog: 0.025
     }
 });
+// This companion owns the view subscription only. A renderer may be reused after its old view retires, but
+// one cannot be attached to two live companion sessions; the caller must also stop any independently run loop.
+const attachedRenderers = new WeakMap();
+/**
+ * Starts transparent Play above an existing 3D canvas. The caller chooses canvas placement and all renderer,
+ * scene and camera settings. No second Engine or animation-frame loop is created.
+ */
+export async function play3dAttached(options) {
+    if (options === null || typeof options !== 'object')
+        throw invalid('play3dAttached takes an object of options');
+    const { world, setup, arrange, ...flatOptions } = options;
+    if (typeof world !== 'function')
+        throw invalid('world is a function');
+    if (setup !== undefined && typeof setup !== 'function')
+        throw invalid('setup is a function');
+    if (arrange !== undefined && typeof arrange !== 'function')
+        throw invalid('arrange is a function');
+    let view;
+    let viewScope;
+    let parentRegistered = false;
+    const retire = () => {
+        const previous = view, scope = viewScope;
+        view = undefined;
+        viewScope = undefined;
+        if (previous !== undefined && attachedRenderers.get(previous.renderer) === previous)
+            attachedRenderers.delete(previous.renderer);
+        // Closing this generation removes its registrations immediately, instead of retaining each retired view in
+        // the lifetime Scope until the whole game closes. A borrowed renderer is never registered here.
+        scope?.dispose();
+    };
+    const open = (given) => {
+        if (given.scope.state !== 'open')
+            throw new EgretError('SCOPE_CLOSED');
+    };
+    const game = await play({
+        ...flatOptions,
+        transparent: true,
+        async setup(given) {
+            retire();
+            open(given);
+            if (!parentRegistered) {
+                given.scope.use({ dispose: retire });
+                parentRegistered = true;
+            }
+            await setup?.(given);
+            open(given);
+            const candidate = await world(given);
+            open(given);
+            if (candidate === undefined)
+                return;
+            if (candidate === null ||
+                typeof candidate !== 'object' ||
+                !candidate.renderer?.canvas ||
+                typeof candidate.renderer.render !== 'function' ||
+                !candidate.scene ||
+                !candidate.camera)
+                throw invalid('world returns a renderer, scene and camera, or undefined');
+            const { renderer } = candidate;
+            if (renderer.canvas === given.canvas)
+                throw invalid('world and Play use separate canvases');
+            const existing = attachedRenderers.get(renderer);
+            if (existing !== undefined && !existing.isDisposed)
+                throw invalid('world renderer is already attached');
+            viewScope = given.engine.createScope();
+            try {
+                view = createWorld3DView(given.engine, viewScope, candidate);
+                attachedRenderers.set(renderer, view);
+            }
+            catch (cause) {
+                retire();
+                throw cause;
+            }
+        },
+        ...(arrange === undefined
+            ? {}
+            : {
+                arrange(given) {
+                    try {
+                        arrange(given);
+                    }
+                    catch (cause) {
+                        retire();
+                        throw cause;
+                    }
+                }
+            })
+    });
+    return {
+        game,
+        get view() {
+            return view?.isDisposed ? undefined : view;
+        }
+    };
+}
 const PIECES = 96;
 /** How deep a ground is under its top. */
 const GROUND_DEPTH = 8;
@@ -409,6 +504,17 @@ export function overlap3D(a, b, shrink = 0) {
         p[4] + q[4] - 2 * shrink - Math.abs(p[1] - q[1]),
         p[5] + q[5] - 2 * shrink - Math.abs(p[2] - q[2])
     ];
+}
+/**
+ * The angle from top to bottom, in degrees, that a camera of `fov` shows on a view of `aspect` (width over height) when
+ * it keeps, on a view narrower than `keepWidthBelow`, the angle from side to side it has at that shape: `fov` itself on
+ * a view as wide or wider, or with `keepWidthBelow` 0. At most 170 degrees.
+ */
+export function fovForAspect3D(fov, aspect, keepWidthBelow) {
+    if (!(keepWidthBelow > 0) || !(aspect > 0) || aspect >= keepWidthBelow)
+        return fov;
+    const across = Math.tan((fov * Math.PI) / 360) * keepWidthBelow;
+    return Math.min(170, (360 / Math.PI) * Math.atan(across / aspect));
 }
 /**
  * The box of a model, in its own units and about its own place: half its size and where its middle is. Every mesh
@@ -617,6 +723,11 @@ export async function createPlay3DSession(options, startFlat, attach) {
     };
     // The camera: where the game put it, what it looks at, and how far a shake has it out of place.
     const base = [0, 6, 12], aim = [0, 0, 0], shaken = [0, 0, 0];
+    // The angle the game asked for, and the shape below which the camera keeps its width instead of its height.
+    let fov = 55, keepWidthBelow = 0;
+    const fitEye = () => {
+        eye.fov = fovForAspect3D(fov, eye.aspect, keepWidthBelow);
+    };
     let followed, turning = false, lookAbove = 0, offset = [0, 4, 8], smooth = 6, shakeAmount = 0, shakeLeft = 0, shakeSpan = 1;
     // The side the sun shines from; a look changes it.
     const sunFrom = [8, 16, 10];
@@ -664,6 +775,7 @@ export async function createPlay3DSession(options, startFlat, attach) {
         settle();
     };
     const settle = () => {
+        fitEye();
         eye.setPosition(base[0] + shaken[0], base[1] + shaken[1], base[2] + shaken[2]);
         eye.lookAt(aim[0], aim[1], aim[2]);
         // The sun keeps its direction and stays over what is looked at, so its shadows are there.
@@ -693,11 +805,22 @@ export async function createPlay3DSession(options, startFlat, attach) {
                 base[2] = value;
         },
         get fov() {
-            return eye.fov;
+            return fov;
         },
         set fov(value) {
-            if (finite(value) && value > 1 && value < 170)
-                eye.fov = value;
+            if (finite(value) && value > 1 && value < 170) {
+                fov = value;
+                fitEye();
+            }
+        },
+        get keepWidthBelow() {
+            return keepWidthBelow;
+        },
+        set keepWidthBelow(value) {
+            if (finite(value) && value >= 0) {
+                keepWidthBelow = value;
+                fitEye();
+            }
         },
         lookAt(x, y, z) {
             if (!finite(x) || !finite(y) || !finite(z))
@@ -740,7 +863,9 @@ export async function createPlay3DSession(options, startFlat, attach) {
                 taps.delete(thing);
         eye.updateWorldMatrices();
         scene.updateWorldMatrices();
-        ray.setFromCamera((flat.pointer.x / flat.width) * 2 - 1, 1 - (flat.pointer.y / flat.height) * 2, eye);
+        // The picture covers what the window shows, which reaches past the design with fit 'expand'.
+        const shown = flat.screen;
+        ray.setFromCamera(((flat.pointer.x - shown.x) / shown.width) * 2 - 1, 1 - ((flat.pointer.y - shown.y) / shown.height) * 2, eye);
         let hits;
         try {
             hits = ray.intersect(scene);
@@ -1186,7 +1311,8 @@ export async function createPlay3DSession(options, startFlat, attach) {
                 scene.addChild(sky);
                 scene.addChild(sun);
                 settle();
-                app?.show(scene, eye);
+                // The app sets the camera's shape from the canvas before each frame it draws; the angle follows it there.
+                app?.show(scene, eye, { onUpdate: fitEye });
                 surface.show?.(scene, eye);
                 game = extend(given);
             }
@@ -1253,4 +1379,3 @@ export async function createPlay3DSession(options, startFlat, attach) {
     });
     return game ?? extend(flat);
 }
-//# sourceMappingURL=BrowserPlay3D.js.map

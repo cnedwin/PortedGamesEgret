@@ -16,7 +16,7 @@ const PLATES = [
 function attach(game, parent, file, ratio, box, fallback, flip = false) {
   const layer = new Sprite();
   parent.addChild(layer);
-  let picture = null, closed = false, loading = false;
+  let picture = null, closed = false, loading = false, presentation;
   const watchers = new Set();
   const status = {
     state: 'loading',
@@ -27,6 +27,7 @@ function attach(game, parent, file, ratio, box, fallback, flip = false) {
     retry() { if (status.state === 'fallback') startLoad(); },
     dispose() {
       closed = true;
+      clearTimeout(presentation);
       watchers.clear();
       if (picture && !picture.isDisposed) game.remove(picture);
       picture = null;
@@ -36,6 +37,12 @@ function attach(game, parent, file, ratio, box, fallback, flip = false) {
     status.state = state;
     for (const fn of watchers) fn(state);
     game.invalidate?.();
+    // The plate may finish after the static page's initial retry. Present its actual
+    // decoded texture once more, without changing the on-demand frame loop.
+    clearTimeout(presentation);
+    if (state === 'ready') presentation = setTimeout(() => {
+      if (!closed && !layer.isDisposed) game.invalidate?.();
+    }, 250);
   };
   // Preserve the plate aspect ratio, cropping at the canvas edge rather than stretching.
   const width = Math.max(box.w, box.h*ratio), height = width/ratio;

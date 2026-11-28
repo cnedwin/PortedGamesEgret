@@ -273,4 +273,3 @@ export function decodeMeshopt3D(source, count, stride, mode, filter = 'NONE') {
         throw bad('mode');
     return out;
 }
-//# sourceMappingURL=Meshopt3D.js.map

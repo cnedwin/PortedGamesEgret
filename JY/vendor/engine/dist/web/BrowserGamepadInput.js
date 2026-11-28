@@ -131,4 +131,3 @@ export function createBrowserGamepadInput(options = {}) {
         }
     });
 }
-//# sourceMappingURL=BrowserGamepadInput.js.map

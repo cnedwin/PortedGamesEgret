@@ -1,14 +1,11 @@
 import { EgretError } from "./EgretError.js";
 import { recordVisualChange, VISUAL_STRUCTURE } from "./displayVisualState.js";
-// Read at call time only; ownership imports this module for its own tree operations.
-import { engineOf } from "./ownership.js";
+import { engineOf } from "./engineAffinity.js";
+import { assertLive, childLists, nodes, parentOf, parents, roots, terminated } from "./displayNodeState.js";
+export { assertLive, childAtOf, childCountOf, childrenOf, isDisplayNode, isStageRoot, isTerminated, parentOf } from "./displayNodeState.js";
 // Internal state authority: validation/commit never uses overridable getters
 // or public removeChild. Public subclass hooks run only during preflight.
-const nodes = new WeakSet();
-const terminated = new WeakSet();
-const roots = new WeakSet();
-const parents = new WeakMap();
-const childLists = new WeakMap();
+// The records themselves live in displayNodeState; this module is the only one that changes them.
 // The batch path uses captured original operations, never caller getters/hooks.
 const readChildList = childLists.get.bind(childLists);
 const readParent = parents.get.bind(parents);
@@ -28,30 +25,6 @@ export function assertContainer(value) {
 export function markStageRoot(node) {
     roots.add(node);
 }
-/** Identity-only authentication never reads a forged or proxied Stage. */
-export function isStageRoot(value) {
-    return roots.has(value);
-}
-export function isDisplayNode(value) {
-    return nodes.has(value);
-}
-export function isTerminated(node) {
-    return terminated.has(node);
-}
-export function parentOf(node) {
-    return parents.get(node);
-}
-/** Return a snapshot so callers cannot mutate the authoritative child list. */
-export function childrenOf(node) {
-    return [...(childLists.get(node) ?? [])];
-}
-/** Callback-free O(1) readers for budgeted traversal; never clone the list. */
-export function childCountOf(node) {
-    return childLists.get(node)?.length ?? 0;
-}
-export function childAtOf(node, index) {
-    return childLists.get(node)?.[index];
-}
 /** Read the exact direct-child index in O(n), without a snapshot or callbacks. */
 export function childIndexOf(parent, child) {
     const list = readChildList(parent);
@@ -65,10 +38,6 @@ export function childIndexOf(parent, child) {
             return index;
     }
     throw new EgretError("DISPLAY_TREE_INVARIANT");
-}
-export function assertLive(node) {
-    if (terminated.has(node))
-        throw new EgretError("OBJECT_DISPOSED");
 }
 export function assertAttachable(node) {
     assertLive(node);
@@ -447,4 +416,3 @@ export function publishPreparedChildren(parent, previous, next) {
     recordVisualChange(next[0], VISUAL_STRUCTURE);
     forgetVerifiedInsertionTrees(parent);
 }
-//# sourceMappingURL=displayTreeState.js.map

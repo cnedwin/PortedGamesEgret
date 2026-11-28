@@ -5,6 +5,7 @@
 // quarter steps and glides to a tile; a point on the screen becomes a tile of the board.
 // The same high-level app dynamically selects either 3D backend; the overlay is always WebGL2.
 import { createWorld3DApp } from '@egret/engine/webgl2/world3d';
+import { useFixedWorldResolution } from './canvas-policy.mjs';
 import { Mesh3D, Raycaster3D, Scene3D, createDirectionalLight3D, createGradientCubeTexture3D, createHemisphereLight3D, createPerspectiveCamera3D, projectToViewport3D } from '@egret/engine/world3d';
 
 /** World units per tile. */
@@ -21,6 +22,7 @@ export const LOOKS = {
 /** Start the 3D world on `canvas`. */
 export async function createStage(canvas, { quality, backend = 'webgl2', onError } = {}) {
   const app = await createWorld3DApp(canvas, {
+    ...(useFixedWorldResolution(globalThis.navigator) ? { dynamicResolution: false } : {}),
     backend,
     toneMapping: 'aces',
     exposure: 0.95,

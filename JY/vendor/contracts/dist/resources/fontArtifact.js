@@ -34,4 +34,3 @@ export function inspectFontArtifact(bytes) {
         throw new TypeError('FONT_ARTIFACT_REQUIRED_TABLE');
     return Object.freeze({ format, byteLength: length, tables });
 }
-//# sourceMappingURL=fontArtifact.js.map

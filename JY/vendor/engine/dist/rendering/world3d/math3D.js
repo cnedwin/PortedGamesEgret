@@ -672,4 +672,3 @@ export function clamp(value, min, max) {
 }
 /** Degrees times this are radians. */
 export const DEG_TO_RAD_3D = Math.PI / 180;
-//# sourceMappingURL=math3D.js.map

@@ -159,4 +159,3 @@ export class FlyControls3D {
 export function createFlyControls3D(camera, element, options = {}) {
     return new FlyControls3D(camera, element, options);
 }
-//# sourceMappingURL=FlyControls3D.js.map

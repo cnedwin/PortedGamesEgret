@@ -327,4 +327,3 @@ export function describeInputBinding(binding) {
         return `Pad ${control}`;
     return control;
 }
-//# sourceMappingURL=inputActions.js.map

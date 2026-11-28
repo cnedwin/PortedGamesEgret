@@ -90,3 +90,5 @@ This integration vendors official main `94bd70fb26b1f81794c9c6fbbb258c655fcd19df
 - 绕过办法：打开标题和模态窗口时合并一次有界延迟刷新，关闭后同理。 · Coalesce one bounded deferred redraw whenever a title or modal is shown or closed.
 - 建议：在引擎按需模式验收中核实异步标签、最后画布提交与真实画面。 · Check asynchronous labels, final canvas submission and actual display in on-demand engine acceptance.
 - 状态：候选版本 WebKit 触屏路线实测通过；未在物理 iPhone 上验证。 · Candidate WebKit touch route tested; no physical iPhone verification.
+
+- 公网后续复现：文字队列及资源拒绝均为 0，500 ms、5 s、10 s 画面仍只含标题插图；一次明确 `invalidate()` 后标题完整。仅在原生装饰标签 `label.ready` 并挂入节点时加入合并的后续呈现，队列检查设置 3 秒上限。真实公网资产候选与本机完整标题截图哈希一致。 · Public repetition confirmed three identical artwork-only captures after all native jobs were idle; presenting again after actual native label attachment restored the title using the real public assets.

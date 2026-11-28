@@ -100,4 +100,3 @@ export function requireUiRoot(root, engine) {
         throw new EgretError('UI_TEXT_EDITOR_ROOT_CLOSED');
     return record.access;
 }
-//# sourceMappingURL=uiRootState.js.map

@@ -320,4 +320,3 @@ export function rayShape(body, o, d, limit, normal, meshNormal) {
     normal[2] = r[6] * lx + r[7] * ly + r[8] * lz;
     return t;
 }
-//# sourceMappingURL=PhysicsQueries3D.js.map

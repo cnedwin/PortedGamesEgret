@@ -178,4 +178,3 @@ export class ByteWriter {
         state.length = 0;
     }
 }
-//# sourceMappingURL=ByteWriter.js.map

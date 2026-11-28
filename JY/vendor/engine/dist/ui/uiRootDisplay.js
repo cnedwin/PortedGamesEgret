@@ -145,4 +145,3 @@ export function stageUiRootDisplay(draft, preparation) {
     });
     rootChildren.sort((a, b) => paintOrder.get(a) - paintOrder.get(b));
 }
-//# sourceMappingURL=uiRootDisplay.js.map

@@ -459,4 +459,3 @@ fn luma(c: vec3f) -> f32 { return dot(c, vec3f(0.299, 0.587, 0.114)); }
     if (params.a.z > 0.5) { result = mix(result / 12.92, pow((result + 0.055) / 1.055, vec3f(2.4)), step(vec3f(0.04045), result)); }
     return vec4f(result, middle.a);
 }`;
-//# sourceMappingURL=post3D.js.map

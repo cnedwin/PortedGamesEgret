@@ -28,4 +28,3 @@ export { ByteWriter, BYTE_WRITER_LIMITS } from "./ByteWriter.js";
 export { createNineSliceGeometry2D } from "./NineSliceGeometry2D.js";
 export { NineSliceBitmap } from "./NineSliceBitmap.js";
 export { createSpriteSheet } from "./spriteSheet.js";
-//# sourceMappingURL=index.js.map

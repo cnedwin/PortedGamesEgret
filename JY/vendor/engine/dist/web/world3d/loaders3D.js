@@ -135,4 +135,3 @@ export async function loadGltfFromUrl3D(url, options = {}) {
         throw cause;
     }
 }
-//# sourceMappingURL=loaders3D.js.map

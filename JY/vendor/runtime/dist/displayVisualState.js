@@ -1,11 +1,35 @@
 import { assertManagedMutable } from "./ui/managedState.js";
-import { assertLive, isDisplayNode } from "./displayTreeState.js";
-import { engineOf } from "./ownership.js";
+import { assertLive, isDisplayNode } from "./displayNodeState.js";
+import { engineOf } from "./engineAffinity.js";
 import { EgretError } from "./EgretError.js";
 // Authoritative per-node visual state excludes overridable public accessors.
 const states = new WeakMap();
 const readRevisionState = states.get.bind(states);
 const sameValue = Object.is;
+// An engine may opt in to reading its visual revision without walking the stage.
+const observedEngines = new WeakMap();
+const readObserved = observedEngines.get.bind(observedEngines);
+let observations = 0;
+export function watchDisplayRevision(context) {
+    const state = readObserved(context) ?? { revision: 0, watches: 0 };
+    observedEngines.set(context, state);
+    observations++;
+    state.watches++;
+    let live = true;
+    return Object.freeze({
+        get revision() {
+            return state.revision;
+        },
+        dispose() {
+            if (!live)
+                return;
+            live = false;
+            observations--;
+            if (--state.watches === 0)
+                observedEngines.delete(context);
+        }
+    });
+}
 export const VISUAL_STRUCTURE = 1;
 export const VISUAL_TRANSFORM = 2;
 export const VISUAL_APPEARANCE = 4;
@@ -22,6 +46,13 @@ export function recordVisualChange(node, changes) {
     const state = readRevisionState(node);
     if (state === undefined)
         return;
+    if (observations !== 0) {
+        const context = engineOf(node);
+        const observed = context === undefined ? undefined : readObserved(context);
+        // A synchronous counter is safe in a commit. Never run an observer callback here.
+        if (observed !== undefined)
+            observed.revision = observed.revision >= REVISION_RESTART ? 0 : observed.revision + 1;
+    }
     state.changes++;
     if (((changes & VISUAL_STRUCTURE) !== 0 && state.structureRevision >= REVISION_RESTART) ||
         ((changes & VISUAL_TRANSFORM) !== 0 && state.transformRevision >= REVISION_RESTART) ||
@@ -138,4 +169,3 @@ export function copyRect(value, code) {
         throw new EgretError(code);
     return Object.freeze({ x, y, width, height });
 }
-//# sourceMappingURL=displayVisualState.js.map

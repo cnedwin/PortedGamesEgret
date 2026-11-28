@@ -194,4 +194,3 @@ export function sampleSequenceClip(clip, elapsedSeconds, options) {
     }
     return Object.freeze({ frameIndex, region: owned.regions[frameIndex], positionSeconds, atEnd, stopped });
 }
-//# sourceMappingURL=sequenceClip.js.map

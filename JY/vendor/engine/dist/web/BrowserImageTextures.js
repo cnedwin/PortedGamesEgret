@@ -166,4 +166,3 @@ export function createBrowserImageTextureProvider(options) {
         }
     };
 }
-//# sourceMappingURL=BrowserImageTextures.js.map

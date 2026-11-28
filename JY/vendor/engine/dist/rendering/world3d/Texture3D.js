@@ -267,4 +267,3 @@ export function createGradientCubeTexture3D(zenith, horizon, ground, size = 32) 
     }
     return new CubeTexture3D(faces, { mipmaps: true });
 }
-//# sourceMappingURL=Texture3D.js.map

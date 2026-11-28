@@ -123,4 +123,3 @@ export function prepareEffects2D(frame, ratio, enabled) {
         fail();
     return { groups, depth, targetCount: 2 * depth, uniformBytes: groups.length * EFFECT_UNIFORM_BYTES };
 }
-//# sourceMappingURL=sharedEffects2D.js.map

@@ -290,4 +290,3 @@ export function createSharedWebGPUPipeline(shader, pipeline, kind, blend, srgb =
         multisample: { count: 1, alphaToCoverageEnabled: false }
     });
 }
-//# sourceMappingURL=webgpuSharedPass.js.map

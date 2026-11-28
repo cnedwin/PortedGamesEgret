@@ -81,4 +81,3 @@ export function endDispatch(event) {
     state.currentTarget = undefined;
     state.phase = undefined;
 }
-//# sourceMappingURL=Event.js.map

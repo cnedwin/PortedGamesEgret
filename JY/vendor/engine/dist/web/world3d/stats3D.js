@@ -78,4 +78,3 @@ export function createWorld3DStats(renderer, options = {}) {
     };
     return stats;
 }
-//# sourceMappingURL=stats3D.js.map

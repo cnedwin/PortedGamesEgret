@@ -87,6 +87,71 @@ const measure = (words) => {
         units += wide(character) ? 1 : 0.55;
     return units;
 };
+// The upright forms of marks in vertical writing, as Unicode gives them for CJK compatibility.
+const VERTICAL_FORMS = Object.freeze({
+    '，': '︐',
+    '、': '︑',
+    '。': '︒',
+    '：': '︓',
+    '；': '︔',
+    '！': '︕',
+    '？': '︖',
+    '（': '︵',
+    '）': '︶',
+    '｛': '︷',
+    '｝': '︸',
+    '〔': '︹',
+    '〕': '︺',
+    '【': '︻',
+    '】': '︼',
+    '《': '︽',
+    '》': '︾',
+    '〈': '︿',
+    '〉': '﹀',
+    '「': '﹁',
+    '」': '﹂',
+    '『': '﹃',
+    '』': '﹄',
+    '…': '︙',
+    '—': '︱',
+    '－': '︲',
+    ',': '︐',
+    '.': '︒',
+    ':': '︓',
+    ';': '︔',
+    '!': '︕',
+    '?': '︖',
+    '(': '︵',
+    ')': '︶'
+});
+/**
+ * Words written top to bottom in columns from right to left, as rows a line of text draws: one character under
+ * another, marks turned to their upright forms, a `\n` or `column` characters ending a column, and an ideographic
+ * space where a column is shorter than the longest. For titles and seals in Chinese and Japanese, whose characters
+ * are of one width.
+ */
+export function verticalPlayWords(words, column = Infinity) {
+    if (typeof words !== 'string')
+        throw new TypeError('words are a string');
+    if (!(column >= 1))
+        throw new RangeError('a column holds at least one character');
+    const columns = [];
+    for (const piece of words.split(/\r?\n/)) {
+        const characters = [...piece].map(character => VERTICAL_FORMS[character] ?? character);
+        if (characters.length === 0)
+            columns.push([]);
+        for (let at = 0; at < characters.length; at += column)
+            columns.push(characters.slice(at, at + column));
+    }
+    const tall = Math.max(0, ...columns.map(one => one.length));
+    const rows = [];
+    for (let row = 0; row < tall; row++)
+        rows.push(columns
+            .map(one => one[row] ?? '\u3000')
+            .reverse()
+            .join(''));
+    return rows.join('\n');
+}
 /** Breaks words into lines no wider than `units`: at a space where there is one, between any two wide characters. */
 export function wrapPlayWords(words, units) {
     const lines = [];
@@ -115,6 +180,9 @@ export function createPlayWidgets(game, wake = () => { }) {
     const colour = (value, fallback) => Number.isInteger(value) && value >= 0 && value <= 0xffffff ? value : fallback;
     let bars = [];
     let toasts = [];
+    let placed = [];
+    let toastForeground;
+    let noticeRevision = 0, lastNoticeLayout = '';
     // What is open: a box of words being read, and a list being chosen from. At most one of each at a time.
     let talking;
     let menu;
@@ -159,10 +227,218 @@ export function createPlayWidgets(game, wake = () => { }) {
             label.color = on ? 0x111827 : 0xffffff;
         });
     };
+    /** The part of the screen nothing covers, in the game's units: where boxes, menus and notices go. */
+    const area = () => game.safe;
+    const clamp = (n, lo, hi) => Math.max(lo, Math.min(hi, n));
+    function closeNotice(notice) {
+        if (!notice.live)
+            return;
+        notice.live = false;
+        noticeRevision++;
+        delete notice.bounds;
+        game.remove(notice.node);
+        game.invalidate();
+    }
+    // Keep long unbroken tokens inside the safe card as well as ordinary word wrapping.
+    function noticeLines(words, units, maxLines) {
+        const result = [];
+        for (const line of wrapPlayWords(words, units)) {
+            let part = '', length = 0;
+            for (const character of line) {
+                const advance = measure(character);
+                if (part && length + advance > units) {
+                    result.push(part);
+                    part = '';
+                    length = 0;
+                }
+                part += character;
+                length += advance;
+            }
+            result.push(part);
+        }
+        if (result.length > maxLines) {
+            result.length = maxLines;
+            const last = [...result[maxLines - 1]];
+            while (last.length && measure(last.join('') + '…') > units)
+                last.pop();
+            result[maxLines - 1] = last.join('') + '…';
+        }
+        return result.length ? result : [''];
+    }
+    function arrangeNotices() {
+        const before = placed.length;
+        placed = placed.filter(notice => {
+            if (notice.live && !nodeGone(notice))
+                return true;
+            notice.live = false;
+            delete notice.bounds;
+            return false;
+        });
+        if (placed.length !== before)
+            noticeRevision++;
+        if (!placed.length) {
+            if (toastForeground && !toastForeground.isDisposed)
+                game.remove(toastForeground);
+            toastForeground = undefined;
+            lastNoticeLayout = '';
+            return;
+        }
+        const safe = area(), stacks = new Map();
+        // A later ordinary view must not cover a requested foreground notice.
+        if (toastForeground?.parent === game.ui && game.ui.getChildIndex(toastForeground) !== game.ui.numChildren - 1)
+            game.toFront(toastForeground);
+        const layout = [safe.x, safe.y, safe.width, safe.height, game.uiScale, noticeRevision].join('/');
+        if (layout === lastNoticeLayout)
+            return;
+        lastNoticeLayout = layout;
+        // Newest first: if there is not room for a whole stack, keep the newest card.
+        for (const notice of [...placed].reverse()) {
+            const p = notice.placement, node = notice.node, anchor = p.anchor === 'top-left' ||
+                p.anchor === 'top-right' ||
+                p.anchor === 'bottom-left' ||
+                p.anchor === 'bottom-right' ||
+                p.anchor === 'bottom'
+                ? p.anchor
+                : 'top', scale = p.units === 'stage' ? 1 : game.uiScale, x = finite(p.offsetX) ? p.offsetX * scale : anchor === 'top' || anchor === 'bottom' ? 0 : 12 * scale, y = finite(p.offsetY) ? Math.max(0, p.offsetY * scale) : 12 * scale, font = clamp((finite(p.fontSize) && p.fontSize > 0 ? p.fontSize : 16) * scale, 1, safe.height), padding = 8 * scale, limit = Math.max(0, Math.min(safe.width - Math.abs(x) - padding, finite(p.maxWidth) && p.maxWidth > 0 ? p.maxWidth * scale : safe.width - 2 * padding)), heightAvailable = safe.height - y, lineHeight = Math.max(1, font * 1.35), maxLines = Math.min(12, Math.floor((heightAvailable - padding * 2) / lineHeight)), group = [anchor, x, y, notice.foreground].join('/');
+            if (!(limit > padding * 2 && maxLines >= 1)) {
+                if (node.visible) {
+                    node.visible = false;
+                    game.invalidate();
+                }
+                delete notice.bounds;
+                continue;
+            }
+            const units = Math.max(1, (limit - padding * 2) / (font * 1.15));
+            const lines = noticeLines(notice.words, units, maxLines);
+            const width = Math.min(limit, Math.max(font * 2 + padding * 2, ...lines.map(line => measure(line) * font * 1.15 + padding * 2))), height = lines.length * lineHeight + 2 * padding, stack = stacks.get(group) ?? 0;
+            if (height + stack > heightAvailable) {
+                if (node.visible) {
+                    node.visible = false;
+                    game.invalidate();
+                }
+                delete notice.bounds;
+                continue;
+            }
+            stacks.set(group, stack + height + 6 * scale);
+            const left = anchor.endsWith('left')
+                ? safe.x + Math.max(0, x)
+                : anchor.endsWith('right')
+                    ? safe.x + safe.width - width - Math.max(0, x)
+                    : safe.x + (safe.width - width) / 2 + x;
+            const top = anchor.startsWith('bottom') ? safe.y + safe.height - y - stack - height : safe.y + y + stack;
+            const bx = clamp(left, safe.x, safe.x + safe.width - width), by = clamp(top, safe.y, safe.y + safe.height - height);
+            const key = JSON.stringify([font, width, height, lines]);
+            if (notice.layoutKey !== key) {
+                notice.layoutKey = key;
+                const o = notice.options, back = colour(o.background, 0x0b1020), opacity = finite(o.backgroundAlpha) ? clamp(o.backgroundAlpha, 0, 1) : 0.9, border = colour(o.borderColor, -1);
+                node.graphics
+                    .clear()
+                    .beginFill(back, opacity)
+                    .drawRoundRect(0, 0, width, height, Math.min(8 * scale, height / 2))
+                    .endFill();
+                if (border >= 0)
+                    node.graphics
+                        .lineStyle(scale, border, 1)
+                        .drawRoundRect(0.5 * scale, 0.5 * scale, Math.max(1, width - scale), Math.max(1, height - scale), 6 * scale);
+                node.clipRect = { x: 0, y: 0, width, height };
+                for (const label of notice.labels)
+                    game.remove(label);
+                notice.labels.length = 0;
+                lines.forEach((line, index) => {
+                    const label = game.text(line, {
+                        x: width / 2,
+                        y: padding + lineHeight * (index + 0.5),
+                        size: font,
+                        align: 'center',
+                        baseline: 'middle',
+                        color: colour(o.color, 0xffffff),
+                        layer: node
+                    });
+                    notice.labels.push(label);
+                });
+                game.invalidate();
+            }
+            if (!node.visible || node.x !== bx || node.y !== by) {
+                node.visible = true;
+                node.x = bx;
+                node.y = by;
+                game.invalidate();
+            }
+            notice.bounds = Object.freeze({ x: bx, y: by, width, height });
+        }
+    }
+    function placedToast(words, o) {
+        const placement = { ...o.placement }, foreground = placement.foreground === true;
+        if (foreground && (!toastForeground || toastForeground.isDisposed || toastForeground.parent === undefined)) {
+            toastForeground = game.sprite(undefined, game.ui);
+            toastForeground.touchEnabled = false;
+            toastForeground.touchChildren = false;
+        }
+        const node = game.sprite(undefined, foreground ? toastForeground : game.ui);
+        node.touchEnabled = false;
+        node.touchChildren = false;
+        node.alpha = 0;
+        const notice = {
+            node,
+            words: String(words).slice(0, 4096),
+            options: { ...o },
+            placement,
+            foreground,
+            labels: [],
+            live: true,
+            elapsed: 0,
+            layoutKey: '',
+            duration: finite(o.seconds) && o.seconds > 0 ? o.seconds : 2
+        };
+        // Finite admission even for callers creating persistent notices every step.
+        if (placed.length >= 16)
+            closeNotice(placed[0]);
+        placed.push(notice);
+        noticeRevision++;
+        arrangeNotices();
+        wake();
+        return {
+            get active() {
+                return notice.live && !nodeGone(notice);
+            },
+            get bounds() {
+                return notice.bounds;
+            },
+            close() {
+                closeNotice(notice);
+                arrangeNotices();
+            }
+        };
+    }
+    function tickNotices(seconds) {
+        if (!placed.length)
+            return;
+        for (const notice of placed) {
+            if (!notice.live)
+                continue;
+            notice.elapsed += Math.max(0, seconds);
+            const fade = notice.options.persistent ? 1 : clamp((notice.duration + 0.45 - notice.elapsed) / 0.3, 0, 1);
+            const alpha = Math.min(clamp(notice.elapsed / 0.15, 0, 1), fade);
+            if (nodeGone(notice)) {
+                notice.live = false;
+                noticeRevision++;
+                delete notice.bounds;
+                continue;
+            }
+            if (alpha !== notice.node.alpha) {
+                notice.node.alpha = alpha;
+                game.invalidate();
+            }
+            if (!notice.options.persistent && fade <= 0)
+                closeNotice(notice);
+        }
+        arrangeNotices();
+    }
+    const nodeGone = (notice) => notice.node.isDisposed || notice.node.parent === undefined;
     /** The size of the words of a box, and how many lines fit under its name. */
     const boxOf = (named) => {
         const size = Math.max(14, Math.round(game.height / 22)), h = Math.max(size * 4.6, Math.round(game.height * 0.28)), top = 14 + (named ? Math.round(size * 1.3) : 0), step = Math.round(size * 1.35);
-        return { size, width: game.width - 32 - 36, lines: Math.max(1, Math.floor((h - top - 6) / step)) };
+        return { size, width: area().width - 32 - 36, lines: Math.max(1, Math.floor((h - top - 6) / step)) };
     };
     const pagesOf = (words, named) => {
         const { size, width, lines } = boxOf(named), all = wrapPlayWords(words, width / size), pages = [];
@@ -216,15 +492,22 @@ export function createPlayWidgets(game, wake = () => { }) {
             return bar;
         },
         toast(words, o = {}) {
-            const size = Math.max(14, Math.round(game.height / 24)), seconds = finite(o?.seconds) && o.seconds > 0 ? o.seconds : 2, w = Math.min(game.width - 32, measure(String(words)) * size + 40), h = Math.round(size * 2);
-            toasts = toasts.filter(node => !node.isDisposed && node.parent !== null);
+            o = o ?? {};
+            if (o.placement !== undefined ||
+                o.persistent ||
+                o.background !== undefined ||
+                o.backgroundAlpha !== undefined ||
+                o.borderColor !== undefined)
+                return placedToast(words, o);
+            const size = Math.max(14, Math.round(game.height / 24)), seconds = finite(o?.seconds) && o.seconds > 0 ? o.seconds : 2, w = Math.min(area().width - 32, measure(String(words)) * size + 40), h = Math.round(size * 2);
+            toasts = toasts.filter(node => !node.isDisposed && node.parent !== undefined);
             const node = game.sprite(g => {
                 g.beginFill(0x0b1020, 0.85)
                     .drawRoundRect(-w / 2, 0, w, h, h / 2)
                     .endFill();
             }, game.ui);
-            node.x = game.width / 2;
-            node.y = 12 + toasts.length * (h + 6);
+            node.x = area().x + area().width / 2;
+            node.y = area().y + 12 + toasts.length * (h + 6);
             game.text(String(words), {
                 y: h / 2,
                 size,
@@ -235,12 +518,26 @@ export function createPlayWidgets(game, wake = () => { }) {
             });
             toasts.push(node);
             node.alpha = 0;
-            game
+            const motion = game
                 .tween(node)
                 .to({ alpha: 1 }, 0.15)
                 .wait(seconds)
                 .to({ alpha: 0 }, 0.3)
                 .call(() => game.remove(node));
+            return {
+                get active() {
+                    return !node.isDisposed && node.parent !== undefined;
+                },
+                get bounds() {
+                    return !node.isDisposed && node.parent !== undefined
+                        ? { x: node.x - w / 2, y: node.y, width: w, height: h }
+                        : undefined;
+                },
+                close() {
+                    motion.stop();
+                    game.remove(node);
+                }
+            };
         },
         say(words, o = {}) {
             // Words longer than a box holds are shown a box at a time; the answers, if any, come with the last.
@@ -254,9 +551,9 @@ export function createPlayWidgets(game, wake = () => { }) {
             const choices = Array.isArray(o?.choices) && o.choices.length > 0 ? o.choices.map(String) : undefined;
             return new Promise(resolve => {
                 const open = () => {
-                    const margin = 16, w = game.width - 2 * margin, size = Math.max(14, Math.round(game.height / 22)), h = Math.max(size * 4.6, Math.round(game.height * 0.28)), 
+                    const margin = 16, safe = area(), w = safe.width - 2 * margin, size = Math.max(14, Math.round(game.height / 22)), h = Math.max(size * 4.6, Math.round(game.height * 0.28)), 
                     // Opaque, so the covers that hide words not yet shown are the panel's own colour.
-                    panel = panelOf(margin, game.height - h - margin, w, h, 1), color = colour(o?.color, 0xfacc15);
+                    panel = panelOf(safe.x + margin, safe.y + safe.height - h - margin, w, h, 1), color = colour(o?.color, 0xfacc15);
                     let top = 14;
                     if (typeof o?.who === 'string' && o.who !== '') {
                         game.text(o.who, { x: 18, y: 10, size: Math.round(size * 0.9), bold: true, color, layer: panel });
@@ -322,9 +619,9 @@ export function createPlayWidgets(game, wake = () => { }) {
             const list = items.map(String);
             return new Promise(resolve => {
                 menu?.choice.finish(-1);
-                const size = Math.max(14, Math.round(game.height / 20)), row = Math.round(size * 1.9) + 6, titleLines = typeof o?.title === 'string' ? o.title.split('\n') : [], longest = Math.max(...list.map(measure), ...titleLines.map(line => measure(line) * 1.2)), w = finite(o?.width) && o.width > 0 ? o.width : Math.min(game.width - 32, longest * size + 64), titled = typeof o?.title === 'string' && o.title !== '', 
+                const size = Math.max(14, Math.round(game.height / 20)), row = Math.round(size * 1.9) + 6, titleLines = typeof o?.title === 'string' ? o.title.split('\n') : [], longest = Math.max(...list.map(measure), ...titleLines.map(line => measure(line) * 1.2)), w = finite(o?.width) && o.width > 0 ? o.width : Math.min(area().width - 32, longest * size + 64), titled = typeof o?.title === 'string' && o.title !== '', 
                 // A title of several lines takes as many lines of room, so the first item is never under it.
-                titleHeight = titled ? Math.round(size * (0.35 + 1.45 * titleLines.length)) : 0, h = list.length * row + 24 + titleHeight, x = (finite(o?.x) ? o.x : game.width / 2) - w / 2, y = (finite(o?.y) ? o.y : game.height / 2) - h / 2;
+                titleHeight = titled ? Math.round(size * (0.35 + 1.45 * titleLines.length)) : 0, h = list.length * row + 24 + titleHeight, x = (finite(o?.x) ? o.x : area().x + area().width / 2) - w / 2, y = (finite(o?.y) ? o.y : area().y + area().height / 2) - h / 2;
                 const panel = panelOf(x, y, w, h);
                 if (titled)
                     game.text(o.title, {
@@ -355,6 +652,7 @@ export function createPlayWidgets(game, wake = () => { }) {
             bars = bars.filter(bar => !bar.isDisposed);
             for (const bar of bars)
                 bar.step(seconds);
+            tickNotices(seconds);
             if (menu !== undefined) {
                 const open = menu;
                 if (steer(open.choice)) {
@@ -395,6 +693,14 @@ export function createPlayWidgets(game, wake = () => { }) {
             // A restart has taken their sprites; what was being awaited is not answered.
             bars = [];
             toasts = [];
+            for (const notice of placed) {
+                notice.live = false;
+                delete notice.bounds;
+            }
+            placed = [];
+            toastForeground = undefined;
+            lastNoticeLayout = '';
+            noticeRevision++;
             talking = undefined;
             menu = undefined;
             queue = [];
@@ -412,12 +718,12 @@ export function createPlayWidgets(game, wake = () => { }) {
             const from = 18 + measure(characters.slice(0, shown).join('')) * open.words[index].size;
             cover.visible = shown < characters.length;
             cover.x = from;
-            cover.scaleX = Math.max(1, game.width - 48 - from);
+            cover.scaleX = Math.max(1, area().width - 48 - from);
         });
         const done = open.shown >= open.total;
         open.hint.visible = done && open.choices === undefined;
         if (done && open.choices !== undefined && open.choice === undefined) {
-            const size = open.words[0].size, row = Math.round(size * 1.9) + 6, w = Math.min(game.width - 32, Math.max(...open.choices.map(measure)) * size + 64), x = game.width - 16 - w, y = open.panel.y - open.choices.length * row - 20;
+            const size = open.words[0].size, row = Math.round(size * 1.9) + 6, w = Math.min(area().width - 32, Math.max(...open.choices.map(measure)) * size + 64), x = area().x + area().width - 16 - w, y = open.panel.y - open.choices.length * row - 20;
             const holder = panelOf(x, y, w, open.choices.length * row + 14);
             const close = open.finish;
             open.choice = choose(open.choices, holder, 8, 8, w - 16, size, open.color, index => {
@@ -428,4 +734,3 @@ export function createPlayWidgets(game, wake = () => { }) {
     }
     return widgets;
 }
-//# sourceMappingURL=playWidgets.js.map

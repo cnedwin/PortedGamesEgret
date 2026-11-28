@@ -4,4 +4,3 @@ export { createParagraphCache } from '@egret/runtime/paragraph';
 export function createParagraph(engine, scope, cache) {
     return requireTextFieldEngine(engine).construct(scope, cache, 'paragraph');
 }
-//# sourceMappingURL=paragraph.js.map

@@ -135,4 +135,3 @@ export function createSurfaceMaterial3D(options) {
     });
     return material;
 }
-//# sourceMappingURL=SurfaceMaterial3D.js.map

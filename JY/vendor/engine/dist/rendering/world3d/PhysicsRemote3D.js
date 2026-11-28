@@ -533,4 +533,3 @@ export class PhysicsClient3D {
 export function connectPhysics3D(port, options) {
     return new PhysicsClient3D(port, options);
 }
-//# sourceMappingURL=PhysicsRemote3D.js.map

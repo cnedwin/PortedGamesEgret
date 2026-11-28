@@ -77,3 +77,12 @@ written as in part 3 of [docs/GAME-STANDARD.md](../docs/GAME-STANDARD.md).
 - **绕过 · Workaround**：仅在菜单呈现提交时调用 `game.invalidate()`，合并 250 ms 后一次补绘；销毁时取消。 · On menu publication request one native invalidation plus a coalesced follow-up after 250 ms; cancel on disposal.
 - **建议 · Proposal**：提供可观测的提交与呈现确认，检查 WebKit 对按需模式和异步图集内容的呈现。 · Expose observable submission/presentation confirmation and investigate the on-demand compositing path.
 - **状态 · Status**：两张复测截图均成功；尚未在物理 iPhone 验证，未断言根因在引擎还是浏览器。 · Both screenshots pass; physical iPhone and ultimate engine/browser root cause remain unverified.
+
+### 10. 移动 Apple WebKit 动态分辨率后画面不可见 · Mobile Apple WebKit loses the composited World3D surface after dynamic resizing — 未解决 / open
+<!-- engine-note: {"id": "SnowTemple#10", "status": "open", "topic": "world3d-webkit-dynamic-resize-presentation", "workaround": ["src/view/canvas-policy.mjs", "src/main.mjs"]} -->
+
+- **现象 · What happens**：Windows Playwright WebKit iPhone 15 Pro 配置下，序幕 491×823 正常，进入实际 HUD 后自动调整到 294×494，3D 画面完全消失，语义、HUD、WebGL2 draws 及 triangles 仍正常。 · Cutscene visible at 491×823; after entering play, adaptive resize to 294×494 leaves only the HUD even when WebGL2 draw receipts remain nonzero.
+- **最小复现 · Reproduce**：打开 393×659 CSS px 的移动 WebKit 竖屏，默认画质，触碰「踏雪上路」，等待到 HUD 显示「往草料场去」。分别截序幕和首个可操作场景。 · Start the chapter at 393×659 CSS px with default auto quality, capture the cutscene and first scene after the HUD returns.
+- **绕过 · Workaround**：仅移动 Apple WebKit 不使用动态帧率降/升比例，固定该画质允许的 backing scale；其它平台仍使用正式 createDynamicResolution3D，窗口 resize 和固定档位不变。 · Keep the current quality's backing scale only on mobile Apple WebKit, preserving normal resizing, fixed tiers and the regular pacing API on other hosts.
+- **建议 · Proposal**：验证 canvas backing resize 后 WebKit 实际呈现，提供诊断及可恢复动态分辨率的修复。 · Validate actual browser presentation after canvas backing resize and supply a diagnostic and a fix that permits dynamic resolution.
+- **状态 · Status**：关键截图复测通过；固定尺寸可能提高 GPU 像素成本，尚未做真实 iPhone 性能及多 Safari 版本验证。 · Key visual checks pass; potential extra GPU pixel cost, physical iPhone performance and other Safari versions untested.

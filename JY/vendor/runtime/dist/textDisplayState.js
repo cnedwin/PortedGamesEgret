@@ -24,4 +24,3 @@ export function assertTextFieldScope(scope) {
     if (APPLY(SCOPE_STATE, scope, []) !== 'open')
         throw new EgretError('SCOPE_CLOSED');
 }
-//# sourceMappingURL=textDisplayState.js.map

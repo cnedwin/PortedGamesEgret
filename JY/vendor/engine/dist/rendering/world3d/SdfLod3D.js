@@ -53,4 +53,3 @@ export function createSdfLod3D(shape, options = {}) {
     });
     return lod;
 }
-//# sourceMappingURL=SdfLod3D.js.map

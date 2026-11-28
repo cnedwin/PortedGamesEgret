@@ -15,6 +15,7 @@ import { planCanalLayout, stageToField } from './native-layout.mjs';
 import { createCanalUi } from './native-ui.mjs';
 import { buildTitle, buildMenu, buildEnd, buildHelp } from './native-screens.mjs';
 import { buildFieldUi, buildPicker } from './native-field-ui.mjs';
+import { createHudTextGate } from './hud-text-gate.mjs';
 
 const params = new URLSearchParams(location.search);
 const frameElement = document.querySelector('#frame');
@@ -32,10 +33,12 @@ const app = {
   get notice() { return notice; }
 };
 const uiState = {
-  silver: '', lives: '', wave: '', call: '', speed: '', menu: '', guide: '', guideColor: 0xf2e7cc,
+  silver: '', lives: '', wave: '', call: '', waveText: '', callText: '', speed: '', menu: '', guide: '', guideColor: 0xf2e7cc,
   gates: [{text:'',label:''}, {text:'',label:''}], callReady: false, landingVisible: false, landingPressed: false,
   plots: PLOTS.map(() => ({label:'',text:'+',recommended:false,selected:false,built:false}))
 };
+const hudTextGate = createHudTextGate();
+let hudTextStage;
 let game, mapRoot, view, sound, ui, layout, projection, layoutSignature, helpOpen = false, ready = false;
 let pickerState = null, feedback = null, previewBoat = null, mapPress = null, lastFocus = null, lastHover = null;
 let pointerSource = 'keyboard';
@@ -278,6 +281,8 @@ function refreshBar() {
   const bonus=Math.floor(Math.max(0,world.breakLeft)*EARLY_BONUS);
   uiState.wave=world.state==='ready'?t('waveReady',{s:seconds}):world.state==='break'?t('waveBreak',{n:world.wave+2,s:seconds}):t('wave',{n:Math.max(1,world.wave+1),total:wavesOf(world).length});
   uiState.call=waiting?t(world.state==='ready'?'callFirst':'callWaveBonus',{n:bonus}):t('waveUnderway');
+  if (hudTextStage !== world.state) { hudTextGate.clear(); hudTextStage = world.state; }
+  if (!hudTextGate.holding) { uiState.waveText = uiState.wave; uiState.callText = uiState.call; }
   uiState.callReady=waiting;uiState.speed=t('speed',{n:app.speed});uiState.menu=t('pause');
   world.gates.forEach((gate,index)=>{
     const name=t(index?'gateLower':'gateUpper'),near=incomingBoats(world,gate);
@@ -324,7 +329,12 @@ const screenActions={
   resume:()=>closeMenu(),restart:()=>startGame(app.difficulty,app.mode),quit:()=>showTitle(),again:()=>startGame(app.difficulty,app.mode)
 };
 const screenArgs=()=>({layout,app,settings,actions:screenActions});
-function renderField(focus){ui.show('field',buildFieldUi({layout,app,uiState,actions:fieldActions}),{...(focus?{focus}:{})});}
+function renderField(focus){
+  hudTextGate.clear();
+  uiState.waveText = uiState.wave; uiState.callText = uiState.call;
+  const field = ui.show('field',buildFieldUi({layout,app,uiState,actions:fieldActions}),{...(focus?{focus}:{})});
+  if (uiState.callReady) hudTextGate.hold(field);
+}
 function renderTitle(focus='start-normal'){ui.show('title',buildTitle(screenArgs()),{focus});}
 function renderHelp(){ui.show('help',buildHelp(screenArgs()),{dismiss:screenActions.closeHelp});}
 function renderMenu(focus){ui.show('menu',buildMenu(screenArgs()),{dismiss:closeMenu,resume:closeMenu,...(focus?{focus}:{})});}
@@ -346,6 +356,7 @@ function toggleSetting(key){
   if(app.screen==='menu')renderMenu('setting-'+key);
 }
 function showTitle(){
+  hudTextGate.clear(); hudTextStage = undefined;
   closePicker();ui.clear();app.screen='title';app.mode='standard';app.world=null;app.selected=null;helpOpen=false;
   landingPreview.clear();previewBoat=null;view.clear();sound.stopMusic();game.timeScale=1;
   if(game.paused)game.resume();

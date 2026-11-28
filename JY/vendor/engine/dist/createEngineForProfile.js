@@ -42,4 +42,3 @@ export async function createEngineForProfile(options, profile) {
     const ports = Object.assign({ shared: shared, sharedProfile: profile }, { sharedBlendSpace: space === 'srgb' ? 'srgb' : 'linear' });
     return startEngine(stableOptions, timeoutMs, ports, clockOptions);
 }
-//# sourceMappingURL=createEngineForProfile.js.map

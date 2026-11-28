@@ -604,4 +604,3 @@ export function createWaterMaterial3D(options = {}) {
     });
     return material;
 }
-//# sourceMappingURL=Water3D.js.map

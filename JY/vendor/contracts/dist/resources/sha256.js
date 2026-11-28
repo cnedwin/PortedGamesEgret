@@ -108,4 +108,3 @@ export function sha256Utf8(text) {
     }
     return Array.from(state, word => word.toString(16).padStart(8, '0')).join('');
 }
-//# sourceMappingURL=sha256.js.map

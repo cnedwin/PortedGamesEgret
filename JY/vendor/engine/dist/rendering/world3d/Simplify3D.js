@@ -423,4 +423,3 @@ export function simplifyGeometry3D(geometry, options = {}) {
     }
     return { geometry: out, before: faces, after: live, error: worst };
 }
-//# sourceMappingURL=Simplify3D.js.map

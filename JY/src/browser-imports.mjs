@@ -12,9 +12,18 @@ export function shippedGameFile(path) {
   return 'web/' + path;
 }
 
-// The browser build and local launcher use the same package export map.
+// The browser build and local launcher use the same generated engine import map.
+// A manually supplied full-build directory for the local launcher can still expose package exports.
 export function makeGameImports(manifests, vendorUrl, musicUrl) {
   const imports = Object.fromEntries(musicPackages.map(name => [name, musicUrl(name)]));
+  if (!Array.isArray(manifests)) {
+    for (const [specifier, target] of Object.entries(manifests.imports)) {
+      const path = /^\.\/vendor\/([^/]+)\/(.+)$/.exec(target);
+      if (!path) throw Error(`Invalid generated engine import: ${specifier}`);
+      imports[specifier] = vendorUrl(path[1], path[2]);
+    }
+    return imports;
+  }
   for (const [folder, manifest] of manifests) {
     const url = target => vendorUrl(folder, target.slice(2));
     if (typeof manifest.exports === 'string') imports[manifest.name] = url(manifest.exports);

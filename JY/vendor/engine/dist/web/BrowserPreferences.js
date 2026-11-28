@@ -36,4 +36,3 @@ export function browserLanguages() {
         return Object.freeze([...nav.languages]);
     return typeof nav.language === 'string' ? Object.freeze([nav.language]) : [];
 }
-//# sourceMappingURL=BrowserPreferences.js.map

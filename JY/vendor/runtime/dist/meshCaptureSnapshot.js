@@ -10,4 +10,3 @@ export function readMeshCaptureImage(slot) {
         throw new EgretError('MESH_TEXTURE_INVALID');
     return readTextureSnapshot(value);
 }
-//# sourceMappingURL=meshCaptureSnapshot.js.map

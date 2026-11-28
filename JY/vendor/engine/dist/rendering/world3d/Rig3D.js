@@ -216,4 +216,3 @@ export function createSdfRig3D(shape, bones, options = {}) {
         }
     };
 }
-//# sourceMappingURL=Rig3D.js.map

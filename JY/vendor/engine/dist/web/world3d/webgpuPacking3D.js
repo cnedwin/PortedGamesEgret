@@ -82,4 +82,3 @@ export function writeObjectMorph3D(mesh, gpu, floats, ints, o) {
     ints[o + 46] = count;
     ints[o + 47] = 0;
 }
-//# sourceMappingURL=webgpuPacking3D.js.map

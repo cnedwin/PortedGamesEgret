@@ -45,4 +45,3 @@ export function copyAtlasFrameLayout(captured, width, height, reject) {
         packedRotation: packedRotation === 0 ? 0 : 90
     });
 }
-//# sourceMappingURL=atlasFrameLayout.js.map

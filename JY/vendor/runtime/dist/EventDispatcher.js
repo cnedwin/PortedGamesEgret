@@ -175,4 +175,3 @@ export class EventDispatcher {
             throw new EgretError("EVENT_LISTENER_CLEANUP_FAILED", { cause: failures[0], cleanupErrors: failures.slice(1) });
     }
 }
-//# sourceMappingURL=EventDispatcher.js.map

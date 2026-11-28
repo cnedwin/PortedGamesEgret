@@ -63,4 +63,3 @@ export function origin(value, size) {
         y
     });
 }
-//# sourceMappingURL=uiRootModel.js.map

@@ -127,4 +127,3 @@ export function admitSharedWebGPUOptions(input) {
         callback: captured.onDiagnostic
     };
 }
-//# sourceMappingURL=sharedWebGPUOptions.js.map

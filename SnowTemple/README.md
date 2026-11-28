@@ -181,6 +181,8 @@ python3 -m http.server 4180      # 模型查看器 · model viewer: /SnowTemple/
 
 ## 已验证 · Verified
 
+- WebKit 序幕到首个可操作雪路追加复测：实际场景恢复，移动 Apple WebKit 稳定 backing buffer，固定画质及玩法不变；113/113 Node，未测实体 iPhone 性能，见 QUALITY。 · Cutscene and first-world-scene screenshots pass after the mobile Apple WebKit fixed-back-buffer fallback; 113/113 Node checks. Physical iPhone performance untested; see QUALITY.
+
 - 2026-11-28：Windows Playwright WebKit iPhone 15 Pro 配置下修复启动兼容问题，标题截图及触摸设置通过，112/112 Node 测试通过；不是 iPhone 真机验收。见 [QUALITY.md](QUALITY.md)。 · Startup, title screenshot and touch Settings pass on Windows Playwright WebKit in an iPhone 15 Pro profile; 112/112 Node tests pass. Not a physical iPhone test. See QUALITY.md.
 
 - 2026-11-28 引擎 `a1d6bc6`：官方副本运行时代码与上一版一致。新雪夜材质、暖冷轮廓、首领演出和战斗反馈：112/112 Node、PC RTX 硬件完整回归 41/41、软件开场 8/8、Fold7 真机完整通关、重战和读档，536/536 资源一致。手机五个路段 RAF P95 仍为 16.7 ms，仍有偶发长帧；实拍、对照口径及限制见 [QUALITY.md](QUALITY.md)。 · Official source refresh with unchanged runtime bytes, 112 Node checks, 41 hardware and 8 software browser checks, and the complete Fold7 route including rematch/reload. Phone RAF P95 stays 16.7 ms across the five phases; occasional long frames remain. See QUALITY for comparison and limits.

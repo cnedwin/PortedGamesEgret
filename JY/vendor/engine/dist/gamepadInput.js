@@ -278,4 +278,3 @@ export function createGamepadInput(options = {}) {
         }
     });
 }
-//# sourceMappingURL=gamepadInput.js.map

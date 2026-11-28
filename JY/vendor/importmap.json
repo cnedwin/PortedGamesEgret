@@ -1,0 +1,31 @@
+{
+  "imports": {
+    "@egret/contracts": "./vendor/contracts/dist/index.js",
+    "@egret/runtime": "./vendor/runtime/dist/index.js",
+    "@egret/contracts/resources": "./vendor/contracts/dist/resources/index.js",
+    "@egret/engine": "./vendor/engine/dist/index.js",
+    "@egret/runtime/text": "./vendor/runtime/dist/text/index.js",
+    "@egret/engine/text": "./vendor/engine/dist/text.js",
+    "@egret/engine/audio": "./vendor/engine/dist/audio.js",
+    "@egret/engine/web/audio": "./vendor/engine/dist/web/audio.js",
+    "@egret/engine/input/gamepad": "./vendor/engine/dist/gamepad.js",
+    "@egret/engine/web/gamepad": "./vendor/engine/dist/web/gamepad.js",
+    "#egret-keyboard-input": "./vendor/engine/dist/keyboardInput.js",
+    "@egret/engine/web/keyboard": "./vendor/engine/dist/web/keyboard.js",
+    "@egret/engine/web/text": "./vendor/engine/dist/web/text.js",
+    "#egret-textured-frame-state": "./vendor/engine/dist/internal/texturedFrameState.js",
+    "robust-predicates": "./vendor/robust-predicates/index.js",
+    "@egret/engine/webgl2": "./vendor/engine/dist/web/webgl2.js",
+    "@egret/runtime/input": "./vendor/runtime/dist/input/index.js",
+    "#egret-pointer-input": "./vendor/engine/dist/pointerInput.js",
+    "@egret/engine/input/hover": "./vendor/engine/dist/hover.js",
+    "@egret/runtime/paragraph": "./vendor/runtime/dist/paragraph/index.js",
+    "@egret/engine/paragraph": "./vendor/engine/dist/paragraph.js",
+    "@egret/engine/bitmapfont": "./vendor/engine/dist/bitmapfont.js",
+    "@egret/engine/kit": "./vendor/engine/dist/kit.js",
+    "@egret/runtime/ui": "./vendor/runtime/dist/ui/index.js",
+    "@egret/engine/ui": "./vendor/engine/dist/ui/index.js",
+    "@egret/engine/webgl2/world3d": "./vendor/engine/dist/web/world3d/index.js",
+    "@egret/engine/world3d": "./vendor/engine/dist/rendering/world3d/index.js"
+  }
+}

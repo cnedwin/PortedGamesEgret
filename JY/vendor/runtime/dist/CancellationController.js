@@ -63,4 +63,3 @@ export class CancellationController {
         this.mutableSignal.abort(reason, this.onDiagnostic);
     }
 }
-//# sourceMappingURL=CancellationController.js.map

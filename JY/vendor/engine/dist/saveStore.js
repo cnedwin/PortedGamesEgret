@@ -179,4 +179,3 @@ export function createMemorySaveStorage(initial = {}) {
         removeItem: key => void entries.delete(key)
     };
 }
-//# sourceMappingURL=saveStore.js.map

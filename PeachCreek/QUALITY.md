@@ -167,3 +167,7 @@ The mixed entry point counts map interaction, visual feedback and UI actions, ex
 - 本机 Windows Playwright WebKit 26.6，iPhone 15 Pro 设备配置（393×659 CSS px，DPR 3），真实浏览器触屏事件，无物理 iPhone；仅首屏和代表性操作，不是整局或实机性能、声学验收。 · Windows Playwright WebKit 26.6, iPhone 15 Pro device profile (393×659 CSS px, DPR 3), actual browser touchscreen events, not a physical iPhone; launch and representative interaction only, not full-session performance or acoustic certification.
 - 本轮候选烟测页面异常、控制台错误、HTTP 4xx/5xx 均为 0。 · Candidate smoke: no page exceptions, console errors or HTTP 4xx/5xx.
 - [全站记录 · Showcase compatibility record](../docs/SAFARI-WEBKIT-20261128.md)
+
+## 2026-11-28 公网首屏复查 · Public first-screen follow-up
+
+- PR #303 的实际公开版首屏插画可见，但文字缺失，500 ms、5 s、10 s 三张截图字节一致。文字 drawing/queued/refusals/atlasPending 与 cache.pendingJobs 均为 0；手动一次 invalidate 后 250 ms 恢复完整标题。单纯在初次开页后 250 ms 补帧不足，因为原生装饰标签尚未挂入节点。候选仅在实际 `label.ready` 后挂接/定位完成时合并有界呈现，等待原生文字队列最多 3 秒，最多再提交两个回合；保留持续按需模式。使用真实公网资源、只替换候选 screens.mjs 的浏览器验证，未点击标题前完整文字已呈现，触屏打开存档槽正确。 · PR #303 public title retained artwork-only pixels through three identical captures. Explicit invalidation restored labels; the candidate coalesces a bounded retry on actual native-label attachment with a bounded queue check, rather than only at screen creation. The real public asset route with only the candidate module substituted showed the full untouched title and save-slot modal. This is candidate evidence, not the successor Pages deployment.

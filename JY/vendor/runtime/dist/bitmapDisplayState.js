@@ -19,4 +19,3 @@ export function writeBitmapState(node, value) {
     if (changed)
         recordVisualChange(node, VISUAL_CONTENT | VISUAL_BINDING);
 }
-//# sourceMappingURL=bitmapDisplayState.js.map

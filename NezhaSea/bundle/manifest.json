@@ -8,7 +8,8 @@
     "src/audio-render.mjs": "ee3296773ab4728d582fd4b2b44f1e89ee7be5d9effd07caba54a97a4dad4416",
     "src/audio-synth.mjs": "cf770cf6f1b2c833f900ce9d77f3cb38bb4bf10803d0dd9460a16fb223244190",
     "src/i18n.mjs": "55fea973a60f234db802be0a6fd733afd5e2f978b5a56506361e0d2c899e2717",
-    "src/main.mjs": "3e84139c2d7117a69b5b69180ddb05cad39671aaeaa7a47eba1b00aa4753fbb6",
+    "src/main.mjs": "be49f2e7d17f59d97b190273eb968e99a375e72e310ee63741de8bc697654b29",
+    "src/present-static-screen.mjs": "8551efc16ecd13f616c6bb36d1935542ee28cc0e2275dbe7cfc30af03fd88a5b",
     "src/saves.mjs": "085675ca92df142665da6803e4281bed087aeac72338a20a52de19d03c8d2542",
     "src/sea-stick.mjs": "2b2bf1e6a59fa035b100e9770a5451a0632f65c49febf95c2e287acf25cae9c3",
     "src/sim/data.mjs": "191acdb7671393e686741ef94641d98b899f8776aca79a098841c068e9b5ffc2",
@@ -18,7 +19,7 @@
     "src/ui-input.mjs": "763272d30c9a3bed12eda36b166ea1b7a4f09fb238034721eeade21b7f3b1366",
     "src/ui-layout.mjs": "3baf68983c30ad6cf95f1499a44f4bce1f62ce9c491c64e5e94f8e19ce644106",
     "src/ui-market.mjs": "5e2f8ee8ff630b2b460ccaed95c7a98047f088fa507b633c69fb3394dbbe3325",
-    "src/ui-screens.mjs": "55b870cda57953cd08cc3ef8344e752055cbc82640ddb3f94b31c46376a08242",
+    "src/ui-screens.mjs": "c0663227622ee5dcd0decf5b54a55dc24c2ca920c105656757850068760337ba",
     "src/view.mjs": "df5b705ebf11a21bdd74000daa1b3149749e3aa7db0a3815546565f7deda64c0",
     "tools/launch-bundle/build.mjs": "bd76a66c06262e9647d8e7a4fa19d73b00e6b8adac1a3c5c7ef81f3ccf3165d4",
     "tools/launch-bundle/package-lock.json": "af670548862ddd042e4c186d387227ec45228cd9b16d3e255c501b7bfcf7ab3a",
@@ -295,6 +296,6 @@
     "chunk-WMMCVLEX.mjs": "1ba53db00802b60b9d0f4ca9340166b0085aa77d95dbb4b9762cc34335ef8673",
     "chunk-XJIGANZ7.mjs": "fa0553f2d0c5f31a24d3c1653efa683952d97eea7bdd4a186dda4475cc0bcdcc",
     "chunk-YZIZ3Y6E.mjs": "f8348dc7519bcc53cac5b32264faf4180249e742e504acdce2219c1c25847e41",
-    "main.mjs": "5859ce2fad564aa82d47ad9033e9f9fec011f76809c323507232c21abbf14dbf"
+    "main.mjs": "2838a4b9b894208fbcf04db524c7a30b5d434afda08a808021530eebde76a617"
   }
 }

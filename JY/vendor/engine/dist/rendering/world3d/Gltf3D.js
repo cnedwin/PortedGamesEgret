@@ -993,4 +993,3 @@ export async function loadGltf3D(data, options = {}) {
         }
     });
 }
-//# sourceMappingURL=Gltf3D.js.map

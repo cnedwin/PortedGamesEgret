@@ -1,20 +1,12 @@
 // SPDX-License-Identifier: Apache-2.0
-import { DisplayObject, DisplayObjectContainer, EgretError, Event, createEventType } from '@egret/runtime';
+import { DisplayObject, EgretError, Event, createEventType } from '@egret/runtime';
 import { createPointerRouter } from '@egret/runtime/input';
 import { requireMouseInputEngine } from './internal/mouseInputFactoryState.js';
 import { captureUiInputDelivery, registerUiPointerInput } from './internal/uiFactoryState.js';
-const getter = (prototype, key) => Object.getOwnPropertyDescriptor(prototype, key).get;
-const parent = getter(DisplayObject.prototype, 'parent'), visible = getter(DisplayObject.prototype, 'visible');
-const touch = getter(DisplayObject.prototype, 'touchEnabled'), children = getter(DisplayObjectContainer.prototype, 'touchChildren');
+import { acceptsRoutedInput, createRoutedOperations, runCleanup } from './internal/routedInput.js';
+// The optional browser screen verifier reads this private input-surface association through the existing alias.
+export { screenControlFor, screenOccludersFor } from './internal/uiControlReportState.js';
 const bindings = new WeakMap();
-// Keep browser-only references in a separate closure, released with its binding.
-function surfaceBinding(surface, report, onClose) {
-    return Object.freeze({
-        surface,
-        onClose,
-        report: (cause) => report({ code: 'POINTER_INPUT_HOST_FAILED', phase: 'engine', severity: 'error', cause })
-    });
-}
 /** Private browser assembly authority; never exported by the optional public entry. */
 export function bindPointerSurface(input) {
     const binding = bindings.get(input);
@@ -62,31 +54,9 @@ export function createPointerInput(options) {
     const activeEvents = new Map();
     let router, input, closed = false;
     let releaseEngine;
-    let calls = 0;
-    const eligible = (target) => {
-        if (owner === undefined || scope === undefined || operations === undefined)
-            return false;
-        try {
-            owner.assertReady();
-            scope.assertOpen();
-        }
-        catch {
-            return false;
-        }
-        if (!operations.isAttached(target, maxNodes) || Reflect.apply(touch, target, []) !== true)
-            return false;
-        let node = target, count = 0;
-        while (node !== undefined) {
-            if (++count > maxNodes)
-                throw new EgretError('HIT_TEST_TREE_LIMIT');
-            if (Reflect.apply(visible, node, []) !== true)
-                return false;
-            if (node !== target && Reflect.apply(children, node, []) !== true)
-                return false;
-            node = Reflect.apply(parent, node, []);
-        }
-        return true;
-    };
+    let browserClaim;
+    let browserBegin;
+    const eligible = (target) => acceptsRoutedInput(target, owner, scope, operations, maxNodes);
     function closeNative() {
         if (closed)
             return;
@@ -97,54 +67,21 @@ export function createPointerInput(options) {
         bindings.delete(input);
         const callbacks = [...closers];
         closers.clear();
-        let first, failed = false;
-        const cleanup = [];
-        for (const callback of callbacks)
-            try {
-                callback();
-            }
-            catch (cause) {
-                if (!failed) {
-                    first = cause;
-                    failed = true;
-                }
-                else
-                    cleanup.push(cause);
-            }
+        const cleanup = runCleanup(callbacks);
         owner = undefined;
         scope = undefined;
         operations = undefined;
         observer = undefined;
+        browserClaim = undefined;
+        browserBegin = undefined;
         listeners.clear();
-        if (failed)
-            throw new EgretError('POINTER_INPUT_CLEANUP_FAILED', { cause: first, cleanupErrors: cleanup });
+        if (cleanup.failed)
+            throw new EgretError('POINTER_INPUT_CLEANUP_FAILED', { cause: cleanup.first, cleanupErrors: cleanup.others });
     }
-    function invoke(operation) {
-        let value, first, failed = false;
-        calls++;
-        try {
-            value = operation();
-        }
-        catch (cause) {
-            failed = true;
-            first = cause;
-        }
-        finally {
-            calls--;
-        }
-        if (calls === 0 && router.state === 'closed')
-            try {
-                closeNative();
-            }
-            catch (cause) {
-                if (failed)
-                    throw new EgretError('POINTER_INPUT_CALLBACK_FAILED', { cause: first, cleanupErrors: [cause] });
-                throw cause;
-            }
-        if (failed)
-            throw first;
-        return value;
-    }
+    const invoke = createRoutedOperations(() => {
+        if (router.state === 'closed')
+            closeNative();
+    }, (cause, cleanup) => new EgretError('POINTER_INPUT_CALLBACK_FAILED', { cause, cleanupErrors: [cleanup] }));
     function retire() {
         invoke(() => router.dispose());
     }
@@ -155,7 +92,17 @@ export function createPointerInput(options) {
         pick: (x, y) => {
             owner.assertReady();
             scope.assertOpen();
-            return operations.pick(x, y, maxNodes);
+            const native = browserBegin;
+            browserBegin = undefined;
+            const target = operations.pick(x, y, maxNodes);
+            // Browser overlays can own one native down before any shared gesture sees the original target.
+            if (native === undefined || browserClaim === undefined)
+                return target;
+            const claimed = browserClaim(native.sample, target);
+            if (claimed === undefined)
+                return target;
+            native.claimed();
+            return claimed;
         },
         eligible,
         dispatch: (kind, contact, target, reason) => deliver(() => {
@@ -273,15 +220,43 @@ export function createPointerInput(options) {
         releaseEngine = owner.onClose(retire);
         scope.add(retire);
         scope.use(input);
-        bindings.set(input, surfaceBinding(owner.surface, owner.report, (callback) => {
-            if (closed) {
-                callback();
-                return () => { };
+        const report = owner.report;
+        bindings.set(input, Object.freeze({
+            surface: owner.surface,
+            report: cause => report({ code: 'POINTER_INPUT_HOST_FAILED', phase: 'engine', severity: 'error', cause }),
+            onClose(callback) {
+                if (closed) {
+                    callback();
+                    return () => { };
+                }
+                closers.add(callback);
+                return () => {
+                    closers.delete(callback);
+                };
+            },
+            begin(sample, claimed) {
+                if (browserClaim === undefined)
+                    return input.begin(sample);
+                const previous = browserBegin;
+                browserBegin = { sample, claimed };
+                try {
+                    return input.begin(sample);
+                }
+                finally {
+                    browserBegin = previous;
+                }
+            },
+            claimBegin(callback) {
+                if (closed)
+                    throw new EgretError('POINTER_INPUT_CLOSED');
+                if (browserClaim !== undefined)
+                    throw new EgretError('POINTER_INPUT_SURFACE_BUSY');
+                browserClaim = callback;
+                return () => {
+                    if (browserClaim === callback)
+                        browserClaim = undefined;
+                };
             }
-            closers.add(callback);
-            return () => {
-                closers.delete(callback);
-            };
         }));
         owner.assertReady();
         scope.assertOpen();
@@ -297,4 +272,3 @@ export function createPointerInput(options) {
         throw cause;
     }
 }
-//# sourceMappingURL=pointerInput.js.map

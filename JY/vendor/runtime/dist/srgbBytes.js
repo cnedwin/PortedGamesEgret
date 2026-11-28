@@ -61,4 +61,3 @@ const TABLE = Object.freeze([
 export function decodeSRGBByte(code) {
     return TABLE[code & 255];
 }
-//# sourceMappingURL=srgbBytes.js.map

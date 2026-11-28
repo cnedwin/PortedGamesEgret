@@ -66,4 +66,3 @@ export function readAssetLeaseValue(value) {
         throw new EgretError("ASSET_LEASE_RELEASED");
     return state.read();
 }
-//# sourceMappingURL=AssetLease.js.map

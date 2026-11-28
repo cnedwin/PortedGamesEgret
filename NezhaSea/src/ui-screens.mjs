@@ -50,6 +50,7 @@ export function createScreens(game, app, actions) {
       ]).drawRect(0, start, width, height - start).endFill();
       shade.graphics.lineStyle(2, 0xe4b976, unlocked ? 0.9 : 0.38).drawRect(1, 1, width - 2, height - 2);
       root.setChildIndex(crop, 0);
+      requestAnimationFrame(() => { if (!root.isDisposed) game.invalidate(); });
     });
   }
 

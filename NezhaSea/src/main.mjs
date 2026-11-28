@@ -14,6 +14,7 @@ import { createHud } from './ui-hud.mjs';
 import { createUiInput } from './ui-input.mjs';
 import { createScreens } from './ui-screens.mjs';
 import { createMarketUi } from './ui-market.mjs';
+import { presentStaticScreen } from './present-static-screen.mjs';
 
 const params = new URLSearchParams(location.search);
 const field = document.querySelector('#frame');
@@ -89,6 +90,12 @@ function present(name, next, focus) {
   active = { definition, view: next };
   void closing.then(() => active?.definition === definition && stack.open(definition)).catch(console.error);
   ui.pick(focus, next);
+  if (name === 'title') {
+    presentStaticScreen(game, next,
+      ['titleHeading', 'titleLine', 'start', 'guide', 'options', 'chooseHero', 'record_boy', 'record_lotus',
+        'record_sixArms', 'heroNote', 'chooseDanger', 'danger0', 'danger1', 'danger2', 'dangerNote'],
+      () => active?.view === next);
+  }
 }
 
 function renderScreen(name, focus) {

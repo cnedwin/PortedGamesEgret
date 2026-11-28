@@ -10,4 +10,3 @@ export function reportDiagnostic(handler, diagnostic) {
         void cause;
     }
 }
-//# sourceMappingURL=diagnostics.js.map

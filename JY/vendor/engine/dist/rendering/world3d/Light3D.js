@@ -94,4 +94,3 @@ export function createSpotLight3D(options = {}) {
     light.penumbra = options.penumbra ?? 0.1;
     return light;
 }
-//# sourceMappingURL=Light3D.js.map

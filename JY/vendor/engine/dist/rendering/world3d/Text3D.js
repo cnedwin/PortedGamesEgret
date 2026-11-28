@@ -557,4 +557,3 @@ export function createTextGeometry3D(text, font, options = {}) {
         ? createExtrudeGeometry3D(shapes, { depth, ...(options.steps !== undefined ? { steps: options.steps } : {}) })
         : createShapeGeometry3D(shapes);
 }
-//# sourceMappingURL=Text3D.js.map

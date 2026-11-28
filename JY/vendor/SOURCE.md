@@ -1,6 +1,7 @@
-# Vendored browser runtime
+# Vendored engine
 
-- Egret Engine community rebuild, branch main, pinned commit [c1570b0878d1be8716d06320206f51a62f9e3f32](https://github.com/cnedwin/Egret_rebuild/tree/c1570b0878d1be8716d06320206f51a62f9e3f32).
-- The contracts, runtime and engine packages were built from that Git checkout (tree 5f258767dbebd0fbf229a85a46e21154b75863d0).
-- Built with Node.js 26.7.0 and TypeScript 7.0.2 using upstream `node tools/build.mjs`.
-- robust-predicates 3.0.3 is the engine dependency. The original license is retained next to the package.
+- Egret Engine community rebuild, commit `ca9ff2a0ef9ff67af7795f9600ba40668383a0a2`, copied by `tools/vendor-game.mjs`.
+- Entries: `@egret/engine`, `@egret/engine/text`, `@egret/engine/web/audio`, `@egret/engine/web/gamepad`, `@egret/engine/web/keyboard`, `@egret/engine/web/text`, `@egret/engine/webgl2`, `@egret/engine/webgl2/world3d`, `@egret/engine/world3d`. Only the JavaScript files they import are kept; source maps and declarations are left out.
+- Third-party packages, copied with their own licences: `robust-predicates` (Unlicense).
+- First-party engine code: Apache-2.0, see `LICENSE` and `NOTICE`.
+- In a page: add `vendor/importmap.json` to the import map, or load `vendor/importmap.js` first. In Node: `node --import ./vendor/node-register.mjs`.

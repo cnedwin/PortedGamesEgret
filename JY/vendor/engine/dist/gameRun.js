@@ -94,4 +94,3 @@ export function runHeadless(options) {
         });
     });
 }
-//# sourceMappingURL=gameRun.js.map

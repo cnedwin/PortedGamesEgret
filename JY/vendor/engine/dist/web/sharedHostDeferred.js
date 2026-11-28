@@ -9,4 +9,3 @@ export function deferred() {
     promise.catch(() => undefined);
     return { promise, resolve, reject };
 }
-//# sourceMappingURL=sharedHostDeferred.js.map
