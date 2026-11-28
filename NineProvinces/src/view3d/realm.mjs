@@ -6,6 +6,7 @@
 // of a march and the places at war.
 import { createFatLine3D, createRingGeometry3D, createStandardMaterial3D, linearColor3D, Mesh3D, projectToViewport3D } from '@egret/engine/world3d';
 import { createScreenMarkers3D } from '@egret/engine/webgl2/world3d';
+import { createGestures } from '@egret/engine/web/gestures';
 import { FACTIONS, LATER } from '../data/factions.mjs';
 import { NODES, project } from '../data/map.mjs';
 import { nm } from '../i18n.mjs';
@@ -16,6 +17,8 @@ import { createPlaces } from './cities.mjs';
 import { createFlora } from './flora.mjs';
 import { createRoads, along, routeLine } from './routes.mjs';
 import { createStage } from './stage.mjs';
+import { createRealmHost } from './native-host.mjs';
+import { wheelFactor, pinchStep } from './screen-math.mjs';
 import { createLand } from './terrain.mjs';
 import { createTroops, figureOf, isSiegeFigure } from './troops.mjs';
 import { createWaters } from './water.mjs';
@@ -41,7 +44,7 @@ export function factionColour(state, id) {
  * `plateFor` makes and refreshes the page elements of the plates, `on` hears taps and hovering, `tick(seconds)` runs
  * the game's own frame before the picture is drawn.
  */
-export async function createRealmView({ canvas, plates, getState, plateFor, on, tick, quality, onError }) {
+export async function createRealmView({ canvas, plates, uiParent, getState, plateFor, on, tick, quality, onError }) {
   const stage = await createStage(canvas, { quality, onError });
   const { app, scene, camera, rig } = stage;
   const flora = createFlora(scene, { quality: app.quality });
@@ -64,12 +67,13 @@ export async function createRealmView({ canvas, plates, getState, plateFor, on, 
   const places = createPlaces(scene, { quality: app.quality, colourOf: ownerColour });
   const troops = createTroops(scene, { quality: app.quality });
   const markers = createScreenMarkers3D({ container: plates, camera });
-  let hudHeight = 0;
+  let hudHeight = 0, topObserver, uiHost;
   const topbar = document.querySelector('#topbar');
   if (topbar) {
-    new ResizeObserver(([entry]) => {
+    topObserver = new ResizeObserver(([entry]) => {
       hudHeight = entry.borderBoxSize?.[0]?.blockSize ?? entry.contentRect.height;
-    }).observe(topbar);
+    });
+    topObserver.observe(topbar);
   }
   const relief = RELIEF_LABELS.map(label => {
     const at = project(label.lon, label.lat);
@@ -221,9 +225,7 @@ export async function createRealmView({ canvas, plates, getState, plateFor, on, 
 
   // ——— Input ———
   const size = () => canvas.getBoundingClientRect();
-  const pointers = new Map();
-  let pinch = null,
-    hovered = null;
+  let hovered = null, mapInput;
   const groundAt = (clientX, clientY) => {
     const r = size();
     return rig.groundOf(clientX - r.left, clientY - r.top, r.width, r.height, (x, z) => land.heightAt(x, z));
@@ -245,78 +247,69 @@ export async function createRealmView({ canvas, plates, getState, plateFor, on, 
     }
     return { ground: g };
   }
-  canvas.addEventListener('pointerdown', (e) => {
-    canvas.setPointerCapture?.(e.pointerId);
-    pointers.set(e.pointerId, { x: e.clientX, y: e.clientY, sx: e.clientX, sy: e.clientY, moved: false });
-    if (pointers.size === 2) {
-      const [a, b] = [...pointers.values()];
-      pinch = Math.hypot(a.x - b.x, a.y - b.y);
+  function installMapInput(host) {
+    const game=host.game, target=host.background;
+    let gestures,layoutKey='',pinch=1,lastX,lastY,left=false;
+    const clientAt=(x,y)=>{const p=game.fromStage(x,y);return host.designToClient(p.x,p.y);};
+    const pointAt=(at)=>{const p=clientAt(at.x,at.y);return groundAt(p.x,p.y);};
+    function clearHover(){
+      if(hovered){if(mode)mode.hover(null);else on.hover?.(null);}
+      hovered=null;
     }
-  });
-  canvas.addEventListener('pointermove', (e) => {
-    const p = pointers.get(e.pointerId);
-    if (!p) {
-      const hit = pickAt(e.clientX, e.clientY);
-      if (mode) {
-        mode.hover(hit?.ground ?? null);
-        hovered = hit;
-        on.move?.(e, hit);
-        return;
-      }
-      const was = hovered;
-      hovered = hit;
-      if ((was?.node ?? null) !== (hit?.node ?? null) || (was?.army ?? null) !== (hit?.army ?? null)) on.hover?.(hit?.node ? { node: hit.node } : hit?.army ? { army: hit.army } : null, e);
-      on.move?.(e, hit);
-      return;
+    function hoverAt(x,y){
+      const p=host.designToClient(x,y),e={clientX:p.x,clientY:p.y},hit=pickAt(p.x,p.y);
+      const was=hovered;hovered=hit;
+      if(mode)mode.hover(hit?.ground??null);
+      else if((was?.node??null)!==(hit?.node??null)||(was?.army??null)!==(hit?.army??null))on.hover?.(hit?.node?{node:hit.node}:hit?.army?{army:hit.army}:null,e);
+      on.move?.(e,hit);
     }
-    if (pointers.size === 2 && pinch) {
-      p.x = e.clientX;
-      p.y = e.clientY;
-      const [a, b] = [...pointers.values()];
-      const d = Math.hypot(a.x - b.x, a.y - b.y);
-      view.zoomBy(d / pinch);
-      pinch = d;
-      return;
-    }
-    if (!p.moved && Math.hypot(e.clientX - p.sx, e.clientY - p.sy) < 6) return;
-    p.moved = true;
-    mode?.release?.();
-    const from = groundAt(p.x, p.y),
-      to = groundAt(e.clientX, e.clientY);
-    p.x = e.clientX;
-    p.y = e.clientY;
-    if (from && to) {
-      rig.panBy(from.x - to.x, from.z - to.z);
-      rig.snap();
-    }
-  });
-  const up = (e) => {
-    const p = pointers.get(e.pointerId);
-    pointers.delete(e.pointerId);
-    if (pointers.size < 2) pinch = null;
-    if (p && !p.moved && e.type === 'pointerup' && pointers.size === 0) {
-      const hit = pickAt(e.clientX, e.clientY);
-      if (hit?.mode) return mode?.tap(hit);
-      if (hit?.army) on.tapArmy?.(hit.army, hit);
-      else if (hit?.node) on.tapNode?.(hit.node, hit);
-      else on.tapGround?.(hit);
-    }
-  };
-  canvas.addEventListener('pointerup', up);
-  canvas.addEventListener('pointercancel', up);
-  canvas.addEventListener('pointerleave', () => {
-    if (hovered) on.hover?.(null);
-    hovered = null;
-  });
-  canvas.addEventListener(
-    'wheel',
-    (e) => {
-      e.preventDefault();
-      const g = groundAt(e.clientX, e.clientY);
-      rig.zoomBy(e.deltaY > 0 ? 1 / 1.18 : 1.18, g);
-    },
-    { passive: false }
-  );
+    const stopLayout=host.addLayout(({screen,scale})=>{
+      const key=[screen.x,screen.y,screen.width,screen.height,scale].join(':');
+      if(key===layoutKey)return;
+      layoutKey=key;gestures?.dispose();pinch=1;lastX=lastY=undefined;
+      // Native routing owns each contact, including canceled/pinch-terminal
+      // releases. The original six-CSS-pixel drag threshold is preserved.
+      gestures=createGestures({engine:game.engine,scope:game.scope,input:game.browser.pointer,target,slop:6/scale,
+        onTap(at){
+          if(!visible)return;
+          const p=clientAt(at.x,at.y),hit=pickAt(p.x,p.y);
+          if(hit?.mode){mode?.tap(hit);return;}
+          if(hit?.army)on.tapArmy?.(hit.army,hit);
+          else if(hit?.node)on.tapNode?.(hit.node,hit);
+          else on.tapGround?.(hit);
+        },
+        onDrag(d){
+          if(!visible)return;
+          if(d.phase!=='start'&&d.phase!=='move')return;
+          mode?.release?.();
+          const from=pointAt({x:d.x-d.dx,y:d.y-d.dy}),to=pointAt(d);
+          if(from&&to){rig.panBy(from.x-to.x,from.z-to.z);rig.snap();}
+        },
+        onPinch(p){const next=pinchStep(pinch,p);pinch=next.previous;if(visible&&p.phase==='move')rig.zoomBy(next.factor);}
+      });
+    });
+    // The engine's routed contacts and wheel snapshot own all map actions.
+    // During the foreground migration, leaving the native canvas for an old
+    // page control also clears the last tooltip, as the old map did.
+    const leave=()=>{left=true;clearHover();};
+    const enter=()=>{left=false;lastX=lastY=undefined;};
+    game.canvas.addEventListener('pointerleave',leave);
+    game.canvas.addEventListener('pointerenter',enter);
+    game.scope.use({dispose(){stopLayout();gestures?.dispose();game.canvas.removeEventListener('pointerleave',leave);game.canvas.removeEventListener('pointerenter',enter);}});
+    return {clearHover,frame(){
+      const {x,y,wheel,down}=game.pointer;
+      if(left||!visible)return;
+      const moved=x!==lastX||y!==lastY;
+      if(!moved&&!wheel)return;
+      lastX=x;lastY=y;
+      // Native stage picking gives foreground UI precedence, including
+      // modal views and any future interactive native name plates.
+      const p=game.toStage(x,y),own=game.browser.stage.hitTest(p.x,p.y)===target;
+      if(!own){clearHover();return;}
+      if(wheel){const at=host.designToClient(x,y);rig.zoomBy(wheelFactor(wheel),groundAt(at.x,at.y));}
+      if(moved&&!down)hoverAt(x,y);
+    }};
+  }
 
   // ——— The frame ———
   let time = 0,
@@ -329,6 +322,7 @@ export async function createRealmView({ canvas, plates, getState, plateFor, on, 
   function frame(seconds) {
     const dt = Math.min(seconds, 0.1);
     time += dt;
+    mapInput?.frame();
     tick?.(dt);
     // On the title the view drifts slowly over the land.
     if (drift) {
@@ -404,7 +398,7 @@ export async function createRealmView({ canvas, plates, getState, plateFor, on, 
     if (showRelief) for (const { element, marker } of relief) {
       if (element.hidden) continue;
       // Reserve the full label height and a gap below the HUD. Only shift nearby labels.
-      const drop = Math.max(0, Math.ceil(hudHeight + 36 - marker.point.y));
+      const drop = Math.max(0, Math.ceil(Math.max(hudHeight,uiHost?.topInset??0) + 36 - marker.point.y));
       if (drop > 56) element.hidden = true;
       else element.style.setProperty('--relief-drop', drop + 'px');
     }
@@ -475,7 +469,7 @@ export async function createRealmView({ canvas, plates, getState, plateFor, on, 
       return () => extra.delete(fn);
     },
     start() {
-      app.show(scene, camera, { onUpdate: frame });
+      app.start();
     },
     /** How far into the next day the realm is (0..1), for armies between days. */
     setDayShare(v) {
@@ -523,6 +517,8 @@ export async function createRealmView({ canvas, plates, getState, plateFor, on, 
     },
     setVisible(on) {
       visible = on;
+      uiHost?.setInputEnabled(on);
+      if(!on)mapInput?.clearHover();
     },
     /** A slow drift of the view from x `from` to `to` (map units), or null to stop. */
     setDrift(d) {
@@ -538,5 +534,13 @@ export async function createRealmView({ canvas, plates, getState, plateFor, on, 
       return land.ready(x, z, 40);
     }
   };
+  try {
+    uiHost=await createRealmHost({canvas,uiParent,owner:app,scene,camera,frame,onError});
+    view.uiHost=uiHost;
+    mapInput=installMapInput(uiHost);
+    if(topObserver)app.scope.use({dispose:()=>topObserver.disconnect()});
+  } catch(error) {
+    topObserver?.disconnect();await app.dispose();throw error;
+  }
   return view;
 }

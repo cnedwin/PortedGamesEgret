@@ -1,153 +1,45 @@
-// 天下图上的界面：顶栏（势力、日期、金粮兵名声、研究、时间的快慢、各个菜单），左侧的详情（选中的城关津或军团：
+// 天下图上的旧版详情层：左侧的详情（选中的城关津或军团：
 // 数值、营建、征兵、出征、寻访、调兵调将、驻守的武将、在野的人才），右下的大事记，鼠标停留时的提示，和短暂的通告。
 // 只在显示的内容变了时才重画，并把键盘焦点放回原来的按钮上。
-// The interface over the map of the realm: the top bar (the power, the date, coin, grain, troops and fame, research,
-// the speed of time, the menus), the details on the left (the chosen place or army: its figures, works, conscription,
+// The remaining details layer over the realm: the chosen place or army (figures, works, conscription,
 // mustering, searching, moving troops and officers, the officers posted there and the talent waiting), the chronicle
 // at the bottom right, a note where the mouse rests, and short notices. Parts are drawn again only when what they show
 // has changed, and the keyboard's focus is put back on the button it was on.
 import { UNITS, FORMATIONS } from '../data/battle.mjs';
 import { GENERALS } from '../data/generals.mjs';
 import { ADJACENT, NODES, PROVINCES } from '../data/map.mjs';
-import { TECHS } from '../data/techs.mjs';
 import { serving, stat as statOf } from '../sim/core.mjs';
 import { disband, hostile, order, route, troopCap } from '../sim/military.mjs';
 import { persuadeChance } from '../sim/people.mjs';
-import { caps, governorDuties, governorRecruitment, income, recruit, researchRate, upkeep, workQuote, power } from '../sim/world.mjs';
+import { caps, governorDuties, governorRecruitment, income, recruit, workQuote } from '../sim/world.mjs';
 import { getLanguage, nm, num, t } from '../i18n.mjs';
 import { factionName, generalName, placeName } from '../view/names.mjs';
-import { seasonOf } from '../view3d/seasons.mjs';
 import { $, bar, button, clear, colourOf, face, h, seal, stat } from './dom.mjs';
 import { dayWords, logLine, pair, treatyAt } from './text.mjs';
-import { CITY_OVERVIEW, cityContent, cityTabs, createCampaignTime, territoryLegend } from './campaign-controls.mjs';
+import { CITY_OVERVIEW, cityContent, cityTabs } from './campaign-controls.mjs';
 import { renderGovernorDuties } from './governor-duties.mjs';
 
 const SPEEDS = [0.5, 1, 2, 4, 8];
 export { SPEEDS };
 
 export function createHud(app) {
-  const top = $('#topbar'),
-    side = $('#side'),
+  const side = $('#side'),
     log = $('#log'),
     tip = $('#tip'),
     toastBox = $('#toasts');
-  let lastTop = '',
-    lastMenu = '',
-    lastSide = '',
+  let lastSide = '',
     lastLog = '',
     lastPlace = null,
     citySection = CITY_OVERVIEW;
-  const clock = createCampaignTime(app, SPEEDS);
-  const campaignMenu = h('nav.menu');
-  new ResizeObserver(() => {
-    if (top.offsetHeight) top.parentElement.style.setProperty('--campaign-hud-bottom', `${top.offsetHeight}px`);
-  }).observe(top);
-
   /** Draw a part again, keeping the focused button focused. */
-  function redraw(node, build, ...retained) {
+  function redraw(node, build) {
     const active = document.activeElement;
-    const focused = active?.dataset?.k && node.contains(active) && !retained.some(element => element.contains(active)) ? active.dataset.k : null;
-    const attached = retained.filter(element => element.parentNode === node);
-    if (attached.length) {
-      // Keep the native speed picker and menu targets attached as time and resources change.
-      const draft = document.createDocumentFragment();
-      const anchors = new Map();
-      const placeholders = retained.map(element => {
-        if (!attached.includes(element)) return element;
-        const anchor = document.createComment('retained control');
-        anchors.set(anchor, element);
-        return anchor;
-      });
-      build(draft, ...placeholders);
-      for (const child of [...node.childNodes]) if (!attached.includes(child)) child.remove();
-      let before = node.firstChild;
-      for (const child of [...draft.childNodes]) {
-        if (anchors.has(child)) before = anchors.get(child).nextSibling;
-        else node.insertBefore(child, before);
-      }
-    } else {
-      clear(node);
-      build(node, ...retained);
-    }
+    const focused = active?.dataset?.k && node.contains(active) ? active.dataset.k : null;
+    clear(node);
+    build(node);
     if (focused) node.querySelector(`[data-k="${CSS.escape(focused)}"]`)?.focus({ preventScroll: true });
   }
   const keyed = (k, el) => ((el.dataset.k = k), el);
-
-  // ——— The top bar ———
-  function monthly(s, f) {
-    let coin = 0,
-      grain = 0;
-    for (const id in s.nodes)
-      if (s.nodes[id].owner === f) {
-        const i = income(s, id);
-        coin += i.coin;
-        grain += i.grain;
-      }
-    const u = upkeep(s, f);
-    return { coin: coin - u.coin, grain: grain - u.grain, troops: u.troops };
-  }
-  function drawTop(s) {
-    const f = s.factions[s.player];
-    const m = monthly(s, s.player),
-      p = power(s, s.player);
-    const r = f.research;
-    const home = app.homeCity();
-    const territory = Boolean(app.settings.territoryMap);
-    const key = [s.day, f.coin, Math.round(f.grain), m.coin, m.grain, m.troops, p.cities, f.fame, r.current, Math.floor(r.points), app.paused, app.speed, f.name?.zh, f.flag, app.dialogOpen, home, territory, getLanguage()].join('|');
-    if (key === lastTop) return;
-    lastTop = key;
-    const sign = (n) => (n >= 0 ? '+' : '−') + num(Math.abs(n));
-    clock.sync();
-    drawMenu(home, territory);
-    redraw(top, (node, time, menu) => {
-      node.append(
-        keyed('realm', h('button.realm', { type: 'button', onclick: () => app.open('realm'), title: t('menuFaction') + ' · ' + factionName(s, s.player), 'aria-label': t('menuFaction') + ' · ' + factionName(s, s.player) },
-          seal(f, 'l'), h('span.realmName', factionName(s, s.player)), h('span.realmChevron', { 'aria-hidden': 'true' }, '▾'))),
-        h('div.date', { 'aria-live': 'off' }, h('span', dayWords(s.day)), h('small.season', t('season_' + seasonOf(s.day).name))),
-        h(
-          'div.res',
-          h('span.r', { title: t('coin') + ' · ' + t('netMonthly') + ' ' + sign(m.coin) }, h('b', t('coin')), num(f.coin), h('small', { className: m.coin < 0 ? 'neg' : '' }, t('netShort') + ' ' + sign(m.coin))),
-          h('span.r', { title: t('grain') + ' · ' + t('netMonthly') + ' ' + sign(m.grain) }, h('b', t('grain')), num(f.grain), h('small', { className: m.grain < 0 ? 'neg' : '' }, t('netShort') + ' ' + sign(m.grain))),
-          h('span.r', h('b', t('troops')), num(m.troops)),
-          h('span.r', h('b', t('cities')), p.cities),
-          h('span.r', h('b', t('fame')), num(f.fame))
-        ),
-        keyed(
-          'tech',
-          h(
-            'button.study',
-            { type: 'button', onclick: () => app.open('tech') },
-            r.current ? [h('span', nm(TECHS[r.current])), h('span.pct', Math.min(99, Math.floor((r.points / TECHS[r.current].cost) * 100)) + '%')] : h('span.idle', t('studyNone'))
-          )
-        ),
-        time, menu
-      );
-      if (app.paused) node.append(h('div.pausedMark', t('paused')));
-      if (territory) node.append(territoryLegend(s));
-    }, clock.element, campaignMenu);
-  }
-
-  function drawMenu(home, territory) {
-    const key = [home, territory, getLanguage()].join('|');
-    if (key === lastMenu) return;
-    lastMenu = key;
-    redraw(campaignMenu, node => node.append(
-      keyed('home', h('button.menuBtn#homeCityBtn', {
-        type: 'button', disabled: !home,
-        'aria-label': home ? t('returnHome') + ' · ' + placeName(home) : t('returnHome'),
-        'aria-keyshortcuts': 'H', title: home ? t('returnHomeTitle', { place: placeName(home) }) + ' (H)' : t('returnHomeNone'),
-        onclick: app.goHome
-      }, t('returnHome'), home && h('small', placeName(home)))),
-      keyed('territory', h('button.menuBtn#territoryMapBtn', {
-        type: 'button', 'aria-pressed': String(territory), 'aria-describedby': territory ? 'territoryLegend' : null,
-        title: t(territory ? 'territoryHide' : 'territoryShow'), onclick: () => app.setSetting('territoryMap', !territory)
-      }, pair(['势力图', 'Domains']))),
-      ...[
-        ['generals', t('menuGenerals')], ['diplomacy', t('menuDiplomacy')], ['tech', t('menuTech')],
-        ['chronicle', t('menuStory')], ['saves', t('menuSave')], ['settings', t('settings')]
-      ].map(([id, label]) => keyed('menu' + id, h('button.menuBtn', { type: 'button', onclick: () => app.open(id) }, label)))
-    ));
-  }
 
   // ——— The side panel ———
   function nodePanel(s, id, dutyViews) {
@@ -462,8 +354,7 @@ export function createHud(app) {
     refresh(force = false) {
       const s = app.state;
       if (!s) return;
-      if (force) lastTop = lastSide = lastLog = '-';
-      drawTop(s);
+      if (force) lastSide = lastLog = '-';
       drawSide(s);
       drawLog(s);
     },

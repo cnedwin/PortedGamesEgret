@@ -30,3 +30,19 @@
      enough room to operate the form instead of showing it twice. */
   .setupPanel > header .setupSummary { display: none; }
 }
+
+/* In the staged interface migration, the existing first-month guide must not
+   intercept the native minimap's touch area. Its offsets come from Play. */
+#hud .firstMonth {
+  top: calc(var(--campaign-hud-bottom, 142px) + 8px);
+  right: calc(var(--native-minimap-width, 0px) + 18px);
+  max-height: calc(100dvh - var(--campaign-hud-bottom, 142px) - 20px);
+  overflow-y: auto;
+}
+@media (orientation: portrait) {
+  #hud .firstMonth {
+    top: calc(var(--native-minimap-bottom, 142px) + 6px);
+    right: 9px;
+    max-height: max(110px, calc(70dvh - var(--native-minimap-bottom, 142px)));
+  }
+}
