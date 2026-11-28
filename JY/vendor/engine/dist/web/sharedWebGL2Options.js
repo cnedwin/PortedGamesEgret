@@ -22,7 +22,9 @@ const DEFAULTS = Object.freeze({
     maxFramePageBytes: 67108864,
     maxReadyPageBytes: 134217728,
     blendSpace: 'linear',
-    pageBatching: 'multi-page'
+    pageBatching: 'multi-page',
+    preserveDrawingBuffer: false,
+    presentationResize: 'direct'
 });
 const KEYS = [
     'canvas',
@@ -50,7 +52,9 @@ const KEYS = [
     'maxFramePageBytes',
     'maxReadyPageBytes',
     'blendSpace',
-    'pageBatching'
+    'pageBatching',
+    'preserveDrawingBuffer',
+    'presentationResize'
 ];
 function object(value) {
     return typeof value === 'object' && value !== null;
@@ -71,7 +75,7 @@ export function admitSharedWebGL2Options(input) {
     const configuration = {};
     for (const key of Object.keys(DEFAULTS)) {
         const value = captured[key] === undefined ? DEFAULTS[key] : captured[key];
-        if (key === 'enableReadback' || key === 'enableEffects') {
+        if (key === 'enableReadback' || key === 'enableEffects' || key === 'preserveDrawingBuffer') {
             if (typeof value !== 'boolean')
                 throw new TypeError(key);
         }
@@ -81,6 +85,10 @@ export function admitSharedWebGL2Options(input) {
         }
         else if (key === 'blendSpace') {
             if (value !== 'linear' && value !== 'srgb')
+                throw new TypeError(key);
+        }
+        else if (key === 'presentationResize') {
+            if (value !== 'direct' && value !== 'stable')
                 throw new TypeError(key);
         }
         else if (key === 'pageBatching') {
@@ -98,6 +106,9 @@ export function admitSharedWebGL2Options(input) {
         }
         Object.defineProperty(configuration, key, { value, enumerable: true });
     }
+    // The current readback contract returns exact logical pixels from the default framebuffer.
+    if (configuration.presentationResize === 'stable' && configuration.enableReadback)
+        throw new TypeError('presentationResize');
     return {
         surface: captured.canvas,
         configuration: Object.freeze(configuration),

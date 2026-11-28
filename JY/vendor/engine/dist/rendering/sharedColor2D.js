@@ -1,5 +1,5 @@
 import { copyImageData2DPixels } from '@egret/contracts';
-import { decodeSRGBByte } from './srgbBytes.js';
+import { decodeSRGBByte } from '@egret/contracts';
 /** Selected sRGB transfer. Alpha and tint coefficients are never gamma converted. */
 export function decodeSharedSRGB(value) {
     return value <= 0.04045 ? value / 12.92 : ((value + 0.055) / 1.055) ** 2.4;
@@ -26,6 +26,20 @@ export function sharedBlendSpace2D(frame) {
         if (frame.colorRecipe === recipe.colorRecipe && frame.targetRepresentation === recipe.targetRepresentation)
             return space;
     }
+    return undefined;
+}
+/**
+ * Why a Host refuses a frame for its blend space and output alpha: `profile` when the frame was made for another
+ * target, `invalid` when an opaque frame clears to less than full alpha, or undefined when it draws the frame.
+ */
+export function sharedFrameProfileRefusal2D(frame, blendSpace, outputAlpha) {
+    if (sharedBlendSpace2D(frame) !== blendSpace ||
+        frame.outputAlpha !== outputAlpha ||
+        frame.outputRepresentation !==
+            (outputAlpha === 'opaque' ? 'egret.srgb-opaque-unorm8/1' : 'egret.srgb-premultiplied-unorm8/1'))
+        return 'profile';
+    if (outputAlpha === 'opaque' && frame.clearAlpha !== 1)
+        return 'invalid';
     return undefined;
 }
 /**

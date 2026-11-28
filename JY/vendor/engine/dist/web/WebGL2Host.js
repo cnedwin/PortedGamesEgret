@@ -1,20 +1,21 @@
 // SPDX-License-Identifier: Apache-2.0
 import { deferred } from './sharedHostDeferred.js';
-import { sharedEffectGLSL, EFFECT_PASSES, EFFECT_UNIFORM_BYTES } from './sharedEffectShaders.js';
+import { sharedEffectGLSL, walkSharedEffects2D, EFFECT_PASSES, EFFECT_UNIFORM_BYTES } from './sharedEffectShaders.js';
 import { SHARED_FRAME_PROFILE_2D } from '@egret/contracts';
 import { readOwnedSharedFrame } from '#egret-textured-frame-state';
 import { admitSharedWebGL2Options } from './sharedWebGL2Options.js';
-import { prepareSharedDrawsForSubmission2D, SharedPreparationError } from '../rendering/prepareSharedDraws2D.js';
+import { prepareSharedDrawsForSubmission2D, sharedBackingExtent2D, SharedPreparationError } from '../rendering/prepareSharedDraws2D.js';
 import { SharedPreparationRetention2D } from '../rendering/sharedPreparationRetention2D.js';
 import { GeometryPreparationError } from '../rendering/prepareRectangles2D.js';
 import { packSharedDraws2D, packSharedRegions2D, SHARED_BATCH_PAGES_2D, SHARED_REGION_WINDOW_BYTES_2D } from '../rendering/packSharedDraws2D.js';
 import { PreparedBatchScratch2D } from '../rendering/preparedBatches2D.js';
 import { prepareSharedBatches2D } from '../rendering/preparedSharedBatches2D.js';
-import { sharedBlendSpace2D, sharedPageLevelLayout2D, sharedPageChainBytes2D, sharedTargetChannel2D } from '../rendering/sharedColor2D.js';
+import { sharedFrameProfileRefusal2D, sharedPageLevelLayout2D, sharedPageChainBytes2D, sharedTargetChannel2D } from '../rendering/sharedColor2D.js';
 import { runOwnedPreparationScope } from '../rendering/ownedPreparationFailure2D.js';
 import { planSharedStorageFees2D, withSharedReadbackLayout2D, checkSharedCapacity2D, materializeSharedPages2D, SharedStorageError2D } from './sharedSubmissionStorage2D.js';
 import { planSharedWebGL2Arenas, checkSharedWebGL2ArenaCapacity, qualifySharedWebGL2Alignment } from './sharedWebGL2Arena.js';
 import { createRetentionLedger } from './sharedRetentionLedger.js';
+import { addResourceTotal, createImagesHighWater, createPageCopyDiagnostics, createPendingHighWater, createResourceTotals, createReuseDiagnostics, createUnknownNativeDiagnostics, raiseImagesHighWater, raisePendingHighWater, sharedResourceStatus } from './sharedResourceDiagnostics.js';
 import { GLNativeSession, glFailure, isGLFailure } from './webgl2Native.js';
 import { sharedWebGL2VertexSource, sampledFragmentSource, sharedWebGL2SolidVertexSource, sharedWebGL2SolidFragment, sharedWebGL2ResolveVertexSource, sharedWebGL2ResolveFragment, sharedWebGL2BlendFactors } from './sharedWebGL2Shaders.js';
 import { MAX_LAYER_HANDLES, MAX_LAYER_EXTENT, MAX_LAYER_BYTES, createWebGL2LayerProgram, readWebGL2LayerEffect, readWebGL2LayerPlacement } from './webgl2LayerState.js';
@@ -92,66 +93,12 @@ class SharedGLHost {
     lostNative;
     // Fixed-size observations only; original records/native owners still authorize every transition.
     frameTiming;
-    resourceCpu = {
-        canonicalBytes: 0,
-        scratchBytes: 0,
-        highCanonicalBytes: 0,
-        highScratchBytes: 0,
-        highTemporaryBytes: 0,
-        saturated: false
-    };
-    resourceUnknown = {
-        knownLogicalBytes: 0,
-        objects: 0,
-        highKnownLogicalBytes: 0,
-        highObjects: 0,
-        saturated: false
-    };
-    resourceReuse = {
-        current: {
-            idleBytes: 0,
-            idleEntries: 0,
-            leasedBytes: 0,
-            leasedEntries: 0,
-            reservedBytes: 0,
-            reservedEntries: 0,
-            detachedBytes: 0,
-            detachedEntries: 0,
-            unknownBytes: 0,
-            unknownEntries: 0
-        },
-        highWater: {
-            idleBytes: 0,
-            idleEntries: 0,
-            leasedBytes: 0,
-            leasedEntries: 0,
-            reservedBytes: 0,
-            reservedEntries: 0,
-            detachedBytes: 0,
-            detachedEntries: 0,
-            unknownBytes: 0,
-            unknownEntries: 0
-        },
-        saturated: false,
-        unknownNative: this.resourceUnknown
-    };
-    resourceHighPending = {
-        frames: 0,
-        uploadCreditBytes: 0,
-        pageCreditBytes: 0,
-        readbackCreditBytes: 0,
-        geometryCreditBytes: 0,
-        colorCreditBytes: 0
-    };
-    resourceHighImages = {
-        readyBytes: 0,
-        readyEntries: 0,
-        pinnedReadyBytes: 0,
-        pinnedReadyEntries: 0,
-        allocatedLogicalBytes: 0,
-        reservedCreditBytes: 0
-    };
-    resourceTotals = { pageWriteCalls: 0, pageWriteBytes: 0, readyCapacityEvictions: 0 };
+    resourceCpu = createPageCopyDiagnostics();
+    resourceUnknown = createUnknownNativeDiagnostics();
+    resourceReuse = createReuseDiagnostics(this.resourceUnknown);
+    resourceHighPending = createPendingHighWater();
+    resourceHighImages = createImagesHighWater();
+    resourceTotals = createResourceTotals();
     resourceSaturated = false;
     resourceReadyBytes = 0;
     resourcePinnedBytes = 0;
@@ -197,6 +144,7 @@ class SharedGLHost {
     retiredUnknownBytes = 0;
     /** Draw calls of the last frame drawn: its draws, effect passes, layers and the resolve to the canvas. */
     frameDrawCalls = 0;
+    presentationSize;
     retiredUnknownObjects = 0;
     constructor(input) {
         try {
@@ -252,87 +200,55 @@ class SharedGLHost {
         }
     }
     sampleResourcePending() {
+        raisePendingHighWater(this.resourceHighPending, this.resourcePending());
+    }
+    /** What is promised and not yet settled, as the owner snapshot counts it. */
+    resourcePending() {
         const owner = this.snapshot();
-        this.resourceHighPending.frames = Math.max(this.resourceHighPending.frames, owner.pendingFrames);
-        this.resourceHighPending.uploadCreditBytes = Math.max(this.resourceHighPending.uploadCreditBytes, owner.pendingUploadBytes);
-        this.resourceHighPending.pageCreditBytes = Math.max(this.resourceHighPending.pageCreditBytes, owner.pendingTextureBytes);
-        this.resourceHighPending.readbackCreditBytes = Math.max(this.resourceHighPending.readbackCreditBytes, owner.pendingReadbackBytes);
-        this.resourceHighPending.geometryCreditBytes = Math.max(this.resourceHighPending.geometryCreditBytes, owner.pendingGeometryBytes);
-        this.resourceHighPending.colorCreditBytes = Math.max(this.resourceHighPending.colorCreditBytes, owner.pendingColorBytes);
+        return {
+            frames: owner.pendingFrames,
+            uploadCreditBytes: owner.pendingUploadBytes,
+            pageCreditBytes: owner.pendingTextureBytes,
+            readbackCreditBytes: owner.pendingReadbackBytes,
+            geometryCreditBytes: owner.pendingGeometryBytes,
+            colorCreditBytes: owner.pendingColorBytes
+        };
     }
     sampleResourceImages() {
-        this.resourceHighImages.readyBytes = Math.max(this.resourceHighImages.readyBytes, this.resourceReadyBytes);
-        this.resourceHighImages.readyEntries = Math.max(this.resourceHighImages.readyEntries, this.pages.size);
-        this.resourceHighImages.pinnedReadyBytes = Math.max(this.resourceHighImages.pinnedReadyBytes, this.resourcePinnedBytes);
-        this.resourceHighImages.pinnedReadyEntries = Math.max(this.resourceHighImages.pinnedReadyEntries, this.resourcePinnedEntries);
-        this.resourceHighImages.allocatedLogicalBytes = Math.max(this.resourceHighImages.allocatedLogicalBytes, this.resourceNative.pageBytes);
-        this.resourceHighImages.reservedCreditBytes = Math.max(this.resourceHighImages.reservedCreditBytes, this.resourceNative.reservedPageBytes);
+        raiseImagesHighWater(this.resourceHighImages, this.resourceImages());
+    }
+    /** The page images kept ready and pinned now, with their native accounting. */
+    resourceImages() {
+        return {
+            readyBytes: this.resourceReadyBytes,
+            readyEntries: this.pages.size,
+            pinnedReadyBytes: this.resourcePinnedBytes,
+            pinnedReadyEntries: this.resourcePinnedEntries,
+            allocatedLogicalBytes: this.resourceNative.pageBytes,
+            reservedCreditBytes: this.resourceNative.reservedPageBytes
+        };
     }
     resourceTotal(key, amount) {
-        const old = this.resourceTotals[key];
-        if (amount > Number.MAX_SAFE_INTEGER - old) {
-            this.resourceTotals[key] = Number.MAX_SAFE_INTEGER;
+        if (addResourceTotal(this.resourceTotals, key, amount))
             this.resourceSaturated = true;
-        }
-        else
-            this.resourceTotals[key] = old + amount;
     }
     /** Read-only logical observations; no native call, callback or state transition. */
     resourceStatus() {
-        const owner = this.snapshot();
-        return Object.freeze({
-            current: Object.freeze({
-                pending: Object.freeze({
-                    frames: owner.pendingFrames,
-                    uploadCreditBytes: owner.pendingUploadBytes,
-                    pageCreditBytes: owner.pendingTextureBytes,
-                    readbackCreditBytes: owner.pendingReadbackBytes,
-                    geometryCreditBytes: owner.pendingGeometryBytes,
-                    colorCreditBytes: owner.pendingColorBytes
-                }),
-                cpu: Object.freeze({
-                    canonicalBytes: this.resourceCpu.canonicalBytes,
-                    scratchBytes: this.resourceCpu.scratchBytes,
-                    temporaryBytes: this.resourceCpu.canonicalBytes + this.resourceCpu.scratchBytes
-                }),
-                images: Object.freeze({
-                    readyBytes: this.resourceReadyBytes,
-                    readyEntries: this.pages.size,
-                    pinnedReadyBytes: this.resourcePinnedBytes,
-                    pinnedReadyEntries: this.resourcePinnedEntries,
-                    allocatedLogicalBytes: this.resourceNative.pageBytes,
-                    reservedCreditBytes: this.resourceNative.reservedPageBytes
-                }),
-                reusable: Object.freeze({ ...this.resourceReuse.current }),
-                unknownNative: Object.freeze({
-                    knownLogicalBytes: this.resourceUnknown.knownLogicalBytes,
-                    objects: this.resourceUnknown.objects
-                })
-            }),
-            highWater: Object.freeze({
-                pending: Object.freeze({ ...this.resourceHighPending }),
-                cpu: Object.freeze({
-                    canonicalBytes: this.resourceCpu.highCanonicalBytes,
-                    scratchBytes: this.resourceCpu.highScratchBytes,
-                    temporaryBytes: this.resourceCpu.highTemporaryBytes
-                }),
-                images: Object.freeze({
-                    ...this.resourceHighImages,
-                    allocatedLogicalBytes: this.resourceNative.highPageBytes,
-                    reservedCreditBytes: this.resourceNative.highReservedPageBytes
-                }),
-                reusable: Object.freeze({ ...this.resourceReuse.highWater }),
-                unknownNative: Object.freeze({
-                    knownLogicalBytes: this.resourceUnknown.highKnownLogicalBytes,
-                    objects: this.resourceUnknown.highObjects
-                })
-            }),
-            totals: Object.freeze({ ...this.resourceTotals }),
-            saturated: this.resourceSaturated ||
-                this.resourceCpu.saturated ||
-                this.resourceReuse.saturated ||
-                this.resourceUnknown.saturated ||
-                this.resourceNative.saturated
+        return sharedResourceStatus({
+            pending: this.resourcePending(),
+            images: this.resourceImages(),
+            cpu: this.resourceCpu,
+            reuse: this.resourceReuse,
+            unknown: this.resourceUnknown,
+            highPending: this.resourceHighPending,
+            // Native page accounting keeps its own lifetime maxima.
+            highImages: {
+                ...this.resourceHighImages,
+                allocatedLogicalBytes: this.resourceNative.highPageBytes,
+                reservedCreditBytes: this.resourceNative.highReservedPageBytes
+            },
+            totals: this.resourceTotals,
+            saturated: this.resourceSaturated || this.resourceNative.saturated
         });
     }
     stateError() {
@@ -614,7 +530,8 @@ class SharedGLHost {
             this.token = {};
             const token = this.token;
             this.pool = createRetentionLedger(token, this.resourceReuse);
-            const context = this.surface.getContext('webgl2', ATTRIBUTES);
+            const attributes = Object.freeze({ ...ATTRIBUTES, preserveDrawingBuffer: this.options.preserveDrawingBuffer });
+            const context = this.surface.getContext('webgl2', attributes);
             if (!context)
                 throw glFailure('WEBGL2_CONTEXT_UNAVAILABLE');
             this.context = context;
@@ -629,7 +546,7 @@ class SharedGLHost {
             const gl = native.gl, attrs = gl.getContextAttributes();
             if (context.canvas !== this.surface ||
                 !attrs ||
-                Object.entries(ATTRIBUTES).some(([key, value]) => attrs[key] !== value))
+                Object.entries(attributes).some(([key, value]) => attrs[key] !== value))
                 throw glFailure('WEBGL2_CONTEXT_ATTRIBUTES_UNSUPPORTED');
             // Explicitly request the one supported drawing-buffer color space when exposed.
             if ('drawingBufferColorSpace' in context) {
@@ -693,7 +610,10 @@ class SharedGLHost {
             const sources = [
                 [sharedWebGL2VertexSource, sampledFragmentSource(false, coded)],
                 [sharedWebGL2SolidVertexSource, sharedWebGL2SolidFragment(coded)],
-                [sharedWebGL2ResolveVertexSource, sharedWebGL2ResolveFragment(coded)],
+                [
+                    sharedWebGL2ResolveVertexSource,
+                    sharedWebGL2ResolveFragment(coded, this.options.presentationResize === 'stable')
+                ],
                 ...effectPasses.map(mode => [sharedWebGL2ResolveVertexSource, sharedEffectGLSL(mode, coded)])
             ];
             // The faster UI policy omits this source altogether, including when asynchronous parallel compilation is available.
@@ -1039,13 +959,9 @@ class SharedGLHost {
                         : undefined;
                     const options = layerWrite ? { ...this.options, pixelRatio: 1 } : this.options;
                     const alpha = layerWrite ? 'premultiplied' : options.outputAlpha;
-                    if (sharedBlendSpace2D(frame) !== this.options.blendSpace ||
-                        frame.outputAlpha !== alpha ||
-                        frame.outputRepresentation !==
-                            (alpha === 'opaque' ? 'egret.srgb-opaque-unorm8/1' : 'egret.srgb-premultiplied-unorm8/1'))
-                        throw glFailure('WEBGL2_FRAME_PROFILE_UNSUPPORTED');
-                    if (alpha === 'opaque' && frame.clearAlpha !== 1)
-                        throw glFailure('WEBGL2_FRAME_INVALID');
+                    const refusal = sharedFrameProfileRefusal2D(frame, this.options.blendSpace, alpha);
+                    if (refusal)
+                        throw glFailure(refusal === 'profile' ? 'WEBGL2_FRAME_PROFILE_UNSUPPORTED' : 'WEBGL2_FRAME_INVALID');
                     if (layerWrite) {
                         if (frame.clearAlpha !== 0 ||
                             !Number.isInteger(frame.width) ||
@@ -1059,15 +975,10 @@ class SharedGLHost {
                             this.layerBytes + frame.width * frame.height * 4 > MAX_LAYER_BYTES)
                             throw glFailure('WEBGL2_LAYER_BUDGET');
                     }
-                    const width = Math.ceil(frame.width * options.pixelRatio), height = Math.ceil(frame.height * options.pixelRatio);
-                    if (!Number.isSafeInteger(width) ||
-                        !Number.isSafeInteger(height) ||
-                        width <= 0 ||
-                        height <= 0 ||
-                        width > 4294967295 ||
-                        height > 4294967295 ||
-                        width > Math.floor(options.maxBackingPixels / height))
+                    const backing = sharedBackingExtent2D(frame, options.pixelRatio, options.maxBackingPixels);
+                    if (!backing)
                         throw glFailure('WEBGL2_BACKING_LIMIT');
+                    const { width, height } = backing;
                     // A frame baked into a layer is another sequence of frames; it neither takes nor replaces what the ordinary frames keep.
                     const prepared = prepareSharedDrawsForSubmission2D(frame, width, height, options, layerWrite ? undefined : this.retention);
                     const ticket = !layerWrite && !staging && this.ticket && !this.ticket.bound ? this.ticket : undefined;
@@ -1952,18 +1863,23 @@ class SharedGLHost {
         return undefined;
     }
     prepareSurface(record) {
-        const native = record.native, { width, height } = record.storage.prepared;
-        if (this.surface.width !== width)
-            this.surface.width = width;
-        this.generationGate(this.token);
-        if (this.surface.height !== height)
-            this.surface.height = height;
-        this.generationGate(this.token);
-        if (this.surface.width !== width || this.surface.height !== height)
+        const native = record.native, { width, height } = record.storage.prepared, output = this.presentationSize ?? { width, height };
+        if (this.presentationSize === undefined) {
+            if (this.surface.width !== output.width)
+                this.surface.width = output.width;
+            this.generationGate(this.token);
+            if (this.surface.height !== output.height)
+                this.surface.height = output.height;
+            this.generationGate(this.token);
+        }
+        if (this.surface.width !== output.width || this.surface.height !== output.height)
             throw new Error('Canvas rejected dimensions');
-        if (this.context.drawingBufferWidth !== width || this.context.drawingBufferHeight !== height)
+        if (this.context.drawingBufferWidth !== output.width || this.context.drawingBufferHeight !== output.height)
             throw glFailure('WEBGL2_BACKING_LIMIT');
         this.generationGate(this.token);
+        if (this.options.presentationResize === 'stable')
+            this.presentationSize = output;
+        // Intermediate effects, masks and cached layers always use the frame's logical pixel dimensions.
         native.reset(width, height);
     }
     drawLayers(record, width, height) {
@@ -2118,7 +2034,7 @@ class SharedGLHost {
                     gl.clear(gl.COLOR_BUFFER_BIT);
                 }
             };
-            const groups = record.storage.prepared.effects.groups, enters = new Map(groups.map(g => [g.enter, g])), exits = new Map(groups.map(g => [g.exit, g]));
+            const groups = record.storage.prepared.effects.groups;
             const ranges = new Map(arena.sharedRanges.map(range => [range.draw.prepared.command.ordinal, range]));
             const effectPass = (group, mode, target, source, glow) => {
                 setTarget(target, mode !== 'composite');
@@ -2155,31 +2071,20 @@ class SharedGLHost {
                 gl.activeTexture(gl.TEXTURE0);
                 gl.bindTexture(gl.TEXTURE_2D, null);
             };
-            for (const command of frame.commands) {
-                const enter = enters.get(command.ordinal), exit = exits.get(command.ordinal);
-                if (enter) {
-                    setTarget(targets[(enter.depth - 1) * 2], true);
+            walkSharedEffects2D(frame.commands, groups, targets, colorTexture, {
+                enter: target => {
+                    setTarget(target, true);
                     bindDraw();
-                }
-                else if (exit) {
-                    const source = targets[(exit.depth - 1) * 2], scratch = targets[(exit.depth - 1) * 2 + 1];
-                    if (exit.radius > 0) {
-                        effectPass(exit, 'horizontal', scratch, source);
-                        effectPass(exit, 'vertical', source, scratch);
-                    }
-                    // A glow or outline: the group's alpha spread across into the scratch target; the composite spreads it down.
-                    if (exit.spread >= 0)
-                        effectPass(exit, 'spread', scratch, source);
-                    const parent = exit.depth === 1 ? colorTexture : targets[(exit.depth - 2) * 2];
-                    effectPass(exit, 'composite', parent, source, scratch);
-                    bindDraw();
-                }
-                else {
-                    const range = ranges.get(command.ordinal);
+                },
+                leave: () => undefined,
+                pass: effectPass,
+                resume: bindDraw,
+                draw: ordinal => {
+                    const range = ranges.get(ordinal);
                     if (range)
                         drawOne(range);
                 }
-            }
+            });
         }
         // No page stays bound to a unit only a batch of several pages uses.
         for (let unit = 1; unit < units.length; unit++)
@@ -2201,6 +2106,11 @@ class SharedGLHost {
         gl.bindTexture(gl.TEXTURE_2D, colorTexture);
         gl.uniform1i(gl.getUniformLocation(this.resolveProgram, 'workingTexture'), 0);
         gl.uniform1i(gl.getUniformLocation(this.resolveProgram, 'opaque'), this.options.outputAlpha === 'opaque' ? 1 : 0);
+        if (this.presentationSize !== undefined) {
+            const output = this.presentationSize;
+            gl.viewport(0, 0, output.width, output.height);
+            gl.uniform2f(gl.getUniformLocation(this.resolveProgram, 'outputSize'), output.width, output.height);
+        }
         gl.drawArrays(gl.TRIANGLES, 0, 3);
         this.frameDrawCalls++;
         if (record.ticket) {

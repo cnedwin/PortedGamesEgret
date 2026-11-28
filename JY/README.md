@@ -115,6 +115,8 @@ PC 上悬停可预览移动路线，单击执行；武学和暗器选好目标�
 
 ## 已验证 · Verified
 
+- 2026-11-29：引擎从 `ca9ff2a0` 升级到 `21297267`，原有 UI、玩法、存档和素材保持不变。旧、新 SDK 各 76/76 Node；同一 Windows Edge 158 / RTX 5090 Laptop（ANGLE D3D11）实际跑完 691、692（48）和奖励保存；刷新后读回 revision 2、勝場 1。WebKit 手机配置冷启动与开场复测无错误；三秒静止画面 rAF p95 均为 4.3 ms，战斗仍约 60 次原生绘制/秒。详见 QUALITY。 · Engine-only refresh; 76/76 Node on both copies, hardware Edge opening and training/reward save, and WebKit first-scene regression. Same 3 s frame samples: p95 4.3 ms and ~60 native battle draws/s; not a phone GPU measurement.
+
 - 2026-11-28：Windows Playwright WebKit iPhone 15 Pro 配置下首次导入原版数据、标题、触摸开始新游戏、事件 691 首句对白及小蝦米居 3D 场景实拍通过，76/76 Node 测试通过；不是 iPhone 真机验收。见 [QUALITY.md](QUALITY.md)。 · Fresh data import, title, actual touch Start, opening event 691 dialogue and the 3D Home scene are verified on Windows Playwright WebKit in an iPhone 15 Pro profile; 76/76 Node tests pass. Not a physical iPhone test. See QUALITY.md.
 
 - 引擎副本 `c1570b0`：59 项 Node 测试通过。Windows Edge 使用同一套原版数据完成 691 开场、692 练功战（战斗 48）与奖励读档；实际 WebGL2 大地图可切换远近、出海和返岸。 · On `c1570b0`, 59 Node tests pass. Windows Edge runs opening 691, training fight 692 (battle 48), rewards and reload from the same original data, plus World3D zoom, sailing and return to shore.
@@ -157,12 +159,14 @@ PC 上悬停可预览移动路线，单击执行；武学和暗器选好目标�
 
 ## 引擎副本 · Engine copy
 
-引擎副本由 [Egret_rebuild](https://github.com/cnedwin/Egret_rebuild) 主线提交 `ca9ff2a0ef9ff67af7795f9600ba40668383a0a2` 通过上游的 `node tools/build.mjs` 构建，并由 `tools/vendor-game.mjs` 按实际入口生成。浏览器服务工作线程和本地服务读取正式的 `vendor/importmap.json`，见 [vendor/SOURCE.md](vendor/SOURCE.md)。
+引擎副本由 [Egret_rebuild](https://github.com/cnedwin/Egret_rebuild) 主线提交 `212972678e633b1f3667f345d0646b0fba907ee1` 通过上游的 `node tools/build.mjs` 构建，并由 `tools/vendor-game.mjs` 按实际入口生成。浏览器服务工作线程和本地服务读取正式的 `vendor/importmap.json`，见 [vendor/SOURCE.md](vendor/SOURCE.md)。
 
-The engine copy was built from [Egret_rebuild](https://github.com/cnedwin/Egret_rebuild) main commit `ca9ff2a0ef9ff67af7795f9600ba40668383a0a2`, then generated for the actual entries by `tools/vendor-game.mjs`. The service worker and local server consume the generated `vendor/importmap.json`. See [vendor/SOURCE.md](vendor/SOURCE.md).
+The engine copy was built from [Egret_rebuild](https://github.com/cnedwin/Egret_rebuild) main commit `212972678e633b1f3667f345d0646b0fba907ee1`, then generated for the actual entries by `tools/vendor-game.mjs`. The service worker and local server consume the generated `vendor/importmap.json`. See [vendor/SOURCE.md](vendor/SOURCE.md).
 
 引擎副本、标题入口或小蝦米居渲染器的静态导入变更后，在 `JY/` 下重新生成托管版的模块预载清单。 · Regenerate the hosted title and Home scene module hints after updating the engine copy or either entry's static imports.
 
 ```sh
 node --experimental-vm-modules tools/generate-startup-preloads.mjs
 ```
+
+本次副本使用的正式入口 · Actual vendor entries: `@egret/engine`, `@egret/engine/text`, `@egret/engine/web/audio`, `@egret/engine/web/gamepad`, `@egret/engine/web/keyboard`, `@egret/engine/web/text`, `@egret/engine/webgl2`, `@egret/engine/webgl2/world3d`, `@egret/engine/world3d`.

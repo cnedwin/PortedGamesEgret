@@ -1,9 +1,11 @@
 # 引擎笔记 · Engine notes
 
-本游戏使用的新白鹭引擎版本为 `c1570b0`。以下记录引擎适配和仍保留的项目处理，格式见 [docs/GAME-STANDARD.md](../docs/GAME-STANDARD.md) 第 3 节。
+本游戏使用的新白鹭引擎版本为 `21297267`。以下记录引擎适配和仍保留的项目处理，格式见 [docs/GAME-STANDARD.md](../docs/GAME-STANDARD.md) 第 3 节。
 
-This game uses Egret Rebuild `c1570b0`. The integration notes and remaining game-side handling use the format in part 3 of
+This game uses Egret Rebuild `21297267`. The integration notes and remaining game-side handling use the format in part 3 of
 [docs/GAME-STANDARD.md](../docs/GAME-STANDARD.md).
+
+2026-11-29：按正式工具生成最新副本 `212972678e633b1f3667f345d0646b0fba907ee1`（包含 WebKit 稳定呈现及共享帧诊断改进），仍使用现有底层宿主。原有 JY#1/#2 绕过保留到 UI 迁移后实证替换；JY#3 已验证仍正常。 · Official vendor refresh; existing low-level host retained. JY#1 and #2 remain until native integration is proved; JY#3 remains resolved.
 
 ## 已交给引擎 · Moved to the engine
 
