@@ -22,9 +22,11 @@ const captureOnly = args.includes('--capture');
 const update = args.includes('--update');
 const shellOnly = args.includes('--shell-only');
 const useWebkit = args.includes('--webkit');
+const nativeGpu = args.includes('--native-gpu');
 const testRecovery = !args.includes('--no-recovery');
 assert(!(captureOnly && update));
 assert(!useWebkit || captureOnly, 'Use --webkit --capture; the reviewed baselines are Chromium.');
+assert(!nativeGpu || captureOnly&&!useWebkit, 'Use --native-gpu --capture; software-rendered baselines remain unchanged.');
 const out = resolve(option('--out') ?? join(gameDir, 'test/baseline/diff', 'acceptance'));
 const sizes = (option('--sizes') ?? '1280x800,390x844,844x390,768x1024').split(',').map(value => {
   const match = /^(\d+)x(\d+)$/.exec(value);
@@ -34,7 +36,7 @@ const sizes = (option('--sizes') ?? '1280x800,390x844,844x390,768x1024').split('
 assert(sizes.length && sizes.every(size=>size.width>=300&&size.height>=300));
 const driveSize = sizes.find(size=>size.width>size.height&&size.height<=450) ?? sizes[0];
 await mkdir(out, {recursive:true});
-const receipt = { sizes, screens:[], steps:[], checks:[], errors:[], plannedFaults:[], mode:useWebkit?'WebKit iPhone profile (not a physical device)':'Chromium software WebGL2 (not a physical device)' };
+const receipt = { sizes, screens:[], steps:[], checks:[], errors:[], warnings:[], plannedFaults:[], mode:useWebkit?'WebKit iPhone profile (not a physical device)':nativeGpu?'Chromium native-GPU requested (inspect renderer evidence)':'Chromium software WebGL2 (not a physical device)' };
 let server, proxy, browser, context, page;
 const check = (ok, words, detail) => {
   receipt.checks.push({ok:Boolean(ok),words,...(detail===undefined?{}:{detail})});
@@ -251,6 +253,9 @@ try {
   const base='http://127.0.0.1:'+proxy.address().port+'/JY/';manifest=new URL('data/full-game.json',base).href;
   const launchAt=performance.now();
   if(useWebkit){const {webkit}=await import('playwright');browser=await webkit.launch();}
+  else if(nativeGpu){const {chromium}=await import('playwright');browser=await chromium.launch({
+    ...(process.env.CHROMIUM_PATH?{executablePath:process.env.CHROMIUM_PATH}:{}),
+    args:['--enable-gpu','--ignore-gpu-blocklist','--autoplay-policy=no-user-gesture-required']});}
   else browser=await launch();
   receipt.browser=browser.version();
   receipt.browserLaunchMs=Math.round(performance.now()-launchAt);
@@ -261,9 +266,19 @@ try {
     serviceWorkers:'allow'
   });
   page=await context.newPage();
+  if(nativeGpu){
+    // A requested GPU is not a measured one. Probe the actual selected adapter
+    // on the blank page, dispose that tiny diagnostic context, then run normally.
+    receipt.renderer=await page.evaluate(()=>{const c=document.createElement('canvas'),gl=c.getContext('webgl2');if(!gl)return null;
+      const ext=gl.getExtension('WEBGL_debug_renderer_info'),vendor=ext&&gl.getParameter(ext.UNMASKED_VENDOR_WEBGL),renderer=ext&&gl.getParameter(ext.UNMASKED_RENDERER_WEBGL);
+      gl.getExtension('WEBGL_lose_context')?.loseContext();return {vendor,renderer};});
+    console.log('selected Chromium WebGL2 adapter',receipt.renderer);
+  }
   page.on('pageerror',e=>receipt.errors.push('pageerror '+e.message));
   page.on('console',m=>{
     if(m.type()==='error')receipt.errors.push(m.text()+(m.location().url?' '+m.location().url:''));
+    else if(m.type()==='warning'&&/webgl|gpu|world3d|texture|renderer|asset|context|model|3d|glb/i.test(m.text()))
+      receipt.warnings.push(m.text()+(m.location().url?' '+m.location().url:''));
   });
   page.on('response',response=>{
     if(response.status()>=400&&!response.url().endsWith('/favicon.ico'))
@@ -359,12 +374,24 @@ try {
     });
     // Do not read or record the original dialogue, game-state data or save contents.
     stamp('native-start-landed',{ms:Math.round(performance.now()-start),...landed});
+    if(args.includes('--travel')){
+      // The Play receipt is a submitted engine frame, not a browser compositor
+      // fence. Require the actual connected native scene host and two animation
+      // turns before taking the independent 3D pixel evidence.
+      await page.waitForFunction(()=>{const q=globalThis.__jyNativeQa,c=q?.game?.canvas,r=c?.getBoundingClientRect();return q?.host&&c?.isConnected&&r?.width>0&&r?.height>0},null,{timeout:15000});
+      await page.evaluate(()=>new Promise(done=>requestAnimationFrame(()=>requestAnimationFrame(done))));
+      stamp('native-scene-host-presentable',{ms:Math.round(performance.now()-start)});
+    }
     // Scene evidence only, not a deterministic art or story baseline.
     await page.waitForTimeout(500);
     const shot=await page.screenshot({animations:'disabled'}),pixels=await pixelEvidence(shot,[]);
     check(pixels.whole.colors>=12&&pixels.whole.lumaRange>=30&&pixels.whole.nonDark>.25,'landing scene visibly presented',pixels.whole);
     await writeFile(join(out,'runtime-landed.png'),shot);
     receipt.screens.push({name:'runtime-landed',pixels,landed});
+    if (args.includes('--travel')) {
+      const {acceptNativeTravel}=await import('./native-travel-browser.mjs');
+      await acceptNativeTravel(page,{out,stamp,check});
+    }
     if (testRecovery) {
       // Re-open the prepared test origin's title, then insert only a synthetic unreadable record.
       // Never choose or mutate a real player's browser/profile, and never retain game data in the receipt.

@@ -1,5 +1,4 @@
 import { Bitmap, Sprite, createAssetRef, createAssetType, createSharedMaterial2D, createTexture, isTexture } from '@egret/engine';
-import { createTextField } from '@egret/engine/text';
 import { combatArtGroup, createCombatArt, impactArtId } from './jyx2/effects/combat-art.mjs';
 import { loadActorArt } from './jyx2/actors/actor-art.mjs';
 
@@ -24,7 +23,8 @@ function motion(role, tick) {
   return ['idle', tick * (1000 / 60)];
 }
 
-export async function createBattleView({ engine, cache, spec, width, height, scale, loadArt, bakeGround, json, itemEffectIds,
+export async function createBattleView({ engine, browser, worldParent = engine.stage, overlayParent = engine.stage,
+  spec, width, height, scale, loadArt, bakeGround, json, itemEffectIds,
   visualStyle, outputAlpha = 'opaque', arena, grid }) {
   const project = (x, y) => [(x - y) * 18 * scale, (x + y) * 9 * scale];
   const floor = [];
@@ -93,11 +93,11 @@ export async function createBattleView({ engine, cache, spec, width, height, sca
       batch.forEach((key, index) => leases.set(key, values[index]));
     }
 
-    const root = engine.stage.addChild(scope.use(new Sprite()));
+    const root = worldParent.addChild(scope.use(new Sprite()));
     const ground = root.addChild(scope.use(new Sprite()));
     const objects = root.addChild(scope.use(new Sprite()));
     const gauges = root.addChild(scope.use(new Sprite()));
-    const overlays = engine.stage.addChild(scope.use(new Sprite()));
+    const overlays = overlayParent.addChild(scope.use(new Sprite()));
     const flash = overlays.addChild(scope.use(new Bitmap(leases.get(artKey('title', 203)))));
     flash.visible = false;
     const numberNodes = new Map();
@@ -169,30 +169,6 @@ export async function createBattleView({ engine, cache, spec, width, height, sca
       if (posture) g.beginFill(0xe2bb58).drawRect(0, 5, posture, 2).endFill();
     }
 
-    let preparingNumbers = false;
-
-    async function prepareNumbers() {
-      if (preparingNumbers) return;
-      preparingNumbers = true;
-      try {
-        // An area attack can submit more distinct numbers than the text cache can rasterize at once.
-        for (const number of numberNodes.values()) {
-          if (number.prepared || number.scope.signal.aborted) continue;
-          try {
-            await number.node.prepare();
-            number.prepared = true;
-          } catch (error) {
-            if (number.scope.signal.aborted) continue;
-            if (error.code === 'TEXT_CACHE_BUDGET') break; // Retry on the next frame if the shared cache is busy.
-            number.prepared = true;
-            console.warn(error);
-          }
-        }
-      } finally {
-        preparingNumbers = false;
-      }
-    }
-
     function drawNumbers(texts, zoom) {
       const active = new Set(texts.map(text => text.key));
       for (const [key, number] of numberNodes) if (!active.has(key)) {
@@ -203,18 +179,31 @@ export async function createBattleView({ engine, cache, spec, width, height, sca
         let number = numberNodes.get(entry.key);
         if (!number) {
           const owned = engine.createScope();
-          const node = overlays.addChild(createTextField(engine, owned, cache));
-          node.setRequest({ text: entry.text, fontFamily: 'Microsoft YaHei', fontSize: entry.size,
-            lineHeight: entry.size + 4, fontWeight: 700, fontStyle: 'normal', locale: 'zh-TW',
-            direction: 'ltr', density: 1, fillColor: entry.color });
-          number = { node, scope: owned };
+          number = { scope: owned, node: undefined, x: 0, y: 0 };
           numberNodes.set(entry.key, number);
+          const pending = number;
+          // The BrowserGame owns its one text cache and schedules atlas raster
+          // work. A retired visual id cannot attach its late label.
+          void browser.createAtlasLabel({ text: entry.text, fontFamily: 'Microsoft YaHei',
+            fontSize: entry.size, lineHeight: entry.size + 4, fontWeight: 700,
+            locale: 'zh-TW', color: entry.color, scope: owned }).then(label => {
+            if (owned.signal.aborted || numberNodes.get(entry.key) !== pending) return;
+            pending.node = overlays.addChild(label.display);
+            pending.node.x = pending.x;
+            pending.node.y = pending.y;
+            browser.invalidate();
+          }, error => {
+            if (!owned.signal.aborted) console.warn(error);
+          });
         }
         const [px, py] = project(entry.x, entry.y);
-        number.node.x = Math.round(root.x + px * zoom);
-        number.node.y = Math.round(root.y + py * zoom);
+        number.x = Math.round(root.x + px * zoom);
+        number.y = Math.round(root.y + py * zoom);
+        if (number.node) {
+          number.node.x = number.x;
+          number.node.y = number.y;
+        }
       }
-      void prepareNumbers();
     }
 
     const gridContext = grid.getContext('2d');

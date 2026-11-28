@@ -1,10 +1,8 @@
-import { Bitmap, Sprite, copyImageData2DPixels, createAssetRef, createAssetType, createEngineForProfile, createImageData2D, createTexture, isTexture } from '@egret/engine';
-import { createBrowserKeyboardInput } from '@egret/engine/web/keyboard';
+import { Bitmap, Sprite, copyImageData2DPixels, createAssetRef, createAssetType, createImageData2D, createTexture, isTexture } from '@egret/engine';
 import { createBrowserGamepadInput } from '@egret/engine/web/gamepad';
 import { createBrowserAudio } from '@egret/engine/web/audio';
-import { createTextRasterCache } from '@egret/engine/text';
-import { createCanvasTextRasterProvider } from '@egret/engine/web/text';
-import { createSharedWebGL2Host } from '@egret/engine/webgl2';
+import { createUiSemantics } from '@egret/engine/ui/semantics';
+import { createBrowserSemantics } from '@egret/engine/web/semantics';
 import { createOpeningDialogue } from './opening-dialogue.mjs';
 import { createOpeningReading } from './opening-reading.mjs';
 import { loadOpening, openingEventId, playOpening } from './opening-event.mjs';
@@ -23,9 +21,12 @@ import { parseRecruitScript, runRecruitScript } from './cifa-recruit.mjs';
 import { parseGameScript, runGameScript } from './cifa-game.mjs';
 import { applyScenePatch, playGameEvent } from './game-events.mjs';
 import { showWorldMenu } from './world-menu.mjs';
-import { attachGamepadInput } from './gamepad-input.mjs';
+import { createNativeCommandInput, attachStageTap } from './jyx2/ui/native/native-input.mjs';
 import { nativeSaveRequest, pickNativeSave, readPreferences, returnToTitle, showTitle } from './jyx2/ui/game-shell.mjs';
 import { createWorldNavigation } from './jyx2/ui/world-navigation.mjs';
+import { createMapHud } from './jyx2/ui/native/map-hud.mjs';
+import { createExploreControls } from './jyx2/ui/native/explore-controls.mjs';
+import { containBoard, boardPoint, designPoint } from './board-viewport.mjs';
 import { createDialogueJournal } from './jyx2/ui/dialogue-journal.mjs';
 import { findTilePath, screenToTile } from './kys-navigation.mjs';
 import { createSceneAtmosphere } from './scene-atmosphere.mjs';
@@ -33,7 +34,7 @@ import { hasJyx2Scene, homeExitTextures, loadJyx2Scene, nativeHomeSource, readNa
 import { loadActorArt } from './jyx2/actors/actor-art.mjs';
 import { nativeBattleName } from './jyx2/scene/native-battle-fields.mjs';
 
-const canvas = document.querySelector('#game');
+let canvas = document.querySelector('#game');
 const battleGrid = document.querySelector('#battle-grid');
 const sceneName = document.querySelector('#scene-name');
 const coordinates = document.querySelector('#coordinates');
@@ -45,13 +46,6 @@ const battleResultDetails = document.querySelector('#battle-result-details');
 const battleContinue = document.querySelector('#battle-continue');
 const marker = document.querySelector('#event-marker');
 const menuToggle = document.querySelector('#open-menu');
-const exploreControls = document.querySelector('#explore-controls');
-const exploreDpad = document.querySelector('#explore-dpad');
-const mapInteract = exploreControls.querySelector('[data-map-command="Enter"]');
-const dialogueTools = exploreControls.querySelector('.dialogue-tools');
-const journalButton = document.querySelector('#open-dialogue-journal');
-const skipReadOpening = document.querySelector('#skip-read-opening');
-const openingExitGuide = document.querySelector('#opening-exit-guide');
 const touchExploration = matchMedia('(pointer: coarse)');
 const battleMenuPanel = document.querySelector('#battle-menu');
 const moves = new Map([
@@ -416,7 +410,7 @@ async function start() {
   try {
     const catalog = await loadCatalog();
     const game = {
-      initial, baseline, autoSave, save, catalog, visualStyle, sound: preferences.sound,
+      initial, baseline, autoSave, save, catalog, visualStyle, sound: preferences.sound, language: preferences.language,
       programs: new Map(), sceneStates: new Map(), openingDone: save?.openingDone ?? false,
       mainX: save?.mainX ?? initial.base.mainX, mainY: save?.mainY ?? initial.base.mainY,
       inventory: new Map(save?.inventory ?? baseline.inventory),
@@ -545,13 +539,70 @@ async function openMap(game, destination, takePreparedHome) {
     ids.push(id);
   }
 
-  canvas.width = width;
-  canvas.height = height;
+  // A single Play host owns native fit, 2D submission and the map clock.
+  // Fixed gameplay coordinates remain a contained board inside the expanded UI.
+  // The 3D exploration renderer uses the full Play holder.
+  const { createGameHost } = await import('./game-host.mjs');
   const outputAlpha = game.visualStyle === 'jyx2' ? 'premultiplied' : 'opaque';
-  const host = createSharedWebGL2Host({ canvas, pixelRatio: wantsMap3d ? 3 : 1, outputAlpha });
-  const engine = await createEngineForProfile({ host }, 'egret.shared-frame2d/1');
+  const semantics = createUiSemantics();
+  const legacyHud = { sceneName, coordinates, hint, notice, marker };
+  const viewport = canvas.parentElement;
+  const placeholder = canvas;
+  const playScreen = viewport.closest('#play-screen');
+  viewport.classList.add('native-game-viewport');
+  let liveCanvas;
+  function adoptCanvas(next) {
+    Object.assign(next.dataset,placeholder.dataset);
+    next.id='game';
+    next.tabIndex=0;
+    next.setAttribute('aria-label',placeholder.getAttribute('aria-label') ?? 'Game');
+    placeholder.remove();
+    canvas=liveCanvas=next;
+  }
+  function restoreCanvas() {
+    if (liveCanvas && canvas === liveCanvas) {
+      for(const key of Object.keys(placeholder.dataset)) delete placeholder.dataset[key];
+      Object.assign(placeholder.dataset,liveCanvas.dataset);
+      liveCanvas.removeAttribute('id');
+      viewport.prepend(placeholder);
+      canvas = placeholder;
+    }
+    // The grid is an existing battle presentation node, not owned by Play.
+    viewport.appendChild(battleGrid);
+    for (const key of ['inset','left','top','width','height']) battleGrid.style.removeProperty(key);
+    viewport.classList.remove('native-game-viewport','native-explore-controls');
+    playScreen?.classList.remove('native-explore-controls');
+  }
+  let finishMap, closeMap;
+  let mapHost;
+  try { mapHost = await createGameHost({
+    playOptions: { parent: viewport, width, height, portrait:{width:height,height:width},
+      fit:'expand', uiScale:{min:1,max:1.4}, backend: 'webgl2', pixelRatio: wantsMap3d ? 3 : 1,
+      transparent: outputAlpha === 'premultiplied', blendSpace: 'linear', audio: false,
+      staticLayers: wantsGpuGround, renderMode: 'on-demand', semantics },
+    onFrameTiming(sample) {
+      if (liveCanvas && sample.outcome === 'submitted') liveCanvas.dataset.frame = String(sample.id);
+    },
+    onError(error) {
+      void closeMap?.().catch(cleanup => console.warn('遊戲資源清理未完成', cleanup));
+      fail(error);
+    },
+    async setup(nativeHost) {
+  adoptCanvas(nativeHost.canvas);
+  const canvas = nativeHost.canvas;
+  const holder=canvas.parentElement;
+  holder.classList.add('jy-play-holder');
+  holder.appendChild(battleGrid);
+  const host = nativeHost.renderHost;
+  const engine = nativeHost.engine;
   const scope = engine.createScope();
   let map3dView;
+  const disposeMapView = () => {
+    const view = map3dView;
+    map3dView = undefined;
+    view?.dispose();
+  };
+  scope.use({ dispose: disposeMapView });
   const type = createAssetType('original-map-art', isTexture);
   engine.assets.register(type, {
     async load(ref) {
@@ -571,6 +622,8 @@ async function openMap(game, destination, takePreparedHome) {
   }
   let groundScope = scope.use(engine.createScope());
   let gpuGround;
+  let cachedGroundHidden = false;
+  let groundCacheGeneration = 1;
   let buildingGpuGround = false;
   let restoringGpuGround = false;
   await acquireMapArt(ids.filter(id => id >= 0));
@@ -606,15 +659,56 @@ async function openMap(game, destination, takePreparedHome) {
     };
     await Promise.all(portraitIds.map(loadPortrait));
   }
-  const root = engine.stage.addChild(scope.use(new Sprite()));
+  const worldBoard = nativeHost.world.addChild(scope.use(new Sprite()));
+  const stageInput=nativeHost.ui.addChild(scope.use(new Sprite()));
+  const boardMask = nativeHost.ui.addChild(scope.use(new Sprite()));
+  const overlayBoard = nativeHost.ui.addChild(scope.use(new Sprite()));
+  for (const board of [worldBoard,overlayBoard]) board.clipRect={x:0,y:0,width,height};
+  boardMask.visible=false;
+  let boardRect=containBoard(nativeHost.game.screen,width,height);
+  function boardToStage(x,y) {
+    const point=boardPoint(boardRect,x,y);
+    return nativeHost.game.toStage(point.x,point.y);
+  }
+  function pickBoard(point) {
+    const local=nativeHost.game.fromStage(point.x,point.y);
+    return designPoint(boardRect,local.x,local.y);
+  }
+  function layoutBoard() {
+    const screen=nativeHost.game.screen;
+    stageInput.hitArea={x:screen.x,y:screen.y,width:screen.width,height:screen.height};
+    boardRect=containBoard(screen,width,height);
+    for (const board of [worldBoard,overlayBoard]) {
+      board.x=boardRect.x; board.y=boardRect.y;
+      board.scaleX=board.scaleY=boardRect.scale;
+    }
+    // Static ground placements are stage-wide; cover only expanded margins.
+    // This clip never covers the independent full-screen exploration 3D canvas.
+    const left=boardRect.x-screen.x, top=boardRect.y-screen.y;
+    const g=boardMask.graphics;g.clear().beginFill(0x101d22);
+    if(top>0)g.drawRect(screen.x,screen.y,screen.width,top)
+      .drawRect(screen.x,boardRect.y+boardRect.height,screen.width,top);
+    if(left>0)g.drawRect(screen.x,boardRect.y,left,boardRect.height)
+      .drawRect(boardRect.x+boardRect.width,boardRect.y,left,boardRect.height);
+    g.endFill();
+    const origin=boardToStage(0,0), corner=boardToStage(width,height);
+    const out=canvas.getBoundingClientRect(), outer=holder.getBoundingClientRect(), frame=nativeHost.frame;
+    if (frame.width>0 && frame.height>0 && out.width>0 && out.height>0) {
+      const cssX=out.width/frame.width, cssY=out.height/frame.height;
+      for(const layer of [battleGrid,...holder.querySelectorAll('.battle3d-canvas')]) Object.assign(layer.style,{
+        inset:'auto',left:`${out.left-outer.left+origin.x*cssX}px`,top:`${out.top-outer.top+origin.y*cssY}px`,
+        width:`${(corner.x-origin.x)*cssX}px`,height:`${(corner.y-origin.y)*cssY}px`
+      });
+    }
+    requestFrame();
+  }
+  const root = worldBoard.addChild(scope.use(new Sprite()));
   const ground = root.addChild(scope.use(new Sprite()));
   const objects = root.addChild(scope.use(new Sprite()));
   const atmosphere = scene.id === 70 && game.visualStyle !== 'classic'
     ? await createSceneAtmosphere({ engine, scope, root, project, scale, outputAlpha }) : undefined;
   const initialFacing = destination.facing;
   const player = { id: 2501 + initialFacing * 7, rank: 2 };
-  const keyboard = createBrowserKeyboardInput({ engine, scope });
-  keyboard.registerTarget({ id: 'map', target: root });
 
   let x = destination.x, y = destination.y;
   let facing = initialFacing;
@@ -628,8 +722,8 @@ async function openMap(game, destination, takePreparedHome) {
   let held;
   let pointerWalk;
   let dirty = true;
-  let request = 0;
   let closing = false;
+  let closeTask;
   let openingActive = false;
   let trainerActive = false;
   let recruitActive = false;
@@ -641,8 +735,17 @@ async function openMap(game, destination, takePreparedHome) {
   let worldCenter = destination;
   const freeMapNodes = [];
   let battle;
-  const menu = createBattleMenu(battleMenuPanel, canvas, { portraitUrl: id => `/art/${portraitGroup}/${id}.png`, itemIconUrl });
+  const menu = createBattleMenu(nativeHost.game, canvas, { portraitUrl: id => `/art/${portraitGroup}/${id}.png`, itemIconUrl,
+    visualStyle: () => game.visualStyle, language: () => game.language,
+    onActiveChange(active) { if (active) { held = undefined; pointerWalk = undefined; } } });
   const music = createBattleMusic(game.sound);
+  let musicClosed = false;
+  function closeMusic() {
+    if (musicClosed) return;
+    musicClosed = true;
+    music.close();
+  }
+  scope.use({ dispose: closeMusic });
   let mapTrack = isWorld ? game.worldMusic ?? game.save?.flags?.mainMusic : scene.entranceMusic;
   let mapMusicStarted = false;
   let animationTick = 0;
@@ -652,6 +755,15 @@ async function openMap(game, destination, takePreparedHome) {
   let forcedPlayerPicture;
   const openingPoses = new Map();
   const listeners = new AbortController();
+  scope.use({ dispose() { listeners.abort(); } });
+  nativeHost.onScreenChange(layoutBoard,{signal:listeners.signal});
+  layoutBoard();
+  const projection = createBrowserSemantics({ semantics, canvas: nativeHost.canvas,
+    width: nativeHost.frame.width, height: nativeHost.frame.height, label: 'JY game interface' });
+  nativeHost.onScreenChange(() => projection.sync(nativeHost.frame), { signal: listeners.signal });
+  scope.use({ dispose() { projection.dispose(); } });
+  const mapHud=createMapHud(nativeHost.game,{signal:listeners.signal,language:()=>game.language,initial:legacyHud});
+  const {sceneName,coordinates,hint,notice,marker}=mapHud;
   const effects = scope.use(createWavEffects({ createAudio: createBrowserAudio, enabled: game.sound }));
   const activateEffects = event => { if (event.isTrusted && !event.repeat) effects.activate(); };
   for (const type of ['keydown', 'pointerup']) {
@@ -662,16 +774,18 @@ async function openMap(game, destination, takePreparedHome) {
     void effects.preload('wave', 24);
   }
   const journal = createDialogueJournal(game.dialoguePages ??= [], {
+    game: nativeHost.game, language: () => game.language,
     signal: listeners.signal,
     restoreFocus: () => canvas.focus({ preventScroll: true }),
   });
   const openingReading = opening && createOpeningReading(initial.saveIdentity);
   let openingCommand;
   let exitGuideTimer;
+  let exitGuideVisible=false;
+  let explore;
   const openingExit = opening && scene.exits?.[0];
-  openingExitGuide.hidden = dialogueTools.hidden = true;
-  const worldNavigation = isWorld && createWorldNavigation(canvas.parentElement, {
-    controls: exploreControls,
+  const worldNavigation = isWorld && createWorldNavigation(nativeHost.game, {
+    language: () => game.language,
     signal: listeners.signal,
     cancel() {
       cancelWorldRoute();
@@ -681,7 +795,8 @@ async function openMap(game, destination, takePreparedHome) {
   const projectWorldTile = (x, y) => {
     if (map3dView) return map3dView.projectTile?.(x, y);
     const [px, py] = project(x, y);
-    return [(px + root.x) / width, (py + root.y) / height];
+    const point=boardToStage(px+root.x,py+root.y);
+    return [point.x/nativeHost.frame.width,point.y/nativeHost.frame.height];
   };
   attachBattleControls(document.querySelector('#battle-controls'), canvas, {
     signal: listeners.signal,
@@ -691,12 +806,15 @@ async function openMap(game, destination, takePreparedHome) {
     press(code) { if (battle && !menu.active) battleKeyDown(code, false); },
   });
   const frameWaiters = [];
+  let presenter;
   delete canvas.dataset.blocked;
 
   function requestFrame() { dirty = true; }
 
   function dropGpuGround(error) {
     gpuGround?.close();
+    if (cachedGroundHidden && !battle && !map3dView) ground.visible = true;
+    cachedGroundHidden = false;
     gpuGround = undefined;
     gpuGroundSource = undefined;
     canvas.dataset.groundMode = 'canvas';
@@ -714,8 +832,8 @@ async function openMap(game, destination, takePreparedHome) {
       if (closing) return;
       const totals = gpuGround.totals;
       Object.assign(canvas.dataset, { groundMode: 'gpu', groundLayerBuilds: totals.builds,
-        groundLayerReused: totals.reused, groundLayerResidentBytes: host.getSharedLayerStatus().residentBytes,
-        groundLayerGeneration: host.getStatus().generation });
+        groundLayerReused: totals.reused, groundLayerResidentBytes: nativeHost.cache.getStatus().residentBytes,
+        groundLayerGeneration: groundCacheGeneration });
     } catch (error) {
       if (!closing && !restoringGpuGround) dropGpuGround(error);
     } finally {
@@ -736,7 +854,8 @@ async function openMap(game, destination, takePreparedHome) {
     return new Promise((resolve, reject) => frameWaiters.push({ resolve, reject }));
   }
 
-  const cache = scope.use(createTextRasterCache(engine.assets, { provider: createCanvasTextRasterProvider({ compatibility: 'game-labels' }) }));
+  // The Play BrowserGame already owns the Engine's text cache. Native views and
+  // legacy battle numbers must use that one public label/atlas surface.
   const speakerNames = new Map();
   for (const role of catalog.roles) {
     if (!role?.name) continue;
@@ -745,7 +864,10 @@ async function openMap(game, destination, takePreparedHome) {
   }
   speakerNames.set(114, '黑帝斯');
   const dialogue = createOpeningDialogue({
-    engine, scope, cache, width, height, requestFrame, presentFrame,
+    game: nativeHost.game, engine, scope, width, height, requestFrame, presentFrame,
+    language: () => game.language, onJournal: () => journal.show(), canJournal: () => journal.hasEntries,
+    canSkipRead: () => Boolean(openingActive && openingReading?.known(openingCommand)),
+    onSkipRead: skipKnownOpening, onAcknowledge() { if (openingActive) canvas.dataset.opening = 'running'; },
     density: wantsMap3d ? 3 : 1,
     bottomDocked: () => Boolean(map3dView),
     loadPortrait, speakerName: head => speakerNames.get(head),
@@ -790,12 +912,7 @@ async function openMap(game, destination, takePreparedHome) {
   }
 
   function updateExploreControls() {
-    const reading = openingActive || trainerActive || recruitActive || eventActive;
-    const canMove = !reading && !worldMenuActive && !eventEnded && !battle;
-    exploreDpad.hidden = !canMove;
-    mapInteract.textContent = reading ? '繼續' : '對話';
-    dialogueTools.hidden = !dialogue.waiting || !journal.hasEntries || Boolean(battle) || menu.active;
-    skipReadOpening.hidden = !openingActive || !openingReading.known(openingCommand);
+    explore?.refresh();
   }
 
   function showCell() {
@@ -874,8 +991,8 @@ async function openMap(game, destination, takePreparedHome) {
       canvas.dataset.opening = 'complete';
       showCell();
       if (openingExit) {
-        openingExitGuide.hidden = false;
-        exitGuideTimer = setTimeout(() => { openingExitGuide.hidden = true; }, 18000);
+        exitGuideVisible=true;updateExploreControls();
+        exitGuideTimer = setTimeout(() => { exitGuideVisible=false;updateExploreControls(); }, 18000);
       }
     }).catch(error => {
       if (listeners.signal.aborted) return;
@@ -963,6 +1080,8 @@ async function openMap(game, destination, takePreparedHome) {
           try {
             const { createNativeBattleArena } = await import('./jyx2/scene/native-battle-view.mjs');
             arena = await createNativeBattleArena(canvas, spec, width, height, scale, { loadArt, json });
+            holder.insertBefore(battleGrid,canvas);
+            layoutBoard();
           } catch (error) {
             console.warn('白鷺 World3D 戰場無法載入，沿用原作戰場', error);
           }
@@ -976,7 +1095,9 @@ async function openMap(game, destination, takePreparedHome) {
       const prepared = arena?.prepareOpeningPrograms(model.state.roles).catch(error => {
         console.warn('白鷺 World3D 戰場程式預備未完成', error);
       });
-      view = await createBattleView({ engine, cache, spec, width, height, scale, loadArt, bakeGround, json, visualStyle: game.visualStyle, outputAlpha, arena,
+      if(!arena) holder.appendChild(battleGrid);
+      view = await createBattleView({ engine, browser: nativeHost.game.browser, worldParent: worldBoard, overlayParent: overlayBoard,
+        spec, width, height, scale, loadArt, bakeGround, json, visualStyle: game.visualStyle, outputAlpha, arena,
         itemEffectIds, grid: battleGrid });
       await prepared;
       listeners.signal.throwIfAborted();
@@ -1008,6 +1129,7 @@ async function openMap(game, destination, takePreparedHome) {
       delete canvas.dataset.battlePreview;
       view?.close();
       arena?.dispose();
+      holder.appendChild(battleGrid);
       ground.visible = objects.visible = !map3dView;
       map3dView?.setVisible(true);
       if (atmosphere) atmosphere.light.visible = !map3dView;
@@ -1619,18 +1741,18 @@ async function openMap(game, destination, takePreparedHome) {
     }
   }
 
-  function battleCellAt(event, selection) {
-    const bounds = canvas.getBoundingClientRect();
-    const tile = battle.view.tileAt((event.clientX - bounds.left) * width / bounds.width,
-      (event.clientY - bounds.top) * height / bounds.height);
+  function battleCellAt(stagePoint, selection) {
+    const point=pickBoard(stagePoint);
+    if(!point)return undefined;
+    const tile = battle.view.tileAt(point.x,point.y);
     return selection.cells.find(cell => cell.x === tile.x && cell.y === tile.y);
   }
 
-  function pickBattleCell(event) {
-    if (event.button !== 0 || menu.active || canvas.dataset.battlePrompt) return;
+  function pickBattleCell(point) {
+    if (menu.active || canvas.dataset.battlePrompt) return;
     const { state } = battle.model;
     if (!state.canAct || !state.selection) return;
-    const selectable = battleCellAt(event, state.selection);
+    const selectable = battleCellAt(point, state.selection);
     canvas.focus({ preventScroll: true });
     if (!selectable) {
       setBattleCursor(battle.cursor, false);
@@ -1638,7 +1760,7 @@ async function openMap(game, destination, takePreparedHome) {
       return;
     }
     setBattleCursor(selectable);
-    const touch = event.pointerType === 'touch' || touchExploration.matches;
+    const touch = point.source === 'touch' || touchExploration.matches;
     if (needsBattleConfirmation(state.selection.type, touch)) return;
     chooseBattleCell(selectable);
   }
@@ -1745,18 +1867,17 @@ async function openMap(game, destination, takePreparedHome) {
     if (name) worldNavigation.show('cancelled', name, '已取消尋路');
   }
 
-  function clickToWalk(event) {
+  function clickToWalk(point) {
     if (canvas.dataset.phase !== 'ready') return;
     canvas.focus({ preventScroll: true });
-    if (event.button !== 0 || closing || battle || eventEnded) return;
+    if (closing || battle || eventEnded) return;
     if (openingActive || trainerActive || recruitActive || eventActive || worldMenuActive) {
       if (!menu.active && dialogue.confirm() && openingActive) canvas.dataset.opening = 'running';
       return;
     }
-    const bounds = canvas.getBoundingClientRect();
-    const u = (event.clientX - bounds.left) / bounds.width;
-    const v = (event.clientY - bounds.top) / bounds.height;
-    const hit = map3dView ? map3dView.pick(u, v) : screenToTile(u * width, v * height, root.x, root.y, scale);
+    const u=point.x/nativeHost.frame.width,v=point.y/nativeHost.frame.height;
+    const board=map3dView?undefined:pickBoard(point);
+    const hit = map3dView ? map3dView.pick(u, v) : board && screenToTile(board.x,board.y,root.x,root.y,scale);
     const exit = hit?.exit && scene.exits?.[0];
     const target = exit ? { x: exit[0], y: exit[1] } : hit;
     queueWalk(target);
@@ -1944,6 +2065,7 @@ async function openMap(game, destination, takePreparedHome) {
 
   function render(now) {
     if (buildingGpuGround || restoringGpuGround) return;
+    boardMask.visible=!battle&&!map3dView;
     if (!isWorld && now - lastAnimation >= 200 && scene.events.some(animates)) {
       lastAnimation = now;
       animationTick++;
@@ -2066,8 +2188,11 @@ async function openMap(game, destination, takePreparedHome) {
     const split = mapObjectsToDraw.findIndex(item => item.depth > player.depth || item.depth === player.depth && (isWorld || item.rank > player.rank));
     const ordered = hiddenPlayer ? mapObjectsToDraw
       : split === -1 ? [...mapObjectsToDraw, player] : [...mapObjectsToDraw.slice(0, split), player, ...mapObjectsToDraw.slice(split)];
-    const useGpuGround = gpuGround && ground.visible && root.alpha === 1;
-    if (!useGpuGround) drawItems(ground, mapGroundToDraw, root.x, root.y);
+    const useGpuGround = gpuGround && (ground.visible || cachedGroundHidden) && root.alpha === 1;
+    if (!useGpuGround) {
+      if (cachedGroundHidden) { ground.visible = true; cachedGroundHidden = false; }
+      drawItems(ground, mapGroundToDraw, root.x, root.y);
+    }
     drawItems(objects, ordered, root.x, root.y);
     drawnHeroArt = heroArt;
     drawnRecruitArt = recruitArt;
@@ -2076,28 +2201,33 @@ async function openMap(game, destination, takePreparedHome) {
   }
 
   function submitFrame(useGpuGround = false) {
-    const options = { width, height, clearColor: 0, clearAlpha: (battle ? battle.arena : map3dView) ? 0 : 1, outputAlpha };
-    let frame;
+    // Cached layers are persistent Play placements. Hide the live ground until
+    // the next non-cached map paint, not just during this synchronous call.
     if (useGpuGround) {
-      ground.visible = false;
       try {
-        const overlay = engine.captureSharedFrame(options);
-        host.renderSharedFrameWithLayers(overlay, gpuGround.placements(root.x, root.y, 1, width, height));
-        frame = overlay;
+        const origin=boardToStage(root.x,root.y);
+        gpuGround.place(origin.x,origin.y,boardRect.scale,nativeHost.frame.width,nativeHost.frame.height);
+        ground.visible = false;
+        cachedGroundHidden = true;
       } catch (error) {
         if (restoringGpuGround) return;
         dropGpuGround(error);
-      } finally {
         ground.visible = true;
+        drawItems(ground, mapGroundToDraw, root.x, root.y);
       }
-      if (!frame) drawItems(ground, mapGroundToDraw, root.x, root.y);
+    } else {
+      gpuGround?.clearPlacement();
+      if (cachedGroundHidden && !battle && !map3dView) ground.visible = true;
+      cachedGroundHidden = false;
     }
-    frame ??= engine.renderSharedFrame(options);
-    canvas.dataset.frame = String(frame.frameId);
     dirty = false;
+    nativeHost.invalidate();
+    // These waits are issued only now, after the original map/battle painter
+    // has actually prepared the wanted scene and passed its pending-frame gate.
+    // A retained/refused Play turn cannot acknowledge an event-script barrier.
     const waiters = frameWaiters.splice(0);
-    if (waiters.length) void host.whenIdle().then(
-      () => waiters.forEach(waiter => waiter.resolve(frame.frameId)),
+    if (waiters.length) void nativeHost.presentFrame({ scene: presenter, signal: listeners.signal }).then(
+      receipt => waiters.forEach(waiter => waiter.resolve(receipt.timingId)),
       error => waiters.forEach(waiter => waiter.reject(error)),
     );
   }
@@ -2108,40 +2238,32 @@ async function openMap(game, destination, takePreparedHome) {
   }
 
   function close() {
-    if (closing) return Promise.resolve();
+    if (closing) return closeTask ?? Promise.resolve();
     closing = true;
-    cancelAnimationFrame(request);
     clearTimeout(exitGuideTimer);
-    openingExitGuide.hidden = dialogueTools.hidden = true;
+    exitGuideVisible=false;
+    explore?.clearHeld('scene closed');
     listeners.abort();
+    if (globalThis.__jyNativeQa?.host === nativeHost) delete globalThis.__jyNativeQa;
     battleResultPanel.hidden = true;
     menu.close();
-    music.close();
+    closeMusic();
     battle?.reject(listeners.signal.reason);
     dialogue?.close();
-    map3dView?.dispose();
+    disposeMapView();
     gpuGround?.close();
     for (const key of ['groundMode', 'groundLayerBuilds', 'groundLayerReused', 'groundLayerResidentBytes', 'groundLayerGeneration']) {
       delete canvas.dataset[key];
     }
     if (viewAttribute) delete canvas.dataset[viewAttribute];
     for (const waiter of frameWaiters.splice(0)) waiter.reject(listeners.signal.reason);
-    return engine.dispose();
+    return closeTask = nativeHost.dispose().finally(restoreCanvas);
   }
-
-  function tick(now) {
-    if (closing) return;
-    try {
-      render(now);
-      if (!closing) request = requestAnimationFrame(tick);
-    } catch (error) {
-      void close();
-      fail(error);
-    }
-  }
+  closeMap = close;
 
   function pressGameKey(code, repeat, consume = () => {}) {
-    if (canvas.dataset.phase !== 'ready' || journal.open) return;
+    if (canvas.dataset.phase !== 'ready') return;
+    if (journal.open) { if (journal.handleKey?.(code, repeat)) consume(); return; }
     if (!battle && !trainerActive && !eventActive) startMapMusic();
     if (openingActive) {
       if (moves.has(code) || ['Enter', 'Space', 'Escape'].includes(code)) consume();
@@ -2187,72 +2309,98 @@ async function openMap(game, destination, takePreparedHome) {
     held = code;
     tryMove(code, performance.now());
   }
-  engine.stage.on(keyboard.events.keyDown, event => {
-    pressGameKey(normalizeEnter(event.payload.code), event.payload.repeat, () => event.preventDefault());
-  }, { signal: scope.signal });
-  engine.stage.on(keyboard.events.keyUp, event => {
-    const code = normalizeEnter(event.payload.code);
-    if (menu.handleKey(code, true)) return;
-    if (held !== code) return;
-    held = undefined;
-    dirty = true;
-  }, { signal: scope.signal });
-  engine.stage.on(keyboard.events.cancel, () => { held = undefined; dirty = true; }, { signal: scope.signal });
-  attachGamepadInput(canvas, { keyboard, createInput: createBrowserGamepadInput, signal: listeners.signal, getMode() {
-    if (closing) return undefined;
-    if (canvas.dataset.trainer === 'team' && menu.active) return 'team';
-    if (battle && battle.model.state.result === null && !canvas.dataset.battlePrompt) return 'battle';
-    return openingActive || trainerActive || recruitActive || eventActive || worldMenuActive ? 'menu' : 'map';
-  } });
-
-  let touchDirection;
-  function releaseTouchDirection(event) {
-    if (touchDirection?.pointerId !== event.pointerId) return;
-    const { command } = touchDirection;
-    touchDirection = undefined;
-    if (held === command) held = undefined;
+  // Native Play owns physical keyboard and standard pad actions. The low-level
+  // official pad source is retained only for unexposed stick buttons, analog
+  // trigger values and raw axes, preserving the established input thresholds.
+  const extraPad=scope.use(createBrowserGamepadInput({optional:true}));
+  let rawAxis={x:0,y:0};
+  let rawPadIndex;
+  function readPadExtras(now) {
+    rawAxis={x:0,y:0};
+    if(document.visibilityState!=='visible'||!document.hasFocus()||document.activeElement!==canvas)return [];
+    extraPad.poll(now);
+    const pads=extraPad.input.pads;
+    const pad=pads.find(p=>p.standard&&p.index===rawPadIndex)??pads.find(p=>p.standard);
+    rawPadIndex=pad?.index;
+    if(!pad)return [];
+    rawAxis={x:pad.axis(0),y:pad.axis(1)};
+    return ['l2','r2','l3','r3'].filter(name=>pad.pressed(name)||pad.value(name)>=.5).map(name=>'extra:'+name);
   }
-  exploreDpad.addEventListener('pointerdown', event => {
-    const button = event.target.closest('button');
-    const command = button?.dataset.mapCommand;
-    if (event.button !== 0 || !moves.has(command) || touchDirection || closing || battle || menu.active || exploreDpad.hidden) return;
-    touchDirection = { pointerId: event.pointerId, command };
-    button.setPointerCapture(event.pointerId);
-    pressGameKey(command, false);
-  }, { signal: listeners.signal });
-  for (const type of ['pointerup', 'pointercancel', 'lostpointercapture']) {
-    exploreDpad.addEventListener(type, releaseTouchDirection, { signal: listeners.signal });
+  function inputMode() {
+    if(closing||canvas.dataset.phase!=='ready'||document.visibilityState!=='visible'||!document.hasFocus())return undefined;
+    if(journal.open)return {mode:'journal',owner:journal};
+    if(menu.active)return {mode:canvas.dataset.trainer==='team'?'team':'menu',owner:menu.getView?.()??menu};
+    if(battle)return {mode:'battle',owner:battle};
+    if(openingActive||trainerActive||recruitActive||eventActive||worldMenuActive)return {mode:'script',owner:dialogue};
+    return {mode:'map',owner:canvas};
   }
-  addEventListener('blur', () => {
-    if (touchDirection) releaseTouchDirection(touchDirection);
-  }, { signal: listeners.signal });
-  exploreControls.addEventListener('click', event => {
-    const command = event.target.closest('button')?.dataset.mapCommand;
-    if (!command || closing || battle || menu.active) return;
-    if (moves.has(command) && event.detail !== 0) return;
-    canvas.focus({ preventScroll: true });
-    pressGameKey(command, false);
-    if (moves.has(command)) held = undefined;
-  }, { signal: listeners.signal });
-  journalButton.addEventListener('click', () => journal.show(), { signal: listeners.signal });
-  skipReadOpening.addEventListener('click', () => {
-    if (!openingActive || !dialogue.waiting || !openingReading.start(openingCommand)) return;
-    dialogueTools.hidden = true;
-    canvas.focus({ preventScroll: true });
+  const arrows={left:'ArrowLeft',right:'ArrowRight',up:'ArrowUp',down:'ArrowDown'};
+  const bind=(command,keys=[command],repeat=false)=>({command,keys,repeat});
+  const asKeys=(codes,extras={},repeat=false)=>codes.map(code=>bind(code,[code,...(extras[code]??[])],repeat&&moves.has(code)));
+  const mapMoves=asKeys([...moves.keys()],{ArrowLeft:['pad:left'],ArrowRight:['pad:right'],ArrowUp:['pad:up'],ArrowDown:['pad:down']});
+  const mapCommands=[...mapMoves,bind('Enter',['Enter','NumpadEnter','pad:a']),bind('Space'),bind('Escape',['Escape','pad:b','pad:start']),bind('KeyB')];
+  const menuCommands=asKeys(['ArrowLeft','ArrowRight','ArrowUp','ArrowDown','BracketLeft','BracketRight','PageUp','PageDown'],{},true);
+  const digital=['pad:left','pad:right','pad:up','pad:down'];
+  const nativeInput=createNativeCommandInput({game:nativeHost.game,signal:listeners.signal,
+    readMode:inputMode,digital,readExtra:readPadExtras,readAxis:()=>rawAxis,
+    modes:{
+      map:{bindings:mapCommands,analog:arrows},
+      script:{bindings:[bind('Enter',['Enter','NumpadEnter','pad:a','pad:start']),bind('Space'),bind('Escape',['Escape','pad:b'])]},
+      journal:{bindings:[]},
+      menu:{bindings:menuCommands,analog:arrows},
+      team:{bindings:[...menuCommands,bind('KeyA',['KeyA','pad:x']),bind('KeyO',['KeyO','pad:start'])],analog:arrows},
+      battle:{bindings:[
+        ...asKeys([...battleControls],{
+          KeyW:['pad:up'],KeyS:['pad:down'],ArrowLeft:['pad:left'],ArrowRight:['pad:right'],
+          KeyB:['pad:b'],KeyL:['pad:x'],KeyI:['pad:y','pad:r1'],KeyM:['pad:l1'],
+          KeyQ:['extra:l2'],KeyF:['extra:r2'],KeyT:['extra:l3'],KeyV:['extra:r3'],Tab:['pad:select']
+        },true),
+        bind('Enter',['Enter','NumpadEnter','pad:a']),bind('Space'),bind('Escape',['Escape','pad:start'])
+      ],analog:{left:'KeyA',right:'KeyD',up:'KeyW',down:'KeyS',diagonal:true,allowDigital:true}}
+    },
+    claim(code,mode){
+      if(!mode)return false;
+      if(mode.mode==='script')return code==='Escape';
+      if(mode.mode==='map')return mapCommands.some(b=>b.keys.includes(code));
+      return mode.mode==='battle';
+    },
+    emit({mode,owner,command,phase,reason}){
+      const now=inputMode();
+      if(phase==='release'){
+        if((mode==='menu'||mode==='team')&&now?.owner===owner&&reason==='release')menu.handleKey(command,true);
+        if(held===command){held=undefined;dirty=true;}
+        return;
+      }
+      if(now?.owner!==owner)return;
+      if(mode==='menu'||mode==='team'){menu.handleKey(command,false);return;}
+      pressGameKey(command,phase==='repeat');
+    }
+  });
+  explore=createExploreControls({game:nativeHost.game,signal:listeners.signal,language:()=>game.language,
+    readState() {
+      const reading=openingActive||trainerActive||recruitActive||eventActive;
+      return {visible:!closing&&!reading&&!worldMenuActive&&!battle&&!menu.active&&!journal.open&&!dialogue.presenting,
+        canMove:!reading&&!worldMenuActive&&!eventEnded,canInteract:!eventEnded,reading,
+        showExit:exitGuideVisible,showMovement:touchExploration.matches,showHistory:false,showSkipRead:false};
+    },
+    onMoveDown:code=>pressGameKey(code,false),
+    onMoveUp:code=>{if(held===code){held=undefined;dirty=true;}},
+    onCommand:code=>pressGameKey(code,false),
+    onExit:goToOpeningExit,onHistory:()=>journal.show(),onSkipRead:skipKnownOpening
+  });
+  viewport.classList.add('native-explore-controls');
+  playScreen?.classList.add('native-explore-controls');
+  addEventListener('blur',()=>{explore.clearHeld('blur');nativeInput.suspend('blur');},{signal:listeners.signal});
+  document.addEventListener('visibilitychange',()=>{if(document.visibilityState!=='visible'){explore.clearHeld('hidden');nativeInput.suspend('hidden');}},{signal:listeners.signal});
+  function skipKnownOpening() {
+    if (!openingActive || !dialogue.waiting || !openingReading?.start(openingCommand)) return;
     if (dialogue.skip()) canvas.dataset.opening = 'running';
-  }, { signal: listeners.signal });
-  openingExitGuide.addEventListener('click', () => {
+  }
+  function goToOpeningExit() {
     if (!openingExit || closing || openingActive || trainerActive || recruitActive || eventActive || worldMenuActive || battle) return;
     canvas.focus({ preventScroll: true });
-    if (queueWalk({ x: openingExit[0], y: openingExit[1] })) openingExitGuide.hidden = true;
-  }, { signal: listeners.signal });
-  function restoreMapKeyboardFocus() {
-    if (document.activeElement === canvas && document.visibilityState === 'visible') keyboard.focus('map');
+    if (queueWalk({ x: openingExit[0], y: openingExit[1] })) {exitGuideVisible=false;updateExploreControls();}
   }
-
-  canvas.addEventListener('focus', restoreMapKeyboardFocus, { signal: listeners.signal });
-  addEventListener('focus', restoreMapKeyboardFocus, { signal: listeners.signal });
-  document.addEventListener('visibilitychange', restoreMapKeyboardFocus, { signal: listeners.signal });
   battleContinue.addEventListener('click', continueBattle, { signal: listeners.signal });
   document.addEventListener('keydown', event => {
     if (battleResultPanel.hidden || event.defaultPrevented || event.isComposing || event.altKey || event.ctrlKey || event.metaKey) return;
@@ -2260,27 +2408,44 @@ async function openMap(game, destination, takePreparedHome) {
     event.preventDefault();
     if (!event.repeat) continueBattle();
   }, { signal: listeners.signal });
-  canvas.addEventListener('pointermove', event => {
-    const state = battle?.model.state;
-    if (event.pointerType !== 'mouse' || !state?.canAct || state.selection?.type !== 'move'
-      || menu.active || canvas.dataset.battlePrompt) return;
-    const cell = battleCellAt(event, state.selection);
-    if (cell && (cell !== battle.cursor || !battle.preview)) setBattleCursor(cell);
-  }, { signal: listeners.signal });
-  canvas.addEventListener('click', event => {
-    if (battle) pickBattleCell(event);
-    else clickToWalk(event);
-  }, { signal: listeners.signal });
+  // The native input router delivers a tap to the world only when its
+  // contact began and ended on that lower-layer target. UI activation cannot
+  // close a menu and then fall through as another world click.
+  function uiOwnsStagePoint(point) {
+    if(menu.active||journal.open)return true;
+    return semantics.snapshot.nodes.some(node=>{
+      const b=node.bounds;
+      return !node.inert&&b&&(node.actions.length||['button','switch','checkbox','tab','option'].includes(node.role))
+        &&point.x>=b.x&&point.x<=b.x+b.width&&point.y>=b.y&&point.y<=b.y+b.height;
+    });
+  }
+  attachStageTap(nativeHost.game,stageInput,point=>{
+    if(uiOwnsStagePoint(point))return;
+    if(battle)pickBattleCell(point);else clickToWalk(point);
+  },{signal:listeners.signal});
+  function updateBattleHover() {
+    const state=battle?.model.state;
+    if(nativeHost.game.device!=='mouse'||!state?.canAct||state.selection?.type!=='move'
+      ||menu.active||canvas.dataset.battlePrompt)return;
+    const point=nativeHost.game.toStage(nativeHost.game.pointer.x,nativeHost.game.pointer.y);
+    if(uiOwnsStagePoint(point))return;
+    const cell=battleCellAt(point,state.selection);
+    if(cell&&(cell!==battle.cursor||!battle.preview))setBattleCursor(cell);
+  }
   addEventListener('pagehide', event => { if (!event.persisted) void close(); }, { signal: listeners.signal });
   if (wantsGpuGround) {
     canvas.dataset.groundMode = 'canvas';
-    if (typeof host.renderSharedFrameWithLayers === 'function' && typeof host.createSharedLayer2D === 'function') {
+    if (nativeHost.cache) {
       const { createGpuGround } = await import('./jyx2/scene/gpu-ground.mjs');
-      gpuGround = createGpuGround({ engine, host, scope, textures, leaseFor: id => leasesById.get(id) });
+      gpuGround = createGpuGround({ engine, host, cache: nativeHost.cache, scope, textures, leaseFor: id => leasesById.get(id) });
       canvas.addEventListener('webglcontextlost', () => {
         if (!gpuGround || closing) return;
         restoringGpuGround = true;
-        void host.whenReady().then(async () => {
+        groundCacheGeneration++;
+        gpuGround.clearPlacement();
+        if (cachedGroundHidden && !battle && !map3dView) ground.visible = true;
+        cachedGroundHidden = false;
+        void nativeHost.cache.whenReady().then(async () => {
           if (closing) return;
           restoringGpuGround = false;
           await rebuildGpuGround(gpuGroundSource);
@@ -2296,14 +2461,15 @@ async function openMap(game, destination, takePreparedHome) {
     notice.textContent = `正在載入${isWorld ? '江湖大地图' : scene.name}的 3D 場景…`;
     try {
       const viewport = canvas.parentElement;
-      const options = isWorld ? { world: scene, places: scenes, canEnter } : { map: scene, textures, width, height, scale };
+      const options = isWorld ? { world: scene, places: scenes, canEnter, uiGame:nativeHost.game,language:()=>game.language }
+        : { map: scene, textures, width, height, scale };
       const prepared = await takePreparedHome?.();
       const createNativeView = prepared?.create ?? await loadNativeView();
       map3dView = await createNativeView(viewport, canvas, options);
-      if (closing) { map3dView.dispose(); return; }
+      if (closing || scope.signal.aborted) { disposeMapView(); return; }
       if (map3dView.prepareFirstFrame) {
         await map3dView.prepareFirstFrame(nativeMapFrame(x, y, performance.now()));
-        if (closing) return;
+        if (closing || scope.signal.aborted) { disposeMapView(); return; }
       }
       ground.visible = objects.visible = false;
       if (atmosphere) atmosphere.light.visible = false;
@@ -2316,17 +2482,48 @@ async function openMap(game, destination, takePreparedHome) {
   }
   if (viewAttribute) canvas.dataset[viewAttribute] = map3dView ? '3d' : '2d';
   showCell();
+  // Preserve the original 3D draw / camera projection / 2D preparation order.
+  // The presenter is a single owner for this map and its temporary battle; both
+  // existing World3D renderers remain caller-owned. No second map/controller RAF.
+  presenter = nativeHost.createScene({
+    name: 'map',
+    update() {
+      if (closing) return;
+      const now = performance.now();
+      nativeInput.sample(now);
+      if(closing)return;
+      explore.sync();
+      mapHud.setCovered(dialogue.presenting||menu.active||journal.open);
+      updateBattleHover();
+      render(now);
+    }
+  });
+  nativeHost.activateScene(presenter);
   render(performance.now());
-  await host.whenIdle();
-  canvas.dataset.scene = String(destination.id);
-  canvas.dataset.mode = isWorld ? 'world' : 'submap';
-  canvas.dataset.phase = 'ready';
-  notice.hidden = true;
-  menuToggle.disabled = false;
-  keyboard.focus('map');
-  canvas.focus({ preventScroll: true });
-  request = requestAnimationFrame(tick);
-  maybePlayOpening();
+  // Play setup must return before waiting for an accepted native submission.
+  finishMap = async () => {
+    try { await nativeHost.presentFrame({ scene: presenter, signal: listeners.signal }); }
+    catch (error) { if (closing || listeners.signal.aborted) return; throw error; }
+    if (closing) return;
+    // Native 2D has accepted its first frame; retain only pre-host boot/error DOM text.
+    legacyHud.sceneName?.parentElement?.setAttribute('hidden', '');
+    legacyHud.hint?.parentElement?.setAttribute('hidden', '');
+    if (legacyHud.notice) legacyHud.notice.hidden = true;
+    if (viewSettings.get('qa') === '1') globalThis.__jyNativeQa = {
+      semantics, game: nativeHost.game, host: nativeHost, menu, journal,
+    };
+    canvas.dataset.scene = String(destination.id);
+    canvas.dataset.mode = isWorld ? 'world' : 'submap';
+    canvas.dataset.phase = 'ready';
+    notice.hidden = true;
+    menuToggle.disabled = false;
+    canvas.focus({ preventScroll: true });
+    maybePlayOpening();
+  };
+    },
+  }); } catch(error) { restoreCanvas(); throw error; }
+  try { await finishMap?.(); }
+  catch (error) { await mapHost.dispose().catch(() => {}); restoreCanvas(); throw error; }
 }
 
 function fail(error) {

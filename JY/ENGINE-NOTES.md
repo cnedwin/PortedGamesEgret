@@ -5,7 +5,7 @@
 This game uses Egret Rebuild `21297267`. The integration notes and remaining game-side handling use the format in part 3 of
 [docs/GAME-STANDARD.md](../docs/GAME-STANDARD.md).
 
-2026-11-29：按正式工具生成最新副本 `212972678e633b1f3667f345d0646b0fba907ee1`（包含 WebKit 稳定呈现及共享帧诊断改进），仍使用现有底层宿主。原有 JY#1/#2 绕过保留到 UI 迁移后实证替换；JY#3 已验证仍正常。 · Official vendor refresh; existing low-level host retained. JY#1 and #2 remain until native integration is proved; JY#3 remains resolved.
+2026-11-29：按正式工具生成最新副本 `212972678e633b1f3667f345d0646b0fba907ee1`（包含 WebKit 稳定呈现及共享帧诊断改进），仍使用现有底层宿主。第三批已换原生 Play 2D 宿主，原 3D 渲染器独立拥有上下文。JY#1 手写栅格队列已换引擎图集标签，固定数字与密集战斗验收仍待完成；JY#2 保留；JY#3 原生游戏标签已兼容。 · Native Play now owns the 2D host and clock while the scene renderers keep their own contexts. The legacy text cache queue is replaced with engine atlas labels; fixed glyph/dense encounter evidence remains outstanding.
 
 ## 已交给引擎 · Moved to the engine
 
@@ -26,9 +26,9 @@ This game uses Egret Rebuild `21297267`. The integration notes and remaining gam
 <!-- engine-note: {"id": "JY#1", "status": "partly", "topic": "text-cache-budget-batch", "workaround": ["web/battle-view.mjs"]} -->
 
 - 现象 · What happens：范围攻击一次打中多人，同一帧出现十几个不同的伤害数字，各自调用 `node.prepare()`，部分失败并报 `TEXT_CACHE_BUDGET`，数字不显示。 · An area attack put a dozen distinct damage numbers on screen in one frame; some `prepare()` calls failed with `TEXT_CACHE_BUDGET` and those numbers never showed.
-- 游戏里 · In the game：`web/battle-view.mjs` 的 `prepareNumbers` 把数字排队逐个准备，遇到 `TEXT_CACHE_BUDGET` 停下，下一帧再继续（`04313eb`）。 · Numbers are prepared one after another; on `TEXT_CACHE_BUDGET` the queue stops and resumes next frame.
+- 游戏里 · In the game：原手写 `prepareNumbers` 排队已撤除，现用 `game.browser.createAtlasLabel` 的引擎栅格工作与场景作用域；新 Play 的文字缓存是唯一所有者。 · Removed the manual queue. Engine-owned atlas labels and scoped lifetimes now share the browser game text cache.
 - 建议 · Suggestion：文字节点的 `prepare()` 在缓存忙时排队等待，而不是抛错；或者给出一个"可以重试"的明确标志。 · Let a text node's `prepare()` wait its turn when the cache is busy instead of throwing, or mark the error as retryable.
-- 状态 · Status：`c1570b0` 的自动重试在 `createBrowserGame` 的标签封装中。JY 战斗直接使用低层 `TextField.prepare()` 配合 WebGL2 共享帧，仍由游戏排队。固定字符的位图字体可进一步避免逐字栅格化。 · Automatic retry in `c1570b0` belongs to `createBrowserGame` labels. JY prepares low-level text in a shared-frame battle path and still queues the work. A bitmap font could remove runtime rasterization for fixed damage glyphs.
+- 状态 · Status：引擎队列正式接入，JY 不再创建第二个文字缓存。固定数字位图及密集战斗实测仍待完成，暂保留 partly。 · Public engine queue is integrated; no second cache. Dense battle and fixed digit font qualification remain.
 
 ### 2. 预编译着色器要求给出已经存在的网格 · Preparing programs needs meshes that already exist — 未解决 / open
 <!-- engine-note: {"id": "JY#2", "status": "open", "topic": "prepare-programs-meshes", "workaround": ["web/jyx2/scene/native-battle-view.mjs"]} -->
@@ -52,3 +52,20 @@ This game uses Egret Rebuild `21297267`. The integration notes and remaining gam
 - 处理 · Handling：保留原生模态及屏幕栈，待关闭 Promise 完成且标题再次激活后调用公开 `view.focus(opener)`。 · Restore the opener through the public native focus API once the underlying page has been activated.
 - 建议 · Suggestion：屏幕栈在重新激活下层页面后，原子恢复原控件焦点，覆盖旋转及多层模态。 · Restore the originating control after reactivating the lower page, including orientation and nested views.
 - 状态 · Status：在固定引擎版本上保留此小范围适配，具名回归。 · Narrow adapter retained at the pinned revision with named regression coverage.
+
+### 5. 动态切换 World3D 场景的原生 UI 附着 · Native UI attachment across changing World3D scenes — 未解决 / open
+<!-- engine-note: {"id":"JY#5","status":"open","topic":"play-world3d-shared-context","workaround":["web/game-host.mjs","web/main.mjs"]} -->
+
+- 现象 · Observation：`play3dAttached` 可以附着一个已配置的 scene/camera/renderer，现有本游戏会在原场景、独立战场和经典 2D 回退之间切换；Play 不能直接借用旧底层 host 的 3D WebGL2 上下文来挂载声明式视图，也不能一次声明多个可替换渲染器。 · The attached API accepts one configured scene/camera/renderer. The application switches independent field and arena renderers and may fall back to a 2D board; no public single-context attachment exists for this lifecyle.
+- 游戏里 · Handling：用公开 `play` 建立 parent-owned 透明画布、expand/portrait、安全区与统一 update 时钟，World3D 保持自身画布和生命周期。`game-host.mjs` 只在 `onFrameTiming` 报 submitted 且 host.whenIdle 后解决呈现请求；保留现有 3D 相机投影到 2D 板面的绘制顺序。 · The public Play host and its update clock coordinate the independently owned 3D scenes, with accepted 2D receipt and board mapping.
+- 建议 · Suggestion：支持已存在的 World3D 渲染宿主动态 attach/detach renderer、scene、camera 与共享实际提交回执；提供复用已配置 WebGL2 host 的原生 Play 入口。 · Support dynamic attachment and a shared configured WebGL2 host with explicit frame receipts.
+- 状态 · Status：不更改引擎副本；应用只编排公开 API。 · No vendor edits; the adapter orchestrates public APIs only.
+
+### 6. Play 手柄快照没有完整模拟通道 · Play controller snapshot lacks some raw channels — 部分解决 / partly resolved
+<!-- engine-note: {"id":"JY#6","status":"partly","topic":"play-gamepad-raw-channels","workaround":["web/main.mjs","web/jyx2/ui/native/native-input.mjs"]} -->
+
+- 现象 · Observation：Play 提供 `pad:a/b/x/y/l1/r1/l2/r2/select/start/dpad` 的原生键状态，但无 `pad:l3/r3`，扳机是二值 pressed，`axis` 使用引擎阈值。原有游戏需要 L3/R3、扳机 0.5 的数值阈值及 0.35 原始轴阈值。 · The high-level keys expose standard buttons but lack stick clicks and exact analog snapshots; the original mappings require raw thresholds.
+- 最小复现 · Reproduce：标准 Gamepad API fixture 设置一对 0.49/0.50 的 trigger 值、L3/R3 button 10/11 和 0.34/0.35 stick；对照 Play `game.keys` 与正式 `createBrowserGamepadInput` 的 `value/axis/pressed` 快照。 · Compare those inputs in the two public APIs without running game rules.
+- 处理 · Handling：原生 Play claim/down/pressed、stage tap、pointer 和标准 `pad:*` 接入，旧合成键盘及第二 RAF 取消；仅用低阶正式快照补必要的原始通道。 · Native Play input owns navigation and standard controls; the official lower-level snapshot preserves necessary extra raw channels. No synthetic browser key events or separate RAF.
+- 建议 · Suggestion：Play 提供标准原始 axis/analog value 与 stick-click 命名通道，允许选择 deadzone；保留键盘重复或明确提供逻辑重复策略。 · Expose the raw standard snapshots, stick clicks and configurable dead zones, and a documented repeat policy.
+- 状态 · Status：原生通用浏览器夹具测了主键鼠、触屏、模态和模拟手柄；未测实体手柄。 · Native browser fixture covers keyboard, pointer, touch, modal routing and simulated pad, not a physical controller.

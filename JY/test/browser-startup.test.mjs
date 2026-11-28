@@ -17,7 +17,7 @@ async function checkShippedModules(paths) {
 test('hosted startup preloads refer to shipped static modules at their real import URLs', async () => {
   assert.equal(startupModules[0], 'play/main.mjs');
   assert(startupModules.includes('play/idb-keyval.mjs'));
-  assert(startupModules.includes('vendor/robust-predicates/esm/util.js'));
+  // World3D is now dynamically owned by the scene; only its actual static closure belongs here.
   await checkShippedModules(startupModules);
 });
 
@@ -37,6 +37,8 @@ test('hosted and local launchers resolve the generated engine closure and music 
   const imports = makeGameImports(map, (folder, file) => `vendor/${folder}/${file}`, name => `music-lib/${name}/index.js`);
   assert(imports['@egret/engine/web/text']);
   assert(imports['@egret/engine/webgl2/world3d']);
+  assert(imports['robust-predicates']);
+  await access(new URL('../vendor/robust-predicates/esm/util.js', import.meta.url));
   assert.deepEqual(Object.keys(imports).sort(), [...Object.keys(map.imports), ...musicPackages].sort());
   for (const [specifier, file] of Object.entries(map.imports)) {
     assert.equal(imports[specifier], file.slice(2));

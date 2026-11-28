@@ -1,330 +1,51 @@
-function enhancedVisuals() {
-  return document.body.dataset.visual !== 'classic';
-}
+// Native choice adapter for the existing gameplay callers. The host owns
+// its scenario, inventory records, save semantics and all combat decisions.
+import {createBattleMenu as createNativeBattleMenu} from './jyx2/ui/native/battle-menu-native-adapter.mjs';
 
-const inventoryFilters = [['全部', undefined], ['道具', 0], ['裝備', 1], ['經書', 2], ['消耗品', 3], ['暗器', 4]];
-
-export function createBattleMenu(panel, canvas, { portraitUrl: enhancedPortrait, itemIconUrl: themedItemIcon } = {}) {
-  let menu;
-
-  function portraitUrl(head) {
-    const classic = `/art/head/${head}.png`;
-    if (!enhancedVisuals()) return classic;
-    return enhancedPortrait?.(head) ?? `/art/portrait/${head}.png`;
-  }
-
-  function itemIconUrl(id) {
-    return (document.body.dataset.art === 'jyx2' && themedItemIcon?.(id)) || `/art/item/${id}.png`;
-  }
-
-  function close() {
-    menu = undefined;
-    panel.hidden = true;
-    panel.removeAttribute('aria-labelledby');
-    panel.replaceChildren();
-    canvas.removeAttribute('aria-activedescendant');
-  }
-
-  function focus(index) {
-    menu.index = index;
-    menu.buttons.forEach((button, position) => button.classList.toggle('current', index === position));
-    const button = menu.buttons[index];
-    if (button) canvas.setAttribute('aria-activedescendant', button.id);
-    else canvas.removeAttribute('aria-activedescendant');
-    if (button) {
-      const list = button.closest('.battle-menu-options');
-      const scrollable = list && list.scrollHeight > list.clientHeight ? list : panel;
-      // Keep keyboard focus visible without scrolling the page behind the menu.
-      if (scrollable.scrollHeight > scrollable.clientHeight) {
-        const option = button.getBoundingClientRect();
-        const area = scrollable.getBoundingClientRect();
-        if (option.top < area.top) scrollable.scrollTop -= area.top - option.top;
-        else if (option.bottom > area.bottom) scrollable.scrollTop += option.bottom - area.bottom;
-      }
+export function createBattleMenu(game, canvas, {
+  portraitUrl: enhancedPortrait,itemIconUrl: themedItemIcon,
+  visualStyle=()=> 'jyx2',language=()=> 'zh',onActiveChange,onError,stack
+}={}) {
+  const visual=()=>typeof visualStyle==='function'?visualStyle():visualStyle;
+  const lang=()=>typeof language==='function'?language():language;
+  const tr=(zh,en)=>lang()==='en'?en:zh;
+  // Preserve the existing host URL selection and the previously available
+  // fallback for optional enhanced portraits/items. No assets are copied.
+  const portraitUrl=id=>visual()==='classic'?'/art/head/'+id+'.png':
+    enhancedPortrait?.(id)??('/art/portrait/'+id+'.png');
+  const itemIconUrl=id=>(visual()==='jyx2'&&themedItemIcon?.(id))||('/art/item/'+id+'.png');
+  const menu=createNativeBattleMenu(game,canvas,{
+    portraitUrl,itemIconUrl,language:lang,onActiveChange,onError,stack,
+    fallbackImageUrl:row=>row.portrait&&row.headId!==undefined?'/art/head/'+row.headId+'.png':
+      row.dataset?.itemId!==undefined?'/art/item/'+row.dataset.itemId+'.png':undefined,
+    inventoryFilters:()=>[
+      {type:0,label:tr('道具','Items')},{type:1,label:tr('裝備','Gear')},
+      {type:2,label:tr('經書','Books')},{type:3,label:tr('消耗品','Supplies')},
+      {type:4,label:tr('暗器','Tools')}
+    ],
+    // This is the old adapter's initial UI selection; eligibility, party
+    // membership, combat and the selected ID set remain host responsibilities.
+    initialTeamSelection(roles){
+      const lead=roles.find(role=>role.id===0)??roles[0];
+      return lead?[lead.id]:[];
+    },
+    teamDetail(role){
+      const level=Number.isFinite(role.level)?(lang()==='en'?'Lv. '+role.level:role.level+' 級'):'';
+      const health=Number.isFinite(role.hp)?tr('生命 ','Health ')+role.hp+'/'+role.maxHp:'';
+      return [level,health].filter(Boolean).join(' · ');
     }
-    menu.onFocus?.(index);
-  }
-
-  function open(title, rows, footer, columns, onCancel, options = {}) {
-    const enhanced = enhancedVisuals();
-    const jyx2 = document.body.dataset.art === 'jyx2';
-    const inventory = jyx2 && options.variant === 'inventory';
-    if (inventory) columns = 5;
-    else if (jyx2 && options.variant === 'roster') columns = 2;
-    panel.dataset.menuVariant = options.variant ?? 'choice';
-    const heading = document.createElement('h2');
-    heading.id = 'battle-menu-title';
-    heading.textContent = enhanced ? options.heading ?? title : title;
-    panel.setAttribute('aria-labelledby', heading.id);
-    const header = document.createElement('header');
-    header.className = 'battle-menu-header';
-    header.append(heading);
-    if (enhanced && options.detail) {
-      const detail = document.createElement('p');
-      detail.textContent = options.detail;
-      header.append(detail);
-    }
-    const list = document.createElement('div');
-    list.className = 'battle-menu-options';
-    list.style.setProperty('--columns', columns);
-    const buttons = rows.map((row, index) => {
-      const button = document.createElement('button');
-      button.id = `battle-option-${index}`;
-      button.type = 'button';
-      button.tabIndex = -1;
-      Object.assign(button.dataset, row.dataset);
-      if (row.icon) {
-        const icon = document.createElement('img');
-        icon.src = row.icon;
-        icon.alt = '';
-        if (enhanced && row.portrait) {
-          icon.className = 'menu-portrait';
-          if (row.headId !== undefined) {
-            const fallback = `/art/head/${row.headId}.png`;
-            if (row.icon !== fallback) {
-              icon.addEventListener('error', () => { icon.src = fallback; }, { once: true });
-            }
-          }
-        }
-        if (inventory && row.dataset?.itemId !== undefined) {
-          const fallback = `/art/item/${row.dataset.itemId}.png`;
-          if (row.icon !== fallback) icon.addEventListener('error', () => { icon.src = fallback; }, { once: true });
-        }
-        button.append(icon);
-      }
-      const label = document.createElement('span');
-      if (enhanced && row.title) {
-        label.className = 'menu-option-copy';
-        const name = document.createElement('span');
-        name.className = 'menu-option-name';
-        name.textContent = row.title;
-        label.append(name);
-        if (row.detail) {
-          const detail = document.createElement('span');
-          detail.className = 'menu-option-detail';
-          detail.textContent = row.detail;
-          label.append(detail);
-        }
-        button.setAttribute('aria-label', row.label);
-      } else label.textContent = row.label;
-      button.append(label);
-      if (enhanced && row.trailing) {
-        const trailing = document.createElement('span');
-        trailing.className = 'menu-option-trailing';
-        trailing.textContent = row.trailing;
-        trailing.setAttribute('aria-hidden', 'true');
-        button.append(trailing);
-      }
-      button.addEventListener('click', () => {
-        focus(index);
-        row.select();
-        canvas.focus({ preventScroll: true });
-      });
-      if (inventory) button.addEventListener('pointerenter', () => focus(index));
-      list.append(button);
-      return button;
+  });
+  const choose=menu.choose,askJoin=menu.askJoin,showItems=menu.showItems;
+  menu.choose=(title,rows,signal,columns=1,options={})=>choose(title,rows,signal,
+    visual()==='jyx2'&&['roster','inventory'].includes(options.variant)?2:columns,{
+      ...options,...(options.member?.headId!==undefined?{
+        member:{...options.member,fallbackIcon:'/art/head/'+options.member.headId+'.png'}
+      }:{})
     });
-    const controls = document.createElement('p');
-    controls.className = 'battle-menu-controls';
-    controls.textContent = footer;
-    const menuFooter = document.createElement('footer');
-    menuFooter.className = 'battle-menu-footer';
-    menuFooter.append(controls);
-    if (options.variant === 'team' || inventory) {
-      const guide = document.createElement('p');
-      guide.className = 'battle-menu-touch-guide';
-      guide.textContent = inventory ? '點選道具或切換分類。' : '點選隊友，再按確定出戰。';
-      menuFooter.append(guide);
-    }
-    if (options.returnOption) {
-      const back = buttons.at(-1);
-      back.className = 'battle-menu-back';
-      back.dataset.menuCancel = '';
-      menuFooter.append(back);
-    } else if (onCancel && options.showBack !== false) {
-      const back = document.createElement('button');
-      back.type = 'button';
-      back.className = 'battle-menu-back battle-menu-touch-back';
-      back.dataset.menuCancel = '';
-      back.textContent = '返回';
-      back.addEventListener('click', () => {
-        onCancel();
-        canvas.focus({ preventScroll: true });
-      });
-      menuFooter.append(back);
-    }
-    menu = { buttons, index: 0, columns, onCancel, keys: new Set() };
-    if (inventory) {
-      const filters = document.createElement('nav');
-      filters.className = 'jyx2-bag-filters';
-      filters.setAttribute('aria-label', '道具分類');
-      const grid = document.createElement('div');
-      grid.className = 'jyx2-bag-grid';
-      grid.append(filters, list);
-      const sidebar = document.createElement('div');
-      sidebar.className = 'jyx2-bag-details';
-      const itemName = document.createElement('strong');
-      const itemInfo = document.createElement('p');
-      const use = document.createElement('button');
-      use.type = 'button';
-      use.className = 'jyx2-bag-use';
-      use.textContent = '使用';
-      use.addEventListener('click', () => buttons[menu.index]?.click());
-      sidebar.append(itemName, itemInfo, use);
-      const content = document.createElement('div');
-      content.className = 'jyx2-bag-content';
-      content.append(sidebar, grid);
-      const tabs = inventoryFilters.map(([label, type], index) => {
-        const tab = document.createElement('button');
-        tab.type = 'button';
-        tab.textContent = label;
-        tab.dataset.menuFilter = type === undefined ? 'all' : type;
-        tab.addEventListener('click', () => setFilter(index));
-        filters.append(tab);
-        return tab;
-      });
-      function setFilter(index) {
-        menu.filterIndex = index;
-        const type = inventoryFilters[index][1];
-        tabs.forEach((tab, position) => tab.setAttribute('aria-pressed', String(position === index)));
-        buttons.forEach((button, position) => {
-          const row = rows[position];
-          button.hidden = row.dataset?.itemId !== undefined && type !== undefined && row.itemType !== type;
-        });
-        focus(buttons.findIndex(button => !button.hidden && button.dataset.itemId !== undefined));
-        canvas.focus({ preventScroll: true });
-      }
-      menu.onFocus = index => {
-        const row = rows[index];
-        itemName.textContent = row?.title ?? (row?.label || '沒有符合分類的道具');
-        itemInfo.textContent = [row?.detail, row?.trailing, row?.description].filter(Boolean).join('\n');
-        use.disabled = row?.dataset?.itemId === undefined;
-      };
-      menu.cycleFilter = offset => setFilter((menu.filterIndex + offset + tabs.length) % tabs.length);
-      controls.textContent += ' · [ / ] 分類';
-      panel.replaceChildren(header, content, menuFooter);
-      panel.hidden = false;
-      setFilter(0);
-    } else {
-      if (jyx2 && options.member) {
-        const content = document.createElement('div');
-        content.className = 'jyx2-member-content';
-        const portrait = document.createElement('img');
-        portrait.alt = '';
-        portrait.className = 'jyx2-member-portrait';
-        portrait.src = portraitUrl(options.member.headId);
-        portrait.addEventListener('error', () => { portrait.src = `/art/head/${options.member.headId}.png`; }, { once: true });
-        content.append(portrait, list);
-        panel.replaceChildren(header, content, menuFooter);
-      } else if (options.variant === 'team') {
-        const actions = document.createElement('div');
-        actions.className = 'battle-menu-team-actions';
-        actions.append(...buttons.slice(-2));
-        panel.replaceChildren(header, list, actions, menuFooter);
-      } else panel.replaceChildren(header, list, menuFooter);
-      panel.hidden = false;
-      focus(0);
-    }
-    return buttons;
-  }
-
-  function chooseTeam(roles, signal) {
-    return new Promise((resolve, reject) => {
-      signal.throwIfAborted();
-      const lead = roles.find(role => role.id === 0) ?? roles[0];
-      const selected = new Set(lead ? [lead.id] : []);
-      const abort = () => { close(); reject(signal.reason); };
-      const rows = roles.map(role => ({
-        label: `${role.name} · ${role.level} 級`,
-        title: role.name,
-        detail: [`${role.level} 級`, Number.isFinite(role.hp) ? `生命 ${role.hp}/${role.maxHp}` : '']
-          .filter(Boolean).join(' · '),
-        icon: portraitUrl(role.headId), headId: role.headId, portrait: true, dataset: { roleId: role.id },
-        select() {
-          if (!selected.delete(role.id)) selected.add(role.id);
-          refresh();
-        },
-      }));
-      rows.push({ label: '全選 / 取消', dataset: { teamAll: '' }, select() {
-        const all = roles.every(role => selected.has(role.id));
-        for (const role of roles) {
-          if (all) selected.delete(role.id);
-          else selected.add(role.id);
-        }
-        refresh();
-      } });
-      rows.push({ label: '確定出戰', dataset: { teamConfirm: '' }, select() {
-        if (!selected.size) return;
-        signal.removeEventListener('abort', abort);
-        close();
-        resolve(selected);
-      } });
-      const buttons = open('選擇出戰隊友', rows, '至少選擇一位角色 · Enter 切換選擇 · A 全選 · O 出戰', 2, undefined, { variant: 'team' });
-      menu.team = true;
-      function refresh() {
-        roles.forEach((role, index) => buttons[index].setAttribute('aria-pressed', String(selected.has(role.id))));
-        buttons.at(-1).disabled = selected.size === 0;
-      }
-      refresh();
-      signal.addEventListener('abort', abort, { once: true });
-    });
-  }
-
-  function showItems(items, use, cancel) {
-    const rows = items.map(item => ({
-      label: `${item.name} × ${item.count}`, icon: itemIconUrl(item.id), dataset: { itemId: item.id },
-      title: item.name, trailing: `× ${item.count}`, itemType: item.type, description: item.description,
-      select() { use(item.id); },
-    }));
-    rows.push({ label: '返回戰鬥', select: cancel });
-    open('藥品與暗器', rows, '方向鍵選擇 · Enter 使用 · Esc 返回', 1, cancel, { variant: 'inventory', returnOption: true });
-  }
-
-  function choose(title, choices, signal, columns = 1, options = {}) {
-    return new Promise((resolve, reject) => {
-      signal.throwIfAborted();
-      const abort = () => { close(); reject(signal.reason); };
-      function answer(value) {
-        signal.removeEventListener('abort', abort);
-        close();
-        resolve(value);
-      }
-      const rows = choices.map(row => ({ ...row, select: () => answer(row.value) }));
-      if (!rows.length) rows.push({ label: '返回', select: () => answer(undefined) });
-      const showBack = options.showBack !== false && choices.length > 0
-        && !(rows.length === 1 && rows[0].label.endsWith('返回戰鬥'));
-      open(title, rows, '方向鍵選擇 · Enter 確認 · Esc 取消', columns, () => answer(undefined), { ...options, showBack });
-      signal.addEventListener('abort', abort, { once: true });
-    });
-  }
-
-  function askJoin(signal, title = '是否要求加入？') {
-    return choose(title, [
-      { label: '是', dataset: { recruitChoice: 'yes' }, value: true },
-      { label: '否', dataset: { recruitChoice: 'no' }, value: false },
-    ], signal, 2, { showBack: false });
-  }
-
-  function handleKey(code, release) {
-    if (!menu) return false;
-    const { buttons, index, columns, onCancel, keys } = menu;
-    if (!release) {
-      keys.add(code);
-      const offsets = { ArrowLeft: -1, ArrowRight: 1, ArrowUp: -columns, ArrowDown: columns };
-      if (code in offsets) {
-        const visible = buttons.flatMap((button, position) => button.hidden ? [] : [position]);
-        const next = Math.max(0, Math.min(visible.length - 1, visible.indexOf(index) + offsets[code]));
-        focus(visible[next] ?? -1);
-      }
-    } else if (!keys.delete(code)) return true;
-    else if (code === 'Enter' || code === 'Space') buttons[index]?.click();
-    else if (code === 'KeyA' && menu.team) buttons.at(-2).click();
-    else if (code === 'KeyO' && menu.team) buttons.at(-1).click();
-    else if (code === 'BracketLeft') menu.cycleFilter?.(-1);
-    else if (code === 'BracketRight') menu.cycleFilter?.(1);
-    else if (code === 'Escape') onCancel?.();
-    return true;
-  }
-
-  return { chooseTeam, showItems, choose, askJoin, close, handleKey, portraitUrl, itemIconUrl, get active() { return !!menu; } };
+  menu.askJoin=(signal,title=tr('是否要求加入？','Invite to join?'))=>askJoin(signal,title);
+  menu.showItems=(items,use,cancel)=>showItems(items,use,cancel,{
+    title:tr('藥品與暗器','Supplies and tools'),columns:visual()==='jyx2'?2:1,
+    labels:{back:tr('返回戰鬥','Back to battle')}
+  });
+  return menu;
 }

@@ -159,3 +159,27 @@ test('an unavailable Gamepad API stops polling cleanly', t => {
   assert.equal(pad.frames.size, 0);
   assert.deepEqual(pad.native, { polls: 1, disposals: 1 });
 });
+
+
+test('manual host polling does not schedule an extra RAF and filters native modal commands without losing team extras', t => {
+  const pad = setup(t, 'team', {
+    manual: true,
+    filter: (code, mode) => mode !== 'team' || code === 'KeyA' || code === 'KeyO',
+  });
+  assert.equal(pad.frames.size, 0);
+  assert.equal(typeof pad.detach.poll, 'function');
+  pad.pad.axes = [0.8, 0];
+  pad.button(0, true);
+  pad.button(2, true);
+  pad.button(9, true);
+  pad.detach.poll(10);
+  assert.deepEqual(pad.events, [['down', 'KeyA'], ['down', 'KeyO']]);
+  pad.clearButtons();
+  pad.pad.axes = [0, 0];
+  pad.detach.poll(20);
+  assert.deepEqual(pad.events.slice(-2), [['up', 'KeyA'], ['up', 'KeyO']]);
+  pad.detach();
+  pad.detach.poll(30);
+  assert.equal(pad.frames.size, 0);
+  assert.deepEqual(pad.native, { polls: 2, disposals: 1 });
+});

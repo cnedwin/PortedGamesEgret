@@ -28,9 +28,10 @@ function samePage(previous, next) {
   });
 }
 
-export function createGpuGround({ engine, host, scope, textures, leaseFor }) {
+export function createGpuGround({ engine, host, cache, scope, textures, leaseFor }) {
   let pages = new Map();
   let closed = false;
+  let placementView;
   const totals = { builds: 0, reused: 0, removals: 0 };
   scope.use({ dispose: close });
 
@@ -67,20 +68,23 @@ export function createGpuGround({ engine, host, scope, textures, leaseFor }) {
       await host.whenIdle();
       // Retain the previous set until every new page is ready, including during a partial failure.
       for (const [key, page] of next) {
-        if (scope.signal.aborted) throw new DOMException('Ground cache is closed.', 'AbortError');
+        if (closed || scope.signal.aborted) throw new DOMException('Ground cache is closed.', 'AbortError');
         const previous = pages.get(key);
         if (samePage(previous, page) && previous.layer.state === 'ready') {
           page.layer = previous.layer;
           reused++;
         } else {
-          const layer = host.createSharedLayer2D();
+          const layer = cache.createLayer();
           allocated.push(layer);
           page.layer = layer;
           await layer.update(capture(page));
           builds++;
         }
       }
-      if (scope.signal.aborted) throw new DOMException('Ground cache is closed.', 'AbortError');
+      if (closed || scope.signal.aborted) throw new DOMException('Ground cache is closed.', 'AbortError');
+      // Publish the replacement placements while both old and new layers are
+      // still valid. Never leave a retained UI frame pointing to a disposed layer.
+      if (placementView) cache.setPlacements(placementsFor(next, ...placementView));
       for (const [key, previous] of pages) {
         if (next.get(key)?.layer === previous.layer) continue;
         if (!next.has(key)) removals++;
@@ -95,10 +99,10 @@ export function createGpuGround({ engine, host, scope, textures, leaseFor }) {
     }
   }
 
-  function placements(cameraX, cameraY, zoom, width, height) {
+  function placementsFor(source, cameraX, cameraY, zoom, width, height) {
     const out = [];
     const size = groundPageSize * zoom;
-    for (const page of pages.values()) {
+    for (const page of source.values()) {
       const x = cameraX + page.x * zoom, y = cameraY + page.y * zoom;
       if (x >= width || y >= height || x + size <= 0 || y + size <= 0) continue;
       out.push({ layer: page.layer, x, y, width: size, height: size });
@@ -106,12 +110,28 @@ export function createGpuGround({ engine, host, scope, textures, leaseFor }) {
     return out;
   }
 
+  function place(cameraX, cameraY, zoom, width, height) {
+    if (closed) throw new Error('Ground cache is closed.');
+    const view = [cameraX, cameraY, zoom, width, height];
+    cache.setPlacements(placementsFor(pages, ...view));
+    placementView = view;
+  }
+
+  function clearPlacement() {
+    if (!placementView) return;
+    cache.setPlacements([]);
+    placementView = undefined;
+  }
+
   function close() {
     if (closed) return;
     closed = true;
-    for (const page of pages.values()) page.layer.dispose();
-    pages.clear();
+    try { clearPlacement(); } finally {
+      for (const page of pages.values()) page.layer.dispose();
+      pages.clear();
+    }
   }
 
-  return { update, placements, get totals() { return { ...totals }; }, close };
+  return { update, place, clearPlacement,
+    get totals() { return { ...totals }; }, close };
 }
