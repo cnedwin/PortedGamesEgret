@@ -6,7 +6,7 @@ import { GpuParticles3D } from '../../rendering/world3d/GpuParticles3D.js';
 import { AutoBatchMesh3D, canAutoInstance3D, RenderList3D } from '../../rendering/world3d/RenderList3D.js';
 import { CubeTexture3D, RenderTarget3D } from '../../rendering/world3d/Texture3D.js';
 import { FRAME_BLOCK_FLOATS_3D, FRAME_OFFSETS_3D, outputToneMapping3D, planShadows3D, TILED_LIGHTS_3D, writeFrameBlock3D, writeTiledLights3D } from './frame3D.js';
-import { createPostProcessSettings3D, outlineActive3D, postViewFromCamera3D } from './post3D.js';
+import { createPostProcessSettings3D, outlineActive3D, postViewFromCamera3D, POST_VERTEX_GLSL_3D } from './post3D.js';
 import { PostChainWebGL23D } from './postWebGL23D.js';
 import { WebGL2FrameMetrics3D } from './webGL2FrameMetrics3D.js';
 import { GpuResources3D } from './gpuResources3D.js';
@@ -27,6 +27,14 @@ function colorProgramFlags(fog, toneMapping, environment, linear) {
         (environment ? V.environment : 0) |
         (linear ? V.linearOutput : 0));
 }
+const PRESENT_ENCODED_GLSL_3D = /* glsl */ `#version 300 es
+precision highp float;
+in vec2 vUv;
+uniform sampler2D uSource;
+out vec4 outColor;
+void main() {
+    outColor = texture(uSource, vUv);
+}`;
 /** Draws 3D scenes with WebGL2: set its size, render a scene from a camera, and read what it drew. */
 export class WebGL2Renderer3D {
     canvas;
@@ -37,6 +45,10 @@ export class WebGL2Renderer3D {
     postProcess = createPostProcessSettings3D();
     viewport;
     autoClear = true;
+    presentationResize;
+    #presented = false;
+    #presentationSize;
+    #presentationTarget;
     #post;
     #frameMetrics;
     #viewKind = 'main';
@@ -93,6 +105,11 @@ export class WebGL2Renderer3D {
         const canvas = options?.canvas;
         if (!canvas || typeof canvas.getContext !== 'function')
             throw new World3DError('WORLD3D_INPUT_INVALID', 'canvas');
+        if (options.presentationResize !== undefined &&
+            options.presentationResize !== 'direct' &&
+            options.presentationResize !== 'stable')
+            throw new World3DError('WORLD3D_INPUT_INVALID', 'presentation resize');
+        this.presentationResize = options.presentationResize ?? 'direct';
         this.#options = options;
         this.#alpha = options.alpha ?? false;
         const gl = canvas.getContext('webgl2', {
@@ -294,27 +311,39 @@ export class WebGL2Renderer3D {
     get context() {
         return this.#gl;
     }
-    /** Resize the drawing buffer; `pixelRatio` multiplies the logical size. */
+    /** Actual scene rendering size; the stable presentation canvas can have different backing dimensions. */
+    get renderSize() {
+        return this.#presentationSize ?? { width: this.canvas.width, height: this.canvas.height };
+    }
+    resizeOutput(width, height) {
+        const current = this.renderSize;
+        if (current.width === width && current.height === height)
+            return false;
+        if (this.presentationResize === 'stable' && this.#presented) {
+            this.#presentationSize = Object.freeze({ width, height });
+        }
+        else {
+            if (this.canvas.width !== width)
+                this.canvas.width = width;
+            if (this.canvas.height !== height)
+                this.canvas.height = height;
+        }
+        return true;
+    }
+    /** Resize the scene; stable presentation keeps the backing after its first successful canvas draw. */
     setSize(width, height, pixelRatio = 1) {
         const w = Math.max(1, Math.floor(width * pixelRatio)), h = Math.max(1, Math.floor(height * pixelRatio));
         if (!Number.isFinite(w) || !Number.isFinite(h))
             throw new World3DError('WORLD3D_INPUT_INVALID', 'size');
-        if (this.canvas.width !== w)
-            this.canvas.width = w;
-        if (this.canvas.height !== h)
-            this.canvas.height = h;
+        this.resizeOutput(w, h);
     }
-    /** Match the drawing buffer to the canvas's CSS size. Returns true when it changed. */
+    /** Match the scene size to the canvas CSS size. Returns true when the scene size changed. */
     resizeToDisplaySize(pixelRatio = 1) {
         const element = this.canvas;
         if (typeof element.clientWidth !== 'number')
             return false;
         const w = Math.max(1, Math.floor(element.clientWidth * pixelRatio)), h = Math.max(1, Math.floor(element.clientHeight * pixelRatio));
-        if (element.width === w && element.height === h)
-            return false;
-        element.width = w;
-        element.height = h;
-        return true;
+        return this.resizeOutput(w, h);
     }
     // ---- frame ---------------------------------------------------------------
     /**
@@ -375,7 +404,22 @@ export class WebGL2Renderer3D {
         this.#frameMetrics.poll();
     }
     render(scene, camera, target) {
-        return this.renderMeasuredView(scene, camera, target, target !== undefined && this.#reflectionTarget === target ? 'reflection' : target ? 'offscreen' : 'main');
+        if (!target && this.presentationResize === 'stable' && this.#presentationSize) {
+            const { width, height } = this.#presentationSize;
+            if (width !== this.canvas.width || height !== this.canvas.height) {
+                const surface = (this.#presentationTarget ??= new RenderTarget3D(width, height, {
+                    name: 'world3d.presentation'
+                }));
+                surface.setSize(width, height);
+                return this.renderMeasuredView(scene, camera, surface, 'main');
+            }
+            this.#presentationTarget?.dispose();
+            this.#presentationTarget = undefined;
+        }
+        const rendered = this.renderMeasuredView(scene, camera, target, target !== undefined && this.#reflectionTarget === target ? 'reflection' : target ? 'offscreen' : 'main');
+        if (!target && rendered)
+            this.#presented = true;
+        return rendered;
     }
     /** Draw the view prepared by PlanarReflection3D and identify it in frame metrics. */
     renderReflection(scene, camera, target) {
@@ -414,21 +458,63 @@ export class WebGL2Renderer3D {
         const viewIndex = this.#frameMetrics.beginView();
         const post = !reflection && this.postProcess.enabled;
         if (viewIndex < 0)
-            return post
-                ? this.renderPost(scene, camera, target)
-                : this.renderView(scene, camera, target, 'color', reflection);
+            return this.renderOutput(scene, camera, target, post, reflection);
         const start = performance.now(), oldIndex = this.#viewIndex, oldKind = this.#viewKind;
         this.#viewIndex = viewIndex;
         this.#viewKind = kind;
         try {
-            return post
-                ? this.renderPost(scene, camera, target)
-                : this.renderView(scene, camera, target, 'color', reflection);
+            return this.renderOutput(scene, camera, target, post, reflection);
         }
         finally {
             this.#viewIndex = oldIndex;
             this.#viewKind = oldKind;
             this.#frameMetrics.endView(start);
+        }
+    }
+    isPresentationTarget(target) {
+        return target !== undefined && target === this.#presentationTarget;
+    }
+    renderOutput(scene, camera, target, post, reflection) {
+        const rendered = post
+            ? this.renderPost(scene, camera, target)
+            : this.renderView(scene, camera, target, 'color', reflection);
+        if (rendered && target && this.isPresentationTarget(target))
+            this.presentStableOutput(target);
+        return rendered;
+    }
+    /** A GPU-only copy of the already encoded canvas output, with filtering across internal sizes. */
+    presentStableOutput(target) {
+        const gl = this.#gl, width = gl.drawingBufferWidth, height = gl.drawingBufferHeight, source = this.#resources.target(target, true).color;
+        const program = this.#resources.program('presentation/encoded', () => ({
+            vertex: POST_VERTEX_GLSL_3D,
+            fragment: PRESENT_ENCODED_GLSL_3D
+        }));
+        const pass = this.#frameMetrics.begin(this.#viewKind, this.#viewIndex, 'postprocess', width, height);
+        try {
+            gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+            gl.viewport(0, 0, width, height);
+            gl.disable(gl.DEPTH_TEST);
+            gl.disable(gl.CULL_FACE);
+            gl.disable(gl.BLEND);
+            gl.disable(gl.SCISSOR_TEST);
+            gl.depthMask(false);
+            gl.colorMask(true, true, true, true);
+            gl.useProgram(program.program);
+            gl.bindVertexArray((this.#emptyVao ??= gl.createVertexArray()));
+            gl.activeTexture(gl.TEXTURE0);
+            gl.bindTexture(gl.TEXTURE_2D, source);
+            if (program.uniforms['uSource'])
+                gl.uniform1i(program.uniforms['uSource'], 0);
+            gl.drawArrays(gl.TRIANGLES, 0, 3);
+            gl.bindVertexArray(null);
+            this.info.drawCalls++;
+            this.info.triangles++;
+            this.info.programs = this.#resources.counts.programs;
+            this.#frameMetrics.record(1, 1);
+        }
+        finally {
+            this.#frameMetrics.end(pass);
+            this.resetState();
         }
     }
     renderView(scene, camera, target, passKind = 'color', reflection) {
@@ -454,7 +540,7 @@ export class WebGL2Renderer3D {
         const pass = this.#frameMetrics.begin(this.#viewKind, this.#viewIndex, passKind, width, height);
         try {
             if (target) {
-                const entry = this.#resources.target(target);
+                const entry = this.#resources.target(target, this.isPresentationTarget(target));
                 gl.bindFramebuffer(gl.FRAMEBUFFER, entry.framebuffer);
                 gl.viewport(0, 0, target.width, target.height);
             }
@@ -462,16 +548,16 @@ export class WebGL2Renderer3D {
                 gl.bindFramebuffer(gl.FRAMEBUFFER, null);
                 gl.viewport(0, 0, gl.drawingBufferWidth, gl.drawingBufferHeight);
             }
-            this.#linearOutput = target !== undefined;
+            this.#linearOutput = target !== undefined && !this.isPresentationTarget(target);
             const background = scene.background;
             gl.depthMask(true);
             this.#depthWrite = true;
             // sRGB targets encode on write, so they are cleared with linear values.
-            const encode = target ? (value) => value : linearToSrgb;
+            const encode = this.#linearOutput ? (value) => value : linearToSrgb;
             if (Array.isArray(background))
                 gl.clearColor(encode(background[0]), encode(background[1]), encode(background[2]), 1);
             else
-                gl.clearColor(0, 0, 0, (target || this.#alpha) && !background ? 0 : 1);
+                gl.clearColor(0, 0, 0, (this.#linearOutput || this.#alpha) && !background ? 0 : 1);
             gl.clear(this.autoClear ? gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT : gl.DEPTH_BUFFER_BIT);
             if (view) {
                 const x = Math.round(view[0] * width), y = Math.round(view[1] * height);
@@ -492,7 +578,7 @@ export class WebGL2Renderer3D {
             this.#frameData[FRAME_OFFSETS_3D.clipInfo + 3] = view ? view[3] : 1;
             this.bindTiledLights(camera, viewWidth, viewHeight, view ? Math.round(view[0] * width) : 0, view ? Math.round(view[1] * height) : 0);
             this.uploadFrameBlock();
-            const flags = colorProgramFlags(Boolean(scene.fog), toneMapping, Boolean(scene.environment), Boolean(target));
+            const flags = colorProgramFlags(Boolean(scene.fog), toneMapping, Boolean(scene.environment), this.#linearOutput);
             for (const item of list.opaque)
                 this.draw(item, flags);
             if (background instanceof CubeTexture3D)
@@ -534,7 +620,7 @@ export class WebGL2Renderer3D {
         post.scene.setSize(Math.max(width, 1), Math.max(height, 1));
         if (this.isContextLost || !this.renderView(scene, camera, post.scene))
             return false;
-        const output = target ? this.#resources.target(target).framebuffer : null;
+        const output = target ? this.#resources.target(target, this.isPresentationTarget(target)).framebuffer : null;
         // 8-bit targets encode sRGB on write and half-float targets store linear light; only the canvas needs encoded values.
         // Outlined objects are drawn once more, flat white, into a mask the composite traces.
         let maskTexture;
@@ -568,7 +654,7 @@ export class WebGL2Renderer3D {
         const sceneEntry = this.#resources.target(post.scene);
         const postPass = this.#frameMetrics.begin(this.#viewKind, this.#viewIndex, 'postprocess', width, height);
         try {
-            const draws = post.run(sceneEntry.color, sceneEntry.depthTexture, maskTexture, postViewFromCamera3D(camera), width, height, output, target !== undefined, this.postProcess, target?.format === 'rgba16f' ? 'none' : this.toneMapping, (this.#emptyVao ??= gl.createVertexArray()));
+            const draws = post.run(sceneEntry.color, sceneEntry.depthTexture, maskTexture, postViewFromCamera3D(camera), width, height, output, target !== undefined && !this.isPresentationTarget(target), this.postProcess, target?.format === 'rgba16f' ? 'none' : this.toneMapping, (this.#emptyVao ??= gl.createVertexArray()));
             this.info.drawCalls += draws;
             this.#frameMetrics.record(draws, draws);
         }
@@ -580,15 +666,17 @@ export class WebGL2Renderer3D {
     }
     /** Copy the output drawn so far into a texture on the scene-color unit. */
     grabScene(target) {
-        const gl = this.#gl, source = target ? this.#resources.target(target).framebuffer : null;
+        const gl = this.#gl, source = target ? this.#resources.target(target, this.isPresentationTarget(target)).framebuffer : null;
         const width = target ? target.width : gl.drawingBufferWidth, height = target ? target.height : gl.drawingBufferHeight;
-        const format = target
-            ? target.format === 'rgba16f' && this.#resources.floatTargets
-                ? gl.RGBA16F
-                : gl.SRGB8_ALPHA8
-            : this.#alpha
-                ? gl.RGBA8
-                : gl.RGB8;
+        const format = this.isPresentationTarget(target)
+            ? gl.RGBA8
+            : target
+                ? target.format === 'rgba16f' && this.#resources.floatTargets
+                    ? gl.RGBA16F
+                    : gl.SRGB8_ALPHA8
+                : this.#alpha
+                    ? gl.RGBA8
+                    : gl.RGB8;
         let grab = this.#grab;
         gl.activeTexture(gl.TEXTURE0 + TEXTURE_UNITS_3D.sceneColor);
         if (!grab) {
@@ -1262,6 +1350,8 @@ export class WebGL2Renderer3D {
         this.canvas.removeEventListener('webglcontextlost', this.#onLost);
         this.canvas.removeEventListener('webglcontextrestored', this.#onRestored);
         this.#list.clear();
+        this.#presentationTarget?.dispose();
+        this.#presentationTarget = undefined;
         this.clearMaterialPrograms();
         if (this.isContextLost) {
             this.#post?.dispose(true);

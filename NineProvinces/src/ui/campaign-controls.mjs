@@ -1,7 +1,5 @@
-import { NODES } from '../data/map.mjs';
-import { getLanguage, t } from '../i18n.mjs';
-import { factionName } from '../view/names.mjs';
-import { colourOf, h } from './dom.mjs';
+import { t } from '../i18n.mjs';
+import { h } from './dom.mjs';
 import { pair } from './text.mjs';
 
 export const CITY_OVERVIEW = 'overview';
@@ -43,52 +41,4 @@ export function cityContent(active, sections) {
     id: panelId(id), role: 'tabpanel', 'aria-labelledby': tabId(id), hidden: id !== active,
     tabIndex: 0, dataset: { k: panelId(id) }
   }, id === active ? sections[id] : null)));
-}
-
-export function createCampaignTime(app, speeds) {
-  const pause = h('button.pause', { type: 'button', dataset: { k: 'pause' }, onclick: () => app.setPaused(!app.paused) },
-    h('span.pauseGlyph', { 'aria-hidden': 'true' }), h('span.pauseWord'));
-  const [icon, word] = pause.children;
-  const speed = h('select.campaignSpeed#campaignSpeed', { dataset: { k: 'speed' },
-    onchange: ({ target }) => app.setSpeed(Number(target.value)) });
-  const control = h('div.clock.campaignTime', { role: 'group' }, pause, speed);
-  let language;
-  return {
-    element: control,
-    sync() {
-      const paused = app.paused, label = t(paused ? 'resume' : 'pause');
-      icon.textContent = paused ? '▶' : '❚❚';
-      word.textContent = label;
-      pause.title = label + ' (Space)';
-      pause.setAttribute('aria-label', label);
-      pause.setAttribute('aria-pressed', String(paused));
-      if (language !== getLanguage()) {
-        language = getLanguage();
-        const speedLabel = pair(['推进速度', 'Campaign speed']);
-        control.setAttribute('aria-label', t('speedLabel'));
-        speed.setAttribute('aria-label', speedLabel);
-        speed.title = speedLabel + ' (1–5)';
-        speed.replaceChildren(...speeds.map((rate, index) => h('option', { value: String(index) },
-          rate + pair([' 天/秒', ' days/s']))));
-      }
-      const selected = String(app.speed);
-      if (speed.value !== selected) speed.value = selected;
-    }
-  };
-}
-
-export function territoryLegend(state) {
-  const counts = new Map();
-  for (const [id, site] of Object.entries(state.nodes)) {
-    if (NODES[id]?.kind === 'city' && site.owner) counts.set(site.owner, (counts.get(site.owner) ?? 0) + 1);
-  }
-  const rivals = [...counts].filter(([id]) => id !== state.player).sort((a, b) => b[1] - a[1]).slice(0, 3);
-  const chips = [state.player, ...rivals.map(([id]) => id)].map(id => h('span.legendChip',
-    h('i', { style: { '--legend-colour': colourOf(state.factions[id]) }, 'aria-hidden': 'true' }), factionName(state, id)));
-  return h('div.territoryLegend#territoryLegend', { role: 'note', 'aria-label': pair(['势力图图例', 'Domains legend']) },
-    h('div.legendColours', chips),
-    h('div.legendKey',
-      h('span.legendChip', h('i.legendNeutral', { 'aria-hidden': 'true' }), pair(['无主', 'Unclaimed'])),
-      h('span.legendChip', h('i.legendBorder', { 'aria-hidden': 'true' }), pair(['势力边界', 'Border'])))
-  );
 }

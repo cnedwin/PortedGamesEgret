@@ -101,7 +101,12 @@ tally {"siegeWon":580,"ratio":12790.834146808944,"taken":692,"takenNeutral":55,"
 
 | 引擎入口 / API · Entry / API | 在本游戏中的用途 · Use in this game | 文件 · File |
 |---|---|---|
-| `createWorld3DApp`（`@egret/engine/webgl2/world3d`） | 起 3D 程序：按设备选画质（低：无阴影无后期；中高：阴影、泛光、FXAA，高画质加环境光遮蔽）、帧慢时自动降分辨率；`app.stop` / `start` 随页面隐藏与显示 · starts the 3D app: quality by device (low without shadows or post; medium and high with shadows, bloom and FXAA, high with ambient occlusion), resolution lowered when frames are slow; stopped and started as the page is hidden and shown | `src/view3d/stage.mjs`, `src/main.mjs` |
+| `play3dAttached`, `createWebGL2Renderer3D`, `createDynamicResolution3D` | 原有 World3D 场景与原生 Play 界面共用一个引擎时钟；保留画质档、WebGL2 与可选 WebGPU、动态分辨率 · native Play and the configured World3D renderer share one engine clock; graphics quality, optional WebGPU and dynamic resolution remain available | `src/view3d/native-host.mjs`, `src/view3d/native-renderer.mjs`, `src/view3d/stage.mjs` |
+| `game.show`, `fit: 'expand'`, `portrait`, `tablet`, `tabletPortrait`, `uiScale` | 原生标题、开局、武将注册、设置、存档、顶栏；随安全区与设备形态重排 · native title, setup, officer roster, settings, saves and top bar, rearranged with safe-area and device form | `src/ui/native-title.mjs`, `src/ui/native-dialogs.mjs`, `src/ui/native-topbar.mjs` |
+| `createUiScreenStack`, `createUiSemantics`, `createBrowserSemantics`, `createUiTester` | 页面和原生模态的统一顺序、具名焦点、读屏投影和验收 · named native screens, modal order, focus, accessibility projection and acceptance | `src/view3d/native-host.mjs`, `src/ui/native-title.mjs`, `src/ui/native-dialogs.mjs`, `test/accept.mjs` |
+| `view.edit`, `game.select`, `createRangeControl`, `createCanvasParagraphProvider` | 中文及英文名称的原生编辑、选项、音量拖动和长说明 · native Chinese/English text editing, pickers, volume drag and wrapped labels | `src/ui/native-title.mjs`, `src/ui/native-dialogs.mjs`, `src/view3d/native-host.mjs` |
+| `createGestures`, `game.gestures`, `game.browser.textureFromCanvas` | 原生地图拖动、双指缩放、射线点选，小地图纹理与 Graphics 标记 · native map panning, pinch and raycast picking; minimap texture and Graphics marks | `src/view3d/realm.mjs`, `src/ui/native-minimap.mjs` |
+| `game.loading`, `pickBrowserTextFile`, `downloadBrowserTextFile` | 载入进度、原生重试、存档文件导入和导出 · native loading/retry and save file exchange | `src/main.mjs` |
 | `createTerrainStream3D` + `createHeightField3D` + `colorAt` | 天下的地形按镜头远近一块块加载（64 单位见方，每单位一个采样），高度和颜色都来自 `sim/land.mjs`，远处的块自动降低细节 · the land comes in tiles around the view (64 units square, a sample a unit), heights and colours from `sim/land.mjs`, far tiles at lower detail | `src/view3d/terrain.mjs` |
 | `createCustomShader3D`（片元钩子） | 地面：像素级的草土细纹、六角格细线（按像素大小淡出）、鼠标所指与选中的格子、战场以外变暗；屋顶：瓦垄与瓦行 · the ground: grass and earth grain per pixel, the thin hex lines (fading with the pixel size), the hex under the pointer and the chosen hex, the land outside a battlefield dimmed; roofs: rows and courses of tiles | `src/view3d/terrain.mjs`, `src/view3d/cities.mjs` |
 | `createWater3D`、`createWaterMaterial3D` | 有浪、折射、岸边泡沫的海；江河是顺着河道铺的水带，水位从源头到入海逐段降低；湖面 · the sea with waves, refraction and foam at the shore; rivers as ribbons along their beds, falling from source to mouth; lakes | `src/view3d/water.mjs` |
@@ -119,6 +124,10 @@ tally {"siegeWon":580,"ratio":12790.834146808944,"taken":692,"takenNeutral":55,"
 
 ## 已验证 · Verified
 
+- 原生界面第二批（2026-11-28，`7fb371ac`）：标题、开局/自建势力、登录新武将、设置/存读档、天下图顶栏与小地图已接入白鹭原生 UI；217/217 Node 测试、53/53 软件浏览器流程、官方 9 种屏幕 × 6 个界面检查通过。Windows Edge / RTX 5090 Laptop 同引擎同机位稳态 3 个场景 p95 均为 4.3 ms；Galaxy Z Fold7 外屏横竖屏实测原生滑条、滚动、双指地图缩放、返回主城及暂停/恢复通过。详细数据、截图与限制见 [QUALITY.md](QUALITY.md) 和 [本批截图](test/native-shell-evidence/)。 · Native interface batch two (2026-11-28, `7fb371ac`): title, campaign setup/custom banner, officer registration, settings/save/load, realm top bar and minimap use Egret native UI. All 217 Node tests, 53 software-browser assertions and 9 × 6 official screen checks passed. On the same engine and PC hardware (Edge/RTX 5090 Laptop), settled p95 was 4.3 ms in all three matched camera views. Physical Fold7 cover-screen tests in both orientations passed native sliders, scrolling, pinch, home-city navigation and pause/resume. See QUALITY and the linked evidence for the measured limits.
+
+- 引擎独立升级（2026-11-28）：`82561d6` → `7fb371ac`，未改变界面、规则、存档和游戏资源；196/196 Node 测试、50/50 软件渲染浏览器验收、官方通用验收 8/8。Windows Edge / RTX 5090 Laptop 同路线城池与战场 p95 分别维持 8.4 / 4.3 ms；截图及限制见 [QUALITY.md](QUALITY.md)。 · Engine-only refresh (2026-11-28): `82561d6` → `7fb371ac`, with no interface, rules, saves or game asset changes. All 196 Node tests, 50 software-rendered browser assertions and eight generic verifier checks pass. Windows Edge / RTX 5090 Laptop city and battle p95 remain 8.4 / 4.3 ms on the measured route; see QUALITY.md for images and limitations.
+
 - WebKit 首场景追加检查：新的征程→开局→城池大地图后的真实 3D 场景可见；移动 Apple WebKit 固定背缓冲，保留画质档及玩法；196/196 Node。详见 QUALITY，未测 iPhone 真机性能。 / Actual first-world-scene screenshots pass after the mobile Apple WebKit fixed-back-buffer fallback, preserving quality and rules; 196/196 Node tests. See QUALITY; physical iPhone performance untested.
 
 - 2026-11-28：Windows Playwright WebKit iPhone 15 Pro 配置下修复启动兼容问题，标题截图及触摸设置通过，195/195 Node 测试通过；不是 iPhone 真机验收。见 [QUALITY.md](QUALITY.md)。 · Startup, title screenshot and touch Settings pass on Windows Playwright WebKit in an iPhone 15 Pro profile; 195/195 Node tests pass. Not a physical iPhone test. See QUALITY.md.
@@ -133,6 +142,9 @@ tally {"siegeWon":580,"ratio":12790.834146808944,"taken":692,"takenNeutral":55,"
 - 地形在 Node 里算一个采样点约 1.3 微秒，一块地（65×65）约 6 毫秒。 · The land takes about 1.3 µs a sample in Node, about 6 ms a tile of 65 × 65.
 
 ## 已知问题 · Known issues
+
+- 原生界面第二批 PC 单次本地冷启动，旧标题就绪约 1,667 ms，新标题按钮可操作约 3,003 ms；进入天下图约 848 → 997 ms。新标题就绪检查还等待原生按钮出现，尚未拆分加载、UI 字形准备和引擎初始化的耗时，不将其解释为引擎性能回退或改善。稳态同场景未观察到 >50 ms 的帧间隔。 · In the batch-two single local cold-start comparison, old title readiness was about 1,667 ms, versus 3,003 ms to the native title button; realm readiness was about 848 → 997 ms. Native title readiness additionally waits for the real button. Resource loading, UI text preparation and engine initialization have not been attributed separately. No >50 ms frame intervals were observed in the matched settled samples.
+- Fold7 外屏的原生字形边缘仍可见轻微阶梯，横屏首月提示与暂留旧版城池面板边缘有少量重叠（关闭提示可继续）；未测物理内屏、手机完整战役、长时间高负载或扬声器主观听感。 · Slight stair-stepping remains in native text on the physical Fold7 cover display; the landscape first-month guide overlaps a small edge of the retained city panel while both are open. The inner display, full mobile campaign, sustained high-load performance and human speaker listening remain untested.
 
 - 上一轮 SwiftShader 标题帧时间 p95 为 233.3 ms，主要开销在地面着色。它适用于软件渲染环境。 · The previous SwiftShader title run measured 233.3 ms p95, mostly ground shading. This measurement is specific to software rendering.
 - 地块在主线程上生成，快速拖过大片地图时每帧最多生成两块（各约 6 ms），会有轻微卡顿。 · Tiles of land are made on the main thread, at most two a frame (about 6 ms each), so a fast drag across the map can stutter slightly.
@@ -158,6 +170,7 @@ tally {"siegeWon":580,"ratio":12790.834146808944,"taken":692,"takenNeutral":55,"
 
 ## 未完成 · Unfinished
 
+- 原生 UI 分批迁移：城池/军团详情、天下图其余业务对话框（寻访、武将、科技树、演义等）、地图标牌及战斗/回放界面仍待原生方案及独立验收。本轮不改变数值、存档或规则。 · Native UI is staged: city/army details, remaining campaign dialogs (officers, technology and tale trees, etc.), map plates, and battle/replay UI still need native conversion and separate acceptance. This batch does not change gameplay values, saves or rules.
 - 没有武将单挑和舌战，特性里的「单挑」效果暂时只影响战斗攻击。 · No duels or debates; the duel effect of traits counts only in battle for now.
 - 没有官职、爵位和婚姻；武将忠诚只随赏赐、俘虏和君主更替变化。 · No offices, titles or marriages; loyalty moves only with gifts, captivity and a change of lord.
 - 天下图有四季，天气和昼夜尚未接入。乌巢使用独立的夜战表现。 · The realm has four seasons. Weather and a day-night cycle are pending. Wuchao has a dedicated night battle presentation.
@@ -181,12 +194,12 @@ tally {"siegeWon":580,"ratio":12790.834146808944,"taken":692,"takenNeutral":55,"
 
 ## 引擎副本 · Engine copy
 
-引擎副本取自 [Egret_rebuild](https://github.com/cnedwin/Egret_rebuild) 提交 `82561d6338a805f0e0459a2d5d42a284f9385b30`，由引擎仓库的 `tools/vendor-game.mjs` 复制，见 [vendor/SOURCE.md](vendor/SOURCE.md)。用到的入口：`@egret/engine`、`@egret/engine/world3d`、`@egret/engine/webgl2/world3d`、`@egret/engine/kit`、`@egret/engine/web/kit`、`@egret/engine/audio`、`@egret/engine/web/audio`。
+引擎副本取自 [Egret_rebuild](https://github.com/cnedwin/Egret_rebuild) 提交 `7fb371acb8bab254cf1c49b9da0ac0eed0c06fb4`，由引擎仓库的 `tools/vendor-game.mjs` 复制，见 [vendor/SOURCE.md](vendor/SOURCE.md)。用到的入口：`@egret/engine`、`@egret/engine/web/kit`、`@egret/engine/kit`、`@egret/engine/audio`、`@egret/engine/web/audio`、`@egret/engine/world3d`、`@egret/engine/webgl2/world3d`、`@egret/engine/webgpu/world3d`、`@egret/engine/play`、`@egret/engine/ui`、`@egret/engine/ui/semantics`、`@egret/engine/ui/testing`、`@egret/engine/web/semantics`、`@egret/engine/web/gestures`、`@egret/engine/paragraph`、`@egret/engine/web/paragraph`。
 
 The engine copy is from [Egret_rebuild](https://github.com/cnedwin/Egret_rebuild) commit
-`82561d6338a805f0e0459a2d5d42a284f9385b30`, copied by the engine's `tools/vendor-game.mjs`; see
+`7fb371acb8bab254cf1c49b9da0ac0eed0c06fb4`, copied by the engine's `tools/vendor-game.mjs`; see
 [vendor/SOURCE.md](vendor/SOURCE.md). Entries used are listed above.
 
 ```sh
-node tools/vendor-game.mjs <this folder> @egret/engine @egret/engine/web/kit @egret/engine/kit @egret/engine/audio @egret/engine/web/audio @egret/engine/world3d @egret/engine/webgl2/world3d
+node tools/vendor-game.mjs <this folder> @egret/engine @egret/engine/web/kit @egret/engine/kit @egret/engine/audio @egret/engine/web/audio @egret/engine/world3d @egret/engine/webgl2/world3d @egret/engine/webgpu/world3d @egret/engine/play @egret/engine/ui @egret/engine/ui/semantics @egret/engine/ui/testing @egret/engine/web/semantics @egret/engine/web/gestures @egret/engine/paragraph @egret/engine/web/paragraph
 ```

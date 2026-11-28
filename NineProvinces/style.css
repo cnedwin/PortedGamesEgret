@@ -65,7 +65,7 @@ input {
   display: block;
   background: #7a6e52;
 }
-#stageHost canvas {
+#stageHost > canvas#stage {
   position: absolute;
   inset: 0;
   width: 100%;
@@ -75,7 +75,7 @@ input {
   touch-action: none;
   cursor: grab;
 }
-#stageHost canvas:active {
+#stageHost > canvas#stage:active {
   cursor: grabbing;
 }
 #loading {
@@ -3182,3 +3182,17 @@ input.find,
   color: var(--text);
   border-color: rgba(214, 180, 106, 0.22);
 }
+
+/* Native Play holder; legacy map and battle presentation is removed in later batches. */
+#stageHost .nativeRealmUi { position: absolute; inset: 0; z-index: 1; }
+#plates { z-index: 2; }
+#topbar { display: none !important; }
+.native-modal #hud, .native-modal #battleHud, .native-modal #plates { visibility: hidden; pointer-events: none; }
+
+#stageHost { isolation: isolate; z-index: 0; }
+#frame[data-screen='title'] #plates { visibility: hidden; pointer-events: none; }
+
+/* The campaign setup can still select a place through the native scene pick.
+   Keep old map plates behind native forms; they become native in the next batch. */
+#frame[data-screen='setup'] #plates { z-index: 0; }
+#frame[data-screen='roster'] #plates { visibility: hidden; pointer-events: none; }

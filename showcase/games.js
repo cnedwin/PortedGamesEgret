@@ -188,9 +188,9 @@ export const GAMES = [
         source: 'src/view3d/water.mjs',
       },
       {
-        title: { zh: "代码合成的声音", en: "Sound made in code" },
-        description: { zh: "十七个音效和两段无缝循环的配乐在代码里合成，经引擎混音器播放，在天下与战场之间交叉淡入淡出。", en: "Seventeen effects and two seamless themes are synthesized in code and played on the engine’s mixer, crossfading between the realm and the field." },
-        source: 'src/audio/sound.mjs',
+        title: { zh: "原生叠加界面与统一时钟", en: "Native overlay and shared clock" },
+        description: { zh: "play3dAttached 让三维天下图与原生标题、开局、设置、存档、顶栏、小地图共用时钟；界面支持横竖屏、语义树与按名称测试。", en: "play3dAttached shares a clock between the 3D realm and native title, setup, settings, saves, header and minimap, with responsive layout, semantics and named tests." },
+        source: 'src/view3d/native-host.mjs',
       },
     ],
   },

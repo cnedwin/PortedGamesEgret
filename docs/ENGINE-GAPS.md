@@ -4,9 +4,9 @@
 
 Made by `node tools/engine-notes.mjs --write` from the ENGINE-NOTES of the games; do not edit by hand, and `--check` says whether it is out of date. What the engine resolved is copied from the engine's `guide/resolved.json` into [engine-resolved.json](engine-resolved.json) (15 entries). The form of a note is in part 3 of [GAME-STANDARD.md](GAME-STANDARD.md).
 
-24 个游戏、276 条笔记：未解决 72，部分解决 24，游戏侧绕过 18，已写入文档 42，已解决 120。
+24 个游戏、281 条笔记：未解决 76，部分解决 24，游戏侧绕过 18，已写入文档 42，已解决 121。
 
-276 notes from 24 games: 72 open, 24 partly resolved, 18 worked around in the game, 42 documented, 120 resolved.
+281 notes from 24 games: 76 open, 24 partly resolved, 18 worked around in the game, 42 documented, 121 resolved.
 
 ## 1. 引擎已经解决、游戏还标着未解决 · Resolved by the engine, still open in a game
 
@@ -26,6 +26,7 @@ The same workaround in two or more games means the fault is in the engine's inte
 |---|:-:|---|
 | `static-webkit-presentation` | 5 | InquestScrolls#13 静止界面首绘仍保留旧帧 · Static screen retains prior presentation (worked-around)<br>LubanBridge#6 首屏只出现空面板 · First presentation shows empty panels (worked-around)<br>OperaDrums#24 静止模态框呈现延迟 · Static modal presentation delay (worked-around)<br>PeachCreek#10 静止页面第一次呈现不完整 · Incomplete first static presentation (worked-around)<br>TaiwanMahjong#13 静態畫面首幀未顯示 · Static screen retains an old frame (worked-around) |
 | `world3d-webkit-dynamic-resize-presentation` | 4 | FiveRegiments#6 移动 Apple WebKit 动态分辨率后画面不可见 · Mobile Apple WebKit loses the composited World3D surface after dynamic resizing (open)<br>NineProvinces#9 移动 Apple WebKit 动态分辨率后画面不可见 · Mobile Apple WebKit loses the composited World3D surface after dynamic resizing (open)<br>SnowTemple#10 移动 Apple WebKit 动态分辨率后画面不可见 · Mobile Apple WebKit loses the composited World3D surface after dynamic resizing (open)<br>StarBanner#13 移动 Apple WebKit 动态分辨率后画面不可见 · Mobile Apple WebKit loses the composited World3D surface after dynamic resizing (open) |
+| `webkit-on-demand-first-presentation` | 3 | jelly-pandas#10 WebKit 按需绘制的首屏可见性 · WebKit on-demand first-frame presentation (open)<br>Rally#7 WebKit 按需绘制的首屏可见性 · WebKit on-demand first-frame presentation (open)<br>Wulin#13 WebKit 按需绘制的首屏可见性 · WebKit on-demand first-frame presentation (open) |
 | `webkit-retained-screen-presentation` | 3 | FPS#17 WebKit 按需画面晚一屏 · WebKit retains earlier on-demand frame (open)<br>SnowTemple#9 WebKit 按需画面晚一屏 · WebKit retains earlier on-demand frame (open)<br>StarBanner#12 WebKit 的按需画面提交晚一屏 · WebKit retains earlier on-demand frame (open) |
 | `first-draw-program-link` | 2 | FPS#4 材质变体第一次绘制时链接着色器造成停顿 · The first draw of a material variant stalls while its program links (partly)<br>jelly-pandas#2 倒影通道和第一次出现的特效在第一次绘制时编译 · The mirror pass and first-use effects compile on first draw (partly) |
 | `optional-web-audio-host` | 2 | CanalWatch#7 Play 可选音频宿主 · Optional Play audio host (worked-around)<br>NezhaSea#18 无 Web Audio 宿主时的游戏启动 · Startup without a Web Audio host (worked-around) |
@@ -49,6 +50,7 @@ Write the lesson as a card of the engine's guide (`guide/cards` in the engine re
 | `burst-layer` | OperaDrums#20 `game.burst` 没有图层 · `game.burst` has no layer | 未解决 · open |
 | `camera-zoom-clamp` | NineProvinces#4 相机缩放超出范围时抛错而不是夹住 · The camera throws instead of clamping a zoom out of range | 未解决 · open |
 | `decal-changes-material` | TeaHorseRoad#8 `createDecal3D` 改写传入的材质 · `createDecal3D` changes the material it is given | 未解决 · open |
+| `declarative-range-control` | NineProvinces#10 原生数据界面缺少具名范围控件 · Declarative views have no named range control | 未解决 · open |
 | `expanded-stage-pixel-ratio` | LanternShadows#8 扩展舞台的画布像素密度 · Backing density on an expanded stage | 已在游戏侧绕过 · worked around |
 | `geometry-budget-reuse` | FivePhases#1 每帧的几何预算连复用的几何也一起算 · The per-frame geometry budget also counts reused geometry | 部分解决 · partly |
 | `gltf-webp-texture` | FiveRegiments#1 `loadGltf3D` 不认 `EXT_texture_webp` · `loadGltf3D` does not take `EXT_texture_webp` | 未解决 · open |
@@ -129,8 +131,8 @@ Write the lesson as a card of the engine's guide (`guide/cards` in the engine re
 | `webgpu-compute` | SandScroll#5 WebGPU 没有开放计算通道 · No compute pass on WebGPU | 未解决 · open |
 | `webgpu-headless-3d` | FiveRegiments#3 无头 Chromium 里 WebGPU 后端画不出 3D 画面 · The WebGPU backend draws no 3D scene in headless Chromium | 未解决 · open |
 | `webgpu-loading-atlas-prewarm` | NezhaSea#14 WebGPU 加载页与主动预热共享存储竞争 · WebGPU loading and manual warm-up compete for shared storage | 已在游戏侧绕过 · worked around |
-| `webkit-on-demand-first-presentation` | Wulin#13 WebKit 按需绘制的首屏可见性 · WebKit on-demand first-frame presentation | 未解决 · open |
 | `webkit-retained-presentation` | NezhaSea#19 WebKit 的按需首屏提交 · WebKit on-demand initial presentation | 已在游戏侧绕过 · worked around |
+| `webkit-world3d-canvas-presentation` | TeaHorseRoad#32 WebKit 世界画布未呈现 · WebKit World3D canvas presentation | 未解决 · open |
 | `world3d-native-marker-overlay-batching` | jelly-pandas#9 原生浮字触发整层界面提交 · Animated native markers wake the full overlay | 未解决 · open |
 | `world3d-overlay-frame-tail` | jelly-pandas#8 软件渲染下 3D 与原生叠加层的帧尾延迟 · Frame-tail latency with the native 3D overlay under software rendering | 部分解决 · partly |
 | `world3d-screen-markers-safe-insets` | TeaHorseRoad#29 3D 屏幕标记不能分边避让安全区 · 3D screen markers cannot respect per-edge safe areas | 未解决 · open |
@@ -145,21 +147,21 @@ Write the lesson as a card of the engine's guide (`guide/cards` in the engine re
 | [FiveRegiments](../FiveRegiments/ENGINE-NOTES.md) | 6 | 6 | 0 | 0 | 0 | 0 | 0 | `82561d6` |
 | [FPS](../FPS/ENGINE-NOTES.md) | 17 | 3 | 3 | 0 | 2 | 9 | 0 | `82561d6` |
 | [InquestScrolls](../InquestScrolls/ENGINE-NOTES.md) | 13 | 0 | 1 | 3 | 1 | 8 | 0 | `82561d6` |
-| [jelly-pandas](../jelly-pandas/ENGINE-NOTES.md) | 9 | 2 | 2 | 0 | 0 | 5 | 0 | `82561d6` |
-| [JY](../JY/ENGINE-NOTES.md) | 2 | 1 | 1 | 0 | 0 | 0 | 0 | `ca9ff2a` |
+| [jelly-pandas](../jelly-pandas/ENGINE-NOTES.md) | 10 | 3 | 2 | 0 | 0 | 5 | 0 | `82561d6` |
+| [JY](../JY/ENGINE-NOTES.md) | 3 | 1 | 1 | 0 | 0 | 1 | 0 | `ca9ff2a` |
 | [LanternShadows](../LanternShadows/ENGINE-NOTES.md) | 13 | 2 | 1 | 3 | 2 | 5 | 0 | `82561d6` |
 | [LoveElective](../LoveElective/ENGINE-NOTES.md) | 8 | 2 | 1 | 0 | 0 | 5 | 0 | `82561d6` |
 | [LubanBridge](../LubanBridge/ENGINE-NOTES.md) | 6 | 4 | 0 | 1 | 1 | 0 | 0 | `82561d6` |
 | [MechanismCity](../MechanismCity/ENGINE-NOTES.md) | 22 | 1 | 2 | 1 | 5 | 13 | 0 | `82561d6` |
 | [NezhaSea](../NezhaSea/ENGINE-NOTES.md) | 19 | 2 | 1 | 3 | 1 | 12 | 0 | `82561d6` |
 | [NightWardens](../NightWardens/ENGINE-NOTES.md) | 5 | 0 | 0 | 1 | 3 | 1 | 0 | `82561d6` |
-| [NineProvinces](../NineProvinces/ENGINE-NOTES.md) | 9 | 5 | 1 | 0 | 1 | 2 | 0 | `82561d6` |
+| [NineProvinces](../NineProvinces/ENGINE-NOTES.md) | 10 | 6 | 1 | 0 | 1 | 2 | 0 | `7fb371a` |
 | [OperaDrums](../OperaDrums/ENGINE-NOTES.md) | 24 | 15 | 1 | 1 | 3 | 4 | 0 | `82561d6` |
 | [PeachCreek](../PeachCreek/ENGINE-NOTES.md) | 10 | 0 | 4 | 1 | 0 | 5 | 0 | `82561d6` |
-| [Rally](../Rally/ENGINE-NOTES.md) | 6 | 3 | 0 | 0 | 2 | 1 | 0 | `82561d6` |
+| [Rally](../Rally/ENGINE-NOTES.md) | 7 | 4 | 0 | 0 | 2 | 1 | 0 | `82561d6` |
 | [SandScroll](../SandScroll/ENGINE-NOTES.md) | 7 | 2 | 0 | 0 | 5 | 0 | 0 | `82561d6` |
 | [SnowTemple](../SnowTemple/ENGINE-NOTES.md) | 10 | 6 | 0 | 0 | 0 | 4 | 0 | `82561d6` |
 | [StarBanner](../StarBanner/ENGINE-NOTES.md) | 13 | 3 | 0 | 0 | 4 | 6 | 0 | `82561d6` |
 | [TaiwanMahjong](../TaiwanMahjong/ENGINE-NOTES.md) | 13 | 4 | 0 | 1 | 3 | 5 | 0 | `82561d6` |
-| [TeaHorseRoad](../TeaHorseRoad/ENGINE-NOTES.md) | 31 | 6 | 1 | 0 | 7 | 17 | 0 | `82561d6` |
+| [TeaHorseRoad](../TeaHorseRoad/ENGINE-NOTES.md) | 32 | 7 | 1 | 0 | 7 | 17 | 0 | `82561d6` |
 | [Wulin](../Wulin/ENGINE-NOTES.md) | 13 | 3 | 3 | 0 | 0 | 7 | 0 | `82561d6` |

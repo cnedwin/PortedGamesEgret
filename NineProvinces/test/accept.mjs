@@ -9,7 +9,8 @@
 // after a reload on the same day; on a phone held upright the city's details rising from the bottom; a broken autosave
 // set aside with a notice on the title — and finally that the console stayed clean. `node test/accept.mjs` runs it;
 // `--update` writes the baselines again.
-import { dirname, relative, resolve } from 'node:path';
+import { dirname, relative, resolve, join } from 'node:path';
+import { mkdir } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import { ROOT, launch, matchBaseline, openPage, report, serve, until } from '../../tools/lib/browser.mjs';
 
@@ -20,6 +21,30 @@ const server = await serve(),
   checks = [],
   check = (ok, words) => checks.push([Boolean(ok), words]);
 const state = (page, fn, arg) => page.evaluate(fn, arg);
+const capture = async (page,name) => {
+  const dir=process.env.NINE_ACCEPT_CAPTURE_DIR;if(!dir)return;
+  await mkdir(dir,{recursive:true});await page.screenshot({path:join(dir,name+'.png')});
+};
+// Data views are exercised by their human-readable semantics rather than DOM selectors.
+// Reveal a named row using its actual native scroll geometry before a semantic activation.
+const native = async (page, query, {part, dialog=false, focus=false}={}) => {
+  await page.evaluate(({query,part,dialog}) => {
+    const {app,ui} = window.egretGame;
+    const view = dialog ? app.dialogs.view : app.nativeTitle.view;
+    if (!ui.exists(query) && part && view) {
+      const id=dialog?'dialog-body':'page-body';
+      const r=view.rect(part), body=view.rect(id);
+      if(r&&body) view.scroll(id).scrollTo(Math.max(0,r.y-body.y-body.height*.35));
+    }
+  },{query,part,dialog});
+  await page.waitForFunction(q=>window.egretGame?.ui?.exists(q),query,{timeout:10000});
+  return page.evaluate(({query,focus})=> {
+    const ui=window.egretGame.ui;
+    return focus ? ui.focus(query) : ui.press(query);
+  },{query,focus});
+};
+const hasNative = (page, query) => state(page, q => window.egretGame.ui.exists(q), query);
+const nativeOutline = page => state(page, () => window.egretGame.ui.outline());
 const tapPlace = async (page, id) => {
   // The realm is large: bring the place into view first, then tap the ground beside its walls.
   await state(page, (place) => window.egretGame.look(place), id);
@@ -42,38 +67,48 @@ try {
     for (let i = 0; i < 3; i++) await new Promise(requestAnimationFrame);
     return stream.tiles.length === count && !stream.pendingCount && renderer.info.frame >= frame + 2;
   }, 30);
-  const title = await matchBaseline(page, GAME, 'title');
+  await capture(page,'title');
+  const title = await matchBaseline(page, GAME, 'title', {update:process.argv.includes('--update-shell')||process.argv.includes('--update')});
   check(title.written || title.passed, `the title looks as its baseline (${(title.share * 100).toFixed(2)}% differs)`);
-  check(await state(page, () => document.activeElement?.textContent === '新的征程'), 'the new campaign button holds the focus on the title');
+  check(await state(page, () => window.egretGame.ui.state('button:新的征程').focused), 'the new campaign button holds the focus on the title');
 
   // Settings: the sound off, kept in the save; Escape closes.
-  await page.locator('.titleMenu nav').getByRole('button', { name: '设置', exact: true }).click();
+  await native(page, 'button:设置', {part:'title-settings'});
   await page.waitForTimeout(400);
-  const settings = await matchBaseline(page, GAME, 'settings');
+  await capture(page,'settings');
+  const settings = await matchBaseline(page, GAME, 'settings', {update:process.argv.includes('--update-shell')||process.argv.includes('--update')});
   check(settings.written || settings.passed, `the settings look as their baseline (${(settings.share * 100).toFixed(2)}% differs)`);
-  await page.getByRole('slider', { name: '配乐音量' }).press('Home');
-  check(await state(page, () => JSON.parse(localStorage.getItem('nine-provinces')).data.settings.musicVolume === 0), 'the keyboard can change and persist music volume independently');
-  await page.click('.setting:nth-of-type(2) .choice button:nth-child(2)');
-  check(await state(page, () => JSON.parse(localStorage.getItem('nine-provinces')).data.settings.sound === false), 'turning the sound off is kept in the save');
+  await native(page, 'slider:配乐音量', {part:'musicVolume-slider',dialog:true,focus:true});
+  await page.keyboard.press('Home');
+  await page.waitForFunction(()=>window.egretGame.app.settings.musicVolume===0,null,{timeout:10000});
+  check(await state(page, () => JSON.parse(localStorage.getItem('nine-provinces'))?.data?.settings.musicVolume === 0), 'the keyboard can change and persist music volume independently');
+  await native(page, 'button:音效 · 关', {part:'setting-sound-off',dialog:true});
+  await page.waitForFunction(()=>window.egretGame.app.settings.sound===false,null,{timeout:10000});
+  check(await state(page, () => JSON.parse(localStorage.getItem('nine-provinces'))?.data?.settings.sound === false), 'turning the sound off is kept in the save');
   await page.keyboard.press('Escape');
-  check(await state(page, () => document.querySelector('#modal').hidden), 'Escape closes the settings');
+  check(await state(page, () => !window.egretGame.app.dialogs.name), 'Escape closes the settings');
 
   // English and back.
-  await page.locator('.titleMenu nav').getByRole('button', { name: 'English', exact: true }).click();
+  await native(page, 'button:English', {part:'title-language'});
   await page.waitForTimeout(200);
-  const english = await state(page, () => [document.documentElement.lang, [...document.querySelectorAll('.titleMenu .btn')].map((b) => b.textContent).join('|')]);
+  const english = await state(page, () => [document.documentElement.lang, window.egretGame.ui.outline()]);
   check(english[0] === 'en' && /New campaign/.test(english[1]) && !/[\u3400-\u9fff]/.test(english[1].replace('中文', '')), `the title reads in English: ${english[1]}`);
-  await page.locator('.titleMenu nav').getByRole('button', { name: '中文', exact: true }).click();
+  await native(page, 'button:中文', {part:'title-language'});
   await page.waitForTimeout(200);
 
   // A new campaign as Liu Bei; the peach garden unrolls.
-  await page.click('.titleMenu nav .btn:nth-child(1)');
+  await native(page, 'button:新的征程', {part:'title-new'});
   await page.waitForTimeout(300);
-  await page.click('.branch:nth-child(2)');
-  check(await state(page, () => document.querySelector('.chosen b')?.textContent === '刘备'), "Liu Bei's tale is played as Liu Bei");
-  await page.locator('.chosen .face').evaluate((image) => image.decode());
-  check(await state(page, () => document.querySelector('.chosen .face')?.src.endsWith('/panel/liubei.webp')), 'campaign setup loads the assigned Liu Bei illustration');
-  await page.click('.setupPanel footer .btn.main');
+  // The Resource Timing buffer can fill during native module loading. Observe
+  // the actual portrait response and the visible native image instead.
+  const portraitResponse = page.waitForResponse(r=>r.ok()&&r.url().endsWith('/panel/liubei.webp'),{timeout:20000});
+  await native(page, 'button:季汉春秋', {part:'branch-liubei'});
+  check(await state(page, () => window.egretGame.app.nativeTitle.snapshot().setup.pick.faction === 'liubei'), "Liu Bei's tale is played as Liu Bei");
+  await portraitResponse;
+  await page.waitForTimeout(500);
+  await capture(page,'setup-liubei');
+  check(await state(page,()=>Boolean(window.egretGame.app.nativeTitle.view?.visibleRect('setup-ruler-art'))), 'campaign setup loads the assigned Liu Bei illustration');
+  await native(page, 'button:开始', {part:'setup-start'});
   await until(page, () => window.egretGame.screen === 'play' && window.egretGame.app.dialogs.name === 'story', 10);
   check(await state(page, () => document.querySelector('#sheet h2').textContent === '桃园结义' && document.querySelector('#sheet').classList.contains('scroll')), 'the oath of the peach garden unrolls as a scroll');
   await page.click('.dlgFoot .btn.main');
@@ -123,6 +158,7 @@ try {
   await page.waitForTimeout(1500);
   const fought = await state(page, () => ({ time: window.egretGame.battle?.battle.time ?? 0, cards: document.querySelectorAll('.ucard').length, tactics: document.querySelectorAll('.bSide.ours .tac').length }));
   check(fought.time > 3 && fought.cards >= 2 && fought.tactics >= 1, `the battle runs at four times speed with unit cards and tactics (${JSON.stringify(fought)})`);
+  await capture(page,'battle');
   const field = await matchBaseline(page, GAME, 'battle', { limit: 0.35, update: process.argv.includes('--update-battle') || process.argv.includes('--update') });
   check(field.written || field.passed, `the battlefield looks much as its baseline (${(field.share * 100).toFixed(2)}% differs)`);
   await page.setViewportSize({ width: 873, height: 325 });
@@ -171,29 +207,29 @@ try {
 
   // A save in slot one, read back after a reload.
   await page.evaluate(() => window.egretGame.app.open('saves'));
-  await page.click('.slot:nth-child(2) .btn');
+  await native(page,'button:存档 1 · 存到这里',{part:'slot-1-save',dialog:true});
   const day = await state(page, () => window.egretGame.state.day);
   check(await state(page, () => JSON.parse(localStorage.getItem('nine-provinces.1')).data.summary.faction === 'liubei'), 'the game is written into slot one');
   await page.reload();
   await until(page, () => window.egretGame?.ready && window.egretGame.screen === 'title');
-  check(await state(page, () => document.querySelector('.titleMenu .btn.main')?.textContent === '继续'), 'after a reload the title offers to continue');
+  check(await state(page, () => window.egretGame.ui.exists('button:继续')), 'after a reload the title offers to continue');
   const savedBeforeTrial = await state(page, () => localStorage.getItem('nine-provinces.1'));
-  await page.locator('.titleMenu .nanpi-entry').click();
+  await native(page, 'button:夕照南皮', {part:'title-nanpi'});
   await until(page, () => window.egretGame?.battle?.phase === 'deploy');
   await page.getByRole('button', {name:'离开演武',exact:true}).click();
-  await until(page, () => window.egretGame.screen === 'title');
+  await until(page, () => window.egretGame.screen === 'title' && window.egretGame.app.nativeTitle.view?.focused==='title-nanpi');
   check(await state(page, saved => localStorage.getItem('nine-provinces.1') === saved &&
-    !window.egretGame.battle && document.activeElement?.classList.contains('nanpi-entry'), savedBeforeTrial),
+    !window.egretGame.battle && window.egretGame.app.nativeTitle.view?.focused==='title-nanpi', savedBeforeTrial),
     'entering and leaving the Nanpi trial preserves the existing slot and restores focus to its title entry');
-  await page.locator('.titleMenu nav').getByRole('button', { name: '读取', exact: true }).click();
-  await page.click('.slot:nth-child(2) .btn.main');
+  await native(page, 'button:读取', {part:'title-load'});
+  await native(page,'button:存档 1 · 读取',{part:'slot-1-load',dialog:true});
   await until(page, () => window.egretGame.screen === 'play', 10);
   check(await state(page, (d) => window.egretGame.state.day === d && window.egretGame.state.player === 'liubei', day), 'slot one comes back on the same day');
 
   // In the game, English.
   await page.evaluate(() => window.egretGame.app.dialogs.close(true));
   await page.evaluate(() => window.egretGame.app.setLanguage('en'));
-  check(await state(page, () => /Liu Bei/.test(document.querySelector('.realmName').textContent) && /Officers/.test(document.querySelector('.menu').textContent)), 'the top bar reads in English');
+  check(await state(page, () => /Liu Bei/.test(window.egretGame.ui.outline()) && /Officers/.test(window.egretGame.ui.outline())), 'the top bar reads in English');
 
   // A phone held upright.
   phone = await openPage(browser, `${server.url}${path}/?seed=2&lang=zh&faction=caocao&branch=free`, { width: 390, height: 844, touch: true });
@@ -216,10 +252,17 @@ try {
   await overview.press('ArrowRight');
   check(await city.getByRole('tab', { name: '营建' }).getAttribute('aria-selected') === 'true', 'arrow key selects the adjacent city section');
   await city.getByRole('tab', { name: '政令' }).tap();
-  check(await city.getByRole('button', { name: '寻访' }).isVisible(), 'city orders are directly reachable from the fixed tabs');
+  check(await city.getByRole('button', { name: '寻访', exact: true }).isVisible(), 'city orders are directly reachable from the fixed tabs');
 
-  const speed = phone.locator('#campaignSpeed');
-  check(await speed.evaluate(node => node.offsetWidth >= 44 && node.offsetHeight >= 44), 'phone speed selector has a readable touch target');
+  const speed = async value => {
+    await native(phone,'button:推进速度');
+    await native(phone, String([.5,1,2,4,8][Number(value)])+' 天/秒');
+  };
+  check(await state(phone, () => {
+    const {app,ui}=window.egretGame;
+    const node=ui.find('button:推进速度'),scale=app.uiHost.metrics().scale;
+    return node.bounds.width*scale>=43.99 && node.bounds.height*scale>=43.99;
+  }), 'phone speed selector has a readable touch target');
   const campaignClock = () => state(phone, () => ({
     speed: window.egretGame.app.speed,
     paused: window.egretGame.app.paused,
@@ -227,7 +270,7 @@ try {
   }));
   const beforeSpeed = await campaignClock();
   const pausedDay = beforeSpeed.day;
-  await speed.selectOption('4');
+  await speed('4');
   await phone.waitForTimeout(320);
   const afterSpeed = await campaignClock();
   check(beforeSpeed.paused && afterSpeed.speed === 4 && afterSpeed.paused && afterSpeed.day === pausedDay,
@@ -237,21 +280,20 @@ try {
   check(afterShortcut.speed === 1 && afterShortcut.paused && afterShortcut.day === pausedDay,
     'the campaign speed shortcut also preserves pause (' + JSON.stringify(afterShortcut) + ')');
   check(await state(phone, () => {
-    const original = document.querySelector('#campaignSpeed');
-    window.egretGame.app.hud.refresh(true);
-    return original === document.querySelector('#campaignSpeed');
+    const {app,ui}=window.egretGame, original=ui.find('button:推进速度').id;
+    app.hud.refresh(true);
+    return original === ui.find('button:推进速度').id;
   }), 'a HUD refresh keeps the native speed picker attached');
-  const pause = phone.locator('#topbar .pause');
-  await pause.tap();
-  await speed.selectOption('4');
+  const pause = async () => native(phone, 'button:'+(await state(phone,()=>window.egretGame.app.paused)?'继续':'暂停'));
+  await pause();
+  await speed('4');
   await phone.waitForFunction((day) => !window.egretGame.app.paused && window.egretGame.state.day > day, pausedDay, { timeout: 5000 });
   check(await state(phone, () => window.egretGame.app.speed === 4 && !window.egretGame.app.paused), 'continuing advances time at the selected speed');
-  await pause.tap();
-  const domains = phone.locator('#territoryMapBtn');
-  await domains.tap();
-  check(await domains.getAttribute('aria-pressed') === 'true' && await phone.locator('#territoryLegend').isVisible(), 'turning on the political map reveals its legend');
-  await domains.tap();
-  check(await domains.getAttribute('aria-pressed') === 'false' && !await phone.locator('#territoryLegend').count(), 'turning off the political map hides its legend');
+  await pause();
+  await native(phone,'button:势力图');
+  check(await state(phone,()=>window.egretGame.app.settings.territoryMap && window.egretGame.app.topbar.snapshot().state.territory), 'turning on the political map reveals its legend');
+  await native(phone,'button:势力图');
+  check(await state(phone,()=>!window.egretGame.app.settings.territoryMap && !window.egretGame.app.topbar.snapshot().state.territory), 'turning off the political map hides its legend');
 
   await phone.setViewportSize({ width: 873, height: 325 });
   await until(phone, () => innerWidth > innerHeight);
@@ -272,7 +314,36 @@ try {
   await page.addInitScript(() => localStorage.setItem('nine-provinces.auto', '{broken'));
   await page.goto(`${server.url}${path}/?seed=1&lang=zh`);
   await until(page, () => window.egretGame?.ready && window.egretGame.screen === 'title');
-  check(await state(page, () => document.querySelector('.notice') !== null && document.querySelector('.titleMenu .btn.main')?.textContent === '新的征程'), 'a broken autosave is set aside with a notice on the title');
+  check(await state(page, () => Boolean(window.egretGame.app.notice) && window.egretGame.ui.exists('button:新的征程')), 'a broken autosave is set aside with a notice on the title');
+  // Register a new officer through the engine's actual browser text editor,
+  // then found a separate campaign. This exercises the old validation and
+  // save contracts through native UI, not the operating system's CJK IME.
+  const typeEdit = async (query, part, words, committed) => {
+    await native(page, query, {part});
+    await page.waitForFunction(()=>['INPUT','TEXTAREA'].includes(document.activeElement?.tagName)||document.activeElement?.isContentEditable,null,{timeout:8000});
+    await page.keyboard.press('ControlOrMeta+A');
+    await page.keyboard.insertText(words);
+    await page.keyboard.press('Enter');
+    await page.waitForFunction(committed,null,{timeout:8000});
+  };
+  await native(page,'button:登录新武将',{part:'title-roster'});
+  await until(page,()=>window.egretGame.screen==='roster');
+  await typeEdit('button:姓名','roster-name','顾青岚',()=>window.egretGame.app.nativeTitle.snapshot().roster?.draft.zh==='顾青岚');
+  await native(page,'button:保存到名册',{part:'roster-commit'});
+  await page.waitForFunction(()=>window.egretGame.app.officerRoster().some(g=>g.zh==='顾青岚'),null,{timeout:8000});
+  check(true,'a Chinese officer name is committed through the native browser text editor and saved to the roster');
+  await capture(page,'registered-officer');
+  await native(page,'button:返回',{part:'roster-back'});
+  await until(page,()=>window.egretGame.screen==='title');
+  await native(page,'button:新的征程',{part:'title-new'});
+  await native(page,'button:自建势力',{part:'mode-custom'});
+  await page.waitForFunction(()=>window.egretGame.app.nativeTitle.snapshot().setup?.pick.mode==='custom');
+  await typeEdit('button:势力名称','founding-name','澄河义府',()=>window.egretGame.app.nativeTitle.snapshot().setup?.founding.zh==='澄河义府');
+  check(await state(page,()=>window.egretGame.app.nativeTitle.snapshot().setup?.valid===true),'native founding form remains valid with registered officer and new Chinese banner name');
+  await capture(page,'custom-founding');
+  await native(page,'button:开始',{part:'setup-start'});
+  await until(page,()=>window.egretGame.screen==='play'&&Boolean(window.egretGame.state.founding),15);
+  check(await state(page,()=>window.egretGame.state.factions[window.egretGame.state.player].name.zh==='澄河义府'),'native founding starts the intended independent custom campaign');
 } catch (error) {
   check(false, `the walk stopped: ${error.message.split('\n')[0]}`);
 } finally {
