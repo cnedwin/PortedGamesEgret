@@ -1,15 +1,16 @@
 # 品质验收 · Quality — 九州烽烟 · Nine Provinces Ablaze
 
-## 原生界面第三批 · Native interface batch three (2026-11-28)
+## 原生界面第三批 · Native interface batch three (2026-11-28–29)
 
 本节为本地候选阶段记录，沿用引擎 `7fb371acb8bab254cf1c49b9da0ac0eed0c06fb4`。原生化城池/军团详情、首月引导、记录/提示、互动地图名牌，以及包含原设置/存档在内的 18 类业务对话框。规则、数值、游戏资源、存档格式及 World3D 画质未改变；战场专用布阵、指挥与回放表现仍待第四批。 / This local-candidate record uses the same engine pin. The city/army sheets, first-month coach, journal/feedback, interactive map plates and 18 business-dialog types (including previous settings/saves) now use native UI. Simulation, balance, assets, save format and World3D quality remain unchanged. Battle-specific deployment, commands and replay presentation remain batch four.
 
-### 本地验收 · Local acceptance (interim)
+### 本地验收 · Local acceptance
 
 | 测项 · Check | 实际结果 · Observed result | 范围与限制 · Scope and limits |
 |---|---|---|
-| Node R1→R2 | 233/233 → **236/236** | 新增 3 项布局相关测试；R2 全集通过，后续小幅界面调整需另作回归。 · Three added layout-related tests; full R2 suite passes. Later UI refinements need their own regression. |
+| Node R1→R2 | 233/233 → **236/236** | 新增 3 项布局相关测试；R2 全集通过，严格引擎接口检查零错误。 · Three added layout-related tests; full R2 suite passes, with no strict engine-interface errors. |
 | 软件浏览器 · Software browser R2 | 53/53 | 保留原流程及断言，包括开局、武将、战果/存读档、横竖布局、城市面板、速度与暂停；最终小幅布局调整前。 · Existing route and assertions, before the last minor layout refinements. Not a device test. |
+| 最终软件浏览器 · Final software browser R5 | **54/54** | 最终确认取消回归新增一项，旧路线仍完整通过。固定参考截图：原生标题/设置 0.00% 差异、原战场 0.26%。 · All original assertions plus one native-confirmation cancellation; baseline title/settings 0.00% difference, original battle 0.26%. Not hardware/device metrics. |
 | PC 对话框 · Hardware dialog R4 | 15/15 | Windows Edge/RTX 实际浏览器，鼠标、键盘及原生文本编辑；两个隔离预览见下文。 · Actual PC hardware with mouse, keyboard and native editing; two isolated previews noted below. |
 | PC 地图名牌 · Hardware marker R1 | 20/20 | 同一个引擎和渲染器、城市/军团点击、模态遮挡、英文化、PC 窗口横竖重排、资源上限；非手机。 · Same renderer/engine, map picking, modal suppression, localization, desktop viewport reflow and bounded native resources. Not a phone test. |
 | 官方多屏 R2 · Official screen matrix | **126/126** | 9 种屏幕配置各 14 个检查点，零 findings/engine warnings；浏览器布局配置非真机。 · Nine browser profiles, 14 checkpoints each; no findings or engine warnings. Not devices. |
@@ -52,7 +53,7 @@
 
 实体 Fold7 外屏（原图 1080×2283 px，竖屏 411×813 CSS px）：[首月引导 · Coach](test/native-realm-evidence/fold7-first-month.jpg)、[城务政令 · City orders](test/native-realm-evidence/fold7-city-orders.jpg)、[科技树滚动 · Scrolled inventions](test/native-realm-evidence/fold7-tech-scrolled.jpg)、[手势后地图 · Map after gestures](test/native-realm-evidence/fold7-map-portrait.jpg)。 / Physical Fold7 cover-display screenshots, kept at the original physical dimensions; these four are actual device captures rather than the PC emulated portrait example above.
 
-目前没有第三批同机位性能对照、第三批公开部署、实体内屏/完整手机战役或长时间高负载结论；本节实际候选测量不能当作后续界面微调的最终回归结果。第二批的性能和真机数据仍单独保留，不挪用为第三批结果。 / Batch-three matched performance, public release verification, the physical inner display/full mobile campaign and sustained high-load results remain unmeasured. Candidate measurements here do not establish acceptance of later UI refinements. Batch-two figures below are separate evidence.
+目前没有第三批同机位性能对照、第三批公开部署、实体内屏/完整手机战役或长时间高负载结论。官方多屏 R2 和实体外屏路线早于最后一次原生确认/通知/提示微调；其后另有最终软件 R5 54/54 和 PC 隔离确认 4/4，但尚未在同一手机或全部配置重复最后变更。第二批的性能和真机数据仍单独保留，不挪用为第三批结果。 / Batch-three matched performance, public release verification, the physical inner display/full mobile campaign and sustained high-load results remain unmeasured. The official screen matrix and physical-device route precede the last confirmation/badge/hint polish. Final software R5 (54/54) and isolated PC confirmation (4/4) followed, but the last changes have not been repeated across all profiles or on the same phone. Batch-two figures below remain separate evidence.
 
 ## 原生界面第二批 · Native interface batch two (2026-11-28)
 

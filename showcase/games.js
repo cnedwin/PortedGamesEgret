@@ -189,7 +189,7 @@ export const GAMES = [
       },
       {
         title: { zh: "原生叠加界面与统一时钟", en: "Native overlay and shared clock" },
-        description: { zh: "play3dAttached 让三维天下图与原生标题、开局、设置、存档、顶栏、小地图共用时钟；界面支持横竖屏、语义树与按名称测试。", en: "play3dAttached shares a clock between the 3D realm and native title, setup, settings, saves, header and minimap, with responsive layout, semantics and named tests." },
+        description: { zh: "play3dAttached 让三维天下图与原生征程、管理对话框、可交互地图名牌共用时钟；界面支持横竖屏、语义树与按名称测试。", en: "play3dAttached shares a clock between the 3D realm, native campaign management and interactive map labels, with responsive layout, semantics and named tests." },
         source: 'src/view3d/native-host.mjs',
       },
     ],
