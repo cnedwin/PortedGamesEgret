@@ -9,6 +9,14 @@ const layout=(upright,tablet=false)=>({type:'panel',width:'fill',height:'fill',c
  card('context-card',[text('scene-hint',18),text('scene-event',16,{color:C.gold})],{anchor:'bottom',y:8,width:upright?'94%':'82%',height:62,padding:5})
 ]});
 const staticUi = Object.freeze({
+ "點選移動、武學或其他回合指令":"Choose movement, skill or another command",
+ "選擇移動、武學或其他指令 · 滑鼠選格，或用方向鍵與 Enter":"Choose a command · point or use arrow keys and Enter",
+ "這格不在可選範圍 · 請選高亮格":"Outside range · select a highlighted tile",
+ "點高亮格選擇 · 預覽後點「確定」":"Tap a highlighted tile, then Confirm",
+ "點選高亮格子 · 方向鍵選格 · Enter 確認 · Esc 取消":"Select a highlighted tile · Enter confirms · Esc cancels",
+ "自動戰鬥中 · 再點「自動」恢復手動":"Automatic · tap Auto to resume manual play",
+ "自動戰鬥中 · Tab 恢復手動":"Automatic · Tab resumes manual play",
+ "等待行動完成":"Waiting for the action to complete",
  '江湖大地图':'World map', '江湖大地圖':'World map',
  '劇情完成 · 在江湖選單可返回主選單':'Story complete · return through the travel menu',
  '黑帝斯 · 點「對話」可開始試煉':'黑帝斯 · Tap Talk to begin training',
@@ -35,7 +43,7 @@ export function mapHudWords(name,source,language){
  return source;
 }
 export function createMapHud(game,{signal,language=()=> 'zh',initial={}}={}) {
- let closed=false,view,covered=false;
+ let closed=false,view,covered=false,battleMode=false;
  const fields={};
  const update=()=>{if(!closed&&view){view.refresh();game.invalidate?.();}};
  function slot(name,defaultHidden=false){
@@ -51,13 +59,13 @@ export function createMapHud(game,{signal,language=()=> 'zh',initial={}}={}) {
   return mapHudWords(name,source,language());
  };
  const bind={
-  'scene-card':{visible:()=>shown('sceneName')()||shown('coordinates')()},
+  'scene-card':{visible:()=>!battleMode&&(shown('sceneName')()||shown('coordinates')())},
   'scene-location':{visible:shown('sceneName'),text:words('sceneName')},coordinates:{visible:shown('coordinates'),text:words('coordinates')},
   'notice-card':{visible:shown('notice')},'scene-notice':{text:words('notice')},
-  'context-card':{visible:()=>!covered&&(shown('hint')()||shown('marker')())},'scene-hint':{visible:shown('hint'),text:words('hint')},'scene-event':{visible:shown('marker'),text:words('marker')}
+  'context-card':{visible:()=>!battleMode&&!covered&&(shown('hint')()||shown('marker')())},'scene-hint':{visible:shown('hint'),text:words('hint')},'scene-event':{visible:shown('marker'),text:words('marker')}
  };
  view=game.show({label:'Travel status',area:'safe',skin,root:layout(false),portrait:layout(true),tablet:layout(false,true),tabletPortrait:layout(true,true)},{bind});
  const close=()=>{if(!closed){closed=true;view.close();signal?.removeEventListener('abort',close);}};
  if(signal?.aborted)close();else signal?.addEventListener('abort',close,{once:true});
- return Object.freeze({...fields,close,refresh:update,setCovered(value){const next=Boolean(value);if(next!==covered){covered=next;update();}}});
+ return Object.freeze({...fields,close,refresh:update,setBattleMode(value){const next=Boolean(value);if(next!==battleMode){battleMode=next;update();}},setCovered(value){const next=Boolean(value);if(next!==covered){covered=next;update();}}});
 }

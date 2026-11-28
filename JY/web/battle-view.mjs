@@ -1,6 +1,7 @@
 import { Bitmap, Sprite, createAssetRef, createAssetType, createSharedMaterial2D, createTexture, isTexture } from '@egret/engine';
 import { combatArtGroup, createCombatArt, impactArtId } from './jyx2/effects/combat-art.mjs';
 import { loadActorArt } from './jyx2/actors/actor-art.mjs';
+import { createProjectedGrid } from './projected-grid.mjs';
 
 const smap = 'smap';
 const groupFor = role => role.fightGroup ?? `fight/fight${String(role.headId).padStart(3, '0')}`;
@@ -25,7 +26,7 @@ function motion(role, tick) {
 
 export async function createBattleView({ engine, browser, worldParent = engine.stage, overlayParent = engine.stage,
   spec, width, height, scale, loadArt, bakeGround, json, itemEffectIds,
-  visualStyle, outputAlpha = 'opaque', arena, grid }) {
+  visualStyle, outputAlpha = 'opaque', arena }) {
   const project = (x, y) => [(x - y) * 18 * scale, (x + y) * 9 * scale];
   const floor = [];
   const buildings = [];
@@ -98,6 +99,9 @@ export async function createBattleView({ engine, browser, worldParent = engine.s
     const objects = root.addChild(scope.use(new Sprite()));
     const gauges = root.addChild(scope.use(new Sprite()));
     const overlays = overlayParent.addChild(scope.use(new Sprite()));
+    const gridSprite = overlays.addChild(scope.use(new Sprite()));
+    gridSprite.touchEnabled = false;
+    const grid = createProjectedGrid(gridSprite.graphics, { width, height, project, root, scale });
     const flash = overlays.addChild(scope.use(new Bitmap(leases.get(artKey('title', 203)))));
     flash.visible = false;
     const numberNodes = new Map();
@@ -206,74 +210,10 @@ export async function createBattleView({ engine, browser, worldParent = engine.s
       }
     }
 
-    const gridContext = grid.getContext('2d');
-    grid.width = width;
-    grid.height = height;
-    grid.hidden = false;
-
     function tileAt(px, py) {
       const x = (px - root.x) / (18 * scale * root.scaleX);
       const y = (py - root.y) / (9 * scale * root.scaleY);
       return { x: Math.round((y + x) / 2), y: Math.round((y - x) / 2) };
-    }
-
-    function drawGrid(state, cursor, preview) {
-      const ctx = gridContext;
-      ctx.clearRect(0, 0, width, height);
-      if (state.result !== null) return;
-      const cells = state.canAct ? state.selection?.cells ?? [] : [];
-      const rx = 18 * scale * root.scaleX, ry = 9 * scale * root.scaleY;
-      const moving = state.selection?.type === 'move';
-      function diamond({ x, y }, stroke, fill, lineWidth = 1) {
-        const [px, py] = project(x, y);
-        const sx = root.x + px * root.scaleX, sy = root.y + py * root.scaleY;
-        if (sx < -rx || sx > width + rx || sy < -ry || sy > height + ry) return;
-        ctx.beginPath();
-        ctx.moveTo(sx, sy - ry + 1);
-        ctx.lineTo(sx + rx - 2, sy);
-        ctx.lineTo(sx, sy + ry - 1);
-        ctx.lineTo(sx - rx + 2, sy);
-        ctx.closePath();
-        ctx.lineWidth = lineWidth;
-        ctx.strokeStyle = stroke;
-        if (fill) {
-          ctx.fillStyle = fill;
-          ctx.fill();
-        }
-        ctx.stroke();
-      }
-
-      function markRole(role, color, acting) {
-        const [px, py] = project(role.x, role.y);
-        const x = root.x + px * root.scaleX, y = root.y + py * root.scaleY;
-        if (x < -rx || x > width + rx || y < -ry || y > height + ry) return;
-        ctx.beginPath();
-        if (acting) ctx.ellipse(x, y, rx * .67, ry * .58, 0, 0, Math.PI * 2);
-        else {
-          // Two open chevrons leave the figure's feet visible inside the mark.
-          ctx.moveTo(x - rx * .51, y - ry * .45);
-          ctx.lineTo(x - rx * .78, y);
-          ctx.lineTo(x - rx * .51, y + ry * .45);
-          ctx.moveTo(x + rx * .51, y - ry * .45);
-          ctx.lineTo(x + rx * .78, y);
-          ctx.lineTo(x + rx * .51, y + ry * .45);
-        }
-        ctx.strokeStyle = '#251f18';
-        ctx.lineWidth = 4;
-        ctx.stroke();
-        ctx.strokeStyle = color;
-        ctx.lineWidth = 2.1;
-        ctx.stroke();
-      }
-
-      for (const cell of cells) diamond(cell, moving ? '#8bd5cabb' : '#f5a17dbb', moving ? '#4acdb81a' : '#fa775322');
-      if (state.canAct && preview) {
-        for (const cell of preview.path ?? []) diamond(cell, '#c9fff1', '#49d9bc66', 1.7);
-        for (const cell of preview.cells ?? []) diamond(cell, '#ffd8a4', '#ee7d543f', 1.7);
-        diamond(cursor, '#fff0be', '#ffdb9142', 2.7);
-        for (const target of preview.targets ?? []) markRole(target, target.side === state.turn.side ? '#baf7df' : '#ffb788', false);
-      }
-      if (state.turn && !state.turn.dead) markRole(state.turn, state.turn.side === 0 ? '#ffe4a4' : '#e99170', true);
     }
 
     function draw(state, cursor, preview) {
@@ -359,10 +299,10 @@ export async function createBattleView({ engine, browser, worldParent = engine.s
         flash.y = height / 2 - flash.naturalHeight * flash.scaleY / 2 - 40;
       }
       drawNumbers(texts, zoom);
-      drawGrid(state, cursor, preview);
+      grid.draw(state, cursor, preview);
     }
 
-    return { draw, tileAt, close() { grid.hidden = true; scope.dispose(); art.clear(); } };
+    return { draw, tileAt, close() { scope.dispose(); art.clear(); } };
   } catch (error) {
     scope.dispose();
     art.clear();

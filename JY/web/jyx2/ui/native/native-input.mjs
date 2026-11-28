@@ -58,13 +58,22 @@ export function createNativeCommandInput({game, modes, readMode, emit, signal=ga
       const {x=0,y=0}=axis, a=config.analog;
       // Mode-specific cardinal versus two-axis routing remains application policy.
       const horizontal=Math.abs(x)>=Math.abs(y);
-      if(Math.abs(x)>=threshold&&(a.diagonal||horizontal))desired.set(x<0?a.left:a.right,{source:'gamepad',repeat:false});
-      if(Math.abs(y)>=threshold&&(a.diagonal||!horizontal))desired.set(y<0?a.up:a.down,{source:'gamepad',repeat:false});
+      if(Math.abs(x)>=threshold&&(a.diagonal||horizontal))desired.set(x<0?a.left:a.right,{source:'gamepad',repeat:false,analog:true});
+      if(Math.abs(y)>=threshold&&(a.diagonal||!horizontal))desired.set(y<0?a.up:a.down,{source:'gamepad',repeat:false,analog:true});
     }
     // Releases precede replacement presses, so a held direction cannot survive
     // a mode change or the first neutral input.
     for(const [code,item] of held) if(!desired.has(code)){held.delete(code);drop(item,'release');}
-    for(const [code,item] of desired){
+    const ordered=[...desired];
+    if(config.gamepadOrder){
+      // Retain the legacy controller sample order (stick first, then mapped
+      // digital buttons). Un-keyed sources remain deterministic and independent.
+      const rank=([code,item])=>item.analog?-1:config.gamepadOrder.includes(code)?config.gamepadOrder.indexOf(code):Infinity;
+      const padEntries=ordered.filter(([,item])=>item.source==='gamepad').sort((a,b)=>rank(a)-rank(b));
+      let index=0;
+      for(let i=0;i<ordered.length;i++)if(ordered[i][1].source==='gamepad')ordered[i]=padEntries[index++];
+    }
+    for(const [code,item] of ordered){
       if(!same(mode,readMode())){releaseAll('mode-change');finish();return;}
       if(!held.has(code))add(mode,code,item.source,item.repeat,now);
       else {

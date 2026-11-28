@@ -2,184 +2,115 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { registerHooks } from 'node:module';
 import { test } from 'node:test';
-import { makeGameImports } from '../src/browser-imports.mjs';
-import { attachGamepadInput } from '../web/gamepad-input.mjs';
+import { createNativeCommandInput } from '../web/jyx2/ui/native/native-input.mjs';
+import { createInputMapping, createRawPadSample } from '../web/jyx2/ui/native/input-mapping.mjs';
 
-const vendor = new URL('../vendor/', import.meta.url);
-const manifests = JSON.parse(await readFile(new URL('importmap.json', vendor), 'utf8'));
-const imports = makeGameImports(manifests, (folder, target) => new URL(`${folder}/${target}`, vendor).href, name => name);
-const hook = registerHooks({
-  resolve(specifier, context, nextResolve) {
-    return nextResolve(Object.hasOwn(imports, specifier) ? imports[specifier] : specifier, context);
-  },
-});
-const { createBrowserGamepadInput } = await import('@egret/engine/web/gamepad');
+const { makeGameImports }=await import('../src/browser-imports.mjs');
+const vendor=new URL('../vendor/',import.meta.url);
+const manifests=JSON.parse(await readFile(new URL('importmap.json',vendor),'utf8'));
+const imports=makeGameImports(manifests,(folder,target)=>new URL(folder+'/'+target,vendor).href,name=>name);
+const hook=registerHooks({resolve(specifier,context,nextResolve){return nextResolve(Object.hasOwn(imports,specifier)?imports[specifier]:specifier,context)}});
+const { createBrowserGamepadInput }=await import('@egret/engine/web/gamepad');
 hook.deregister();
 
-function releasedButtons() {
-  return Array.from({ length: 17 }, () => ({ pressed: false, value: 0 }));
-}
+const moveCodes=['ArrowUp','KeyW','ArrowRight','KeyD','ArrowLeft','KeyA','ArrowDown','KeyS'];
+const battleCodes=[...moveCodes,'KeyM','KeyI','KeyL','KeyQ','KeyF','KeyB','KeyT','KeyV','KeyR','Tab'];
+const padNames=['a','b','x','y','l1','r1','l2','r2','select','start','l3','r3','up','down','left','right','home'];
+const releasedButtons=()=>Array.from({length:17},()=>({pressed:false,value:0}));
 
-function setup(t, mode = 'map', options = {}) {
-  const document = Object.assign(new EventTarget(), { visibilityState: 'visible', hasFocus: () => true });
-  const canvas = Object.assign(new EventTarget(), { ownerDocument: document });
-  document.activeElement = canvas;
-  const pad = { index: 1, id: 'controller', mapping: 'standard', connected: true, axes: [0, 0], buttons: releasedButtons() };
-  const window = Object.assign(new EventTarget(), { navigator: { getGamepads: () => [null, pad] } });
-  const frames = new Map();
-  let nextFrame = 0;
-  window.requestAnimationFrame = callback => { frames.set(++nextFrame, callback); return nextFrame; };
-  window.cancelAnimationFrame = id => frames.delete(id);
-  document.defaultView = window;
-  for (const [name, value] of Object.entries({ navigator: window.navigator, document, window })) {
-    const original = Object.getOwnPropertyDescriptor(globalThis, name);
-    Object.defineProperty(globalThis, name, { configurable: true, value });
-    t.after(() => {
-      if (original) Object.defineProperty(globalThis, name, original);
-      else delete globalThis[name];
-    });
+function setup(t,initial='map'){
+  const doc=Object.assign(new EventTarget(),{visibilityState:'visible',hasFocus:()=>true});
+  const win=Object.assign(new EventTarget(),{navigator:{}});
+  const pad={index:1,id:'controller',mapping:'standard',connected:true,axes:[0,0,0,0],buttons:releasedButtons()};
+  let access=true,focused=true,mode=initial,owner={},frames=0,now=0,polls=0,disposals=0;
+  let current=new Set(),pressed=new Set(),previous=new Set();
+  win.navigator.getGamepads=()=>{if(!access)throw new DOMException('Denied','SecurityError');return [null,pad.connected?pad:null]};
+  win.requestAnimationFrame=()=>{frames++;throw new Error('another clock')};
+  doc.defaultView=win;
+  for(const [name,value] of Object.entries({navigator:win.navigator,document:doc,window:win})){
+    const original=Object.getOwnPropertyDescriptor(globalThis,name);
+    Object.defineProperty(globalThis,name,{configurable:true,value});
+    t.after(()=>{if(original)Object.defineProperty(globalThis,name,original);else delete globalThis[name]});
   }
-  const events = [];
-  let focusedId = 'map';
-  const keyboard = {
-    keyDown: ({ code }) => events.push(['down', code]),
-    keyUp: ({ code }) => events.push(['up', code]),
-    cancel: reason => { focusedId = undefined; events.push(['cancel', reason]); },
-    focus: id => { focusedId = id; events.push(['focus', id]); },
-    getSnapshot: () => ({ state: 'active', focusedId }),
-  };
-  const native = { polls: 0, disposals: 0 };
-  const detach = attachGamepadInput(canvas, {
-    keyboard,
-    getMode: () => mode,
-    createInput() {
-      const controller = createBrowserGamepadInput();
-      return {
-        input: controller.input,
-        poll(timestamp) { native.polls++; controller.poll(timestamp); },
-        dispose() { native.disposals++; controller.dispose(); },
-      };
-    },
-    ...options,
-  });
-  t.after(detach);
-  return {
-    canvas, document, window, pad, events, detach, frames, native,
-    setMode: value => { mode = value; },
-    button: (index, pressed) => { pad.buttons[index] = { pressed, value: Number(pressed) }; },
-    clearButtons: () => { pad.buttons = releasedButtons(); },
-    poll() {
-      const [id, callback] = frames.entries().next().value;
-      frames.delete(id);
-      callback();
-    },
-  };
+  const official=createBrowserGamepadInput({optional:true});
+  const source={input:official.input,poll(stamp){polls++;official.poll(stamp)},dispose(){disposals++;official.dispose()}};
+  const events=[],reset=[],abort=new AbortController();
+  const readMode=()=>focused?{mode,owner}:undefined;
+  const keys={claim:()=>()=>{},down:name=>current.has(name),pressed:name=>pressed.has(name),axis:()=>({x:0,y:0})};
+  let bridge;
+  const raw=createRawPadSample({source,active:()=>focused,onReset:reason=>{reset.push(reason);bridge.suspend(reason)}});
+  bridge=createNativeCommandInput({game:{keys,scope:abort},readMode,...createInputMapping(moveCodes,battleCodes),
+    readExtra:raw.sample,readAxis:()=>raw.axis,emit:e=>events.push(e)});
+  let closed=false;
+  function close(){if(closed)return;closed=true;abort.abort();source.dispose()}
+  t.after(close);
+  function sample(){
+    // This test supplies the same documented high-level Play key names; actual
+    // browser input/consumption is checked separately by the native fixture.
+    const modal=['menu','team','journal','native-battle-modal'].includes(mode);
+    current=new Set(focused&&access&&pad.connected?padNames.flatMap((name,index)=>{
+      if(['l3','r3','home'].includes(name)||modal&&['a','b','up','down','left','right'].includes(name))return [];
+      return pad.buttons[index]?.pressed?['pad:'+name]:[];
+    }):[]);
+    pressed=new Set([...current].filter(name=>!previous.has(name)));
+    previous=current;bridge.sample(now+=16);
+  }
+  return {pad,sample,events,reset,bridge,close,
+    button(index,down,value=Number(down)){pad.buttons[index]={pressed:down,value}},
+    clear(){pad.axes=[0,0,0,0];pad.buttons=releasedButtons()},
+    change(value){mode=value;owner={}},blur(){focused=false;bridge.suspend('blur')},focus(){focused=true},
+    denied(){access=false},get counters(){return{frames,polls,disposals}}};
 }
+const pairs=events=>events.map(e=>[e.phase,e.command]);
 
-test('standard pad polls the engine source and sends dominant map direction and confirmation through Egret', t => {
-  const pad = setup(t);
-  pad.canvas.addEventListener('keydown', () => assert.fail('Gamepad should stay in the Egret input API.'));
-  pad.pad.axes = [0.7, -0.5];
-  pad.poll();
-  pad.poll();
-  pad.pad.axes = [0.2, -0.2];
-  pad.button(0, true);
-  pad.poll();
-  pad.button(0, false);
-  pad.poll();
-  assert.deepEqual(pad.events, [['down', 'ArrowRight'], ['up', 'ArrowRight'], ['down', 'Enter'], ['up', 'Enter']]);
-  pad.detach();
-  assert.equal(pad.frames.size, 0);
-  assert.deepEqual(pad.native, { polls: 4, disposals: 1 });
+test('native map mapping preserves dominant raw direction, confirmation and one Play clock',t=>{
+  const p=setup(t);p.pad.axes=[.7,-.5,0,0];p.sample();p.sample();
+  p.pad.axes=[.2,-.2,0,0];p.button(0,true);p.sample();p.button(0,false);p.sample();
+  assert.deepEqual(pairs(p.events),[['press','ArrowRight'],['release','ArrowRight'],['press','Enter'],['release','Enter']]);
+  p.close();assert.deepEqual(p.counters,{frames:0,polls:4,disposals:1});
 });
-
-test('battle maps cursor movement and turn actions, and a held bag button cannot cancel its own menu', t => {
-  const pad = setup(t, 'battle', { mapping: { battle: { 5: null, 6: 'KeyI' } } });
-  pad.pad.axes = [-0.9, 0.7];
-  pad.button(0, true);
-  pad.button(2, true);
-  pad.button(4, true);
-  pad.button(5, true);
-  pad.button(6, true);
-  pad.button(8, true);
-  pad.poll();
-  assert.deepEqual(pad.events, [
-    ['down', 'KeyA'], ['down', 'KeyS'], ['down', 'Enter'], ['down', 'KeyL'],
-    ['down', 'KeyM'], ['down', 'KeyI'], ['down', 'Tab'],
+test('the native battle mode preserves stick-first ordering, standard aliases and raw extra thresholds',t=>{
+  const p=setup(t,'battle');p.pad.axes=[-.9,.7,0,0];
+  for(const index of [0,2,3,4,5,8,10,11])p.button(index,true);
+  p.button(6,false,.55); // analog trigger that does not yet report pressed
+  p.sample();
+  assert.deepEqual(pairs(p.events),[
+    ['press','KeyA'],['press','KeyS'],['press','Enter'],['press','KeyL'],['press','KeyI'],
+    ['press','KeyM'],['press','KeyQ'],['press','Tab'],['press','KeyT'],['press','KeyV']
   ]);
-  pad.button(6, false);
-  pad.poll();
-  assert.deepEqual(pad.events.at(-1), ['up', 'KeyI']);
-  pad.pad.axes = [0, 0];
-  pad.clearButtons();
-  pad.button(1, true);
-  pad.poll();
-  assert.deepEqual(pad.events.at(-1), ['down', 'KeyB']);
-  pad.setMode('menu');
-  pad.poll();
-  pad.poll();
-  assert.deepEqual(pad.events.slice(-2), [['cancel', 'rebind'], ['focus', 'map']]);
-  pad.button(1, false);
-  pad.poll();
-  pad.button(0, true);
-  pad.poll();
-  pad.button(0, false);
-  pad.poll();
-  assert.deepEqual(pad.events.slice(-2), [['down', 'Enter'], ['up', 'Enter']]);
-  pad.detach();
+  p.button(6,false,.49);p.sample();
+  assert.deepEqual(pairs(p.events).at(-1),['release','KeyQ']);
 });
-
-test('a disconnected or blurred controller cancels held controls without a confirm key-up', t => {
-  const pad = setup(t, 'team');
-  pad.button(9, true);
-  pad.poll();
-  pad.pad.connected = false;
-  pad.window.dispatchEvent(Object.assign(new Event('gamepaddisconnected'), { gamepad: pad.pad }));
-  assert.deepEqual(pad.events, [['down', 'KeyO'], ['cancel', 'removed'], ['focus', 'map']]);
-  pad.pad.connected = true;
-  pad.poll();
-  assert.equal(pad.events.length, 3);
-  pad.button(9, false);
-  pad.poll();
-  pad.button(0, true);
-  pad.poll();
-  pad.document.activeElement = undefined;
-  pad.canvas.dispatchEvent(new Event('blur'));
-  pad.document.activeElement = pad.canvas;
-  pad.poll();
-  assert.deepEqual(pad.events.slice(-3), [['down', 'Enter'], ['cancel', 'blur'], ['focus', 'map']]);
-  pad.detach();
+test('a held battle bag press is retired on modal switch; native modal A/B are not sent again',t=>{
+  const p=setup(t,'battle');p.button(1,true);p.sample();
+  p.change('menu');p.sample();p.sample();p.button(1,false);p.sample();p.button(0,true);p.sample();p.button(0,false);p.sample();
+  assert.deepEqual(pairs(p.events),[['press','KeyB'],['release','KeyB']]);
+  assert.equal(p.events[1].reason,'mode-change');
 });
-
-test('an unavailable Gamepad API stops polling cleanly', t => {
-  const pad = setup(t);
-  pad.window.navigator.getGamepads = () => { throw new DOMException('Denied', 'SecurityError'); };
-  pad.poll();
-  assert.deepEqual(pad.events, []);
-  assert.equal(pad.frames.size, 0);
-  assert.deepEqual(pad.native, { polls: 1, disposals: 1 });
+test('a controller disconnect/reconnect and blur release the owned command, then require neutral',t=>{
+  const p=setup(t,'team');p.button(9,true);p.sample();p.pad.connected=false;p.sample();
+  assert.deepEqual(pairs(p.events),[['press','KeyO'],['release','KeyO']]);
+  p.pad.connected=true;p.sample();assert.equal(p.events.length,2);
+  p.button(9,false);p.sample();p.button(2,true);p.sample();
+  assert.deepEqual(pairs(p.events).at(-1),['press','KeyA']);
+  p.blur();p.sample();p.focus();p.sample();
+  assert.deepEqual(pairs(p.events).at(-1),['release','KeyA']);
+  p.button(2,false);p.sample();p.button(2,true);p.sample();
+  assert.deepEqual(pairs(p.events).at(-1),['press','KeyA']);
+  assert.deepEqual(p.reset,['pad-change','pad-reconnect']);
 });
-
-
-test('manual host polling does not schedule an extra RAF and filters native modal commands without losing team extras', t => {
-  const pad = setup(t, 'team', {
-    manual: true,
-    filter: (code, mode) => mode !== 'team' || code === 'KeyA' || code === 'KeyO',
-  });
-  assert.equal(pad.frames.size, 0);
-  assert.equal(typeof pad.detach.poll, 'function');
-  pad.pad.axes = [0.8, 0];
-  pad.button(0, true);
-  pad.button(2, true);
-  pad.button(9, true);
-  pad.detach.poll(10);
-  assert.deepEqual(pad.events, [['down', 'KeyA'], ['down', 'KeyO']]);
-  pad.clearButtons();
-  pad.pad.axes = [0, 0];
-  pad.detach.poll(20);
-  assert.deepEqual(pad.events.slice(-2), [['up', 'KeyA'], ['up', 'KeyO']]);
-  pad.detach();
-  pad.detach.poll(30);
-  assert.equal(pad.frames.size, 0);
-  assert.deepEqual(pad.native, { polls: 2, disposals: 1 });
+test('an inaccessible gamepad API remains optional and no alternate RAF is scheduled',t=>{
+  const p=setup(t);p.denied();p.sample();assert.deepEqual(p.events,[]);
+  p.close();assert.deepEqual(p.counters,{frames:0,polls:1,disposals:1});
+});
+test('native modal and menu keep ownership of standard focus commands; team retains extras',t=>{
+  const map=createInputMapping(moveCodes,battleCodes);
+  assert.equal(map.claim('ArrowLeft',{mode:'map'}),true);
+  assert.equal(map.claim('Escape',{mode:'script'}),true);
+  assert.equal(map.claim('Enter',{mode:'script'}),false);
+  assert.equal(map.claim('Tab',{mode:'battle'}),true);
+  assert.equal(map.claim('Enter',{mode:'native-battle-modal'}),false);
+  assert.deepEqual(map.modes['native-battle-modal'].bindings,[]);
+  const p=setup(t,'team');for(const i of [0,1,2,9,12,13])p.button(i,true);p.sample();
+  assert.deepEqual(pairs(p.events),[['press','KeyA'],['press','KeyO']]);
 });

@@ -86,7 +86,7 @@ Set out from the village, walk the world map and its places, talk to people, fol
 | 行走 · Walk | 方向键 / WASD · arrows or WASD | 点地面或地标寻路，点另一处改道 · tap the ground or a landmark; tap again to reroute | 十字键 · d-pad |
 | 交谈、确认 · Talk, confirm | Enter / Space | 点人物或按钮 · tap | A |
 | 菜单 · Menu | Esc（B 直接打开物品） · Esc (B opens the items) | 菜单按钮 · menu button | B / Start |
-| 战斗：移动、武学、状态 · Battle: move, martial art, status | M、I、V | 点高亮格预览，再按「确定」 · tap a highlighted tile to preview, then confirm | 按键映射见 `web/gamepad-input.mjs` · see the mapping |
+| 战斗：移动、武学、状态 · Battle: move, martial art, status | M、I、V | 点高亮格预览，再按「确定」 · tap a highlighted tile to preview, then confirm | 按键映射见 `web/jyx2/ui/native/input-mapping.mjs` · see the native mapping |
 | 战斗：切换武学、休息、药品暗器、支援 · Battle: change art, rest, items, support | Q / F、L、B、T | 战斗菜单 · the battle menu | |
 | 战斗：取消、投降、重开本场 · Battle: cancel, give up, restart | Esc、Esc、R | 战斗菜单 · the battle menu | |
 
@@ -120,6 +120,8 @@ PC 上悬停可预览移动路线，单击执行；武学和暗器选好目标�
 
 | `game.show`, `createUiScreenStack`, `createActionControl` | 地图状态、行囊、队伍、对白与回看、原生探索触键 · map status, bag, party, dialogue/journal and native travel input | [web/jyx2/ui/native/choice-menu.mjs](web/jyx2/ui/native/choice-menu.mjs)、[web/jyx2/ui/native/explore-controls.mjs](web/jyx2/ui/native/explore-controls.mjs)、[web/jyx2/ui/native/reading-view.mjs](web/jyx2/ui/native/reading-view.mjs) |
 
+| `game.show`, `createUiScreenStack` 与 toggle / bar 绑定 | 战斗指令、目标/体力预览、确认及结算 · battle commands, target/resource readouts, confirmation and settlement | [web/jyx2/ui/native/battle-ui.mjs](web/jyx2/ui/native/battle-ui.mjs)、[web/jyx2/ui/native/battle-result-ui.mjs](web/jyx2/ui/native/battle-result-ui.mjs) |
+| `Sprite.graphics` | 以原格点坐标显示移动/目标预览，稳定画面复用图形 · movement/target markers in original board coordinates, retained graphics | [web/battle-view.mjs](web/battle-view.mjs) |
 ## 已验证 · Verified
 
 - 2026-11-29：第三批原生宿主、地图 HUD、探索控制、行囊与队伍菜单、对白/回看。PC RTX 5090 Laptop 138/138 具名路线检查，完成 691 并进入原生 3D 世界；Fold7 真实横屏完成 691、出门与菜单，短帧采样 p95 16.7 ms；大地图曾回退至 2D，修复原因及最终回归见 QUALITY。 · Native in-game host, travel, bag/party, dialogue and journal. Hardware PC route and physical Fold7 opening checks, with the 3D-world fallback diagnosis and regression recorded separately.
@@ -139,7 +141,7 @@ PC 上悬停可预览移动路线，单击执行；武学和暗器选好目标�
 ## 已知问题 · Known issues
 
 - 完整数据仍为单一压缩包，进入实际游戏前必须验证完成；标题及设置可先使用。 · The existing pack is monolithic; validation is required before play, while title and preferences are usable earlier.
-- 标题、帮助、设置、资料准备、地图菜单、探索和对白控件支持中英文，战斗操作仍待完成迁移。源数据的剧情、人物或物品说明保留原文。 · Native title, travel menus and dialogue controls are bilingual; battle controls still await migration. Source narrative and data names remain unchanged.
+- 标题、帮助、设置、资料准备、地图菜单、探索和对白控件支持中英文，战斗指令和结算也已迁到原生界面；残余的英文状态文字待最后整理。源数据的剧情、人物或物品说明保留原文。 · Native title, travel menus and dialogue controls are bilingual; battle controls and results are native; remaining generated English status copy will be polished. Source narrative and data names remain unchanged.
 - 品质验收及限制见 [QUALITY.md](QUALITY.md)。2026-11-29 首屏与禁止误触检测通过，页面到真实可玩的耗时另计。 · See QUALITY for current measurements. Early title readiness and full data readiness are reported separately.
 
 ## 已解决 · Solved
@@ -150,7 +152,7 @@ PC 上悬停可预览移动路线，单击执行；武学和暗器选好目标�
 
 ## 未完成 · Unfinished
 
-- 战斗指令、目标预览、结算及剩余英文界面的最终迁移。 · Native battle commands, formation preview, settlement and remaining English UI.
+- 固定数字文字渲染、剩余英文界面、首屏与密集战斗最终回归。 · Fixed-glyph labels, remaining English shell copy and final startup/mass-battle regression.
 - 已将标题和资料准备解耦；现有归档尚未按场景拆分。 · Title and data preparation are decoupled; the existing archive is not split by scene.
 - 真机上的整局验收和帧时间测量。 · A whole-game run and frame-time measurement on real devices.
 

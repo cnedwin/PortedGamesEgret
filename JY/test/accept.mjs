@@ -23,10 +23,15 @@ const update = args.includes('--update');
 const shellOnly = args.includes('--shell-only');
 const useWebkit = args.includes('--webkit');
 const nativeGpu = args.includes('--native-gpu');
+const runBattle = args.includes('--battle');
+const battleFinish = args.includes('--manual-battle') ? 'manual' : 'auto-after-manual';
+const battleOrder = (option('--battle-order')??'item,rest,move,skill').split(',');
 const testRecovery = !args.includes('--no-recovery');
 assert(!(captureOnly && update));
 assert(!useWebkit || captureOnly, 'Use --webkit --capture; the reviewed baselines are Chromium.');
 assert(!nativeGpu || captureOnly&&!useWebkit, 'Use --native-gpu --capture; software-rendered baselines remain unchanged.');
+assert(!runBattle || args.includes('--travel')&&!shellOnly, 'Use --battle with --travel.');
+assert(battleFinish!=='manual'||runBattle, 'Use --manual-battle with --battle.');
 const out = resolve(option('--out') ?? join(gameDir, 'test/baseline/diff', 'acceptance'));
 const sizes = (option('--sizes') ?? '1280x800,390x844,844x390,768x1024').split(',').map(value => {
   const match = /^(\d+)x(\d+)$/.exec(value);
@@ -274,7 +279,7 @@ try {
       gl.getExtension('WEBGL_lose_context')?.loseContext();return {vendor,renderer};});
     console.log('selected Chromium WebGL2 adapter',receipt.renderer);
   }
-  page.on('pageerror',e=>receipt.errors.push('pageerror '+e.message));
+  page.on('pageerror',e=>{receipt.errors.push('pageerror '+e.message);console.log('pageerror',e.message);});
   page.on('console',m=>{
     if(m.type()==='error')receipt.errors.push(m.text()+(m.location().url?' '+m.location().url:''));
     else if(m.type()==='warning'&&/webgl|gpu|world3d|texture|renderer|asset|context|model|3d|glb/i.test(m.text()))
@@ -364,14 +369,20 @@ try {
     // A returning-player confirmation may exist; the fresh origin must still take the ordinary named action.
     const confirmation=await invoke('exists','Begin journey').catch(()=>false);
     if(confirmation)await pointerPress('Begin journey');
-    await page.waitForFunction(()=>{
-      const d=document.querySelector('#game')?.dataset;
-      return d?.phase==='ready' && d?.scene==='70';
-    },null,{timeout:180000});
+    try{
+      await page.waitForFunction(()=>{
+        const d=document.querySelector('#game')?.dataset;
+        return d?.phase==='failed'||(d?.phase==='ready'&&d?.scene==='70');
+      },null,{timeout:nativeGpu?60000:180000});
+    }catch(error){
+      await page.screenshot({path:join(out,'runtime-landing-timeout.png')});
+      stamp('runtime-landing-timeout',await page.evaluate(()=>{const d=document.querySelector('#game')?.dataset??{};return{phase:d.phase,scene:d.scene,opening:d.opening,host:Boolean(globalThis.__jyNativeQa?.host)}}));throw error;
+    }
     const landed=await page.evaluate(()=> {
       const d=document.querySelector('#game').dataset;
       return{scene:d.scene,phase:d.phase,opening:d.opening,homeView:d.homeView};
     });
+    if(landed.phase==='failed'){stamp('runtime-landing-failed',landed);await page.screenshot({path:join(out,'runtime-landing-failed.png')});throw Error('Native game reported startup failure');}
     // Do not read or record the original dialogue, game-state data or save contents.
     stamp('native-start-landed',{ms:Math.round(performance.now()-start),...landed});
     if(args.includes('--travel')){
@@ -390,7 +401,7 @@ try {
     receipt.screens.push({name:'runtime-landed',pixels,landed});
     if (args.includes('--travel')) {
       const {acceptNativeTravel}=await import('./native-travel-browser.mjs');
-      await acceptNativeTravel(page,{out,stamp,check});
+      await acceptNativeTravel(page,{out,stamp,check,runBattle,battleFinish,battleOrder});
     }
     if (testRecovery) {
       // Re-open the prepared test origin's title, then insert only a synthetic unreadable record.
