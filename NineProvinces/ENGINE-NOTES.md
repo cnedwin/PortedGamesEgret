@@ -7,6 +7,12 @@ of [docs/GAME-STANDARD.md](../docs/GAME-STANDARD.md). The first five were met by
 `createBrowserGame`), the sixth to the eighth after the move to World3D; all eight are new here. The game no longer
 uses the interfaces of the first five; they are kept for the engine's sake.
 
+## 引擎独立升级复核 · Engine-only refresh review
+
+`7fb371ac`（2026-11-28）已替换 `82561d6`；官方 `notes --check` 识别现有 9 条记录、没有新增的已解决或已写入文档条目。当前仍使用旧界面和 World3D 组织方式，本轮不提前删除任何绕过。原生界面、按需绘制、投影标记及地形接口的逐项适配另行验证。
+
+`7fb371ac` (2026-11-28) replaces `82561d6`. The official `notes --check` recognizes all nine entries and reports no newly resolved or documented records. This engine-only refresh retains the established interface and World3D organization; no workaround is declared removed ahead of its focused verification. Native UI, on-demand drawing, projected markers and terrain APIs require separate integration checks.
+
 ### 1. 每个文字标签占一页图片，一百多个地名超出每帧 64 页 · Each label is a page of its own, and a hundred place names pass the 64 pages a frame — 已在 `4de55e8` 解决 / resolved in `4de55e8`
 <!-- engine-note: {"id": "NineProvinces#1", "status": "resolved", "topic": "label-pages"} -->
 

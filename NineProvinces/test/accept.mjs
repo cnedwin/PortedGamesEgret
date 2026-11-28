@@ -216,7 +216,7 @@ try {
   await overview.press('ArrowRight');
   check(await city.getByRole('tab', { name: '营建' }).getAttribute('aria-selected') === 'true', 'arrow key selects the adjacent city section');
   await city.getByRole('tab', { name: '政令' }).tap();
-  check(await city.getByRole('button', { name: '寻访' }).isVisible(), 'city orders are directly reachable from the fixed tabs');
+  check(await city.getByRole('button', { name: '寻访', exact: true }).isVisible(), 'city orders are directly reachable from the fixed tabs');
 
   const speed = phone.locator('#campaignSpeed');
   check(await speed.evaluate(node => node.offsetWidth >= 44 && node.offsetHeight >= 44), 'phone speed selector has a readable touch target');

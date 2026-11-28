@@ -1,5 +1,32 @@
 # 品质验收 · Quality — 九州烽烟 · Nine Provinces Ablaze
 
+## 引擎独立升级 · Engine-only refresh (2026-11-28)
+
+- 对照版本 · Comparison: `82561d6338a805f0e0459a2d5d42a284f9385b30` → `7fb371acb8bab254cf1c49b9da0ac0eed0c06fb4`；同一游戏提交的规则、资源、界面和存档。 / Identical gameplay source, assets, UI and save format. The pinned engine was built with Node 26.7.0 and copied with the official vendor tool.
+- Node: 196/196 → 196/196. `node tools/balance.mjs` 种子 7 的最终统计及逐年代数据一致，仅程序报告的运行时间不同。 / Seed 7 yields identical era tables and final tallies; the reported running times differ.
+- 软件渲染 · Software browser acceptance: 50/50 → 50/50. 原测试把两个含「寻访」的按钮都匹配到了；仅为该定位器增加 exact:true，未删断言、未重拍旧截图基线。旧版严格原脚本止于该歧义，修正后完整路线通过。新版标题和设置对固定软件参考图差异均 0.00%。 / The sole selector correction is exact matching for the ordinary Search button; the old script otherwise stops on two matching controls. All original assertions remain and the reference images are unchanged; candidate title/settings differ by 0.00% from them.
+- 真显卡 · Hardware-backed browser: same Windows Edge / ANGLE D3D11 / NVIDIA RTX 5090 Laptop GPU, 1280×720, high quality. 两个硬件样本均为自动浏览器交互、非真人通关；旧软件基线和硬件画面不能混比（标题、设置固定跨渲染器差异约 9.30%、2.40%），48 项功能断言全部通过。 / Both are automated real-PC browser routes, not human campaign completion. The two software-reference image comparisons on hardware have the same pre-existing renderer differences; all 48 functional assertions pass. Portrait below is PC emulation, not a handset.
+- 官方验收器 · Official generic verifier: pass 8/8、无错误、无警告、无失败请求，已声明 ready 3,616 ms。默认 Playwright 的固定 Chromium 缓存缺失；通过官方 --playwright 参数只选择已安装 Edge 可执行文件并保留软件渲染标志、原判定。 / Missing the pinned Chromium executable locally, the supported --playwright transport selects installed Edge; the verifier retains all checks and software-renderer flags. Strict source check: 0 errors, 0 warnings (135 files, 21 engine imports).
+
+| 实际 PC 浏览器采样 · PC frame-interval sample | 改前 p95 / n | 改后 p95 / n | 改前/后最大间隔 · Max ms |
+|---|---:|---:|---:|
+| 城池 · City, high | 8.4 ms / 276 | 8.4 ms / 269 | 312.5 / 325.0 |
+| 战场 · Battle, high | 4.3 ms / 469 | 4.3 ms / 455 | 29.2 / 33.3 |
+| 390×844 PC 模拟 · Emulation, low | 8.4 ms / 279 | 8.3 ms / 289 | 1674.9 / 1758.3 |
+
+标题冷启动初次间隔约 3.55 → 3.29 秒（4/5 个样本）；不是稳态帧率。上述为浏览器帧间隔，非 GPU 执行或呈现耗时。软件渲染 F1、地形和首次城池构建优化仍待专项验证。 / First title intervals about 3.55 → 3.29 s (four/five samples) are not a steady-state rate. These are browser callback intervals, not GPU execution or presentation latency. Software F1, terrain and first city construction remain separate work.
+
+| 同显卡旧版/新版截图 · Hardware before/after | 任一 RGB 通道差 >40 的像素比例 · Changed pixels |
+|---|---:|
+| [标题 before](test/engine-refresh-7fb371ac/before-title.jpg) · [after](test/engine-refresh-7fb371ac/after-title.jpg) | 0.00857% |
+| [设置 before](test/engine-refresh-7fb371ac/before-settings.jpg) · [after](test/engine-refresh-7fb371ac/after-settings.jpg) | 0.00011% |
+| [城池 before](test/engine-refresh-7fb371ac/before-world-city.jpg) · [after](test/engine-refresh-7fb371ac/after-world-city.jpg) | 0.00553% |
+| [战场 before](test/engine-refresh-7fb371ac/before-battle.jpg) · [after](test/engine-refresh-7fb371ac/after-battle.jpg) | 0.05024% |
+| [竖屏 PC 模拟 before](test/engine-refresh-7fb371ac/before-portrait-city-emulation.jpg) · [after](test/engine-refresh-7fb371ac/after-portrait-city-emulation.jpg) | 0.0000% |
+
+对比在未压缩的原始 PNG 上完成；链接为审阅用 JPEG，不是正式截图断言基线。 / Pixel checks use the original uncompressed PNGs; linked JPEG copies are for inspection, not the assertion baselines.
+未运行：实体手机/平板（本批）、Safari/Firefox/读屏/真手柄、多屏 UI 用例、完整真人战役。 / Not run for this batch: physical phone/tablet, Safari/Firefox, screen reader, physical controller, full multi-screen UI cases, complete human campaign.
+
 ## iPhone 配置的 World3D 首场景追加验收 · WebKit first-world-scene check
 
 - Windows Playwright WebKit 26.6, iPhone 15 Pro 竖屏配置，393 × 659 CSS px；公开 Pages d1bcff69 与候选本地 HTTP，均全新上下文、真实浏览器触摸。 / Windows WebKit with an iPhone 15 Pro portrait profile; clean browser contexts, actual browser touch events, public baseline at d1bcff69 and local candidate. Not a physical iPhone.
