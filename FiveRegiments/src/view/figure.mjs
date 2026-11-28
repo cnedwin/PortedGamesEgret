@@ -9,7 +9,7 @@ import { createRig } from './rig.mjs';
 import { createAnimator, heavyFootwork, impactWeight, interpolateDirection, returnSpearPhase, signatureBodyWeight, swingPhase, TIGER_SWORD } from './motion.mjs';
 import { createFooting } from './footing.mjs';
 import { createPreviewPosture } from './preview-posture.mjs';
-import { createLocomotionBlend, GAIT_NAMES } from './locomotion-blend.mjs';
+import { createLocomotionBlend, createGaitCadence, createClosedLocomotionSampler, GAIT_NAMES } from './locomotion-blend.mjs';
 import { bowLoosePose, bowReleasePose } from './bow-release.mjs';
 import { ordinaryCuts } from './ordinary-poses.mjs';
 import { ARTS, SKILLS } from '../sim/regiments.mjs';
@@ -377,6 +377,7 @@ export function createFigure({ regiment, body, motion, world, height = 1.8 }) {
     gait = motion.pose(),
     layer = motion.pose();
   const locomotion = createLocomotionBlend();
+  const neutralCadence = createGaitCadence(motion), sampleLocomotion = createClosedLocomotionSampler(motion);
   const state = {
     phase: 0,
     primaryGrip: { axis: null, edge: null },
@@ -671,13 +672,18 @@ export function createFigure({ regiment, body, motion, world, height = 1.8 }) {
       state.ride === 0 && !state.thrown && state.dismountLand <= .02 && impact < .001;
     const gaitBlend = locomotion.update(fwdW, backW, leftW, rightW, runW, movement, dt, neutralLocomotion);
     const moving = gaitBlend.moving * (1 - state.ride) * (man.alive && !stunned ? 1 : 0.16);
-    // One phase for all the gaits, run at the pace of the strongest.
-    const natural = fwdW * (runW * 3.1 + (1 - runW) * 1.33) + backW * 0.9 + (leftW + rightW) * 1.1;
-    const cycle = fwdW * (runW * motion.duration('run') + (1 - runW) * motion.duration('walk')) + backW * motion.duration('back') + (leftW + rightW) * motion.duration('sideA');
-    state.phase = (state.phase + (dt * (speed / Math.max(0.3, natural))) / Math.max(0.3, cycle || 1)) % 1;
+    // Only the neutral moving presentation uses the smoothed, normalized cadence and
+    // loop closure. The fixed title pose and all other presentation keep their original samples.
+    const smoothNeutral = neutralLocomotion && !preview;
+    if (smoothNeutral) state.phase = (state.phase + dt * neutralCadence(gaitBlend.weights, speed)) % 1;
+    else {
+      const natural = fwdW * (runW * 3.1 + (1 - runW) * 1.33) + backW * 0.9 + (leftW + rightW) * 1.1;
+      const cycle = fwdW * (runW * motion.duration('run') + (1 - runW) * motion.duration('walk')) + backW * motion.duration('back') + (leftW + rightW) * motion.duration('sideA');
+      state.phase = (state.phase + (dt * (speed / Math.max(0.3, natural))) / Math.max(0.3, cycle || 1)) % 1;
+    }
     const ph = state.phase;
-    const sampleAt = (name, out) => motion.sample(name, ph * motion.duration(name), out);
-    motion.sample('idle', (game.time * 0.9 + man.id.length) % motion.duration('idle'), base);
+    const sampleAt = (name, out) => sampleLocomotion(name, ph * motion.duration(name), out, smoothNeutral);
+    sampleLocomotion('idle', (game.time * 0.9 + man.id.length) % motion.duration('idle'), base, smoothNeutral);
     if (moving > 0) {
       const gaits = GAIT_NAMES.map((name, i) => [name, gaitBlend.weights[i]]).filter(([, w]) => w > 0.02);
       let acc = 0;

@@ -5,6 +5,7 @@ import { ARTS, REGIMENTS, SKILLS } from './sim/regiments.mjs';
 import { recoveryGuardWindow } from './sim/fight.mjs';
 import { t, say } from './i18n.mjs';
 import { noticeOpacity } from './view/presentation-envelope.mjs';
+import { FEEDBACK_LIFETIME, floatingFeedback, feedbackLook } from './view/hud-feedback.mjs';
 
 const C={ink:0x1e1812,edge:0xa98b51,gold:0xf4dca3,paper:0xf7eddb,muted:0xd5c5ae,hp:0xad3b31,st:0xceac59,horse:0x79a882,danger:0xff604a,good:0x87dfa5};
 const clamp=(v,a,b)=>Math.min(b,Math.max(a,v)),wrap=a=>Math.atan2(Math.sin(a),Math.cos(a));
@@ -80,6 +81,16 @@ export function touchLayout(safe,ids){
 function targetBox(node,b){put(node,b.x,b.y);node.hitArea={x:0,y:0,width:b.width,height:b.height};}
 function polygon(g,points,color,alpha=1){g.beginFill(color,alpha).moveTo(...points[0]);for(let i=1;i<points.length;i++)g.lineTo(...points[i]);g.lineTo(...points[0]).endFill();}
 function line(g,points,color,width=2,alpha=1){g.lineStyle(width,color,alpha).moveTo(...points[0]);for(let i=1;i<points.length;i++)g.lineTo(...points[i]);g.lineStyle(0);}
+// A small chamfered plate keeps floating feedback readable against light terrain.
+// Its Graphics are rebuilt only when a pooled notice is reused with a new style.
+function feedbackPlate(node,look){
+  const {width:w,height:h,edge,fill}=look,key=[w,h,edge,fill].join(':');
+  if(node._paint===key)return;node._paint=key;
+  const g=node.graphics;g.clear();
+  polygon(g,[[-w/2+6,0],[w/2-6,0],[w/2,6],[w/2,h-6],[w/2-6,h],[-w/2+6,h],[-w/2,h-6],[-w/2,6]],edge,.94);
+  polygon(g,[[-w/2+7,1],[w/2-7,1],[w/2-1,7],[w/2-1,h-7],[w/2-7,h-1],[-w/2+7,h-1],[-w/2+1,h-7],[-w/2+1,7]],fill,.88);
+  line(g,[[-w/2+9,2],[w/2-9,2]],0xffffff,1,.16);
+}
 const CROSS={R:[[18,-8],[43,0],[18,8]],L:[[-18,-8],[-43,0],[-18,8]],O:[[-8,-18],[0,-43],[8,-18]],T:[[-8,18],[0,43],[8,18]]};
 const PREP={R:[[56,-8],[47,0],[56,8]],L:[[-56,-8],[-47,0],[-56,8]],O:[[-8,-56],[0,-47],[8,-56]],T:[[-8,56],[0,47],[8,56]]};
 function itemIcon(node,name){
@@ -100,6 +111,7 @@ function nativeBounds(node){
 
 
 export function createHud(game,{touch=false,semantics}={}){
+  const reducedMotion=globalThis.matchMedia?.('(prefers-reduced-motion: reduce)');
   const root=add(game.ui,'battle-hud'),panels=add(root,'battle-panels'),plates=add(panels,'foes'),
     compass=add(panels,'compass'),me=add(panels,'fighter-status'),equipment=add(panels,'equipment'),
     keys=add(panels,'key-hints'),cross=add(root,'direction-cue'),shape=add(cross,'cross'),numbers=add(panels,'floating-values');
@@ -122,7 +134,7 @@ export function createHud(game,{touch=false,semantics}={}){
   const banner=add(root,'banner'),bannerBg=add(banner,'frame'),bannerTitle=word(game,banner,'',{size:42,bold:true,align:'center'}),bannerSub=word(game,banner,'',{size:16,align:'center',color:C.muted});
   const toast=tag(game,root,'feedback',300,26,'',{size:14}),hint=tag(game,root,'click-hint',300,35,'',{size:15}),objective=tag(game,panels,'objective',320,28,'',{size:13,color:C.gold});
   const pool=Array.from({length:24},()=>{
-    const root=add(numbers,'floating-number'),back=add(root,'backdrop'),label=word(game,root,'',{size:19,bold:true,align:'center',color:C.gold});
+    const root=add(numbers,'floating-number'),back=add(root,'backdrop'),label=word(game,root,'',{size:19,bold:true,align:'center',baseline:'middle',color:C.gold});
     visible(root,false);return {root,back,label,life:0,x:0,y:0};
   });
   for(const n of [tell.root,cover.root,banner,toast.root,hint.root,objective.root])visible(n,false);
@@ -309,7 +321,10 @@ export function createHud(game,{touch=false,semantics}={}){
     if(window){txt(cover.label,t(h.prev?.guard?'guardRecoveryRetry':'guardRecovery'));fit(cover.label,cover.w,13,10);}
     if(bannerTimer>0){bannerTimer-=dt;visible(banner,bannerTimer>0);}
     if(toastTimer>0){toastTimer=Math.max(0,toastTimer-dt);const alpha=noticeOpacity(toastTimer);if(toast.root.alpha!==alpha)toast.root.alpha=alpha;visible(toast.root,toastTimer>0);}
-    for(const n of pool)if(n.life>0){n.life-=dt;visible(n.root,n.life>0);if(n.life>0){put(n.root,n.x,n.y-(.9-n.life)*32);n.root.alpha=Math.min(1,n.life*4);}}
+    for(const n of pool)if(n.life>0){n.life=Math.max(0,n.life-dt);visible(n.root,n.life>0);if(n.life>0){
+      const shown=floatingFeedback(FEEDBACK_LIFETIME-n.life,!!reducedMotion?.matches);
+      put(n.root,n.x,n.y-shown.offset);n.root.alpha=shown.alpha;n.root.scaleX=n.root.scaleY=shown.scale;
+    }}
   }
   const handles=[];
   if(semantics)for(const [id,node,label,value] of [['hp',hp.root,()=>t('health'),()=>currentHero?.hp],['st',st.root,()=>t('stamina'),()=>currentHero?.st]]){
@@ -321,8 +336,9 @@ export function createHud(game,{touch=false,semantics}={}){
     banner(value,sub='',seconds=2.2,type=''){kind=type;bannerTimer=seconds;txt(bannerTitle,value);txt(bannerSub,sub);bannerTitle.color=kind==='lose'?C.danger:C.gold;visible(banner,true);place(true);},
     hideBanner(){visible(banner,false);bannerTimer=0;},
     toast(value,type=''){txt(toast.label,value);fit(toast.label,toast.w,14,10);toast.label.color=type==='bad'?C.danger:type==='good'?C.good:C.paper;toastTimer=.9;toast.root.alpha=1;visible(toast.root,true);},
-    number(at,value,type=''){if(!at)return;const n=pool.find(x=>x.life<=0)??pool.reduce((a,b)=>a.life<b.life?a:b);n.x=at[0];n.y=at[1];n.life=.9;visible(n.root,true);txt(n.label,value);n.label.color=type.includes('bad')?C.danger:type==='horse'?C.horse:type.includes('crit')?C.gold:C.paper;
-      const w=Math.min(92,Math.max(28,String(value).length*11+10));box(n.back,w,23,0x0c0907,null,.61);put(n.back,-w/2,-1);put(n.root,n.x,n.y);n.root.alpha=1;},
+    number(at,value,type=''){if(!at)return;const n=pool.find(x=>x.life<=0)??pool.reduce((a,b)=>a.life<b.life?a:b),look=feedbackLook(type,value);n.x=at[0];n.y=at[1];n.life=FEEDBACK_LIFETIME;visible(n.root,true);txt(n.label,value);n.label.color=look.text;
+      setFont(n.label,Math.max(10,Math.min(look.size,(look.width-14)/Math.max(1,[...String(value)].length*.66))));feedbackPlate(n.back,look);put(n.label,0,look.height/2);put(n.root,n.x,n.y);
+      const shown=floatingFeedback(0,!!reducedMotion?.matches);n.root.alpha=shown.alpha;n.root.scaleX=n.root.scaleY=shown.scale;},
     hint(value){txt(hint.label,value);fit(hint.label,hint.w,15,10);visible(hint.root,!!value);},
     snapshot(){return {visible:root.visible,skillCount:skillViews.length,slotCount:slotViews.length,compass:compass.visible,plates:plateViews.length};},
     touch,dispose(){stopResize();for(const h of handles)h.remove();root.dispose();}

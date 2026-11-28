@@ -1,6 +1,7 @@
 {
   "esbuild": "0.28.2",
   "inputs": [
+    "src/audio-mastering.mjs",
     "src/audio.mjs",
     "src/hud.mjs",
     "src/i18n.mjs",
@@ -29,7 +30,9 @@
     "src/view/figure.mjs",
     "src/view/footing.mjs",
     "src/view/horse.mjs",
+    "src/view/hud-feedback.mjs",
     "src/view/locomotion-blend.mjs",
+    "src/view/luminous-accents.mjs",
     "src/view/menu-framing.mjs",
     "src/view/motion.mjs",
     "src/view/mounted-contact.mjs",
@@ -42,6 +45,7 @@
     "src/view/stage.mjs",
     "src/view/title-programs.mjs",
     "src/view/troop-materials.mjs",
+    "src/view/virtual-clock.mjs",
     "src/view/weapons.mjs",
     "vendor/contracts/dist/ImageData2D.js",
     "vendor/contracts/dist/SharedGeometry2D.js",
@@ -386,7 +390,7 @@
     "vendor/runtime/dist/ui/layout.js",
     "vendor/runtime/dist/ui/managedState.js"
   ],
-  "sourceSha256": "501cc05ebe433f735376991e716c8de2f491d07dd246721dbc3c8733f6c29737",
-  "outputSha256": "dcb7fbfb5bc500574e20a0d17cde6935e34486790b8247b35c90e203e347b1d0",
-  "bytes": 1660541
+  "sourceSha256": "bb12e98001137cf0580198be5c4904e21b193bed2dacc9d36590005d66296848",
+  "outputSha256": "15a6e9570af4871c59648af33ed941cfa24d59ce3a04ce425960c38eb2c56d4a",
+  "bytes": 1667182
 }
