@@ -1320,6 +1320,7 @@ const host=document.querySelector('#overlay');
 let startup;
 try{
  startup=await play({parent:host,width:1280,height:720,portrait:{width:720,height:1280},fit:'expand',pixelRatio:Math.min(2,Math.max(1.5,devicePixelRatio||1)),uiScale:{min:1,max:1.2},transparent:true,backend:'webgl2',audio:false,renderMode:'on-demand',textWorkBudgetMs:4,textWorkBudgetWhen:()=>ui.page==='world'&&ui.map3d&&!ui.sheet,semantics,
+  afterFrame(){ picture.stage?.drawPending(); },
   setup(g){
     game=g;
     g.scope.use(clips);

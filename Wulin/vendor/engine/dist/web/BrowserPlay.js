@@ -290,6 +290,8 @@ export async function play(options) {
         throw invalid('onError is a function');
     if (onFrameTiming !== undefined && typeof onFrameTiming !== 'function')
         throw invalid('onFrameTiming is a function');
+    if (options.afterFrame !== undefined && typeof options.afterFrame !== 'function')
+        throw invalid('afterFrame is a function');
     const fitAsked = options.fit ?? 'contain';
     if (!['contain', 'expand', 'fixedWidth', 'fixedHeight', 'fixedNarrow', 'fixedWide'].includes(fitAsked))
         throw invalid("fit is 'contain', 'expand', 'fixedWidth', 'fixedHeight', 'fixedNarrow' or 'fixedWide'");
@@ -463,6 +465,7 @@ export async function play(options) {
         host: baseBrowser.host,
         frame: () => baseBrowser.frame,
         ...(options.beforeRender === undefined ? {} : { beforeRender: options.beforeRender }),
+        ...(options.afterFrame === undefined ? {} : { afterFrame: options.afterFrame }),
         ...(options.renderRetry === undefined ? {} : { renderRetry: options.renderRetry }),
         ...(revision === undefined
             ? {}

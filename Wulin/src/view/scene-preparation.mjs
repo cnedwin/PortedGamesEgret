@@ -1,6 +1,8 @@
 // Cold geometry admission was beneficial on the measured high-quality desktop
 // scene only; low-quality phones incur extra upload bytes and entry delay.
 export const canPrepareRealmGeometry = (quality, renderer) => quality === 'high' && typeof renderer.prepareGeometries === 'function';
+// The same-frame submission order is measured only for desktop-pointer high WebGL2 realm in Play.
+export const canDeferRealmDraw = (quality, webgpu, hasPlay, realm, desktop) => quality==='high' && !webgpu && hasPlay && realm && desktop;
 // Scene-local preparation: shader compilation and bounded geometry uploads share
 // the existing loading interval, without drawing a hidden scene.
 export function createScenePreparation(renderer, collectVariants) {

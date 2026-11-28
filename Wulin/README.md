@@ -138,6 +138,7 @@ Serve this folder with any static file server to run it, for example `npx serve 
 | `createOverlayScreenMarkers3D`、`createGlyphFont` | 场景投影标签及伤害数字池 · projected scene labels and damage pool | `src/view/scene-markers.mjs` |
 | `game.gestures`、`preparePrograms`、`createWorld3DStats` | 原生拖动缩放、场景预热和统计 · native camera gestures, scene warmup and stats | `src/view/stage.mjs` |
 | `renderer.prepareGeometries` | 仅实测净收益的高画质江湖，在有限批次内将几何预备与程序准备并行，取消或 context restore 按原缓存生命期重试 · measured high-quality realm preparation in bounded slices, parallel with programs; cancel and restore retain normal cache life | [`src/view/scene-preparation.mjs`](src/view/scene-preparation.mjs)、[`src/view/stage.mjs`](src/view/stage.mjs) |
+| `play({afterFrame})`、`World3DView.deferRender`、`drawPending()` | 桌面（非触摸、细指针）高档 WebGL2 江湖保持时钟更新顺序、同帧先完成2D后绘制独立3D，保留全部验证 · same-frame after-UI draw for measured non-touch desktop high WebGL2 realm; keep clock updates and submission checks | [`src/main.mjs`](src/main.mjs)、[`src/view/stage.mjs`](src/view/stage.mjs) |
 | `play({textWorkBudgetMs, textWorkBudgetWhen})`、`game.browser.scheduleTextWork` | 仅无弹窗的3D江湖启用4ms Canvas 文字预算，其他界面即时；普通及富文本共用；单个工作仍不可抢占 · 4ms native Canvas text preparation only in the modal-free 3D realm, immediate elsewhere; shared by labels and paragraphs; individual jobs remain atomic | [`src/main.mjs`](src/main.mjs)、[`src/ui/native-shell.mjs`](src/ui/native-shell.mjs) |
 | `Scene3D`、`createDirectionalLight3D`、`createHemisphereLight3D` | 山门、天下地图和战阵三个场景，日月随时辰转动 · the seat, the realm map and the arena, light turning with the hour | `src/view/stage.mjs`、`src/view/realm.mjs` |
 | `InstancedMesh3D`、`createGeometry3D` | 地图上的村落、宝塔、稻田、树木、船只和行军队列 · hamlets, pagodas, paddies, trees, junks and marching columns | `src/view/realm.mjs`、`src/view/flora.mjs` |
@@ -166,6 +167,7 @@ Serve this folder with any static file server to run it, for example `npx serve 
 - 新档原先隐去江湖、战阵导航，现保留入口及真实开放条件；将悬空的红点变成按钮内的待办数字并直接进入相应事务。 · The previously hidden realm and battle tabs are discoverable on new saves without bypassing progression; pending counts are placed inside actionable controls.
 - 江湖沙盘采用严格等价的构造优化：精确裁剪河道影响范围、预计算只依地理的最近两个据点及距离、保留原归属判断，分批跨帧构造完整场景。着色程序准备与真实首帧提交分开，实际渲染成功后才解除场景输入等待；不以删减地形、树木或改变地图规则换取速度。 · Realm construction uses exact river-cut rejection, precomputed geography-only nearest two strongholds and distances, and ordered frame-sliced assembly of the complete scene. Shader preparation is distinct from the first rendered frame; scene input waits for actual rendering. Terrain, vegetation and rules are not reduced for speed.
 - 首进江湖专项：在真实 PC 和 Fold7 分离验证几何上传、程序准备、GPU/宿主提交以及文字光栅工作。高画质几何预备、同场景静态建筑资源共享及 4ms 文字预算均基于实际 A/B；中低档保留按需几何上传。[性能专项及限制 / Realm performance evidence and limits](docs/realm-entry-performance.md)。 · Cold realm entry uses measured high-preset geometry prewarming, scene-local static asset sharing and opt-in paced Canvas text; medium and low retain lazy geometry upload.
+- WebGL2 同帧排序专项：保留全部2D验证，桌面高档江湖在同一 RAF 内先提交原生2D，再实际提交独立3D；详见[追踪与实机对照 / GPU synchronization evidence](docs/realm-frame-pacing.md)。 · Measured same-frame 2D-before-3D submission, with no skipped validation.
 - 开局改成可以直接上手的序章（`e526ab0`）。 · The start became a playable prologue.
 - 战斗前预热阵容旁白（`761ea74`）；战斗音效和画面的打击点对齐（`f5a87bd`）。 · Lineup narration is warmed up before combat; combat sounds land with the visible blows.
 - 对话框里的操作不再冲掉提示（`3d595cd`）；论剑大会的进度得以保留（`cdc3efd`）。 · Dialog actions keep the feedback; Sword Meet progress is kept.
@@ -193,9 +195,9 @@ Serve this folder with any static file server to run it, for example `npx serve 
 
 ## 引擎副本 · Engine copy
 
-引擎副本取自 [Egret_rebuild](https://github.com/cnedwin/Egret_rebuild) 正式 main 提交 `8a88cf84e171bc753e0b9491aaf8216834f57ba9`（含 #557、#563），由引擎仓库的 `tools/vendor-game.mjs` 复制，无本地引擎补丁；确切入口与版本见 [vendor/SOURCE.md](vendor/SOURCE.md)。
+引擎副本取自 [Egret_rebuild](https://github.com/cnedwin/Egret_rebuild) 正式 main 提交 `a0fb4e6c40a93156acd49f78ebf622375193a92c`（含 #557、#563、#567），由引擎仓库的 `tools/vendor-game.mjs` 复制，无本地引擎补丁；确切入口与版本见 [vendor/SOURCE.md](vendor/SOURCE.md)。
 
-The engine copy is from [Egret_rebuild](https://github.com/cnedwin/Egret_rebuild) main commit `8a88cf84e171bc753e0b9491aaf8216834f57ba9` (including #557 and #563), copied by the engine's `tools/vendor-game.mjs` without local engine patches; see [vendor/SOURCE.md](vendor/SOURCE.md) for the exact version and entries.
+The engine copy is from [Egret_rebuild](https://github.com/cnedwin/Egret_rebuild) main commit `a0fb4e6c40a93156acd49f78ebf622375193a92c` (including #557, #563 and #567), copied by the engine's `tools/vendor-game.mjs` without local engine patches; see [vendor/SOURCE.md](vendor/SOURCE.md) for the exact version and entries.
 
 在上述引擎提交的仓库根目录构建并生成副本；直接编辑和选择已由 Play 正式承接，不再单独加入浏览器 text-input 入口，音频则使用明确的可选 `web/audio` 入口。 · Build and vendor from the engine checkout at this pin. Play now supplies editing and selection, so the separate browser text-input entry is omitted; browser audio uses the explicit optional `web/audio` entry.
 
