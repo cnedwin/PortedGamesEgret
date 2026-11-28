@@ -11,7 +11,7 @@
 import { InstancedMesh3D, Mesh3D, Object3D, Scene3D, createGeometry3D, createPerspectiveCamera3D, createStandardMaterial3D, quatFromEuler } from '@egret/engine/world3d';
 import { PLACES, PLACE_BY_ID } from '../data/places.mjs';
 import { SECT_BY_ID } from '../data/sects.mjs';
-import { createBuilding } from './buildings.mjs';
+import { createRealmBuildingPool } from './buildings.mjs';
 import { boatParts } from './seat.mjs';
 import { BALL, BOX, PYRAMID, ROD, SPIKE, TAPER, TOON, build, hexOf, mix, model, rgb, scatter, shade } from './shapes.mjs';
 import { lightScene } from './stage.mjs';
@@ -495,6 +495,7 @@ function* realmAssembly(stage, world, { layer = null, onAudio, onSelect, terrain
   const house = (x, z, size, turn, wall, roof) => houses.push({ x, z, size, turn, wall, roof });
   const fixed = [];
   const sites = {};
+  const mapBuilding = createRealmBuildingPool();
   for (const place of PLACES) {
     const kind = kindOf(place.id),
       cx = (place.at.x - 50) * S,
@@ -503,7 +504,7 @@ function* realmAssembly(stage, world, { layer = null, onAudio, onSelect, terrain
     sites[place.id] = { x: cx, y, z: cz, kind };
     const put = (what, dx, dz, scale, turn = 0) => {
       if (detail.towns < 2 && what !== 'hall') return;
-      const node = createBuilding(what, what === 'hall' ? 3 : 2, assemblyOwners[place.id]);
+      const node = mapBuilding(what, what === 'hall' ? 3 : 2, assemblyOwners[place.id]);
       node.setPosition(cx + dx, groundAt(cx + dx, cz + dz), cz + dz);
       node.setScale(scale);
       node.setRotation(0, turn, 0);

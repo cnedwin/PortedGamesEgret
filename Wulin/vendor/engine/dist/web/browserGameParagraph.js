@@ -5,8 +5,8 @@ import { createParagraph, createParagraphCache } from '@egret/engine/paragraph';
 import { EgretError } from '@egret/runtime';
 import { createCanvasParagraphProvider } from './CanvasParagraphProvider.js';
 import { gameFontFamilies } from './browserGameFamilies.js';
-export function createGameParagraphs(engine) {
-    const provider = createCanvasParagraphProvider();
+export function createGameParagraphs(engine, schedule) {
+    const provider = createCanvasParagraphProvider(schedule === undefined ? {} : { schedule });
     const cache = createParagraphCache(engine.assets, { provider });
     const emptyBounds = Object.freeze({ x: 0, y: 0, width: 0, height: 0 });
     return {

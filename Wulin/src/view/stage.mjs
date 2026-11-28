@@ -6,6 +6,7 @@ import { createEngine } from '@egret/engine';
 import { InstancedMesh3D, Mesh3D, Scene3D, createAmbientLight3D, createDirectionalLight3D, createHemisphereLight3D, createPerspectiveCamera3D, createUnlitMaterial3D } from '@egret/engine/world3d';
 import { createOrbit } from './orbit.mjs';
 import { makeSceneMarkers } from './scene-markers.mjs';
+import { createScenePreparation, canPrepareRealmGeometry } from './scene-preparation.mjs';
 import { BALL, ORB, linear, skyOf } from './shapes.mjs';
 
 /**
@@ -25,12 +26,13 @@ export function pickQuality(params = new URLSearchParams(globalThis.location?.se
  */
 export async function createStage(canvas, { onError = () => {}, onPresented = () => {}, quality = pickQuality(), webgpu = false, game, pointerSurface } = {}) {
   let backend, engine, renderer;
+  let lost = () => {}, restored = () => {};
   try {
     backend = await (webgpu ? import('@egret/engine/webgpu/world3d') : import('@egret/engine/webgl2/world3d'));
     engine = game?.engine ?? await createEngine({ host: backend.createWorld3DHost(canvas) });
     renderer = webgpu
       ? await backend.createWebGPURenderer3D({ canvas, antialias: quality !== 'low', toneMapping: 'aces', onDeviceLost: (message) => onError(message || 'device lost') })
-      : backend.createWebGL2Renderer3D({ canvas, antialias: quality !== 'low', toneMapping: 'aces' });
+      : backend.createWebGL2Renderer3D({ canvas, antialias: quality !== 'low', toneMapping: 'aces', onContextLost: () => lost(), onContextRestored: () => restored() });
   } catch (cause) {
     onError(cause);
     return null;
@@ -63,8 +65,7 @@ export async function createStage(canvas, { onError = () => {}, onPresented = ()
   const blank = { scene: new Scene3D(), camera: createPerspectiveCamera3D({ fov: 45, near: 0.3, far: 600 }), update() {} };
   blank.scene.addChild(blank.camera);
   let current = blank;
-  let asleep = !!game, warming = false, presented = false, generation = 0;
-  const prepared = new WeakSet();
+  let asleep = !!game, warming = false, presented = false, generation = 0, geometryWanted = false, resumePreparation = false;
   const collectVariants = (scene) => {
     const requests = [];
     let soft = false;
@@ -82,6 +83,8 @@ export async function createStage(canvas, { onError = () => {}, onPresented = ()
     if (soft) for (const request of requests.slice()) if (!request.pass && request.material.depthWrite) requests.push({ mesh: request.mesh, material: request.material, pass: 'depth-prepass' });
     return requests;
   };
+  const preparation = createScenePreparation(renderer, collectVariants);
+  scope.use({ dispose: preparation.cancel });
   // Native stats have no DOM target. A diagnostic client can inspect stage.stats.
   const stats = new URLSearchParams(globalThis.location?.search ?? '').has('stats') ? backend.createWorld3DStats(renderer) : null;
   if (stats) scope.use(stats);
@@ -105,32 +108,45 @@ export async function createStage(canvas, { onError = () => {}, onPresented = ()
     setInputEnabled(enabled) { stage.orbit.setInputEnabled(enabled); },
     /** The camera rig the scenes share; each sets its own view of things when shown. */
     orbit: createOrbit(canvas, { game, pointerSurface }),
-    show(next) {
-      if (current === next) return stage.ready;
-      current.leave?.();
-      current = next ?? blank;
-      presented = false;
-      if (game) stage.orbit.setInputEnabled(false);
-      viewOptions.maxPixelRatio = quality === 'high' ? 1.5 : quality === 'low' ? current.lowPixelRatio ?? 1 : 1;
-      view.scene = current.scene;
-      view.camera = current.camera;
-      stage.orbit.onTap = null;
-      current.enter?.();
+    show(next, { prepareGeometry = false } = {}) {
+      if (current === next && !resumePreparation) return stage.ready;
+      if (current !== next) {
+        preparation.cancel();
+        current.leave?.();
+        current = next ?? blank;
+        presented = false;
+        if (game) stage.orbit.setInputEnabled(false);
+        viewOptions.maxPixelRatio = quality === 'high' ? 1.5 : quality === 'low' ? current.lowPixelRatio ?? 1 : 1;
+        view.scene = current.scene;
+        view.camera = current.camera;
+        stage.orbit.onTap = null;
+        current.enter?.();
+        geometryWanted = prepareGeometry && canPrepareRealmGeometry(quality, renderer);
+      }
+      resumePreparation = false;
       const ticket = ++generation;
-      // Program preparation selects the same shader variants as the renderer.
-      // Geometry/texture upload remains part of the first actual draw.
-      if (renderer.preparePrograms && !prepared.has(current.scene)) {
-        const scene = current.scene;
+      if (renderer.isContextLost) {
+        resumePreparation = true;
+        warming = false;
+        view.paused = true;
+        stage.ready = Promise.resolve();
+        return stage.ready;
+      }
+      // Keep the native loading picture present while shader compilation and
+      // bounded geometry preparation run in parallel. Older renderers retain
+      // shader-only preparation; there is never a hidden warm-up draw.
+      const pending = preparation.begin(current.scene, { geometry: geometryWanted });
+      if (pending) {
         warming = true;
         view.paused = true;
-        stage.ready = renderer.preparePrograms(collectVariants(scene), { includeAutoInstancing: true }).then(() => prepared.add(scene)).catch(onError).finally(() => {
+        stage.ready = pending.ready.catch(onError).finally(() => {
           if (ticket !== generation) return;
           warming = false;
-          view.paused = asleep;
+          view.paused = asleep || !!renderer.isContextLost;
         });
       } else {
         warming = false;
-        view.paused = asleep;
+        view.paused = asleep || !!renderer.isContextLost;
         stage.ready = Promise.resolve();
       }
       return stage.ready;
@@ -138,7 +154,15 @@ export async function createStage(canvas, { onError = () => {}, onPresented = ()
     /** Stops drawing while the canvas is out of sight, to spare the battery. */
     sleep(next) {
       asleep = !!next;
-      view.paused = asleep || warming;
+      if (asleep && geometryWanted && warming && preparation.cancel()) {
+        // Resuming this same scene must retry the aborted preparation rather
+        // than jump straight into a partially prepared first draw.
+        ++generation;
+        warming = false;
+        resumePreparation = true;
+        stage.ready = Promise.resolve();
+      }
+      view.paused = asleep || warming || !!renderer.isContextLost;
     },
     get current() {
       return current;
@@ -173,7 +197,23 @@ export async function createStage(canvas, { onError = () => {}, onPresented = ()
     },
   };
   const view = backend.createWorld3DView(engine, scope, viewOptions);
-  view.paused = asleep;
+  view.paused = asleep || !!renderer.isContextLost;
+  // Context restoration replaces the renderer's GPU resource cache. The
+  // scene-local preparation stamps must belong to that same lifetime.
+  lost = () => {
+    preparation.reset();
+    ++generation;
+    warming = false;
+    presented = false;
+    resumePreparation = true;
+    stage.ready = Promise.resolve();
+    view.paused = true;
+    stage.orbit.setInputEnabled(false);
+  };
+  restored = () => {
+    if (current === blank) { view.paused = asleep; return; }
+    stage.show(current, { prepareGeometry: geometryWanted });
+  };
   if (!game) backend.startWorld3DLoop(engine, onError);
   if (stage.orbit.dispose) scope.use({ dispose: stage.orbit.dispose });
   return stage;

@@ -532,6 +532,25 @@ export function createBuilding(kind, level = 1, style = null) {
   return (KINDS[kind] ?? KINDS.dorm)(level);
 }
 
+/** A realm owns its static building templates. Copies keep separate scene nodes
+ * and transforms, but use the same immutable geometry and materials for an
+ * identical authored kind, level and architectural palette. The seat's live
+ * buildings still use createBuilding and never borrow these resources. */
+export function createRealmBuildingPool() {
+  const templates = new Map();
+  return (kind, level = 1, style = null) => {
+    dress(style);
+    const key = JSON.stringify([kind, level, style]);
+    let template = templates.get(key);
+    if (!template) {
+      template = (KINDS[kind] ?? KINDS.dorm)(level);
+      templates.set(key, template);
+    }
+    const node = template.clone(true);
+    if (template.smoke) node.smoke = template.smoke.slice();
+    return node;
+  };
+}
 const TREES = {
   pine: (x, z, s) => [[TAPER, [x, 0.7 * s, z], [0.18 * s, 1.4 * s, 0.18 * s], grad(WOOD)], [SPIKE, [x, 2.0 * s, z], [1.15 * s, 2.0 * s, 1.15 * s], grad(shade(LEAF, 0.78))], [SPIKE, [x, 2.9 * s, z], [0.9 * s, 1.8 * s, 0.9 * s], grad(shade(LEAF, 0.9))], [SPIKE, [x, 3.7 * s, z], [0.62 * s, 1.5 * s, 0.62 * s], grad(LEAF)]],
   round: (x, z, s) => [[TAPER, [x, 0.9 * s, z], [0.2 * s, 1.8 * s, 0.2 * s], grad(WOOD)], [BALL, [x, 2.5 * s, z], [1.3 * s, 1.2 * s, 1.3 * s], grad(LEAF)], [BALL, [x + 0.5 * s, 3.1 * s, z + 0.2], [0.9 * s, 0.8 * s, 0.9 * s], grad(shade(LEAF, 1.15))], [BALL, [x - 0.6 * s, 2.9 * s, z - 0.3 * s], [0.8 * s, 0.7 * s, 0.8 * s], grad(shade(LEAF, 0.9))]],
