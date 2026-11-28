@@ -4,9 +4,9 @@
 
 Made by `node tools/engine-notes.mjs --write` from the ENGINE-NOTES of the games; do not edit by hand, and `--check` says whether it is out of date. What the engine resolved is copied from the engine's `guide/resolved.json` into [engine-resolved.json](engine-resolved.json) (15 entries). The form of a note is in part 3 of [GAME-STANDARD.md](GAME-STANDARD.md).
 
-24 个游戏、249 条笔记：未解决 64，部分解决 22，游戏侧绕过 7，已写入文档 42，已解决 114。
+24 个游戏、251 条笔记：未解决 64，部分解决 22，游戏侧绕过 7，已写入文档 42，已解决 116。
 
-249 notes from 24 games: 64 open, 22 partly resolved, 7 worked around in the game, 42 documented, 114 resolved.
+251 notes from 24 games: 64 open, 22 partly resolved, 7 worked around in the game, 42 documented, 116 resolved.
 
 ## 1. 引擎已经解决、游戏还标着未解决 · Resolved by the engine, still open in a game
 
@@ -151,4 +151,4 @@ Write the lesson as a card of the engine's guide (`guide/cards` in the engine re
 | [StarBanner](../StarBanner/ENGINE-NOTES.md) | 11 | 1 | 0 | 0 | 4 | 6 | 0 | `0e7b293` |
 | [TaiwanMahjong](../TaiwanMahjong/ENGINE-NOTES.md) | 12 | 4 | 0 | 0 | 3 | 5 | 0 | `13d70b7` |
 | [TeaHorseRoad](../TeaHorseRoad/ENGINE-NOTES.md) | 31 | 6 | 1 | 0 | 7 | 17 | 0 | `2fbe556` |
-| [Wulin](../Wulin/ENGINE-NOTES.md) | 8 | 2 | 1 | 0 | 0 | 5 | 0 | `dfd8cc6` |
+| [Wulin](../Wulin/ENGINE-NOTES.md) | 10 | 2 | 1 | 0 | 0 | 7 | 0 | `8a88cf8` |

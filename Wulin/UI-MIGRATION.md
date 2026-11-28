@@ -1,6 +1,6 @@
 # 原生界面迁移 · Native UI migration
 
-引擎：原生迁移自 `b5628eb9997b67cf6163a388f5aa06f321f3833a` 升至 `39560b3ef608e4dda68c8461f435c279d1eba3d2`；本轮先验证 #557 候选 `3748b332b5fafd2cb4530ca3df88ddd9d2939d46`，合并后使用正式 main `dfd8cc6205ed61f368f4c7408cee6473e042d973`。正式副本版本与入口见 [vendor/SOURCE.md](vendor/SOURCE.md)，只使用官方工具，无本地补丁。 · The initial native migration moved from b5628eb to 39560b3. This follow-up first tested #557 candidate 3748b332, then vendors main dfd8cc62 after the merge. The exact copy and entries are in vendor/SOURCE.md. Official vendoring only; no local patch.
+引擎：原生迁移自 `b5628eb9997b67cf6163a388f5aa06f321f3833a` 升至 `39560b3ef608e4dda68c8461f435c279d1eba3d2`；本轮先验证 #557 候选 `3748b332b5fafd2cb4530ca3df88ddd9d2939d46`，合并后使用正式 main `dfd8cc6205ed61f368f4c7408cee6473e042d973`。正式副本版本与入口见 [vendor/SOURCE.md](vendor/SOURCE.md)，只使用官方工具，无本地补丁。后续 #563 性能专项升至正式 main 8a88cf84e171bc753e0b9491aaf8216834f57ba9。 · The initial native migration moved from b5628eb to 39560b3. This follow-up first tested #557 candidate 3748b332, then vendors main dfd8cc62 after the merge. The exact copy and entries are in vendor/SOURCE.md. Official vendoring only; no local patch. The subsequent #563 performance follow-up vendors official main 8a88cf84e171bc753e0b9491aaf8216834f57ba9.
 
 ## 界面 · Screens
 
@@ -64,3 +64,5 @@ node tools/balance.mjs
 最终验收详情、物理设备、未覆盖条件与工具裁切报告修复前后对比见 [QUALITY.md](QUALITY.md) 与 [ENGINE-NOTES.md](ENGINE-NOTES.md)。旧验收与候选软件渲染结果分别记录，不将旧版真机或模拟尺寸当作本轮真机合格证明。 · See the quality record and engine notes for measured device results, unrun scenarios and the before/after screen-verifier findings. Earlier hardware checks and candidate software-rendered results are kept separate; neither old hardware nor simulated viewports certify a new physical device result.
 
 [界面对照实拍 · Interface comparisons](docs/ui-migration-comparison.jpg) — 标题、山门及 Fold7 战斗指挥栏调整前后；非等种子的画质测量图。 · Title, seat and Fold7 combat HUD comparisons; not a seeded performance fixture.
+
+江湖进入专项中，正式 `play({textWorkBudgetMs: 4, textWorkBudgetWhen})` 仅在无弹窗的3D江湖为新 Canvas 文字任务提供协作预算，自建富文本提供者使用同一 `game.browser.scheduleTextWork`。保留整个原生页面栈、可操作区域、焦点、字号和字形，不将整个页面推迟到下一帧。地图仍以实际3D首帧就绪撤掉准备提示；高画质可并行准备几何。详见 [性能实测 / Performance evidence](docs/realm-entry-performance.md)。 · A scoped 4ms Canvas preparation budget shares native label and paragraph work in the modal-free 3D realm; other screens keep immediate preparation; screen stack, hit areas, fonts and focus remain unchanged. Scene preparation remains tied to an accepted 3D frame.

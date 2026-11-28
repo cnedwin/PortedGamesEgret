@@ -59,7 +59,7 @@ function pickMode(game){const s=game.screen, scale=s.scale??(game.canvas.clientW
 function variant(p,mode){return mode==='tablet-portrait'?(p.tabletPortrait??p.portrait??p.root):mode==='tablet'?(p.tablet??p.root):mode==='phone-portrait'?(p.portrait??p.root):p.root;}
 export function createNativeUi(game,{context,locale,dispatch,change,onClose,onError}) {
   const screens=createUiScreenStack({onError});
-  const provider=createCanvasParagraphProvider(), cache=createParagraphCache(game.engine.assets,{provider,maxEntries:96,maxPendingJobs:96,maxImageBytes:64*1024*1024});
+  const provider=createCanvasParagraphProvider(game.browser.scheduleTextWork?{schedule:game.browser.scheduleTextWork}:{}), cache=createParagraphCache(game.engine.assets,{provider,maxEntries:96,maxPendingJobs:96,maxImageBytes:64*1024*1024});
   const values=new Map(); let scopeKey='',sheetScopeKey='',pageSlot,modalSlot,choiceAbort,queued=false,running=false,pending=false,failed=false;
   let lastSheet=null, lastPage=null;
   const currentMode=()=>pickMode(game);

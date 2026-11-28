@@ -286,7 +286,7 @@ function syncPicture() {
       prepareRealm(stage);
       return;
     }
-    if (stage.current !== picture.realm) stage.show(picture.realm);
+    stage.show(picture.realm, { prepareGeometry: true });
     picture.realm.refresh();
     // Carts run on every road that some sect trades along.
     picture.realm.setTrade(SECTS.filter((sect) => world.sects[sect.id].alive).flatMap((sect) => tradeRoutes(world, sect.id)));
@@ -1319,7 +1319,7 @@ const params=new URLSearchParams(location.search);
 const host=document.querySelector('#overlay');
 let startup;
 try{
- startup=await play({parent:host,width:1280,height:720,portrait:{width:720,height:1280},fit:'expand',pixelRatio:Math.min(2,Math.max(1.5,devicePixelRatio||1)),uiScale:{min:1,max:1.2},transparent:true,backend:'webgl2',audio:false,renderMode:'on-demand',semantics,
+ startup=await play({parent:host,width:1280,height:720,portrait:{width:720,height:1280},fit:'expand',pixelRatio:Math.min(2,Math.max(1.5,devicePixelRatio||1)),uiScale:{min:1,max:1.2},transparent:true,backend:'webgl2',audio:false,renderMode:'on-demand',textWorkBudgetMs:4,textWorkBudgetWhen:()=>ui.page==='world'&&ui.map3d&&!ui.sheet,semantics,
   setup(g){
     game=g;
     g.scope.use(clips);

@@ -1,7 +1,7 @@
 # 引擎笔记 · Engine notes
 
-引擎副本：正式 main `dfd8cc6205ed61f368f4c7408cee6473e042d973`（含 #557；见 [vendor/SOURCE.md](vendor/SOURCE.md)）。使用官方工具生成，不修改引擎副本。以下保留 #557 候选 `3748b332b5fafd2cb4530ca3df88ddd9d2939d46` 的历史验证证据，正式版本的设备和性能复测另见 QUALITY。
-Engine copy: official main `dfd8cc6205ed61f368f4c7408cee6473e042d973` (including #557; see [vendor/SOURCE.md](vendor/SOURCE.md)). Official vendoring only, no local patch. The historical #557 candidate evidence from 3748b332 is retained below; official-pin device and performance results are recorded separately in QUALITY.
+引擎副本：正式 main `8a88cf84e171bc753e0b9491aaf8216834f57ba9`（含 #557、#563；见 [vendor/SOURCE.md](vendor/SOURCE.md)）。使用官方工具生成，不修改引擎副本。以下保留 #557 候选 `3748b332b5fafd2cb4530ca3df88ddd9d2939d46` 的历史验证证据，正式版本的设备和性能复测另见 QUALITY。
+Engine copy: official main `8a88cf84e171bc753e0b9491aaf8216834f57ba9` (including #557 and #563; see [vendor/SOURCE.md](vendor/SOURCE.md)). Official vendoring only, no local patch. The historical #557 candidate evidence from 3748b332 is retained below; official-pin device and performance results are recorded separately in QUALITY.
 
 ### 1. 长名册与弹窗的段落缓存上限 · Paragraph capacity in rosters and dialogs — 已解决 / resolved
 <!-- engine-note: {"id":"Wulin#1","status":"resolved","topic":"paragraph-cache-budget"} -->
@@ -73,3 +73,19 @@ Engine copy: official main `dfd8cc6205ed61f368f4c7408cee6473e042d973` (including
 - 游戏里的处理 · Workaround：启动时统一在正式 `game.loading` 内读取清单并以引擎 `game.browser.loadTexture` 的 scope lease 预加载首屏印章/封面；成功前不挂数据视图。失败时仍可渲染原生重试。若宿主已经终止，才恢复页面原有载入状态行并提供一个实际重载链接，不在正常游戏中用 DOM 界面。 · Resolve the essential title images through the engine's loader and scoped texture leases before mounting image-bearing views. Recoverable startup failures retain a native retry; only a stopped host exposes a reload link in the existing bootstrap status line.
 - 证据 · Evidence：正式浏览器 test/asset-retry.mjs 的五个实际故障场景全部恢复：全拦截、清单、印章、英文封面及晚期序章图（触屏）。前四项保留原生宿主和重试；最后一项实际终止循环后由最小重载链接恢复。同一资源恢复后可以重新进入场景，无未捕获异常。 · All five injected fault cases recovered after an actual retry; the late-scene case proved the host had stopped before using the emergency reload link.
 - 建议 · Proposal：考虑允许数据视图的图片失败采用可控占位或失败回调，保留其所在页面的事件循环和重试能力；对不可恢复宿主错误明确提供独立恢复入口。 · Consider a recoverable image error/placeholder and callback policy that retains the page's event loop and retry capability, plus a distinct path for unrecoverable host failures.
+
+### 9. 大型 World3D 场景的首次几何上传 · Cold geometry upload for a large World3D scene — 已解决 / resolved
+<!-- engine-note: {"id":"Wulin#9","status":"resolved","topic":"world3d-budgeted-geometry-preparation"} -->
+
+- 现象 · Observation：PC 实测进入江湖首次 3D 渲染 CPU 42.8/44.3ms，其中约 34.79MB 冷几何、1,950 次 bufferData；首次绘制的着色程序已提前准备，并没有新链接。 · Actual first desktop rendering uploaded ~34.79MB in 1,950 bufferData calls; the shaders were already prepared.
+- 游戏里的处理 · Game use：[`src/view/scene-preparation.mjs`](src/view/scene-preparation.mjs) 在高画质有限批次调用引擎 `prepareGeometries`，与程序准备并行；地图显示、取消、context restore 保持真实缓存生命周期。低档实测预备收益为负，保留按需上传。[`src/view/buildings.mjs`](src/view/buildings.mjs) 共享江湖静态建筑模板，独立保留节点与所有权颜色。 · Budgeted geometry preparation runs alongside programs only on the measured high-quality path; low quality stays lazy. The game shares immutable static templates with separate transforms and ownership.
+- 状态 · Status：引擎 #563 已合入 main，提供正式几何预备 API，无 vendor 补丁。实际数据、复现和低档不采用该策略的原因见[性能记录](docs/realm-entry-performance.md)。 · Engine #563 on main exposes explicit preparation without a vendor patch; measured controls and the low-quality opt-out are documented in the performance report.
+- 边界 · Limit：仍可能等待 GPU 首次阴影工作及 2D WebGL2 必需的错误检查。保留安全检查，不将 RAF 等同于 GPU 时间，也不承诺每帧无长帧。 · Cold GPU shadow work and mandatory WebGL2 error-query waits can remain; retain validation, and do not equate RAF with GPU execution.
+
+### 10. Canvas 字形和富文本的同帧 CPU 峰值 · Canvas label and paragraph CPU bursts — 已解决 / resolved
+<!-- engine-note: {"id":"Wulin#10","status":"resolved","topic":"browser-canvas-text-work-budget"} -->
+
+- 现象 · Observation：Fold7 实际点击江湖的 pointerup 路径曾出现 69.7ms CPU 段，主要来自 Canvas 文字测量、绘制和读回，而非游戏逻辑。 · Actual device input showed a 69.7ms handler segment dominated by Canvas text measure/draw/readback rather than simulation.
+- 游戏里的处理 · Game use：[`src/main.mjs`](src/main.mjs) 用 `play({textWorkBudgetMs: 4, textWorkBudgetWhen})`，仅无弹窗的3D江湖对新任务启用分帧；[`src/ui/native-shell.mjs`](src/ui/native-shell.mjs) 让原生富文本提供者共用 `game.browser.scheduleTextWork`。保留文字缓存、资源、取消及原生焦点。 · Opt-in 4ms shared budgeting applies to new work in the modal-free 3D realm; other screens retain immediate work, with normal cache, cancellation and focus semantics.
+- 状态 · Status：引擎 #563 已合入 main，提供可选且可限定范围的 CPU 文字准备接口，无 vendor 补丁。全局开启曾引起手札短暂缺字，作对照记录而非改黄金图。 · Engine #563 on main exposes scoped opt-in budgeting; the global opt-in transient guide regression is documented, not hidden by modifying goldens.
+- 边界 · Limit：单次 Canvas 作业不可抢占，逐帧预算不是保证帧耗时；只有在实际场景验证可接受时采用。 · A single Canvas job remains atomic. A cooperative budget is not a frame time guarantee.
