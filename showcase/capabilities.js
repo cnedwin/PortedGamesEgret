@@ -400,7 +400,7 @@ export const MATRIX = {
     },
     {
      "game": "NineProvinces",
-     "file": "NineProvinces/src/ui/native-dialogs.mjs"
+     "file": "NineProvinces/src/ui/native-battle-replay.mjs"
     },
     {
      "game": "OperaDrums",
@@ -1386,6 +1386,17 @@ export const MATRIX = {
     {
      "game": "LanternShadows",
      "file": "LanternShadows/src/puppets.mjs"
+    }
+   ]
+  },
+  {
+   "id": "@egret/runtime",
+   "kind": "other",
+   "label": "@egret/runtime",
+   "games": [
+    {
+     "game": "NineProvinces",
+     "file": "NineProvinces/src/ui/native-lab-board.mjs"
     }
    ]
   },

@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { replayFrameAt } from '../src/sim/battle-history.mjs';
-import { replayMoments } from '../src/ui/battle-lab.mjs';
+import { replayMoments } from '../src/ui/native-replay-copy.mjs';
 
 const battleTape = () => ({
   setup: { factions: ['liubei', 'caocao'] },

@@ -5,7 +5,6 @@
 // under the walls); it handles dragging, the wheel, two-finger zoom, taps and hovering, and shows the choice, the line
 // of a march and the places at war.
 import { createFatLine3D, createRingGeometry3D, createStandardMaterial3D, linearColor3D, Mesh3D, projectToViewport3D } from '@egret/engine/world3d';
-import { createScreenMarkers3D } from '@egret/engine/webgl2/world3d';
 import { createGestures } from '@egret/engine/web/gestures';
 import { FACTIONS, LATER } from '../data/factions.mjs';
 import { NODES, project } from '../data/map.mjs';
@@ -40,12 +39,10 @@ export function factionColour(state, id) {
 }
 
 /**
- * The 3D realm on `canvas`, with native Play map nameplates. `plates` is the
- * remaining legacy battle presentation layer until the battle UI moves to
- * native nodes as well. `getState()` gives the campaign (or title realm), `on`
+ * The 3D realm with native map and battle nameplates. getState() gives the campaign or title realm, on
  * hears taps/hovering, and `tick(seconds)` is the one campaign frame.
  */
-export async function createRealmView({ canvas, plates, uiParent, getState, getPlayer=()=>getState()?.player, showMapMarkers=()=>true, on, tick, quality, onError }) {
+export async function createRealmView({ canvas, uiParent, getState, getPlayer=()=>getState()?.player, showMapMarkers=()=>true, on, tick, quality, onError }) {
   const stage = await createStage(canvas, { quality, onError });
   const { app, scene, camera, rig } = stage;
   const flora = createFlora(scene, { quality: app.quality });
@@ -67,9 +64,6 @@ export async function createRealmView({ canvas, plates, uiParent, getState, getP
   };
   const places = createPlaces(scene, { quality: app.quality, colourOf: ownerColour });
   const troops = createTroops(scene, { quality: app.quality });
-  // This adapter only serves the old battle layout during this batch. All
-  // campaign map plates are native retained display objects underneath HUD.
-  const markers = createScreenMarkers3D({ container: plates, camera });
   let uiHost,mapMarkers;
   const armyAnchor = new Map();
 
@@ -363,9 +357,6 @@ export async function createRealmView({ canvas, plates, uiParent, getState, getP
     land.setTerritoryOpacity(territoryVisible && !mode ? tint : 0);
     const show=visible&&showMapMarkers();
     mapMarkers.update({state:s,selection,player:getPlayer(),visible:show,distance:d,showRelief:show&&!mode&&d>=145});
-    // Battle-only legacy nameplates will be replaced by the native projected
-    // counterpart in the next presentation batch.
-    markers.update();
     if (mode) {
       const m = mode.hexes();
       land.setHexes(m.hover, m.chosen, m.grid);
@@ -409,7 +400,6 @@ export async function createRealmView({ canvas, plates, uiParent, getState, getP
     land,
     troops,
     places,
-    markers,
     stage,
     /** Decorative state, suitable for read-only acceptance probes. */
     get landscape() {

@@ -7,7 +7,7 @@ import { plateExtent } from './native-map-plate-model.mjs';
 
 // Active portraits are bounded separately from marker labels, so a dense
 // scene cannot exhaust the engine's per-frame image-page admission limit.
-function portraitCache(game,limit=48,onWarning=console.warn){
+export function portraitCache(game,limit=48,onWarning=console.warn){
   const entries=new Map();let stamp=0,closed=false;
   function evict(){
     if(entries.size<limit)return;

@@ -15,8 +15,7 @@ export async function createRealmHost({canvas,owner,scene,camera,frame,onError,u
   const parent=canvas.ownerDocument.createElement('div');
   parent.className='nativeRealmUi';
   parent.style.cssText='position:absolute;inset:0;overflow:hidden';
-  // Keep legacy map name plates above the native canvas until their native
-  // replacements are attached. They remain ordinary foreground controls.
+  // The transparent Play surface owns all interface draws above World3D.
   if(canvas.parentElement===uiParent)uiParent.insertBefore(parent,canvas.nextSibling);else uiParent.appendChild(parent);
   // The full opening/management lists and map nameplates share this bounded
   // semantic tree. Leave room for both without removing its native limit.
