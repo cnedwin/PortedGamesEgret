@@ -724,7 +724,7 @@ export class GpuResources3D {
     }
     // ---- render targets -----------------------------------------------------------------
     /** Create or resize the framebuffer of a render target. */
-    target(target) {
+    target(target, encodedCanvasOutput = false) {
         const gl = this.#gl;
         if (target.isDisposed)
             throw new World3DError('WORLD3D_DISPOSED', 'render target');
@@ -764,7 +764,7 @@ export class GpuResources3D {
             if (target.format === 'rgba16f' && this.floatTargets)
                 gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA16F, target.width, target.height, 0, gl.RGBA, gl.HALF_FLOAT, null);
             else
-                gl.texImage2D(gl.TEXTURE_2D, 0, gl.SRGB8_ALPHA8, target.width, target.height, 0, gl.RGBA, gl.UNSIGNED_BYTE, null);
+                gl.texImage2D(gl.TEXTURE_2D, 0, encodedCanvasOutput ? gl.RGBA8 : gl.SRGB8_ALPHA8, target.width, target.height, 0, gl.RGBA, gl.UNSIGNED_BYTE, null);
             this.applySampler(gl.TEXTURE_2D, target.texture);
             gl.bindFramebuffer(gl.DRAW_FRAMEBUFFER, entry.framebuffer);
             gl.framebufferTexture2D(gl.DRAW_FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, entry.color, 0);
