@@ -1,0 +1,1770 @@
+{
+  "environment": {
+    "browser": "Chrome for Testing 157.0.8103.6",
+    "renderer": "ANGLE Vulkan SwiftShader (software)",
+    "hardware": "not a physical-device or graphics-hardware acceptance"
+  },
+  "engine": {
+    "legacy": "b5628eb9997b67cf6163a388f5aa06f321f3833a",
+    "upgraded": "2fbe55630b1f67c6b1584d73290c19cb0aa0ae24"
+  },
+  "baseline": {
+    "oldDom": {
+      "files": 294,
+      "bytes": 3864027
+    },
+    "engineOnlyDom": {
+      "files": 463,
+      "bytes": 4986194
+    }
+  },
+  "performance": {
+    "old": {
+      "browser": "157.0.8103.6",
+      "gpu": "ANGLE (Google, Vulkan 1.3.0 (SwiftShader Device (Subzero) (0x0000C0DE)), SwiftShader driver)",
+      "width": 844,
+      "height": 390,
+      "settings": {
+        "skin": 7,
+        "party": 1,
+        "muted": true,
+        "quality": "medium"
+      },
+      "fixture": {
+        "t": 285.00000000006946,
+        "state": "play",
+        "steps": 17100,
+        "elapsedMs": 1849.5,
+        "level": 18,
+        "kills": 1701,
+        "enemies": 80,
+        "hp": 120,
+        "toys": [
+          [
+            1,
+            7,
+            false
+          ],
+          [
+            10,
+            3,
+            false
+          ],
+          [
+            5,
+            2,
+            false
+          ],
+          [
+            2,
+            2,
+            false
+          ],
+          [
+            6,
+            1,
+            false
+          ]
+        ],
+        "charms": [
+          [
+            0,
+            1
+          ],
+          [
+            8,
+            1
+          ],
+          [
+            4,
+            1
+          ],
+          [
+            6,
+            1
+          ],
+          [
+            9,
+            1
+          ]
+        ]
+      },
+      "frames": 60,
+      "metrics": {
+        "frame": {
+          "samples": 59,
+          "p50": 166.6,
+          "p95": 181.8,
+          "max": 184.3
+        },
+        "rules": {
+          "samples": 60,
+          "p50": 0.8,
+          "p95": 1.1,
+          "max": 1.3
+        },
+        "view": {
+          "samples": 60,
+          "p50": 0.5,
+          "p95": 1.1,
+          "max": 1.6
+        },
+        "draw": {
+          "samples": 60,
+          "p50": 0.7,
+          "p95": 0.9,
+          "max": 1
+        },
+        "drawCalls": {
+          "samples": 60,
+          "p50": 82,
+          "p95": 87,
+          "max": 88
+        },
+        "triangles": {
+          "samples": 60,
+          "p50": 268438,
+          "p95": 270458,
+          "max": 271022
+        },
+        "enemies": {
+          "samples": 60,
+          "p50": 81,
+          "p95": 84,
+          "max": 85
+        }
+      },
+      "glCalls": {
+        "3D stage": {
+          "drawElementsInstanced": 3684,
+          "bufferSubData": 2964,
+          "drawElements": 6295,
+          "drawArrays": 720,
+          "bufferData": 24
+        }
+      },
+      "uniqueTimer": [
+        285,
+        286,
+        287,
+        288
+      ],
+      "longGapsOver300": 0,
+      "drawPhaseOver20": 0,
+      "errors": []
+    },
+    "upgraded": {
+      "browser": "157.0.8103.6",
+      "gpu": "ANGLE (Google, Vulkan 1.3.0 (SwiftShader Device (Subzero) (0x0000C0DE)), SwiftShader driver)",
+      "width": 844,
+      "height": 390,
+      "settings": {
+        "skin": 7,
+        "party": 1,
+        "muted": true,
+        "quality": "medium"
+      },
+      "fixture": {
+        "t": 285.00000000006946,
+        "state": "play",
+        "steps": 17100,
+        "elapsedMs": 1890.5999999940395,
+        "level": 18,
+        "kills": 1701,
+        "enemies": 80,
+        "hp": 120,
+        "toys": [
+          [
+            1,
+            7,
+            false
+          ],
+          [
+            10,
+            3,
+            false
+          ],
+          [
+            5,
+            2,
+            false
+          ],
+          [
+            2,
+            2,
+            false
+          ],
+          [
+            6,
+            1,
+            false
+          ]
+        ],
+        "charms": [
+          [
+            0,
+            1
+          ],
+          [
+            8,
+            1
+          ],
+          [
+            4,
+            1
+          ],
+          [
+            6,
+            1
+          ],
+          [
+            9,
+            1
+          ]
+        ]
+      },
+      "frames": 60,
+      "metrics": {
+        "frame": {
+          "samples": 59,
+          "p50": 172,
+          "p95": 191.2,
+          "max": 195
+        },
+        "rules": {
+          "samples": 60,
+          "p50": 0.8,
+          "p95": 1.2,
+          "max": 1.5
+        },
+        "view": {
+          "samples": 60,
+          "p50": 0.4,
+          "p95": 1.2,
+          "max": 1.4
+        },
+        "draw": {
+          "samples": 60,
+          "p50": 0.7,
+          "p95": 0.9,
+          "max": 1
+        },
+        "drawCalls": {
+          "samples": 60,
+          "p50": 81,
+          "p95": 86,
+          "max": 86
+        },
+        "triangles": {
+          "samples": 60,
+          "p50": 268352,
+          "p95": 270042,
+          "max": 270678
+        },
+        "enemies": {
+          "samples": 60,
+          "p50": 81,
+          "p95": 84,
+          "max": 85
+        }
+      },
+      "glCalls": {
+        "3D stage": {
+          "drawElementsInstanced": 3667,
+          "bufferSubData": 2912,
+          "drawElements": 6288,
+          "drawArrays": 720,
+          "bufferData": 28
+        }
+      },
+      "uniqueTimer": [
+        285,
+        286,
+        287,
+        288
+      ],
+      "longGapsOver300": 0,
+      "drawPhaseOver20": 0,
+      "errors": []
+    },
+    "native": {
+      "browser": "157.0.8103.6",
+      "gpu": "ANGLE (Google, Vulkan 1.3.0 (SwiftShader Device (Subzero) (0x0000C0DE)), SwiftShader driver)",
+      "width": 844,
+      "height": 390,
+      "settings": {
+        "skin": 7,
+        "party": 1,
+        "muted": true,
+        "quality": "medium"
+      },
+      "fixture": {
+        "t": 285.00000000006946,
+        "state": "play",
+        "steps": 17100,
+        "elapsedMs": 1883.2999999970198,
+        "level": 18,
+        "kills": 1701,
+        "enemies": 80,
+        "hp": 120,
+        "toys": [
+          [
+            1,
+            7,
+            false
+          ],
+          [
+            10,
+            3,
+            false
+          ],
+          [
+            5,
+            2,
+            false
+          ],
+          [
+            2,
+            2,
+            false
+          ],
+          [
+            6,
+            1,
+            false
+          ]
+        ],
+        "charms": [
+          [
+            0,
+            1
+          ],
+          [
+            8,
+            1
+          ],
+          [
+            4,
+            1
+          ],
+          [
+            6,
+            1
+          ],
+          [
+            9,
+            1
+          ]
+        ]
+      },
+      "frames": 60,
+      "metrics": {
+        "frame": {
+          "samples": 59,
+          "p50": 176.7,
+          "p95": 519.7,
+          "max": 549.4
+        },
+        "rules": {
+          "samples": 60,
+          "p50": 0.9,
+          "p95": 1.3,
+          "max": 2.1
+        },
+        "view": {
+          "samples": 60,
+          "p50": 0.6,
+          "p95": 1.1,
+          "max": 1.1
+        },
+        "draw": {
+          "samples": 60,
+          "p50": 0.8,
+          "p95": 1,
+          "max": 501.3
+        },
+        "drawCalls": {
+          "samples": 60,
+          "p50": 80,
+          "p95": 86,
+          "max": 87
+        },
+        "triangles": {
+          "samples": 60,
+          "p50": 267430,
+          "p95": 269076,
+          "max": 269272
+        },
+        "enemies": {
+          "samples": 60,
+          "p50": 81,
+          "p95": 83,
+          "max": 84
+        }
+      },
+      "glCalls": {
+        "3D stage": {
+          "drawElementsInstanced": 3649,
+          "bufferSubData": 2912,
+          "drawElements": 6290,
+          "drawArrays": 720,
+          "bufferData": 28
+        },
+        "egret-world3d-overlay / 1": {
+          "bufferSubData": 2175,
+          "drawArrays": 1102,
+          "bufferData": 3
+        }
+      },
+      "uniqueTimer": [
+        285,
+        286,
+        287
+      ],
+      "longGapsOver300": 8,
+      "drawPhaseOver20": 1,
+      "errors": []
+    },
+    "native-repeat": {
+      "browser": "157.0.8103.6",
+      "gpu": "ANGLE (Google, Vulkan 1.3.0 (SwiftShader Device (Subzero) (0x0000C0DE)), SwiftShader driver)",
+      "width": 844,
+      "height": 390,
+      "settings": {
+        "skin": 7,
+        "party": 1,
+        "muted": true,
+        "quality": "medium"
+      },
+      "fixture": {
+        "t": 285.00000000006946,
+        "state": "play",
+        "steps": 17100,
+        "elapsedMs": 1782,
+        "level": 18,
+        "kills": 1701,
+        "enemies": 80,
+        "hp": 120,
+        "toys": [
+          [
+            1,
+            7,
+            false
+          ],
+          [
+            10,
+            3,
+            false
+          ],
+          [
+            5,
+            2,
+            false
+          ],
+          [
+            2,
+            2,
+            false
+          ],
+          [
+            6,
+            1,
+            false
+          ]
+        ],
+        "charms": [
+          [
+            0,
+            1
+          ],
+          [
+            8,
+            1
+          ],
+          [
+            4,
+            1
+          ],
+          [
+            6,
+            1
+          ],
+          [
+            9,
+            1
+          ]
+        ]
+      },
+      "frames": 60,
+      "staticMenu": false,
+      "detail": true,
+      "metrics": {
+        "frame": {
+          "samples": 59,
+          "p50": 167.3,
+          "p95": 511.5,
+          "max": 545.1
+        },
+        "rules": {
+          "samples": 60,
+          "p50": 0.5,
+          "p95": 1.2,
+          "max": 1.3
+        },
+        "view": {
+          "samples": 60,
+          "p50": 0.5,
+          "p95": 0.9,
+          "max": 1.1
+        },
+        "draw": {
+          "samples": 60,
+          "p50": 0.7,
+          "p95": 1,
+          "max": 480.2
+        },
+        "drawCalls": {
+          "samples": 60,
+          "p50": 82,
+          "p95": 87,
+          "max": 88
+        },
+        "triangles": {
+          "samples": 60,
+          "p50": 267934,
+          "p95": 269996,
+          "max": 270240
+        },
+        "enemies": {
+          "samples": 60,
+          "p50": 82,
+          "p95": 84,
+          "max": 84
+        }
+      },
+      "glCalls": {
+        "3D stage": {
+          "drawElementsInstanced": 3725,
+          "bufferSubData": 2914,
+          "drawElements": 6276,
+          "drawArrays": 720,
+          "bufferData": 20
+        },
+        "egret-world3d-overlay / 1": {
+          "bufferSubData": 1350,
+          "drawArrays": 684,
+          "bufferData": 3
+        }
+      },
+      "glCpu": {
+        "3D stage": {
+          "drawElementsInstanced": 1.199999988079071,
+          "bufferSubData": 2.400000035762787,
+          "drawElements": 1.399999976158142,
+          "drawArrays": 0.30000001192092896,
+          "bufferData": 0
+        },
+        "egret-world3d-overlay / 1": {
+          "bufferSubData": 1.1000000089406967,
+          "drawArrays": 0.5000000149011612,
+          "bufferData": 0
+        }
+      },
+      "uniqueTimer": [
+        285,
+        286
+      ],
+      "killsSeen": 17,
+      "longGapsOver300": 17,
+      "drawPhaseOver20": 1,
+      "errors": []
+    },
+    "native-static": {
+      "browser": "157.0.8103.6",
+      "gpu": "ANGLE (Google, Vulkan 1.3.0 (SwiftShader Device (Subzero) (0x0000C0DE)), SwiftShader driver)",
+      "width": 844,
+      "height": 390,
+      "settings": {
+        "skin": 7,
+        "party": 1,
+        "muted": true,
+        "quality": "medium"
+      },
+      "fixture": {
+        "state": "title",
+        "skin": 7,
+        "t": 0
+      },
+      "frames": 30,
+      "staticMenu": true,
+      "detail": true,
+      "metrics": {
+        "frame": {
+          "samples": 29,
+          "p50": 128.9,
+          "p95": 137.5,
+          "max": 160.3
+        },
+        "rules": {
+          "samples": 30,
+          "p50": 0.1,
+          "p95": 0.2,
+          "max": 0.2
+        },
+        "view": {
+          "samples": 30,
+          "p50": 0.1,
+          "p95": 0.2,
+          "max": 0.2
+        },
+        "draw": {
+          "samples": 30,
+          "p50": 0.6,
+          "p95": 0.9,
+          "max": 0.9
+        },
+        "drawCalls": {
+          "samples": 30,
+          "p50": 58,
+          "p95": 58,
+          "max": 58
+        },
+        "triangles": {
+          "samples": 30,
+          "p50": 221478,
+          "p95": 221478,
+          "max": 221478
+        },
+        "enemies": {
+          "samples": 30,
+          "p50": 0,
+          "p95": 0,
+          "max": 0
+        }
+      },
+      "glCalls": {
+        "3D stage": {
+          "drawElementsInstanced": 690,
+          "drawElements": 3300,
+          "bufferSubData": 60,
+          "drawArrays": 360
+        }
+      },
+      "glCpu": {
+        "3D stage": {
+          "drawElementsInstanced": 0.3999999910593033,
+          "drawElements": 0.6000000238418579,
+          "bufferSubData": 0.4000000059604645,
+          "drawArrays": 0.20000001788139343
+        }
+      },
+      "uniqueTimer": [
+        0
+      ],
+      "killsSeen": 1,
+      "longGapsOver300": 0,
+      "drawPhaseOver20": 0,
+      "errors": []
+    }
+  },
+  "screens": [
+    {
+      "name": "phone-small",
+      "size": [
+        375,
+        667
+      ],
+      "insets": {
+        "top": 0,
+        "right": 0,
+        "bottom": 0,
+        "left": 0
+      },
+      "pass": true,
+      "played": true,
+      "controls": 15,
+      "findings": [],
+      "checkpoints": [
+        {
+          "name": "title-zh",
+          "pass": true,
+          "controls": 15,
+          "receiptFresh": true,
+          "findings": [],
+          "engineWarnings": []
+        },
+        {
+          "name": "settings-en",
+          "pass": true,
+          "controls": 4,
+          "receiptFresh": true,
+          "findings": [],
+          "engineWarnings": []
+        },
+        {
+          "name": "title-en",
+          "pass": true,
+          "controls": 15,
+          "receiptFresh": true,
+          "findings": [],
+          "engineWarnings": []
+        },
+        {
+          "name": "help",
+          "pass": true,
+          "controls": 1,
+          "receiptFresh": true,
+          "findings": [],
+          "engineWarnings": []
+        },
+        {
+          "name": "hud-party-four",
+          "pass": true,
+          "controls": 5,
+          "receiptFresh": true,
+          "findings": [],
+          "engineWarnings": []
+        },
+        {
+          "name": "title-selected",
+          "pass": true,
+          "controls": 15,
+          "receiptFresh": true,
+          "findings": [],
+          "engineWarnings": []
+        },
+        {
+          "name": "hud",
+          "pass": true,
+          "controls": 5,
+          "receiptFresh": true,
+          "findings": [],
+          "engineWarnings": []
+        },
+        {
+          "name": "pause",
+          "pass": true,
+          "controls": 3,
+          "receiptFresh": true,
+          "findings": [],
+          "engineWarnings": []
+        },
+        {
+          "name": "cards",
+          "pass": true,
+          "controls": 4,
+          "receiptFresh": true,
+          "findings": [],
+          "engineWarnings": []
+        },
+        {
+          "name": "cards-reroll-exhausted",
+          "pass": true,
+          "controls": 3,
+          "receiptFresh": true,
+          "findings": [],
+          "engineWarnings": []
+        },
+        {
+          "name": "boss",
+          "pass": true,
+          "controls": 5,
+          "receiptFresh": true,
+          "findings": [],
+          "engineWarnings": []
+        },
+        {
+          "name": "end",
+          "pass": true,
+          "controls": 2,
+          "receiptFresh": true,
+          "findings": [],
+          "engineWarnings": []
+        }
+      ],
+      "minWidth": 48.75,
+      "minHeight": 45
+    },
+    {
+      "name": "phone-notch",
+      "size": [
+        393,
+        852
+      ],
+      "insets": {
+        "top": 59,
+        "right": 0,
+        "bottom": 34,
+        "left": 0
+      },
+      "pass": true,
+      "played": true,
+      "controls": 15,
+      "findings": [],
+      "checkpoints": [
+        {
+          "name": "title-zh",
+          "pass": true,
+          "controls": 15,
+          "receiptFresh": true,
+          "findings": [],
+          "engineWarnings": []
+        },
+        {
+          "name": "settings-en",
+          "pass": true,
+          "controls": 4,
+          "receiptFresh": true,
+          "findings": [],
+          "engineWarnings": []
+        },
+        {
+          "name": "title-en",
+          "pass": true,
+          "controls": 15,
+          "receiptFresh": true,
+          "findings": [],
+          "engineWarnings": []
+        },
+        {
+          "name": "help",
+          "pass": true,
+          "controls": 1,
+          "receiptFresh": true,
+          "findings": [],
+          "engineWarnings": []
+        },
+        {
+          "name": "hud-party-four",
+          "pass": true,
+          "controls": 5,
+          "receiptFresh": true,
+          "findings": [],
+          "engineWarnings": []
+        },
+        {
+          "name": "title-selected",
+          "pass": true,
+          "controls": 15,
+          "receiptFresh": true,
+          "findings": [],
+          "engineWarnings": []
+        },
+        {
+          "name": "hud",
+          "pass": true,
+          "controls": 5,
+          "receiptFresh": true,
+          "findings": [],
+          "engineWarnings": []
+        },
+        {
+          "name": "pause",
+          "pass": true,
+          "controls": 3,
+          "receiptFresh": true,
+          "findings": [],
+          "engineWarnings": []
+        },
+        {
+          "name": "cards",
+          "pass": true,
+          "controls": 4,
+          "receiptFresh": true,
+          "findings": [],
+          "engineWarnings": []
+        },
+        {
+          "name": "cards-reroll-exhausted",
+          "pass": true,
+          "controls": 3,
+          "receiptFresh": true,
+          "findings": [],
+          "engineWarnings": []
+        },
+        {
+          "name": "boss",
+          "pass": true,
+          "controls": 5,
+          "receiptFresh": true,
+          "findings": [],
+          "engineWarnings": []
+        },
+        {
+          "name": "end",
+          "pass": true,
+          "controls": 2,
+          "receiptFresh": true,
+          "findings": [],
+          "engineWarnings": []
+        }
+      ],
+      "minWidth": 51.08999999999999,
+      "minHeight": 45.00000000000001
+    },
+    {
+      "name": "phone-notch-wide",
+      "size": [
+        852,
+        393
+      ],
+      "insets": {
+        "top": 0,
+        "right": 59,
+        "bottom": 21,
+        "left": 59
+      },
+      "pass": true,
+      "played": true,
+      "controls": 15,
+      "findings": [],
+      "checkpoints": [
+        {
+          "name": "title-zh",
+          "pass": true,
+          "controls": 15,
+          "receiptFresh": true,
+          "findings": [],
+          "engineWarnings": []
+        },
+        {
+          "name": "settings-en",
+          "pass": true,
+          "controls": 4,
+          "receiptFresh": true,
+          "findings": [],
+          "engineWarnings": []
+        },
+        {
+          "name": "title-en",
+          "pass": true,
+          "controls": 15,
+          "receiptFresh": true,
+          "findings": [],
+          "engineWarnings": []
+        },
+        {
+          "name": "help",
+          "pass": true,
+          "controls": 1,
+          "receiptFresh": true,
+          "findings": [],
+          "engineWarnings": []
+        },
+        {
+          "name": "hud-party-four",
+          "pass": true,
+          "controls": 5,
+          "receiptFresh": true,
+          "findings": [],
+          "engineWarnings": []
+        },
+        {
+          "name": "title-selected",
+          "pass": true,
+          "controls": 15,
+          "receiptFresh": true,
+          "findings": [],
+          "engineWarnings": []
+        },
+        {
+          "name": "hud",
+          "pass": true,
+          "controls": 5,
+          "receiptFresh": true,
+          "findings": [],
+          "engineWarnings": []
+        },
+        {
+          "name": "pause",
+          "pass": true,
+          "controls": 3,
+          "receiptFresh": true,
+          "findings": [],
+          "engineWarnings": []
+        },
+        {
+          "name": "cards",
+          "pass": true,
+          "controls": 4,
+          "receiptFresh": true,
+          "findings": [],
+          "engineWarnings": []
+        },
+        {
+          "name": "cards-reroll-exhausted",
+          "pass": true,
+          "controls": 3,
+          "receiptFresh": true,
+          "findings": [],
+          "engineWarnings": []
+        },
+        {
+          "name": "boss",
+          "pass": true,
+          "controls": 5,
+          "receiptFresh": true,
+          "findings": [],
+          "engineWarnings": []
+        },
+        {
+          "name": "end",
+          "pass": true,
+          "controls": 2,
+          "receiptFresh": true,
+          "findings": [],
+          "engineWarnings": []
+        }
+      ],
+      "minWidth": 48.360000000000014,
+      "minHeight": 44
+    },
+    {
+      "name": "phone-tall",
+      "size": [
+        360,
+        800
+      ],
+      "insets": {
+        "top": 24,
+        "right": 0,
+        "bottom": 0,
+        "left": 0
+      },
+      "pass": true,
+      "played": true,
+      "controls": 15,
+      "findings": [],
+      "checkpoints": [
+        {
+          "name": "title-zh",
+          "pass": true,
+          "controls": 15,
+          "receiptFresh": true,
+          "findings": [],
+          "engineWarnings": []
+        },
+        {
+          "name": "settings-en",
+          "pass": true,
+          "controls": 4,
+          "receiptFresh": true,
+          "findings": [],
+          "engineWarnings": []
+        },
+        {
+          "name": "title-en",
+          "pass": true,
+          "controls": 15,
+          "receiptFresh": true,
+          "findings": [],
+          "engineWarnings": []
+        },
+        {
+          "name": "help",
+          "pass": true,
+          "controls": 1,
+          "receiptFresh": true,
+          "findings": [],
+          "engineWarnings": []
+        },
+        {
+          "name": "hud-party-four",
+          "pass": true,
+          "controls": 5,
+          "receiptFresh": true,
+          "findings": [],
+          "engineWarnings": []
+        },
+        {
+          "name": "title-selected",
+          "pass": true,
+          "controls": 15,
+          "receiptFresh": true,
+          "findings": [],
+          "engineWarnings": []
+        },
+        {
+          "name": "hud",
+          "pass": true,
+          "controls": 5,
+          "receiptFresh": true,
+          "findings": [],
+          "engineWarnings": []
+        },
+        {
+          "name": "pause",
+          "pass": true,
+          "controls": 3,
+          "receiptFresh": true,
+          "findings": [],
+          "engineWarnings": []
+        },
+        {
+          "name": "cards",
+          "pass": true,
+          "controls": 4,
+          "receiptFresh": true,
+          "findings": [],
+          "engineWarnings": []
+        },
+        {
+          "name": "cards-reroll-exhausted",
+          "pass": true,
+          "controls": 3,
+          "receiptFresh": true,
+          "findings": [],
+          "engineWarnings": []
+        },
+        {
+          "name": "boss",
+          "pass": true,
+          "controls": 5,
+          "receiptFresh": true,
+          "findings": [],
+          "engineWarnings": []
+        },
+        {
+          "name": "end",
+          "pass": true,
+          "controls": 2,
+          "receiptFresh": true,
+          "findings": [],
+          "engineWarnings": []
+        }
+      ],
+      "minWidth": 48,
+      "minHeight": 45
+    },
+    {
+      "name": "tablet",
+      "size": [
+        768,
+        1024
+      ],
+      "insets": {
+        "top": 0,
+        "right": 0,
+        "bottom": 0,
+        "left": 0
+      },
+      "pass": true,
+      "played": true,
+      "controls": 15,
+      "findings": [],
+      "checkpoints": [
+        {
+          "name": "title-zh",
+          "pass": true,
+          "controls": 15,
+          "receiptFresh": true,
+          "findings": [],
+          "engineWarnings": []
+        },
+        {
+          "name": "settings-en",
+          "pass": true,
+          "controls": 4,
+          "receiptFresh": true,
+          "findings": [],
+          "engineWarnings": []
+        },
+        {
+          "name": "title-en",
+          "pass": true,
+          "controls": 15,
+          "receiptFresh": true,
+          "findings": [],
+          "engineWarnings": []
+        },
+        {
+          "name": "help",
+          "pass": true,
+          "controls": 1,
+          "receiptFresh": true,
+          "findings": [],
+          "engineWarnings": []
+        },
+        {
+          "name": "hud-party-four",
+          "pass": true,
+          "controls": 5,
+          "receiptFresh": true,
+          "findings": [],
+          "engineWarnings": []
+        },
+        {
+          "name": "title-selected",
+          "pass": true,
+          "controls": 15,
+          "receiptFresh": true,
+          "findings": [],
+          "engineWarnings": []
+        },
+        {
+          "name": "hud",
+          "pass": true,
+          "controls": 5,
+          "receiptFresh": true,
+          "findings": [],
+          "engineWarnings": []
+        },
+        {
+          "name": "pause",
+          "pass": true,
+          "controls": 3,
+          "receiptFresh": true,
+          "findings": [],
+          "engineWarnings": []
+        },
+        {
+          "name": "cards",
+          "pass": true,
+          "controls": 4,
+          "receiptFresh": true,
+          "findings": [],
+          "engineWarnings": []
+        },
+        {
+          "name": "cards-reroll-exhausted",
+          "pass": true,
+          "controls": 3,
+          "receiptFresh": true,
+          "findings": [],
+          "engineWarnings": []
+        },
+        {
+          "name": "boss",
+          "pass": true,
+          "controls": 5,
+          "receiptFresh": true,
+          "findings": [],
+          "engineWarnings": []
+        },
+        {
+          "name": "end",
+          "pass": true,
+          "controls": 2,
+          "receiptFresh": true,
+          "findings": [],
+          "engineWarnings": []
+        }
+      ],
+      "minWidth": 54,
+      "minHeight": 44.99999999999999
+    },
+    {
+      "name": "tablet-wide",
+      "size": [
+        1024,
+        768
+      ],
+      "insets": {
+        "top": 0,
+        "right": 0,
+        "bottom": 0,
+        "left": 0
+      },
+      "pass": true,
+      "played": true,
+      "controls": 15,
+      "findings": [],
+      "checkpoints": [
+        {
+          "name": "title-zh",
+          "pass": true,
+          "controls": 15,
+          "receiptFresh": true,
+          "findings": [],
+          "engineWarnings": []
+        },
+        {
+          "name": "settings-en",
+          "pass": true,
+          "controls": 4,
+          "receiptFresh": true,
+          "findings": [],
+          "engineWarnings": []
+        },
+        {
+          "name": "title-en",
+          "pass": true,
+          "controls": 15,
+          "receiptFresh": true,
+          "findings": [],
+          "engineWarnings": []
+        },
+        {
+          "name": "help",
+          "pass": true,
+          "controls": 1,
+          "receiptFresh": true,
+          "findings": [],
+          "engineWarnings": []
+        },
+        {
+          "name": "hud-party-four",
+          "pass": true,
+          "controls": 5,
+          "receiptFresh": true,
+          "findings": [],
+          "engineWarnings": []
+        },
+        {
+          "name": "title-selected",
+          "pass": true,
+          "controls": 15,
+          "receiptFresh": true,
+          "findings": [],
+          "engineWarnings": []
+        },
+        {
+          "name": "hud",
+          "pass": true,
+          "controls": 5,
+          "receiptFresh": true,
+          "findings": [],
+          "engineWarnings": []
+        },
+        {
+          "name": "pause",
+          "pass": true,
+          "controls": 3,
+          "receiptFresh": true,
+          "findings": [],
+          "engineWarnings": []
+        },
+        {
+          "name": "cards",
+          "pass": true,
+          "controls": 4,
+          "receiptFresh": true,
+          "findings": [],
+          "engineWarnings": []
+        },
+        {
+          "name": "cards-reroll-exhausted",
+          "pass": true,
+          "controls": 3,
+          "receiptFresh": true,
+          "findings": [],
+          "engineWarnings": []
+        },
+        {
+          "name": "boss",
+          "pass": true,
+          "controls": 5,
+          "receiptFresh": true,
+          "findings": [],
+          "engineWarnings": []
+        },
+        {
+          "name": "end",
+          "pass": true,
+          "controls": 2,
+          "receiptFresh": true,
+          "findings": [],
+          "engineWarnings": []
+        }
+      ],
+      "minWidth": 54,
+      "minHeight": 45
+    },
+    {
+      "name": "foldable-cover-wide",
+      "size": [
+        873,
+        325
+      ],
+      "insets": {
+        "top": 0,
+        "right": 0,
+        "bottom": 0,
+        "left": 0
+      },
+      "pass": true,
+      "played": true,
+      "controls": 15,
+      "findings": [],
+      "checkpoints": [
+        {
+          "name": "title-zh",
+          "pass": true,
+          "controls": 15,
+          "receiptFresh": true,
+          "findings": [],
+          "engineWarnings": []
+        },
+        {
+          "name": "settings-en",
+          "pass": true,
+          "controls": 4,
+          "receiptFresh": true,
+          "findings": [],
+          "engineWarnings": []
+        },
+        {
+          "name": "title-en",
+          "pass": true,
+          "controls": 15,
+          "receiptFresh": true,
+          "findings": [],
+          "engineWarnings": []
+        },
+        {
+          "name": "help",
+          "pass": true,
+          "controls": 1,
+          "receiptFresh": true,
+          "findings": [],
+          "engineWarnings": []
+        },
+        {
+          "name": "hud-party-four",
+          "pass": true,
+          "controls": 5,
+          "receiptFresh": true,
+          "findings": [],
+          "engineWarnings": []
+        },
+        {
+          "name": "title-selected",
+          "pass": true,
+          "controls": 15,
+          "receiptFresh": true,
+          "findings": [],
+          "engineWarnings": []
+        },
+        {
+          "name": "hud",
+          "pass": true,
+          "controls": 5,
+          "receiptFresh": true,
+          "findings": [],
+          "engineWarnings": []
+        },
+        {
+          "name": "pause",
+          "pass": true,
+          "controls": 3,
+          "receiptFresh": true,
+          "findings": [],
+          "engineWarnings": []
+        },
+        {
+          "name": "cards",
+          "pass": true,
+          "controls": 4,
+          "receiptFresh": true,
+          "findings": [],
+          "engineWarnings": []
+        },
+        {
+          "name": "cards-reroll-exhausted",
+          "pass": true,
+          "controls": 3,
+          "receiptFresh": true,
+          "findings": [],
+          "engineWarnings": []
+        },
+        {
+          "name": "boss",
+          "pass": true,
+          "controls": 5,
+          "receiptFresh": true,
+          "findings": [],
+          "engineWarnings": []
+        },
+        {
+          "name": "end",
+          "pass": true,
+          "controls": 2,
+          "receiptFresh": true,
+          "findings": [],
+          "engineWarnings": []
+        }
+      ],
+      "minWidth": 48,
+      "minHeight": 44
+    },
+    {
+      "name": "foldable",
+      "size": [
+        884,
+        1104
+      ],
+      "insets": {
+        "top": 0,
+        "right": 0,
+        "bottom": 0,
+        "left": 0
+      },
+      "pass": true,
+      "played": true,
+      "controls": 15,
+      "findings": [],
+      "checkpoints": [
+        {
+          "name": "title-zh",
+          "pass": true,
+          "controls": 15,
+          "receiptFresh": true,
+          "findings": [],
+          "engineWarnings": []
+        },
+        {
+          "name": "settings-en",
+          "pass": true,
+          "controls": 4,
+          "receiptFresh": true,
+          "findings": [],
+          "engineWarnings": []
+        },
+        {
+          "name": "title-en",
+          "pass": true,
+          "controls": 15,
+          "receiptFresh": true,
+          "findings": [],
+          "engineWarnings": []
+        },
+        {
+          "name": "help",
+          "pass": true,
+          "controls": 1,
+          "receiptFresh": true,
+          "findings": [],
+          "engineWarnings": []
+        },
+        {
+          "name": "hud-party-four",
+          "pass": true,
+          "controls": 5,
+          "receiptFresh": true,
+          "findings": [],
+          "engineWarnings": []
+        },
+        {
+          "name": "title-selected",
+          "pass": true,
+          "controls": 15,
+          "receiptFresh": true,
+          "findings": [],
+          "engineWarnings": []
+        },
+        {
+          "name": "hud",
+          "pass": true,
+          "controls": 5,
+          "receiptFresh": true,
+          "findings": [],
+          "engineWarnings": []
+        },
+        {
+          "name": "pause",
+          "pass": true,
+          "controls": 3,
+          "receiptFresh": true,
+          "findings": [],
+          "engineWarnings": []
+        },
+        {
+          "name": "cards",
+          "pass": true,
+          "controls": 4,
+          "receiptFresh": true,
+          "findings": [],
+          "engineWarnings": []
+        },
+        {
+          "name": "cards-reroll-exhausted",
+          "pass": true,
+          "controls": 3,
+          "receiptFresh": true,
+          "findings": [],
+          "engineWarnings": []
+        },
+        {
+          "name": "boss",
+          "pass": true,
+          "controls": 5,
+          "receiptFresh": true,
+          "findings": [],
+          "engineWarnings": []
+        },
+        {
+          "name": "end",
+          "pass": true,
+          "controls": 2,
+          "receiptFresh": true,
+          "findings": [],
+          "engineWarnings": []
+        }
+      ],
+      "minWidth": 54,
+      "minHeight": 44.99999999999999
+    },
+    {
+      "name": "desktop",
+      "size": [
+        1920,
+        1080
+      ],
+      "insets": {
+        "top": 0,
+        "right": 0,
+        "bottom": 0,
+        "left": 0
+      },
+      "pass": true,
+      "played": true,
+      "controls": 15,
+      "findings": [],
+      "checkpoints": [
+        {
+          "name": "title-zh",
+          "pass": true,
+          "controls": 15,
+          "receiptFresh": true,
+          "findings": [],
+          "engineWarnings": []
+        },
+        {
+          "name": "settings-en",
+          "pass": true,
+          "controls": 4,
+          "receiptFresh": true,
+          "findings": [],
+          "engineWarnings": []
+        },
+        {
+          "name": "title-en",
+          "pass": true,
+          "controls": 15,
+          "receiptFresh": true,
+          "findings": [],
+          "engineWarnings": []
+        },
+        {
+          "name": "help",
+          "pass": true,
+          "controls": 1,
+          "receiptFresh": true,
+          "findings": [],
+          "engineWarnings": []
+        },
+        {
+          "name": "hud-party-four",
+          "pass": true,
+          "controls": 0,
+          "receiptFresh": true,
+          "findings": [],
+          "engineWarnings": []
+        },
+        {
+          "name": "title-selected",
+          "pass": true,
+          "controls": 15,
+          "receiptFresh": true,
+          "findings": [],
+          "engineWarnings": []
+        },
+        {
+          "name": "hud",
+          "pass": true,
+          "controls": 0,
+          "receiptFresh": true,
+          "findings": [],
+          "engineWarnings": []
+        },
+        {
+          "name": "pause",
+          "pass": true,
+          "controls": 3,
+          "receiptFresh": true,
+          "findings": [],
+          "engineWarnings": []
+        },
+        {
+          "name": "cards",
+          "pass": true,
+          "controls": 4,
+          "receiptFresh": true,
+          "findings": [],
+          "engineWarnings": []
+        },
+        {
+          "name": "cards-reroll-exhausted",
+          "pass": true,
+          "controls": 3,
+          "receiptFresh": true,
+          "findings": [],
+          "engineWarnings": []
+        },
+        {
+          "name": "boss",
+          "pass": true,
+          "controls": 0,
+          "receiptFresh": true,
+          "findings": [],
+          "engineWarnings": []
+        },
+        {
+          "name": "end",
+          "pass": true,
+          "controls": 2,
+          "receiptFresh": true,
+          "findings": [],
+          "engineWarnings": []
+        }
+      ],
+      "minWidth": 178.75,
+      "minHeight": 57.5
+    }
+  ],
+  "acceptance": {
+    "native-accept-final-v1": {
+      "checks": 158,
+      "passed": 158,
+      "problems": 0,
+      "failures": [],
+      "victory": "won",
+      "victoryTime": 923.7833333328218,
+      "victoryKills": 22940,
+      "refusedRoster": 1,
+      "rotations": [
+        "hud",
+        "pause",
+        "cards",
+        "end"
+      ],
+      "goldenChecks": []
+    },
+    "native-golden-accept-v1": {
+      "checks": 161,
+      "passed": 161,
+      "problems": 0,
+      "failures": [],
+      "victory": "won",
+      "victoryTime": 923.7833333328218,
+      "victoryKills": 22940,
+      "refusedRoster": 1,
+      "rotations": [
+        "hud",
+        "pause",
+        "cards",
+        "end"
+      ],
+      "goldenChecks": [
+        "title screenshot 0.69% differs",
+        "end screenshot 0.06% differs"
+      ]
+    }
+  },
+  "notes": [
+    "Dense runs start at exact t=0, seed 7, Mint, solo, medium then use unchanged rules and AI 17100 fixed 1/60-second updates. Actual UI and device events checked separately; this is not wall-clock manual completion.",
+    "Software frame gaps and CPU draw phase timings are not GPU timing or hardware FPS. Native long tail repeated; exact composition/GPU queue cause unproven.",
+    "Static title on-demand overlay had zero GL draws/uploads during sample. Warm dynamic UI digits/markers use real GL API counts; no texture allocation/upload seen during the measured window.",
+    "Screenshots are actual engine output with synthetic safe insets, not mobile hardware. The complete route uses English to stress long UI text and confirms Chinese title."
+  ]
+}

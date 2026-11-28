@@ -1,0 +1,412 @@
+{
+  "schema": "jelly-visual-stage-fold7/1",
+  "enginePin": "2fbe55630b1f67c6b1584d73290c19cb0aa0ae24",
+  "device": {
+    "model": "SM-F966U1",
+    "android": "17",
+    "browser": "Chrome/157.0.8103.78",
+    "gpu": "Qualcomm Adreno 830 via ANGLE, WebGL2 OpenGL ES 3.2",
+    "portraitCss": [
+      411,
+      813
+    ],
+    "landscapeCss": [
+      873,
+      325
+    ],
+    "dpr": 2.625,
+    "physical": true
+  },
+  "source": {
+    "priorUiManifestSHA256": "9ab16e7caee373d9e32532718294222670b2abd0ee784990868dcb0c36124bac",
+    "qualityGameplayManifestSHA256": "01ef32af1b03b94d2ed1ba322a83b70456d3357f9a0eb94e71dd3cef23466dfd",
+    "correctedTitleManifestSHA256": "842eb327d36acaa7f9850e7d714ed0f4d96f784613943ec9fff7c1bbf2391ce9",
+    "onlyChangeAfterGameplayRun": [
+      {
+        "path": "src/view.mjs",
+        "pre": "5f151d82e5946ab7cbf6fbeb6909848797ceeb38ac373367155bce7774a9cebe",
+        "post": "e79cd5dbe6b3ea76c7883e0cd325c81e426ee39538f312f001163d5d5d8da997"
+      }
+    ]
+  },
+  "gameplay": {
+    "checks": 48,
+    "pass": true,
+    "errors": 0,
+    "warnings": 0,
+    "receipts": [
+      {
+        "name": "portrait-title",
+        "controls": 15,
+        "minTargetCssPx": 48.477,
+        "findings": 0,
+        "missingSemanticNames": 0
+      },
+      {
+        "name": "portrait-settings",
+        "controls": 4,
+        "minTargetCssPx": 48.477,
+        "findings": 0,
+        "missingSemanticNames": 0
+      },
+      {
+        "name": "landscape-title",
+        "controls": 15,
+        "minTargetCssPx": 44,
+        "findings": 0,
+        "missingSemanticNames": 0
+      },
+      {
+        "name": "landscape-play",
+        "controls": 5,
+        "minTargetCssPx": 45,
+        "findings": 0,
+        "missingSemanticNames": 0
+      },
+      {
+        "name": "pause",
+        "controls": 3,
+        "minTargetCssPx": 46,
+        "findings": 0,
+        "missingSemanticNames": 0
+      },
+      {
+        "name": "first-choice",
+        "controls": 4,
+        "minTargetCssPx": 46,
+        "findings": 0,
+        "missingSemanticNames": 0
+      }
+    ],
+    "cleanup": {
+      "rotation": true,
+      "stayAwake": true,
+      "priorTabs": true,
+      "ownedTabClosed": true,
+      "lease": true,
+      "priorForeground": true,
+      "reverse": true,
+      "forward": true
+    }
+  },
+  "titleCorrection": {
+    "checks": 20,
+    "pass": true,
+    "errors": 0,
+    "warnings": 0,
+    "receipts": [
+      {
+        "name": "portrait-title",
+        "controls": 15,
+        "minTargetCssPx": 48.477,
+        "findings": 0,
+        "missingSemanticNames": 0
+      },
+      {
+        "name": "portrait-settings",
+        "controls": 4,
+        "minTargetCssPx": 48.477,
+        "findings": 0,
+        "missingSemanticNames": 0
+      },
+      {
+        "name": "landscape-title",
+        "controls": 15,
+        "minTargetCssPx": 44,
+        "findings": 0,
+        "missingSemanticNames": 0
+      }
+    ],
+    "cleanup": {
+      "rotation": true,
+      "stayAwake": true,
+      "priorTabs": true,
+      "ownedTabClosed": true,
+      "lease": true,
+      "priorForeground": true,
+      "reverse": true,
+      "forward": true
+    },
+    "physicalObservation": "Bamboo and Mint preview paws visibly meet the ground/shadow in both orientations after the title-only position correction. The earlier gameplay snapshot exposed a hovering preview after ball removal."
+  },
+  "performance": {
+    "sameFixture": true,
+    "condition": {
+      "seed": 7,
+      "skin": "Mint",
+      "party": 1,
+      "quality": "medium",
+      "ratio": 1,
+      "backend": "WebGL2",
+      "actualViewportCss": [
+        873,
+        325
+      ],
+      "dpr": 2.625,
+      "setup": "Programmatic fresh t=0 activation and actual unmodified AI game.update to t=285, 17100 steps and 80 enemies. 12 warm frames, 60 engine frames in actual foreground device Chrome, no screenshots while sampled."
+    },
+    "priorNativeUI": {
+      "fixture": {
+        "t": 285.00000000006946,
+        "steps": 17100,
+        "elapsedMs": 2228.199999988079,
+        "state": "play",
+        "skin": 7,
+        "hp": 120,
+        "level": 18,
+        "kills": 1701,
+        "enemies": 80,
+        "toys": [
+          [
+            1,
+            7,
+            false
+          ],
+          [
+            10,
+            3,
+            false
+          ],
+          [
+            5,
+            2,
+            false
+          ],
+          [
+            2,
+            2,
+            false
+          ],
+          [
+            6,
+            1,
+            false
+          ]
+        ],
+        "charms": [
+          [
+            0,
+            1
+          ],
+          [
+            8,
+            1
+          ],
+          [
+            4,
+            1
+          ],
+          [
+            6,
+            1
+          ],
+          [
+            9,
+            1
+          ]
+        ]
+      },
+      "frame": {
+        "samples": 59,
+        "p50": 16.7,
+        "p95": 26.5,
+        "max": 29.5,
+        "over50": 0
+      },
+      "raf": {
+        "samples": 58,
+        "p50": 16.6,
+        "p95": 16.7,
+        "max": 16.7,
+        "over50": 0
+      },
+      "rules": {
+        "samples": 60,
+        "p50": 1.3,
+        "p95": 2.4,
+        "max": 2.6,
+        "over50": 0
+      },
+      "view": {
+        "samples": 60,
+        "p50": 1.3,
+        "p95": 2.2,
+        "max": 3.6,
+        "over50": 0
+      },
+      "drawHandoff": {
+        "samples": 60,
+        "p50": 1.6,
+        "p95": 2.9,
+        "max": 3.2,
+        "over50": 0
+      },
+      "drawCalls": {
+        "samples": 60,
+        "p50": 85,
+        "p95": 88,
+        "max": 88,
+        "over50": 60
+      },
+      "triangles": {
+        "samples": 60,
+        "p50": 268468,
+        "p95": 270048,
+        "max": 270172,
+        "over50": 60
+      },
+      "enemies": {
+        "samples": 60,
+        "p50": 81,
+        "p95": 83,
+        "max": 83,
+        "over50": 60
+      },
+      "rawFrameMeanMs": 16.58,
+      "rawGapsOver20": 11,
+      "rawGapsUnder13": 15,
+      "rafGapsOver30": 0,
+      "batteryTemperatureC": 31.2
+    },
+    "visualStage": {
+      "fixture": {
+        "t": 285.00000000006946,
+        "steps": 17100,
+        "elapsedMs": 1852,
+        "state": "play",
+        "skin": 7,
+        "hp": 120,
+        "level": 18,
+        "kills": 1701,
+        "enemies": 80,
+        "toys": [
+          [
+            1,
+            7,
+            false
+          ],
+          [
+            10,
+            3,
+            false
+          ],
+          [
+            5,
+            2,
+            false
+          ],
+          [
+            2,
+            2,
+            false
+          ],
+          [
+            6,
+            1,
+            false
+          ]
+        ],
+        "charms": [
+          [
+            0,
+            1
+          ],
+          [
+            8,
+            1
+          ],
+          [
+            4,
+            1
+          ],
+          [
+            6,
+            1
+          ],
+          [
+            9,
+            1
+          ]
+        ]
+      },
+      "frame": {
+        "samples": 59,
+        "p50": 16.6,
+        "p95": 28,
+        "max": 31,
+        "over50": 0
+      },
+      "raf": {
+        "samples": 58,
+        "p50": 16.6,
+        "p95": 16.7,
+        "max": 33.2,
+        "over50": 0
+      },
+      "rules": {
+        "samples": 60,
+        "p50": 1.2,
+        "p95": 2.3,
+        "max": 2.8,
+        "over50": 0
+      },
+      "view": {
+        "samples": 60,
+        "p50": 1.4,
+        "p95": 2.3,
+        "max": 3.2,
+        "over50": 0
+      },
+      "drawHandoff": {
+        "samples": 60,
+        "p50": 1.6,
+        "p95": 3,
+        "max": 3,
+        "over50": 0
+      },
+      "drawCalls": {
+        "samples": 60,
+        "p50": 85,
+        "p95": 90,
+        "max": 90,
+        "over50": 60
+      },
+      "triangles": {
+        "samples": 60,
+        "p50": 276976,
+        "p95": 278438,
+        "max": 278570,
+        "over50": 60
+      },
+      "enemies": {
+        "samples": 60,
+        "p50": 81,
+        "p95": 83,
+        "max": 83,
+        "over50": 60
+      },
+      "rawFrameMeanMs": 16.973,
+      "rawGapsOver20": 11,
+      "rawGapsUnder13": 11,
+      "rafGapsOver30": 1,
+      "batteryTemperatureC": 31.5
+    },
+    "observed": "The earlier native UI sample is reused, not rerun. Frame P95 26.5 → 28.0 ms, RAF P95 16.7 → 16.7 ms; one 33.2 ms RAF gap vs none previously. No >50ms gaps. Small difference observed in two separate bounded runs, not a GPU execution or causal claim."
+  },
+  "rawSHA256": {
+    "qualityReport": "b9efff145f47acb68c801f5bf301c4b99b0fae7d418b453eed2bdb96d7bc1700",
+    "qualitySamples": "120d93175092dc10d7ecefae963816a902aff7169a52b25a878a23f3a7260818",
+    "titleReport": "717ebdf75aba3aa4e1c41bac453c9eaef1d3b6f248907bc28599e75c5b354c7c",
+    "priorUiRaw": "8ad8c7159b7357fcd7430465201bf047ce73795fca79c049516b3fba161f6793"
+  },
+  "screens": [
+    "fold7-visual-stage.jpg",
+    "fold7-visual-dense-ab.jpg"
+  ],
+  "limits": [
+    "Actual device CDP touch injection, not human fingers. Portrait/landscape from Android rotation, not viewport emulation.",
+    "Game rules fixture progresses actual simulation, not a complete natural 15-minute run.",
+    "The exact gameplay/performance snapshot predates only the title visual positioning correction. The final title correction was separately tested on the same physical device; no benchmark rerun after it.",
+    "One sample per revision; no GPU timestamps, display present fence, other phones, other browsers, physical gamepad or screen-reader coverage."
+  ]
+}

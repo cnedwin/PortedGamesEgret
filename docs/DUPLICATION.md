@@ -4,9 +4,9 @@
 
 Made by `node tools/duplication.mjs --write` from the `src/` of every game; do not edit by hand, and `--check` says whether it is out of date. Code three or more games each wrote belongs in the engine's kit or in the template; "Engine has" names what can replace it.
 
-24 个游戏，4387 段至少 40 个词元的顶层代码。名字、数字和字符串都换成同一个记号后，连续 8 个词元的 Jaccard 指数不小于 0.6 就算相同。
+24 个游戏，4408 段至少 40 个词元的顶层代码。名字、数字和字符串都换成同一个记号后，连续 8 个词元的 Jaccard 指数不小于 0.6 就算相同。
 
-24 games, 4387 top-level units of at least 40 tokens. With every name, number and string made one token, two units are alike when the Jaccard index of their runs of 8 tokens is 0.6 or more.
+24 games, 4408 top-level units of at least 40 tokens. With every name, number and string made one token, two units are alike when the Jaccard index of their runs of 8 tokens is 0.6 or more.
 
 ## 1. 3 个以上游戏写了几乎相同的代码 · Code that 3 or more games wrote nearly alike
 
@@ -14,7 +14,7 @@ Made by `node tools/duplication.mjs --write` from the `src/` of every game; do n
 |---|:-:|:-:|:-:|---|---|
 | `seeded`, `createRandom`, `rng`, `randomSource`, `random` | 11 | 0.84 | 109 | `createRandom`, `hashSeed` (@egret/engine/kit) | CanalWatch/src/sim/world.mjs:27<br>FiveRegiments/src/sim/fight.mjs:78<br>NezhaSea/src/sim/world.mjs:41<br>NineProvinces/src/sim/battle.mjs:85<br>NineProvinces/src/view/mapart.mjs:18<br>OperaDrums/src/sim/bot.mjs:7<br>PeachCreek/src/sim/world.mjs:47<br>Rally/src/sim.mjs:13<br>… +4 |
 | `actions` | 3 | 0.64 | 143 | `createInputActions` (@egret/engine/kit) | MechanismCity/src/main.mjs:72<br>NightWardens/src/main.mjs:34<br>SandScroll/src/main.mjs:30 |
-| `rgb` | 3 | 0.98 | 53 | – | FPS/src/build.mjs:9<br>Rally/src/shapes.mjs:19<br>jelly-pandas/src/panda.mjs:20<br>jelly-pandas/src/view.mjs:34 |
+| `rgb` | 3 | 0.98 | 53 | – | FPS/src/build.mjs:9<br>Rally/src/shapes.mjs:19<br>jelly-pandas/src/panda.mjs:21<br>jelly-pandas/src/view.mjs:34 |
 
 ## 2. 5 个以上游戏用的同一个函数名 · Names that 5 or more games gave a function
 
@@ -47,6 +47,7 @@ One name is not always one piece of code: games write an `update` or a `draw` of
 | `titleScreen` | 7 | – | InquestScrolls, LoveElective, LubanBridge, MechanismCity, NightWardens, SandScroll, TeaHorseRoad |
 | `tone` | 7 | `createAudioCues`, `encodeWav` (@egret/engine/kit) | FiveRegiments, MechanismCity, NightWardens, NineProvinces, PeachCreek, SandScroll, TeaHorseRoad |
 | `act` | 6 | – | CanalWatch, LoveElective, NineProvinces, OperaDrums, StarBanner, TaiwanMahjong |
+| `C` | 6 | – | FivePhases, LanternShadows, LubanBridge, OperaDrums, StarBanner, jelly-pandas |
 | `createAudio` | 6 | – | FPS, FivePhases, LoveElective, Rally, SnowTemple, jelly-pandas |
 | `createScreens` | 6 | – | FiveRegiments, NezhaSea, OperaDrums, PeachCreek, StarBanner, TaiwanMahjong |
 | `panel` | 6 | – | CanalWatch, LubanBridge, NezhaSea, PeachCreek, TaiwanMahjong, TeaHorseRoad |
@@ -58,7 +59,6 @@ One name is not always one piece of code: games write an `update` or a `draw` of
 | `step` | 6 | – | CanalWatch, FiveRegiments, NezhaSea, NightWardens, SandScroll, SnowTemple |
 | `wrap` | 6 | – | CanalWatch, InquestScrolls, LubanBridge, NezhaSea, Rally, SandScroll |
 | `box` | 5 | – | CanalWatch, FPS, FivePhases, LanternShadows, TeaHorseRoad |
-| `C` | 5 | – | FivePhases, LanternShadows, LubanBridge, OperaDrums, StarBanner |
 | `CUES` | 5 | `createAudioCues`, `encodeWav` (@egret/engine/kit) | FivePhases, NightWardens, OperaDrums, PeachCreek, Wulin |
 | `ellipse` | 5 | – | CanalWatch, FengshenChronicle, LoveElective, NightWardens, OperaDrums |
 | `ENEMIES` | 5 | – | FPS, FengshenChronicle, FivePhases, NezhaSea, jelly-pandas |

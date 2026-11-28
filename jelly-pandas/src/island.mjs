@@ -105,9 +105,22 @@ export function createIslandGeometry() {
       const beach = smooth(0.25, -0.5, h),
         wet = smooth(ISLAND.sea + 0.2, ISLAND.sea - 1.2, h),
         patch = 0.5 + 0.5 * Math.sin(x * 0.7 + Math.sin(z * 0.5) * 2) * Math.cos(z * 0.6);
-      let r = 0.36 + 0.1 * patch,
-        g = 0.74 + 0.08 * patch,
-        b = 0.34;
+      // A softly edged biscuit trail loops around the toy garden; colour is
+      // purely visual. The height grid and collision triangles stay identical.
+      const angle=Math.atan2(z,x), distance=Math.hypot(x,z);
+      const ringRadius=18+1.8*Math.sin(angle*3)+.8*Math.sin(angle*5);
+      const ring=1-smooth(1.05,2.35,Math.abs(distance-ringRadius));
+      const radial=Math.abs(Math.sin((angle+.32)*1.5))*distance;
+      const spoke=(1-smooth(.75,1.8,radial))*smooth(2.5,5,distance)*(1-smooth(15,19,distance));
+      const landing=(1-smooth(2.3,4.5,distance))*.7;
+      const trail=Math.max(ring,spoke*.78,landing)*(1-beach);
+      const meadow=.5+.5*Math.sin(x*.12+z*.15);
+      let r=.32+.10*patch+.05*meadow,
+        g=.67+.08*patch+.05*meadow,
+        b=.38+.07*(1-meadow);
+      r+=(.82+.025*patch-r)*trail;
+      g+=(.73+.025*patch-g)*trail;
+      b+=(.55+.035*patch-b)*trail;
       r += (0.96 - r) * beach;
       g += (0.86 - g) * beach;
       b += (0.6 - b) * beach;

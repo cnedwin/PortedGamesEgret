@@ -7,9 +7,9 @@ this file; items by hand or on a device are marked not run until someone runs th
 
 ## 测量环境 · Where it was measured
 
-- 日期 · Date: 2026-11-21
-- 浏览器 · Browser: 无头 Chromium 153.0.8010.12，SwiftShader 软件渲染（没有显卡） · headless, software rendering, no GPU
-- 机器 · Machine: Linux 容器 · a Linux container, linux x64, Node v22.23.4
+- 日期 · Date: 2026-11-27
+- 浏览器 · Browser: 无头 Chromium 158.0.8127.37，SwiftShader 软件渲染（没有显卡） · headless, software rendering, no GPU
+- 机器 · Machine: Linux 容器 · a Linux container, win32 x64, Node v26.7.0
 - 首屏一项的限速 · Start-up throttling: 下行 10 Mbps、上行 5 Mbps、往返 40 ms，CPU 降速 ×4 · down 10 Mbps, up 5 Mbps, 40 ms round trip, CPU slowed ×4
 - 帧时间是软件渲染下的数字，只说明无头环境里的情况，不代表真机 · Frame times are from software rendering and say nothing of real devices.
 
@@ -18,26 +18,154 @@ this file; items by hand or on a device are marked not run until someone runs th
 | 编号 · Item | 标准 · Standard | 方式 · How | 结果 · Result | 测量 · Measured |
 |---|---|---|---|---|
 | T1 | 触屏走完主流程 · The whole game by touch | 真机 · device | 未运行 · not run |  |
-| T2 | 触控区 ≥ 44×44 CSS px · Touch targets ≥ 44 × 44 CSS px | 自动 · automatic | 不达标 · fail | 7 of 16 under 44×44: Solo 45×26; +1 friend 72×26; +2 friends 81×26; +3 friends 82×26 |
-| T3 | 不误触下拉刷新和双击缩放 · No pull-to-refresh or double-tap zoom | 自动 · automatic | 不达标 · fail | overscroll held, touch-action auto, double-tap zoom on |
-| F1 | 桌面帧时间 p95 ≤ 16.7 ms · Desktop frame time p95 ≤ 16.7 ms | 自动 · automatic | 不达标 · fail | p95 683.3 ms over 15 frames |
+| T2 | 触控区 ≥ 44×44 CSS px · Touch targets ≥ 44 × 44 CSS px | 自动 · automatic | 达标 · pass | 15 controls, all at least 44×44 |
+| T3 | 不误触下拉刷新和双击缩放 · No pull-to-refresh or double-tap zoom | 自动 · automatic | 达标 · pass | overscroll held, touch-action none, double-tap zoom off |
+| F1 | 桌面帧时间 p95 ≤ 16.7 ms · Desktop frame time p95 ≤ 16.7 ms | 自动 · automatic | 不达标 · fail | p95 370.8 ms over 25 frames |
 | F2 | 中端手机帧时间 p95 ≤ 33 ms · Mid-range phone frame time p95 ≤ 33 ms | 真机 · device | 未运行 · not run |  |
-| L1 | 首屏 ≤ 3 s（10/5 Mbps、40 ms、CPU ×4） · Start-up ≤ 3 s (10/5 Mbps, 40 ms, CPU ×4) | 自动 · automatic | 达标 · pass | 1.5 s to the first playable screen, 3.0 MB |
+| L1 | 首屏 ≤ 3 s（10/5 Mbps、40 ms、CPU ×4） · Start-up ≤ 3 s (10/5 Mbps, 40 ms, CPU ×4) | 自动 · automatic | 达标 · pass | 1.5 s to the first playable screen, 1.4 MB |
 | O1 | 横竖屏与窗口尺寸 · Orientation and window sizes | 自动 · automatic | 达标 · pass | 1280×800, 390×844, 844×390, 768×1024 and live resizing: fits, no errors |
-| I1 | 中英文全可切换，英文下无中文 · Both languages; no Chinese left in English | 自动 · automatic | 不达标 · fail | html lang "en", Chinese left: 果冻熊猫 动作游戏 移动 鼠标转视角 空格跳跃 |
+| I1 | 中英文全可切换，英文下无中文 · Both languages; no Chinese left in English | 自动 · automatic | 达标 · pass | html lang "en", no Chinese in page text or names |
 | I2 | 画布上的字也随语言切换 · Words drawn on the canvas follow the language | 人工 · by hand | 未运行 · not run |  |
 | I3 | 长英文不溢出 · Long English does not overflow | 自动 · automatic | 达标 · pass | no page text cut off at 390 px in English |
-| A1 | 键盘可到达控件，焦点可见 · The keyboard reaches controls; focus shows | 自动 · automatic | 达标 · pass | Tab → "Jelly Pandas: a 3D action game" (focus drawn by the game) |
+| A1 | 键盘可到达控件，焦点可见 · The keyboard reaches controls; focus shows | 自动 · automatic | 达标 · pass | Tab → "果冻熊猫游戏界面" (outline) |
 | A1m | 只用键盘走完主流程 · The whole game by keyboard alone | 人工 · by hand | 未运行 · not run |  |
-| A2 | 读屏读出主要按钮 · A screen reader names the main buttons | 自动 · automatic | 达标 · pass | 15 named controls, e.g. button "Bamboo 🎳 Bamboo Bowler", button "Peach 🫧 Bubble Wand", button "Ocean 💦 Jelly Hose" |
+| A2 | 读屏读出主要按钮 · A screen reader names the main buttons | 自动 · automatic | 达标 · pass | 15 named controls, e.g. radio "青竹 · 竹筒保龄", radio "蜜桃 · 泡泡棒", radio "海盐 · 果冻水枪" |
 | A3 | 尊重 prefers-reduced-motion · prefers-reduced-motion is honoured | 自动 · automatic | 达标 · pass | the code reads prefers-reduced-motion or offers a setting |
-| S1 | 存档损坏不崩溃 · A broken save does not crash | 自动 · automatic | 不适用 · n/a | the game keeps nothing in browser storage |
-| S2 | 存档版本不匹配不崩溃 · A save of another version does not crash | 自动 · automatic | 不适用 · n/a | the game keeps nothing in browser storage |
+| S1 | 存档损坏不崩溃 · A broken save does not crash | 自动 · automatic | 达标 · pass | unreadable text; started without an uncaught error (keys: jelly-pandas) |
+| S2 | 存档版本不匹配不崩溃 · A save of another version does not crash | 自动 · automatic | 达标 · pass | a save from a newer version; started without an uncaught error (keys: jelly-pandas) |
 | S3 | 存储不可用不崩溃 · Refused storage does not crash | 自动 · automatic | 达标 · pass | storage refused: started without an uncaught error |
 | S4 | 存档出问题时提示并可重开 · A save problem is told and a fresh start offered | 人工 · by hand | 未运行 · not run |  |
 | E1 | 无控制台错误 · No console errors | 自动 · automatic | 达标 · pass | 0 errors |
-| E2 | 资源失败有错误界面和重试 · A failed file shows an error and a retry | 自动 · automatic | 不达标 · fail | 1 files refused; no uncaught error; no error screen with a retry |
+| E2 | 资源失败有错误界面和重试 · A failed file shows an error and a retry | 自动 · automatic | 达标 · pass | 1 files refused; no uncaught error; offers to try again |
 | E3 | 切到后台再回来不出错 · Hidden and shown again without errors | 自动 · automatic | 达标 · pass | no errors; the game or the engine loop watches visibility |
 | E4 | 切回后声音和计时正常 · Sound and timers right after coming back | 真机 · device | 未运行 · not run |  |
 
-自动项不达标 · Automatic items failing: T2, T3, F1, I1, E2。真机项（T1、F2、E4）和人工项（I2、A1m、S4）未运行，除非上表另有记录 · Device and by-hand items were not run unless the table says otherwise.
+自动项不达标 · Automatic items failing: F1。真机项（T1、F2、E4）和人工项（I2、A1m、S4）未运行，除非上表另有记录 · Device and by-hand items were not run unless the table says otherwise.
+
+## 2026-11-27 原生界面迁移专项 · Native UI migration qualification
+
+- 引擎 · Engine: `b5628eb` → `2fbe55630b1f67c6b1584d73290c19cb0aa0ae24`（官方工具生成）。先保留旧 DOM 单独升级（`e2f44515`）；24/24 原规则/输入 Node 测试和 7/7 引擎浏览器检查通过，种子 7 的首领实际生成及击败通过。 · Generated by the upstream tool; the engine-only commit kept DOM, passed all 24 original Node checks and seven official verify checks, and reached and defeated the first boss via a seeded rule-step route.
+- 迁移前后玩法代码与资产不变：`sim.mjs`、`data.mjs`、`toys.mjs`、`island.mjs`、`view.mjs`、`panda.mjs`、`audio.mjs` 以及原角色图集均保持不变（本条针对本次 UI 迁移）。 · The migration preserves the simulation, toy tables, island, 3D models, renderer art, sound and existing portrait atlas.
+- 当前环境 Windows、Node v26.7.0、Chrome 157.0.8103.6、ANGLE Vulkan SwiftShader；无真实 GPU 计时。 · Windows and software Chromium; no physical GPU timing.
+- Node 34/34（原 24 项、输入扩展、三个旧设置存档测试）；独立的真实 Chromium 触点注入 24/24，桌面指针锁定及方向键焦点专项 14/14。浏览器主动注入不同 contact id，不是手机真机。 · 34 Node tests, 24 browser multitouch assertions and 14 pointer-lock/arrow-focus assertions. Browser input injection is not physical hardware.
+- 正常中文/英文语义与显示、故障注入实际重试均已专项验证；通用质量检查 T2 15/15 达到 44 CSS px，T3、I1、E2、S1/S2/S3 通过；F1 仍失败（软件环境，见上表），不把它记成达标。 · T2, T3, I1, E2 and S1/S2/S3 pass; F1 remains a measured software-renderer failure.
+- 标题全屏 3D 镜头在 375×667 预览曾裁掉熊猫身体；按预览区域计算镜头距离与目标，在 375×667、393×852、873×325 复查实际输出。 · The initial small-phone camera cropped the body; the final camera fits the live preview area and was rechecked at these profiles.
+
+### 同机性能对照 · Controlled software-renderer comparison
+
+按 `test/performance.mjs`，同机 844×390、ratio=1、中画质、Mint 单只、种子 7；利用现有游戏规则步进 17,100 次至 285 秒，固定场景初始为 80 个敌人、18 级、1701 击杀、120 HP，预热 12 帧再采 60 帧。未改血量、时钟或数值。 · Same machine, 844×390, ratio 1, medium, solo Mint, seed 7. Exact starting fixture at 285 s (17,100 simulation steps), 80 enemies, level 18, 1701 kills, 120 HP. Warm up 12 frames and sample 60. No altered HP/time/values.
+
+| 版本 · Version | 帧 p50 / p95 / max (ms) · frame gap | 规则 p95 · rules | 视图 p95 · view | 绘制 CPU p95 · draw phase | 3D draw calls p95 | 3D triangles p95 | 2D GL draws / texture allocations+uploads |
+|---|---:|---:|---:|---:|---:|---:|---:|
+| 原 DOM，b5628eb · Old | 166.6 / 181.8 / 184.3 | 1.1 | 1.1 | 0.9 | 87 | 270458 | n/a |
+| 仅引擎升级 · Engine-only | 172.0 / 191.2 / 195.0 | 1.2 | 1.2 | 0.9 | 86 | 270042 | n/a |
+| 原生 UI · Native | 176.7 / 519.7 / 549.4 | 1.3 | 1.1 | 1.0 | 86 | 269076 | 1102 / 0 |
+| 原生 UI 复测 · Native repeat | 167.3 / 511.5 / 545.1 | 1.2 | 0.9 | 1.0 | 87 | 269996 | 684 / 0 |
+
+- 帧时间是相邻接受的帧间隔，不是 GPU 执行时间；规则、视图、绘制是 CPU 阶段。原生 UI 的绘制尾部曾有 501.3/480.2 ms 到微任务的等待；这两轮长尾稳定存在。有长帧的前一次 2D 提交可以为 0 或 38 次 GL draw。第二轮 60 帧，已计时的 3D/2D GL API CPU 总耗时约 5.3/1.6 ms，不足解释等待。 · CPU and accepted-frame intervals, not GPU timestamps. Long tails repeated, including draw-to-microtask waits; previous 2D submissions varied. No measured texture uploads or GL-call CPU sum accounts for them.
+- 原生 2D 数字确实变化（复测计时 285→286 秒、17 个不同击杀数）；0 次纹理分配/上传。静止标题另采 30 个 3D 帧：2D draw、buffer、texture 调用全为 0，世界继续渲染，证明菜单 on-demand 保留帧而非每帧提交。 · Numeric contents change without new texture uploads. A separate 30-frame static-title sample shows zero 2D draw/buffer/texture calls while 3D continues.
+- **性能门槛没有通过**：中位数与 3D 负载大致一致，但原生叠加层软件渲染 p95 明显退化，记录为 [ENGINE-NOTES #8](ENGINE-NOTES.md)。未查明是否为宿主等待、合成或软件渲染排队；不能以此推断真机，也不通过降画质或关闭 HUD 隐藏问题。 · **Performance gate not met**; similar median/load does not erase the repeatable tail. Keep the regression open and qualify on hardware rather than hide it.
+
+### 原生多屏检查及验收 · Native multi-screen and functional acceptance
+
+最终 `node vendor/egret.mjs verify --screens --play test/screen-route.mjs`（用 `--playwright` 连接已安装 Chrome）实际通过全部九种规格、108 个检查点。记录的是引擎实际命中边界和语义来源，不是通过 DOM 猜测 UI 大小。 · Final official nine-profile verifier passed all 108 checkpoints using actual engine hit rectangles and semantic receipts; installed Chrome was supplied via its Playwright adapter.
+
+| 规格 · Profile | CSS viewport | 检查点 · Checkpoints | 错误 / 警告 · Errors / warnings |
+|---|---:|---:|---:|
+| phone-small | 375×667 | 12 | 0 / 0 |
+| phone-notch | 393×852 | 12 | 0 / 0 |
+| phone-notch-wide | 852×393 | 12 | 0 / 0 |
+| phone-tall | 360×800 | 12 | 0 / 0 |
+| tablet | 768×1024 | 12 | 0 / 0 |
+| tablet-wide | 1024×768 | 12 | 0 / 0 |
+| foldable-cover-wide | 873×325 | 12 | 0 / 0 |
+| foldable | 884×1104 | 12 | 0 / 0 |
+| desktop | 1920×1080 | 12 | 0 / 0 |
+
+- `node vendor/egret.mjs verify --playwright <installed-Chrome-adapter>`：7/7，通过且无 engine warnings。 · All seven basic official browser checks passed; no warnings.
+- `node test/accept.mjs`：161/161，0 未预期错误。已核对标题设置、八只角色和队伍、移动/暂停/恢复、3 次重抽至禁用焦点切换、第一首领、正常规则胜败、旧档和资源失败后重载。相同种子完整胜局结果为 923.7833 秒、62 级、22940 击杀、116.09 HP。 · Full browser acceptance passed, including all rerolls, normal-rule first boss and reproducible victory/defeat, saves, asset failure and reload.
+- 四种状态（标题、战斗、选卡、暂停）横→竖→横，保留同一 overlay、game、projection、sim 身份及暂停/选卡状态；桌面暂停退出锁定，点空白场景再次锁定。 · Live resize retains identities, selection and paused progress; a blank-scene click restores pointer lock.
+- 首次建立的标题与结算截图基线经过肉眼检查，再跑快照差异 0.69% / 0.06%（原阈值 2%），不覆盖未审查的快照；[前后对照](test/evidence/old-native-844.jpg)。标题复跑偶有旧局拖尾形成的细三角形，已定位为 `view.attach` 的瞬态资源生命周期问题，将在独立画质升级中修复（此处保留 UI 迁移证据）。 · Reviewed first goldens, then matched both; a stale visual trail on title re-entry was identified and is separate from hit geometry.
+- 有一轮软件合成下 3D 底图截到未呈现帧，随后真实 3D 渲染及稳定截图正常；不归因为硬件绘制缺陷。 · Isolated software composite captures occasionally missed the presented world frame; no hardware cause established.
+- 非交互 HUD 视觉核对另外发现 768×1024 与 884×1104 的首领条和队友卡片相碰；九屏的原生命中边界仍全部合格，视觉修复放在下一独立提交。 · A non-interactive Boss/party-bar overlap was seen on the portrait tablet and expanded foldable; the native hit checks still pass. The visual correction is tracked separately.
+
+### 真实 PC GPU 复测 · Physical PC GPU recheck
+
+使用已安装 Chrome 157.0.8103.6 的 Windows D3D11 独立无头会话；实际 WebGL2 debug renderer 为 `ANGLE (NVIDIA, NVIDIA GeForce RTX 5090 Laptop GPU, D3D11)`，不是软件 GPU。固定同一初始狂潮状态、同样 844×390/ratio=1，预热后每组采 120 帧。输入由浏览器自动化执行，不是人工操作或 GPU 硬件时间戳。 · Hardware renderer verified; same fixture and 120 sampled frames. Automated browser actions and CPU frame intervals, not human play or GPU timestamps.
+
+| 版本 · Version | 画质 · Quality | p50 / p95 / max (ms) | 3D draws p95 | 3D triangles p95 | 2D draws / texture (alloc/upload) |
+|---|---|---:|---:|---:|---:|
+| 原 DOM · Old | Medium | 4.2 / 4.5 / 20.2 | 87 | 268186 | — |
+| 仅引擎升级 · Engine-only | Medium | 4.2 / 4.7 / 18.6 | 87 | 268192 | — |
+| 原生 UI · Native | Medium | 4.2 / 6.0 / 14.9 | 85 | 268140 | 190 / 1 alloc, 0 upload |
+| 原生 UI · Native | High | 4.2 / 6.3 / 33.5 | 86 | 268122 | 190 / 1 alloc, 0 upload |
+
+本机硬件中画质 p95 增加约 1.3 ms（相对仅升级引擎），仍低于 16.7 ms 门槛；没有复现软件渲染的 500 ms 级长尾。高画质另外见一次 33.5 ms 最大值。纹理调用仅有一次 `texStorage2D` 分配，没有 `texImage*/texSubImage*` 上传，不能把每帧 HUD 变化等同纹理上传。软件自动 F1 的失败仍保留。 · The measured hardware p95 increment is about 1.3 ms, below the target on this PC; the repeated 500 ms software tail was not reproduced. High quality had a 33.5 ms maximum. One texture allocation, zero upload calls; keep the software F1 failure recorded.
+
+复跑 · Reproduce: set `JELLY_PERF_HARDWARE=1`, `JELLY_PERF_FRAMES=120`, `JELLY_PERF_DETAIL=1`, `CHROMIUM_PATH` to the installed Chrome; select `JELLY_PERF_QUALITY=medium|high` and run `node test/performance.mjs`. The harness rejects a reported software renderer in hardware mode.
+
+### Samsung Fold7 实体机 · Physical Fold7 check
+
+- 真实设备：Galaxy Z Fold7（SM-F966U1），Android 17、Chrome 157.0.8103.78，WebGL2 ANGLE Qualcomm Adreno 830，竖屏 411×813 与矮横 873×325，DPR 2.625。共 54/54 自动化实体机断言、46 个实际原生触控矩形，最小 44 CSS px，0 finding。 · Verified physical hardware and renderer; 54 automated device assertions, 46 hit rectangles, no findings.
+- 本地明确版本快照。通过 CDP 向真实手机注入触点、转屏并观察；不是人工手动通关。选角、队伍、设置重载、实际双指（摇杆越界追踪 + 跳跃）和暂停清理、升级重抽、选卡通过。70 CSS px 摇杆越界拖动仍移动 4.556 m，释放后无页面滚动。 · Owned device target, loaded an exact version snapshot, real injected contacts (not human fingers); controls, rotation, save/reload and card flow passed.
+- 真机同种子、相同设置、完全相同 285 秒 / 80 敌 / 120 HP / 18 级 / 1701 杀 / 17,100 规则步进。老 DOM（仅引擎升级）与原生 UI 各 60 render rows / 59 engine frame intervals / 58 actual RAF intervals。 · Matched dense fixture and physical samples.
+
+| Fold7 measure | Engine-only DOM | Native UI |
+|---|---:|---:|
+| accepted frame p50 / p95 / max (ms) | 16.6 / 17.9 / 20.1 | 16.7 / 26.5 / 29.5 |
+| actual RAF p95 / max (ms) | 16.7 / 16.7 | 16.7 / 16.7 |
+| rules / view / draw handoff p95 (ms) | 2.0 / 1.5 / 2.9 | 2.4 / 2.2 / 2.9 |
+| >50 ms intervals | 0 | 0 |
+
+单次实体机样本的实际 RAF 稳定；接受帧 p95 增加 8.6 ms，仍低于 33 ms 移动目标。本机样本不能归因 GPU 或泛化为其他手机；电池温度均 31.2°C。 · RAF stayed stable while accepted-frame p95 increased by 8.6 ms, still below 33 ms in this bounded run. No causal GPU assertion. Same observed battery temperature.
+
+[实体机流程图](test/evidence/fold7-native-route.jpg) · [实体机同场景对照](test/evidence/fold7-native-ab.jpg) · [已脱敏的测量摘要](test/evidence/sanitized-summary.json)。测试后所有自有标签、转发、租约释放并恢复设备状态。 · Scoped evidence and successful device cleanup/restoration.
+
+## 独立画质升级 · Separate quality upgrade
+
+在原生 UI 迁移后单独进行的画质提交：保留原 `src/sim.mjs`、数值、玩具、敌人与 Boss 规则、音效音乐、存档与地形物理网格。 · Separate art pass after migration; rules, collision geometry, numeric data, audio and saves remain unchanged.
+
+- **角色 · Character**：八只熊猫仍为每只 23 个网格、11 个投影网格、7,896 三角面。透射表面从 11 减为 3，只在身体、头与尾部；原生清漆高光、眼斑和四肢独立材质，加强表情可读性；腹纹抗锯齿且按角色复用纹理。蓄力、起跳、落地、受击、翻滚形变与肢体跟随有独立动作反馈。 · Same mesh, shadow and geometry budgets; focused transmission, opaque readable patches, clearcoat, cached antialiased stamps, more responsive visual poses.
+- **岛屿 · Island**：原始顶点坐标与三角索引 SHA256 分别保持 `68c58647317472f1995a7843668ee7826477dc9fbddeb02c550474e920b80c5c` 与 `4f102ec6c7272067ec9c4f3a770a78a6c54fc8bff1a42c9eb221e05f91fea756`。新增环形浅色步道、渐层草地、重复原生地表纹理、弧形棕榈叶、竹节及玩具地标细节。海面浅滩、泡沫、光纹与保留式反射沿用 native Water3D，反射间隔 2。静态网格 11→11，三角面 209,118→217,636（+4.1%），其中投影网格三角面 42,338→50,856（+8,518）。 · Terrain positions/index hashes unchanged; richer palette, surface grain, landmarks, shoreline and retained native reflection; bounded geometry.
+- **战斗 · Combat**：根据原规则实际状态显示薄荷炸弹半径 3.2、玉米冲锋方向、甜甜圈起手追踪方向及跳跃 Boss 落点警示，不能凭空预告未确定路径。用最多 18 个预警的两组实例化网格（不投影，不反射）和原粒子池，重用激活/清理。 · Exact rule-linked warning geometry, capped at 18 cues in two retained instanced draws; retained particle effects.
+- **生命周期 · Lifecycle**：重开/返回标题立即清空拖尾、波纹、粒子池和命中停顿；仅标题隐藏前方遮挡角色的道具，渲染角色贴地而不改模拟状态。 · Clear transient effects on attach; preview-only prop visibility and ground placement, no physics mutation.
+- 新增角色、地形与场景专项测试，最终 Node **44/44**。通用质量复测 T2/I1/E2、S1–S3 等通过；软件 F1 仍失败（本轮 370.8 ms p95，不以此作为硬件数据）。 · 44 Node checks, generic checks except software F1 pass.
+
+[RTX 5090 高画质实拍前后对照](test/evidence/art-hardware-before-after.jpg)（同一初始种子/视角/画质，预警截图捕捉相近的真实起手，异步帧位置存在微小差别）。 · Actual high-quality hardware screenshots of matching scene/seed, with small timing differences in natural warning animation.
+
+### 画质升级性能 · Quality performance
+
+同一真实 RTX 5090/D3D11、同样 844×390/ratio=1，种子 7 初始 t285 狂潮，120 帧/组；没有降低画质或改动规则。 · Same verified hardware and fixture.
+
+| 版本/画质 · Version / quality | p50 / p95 / max (ms) | 3D draws p95 | Triangles p95 |
+|---|---:|---:|---:|
+| UI-only medium | 4.2 / 6.0 / 14.9 | 85 | 268140 |
+| Art medium | 4.2 / 6.1 / 16.3 | 85 | 276632 |
+| UI-only high | 4.2 / 6.3 / 33.5 | 86 | 268122 |
+| Art high | 4.2 / 6.1 / 16.8 | 88 | 276720 |
+
+PC 高、中两档 p95 6.1 ms。硬件计时是浏览器接受帧，不是 GPU 独立执行时间。 · Both hardware samples remained below the 16.7 ms target.
+
+实体 Fold7（Adreno 830，真实 Chrome 157），同种子中画质 60 帧，两轮原生 UI 与画质版。实际流程 48/48，修正标题后独立 20/20；0 errors / warnings，原生 46 命中区合格，设备恢复。标题位置修正发生在 gameplay/performance 冻结快照后，只改变 `view.mjs` 的标题模型位置并单独真机复测。 · 48 functional and 20 final title-specific physical device assertions. Preview grounding affects only title render and was separately checked on the physical handset.
+
+| Fold7 measure | UI-only | Art |
+|---|---:|---:|
+| accepted p50 / p95 / max ms | 16.7 / 26.5 / 29.5 | 16.6 / 28.0 / 31.0 |
+| actual RAF p95 / max ms | 16.7 / 16.7 | 16.7 / 33.2 |
+| mean accepted interval ms | 16.580 | 16.973 |
+| >50 ms engine gaps | 0 | 0 |
+| 3D draws p95 / triangles p50 | 88 / 268468 | 90 / 276976 |
+
+设备上画质版 p95 增加 1.5 ms，另见一次 33.2 ms RAF 间隔，不能假定实际显示无抖动；本次实测无 >50 ms，引擎与浏览器时序需继续分开观测。 · The bounded visual sample adds a small accepted-frame tail increment and one RAF gap; no >50 ms, no unproven attribution.
+
+[实体机新版画面](test/evidence/fold7-visual-stage.jpg) · [实体机升级前后](test/evidence/fold7-visual-dense-ab.jpg) · [脱敏实测 JSON](test/evidence/sanitized-quality-summary.json)。
+
+额外 WebGPU PC 启动回归：Chrome 157 硬件 adapter NVIDIA Blackwell，非 fallback；高画质标题→开始→W 移动 5.13 m→暂停，0 errors，221 帧观察点。未跑 WebGPU 整局或性能对照。 · Actual hardware WebGPU smoke on a non-fallback NVIDIA Blackwell adapter, title/play/movement/pause passed; no full run or WebGPU performance qualification.
+
+### 画质版回归 · Visual-stage regression
+
+- 完整浏览器候选流程 161/161，0 problems；基本官方 verify 七项通过，无运行时错误。 · Full candidate browser route and seven official checks pass.
+- `node test/visual-accept.mjs`：40/40，0 problems。实际滚动拖尾→暂停重开/回标题，旧池清空；正常战斗道具仍可见，标题专用隐藏及贴地位置通过。375×667 标题、768×1024 和 884×1104 首领状态栏实际 Bounds 无面积相交，两种规格均有以原规则驱动、半径 7.5 的首领跳击原生预警网格。 · Real lifecycle, preview, portrait Boss/party separation and rule-driven warning geometry checks.
+- [小手机/平板/折叠屏修复前后](test/evidence/quality-portrait-hud.jpg) · [瞬态演出生命周期](test/evidence/quality-lifecycle.jpg) · [完整横屏迁移/美术对照](test/evidence/quality-before-after-844.jpg)。九屏 UI 全路线基线保留在上一提交；画质提交只改变世界美术、角色/预览和非交互的竖屏 HUD 间距，对受影响的规格定向回归。 · Preserve all nine migration routes and recheck layouts affected by the separate visual pass.
+- 新美术导致截图内容有意变化。视觉对照确认角色、岛屿及道具都正确后，单独更新 `test/baseline/title.png` 和 `end.png`（原 UI 阶段基线仍在 `9f7de9ed`）。最终默认 `node test/accept.mjs` 163/163，标题差异 0.09%、结算 0.13%，原 2% 门槛不变。 · Intentional art changes reviewed before adopting two new goldens; final unchanged-threshold repeat passed all 163 assertions.
+- 最终硬件版静止标题、暂停、选卡、结算各采 30 个世界帧（`JELLY_PERF_STATIC=title|pause|cards|end`），四组均只有 3D stage GL 调用，原生 2D 的绘制、buffer 与纹理调用为 **0**。 · All four settled screens retain the UI frame for 30 world frames each on hardware, with zero overlay GL submissions.
