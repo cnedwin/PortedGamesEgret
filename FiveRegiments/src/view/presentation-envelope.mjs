@@ -30,3 +30,10 @@ export function createVisualPulse(){
 export function noticeOpacity(remaining){
   return Number.isFinite(remaining)?smooth(remaining/.18):0;
 }
+
+/** Decorative expand-and-fade only; neither radius nor timing represents a gameplay area. */
+export function decorativeEnergyEnvelope(elapsed,duration){
+  const t=Number.isFinite(elapsed)&&Number.isFinite(duration)&&duration>0
+    ?saturate(elapsed/duration):1;
+  return {scale:.54+.60*(1-(1-t)**3),opacity:smooth(1-t)};
+}

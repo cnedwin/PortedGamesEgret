@@ -41,6 +41,7 @@ import { previewFrame } from './view/menu-framing.mjs';
 import { createMountedPresentation } from './view/mounted-presentation.mjs';
 import { createMountedContactPresentation, mountedContactBody } from './view/mounted-contact.mjs';
 import { createContactAccent } from './view/contact-accent.mjs';
+import { advanceVirtualFrame } from './view/virtual-clock.mjs';
 import { applyLook, buildPlace, describePlace } from './view/stage.mjs';
 import { assetDownloads, startupSpan, startupTrace, titleAssetUrls } from './view/asset-downloads.mjs';
 import { prepareTitlePrograms } from './view/title-programs.mjs';
@@ -116,6 +117,7 @@ async function main() {
   const contactAccent = createContactAccent();
   let stage = null;
   const fx = createEffects(scene, { particles: quality === 'low' ? 0.5 : 1, blood: settings.blood,
+    reducedMotion: () => reduceMotion.matches,
     groundAt: (x, z) => floorAt(stage?.place, x, z) });
 
   // The existing renderer keeps its quality and resource ownership. The native interface and
@@ -909,12 +911,13 @@ async function main() {
       else slow += (1 - slow) * (1 - Math.exp(-dt * 10));
     }
     // A delayed or rejected lock should leave the picture available to click without advancing combat.
-    const k = waitingForPointer ? 0 : over ? 0.35 : slow;
-    carry += dt * k;
+    const paced = !waitingForPointer && !over && !fixedStep && !autoBrain;
+    const budget = advanceVirtualFrame(carry, dt, TICK, { scale: waitingForPointer ? 0 : over ? 0.35 : slow, paced });
+    const k = budget.scale;
+    carry = budget.remainder;
     const target = lockTarget();
     const events = [];
-    while (carry >= TICK) {
-      carry -= TICK;
+    for (let tick = 0; tick < budget.steps; tick++) {
       const inputs = {};
       for (const [id, b] of Object.entries(brains)) inputs[id] = b.think(game, TICK);
       if (autoBrain) inputs.hero = autoBrain.think(game, TICK);
@@ -1053,6 +1056,7 @@ async function main() {
 
   window.egretGame = {
     status, uiGame: ui, semantics, tester, hud, touch, input, startupTrace,
+    ...(params.has('presentation-profile') ? { presentationStats: () => fx.presentationStats() } : {}),
     get game() {
       return game;
     },

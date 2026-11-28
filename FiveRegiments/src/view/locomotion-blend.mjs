@@ -3,6 +3,66 @@
 export const GAIT_NAMES=Object.freeze(['walk','run','back','sideB','sideA']);
 const clamp01=v=>Math.max(0,Math.min(1,v));
 const seconds=dt=>Math.max(0,Number.isFinite(dt)?dt:0);
+const GAIT_SPEEDS=Object.freeze([1.33,3.1,.9,1.1,1.1]);
+
+/** Cadence follows the already blended captured clips, without a slower diagonal stride. */
+export function createGaitCadence(motion){
+  const durations=GAIT_NAMES.map(name=>motion.duration(name));
+  return (weights,speed)=>{
+    let sum=0,natural=0,cycle=0;
+    for(let i=0;i<weights.length;i++){
+      const w=weights[i];sum+=w;natural+=w*GAIT_SPEEDS[i];cycle+=w*durations[i];
+    }
+    if(sum<=1e-6||speed<=0)return 0;
+    // The original weighting had length √2 on diagonals; multiplying that into both
+    // speed and duration slowed the visible stepping without slowing the moving figure.
+    return speed/(Math.max(.3,natural/sum)*Math.max(.3,cycle/sum));
+  };
+}
+
+/** Smooth only the short end seam of captured neutral loops; disabled sampling is exact. */
+export function createClosedLocomotionSampler(motion){
+  const loops=new Map();
+  const h=motion.bones.length*4;
+  const dot=(a,b,i)=>a[i]*b[i]+a[i+1]*b[i+1]+a[i+2]*b[i+2]+a[i+3]*b[i+3];
+  return (name,time,out,enabled=true)=>{
+    motion.sample(name,time,out);
+    if(!enabled)return out;
+    let info=loops.get(name);
+    if(!info){
+      const clip=motion.clip(name),duration=motion.duration(name);
+      info={duration,window:clip.loop?Math.min(duration*.12,2.5/clip.fps):0,
+        forward:name==='walk'||name==='run',start:undefined};
+      loops.set(name,info);
+    }
+    const {duration,window}=info;
+    if(!(window>0&&duration>0))return out;
+    const t=((time%duration)+duration)%duration;
+    const edge=info.forward?Math.min(t,duration-t):duration-t;
+    if(edge>=window)return out;
+    const weight=clamp01(1-edge/window),k=weight*weight*(3-2*weight);
+    if(!info.start){
+      info.start=motion.pose();motion.sample(name,0,info.start);
+      if(info.forward){
+        info.end=motion.pose();motion.sample(name,duration-1e-7,info.end);
+        info.mid=motion.pose();info.mid.set(info.start);motion.blend(info.mid,info.end,.5);
+      }
+    }
+    if(!info.forward){motion.blend(out,info.start,k);return out;}
+    // Forward clips are already moving rapidly at the seam. Adding the small signed
+    // endpoint correction (rather than blending the entire pose toward a fixed frame)
+    // retains that captured motion; both ends meet at the same midpoint pose.
+    const ref=t<duration/2?info.start:info.end,mid=info.mid;
+    for(let i=0;i<h;i+=4){
+      const targetSign=dot(mid,ref,i)>=0?1:-1,currentSign=dot(ref,out,i)>=0?1:-1;
+      for(let j=0;j<4;j++)out[i+j]+=k*currentSign*(targetSign*mid[i+j]-ref[i+j]);
+      const length=Math.sqrt(dot(out,out,i))||1;
+      for(let j=0;j<4;j++)out[i+j]/=length;
+    }
+    for(let j=0;j<3;j++)out[h+j]+=k*(mid[h+j]-ref[h+j]);
+    return out;
+  };
+}
 
 export function createLocomotionBlend(){
   const weights=new Float64Array(GAIT_NAMES.length),target=new Float64Array(GAIT_NAMES.length);

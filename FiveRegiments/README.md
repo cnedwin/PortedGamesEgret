@@ -115,6 +115,9 @@ Choose a regiment and make your way through Stonegate Pass, Red Banner Depot and
 每营的全部技能（共二十一个）、天赋、战技、伤害公式和每个数的出处见 [docs/DESIGN.md](docs/DESIGN.md)。 · All the skills (twenty-one), talents, weapon arts, the damage formula and where every number comes from are in docs/DESIGN.md.
 
 ## 美术、声音与平衡 · Art, sound and balance
+
+- 正常交互对局采用 0.90 倍统一虚拟时间，既有固定步、双方相对规则、数值、存档、界面和镜头时钟保持不变；固定截图及自动验收不改节拍。移动等游戏内进程也随统一时间变慢。 / Normal interactive play uses a uniform 0.90× virtual clock, retaining the old fixed step, relative rules, values, saves and real-time UI/camera clock; deterministic capture and automated verification retain their old cadence. In-world motion and progression share the slower clock.
+- 普通移动动作采用闭合循环及归一化动作混合；同一东方色系的装饰性发光圆环、星芒和数字铜饰使用固定复用池，减少动效设置可关闭新增扩散与漂移。一次性合成音频仅在必要时保留峰值余量及柔和尾端，不改曲目、音量与播放事件。 / Closed locomotion cycles and normalized blending improve visual continuity. The decorative halo/star motifs and floating plates stay within bounded pools; reduced motion suppresses the added motion. One-shot audio mastering preserves headroom and smooth endpoints when needed without changing playback events or loop music.
 - 卷首和选营使用独立的挺拔展示姿态与自适应镜头，不修改实战骨骼动作或判定。五套真实步态保留，并优化普通移动的起停、转向衔接；马匹静止时保留细微自然动作。 / The title and selection use a composed preview-only posture and screen-aware camera, separate from combat. Captured locomotion transitions and small horse idle movements are refined.
 - 竹林、雪地与校场保留原有地形和资产，调整雾、光照、地面纹理和道路细节；原生 HUD 的字号、层级与对比度适配安全区域。 / Existing environment assets and gameplay terrain are preserved, with refined fog, light, ground and path detail and a legible native HUD.
 
@@ -183,7 +186,7 @@ Choose a regiment and make your way through Stonegate Pass, Red Banner Depot and
 - 界面布局和按键按公开的按键表和沙盒战争类 PC 游戏的常见布局做，没有对着原作截图逐像素比对；手上没有截图可对，罗盘、名牌、物品栏的样式是自己画的。 · The panels and keys follow published key lists and the usual layout of sandbox-war PC games, not a pixel comparison with screenshots; the compass, nameplates and bar are drawn here.
 - 战马的骨骼里右后腿只有一节骨头，跑起来那条腿只能整条摆动、不能弯膝。马上不能跳、没有马上弓射。 · The horse's rig has a single bone for the right hind leg, so that leg swings without bending. No jumping on horseback, and no mounted archery.
 - 刀路只有四个方向；原作武器面板上的八个方向没有做全。 · Four lines of cut; the original's eight directions are not all made.
-- 品质验收未达标 · Quality items failing（[QUALITY.md](QUALITY.md)，2026-11-28，无头 Chromium + SwiftShader · headless, software rendering）：F1 桌面帧时间 p95 ≤ 16.7 ms（p95 95.7 ms over 60 frames）。
+- 品质验收未达标 · Quality items failing（[QUALITY.md](QUALITY.md)，2026-11-28，无头 Chromium + SwiftShader · headless, software rendering）：F1 桌面帧时间 p95 ≤ 16.7 ms（p95 112.4 ms over 55 frames）。
 
 ## 已解决 · Solved
 

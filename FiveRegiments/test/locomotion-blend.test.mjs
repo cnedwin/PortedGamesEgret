@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import {readFileSync} from 'node:fs';
-import {createLocomotionBlend,createHorseIdlePitch,GAIT_NAMES} from '../src/view/locomotion-blend.mjs';
+import {createLocomotionBlend,createHorseIdlePitch,createGaitCadence,createClosedLocomotionSampler,GAIT_NAMES} from '../src/view/locomotion-blend.mjs';
 import {createMotion} from '../src/view/motion.mjs';
 const update=(blend,fwd,back,left,right,run,movement,dt=1/60,ordinary=true)=>blend.update(fwd,back,left,right,run,movement,dt,ordinary);
 const values=(out)=>({moving:out.moving,weights:[...out.weights]});
@@ -50,6 +50,56 @@ test('real five-regiment motion assets: a sudden walk-to-side turn reduces the l
     }
     assert(old>.05&&next<old*.65,`${id}: ${old} -> ${next}`);
     t.diagnostic(`${id}: ${(old*180/Math.PI).toFixed(1)}° → ${(next*180/Math.PI).toFixed(1)}° (largest sampled lower-body joint change)`);
+  }
+});
+
+test('neutral diagonal gait uses average captured cadence instead of slowing twice with directional weight sum',()=>{
+  for(const id of ['yulin','tiger','vanguard','plume','archer']){
+    const motion=realMotion(id),cadence=createGaitCadence(motion),w=Math.SQRT1_2,speed=1.6;
+    // Settled cardinal movement uses the original cadence exactly.
+    near(cadence([1,0,0,0,0],speed),speed/(1.33*motion.duration('walk')));
+    near(cadence([0,1,0,0,0],speed),speed/(3.1*motion.duration('run')));
+    near(cadence([0,0,1,0,0],speed),speed/(.9*motion.duration('back')));
+    for(const side of [3,4]){
+      const weights=[w,0,0,0,0];weights[side]=w;
+      const cycle=(motion.duration('walk')+motion.duration(GAIT_NAMES[side]))/2;
+      const expected=speed/(((1.33+1.1)/2)*cycle);
+      near(cadence(weights,speed),expected);
+      near(cadence(weights.map(x=>x/2),speed),expected); // blending amplitude isn't movement speed
+    }
+    assert.equal(cadence([1,0,0,0,0],0),0);
+    assert.equal(cadence([0,0,0,0,0],speed),0);
+  }
+});
+
+test('actual five-regiment locomotion loops close their last-frame seam while preserving their interior samples',(t)=>{
+  for(const id of ['yulin','tiger','vanguard','plume','archer']){
+    const motion=realMotion(id),sample=createClosedLocomotionSampler(motion);let previousJump=0,closedJump=0;
+    for(const name of ['idle',...GAIT_NAMES]){
+      const duration=motion.duration(name),a=motion.pose(),b=motion.pose(),c=motion.pose(),inner=motion.pose();
+      motion.sample(name,0,a);motion.sample(name,duration-1e-6,b);sample(name,duration-1e-6,c);
+      const old=lowerAngle(motion,a,b);sample(name,0,a);
+      const closed=lowerAngle(motion,a,c);
+      previousJump=Math.max(previousJump,old);closedJump=Math.max(closedJump,closed);
+      assert(closed<.003,`${id}/${name} loop still has a lower-joint seam`);
+      const h=motion.bones.length*4;assert(Math.hypot(...[0,1,2].map(k=>a[h+k]-c[h+k]))<1e-5);
+      motion.sample(name,duration*.4,b);sample(name,duration*.4,inner);assert.deepEqual(inner,b);
+      // Disabled sampling is byte-for-byte the original for preview/action states.
+      motion.sample(name,duration-1e-6,b);sample(name,duration-1e-6,c,false);assert.deepEqual(c,b);
+      // Closing the wrap must not simply move the pop one frame earlier. Compare the
+      // actual adjacent 60Hz lower-body angular change over the whole seam window.
+      let rawPeak=0,correctedPeak=0;
+      for(const shift of [0,.37,.73])for(let i=0;i<24;i++){
+        const at=duration-.2+(i+shift)/60;
+        motion.sample(name,at,a);motion.sample(name,at+1/60,b);
+        sample(name,at,c);sample(name,at+1/60,inner);
+        rawPeak=Math.max(rawPeak,lowerAngle(motion,a,b));
+        correctedPeak=Math.max(correctedPeak,lowerAngle(motion,c,inner));
+      }
+      assert(correctedPeak<=rawPeak*1.03,`${id}/${name}: moved seam spike ${rawPeak} -> ${correctedPeak}`);
+    }
+    assert(previousJump>.05&&closedJump<previousJump*.1);
+    t.diagnostic(`${id}: ${(previousJump*180/Math.PI).toFixed(2)}° → ${(closedJump*180/Math.PI).toFixed(3)}° seam`);
   }
 });
 

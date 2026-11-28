@@ -12,6 +12,7 @@ import {
 } from '@egret/engine/world3d';
 import { createScratchCanvas } from './scratch-canvas.mjs';
 import { createVisualPulse } from './presentation-envelope.mjs';
+import { createLuminousAccents } from './luminous-accents.mjs';
 import { createWeapon } from './weapons.mjs';
 import { SKILL_CONTACT, SKILL_EFFECTS, SKILL_PREPARATION, SKILL_RELEASE } from './effect-profiles.mjs';
 import { mountedContactBody, mountedContactPoint } from './mounted-contact.mjs';
@@ -347,9 +348,11 @@ function createSweep(scene) {
   };
 }
 
-export function createEffects(scene, { particles = 1, blood = true, groundAt = () => 0 } = {}) {
+export function createEffects(scene, { particles = 1, blood = true, groundAt = () => 0, reducedMotion = () => false } = {}) {
   const fx = { blood };
   const cues = createCuePool(scene, particles < 1 ? 8 : 14);
+  const energy = createLuminousAccents(scene,{capacity:particles<1?3:6,reducedMotion});
+  fx.presentationStats=()=>energy.snapshot();
   const mountedEdges = new Map();
   const dot = spriteTexture('dot'),
     petal = spriteTexture('petal');
@@ -460,6 +463,7 @@ export function createEffects(scene, { particles = 1, blood = true, groundAt = (
       const angle = id === 'swing' ? yaw + (part % 2 ? 0.65 : -0.70) : yaw;
       cues.show(release.shape, origin, angle, release.radius, profile.tint,
         { time: release.time, opacity: 0.85, initial: 0.77, growth: 0.32, pitch: edge ? 0.20 : 0.04 });
+      energy.show('halo',origin,profile.tint);
       return;
     }
     const shape = active ? profile?.release : profile?.preparation;
@@ -472,6 +476,7 @@ export function createEffects(scene, { particles = 1, blood = true, groundAt = (
     cues.show(shape, place, angle, radius, profile.tint,
       active ? { time: 0.23, opacity: 0.84, initial: 0.8, growth: 0.25 }
         : { time: 0.31, opacity: 0.70, initial: 0.90, growth: -0.33 });
+    if(active)energy.show('halo',place,profile.tint);
   }
 
   /** Answer one event of the fight. `where(id)` gives a man's chest place. */
@@ -494,7 +499,9 @@ export function createEffects(scene, { particles = 1, blood = true, groundAt = (
         if (e.arrow) {
           break;
         }
+        energy.show('flare',point,e.type==='deflect'?[.66,.86,1]:[1,.75,.32],{size:.48,duration:.23});
         flash.setPosition(point[0], point[1], point[2]);
+        flash.color.set(e.type==='deflect'?[.66,.86,1]:[1,.60,.22]);
         flash.intensity = flashPulse.begin(e.type === 'deflect' ? 5.6 : shield ? 1.5 : 2.8, 0.095);
         break;
       }
@@ -504,6 +511,9 @@ export function createEffects(scene, { particles = 1, blood = true, groundAt = (
         const special = SKILL_EFFECTS[e.skill];
         const blade = e.arrow || e.kick || !e.line ? null : bladeOf(e.by);
         const { point, away, back } = contact(e, at, e.by ? where(e.by) : at, blade, 0.23);
+        // Just a graphic acknowledgement of the existing event, never a new
+        // hit, enlarged hit area, or different physical contact.
+        energy.show('flare',point,special?.tint??[1,.84,.60],{size:strong?.63:.40,duration:strong?.26:.20});
         if (e.mountedImpact && e.line === 'R' && blade && !e.graze && !e.broke) {
           // A sweep can hit several targets. One extension follows the closest contact on that beat.
           const { at: [x, z], from: [rx, rz] } = e.mountedImpact;
@@ -564,11 +574,13 @@ export function createEffects(scene, { particles = 1, blood = true, groundAt = (
           const origin = floor(ahead(at, e.yaw, wave ? 0.74 : 0.58), release.height);
           cues.show(release.shape, origin, e.yaw, release.radius, profile.tint,
             { time: release.time, opacity: 0.88, initial: 0.83, growth: 0.23, pitch: wave ? 0.33 : 0.08 });
+          energy.show('halo',origin,profile.tint);
           break;
         }
         const origin = floor(ahead(at, e.yaw, wave ? 0.9 : 0.67), wave ? 0.92 : 1.45);
         cues.show(profile.release, origin, e.yaw, wave ? 0.96 : e.skill === 'fan' ? 0.67 : 0.48, profile.tint,
           { time: wave ? 0.21 : 0.18, opacity: 0.88, initial: 0.95 });
+        energy.show('halo',origin,profile.tint);
         if (e.skill === 'backStep') burst(dust, floor(at, 0.13), 7);
         break;
       }
@@ -577,6 +589,7 @@ export function createEffects(scene, { particles = 1, blood = true, groundAt = (
         const tint = SKILL_EFFECTS[e.skill]?.tint ?? SKILL_EFFECTS.down.tint;
         cues.show(e.skill === 'down' ? 'axeImpact' : 'ring', floor(at, 0.075), heading, e.radius, tint,
           { time: 0.44, opacity: 0.95, initial: 0.39, growth: 0.61 });
+        energy.show('halo',floor(at,.14),tint,{size:.92,duration:.36});
         if (e.skill === 'drop') cues.show('split', floor(at, 0.09), heading + Math.PI, e.radius * 0.73, tint,
           { time: 0.45, opacity: 0.64, initial: 0.55, growth: 0.43 });
         burst(dust, floor(at, 0.15), e.skill === 'leap' ? 19 : 28);
@@ -589,9 +602,11 @@ export function createEffects(scene, { particles = 1, blood = true, groundAt = (
         burst(sparks, floor(at, 0.8), 24);
         burst(dust, floor(at, 0.2), 20);
         flash.setPosition(...floor(at, 1.2));
+        flash.color.set([1,.50,.16]);
         flash.intensity = flashPulse.begin(13, 0.16);
         cues.show('ring', floor(at, 0.075), 0, e.radius, SKILL_EFFECTS.blast.tint,
           { time: 0.4, opacity: 0.94, initial: 0.24, growth: 0.76 });
+        energy.show('halo',floor(at,.13),SKILL_EFFECTS.blast.tint,{size:.92,duration:.36});
         break;
       }
       case 'mist': {
@@ -609,6 +624,7 @@ export function createEffects(scene, { particles = 1, blood = true, groundAt = (
         burst(glow, at, 13);
         cues.show('ring', floor(at, 0.08), heading, 2.1, SKILL_EFFECTS.shout.tint, { time: 0.35, opacity: 0.89 });
         cues.show('split', floor(at, 0.20), heading, 1.54, SKILL_EFFECTS.shout.tint, { time: 0.49, opacity: 0.69 });
+        energy.show('halo',floor(at,.27),SKILL_EFFECTS.shout.tint,{size:.92,duration:.36});
         break;
       case 'skill':
         skillCue(e.id, at, heading, bladeOf(e.who), 0, false);
@@ -627,6 +643,7 @@ export function createEffects(scene, { particles = 1, blood = true, groundAt = (
     for (const e of fightEmitters) e.update(dt);
     flash.intensity = flashPulse.advance(dt);
     cues.update(dt);
+    energy.update(dt);
     for (const { blade, point } of mountedEdges.values()) cues.bridge(blade, point);
     mountedEdges.clear();
     const live = new Set();
@@ -750,6 +767,7 @@ export function createEffects(scene, { particles = 1, blood = true, groundAt = (
     for (const e of fightEmitters) e.reset();
     for (const s of sweeps.values()) s.clear();
     cues.clear();
+    energy.clear();
     mountedEdges.clear();
     flashPulse.clear();
     flash.intensity = 0;

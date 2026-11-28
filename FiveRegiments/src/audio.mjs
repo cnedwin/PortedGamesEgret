@@ -3,6 +3,7 @@
 // fights and a plucked tune under the pages. Nothing sounds before the first key or click, as browsers ask.
 import { encodeWav } from '@egret/engine/kit';
 import { createBrowserAudio } from '@egret/engine/web/audio';
+import { masterOneShot } from './audio-mastering.mjs';
 
 export const RATE = 32000;
 
@@ -256,7 +257,12 @@ export function createSound(scope, { on = true } = {}) {
     const entry = { buffer: null, ready: null };
     cache.set(name, entry);
     // The WAV encoding is synchronous. Give the browser a turn between cues, even during a tune change.
-    const wav = synthesis.then(nextAudioTask).then(() => open() ? encodeWav([make()], RATE) : null);
+    const wav = synthesis.then(nextAudioTask).then(() => {
+      if(!open())return null;
+      const samples=make();
+      // One-shot cues may end at silence; looping music keeps its original seam.
+      return encodeWav([cache===sounds?masterOneShot(samples,RATE):samples],RATE);
+    });
     synthesis = wav.then(() => {}, () => {});
     entry.ready = wav.then(bytes => bytes && open() ? mixer.decode(bytes) : null).then(buffer => {
       entry.buffer = buffer;

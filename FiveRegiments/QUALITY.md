@@ -20,7 +20,7 @@ this file; items by hand or on a device are marked not run until someone runs th
 | T1 | 触屏走完主流程 · The whole game by touch | 真机 · device | 未运行 · not run |  |
 | T2 | 触控区 ≥ 44×44 CSS px · Touch targets ≥ 44 × 44 CSS px | 自动 · automatic | 达标 · pass | 7 controls, all at least 44×44 |
 | T3 | 不误触下拉刷新和双击缩放 · No pull-to-refresh or double-tap zoom | 自动 · automatic | 达标 · pass | overscroll held, touch-action none, double-tap zoom off |
-| F1 | 桌面帧时间 p95 ≤ 16.7 ms · Desktop frame time p95 ≤ 16.7 ms | 自动 · automatic | 不达标 · fail | p95 95.7 ms over 60 frames |
+| F1 | 桌面帧时间 p95 ≤ 16.7 ms · Desktop frame time p95 ≤ 16.7 ms | 自动 · automatic | 不达标 · fail | p95 112.4 ms over 55 frames |
 | F2 | 中端手机帧时间 p95 ≤ 33 ms · Mid-range phone frame time p95 ≤ 33 ms | 真机 · device | 未运行 · not run |  |
 | L1 | 首屏 ≤ 3 s（10/5 Mbps、40 ms、CPU ×4） · Start-up ≤ 3 s (10/5 Mbps, 40 ms, CPU ×4) | 自动 · automatic | 达标 · pass | 1.6 s to the first playable screen, 2.7 MB |
 | O1 | 横竖屏与窗口尺寸 · Orientation and window sizes | 自动 · automatic | 达标 · pass | 1280×800, 390×844, 844×390, 768×1024 and live resizing: fits, no errors |
@@ -119,3 +119,31 @@ For visual comparison, hold the game clock and camera at the wide-field and gate
 PC: native menu, Chinese/English titles, selection/loadout, pointer lock and relock, pause/resume, natural settlement (loss, 14.27 s). Fold7: native title/settings, joystick outside capture and release, three-contact input and release, pause/resume, natural settlement (loss, 16.12 s), no reported exceptions. Fold7 did not expose `KHR_parallel_shader_compile`; startup trace: 34 downloads (917.9 ms first-start to last-end), 20 GLB decodes (652.0 ms span), stage construction (984.2 ms), overlapping. This is actual hardware driven via browser automation, not manual player ratings. Local phone route does not establish the public internet cold-cache download time or a matched old phone high-quality comparison. / 两台实机均完成自然结算，未改状态或数值，未测整条征途和物理手柄。没有在该采样段截屏；设备连接和先前状态已恢复。
 
 最终回归 / Final regression: 216/216 Node tests, 21 browser acceptance checks, error retry and quality change, pointer and touch acceptance passed. Engine multi-screen verification reports all nine profiles and 63 route checkpoints passing. The title baseline alone was intentionally updated for the new title after review. Automatic SwiftShader p95 is 95.7 ms (60 intervals, F1 fails); the remaining measured automatic checks pass. / 软件渲染未达到桌面 F1，不能以真实硬件的数据替换其自动结果。
+
+## 2026-11-29 节奏与视听呈现 · Virtual tempo and audiovisual presentation
+
+正常交互模式的真实运行时钟调整为 0.90×，固定步长、规则、数值和存档完全保留；固定截图及自动测试路径仍按原速度。移动及其它局内进程亦按统一虚拟时间推进。界面与镜头时钟保持真实时间。模型验证中，稳定显示调度最多增加一显示帧的输入等待，不能称为零额外延迟。 / Normal interactive game time is uniformly 0.90×; the original fixed step, values, save format and rules remain. Deterministic captures and test routes retain the original time; UI/camera retain wall time. Stable scheduling can add one display frame of input wait; no claim of zero latency.
+
+| 设备 / Device (actual local web route) | 旧版 4 s 时间比 / Previous virtual ÷ wall | 新版 / Final refined |
+| --- | ---: | ---: |
+| Windows / RTX 5090 Laptop / Edge, 1280×800 high | 0.9993 (3.99999/4.003 s) | 0.8994 (3.60/4.0026 s) |
+| Galaxy Z Fold7 / Android 17 / Chrome 158 / Adreno 830, 873×325 high | 0.9989 (4.00/4.0044 s) | 0.8972 (3.60/4.0125 s) |
+
+Normal browser inputs, no simulation-state change. PC final narrowed-ribbon route: 833 sampled intervals, p95 4.9 ms, max 19.5 ms, 0 over 50 ms; previous same PC route 864 intervals, p95 4.3 ms, max 8.2 ms. Native menu, pause freeze, pointer lock/relock and natural settlement passed. Fold7 touch ownership, multi-contact release, pause/continue and actual natural result screen passed; see the matched sampling below.
+
+**独立呈现验证 · Independent presentation evidence.** Across five motion sets, neutral loop-end angular difference fell from 9.66° to ~0.001° (sampled pose, not physical foot motion). Adjacent-frame checks cover the seam on six neutral clips. Desktop Node microbench, 6 × 50,000 actor frames with warmup and identical captured data: normal phase 3.607→3.720 μs/actor-frame, artificial seam-concentrated phase 3.711→5.112 μs. These are not mobile CPU timings. PC normal visual route recorded 9 new decorations, peak 1; an independent skill-visual route emitted 6, peak 3, with visibly thinner halo in two third-person stills. First-person camera can occlude the ornament. Six high/three low slots share static motifs; reduced motion suppresses the added decorative motion. No new model, texture, dynamic mesh upload or shadow pass. Floating feedback reuses the existing pool. / 以上是具体呈现指标，并非商业游戏质量或真人手感的等价结论。
+
+35 original synthesized one-shot samples (551,360 values): 31 values outside ±1 before mastering, 0 after; peak 1.1034→0.88, all terminal values zero. 20 samples require no change. Existing volume, music loops and event timing remain. No live loudspeaker listening test was made. / 音频数值回归不等同真人实听。
+
+**Fold7 帧抖动排查 · Phone cadence investigation.** Same physical Fold7, high, WebGL2, identical local assets, old verified published bundle SHA vs final bundle, screenshot-free active-play samples after pause/resume. All final routes actually reached a natural result. An earlier automation attempt tapped during the result transition and returned to title; it was rejected, not counted as acceptance.
+
+| 路线 / Route | Samples | p95 | Max | >50 ms |
+| --- | ---: | ---: | ---: | ---: |
+| Previous exact bundle, same matched route | 341 | 33.2 ms | 33.3 ms | 0 |
+| Final, first matched run | 209 | 49.6 ms | 99.5 ms | 1 |
+| Final, rested normal motion (1746×650 actual render) | 382 | 33.2 ms | 49.7 ms | 0 |
+| Final, page-only reduced-motion emulation | 213 | 49.8 ms | 132.6 ms | 1 |
+
+Normal rested sample: 31 intervals while the decorative pool was active, p95/max 33.2 ms; 351 inactive, p95 33.2 ms and max 49.7 ms. In first matched run, all 11 ≥40 ms frames occurred while decoration was inactive. Disabling the added decorative motion (verified 0 emissions) did not reliably remove the intermittent longer frames. The phone reports thermal status 0 at both ends of the rested normal route and 0→1 in the subsequent reduced-motion route. This is a confound, not proof of identical conditions or a thermal root cause. Early four-second route peaks were 82.8 ms (old), 99.5 ms (first new), 66.3 ms (rested normal), and 66.4 ms (reduced). The evidence does not establish a causal engine or demo subsystem defect. Keep quality and the bounded decoration pool; further browser/render-stage profiling needed if long frames recur. / 间歇抖动仍存在，不宣称性能完全无回退或根因已修复。所有租约已恢复并释放。
+
+Final regression: 233/233 Node tests, 21 browser acceptance checks including all original goldens (no replacement or threshold changes), pointer/keyboard, routed touch and error/retry/quality switch passed. Reviewed candidate screenshot differences: title 0.01%, choose 0%, fight 1.43%. Automatic SwiftShader F1: 112.4 ms p95 over 55 intervals, remains failing (prior 95.7 ms), separate from hardware. Other measured automatic items pass including 4 viewport sizes, language, storage and recovery. Full campaign, physical gamepad, actual reader audio, real speaker listening, physical iPhone and other browsers not covered. / 此轮没有重跑九屏完整路线，使用现有截图与自动四屏/转屏检查。
