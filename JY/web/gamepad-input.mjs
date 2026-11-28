@@ -31,10 +31,10 @@ function readKeys(pad, mode, buttons, deadzone) {
 }
 
 /** Use Egret's browser controller source, keeping JY's mode-specific keyboard actions. */
-export function attachGamepadInput(canvas, { keyboard, createInput, getMode = () => 'map', signal, mapping = {}, deadzone = 0.35 } = {}) {
+export function attachGamepadInput(canvas, { keyboard, createInput, getMode = () => 'map', signal, mapping = {}, deadzone = 0.35, manual = false, filter = () => true } = {}) {
   const document = canvas.ownerDocument;
   const window = document?.defaultView;
-  if (signal?.aborted || typeof window?.requestAnimationFrame !== 'function' || !keyboard || typeof createInput !== 'function') return () => {};
+  if (signal?.aborted || !window || (!manual && typeof window.requestAnimationFrame !== 'function') || !keyboard || typeof createInput !== 'function') return () => {};
   let controller;
   try { controller = createInput(); }
   catch { return () => {}; }
@@ -94,7 +94,7 @@ export function attachGamepadInput(canvas, { keyboard, createInput, getMode = ()
       padIndex = pad?.index;
       if (pad) {
         restoreFocus();
-        const next = readKeys(pad, mode, buttons[mode], threshold);
+        const next = new Set([...readKeys(pad, mode, buttons[mode], threshold)].filter(code => filter(code, mode)));
         if (waitForNeutral) waitForNeutral = next.size > 0;
         else {
           for (const code of held) {
@@ -114,7 +114,7 @@ export function attachGamepadInput(canvas, { keyboard, createInput, getMode = ()
         }
       }
     }
-    if (!closed) frame = window.requestAnimationFrame(poll);
+    if (!closed && !manual) frame = window.requestAnimationFrame(poll);
   }
 
   function detach() {
@@ -137,6 +137,9 @@ export function attachGamepadInput(canvas, { keyboard, createInput, getMode = ()
   window.addEventListener('gamepaddisconnected', onDisconnected);
   document.addEventListener('visibilitychange', onHidden);
   signal?.addEventListener('abort', detach, { once: true });
-  frame = window.requestAnimationFrame(poll);
+  if (!manual) frame = window.requestAnimationFrame(poll);
+  // A host that already owns the game clock samples this bridge once per update.
+  // The legacy callable detach return value remains unchanged.
+  detach.poll = manual ? poll : undefined;
   return detach;
 }

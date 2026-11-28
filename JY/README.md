@@ -96,8 +96,8 @@ PC 上悬停可预览移动路线，单击执行；武学和暗器选好目标�
 
 | 引擎入口 / API · Entry / API | 在本游戏中的用途 · Use in this game | 文件 · File |
 |---|---|---|
-| `@egret/engine` `createEngineForProfile` | 创建引擎、时钟和 2D 舞台 · the engine, its clock and the 2D stage | `web/main.mjs` |
-| `@egret/engine/webgl2` `createSharedWebGL2Host` | 旧 2D 底层帧宿主；现有 World3D 场景另有自身画布 · existing low-level 2D frame host; native World3D views have their own canvases | `web/main.mjs` |
+| `@egret/engine/play` `play`, `fit: expand`, `portrait`, `uiScale` | 游戏内原生 2D 宿主、单一时钟、横竖屏与安全区 · native in-game host, one clock, responsive orientation and safe area | [web/game-host.mjs](web/game-host.mjs)、[web/main.mjs](web/main.mjs) |
+| `PlayGame.browser.host.whenIdle`, `onFrameTiming`, `staticLayers` | 等待真正接受的 2D 帧及批量地图缓存；World3D 渲染器各自拥有场景画布 · accepted frame and static layers; independent World3D scene canvases | [web/game-host.mjs](web/game-host.mjs)、[web/jyx2/scene/gpu-ground.mjs](web/jyx2/scene/gpu-ground.mjs) |
 | `@egret/engine/webgl2/world3d` `createWebGL2Renderer3D` | 大地图、场景和战场的 3D 绘制 · drawing the world map, places and battlefields | `web/jyx2/scene/world3d-renderer.mjs` |
 | `loadGltfFromUrl3D`、`loadTexture3D` | 载入场景、战场和人物模型与贴图 · loading scenes, battlefields, figures and textures | `web/jyx2/scene/native-battle-view.mjs` |
 | `createAtmosphere3D` | 大地图远景随高度变化的雾 · the world map's height haze | `web/jyx2/scene/native-world-view.mjs` |
@@ -105,20 +105,24 @@ PC 上悬停可预览移动路线，单击执行；武学和暗器选好目标�
 | `AnimationMixer3D`、`Skeleton3D` | 场景人物的骨骼动画 · skinned figures in the places | `web/jyx2/scene/native-scene-actor.mjs` |
 | `InstancedMesh3D` | 战场上成片的树木和草 · trees and grass on the battlefields | `web/jyx2/scene/native-battle-generic.mjs` |
 | `renderer.preparePrograms` | 进入战斗前在加载画面里预编译战场的着色器 · preparing the battlefield's shaders under the loading screen | `web/jyx2/scene/native-battle-view.mjs` |
-| `@egret/engine/text` `createTextField`、`createTextRasterCache` | 对白、战斗伤害数字 · dialogue and battle damage numbers | `web/opening-dialogue.mjs`、`web/battle-view.mjs` |
-| `@egret/engine/web/text` `createCanvasTextRasterProvider` | 用浏览器字体栅格化文字 · rasterizing text with the browser's fonts | `web/main.mjs` |
-| `@egret/engine/web/keyboard` `createBrowserKeyboardInput` | 大地图和战斗的键盘输入 · keyboard input on the map and in battle | `web/main.mjs` |
-| `@egret/engine/web/gamepad` `createBrowserGamepadInput` | 浏览器手柄采样，接入 JY 的行走、菜单和战斗按键 · browser controller sampling feeding JY's movement, menu and battle bindings | `web/main.mjs`、`web/gamepad-input.mjs` |
+| `game.browser.createParagraphLabel`、`createAtlasLabel` | 原生段落、逐帧文字准备与现有战斗读数 · native paragraph and engine-owned atlas label work | [web/opening-dialogue.mjs](web/opening-dialogue.mjs)、[web/battle-view.mjs](web/battle-view.mjs) |
+
+| `game.keys.claim` / `pressed` / `down`, `game.onTap`, `game.pointer` | 原生键盘、点地寻路、格子及 UI 命中路由 · native keyboard, stage tap, hover and UI routing | [web/jyx2/ui/native/native-input.mjs](web/jyx2/ui/native/native-input.mjs)、[web/main.mjs](web/main.mjs) |
+| Play `pad:*` and `createBrowserGamepadInput` | 原生菜单和标准手柄键；低阶正式快照仅补模拟扳机、原始轴与 L3/R3 · native menu and standard gamepad, official raw extras for original thresholds and stick clicks | [web/jyx2/ui/native/native-input.mjs](web/jyx2/ui/native/native-input.mjs)、[web/main.mjs](web/main.mjs) |
 | `Texture3D(canvas, { flipY: true })` | 直接上传大地图地标和船尾浪花的 Canvas 贴图 · direct canvas uploads for map markers and the boat wake | `web/jyx2/scene/native-world-canvas-texture.mjs` |
 | `@egret/engine/web/audio` `createBrowserAudio` | 剧情、出招和受击 WAV 共用一个音效总线 · one effects bus for story, attack and impact WAV cues | `web/wav-effects.mjs` |
-| `Bitmap`、`NineSliceBitmap`、`createSharedMaterial2D` | 立绘、对白框和战斗界面 · portraits, the dialogue frame and the battle interface | `web/opening-dialogue.mjs`、`web/battle-view.mjs` |
+| `Bitmap`、`createSharedMaterial2D`、`Graphics` | 既有贴图及原生路径图形 · existing texture presentation and native route geometry | [web/battle-view.mjs](web/battle-view.mjs)、[web/jyx2/ui/world-navigation.mjs](web/jyx2/ui/world-navigation.mjs) |
 
 | `@egret/engine/play` `play`、`game.show`、`fit: expand` | 原生标题、载入状态、设置、存档及帮助 · responsive native title, preparation, settings, saves and help | [browser/import-ui.mjs](browser/import-ui.mjs)、[web/jyx2/ui/native/front-end.mjs](web/jyx2/ui/native/front-end.mjs) |
 | `createUiScreenStack`、`createUiSemantics`、`createBrowserSemantics` | 页面栈、模态、焦点、具名控件 · screen stack, modal focus and named controls | [web/jyx2/ui/native/front-end.mjs](web/jyx2/ui/native/front-end.mjs)、[web/jyx2/ui/game-shell.mjs](web/jyx2/ui/game-shell.mjs) |
 | `createSaveStore`、`browserSaveStorage`、`createTextTable`、`pickLanguage` | 设置版本和界面语言 · versioned preferences and shell language | [web/jyx2/ui/native/preferences.mjs](web/jyx2/ui/native/preferences.mjs)、[web/jyx2/ui/native/words.mjs](web/jyx2/ui/native/words.mjs) |
 | `createUiTester` | 具名浏览器验收、尺寸及焦点检测 · named browser acceptance and geometry/focus checks | [test/accept.mjs](test/accept.mjs) |
 
+| `game.show`, `createUiScreenStack`, `createActionControl` | 地图状态、行囊、队伍、对白与回看、原生探索触键 · map status, bag, party, dialogue/journal and native travel input | [web/jyx2/ui/native/choice-menu.mjs](web/jyx2/ui/native/choice-menu.mjs)、[web/jyx2/ui/native/explore-controls.mjs](web/jyx2/ui/native/explore-controls.mjs)、[web/jyx2/ui/native/reading-view.mjs](web/jyx2/ui/native/reading-view.mjs) |
+
 ## 已验证 · Verified
+
+- 2026-11-29：第三批原生宿主、地图 HUD、探索控制、行囊与队伍菜单、对白/回看。PC RTX 5090 Laptop 138/138 具名路线检查，完成 691 并进入原生 3D 世界；Fold7 真实横屏完成 691、出门与菜单，短帧采样 p95 16.7 ms；大地图曾回退至 2D，修复原因及最终回归见 QUALITY。 · Native in-game host, travel, bag/party, dialogue and journal. Hardware PC route and physical Fold7 opening checks, with the 3D-world fallback diagnosis and regression recorded separately.
 
 - 2026-11-29：原生标题、数据准备、设置、帮助及存档槽已迁移，独立取消／重试，具名语义与中英文标题。自动首屏检测 37.9 → 2.0 s（只代表标题可操作）；86/86 Node，严格接口检查 0 错误／0 警告。完整数据就绪单独计时，真机未覆盖。 · Native title and preparation, preferences, guide, saves, named semantics and bilingual title; automatic early-title L1 37.9 → 2.0 s, 86/86 Node and strict API check clean. This is not full-game readiness or a physical device measurement.
 
@@ -135,7 +139,7 @@ PC 上悬停可预览移动路线，单击执行；武学和暗器选好目标�
 ## 已知问题 · Known issues
 
 - 完整数据仍为单一压缩包，进入实际游戏前必须验证完成；标题及设置可先使用。 · The existing pack is monolithic; validation is required before play, while title and preferences are usable earlier.
-- 标题、帮助、设置及准备界面支持中英文，地图与战斗操作及原版文本尚未迁移。 · Native shell is bilingual; in-game controls still await migration. Source narrative and data text remain unchanged.
+- 标题、帮助、设置、资料准备、地图菜单、探索和对白控件支持中英文，战斗操作仍待完成迁移。源数据的剧情、人物或物品说明保留原文。 · Native title, travel menus and dialogue controls are bilingual; battle controls still await migration. Source narrative and data names remain unchanged.
 - 品质验收及限制见 [QUALITY.md](QUALITY.md)。2026-11-29 首屏与禁止误触检测通过，页面到真实可玩的耗时另计。 · See QUALITY for current measurements. Early title readiness and full data readiness are reported separately.
 
 ## 已解决 · Solved
@@ -146,7 +150,7 @@ PC 上悬停可预览移动路线，单击执行；武学和暗器选好目标�
 
 ## 未完成 · Unfinished
 
-- 地图和战斗界面的原生 UI 与英文界面迁移。 · Native UI and English shell text for exploration and battle.
+- 战斗指令、目标预览、结算及剩余英文界面的最终迁移。 · Native battle commands, formation preview, settlement and remaining English UI.
 - 已将标题和资料准备解耦；现有归档尚未按场景拆分。 · Title and data preparation are decoupled; the existing archive is not split by scene.
 - 真机上的整局验收和帧时间测量。 · A whole-game run and frame-time measurement on real devices.
 

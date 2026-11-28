@@ -55,7 +55,7 @@ export const MATRIX = {
     },
     {
      "game": "JY",
-     "file": "JY/web/main.mjs"
+     "file": "JY/web/battle-view.mjs"
     },
     {
      "game": "LanternShadows",
@@ -129,12 +129,7 @@ export const MATRIX = {
    "id": "@egret/engine/text",
    "kind": "entry",
    "label": "@egret/engine/text",
-   "games": [
-    {
-     "game": "JY",
-     "file": "JY/web/opening-dialogue.mjs"
-    }
-   ]
+   "games": []
   },
   {
    "id": "@egret/engine/layout",
@@ -167,23 +162,13 @@ export const MATRIX = {
    "id": "@egret/engine/web/text",
    "kind": "entry",
    "label": "@egret/engine/web/text",
-   "games": [
-    {
-     "game": "JY",
-     "file": "JY/web/main.mjs"
-    }
-   ]
+   "games": []
   },
   {
    "id": "@egret/engine/webgl2",
    "kind": "entry",
    "label": "@egret/engine/webgl2",
-   "games": [
-    {
-     "game": "JY",
-     "file": "JY/web/main.mjs"
-    }
-   ]
+   "games": []
   },
   {
    "id": "@egret/engine/world3d",
@@ -384,7 +369,7 @@ export const MATRIX = {
     },
     {
      "game": "JY",
-     "file": "JY/web/jyx2/ui/native/front-end.mjs"
+     "file": "JY/web/jyx2/ui/dialogue-journal.mjs"
     },
     {
      "game": "LoveElective",
@@ -525,12 +510,7 @@ export const MATRIX = {
    "id": "@egret/engine/web/keyboard",
    "kind": "entry",
    "label": "@egret/engine/web/keyboard",
-   "games": [
-    {
-     "game": "JY",
-     "file": "JY/web/main.mjs"
-    }
-   ]
+   "games": []
   },
   {
    "id": "@egret/engine/web/text-input",

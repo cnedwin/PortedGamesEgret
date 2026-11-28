@@ -9,6 +9,7 @@ import { createNativeWorldTerrain } from './native-world-terrain.mjs';
 import { createNativeWorldScenery } from './native-world-scenery.mjs';
 import { createNativeWorldShip, worldHeadings } from './native-world-ship.mjs';
 import { createWorldCanvasTexture } from './native-world-canvas-texture.mjs';
+import { palette as uiColor, skin as uiSkin } from '../ui/native/theme.mjs';
 
 const chunkSize = 24;
 const shadowSpan = 44;
@@ -51,7 +52,7 @@ function createMarker(name) {
   return sprite;
 }
 
-export async function createNativeWorldView(viewport, overlay, { world, places, canEnter }) {
+export async function createNativeWorldView(viewport, overlay, { world, places, canEnter, uiGame, language = () => 'zh' }) {
   const data = createWorldTerrainData(world);
   const loaded = await Promise.allSettled([
     createNativeWorldTerrain(data),
@@ -106,20 +107,29 @@ export async function createNativeWorldView(viewport, overlay, { world, places, 
   const ray = new Raycaster3D();
   const projected = new Float32Array(3), cameraSpace = new Float32Array(3);
   const chunks = new Map();
-  const controls = new AbortController();
   const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)');
-  const overview = document.createElement('button');
-  overview.type = 'button';
-  overview.className = 'world-camera-toggle';
-  overview.textContent = '拉遠鏡頭';
-  overview.setAttribute('aria-pressed', 'false');
-  let distant = false, range = 1;
-  overview.addEventListener('click', () => {
-    distant = !distant;
-    overview.textContent = distant ? '拉近鏡頭' : '拉遠鏡頭';
-    overview.setAttribute('aria-pressed', String(distant));
-    overlay.focus({ preventScroll: true });
-  }, { signal: controls.signal });
+  let distant = false, range = 1, overview;
+  function cameraControl(upright) {
+    return { type: 'panel', width: 'fill', height: 'fill', children: [
+      { type: 'panel', anchor: 'top-right', x: 7, y: upright ? 60 : 7,
+        width: 165, height: 58, padding: 3, color: uiColor.night, alpha: .91,
+        border: { color: uiColor.line, width: 1 }, children: [
+          { type: 'toggle', name: 'camera-range', width: 'fill', height: 52,
+            text: '', size: 16, checked: false }
+        ] }
+    ] };
+  }
+  function installOverview() {
+    if (!uiGame) return;
+    overview = uiGame.show({ label: language() === 'en' ? 'World camera' : '江湖鏡頭', area: 'safe', skin: uiSkin,
+      root: cameraControl(false), portrait: cameraControl(true), tablet: cameraControl(false), tabletPortrait: cameraControl(true) }, {
+      bind: { 'camera-range': {
+        text: () => language() === 'en' ? (distant ? 'Closer view' : 'Wider view') : (distant ? '拉近鏡頭' : '拉遠鏡頭'),
+        checked: () => distant,
+        tap() { distant = !distant; overview?.refresh(); uiGame.invalidate(); },
+      } }
+    });
+  }
   let renderer, centerX, centerY, width, height, visible = true, lost = false, disposed = false;
   let lastDraw = -Infinity;
 
@@ -299,9 +309,9 @@ export async function createNativeWorldView(viewport, overlay, { world, places, 
   function dispose() {
     if (disposed) return;
     disposed = true;
-    controls.abort();
+
     canvas.remove();
-    overview.remove();
+    overview?.close();
     for (const entry of chunks.values()) removeChunk(entry);
     chunks.clear();
     for (const { sprite } of landmarks) { sprite.material.map.dispose(); sprite.material.dispose(); }
@@ -315,11 +325,11 @@ export async function createNativeWorldView(viewport, overlay, { world, places, 
     renderer = createWorldRenderer({ canvas, shadowAtlasSize: 4096, toneMapping: 'none',
       onContextLost() { lost = true; }, onContextRestored() { lost = false; } });
     viewport.insertBefore(canvas, overlay);
-    viewport.append(overview);
+    installOverview();
   } catch (error) {
     dispose();
     throw error;
   }
   return { update, pick, projectTile, propSlots: [], dispose,
-    setVisible(value) { visible = value; canvas.hidden = overview.hidden = !value; } };
+    setVisible(value) { visible = value; canvas.hidden = !value; if (value) overview?.show(); else overview?.hide(); } };
 }

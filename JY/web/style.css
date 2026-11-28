@@ -13,6 +13,7 @@ main { width: min(1024px, calc(100% - 32px)); margin: auto; padding: 24px 0; }
 h1 { margin: 0; font-family: "KaiTi", "Microsoft YaHei", serif; font-size: clamp(23px, 4vw, 31px); letter-spacing: .15em; }
 .renderer { padding: 5px 8px; border: 1px solid #645b47; color: #dcc48f; font: 600 10px/1.2 system-ui, sans-serif; letter-spacing: .11em; }
 .screen { border: 1px solid #645b47; box-shadow: 0 14px 36px #080b09a0; }
+.scene-bar[hidden] { display: none; }
 .scene-bar { min-height: 35px; padding: 6px 12px; background: #252a23; color: #d5cbb1; font-size: 12px; }
 #scene-name { color: #e5c68b; font-weight: 700; }
 #coordinates, #event-marker { font-variant-numeric: tabular-nums; white-space: nowrap; }
@@ -898,3 +899,24 @@ body[data-art="jyx2"] .jyx2-member-portrait {
     .mobile-dialogue-copy p { line-height: 1.45; }
   }
 }
+
+/* The engine owns the viewport fit, portrait variants and safe-area geometry.
+   The browser supplies only a stable full-screen rectangle; temporary legacy
+   battle controls remain outside the holder until their native migration. */
+html, body { width:100%; min-height:100%; overscroll-behavior:none; }
+body:has(.native-game-viewport) { overflow:hidden; touch-action:none; margin:0; padding:0 !important; }
+main:has(.native-game-viewport) { width:100% !important; height:100dvh !important; max-width:none !important; margin:0 !important; padding:0 !important; }
+#play-screen:has(.native-game-viewport):not([hidden]) { display:flex !important; flex-direction:column; align-items:stretch !important; width:100% !important; height:100dvh !important; margin:0 !important; padding:0 !important; gap:0 !important; overflow:hidden; }
+#play-screen:has(.native-game-viewport) > .masthead { display:none; }
+#play-screen:has(.native-game-viewport) > .screen { display:flex !important; flex-direction:column; align-items:stretch !important; width:100% !important; max-width:none !important; flex:1 1 0; min-height:0 !important; min-width:0 !important; margin:0 !important; overflow:hidden; border:0; box-shadow:none; gap:0; }
+#play-screen .viewport.native-game-viewport { position:relative; flex:1 1 0; align-self:stretch; width:100% !important; height:auto !important; min-height:0 !important; max-width:none !important; max-height:none !important; aspect-ratio:auto !important; overflow:hidden; background:#101d22; touch-action:none; }
+.jy-play-holder { position:absolute; inset:0; overflow:hidden; touch-action:none; }
+.jy-play-holder > #game { position:absolute; inset:0; width:100%; height:100%; display:block; image-rendering:auto; touch-action:none; }
+.jy-play-holder > .scene3d-canvas { position:absolute; inset:0; width:100%; height:100%; image-rendering:auto; pointer-events:none; }
+.jy-play-holder > .scene3d-canvas[hidden], .native-game-viewport .scene-bar[hidden] { display:none; }
+#play-screen:has(.native-game-viewport) > .controls { flex:0 0 auto; min-height:44px; }
+#play-screen:has(.native-game-viewport.native-explore-controls) > .controls,
+#play-screen.native-explore-controls:has(.native-game-viewport) > .controls { display:none; }
+#play-screen:has(.native-game-viewport) #mobile-dialogue[hidden],
+#play-screen:has(.native-game-viewport) #battle-controls[hidden] { display:none; }
+#play-screen:has(.native-game-viewport) #battle-controls:not([hidden]) { flex:0 0 auto; width:100%; max-height:38dvh; overflow:auto; overscroll-behavior:contain; }
