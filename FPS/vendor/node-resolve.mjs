@@ -17,9 +17,20 @@ export const MAP = {
   "@egret/engine/kit": "./engine/dist/kit.js",
   "@egret/engine/audio": "./engine/dist/audio.js",
   "@egret/engine/input/gamepad": "./engine/dist/gamepad.js",
+  "@egret/runtime/ui": "./runtime/dist/ui/index.js",
+  "@egret/engine/ui": "./engine/dist/ui/index.js",
+  "@egret/runtime/paragraph": "./runtime/dist/paragraph/index.js",
+  "@egret/engine/paragraph": "./engine/dist/paragraph.js",
   "@egret/engine/webgl2/world3d": "./engine/dist/web/world3d/index.js",
   "@egret/engine/webgpu/world3d": "./engine/dist/web/world3d/webgpu.js",
-  "@egret/engine/web/kit": "./engine/dist/web/kit.js"
+  "@egret/engine/web/kit": "./engine/dist/web/kit.js",
+  "@egret/engine/play": "./engine/dist/web/play.js",
+  "@egret/engine/ui/semantics": "./engine/dist/semantics.js",
+  "@egret/engine/ui/testing": "./engine/dist/ui/testing.js",
+  "@egret/engine/web/semantics": "./engine/dist/web/semantics.js",
+  "@egret/engine/web/audio": "./engine/dist/web/audio.js",
+  "@egret/engine/input": "./engine/dist/input.js",
+  "@egret/engine/web/hover": "./engine/dist/web/hover.js"
 };
 export function resolve(specifier, context, next) {
   const file = MAP[specifier];

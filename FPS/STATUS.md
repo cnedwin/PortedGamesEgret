@@ -18,7 +18,7 @@ This document records where this version stands: problems already solved, parts 
 
 ## 验证情况 · What has been verified
 
-- 白鹭运行时固定为 main 的 `b5628eb9997b67cf6163a388f5aa06f321f3833a`（2026-11-21 从 `264e172` 升级，51 项测试照常通过）。51 项自动测试覆盖规则、输入、完整美术载入、模型挂点、连续蒙皮、硬表面保形、投影代理、共享实例、启动预绘及动态部件。
+- 白鹭运行时更新为 main 的 `33897768c4f7933d289f083e4f34b3209b0aef31`（2026-11-28 从 `b5628eb9` 升级；更新前后均通过 51 项 Node 自动检查，新增原生 UI/音频入口均已通过导入验证，本项不代替设备验收）。51 项自动测试覆盖规则、输入、完整美术载入、模型挂点、连续蒙皮、硬表面保形、投影代理、共享实例、启动预绘及动态部件。
 - 本次美术修复在 PC 与三星 SM-F966U1 的真实 WebGL2 上检查了三类角色的持枪、侧面步行和蹲姿。角色诊断是受控相机检查，不能代替完整游玩。第一人称枪械另检查了瞄准、后坐、换弹和近裁切；场景保留原 UV、法线和金属粗糙度。公开版本整局与性能复跑结果见 [PR #82 的验收记录](https://github.com/cnedwin/PortedGamesEgret/pull/82)。
 - 以下两段 PC、三星整局数字属于美术修复前的历史基线，不能作为本次资源升级后的帧率结论。
 - PC 使用 RTX 5090 Laptop 和 Edge 157，在 1440×900、高画质下从正常标题页开始，以实际键鼠事件完成三终端、六次校准和登机结算，用时 360.85 秒。模型首帧加载齐全，无回退。以下整局帧间隔是比例修订前的设备基线。最后一次手套比例微调另做了 PC 瞄准、射击、换弹、切枪和暂停恢复复测。
@@ -26,7 +26,7 @@ This document records where this version stands: problems already solved, parts 
 - 历史 PC 整局 P95 为 4.3 毫秒，最大帧间隔 175.1 毫秒，有两次相邻长任务。缺少对应的性能追踪，原因未定。样本包含约 5.6 秒辅助计算并行，应保留该测量条件。
 - 该 PC 的 ANGLE D3D11 阴影路径曾丢失 WebGL 上下文，目前仅对识别到的 RTX 5090 Laptop 适配器关闭实时阴影，SSAO、反射和后处理保留。三星高画质包含实时阴影。
 
-The runtime is pinned to the Egret main commit recorded above. All 51 automated checks pass. This revision checks continuous characters on physical PC and Samsung WebGL2 using controlled pose diagnostics, plus first-person aiming, recoil, reload and near-plane checks. The complete-run numbers above are historical, preceding this art repair. See [PR #82](https://github.com/cnedwin/PortedGamesEgret/pull/82) for current public-run results. The adapter-specific PC shadow fallback preserves the other high-quality effects.
+The runtime was refreshed to the Egret main commit recorded above. The 51 Node checks pass before and after the engine refresh, and the new native UI/audio entries import successfully. This result does not constitute physical-device acceptance. This revision checks continuous characters on physical PC and Samsung WebGL2 using controlled pose diagnostics, plus first-person aiming, recoil, reload and near-plane checks. The complete-run numbers above are historical, preceding this art repair. See [PR #82](https://github.com/cnedwin/PortedGamesEgret/pull/82) for current public-run results. The adapter-specific PC shadow fallback preserves the other high-quality effects.
 
 ### 验收边界 · Test boundaries
 
