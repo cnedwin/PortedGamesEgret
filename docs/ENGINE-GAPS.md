@@ -4,9 +4,9 @@
 
 Made by `node tools/engine-notes.mjs --write` from the ENGINE-NOTES of the games; do not edit by hand, and `--check` says whether it is out of date. What the engine resolved is copied from the engine's `guide/resolved.json` into [engine-resolved.json](engine-resolved.json) (15 entries). The form of a note is in part 3 of [GAME-STANDARD.md](GAME-STANDARD.md).
 
-24 个游戏、253 条笔记：未解决 64，部分解决 24，游戏侧绕过 7，已写入文档 42，已解决 116。
+24 个游戏、270 条笔记：未解决 68，部分解决 24，游戏侧绕过 16，已写入文档 42，已解决 120。
 
-253 notes from 24 games: 64 open, 24 partly resolved, 7 worked around in the game, 42 documented, 116 resolved.
+270 notes from 24 games: 68 open, 24 partly resolved, 16 worked around in the game, 42 documented, 120 resolved.
 
 ## 1. 引擎已经解决、游戏还标着未解决 · Resolved by the engine, still open in a game
 
@@ -24,7 +24,10 @@ The same workaround in two or more games means the fault is in the engine's inte
 
 | Topic | 游戏数 · Games | 笔记 · Notes |
 |---|:-:|---|
+| `static-webkit-presentation` | 5 | InquestScrolls#13 静止界面首绘仍保留旧帧 · Static screen retains prior presentation (worked-around)<br>LubanBridge#6 首屏只出现空面板 · First presentation shows empty panels (worked-around)<br>OperaDrums#24 静止模态框呈现延迟 · Static modal presentation delay (worked-around)<br>PeachCreek#10 静止页面第一次呈现不完整 · Incomplete first static presentation (worked-around)<br>TaiwanMahjong#13 静態畫面首幀未顯示 · Static screen retains an old frame (worked-around) |
+| `webkit-retained-screen-presentation` | 3 | FPS#17 WebKit 按需画面晚一屏 · WebKit retains earlier on-demand frame (open)<br>SnowTemple#9 WebKit 按需画面晚一屏 · WebKit retains earlier on-demand frame (open)<br>StarBanner#12 WebKit 的按需画面提交晚一屏 · WebKit retains earlier on-demand frame (open) |
 | `first-draw-program-link` | 2 | FPS#4 材质变体第一次绘制时链接着色器造成停顿 · The first draw of a material variant stalls while its program links (partly)<br>jelly-pandas#2 倒影通道和第一次出现的特效在第一次绘制时编译 · The mirror pass and first-use effects compile on first draw (partly) |
+| `optional-web-audio-host` | 2 | CanalWatch#7 Play 可选音频宿主 · Optional Play audio host (worked-around)<br>NezhaSea#18 无 Web Audio 宿主时的游戏启动 · Startup without a Web Audio host (worked-around) |
 | `ui-typography-styling` | 2 | OperaDrums#7 界面文字不能选字体 · View text has no typeface (open)<br>PeachCreek#3 文字和按钮样式需要显示对象补充 · Typography and button styling need display-object extensions (partly) |
 | `vertex-layout-program` | 2 | jelly-pandas#1 顶点布局不同就要另编一条管线 · A different vertex layout needs a pipeline of its own (open)<br>Rally#2 少一个顶点色属性就是另一个着色器 · A missing vertex-colour attribute makes another program (open) |
 
@@ -66,6 +69,8 @@ Write the lesson as a card of the engine's guide (`guide/cards` in the engine re
 | `navmesh-heightfield-holes` | TeaHorseRoad#28 从高度场铺导航网格：只能是一块高度场，洞只按顶点挖 · A navigation mesh from a height field takes one field, and holes go by vertices | 未解决 · open |
 | `notes-parser-crlf` | FPS#10 引擎笔记工具不能识别 CRLF 标题 · Engine notes CLI misses CRLF headings | 未解决 · open |
 | `on-demand-rendering` | NineProvinces#5 画面不变时帧循环也每帧整屏合成 · The frame loop composites the whole stage every frame even when nothing changes | 部分解决 · partly |
+| `optional-audio-gamepad-host` | NightWardens#5 可选声卡与手柄 · Optional audio and gamepad hosts | 已在游戏侧绕过 · worked around |
+| `optional-media-host` | MechanismCity#22 可选声音宿主与开场视频 · Optional audio and opening video | 已在游戏侧绕过 · worked around |
 | `overlay-scroll-content-pan` | SnowTemple#7 3D 原生叠加层滚动控件缺少手指拖动内容 · Native 3D overlay scroll control lacks direct content panning | 未解决 · open |
 | `paragraph-image-size-limit` | InquestScrolls#11 段落图像超过尺寸上限 · Paragraph image exceeds the size limit | 已在游戏侧绕过 · worked around |
 | `particle-burst-fraction` | SandScroll#2 粒子 `burst` 传小数时报"选项无效"，并让整个帧循环停下 · A fractional `burst` count reports invalid options and stops the frame loop | 未解决 · open |
@@ -122,6 +127,7 @@ Write the lesson as a card of the engine's guide (`guide/cards` in the engine re
 | `webgpu-compute` | SandScroll#5 WebGPU 没有开放计算通道 · No compute pass on WebGPU | 未解决 · open |
 | `webgpu-headless-3d` | FiveRegiments#3 无头 Chromium 里 WebGPU 后端画不出 3D 画面 · The WebGPU backend draws no 3D scene in headless Chromium | 未解决 · open |
 | `webgpu-loading-atlas-prewarm` | NezhaSea#14 WebGPU 加载页与主动预热共享存储竞争 · WebGPU loading and manual warm-up compete for shared storage | 已在游戏侧绕过 · worked around |
+| `webkit-on-demand-first-presentation` | Wulin#13 WebKit 按需绘制的首屏可见性 · WebKit on-demand first-frame presentation | 未解决 · open |
 | `world3d-native-marker-overlay-batching` | jelly-pandas#9 原生浮字触发整层界面提交 · Animated native markers wake the full overlay | 未解决 · open |
 | `world3d-overlay-frame-tail` | jelly-pandas#8 软件渲染下 3D 与原生叠加层的帧尾延迟 · Frame-tail latency with the native 3D overlay under software rendering | 部分解决 · partly |
 | `world3d-screen-markers-safe-insets` | TeaHorseRoad#29 3D 屏幕标记不能分边避让安全区 · 3D screen markers cannot respect per-edge safe areas | 未解决 · open |
@@ -130,27 +136,27 @@ Write the lesson as a card of the engine's guide (`guide/cards` in the engine re
 
 | 游戏 · Game | 笔记 · Notes | 未解决 · Open | 部分 · Partly | 绕过 · Worked around | 文档 · Documented | 已解决 · Resolved | 引擎已解决待去掉 · To take out | 引擎副本 · Engine pin |
 |---|:-:|:-:|:-:|:-:|:-:|:-:|:-:|---|
-| [CanalWatch](../CanalWatch/ENGINE-NOTES.md) | 6 | 0 | 1 | 0 | 2 | 3 | 0 | `94bd70f` |
+| [CanalWatch](../CanalWatch/ENGINE-NOTES.md) | 7 | 0 | 1 | 1 | 2 | 3 | 0 | `82561d6` |
 | [FengshenChronicle](../FengshenChronicle/ENGINE-NOTES.md) | 5 | 1 | 0 | 1 | 0 | 3 | 0 | `94bd70f` |
-| [FivePhases](../FivePhases/ENGINE-NOTES.md) | 6 | 1 | 1 | 0 | 0 | 4 | 0 | `94bd70f` |
-| [FiveRegiments](../FiveRegiments/ENGINE-NOTES.md) | 5 | 5 | 0 | 0 | 0 | 0 | 0 | `5792d80` |
-| [FPS](../FPS/ENGINE-NOTES.md) | 16 | 2 | 3 | 0 | 2 | 9 | 0 | `d2e28f4` |
-| [InquestScrolls](../InquestScrolls/ENGINE-NOTES.md) | 12 | 0 | 1 | 2 | 1 | 8 | 0 | `95897d7` |
-| [jelly-pandas](../jelly-pandas/ENGINE-NOTES.md) | 9 | 2 | 2 | 0 | 0 | 5 | 0 | `8424ff2` |
+| [FivePhases](../FivePhases/ENGINE-NOTES.md) | 7 | 1 | 1 | 0 | 0 | 5 | 0 | `82561d6` |
+| [FiveRegiments](../FiveRegiments/ENGINE-NOTES.md) | 5 | 5 | 0 | 0 | 0 | 0 | 0 | `82561d6` |
+| [FPS](../FPS/ENGINE-NOTES.md) | 17 | 3 | 3 | 0 | 2 | 9 | 0 | `82561d6` |
+| [InquestScrolls](../InquestScrolls/ENGINE-NOTES.md) | 13 | 0 | 1 | 3 | 1 | 8 | 0 | `82561d6` |
+| [jelly-pandas](../jelly-pandas/ENGINE-NOTES.md) | 9 | 2 | 2 | 0 | 0 | 5 | 0 | `82561d6` |
 | [JY](../JY/ENGINE-NOTES.md) | 2 | 1 | 1 | 0 | 0 | 0 | 0 | `c1570b0` |
-| [LanternShadows](../LanternShadows/ENGINE-NOTES.md) | 13 | 2 | 1 | 3 | 2 | 5 | 0 | `83bec95` |
-| [LoveElective](../LoveElective/ENGINE-NOTES.md) | 7 | 2 | 1 | 0 | 0 | 4 | 0 | `94bd70f` |
-| [LubanBridge](../LubanBridge/ENGINE-NOTES.md) | 5 | 4 | 0 | 0 | 1 | 0 | 0 | `a7be833` |
-| [MechanismCity](../MechanismCity/ENGINE-NOTES.md) | 20 | 1 | 2 | 0 | 5 | 12 | 0 | `8637ace` |
-| [NezhaSea](../NezhaSea/ENGINE-NOTES.md) | 17 | 2 | 1 | 1 | 1 | 12 | 0 | `c54c16c` |
-| [NightWardens](../NightWardens/ENGINE-NOTES.md) | 3 | 0 | 0 | 0 | 3 | 0 | 0 | `a778bed` |
-| [NineProvinces](../NineProvinces/ENGINE-NOTES.md) | 8 | 4 | 1 | 0 | 1 | 2 | 0 | `9d801be` |
-| [OperaDrums](../OperaDrums/ENGINE-NOTES.md) | 23 | 15 | 1 | 0 | 3 | 4 | 0 | `94bd70f` |
-| [PeachCreek](../PeachCreek/ENGINE-NOTES.md) | 9 | 0 | 4 | 0 | 0 | 5 | 0 | `94bd70f` |
-| [Rally](../Rally/ENGINE-NOTES.md) | 6 | 3 | 0 | 0 | 2 | 1 | 0 | `8ef4cf3` |
-| [SandScroll](../SandScroll/ENGINE-NOTES.md) | 7 | 2 | 0 | 0 | 5 | 0 | 0 | `450bb9e` |
-| [SnowTemple](../SnowTemple/ENGINE-NOTES.md) | 8 | 4 | 0 | 0 | 0 | 4 | 0 | `a1d6bc6` |
-| [StarBanner](../StarBanner/ENGINE-NOTES.md) | 11 | 1 | 0 | 0 | 4 | 6 | 0 | `0e7b293` |
-| [TaiwanMahjong](../TaiwanMahjong/ENGINE-NOTES.md) | 12 | 4 | 0 | 0 | 3 | 5 | 0 | `13d70b7` |
-| [TeaHorseRoad](../TeaHorseRoad/ENGINE-NOTES.md) | 31 | 6 | 1 | 0 | 7 | 17 | 0 | `2fbe556` |
-| [Wulin](../Wulin/ENGINE-NOTES.md) | 12 | 2 | 3 | 0 | 0 | 7 | 0 | `a0fb4e6` |
+| [LanternShadows](../LanternShadows/ENGINE-NOTES.md) | 13 | 2 | 1 | 3 | 2 | 5 | 0 | `82561d6` |
+| [LoveElective](../LoveElective/ENGINE-NOTES.md) | 8 | 2 | 1 | 0 | 0 | 5 | 0 | `82561d6` |
+| [LubanBridge](../LubanBridge/ENGINE-NOTES.md) | 6 | 4 | 0 | 1 | 1 | 0 | 0 | `82561d6` |
+| [MechanismCity](../MechanismCity/ENGINE-NOTES.md) | 22 | 1 | 2 | 1 | 5 | 13 | 0 | `82561d6` |
+| [NezhaSea](../NezhaSea/ENGINE-NOTES.md) | 18 | 2 | 1 | 2 | 1 | 12 | 0 | `82561d6` |
+| [NightWardens](../NightWardens/ENGINE-NOTES.md) | 5 | 0 | 0 | 1 | 3 | 1 | 0 | `82561d6` |
+| [NineProvinces](../NineProvinces/ENGINE-NOTES.md) | 8 | 4 | 1 | 0 | 1 | 2 | 0 | `82561d6` |
+| [OperaDrums](../OperaDrums/ENGINE-NOTES.md) | 24 | 15 | 1 | 1 | 3 | 4 | 0 | `82561d6` |
+| [PeachCreek](../PeachCreek/ENGINE-NOTES.md) | 10 | 0 | 4 | 1 | 0 | 5 | 0 | `82561d6` |
+| [Rally](../Rally/ENGINE-NOTES.md) | 6 | 3 | 0 | 0 | 2 | 1 | 0 | `82561d6` |
+| [SandScroll](../SandScroll/ENGINE-NOTES.md) | 7 | 2 | 0 | 0 | 5 | 0 | 0 | `82561d6` |
+| [SnowTemple](../SnowTemple/ENGINE-NOTES.md) | 9 | 5 | 0 | 0 | 0 | 4 | 0 | `82561d6` |
+| [StarBanner](../StarBanner/ENGINE-NOTES.md) | 12 | 2 | 0 | 0 | 4 | 6 | 0 | `82561d6` |
+| [TaiwanMahjong](../TaiwanMahjong/ENGINE-NOTES.md) | 13 | 4 | 0 | 1 | 3 | 5 | 0 | `82561d6` |
+| [TeaHorseRoad](../TeaHorseRoad/ENGINE-NOTES.md) | 31 | 6 | 1 | 0 | 7 | 17 | 0 | `82561d6` |
+| [Wulin](../Wulin/ENGINE-NOTES.md) | 13 | 3 | 3 | 0 | 0 | 7 | 0 | `82561d6` |

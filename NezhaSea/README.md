@@ -91,6 +91,8 @@ Nezha Stirs the Sea is a survival action game built with [Egret Rebuild](https:/
 
 ## 已验证 · Verified
 
+- 2026-11-28：WebKit 无音频宿主可正常出海，生产启动包与 40 项 Node 测试通过。 · WebKit can set sail without an audio host; the production launch bundle and 40 Node tests pass. 使用 Windows Playwright WebKit 的 iPhone 15 Pro 配置，不是 iPhone 真机；详见 [QUALITY.md](QUALITY.md)。 · iPhone 15 Pro device profile on Windows Playwright WebKit, not a physical iPhone; see QUALITY.md.
+
 在 `NezhaSea` 目录运行 `node --test test/*.test.mjs` 和 `node test/accept.mjs`，覆盖规则、存档、中英文、界面键盘流程、购买、合成及结算基线。Chromium 的胜负和解锁界面用测试场景驱动。
 
 引擎 UI 版的验收环境、测量及覆盖限制见 [QUALITY.md](QUALITY.md)。Windows PC 与三星 Fold7 使用 WebGPU 从新档正常打败第 10 波夜叉，均在第 11 波败退、解锁莲花并刷新验档。最终构建独立通过新角色、集市和实时旋转检查。 · On both Windows and a Samsung Fold7 using WebGPU, a fresh normal run defeated the wave-10 Yaksha, ended at wave 11, unlocked the lotus form and survived reload. The final build separately passed character, market and live-rotation checks.
@@ -140,7 +142,7 @@ PC 首领专项（同一公开运行时，Edge 158 / RTX 5090 Laptop / WebGPU）
 
 ## 引擎副本 · Engine copy
 
-引擎副本取自 [Egret_rebuild](https://github.com/cnedwin/Egret_rebuild) 的 main 提交 `c54c16c946f777970ed1ac838cc663d349246982`，生成记录见 [vendor/SOURCE.md](vendor/SOURCE.md)。集市与强化卡片使用原生标签绑定和多文字叶子按钮面板；仅 CSS 缩放由引擎 arrange 通知。 · Market and upgrade cards use native bound labels and leaf-button panels; the engine's arrange hook also covers CSS-only scaling.
+引擎副本取自 [Egret_rebuild](https://github.com/cnedwin/Egret_rebuild) 的 main 提交 `82561d6338a805f0e0459a2d5d42a284f9385b30`，生成记录见 [vendor/SOURCE.md](vendor/SOURCE.md)。集市与强化卡片使用原生标签绑定和多文字叶子按钮面板；仅 CSS 缩放由引擎 arrange 通知。 · Market and upgrade cards use native bound labels and leaf-button panels; the engine's arrange hook also covers CSS-only scaling.
 
 The runtime is from Egret Rebuild main at the commit above. Run the following command in the engine checkout to reproduce it.
 

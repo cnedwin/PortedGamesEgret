@@ -743,7 +743,7 @@ export async function createBrowserGame(options) {
             if (owner === null || typeof owner !== 'object')
                 throw invalid();
             textCache ??= import('./text.js').then(text => (currentTextCache = createTextRasterCache(engine.assets, {
-                provider: text.createCanvasTextRasterProvider(scheduleTextWork === undefined ? {} : { schedule: scheduleTextWork })
+                provider: text.createCanvasTextRasterProvider({ compatibility: 'game-labels', ...(scheduleTextWork === undefined ? {} : { schedule: scheduleTextWork }) })
             })));
             const cache = await textCache;
             const field = createTextField(engine, owner, cache);
@@ -1073,7 +1073,7 @@ export async function createBrowserGame(options) {
             if (owner === null || typeof owner !== 'object')
                 throw invalid();
             textCache ??= import('./text.js').then(text => (currentTextCache = createTextRasterCache(engine.assets, {
-                provider: text.createCanvasTextRasterProvider(scheduleTextWork === undefined ? {} : { schedule: scheduleTextWork })
+                provider: text.createCanvasTextRasterProvider({ compatibility: 'game-labels', ...(scheduleTextWork === undefined ? {} : { schedule: scheduleTextWork }) })
             })));
             const cache = await textCache;
             const display = owner.use(new Sprite());

@@ -503,7 +503,13 @@ export function createMenus(play, gameArea, settings, actions) {
   }
   // Native stack activation means the rebuilt view can safely restore its
   // previous eligible focus and scroll offset.
+  // Some WebKit hosts retain the previous on-demand surface even after semantics change.
+  // Redraw the screen transition once more, without switching the HUD to a permanent loop.
+  let presentAgain;
   const stopObserve=stack.onChange(snapshot=>{
+    play.invalidate?.();
+    clearTimeout(presentAgain);
+    presentAgain=setTimeout(()=>{if(!closed)play.invalidate?.();},250);
     if(!restorePending||snapshot.active!=='fps-'+restorePending.kind)return;
     const restore=restorePending;restorePending=undefined;
     const view=views.get(restore.kind);
@@ -605,6 +611,6 @@ export function createMenus(play, gameArea, settings, actions) {
     snapshot(){return {mode:state.mode,panel:state.panel,settingsPage:state.settingsPage,bagTab:state.bagTab,mouseStatus:state.mouseStatus,bagOpen,
       boot:Boolean(state.boot),error:state.error,fullscreen:{...state.full},screens:stack.snapshot()};},
     async dispose(){if(closed)return;closed=true;doc.removeEventListener('fullscreenchange',changeFullscreen);
-      cancelContacts();stopObserve();await stack.dispose();},
+      clearTimeout(presentAgain);cancelContacts();stopObserve();await stack.dispose();},
   };
 }

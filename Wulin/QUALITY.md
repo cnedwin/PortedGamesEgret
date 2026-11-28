@@ -194,3 +194,9 @@ PC 实际鼠标点击建筑、空地、拖视角、滚轮缩放、右拖平移 5
 - 自动回归 · Automated: Node130/130, original accept17/17; unchanged title golden delta0.13828125%, legacy0.3400390625% after intended paragraph improvement within original threshold. No golden update. Do not equate software quality with physical GPU timing. No new independent controller, speaker/audio, IME, screen reader, Safari/Firefox/WeChat, full WebGPU or unrelated device coverage; phone uses authorized local bytes, public PC separately.
 
 - 最终九屏及质量 · Final native UI regression: explicit nine profiles × seven checkpoints63/63, zero findings/engine warnings, 72 screenshots; common automatic16/16, software F1 p95 4.2ms/961, throttled L1 2.3s/2.8MB, E2 actual retry and A1 Tab. Wulin strict standard, generated ledger/duplication/capability matrix and 24-case/72-WebP showcase pass. Global JY/MechanismCity/TeaHorseRoad preexisting missing acceptance/baselines untouched.
+
+## WebKit 手机兼容回归 · Mobile WebKit compatibility (2026-11-28)
+
+- Windows Playwright WebKit 26.6、iPhone 15 Pro 配置（393×659 CSS px）。公开旧版标题/序章部分绘制文字缺失；更新正式引擎副本后标题逻辑已经就绪，但可见画面仍停留在加载 0/1。实测引擎帧已接收（4 页、11 区域、6,887,856 B、拒绝帧 0；文字任务待处理 0）。独立调用一次 `game.invalidate()` 后完整标题立即出现。 · The accepted scene update did not reach the visible initial frame; no texture-budget refusal or pending text job was present.
+- 新打开的页面/弹层挂载后 250 ms 仅安排一次原生重绘。候选首屏和点击「开创新局」后的完整序章画面均实拍正确，JS、控制台、HTTP 错误均 0；Node 128/128 通过；无持续强制绘制。 · One bounded presentation retry fixes both static screens without a continuous render loop.
+- 未测试实体 iPhone、完整经营流程或真实手机 GPU 性能。 · This is a Windows WebKit compatibility sample, not physical iOS acceptance.

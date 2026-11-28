@@ -205,6 +205,8 @@ The game synthesises music and effects from its notes and plays them through the
 
 ## 已验证 · Verified
 
+- 2026-11-28：WebKit 标题按钮、开始新学期和序章对白可读、可操作；65 项 Node 测试通过。 · WebKit title controls, New Term and prologue dialogue work; 65 Node tests passed. 使用 Windows Playwright WebKit 的 iPhone 15 Pro 配置，不是 iPhone 真机；详见 [QUALITY.md](QUALITY.md)。 · iPhone 15 Pro device profile on Windows Playwright WebKit, not a physical iPhone; see QUALITY.md.
+
 - 旧版 64/64 Node；仅更新至 `f0dfde36` 后 64/64，桌面和竖屏旧界面流程均通过；迁移后的 65/65 包含原生逐字文本生命周期、剧情阅读和存档回归。· Old and engine-only Node suites passed 64/64; both old UI browser routes passed. The native migration adds a retained dialogue text lifecycle test (65/65).
 - UI 使用一个白鹭宿主，而非在原场景上启动第二个渲染器。原有规则、故事、服饰几何和存档格式保留。· One Egret host, unchanged rules, stories, garment geometry and save format.
 - 自动浏览器与实际设备结果分列于 [QUALITY.md](QUALITY.md)。· Browser automation and physical-device results are recorded separately in QUALITY.md.
@@ -244,6 +246,6 @@ The game synthesises music and effects from its notes and plays them through the
 
 ## 引擎与许可 · Engine and license
 
-`vendor/` 中是新白鹭引擎的运行时副本，采用 Apache-2.0 许可，引擎提交 `94bd70fb26b1f81794c9c6fbbb258c655fcd19df`，来源和版本见 [vendor/SOURCE.md](vendor/SOURCE.md)。
+`vendor/` 中是新白鹭引擎的运行时副本，采用 Apache-2.0 许可，引擎提交 `82561d6338a805f0e0459a2d5d42a284f9385b30`，来源和版本见 [vendor/SOURCE.md](vendor/SOURCE.md)。
 
-`vendor/` holds a copy of the Egret Rebuild runtime under Apache-2.0. See [vendor/SOURCE.md](vendor/SOURCE.md) for the source and engine commit `94bd70fb26b1f81794c9c6fbbb258c655fcd19df`.
+`vendor/` holds a copy of the Egret Rebuild runtime under Apache-2.0. See [vendor/SOURCE.md](vendor/SOURCE.md) for the source and engine commit `82561d6338a805f0e0459a2d5d42a284f9385b30`.

@@ -208,3 +208,8 @@ A 实际提交的稳态 CPU p50/p95：动画 update 0.1/0.3 ms、apply 0.4/1.0�
 - #511 平板布局集成 · Tablet integration: `703cda2476cc3fc3e1550d657d51266df2b69ab5` 保留两项优化源码/测试字节，重生 API 索引，57/57 定向通过。本作未指定平板专用分支，仍按 root/portrait 回退。此次实际 PC/Fold7 单 B 复核 548/330 逻辑及全部粒子计数一致（无新 A/B 归因）；退场事件 PC 1.4、Fold7 2.2 ms，一次网格发布、192 尘雾；密集 p95/max PC 16.7/29.1, Fold7 33.2/49.8。未插桩候选包 SHA256 332ebb39046e9a290e9e12b673e60a3e1ac53dccd55fdd1be9b3c60df2a057ff，Fold7 普通触控、跳跃、暂停恢复通过，121 rAF p95/max 16.7/16.7，无错误。 · Latest tested integration retains both exact fixes.
 
 - 正式发布引擎 · Released engine main: `83bec954ef253be13455af2016af956376f98b71`（[Egret Rebuild #508](https://github.com/cnedwin/Egret_rebuild/pull/508) 已通过正常 M0/merge-ready、Windows 全量/四分片、macOS/Linux 等检查并合入），Git tree 与最终候选 `7b8f9ba2` 完全一致。由官方 detached main 构建和 vendor-game 重新生成，不发布诊断代码。包含 #513 的新可选八屏验收工具（正常游戏不设置其 agent）。发布包 SHA-256 `098ded1e996c15a2593a43ac45e7637049131d21973442a221219fabc54f255f`，实际 Fold7 读取该包并完成普通真实触控路线（x168→346.75、轴归零、跳跃、暂停恢复、121 rAF p95/max 16.7/16.7 ms，零错误）及独立自然退场烟尘实拍。Node 90/90、原浏览器验收 13/13（headless）、标题/暂停基线 0.67%/2.02%、原基线保留、游戏标准通过。· Official generated bundle on real handset, not a new full profiling matrix; engine merge is distinct from Pages deployment.
+
+## WebKit 手机兼容回归 · Mobile WebKit compatibility (2026-11-28)
+
+- Windows Playwright WebKit 26.6、iPhone 15 Pro 配置（393×659 CSS px）：公开旧版标题有原生控件形状但菜单文字不可见；通过正式工具更新引擎副本并重建发行 bundle 后，标题文字恢复。真实触屏点击「开锣」，入场画面和 HUD 可读；JS、控制台、HTTP 错误 0；Node 90/90（含 bundle 一致性测试）通过。 · Official engine delivery and rebuilding the production bundle restore visible labels and initial play, verified with browser screenshots and touch.
+- 未测实体 iPhone、三幕完整通关、声音实听或手机性能。 · The test is Windows WebKit with an iPhone profile, not physical iOS acceptance.

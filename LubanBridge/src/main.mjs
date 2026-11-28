@@ -61,6 +61,14 @@ if (params.get('tips') === '0') for (const id of ['1-1', '2-1', '3-1', '4-1', '5
 if (problems.some((k) => k !== 'write-failed')) app.notice = say(app.lang(), 'saveReset');
 
 // ---- screens and what lies over them ----
+// Static WebKit canvases can retain a prior presentation; coalesce one follow-up frame.
+let presentationTimer;
+function present() {
+  app.game.invalidate?.();
+  if (miniGame) return;
+  clearTimeout(presentationTimer);
+  presentationTimer = setTimeout(() => app.game.invalidate?.(), 250);
+}
 let screen = null,
   screenLayer = null,
   over = null,
@@ -102,7 +110,7 @@ app.go = async (name, arg) => {
     egret.busy = false;
     egret.screen = screen?.name ?? null;
     egret.view = screen;
-    app.game.invalidate?.();
+    present();
   }
 };
 
@@ -117,7 +125,7 @@ function openOverlay(kind, make) {
   over.kind = kind;
   focus.set(over.focus ?? []);
   egret.overlay = kind;
-  app.game.invalidate?.();
+  present();
   return over;
 }
 function closeOverlay() {
@@ -137,7 +145,7 @@ function closeAsk() {
 function restoreFocus() {
   const items = over?.focus ?? screen?.focus ?? [];
   focus.set(items, false, over ? 0 : screen?.focusStart ?? 0);
-  app.game.invalidate?.();
+  present();
 }
 app.overlayOpen = () => !!(over || ask);
 app.overlay = (kind) => openOverlay(kind, (layer, close) => (kind === 'settings' ? settingsOverlay(app, layer, close) : helpOverlay(app, layer, close)));

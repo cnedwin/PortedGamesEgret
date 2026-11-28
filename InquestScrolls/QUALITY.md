@@ -62,3 +62,11 @@ this file; items by hand or on a device are marked not run until someone runs th
 - Fold7 的软键盘把可见高度压到 487 CSS 像素时，单次点「合上」即可回到现场，文本保留。另复测失焦后点纸面续写和刷新恢复。 · With the Fold7 keyboard open at a 487 CSS px visual viewport, one touch on Close returned to the case and retained the text. Tap-to-resume and reload were checked as well.
 - 本轮 Node 测试 28 项、无头浏览器验收 39 项与项目规范检查均通过。 · All 28 Node tests, 39 headless browser checks and the project standard check pass.
 - 限制：手机覆盖首案；扬声器听感、实体手柄、微信开发者工具和中端设备性能未验收。 · Mobile coverage is the first case. Speaker playback, a physical controller, WeChat DevTools and mid-range device performance remain unverified.
+
+## 2026-11-28 WebKit 兼容性 · WebKit compatibility
+
+- 候选版等到标题语义就绪时仍显示纯色；一次延迟刷新恢复标题，真实触屏开卷进入序章，静止页面切换也补一次有界刷新。 · The candidate initially retained a solid canvas despite title semantics being ready. One deferred refresh restored the title, and a real touchscreen tap opens the prologue; each static page transition gets one bounded refresh.
+- Node: 28/28. 候选引擎 · candidate engine: `82561d6338a805f0e0459a2d5d42a284f9385b30`.
+- 本机 Windows Playwright WebKit 26.6，iPhone 15 Pro 设备配置（393×659 CSS px，DPR 3），真实浏览器触屏事件，无物理 iPhone；仅首屏和代表性操作，不是整局或实机性能、声学验收。 · Windows Playwright WebKit 26.6, iPhone 15 Pro device profile (393×659 CSS px, DPR 3), actual browser touchscreen events, not a physical iPhone; launch and representative interaction only, not full-session performance or acoustic certification.
+- 本轮候选烟测页面异常、控制台错误、HTTP 4xx/5xx 均为 0。 · Candidate smoke: no page exceptions, console errors or HTTP 4xx/5xx.
+- [全站记录 · Showcase compatibility record](../docs/SAFARI-WEBKIT-20261128.md)

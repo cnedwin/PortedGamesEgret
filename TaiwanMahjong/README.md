@@ -107,6 +107,7 @@ quarter of their discards are not the best) and hardly defend; experts defend ha
 `expand` keeps the entire table. `contain` leaves bars, `fixedWidth` can crop the top or bottom on wide phones, `fixedHeight` can crop the sides on 4:3 tablets, and `fixedWide` can crop one axis. `fixedNarrow` is equivalent to expand. No wholeScale (not pixel art). Global `uiScale` is intentionally off: table-aligned hit regions must share the tiles’ transform; see ENGINE-NOTES 9.
 
 ## 已验证 · Verified
+- 2026-11-28: Windows WebKit iPhone 15 Pro 配置的本机候选首屏、触屏代表路径；非物理 iPhone；见 [QUALITY](QUALITY.md)。 · Candidate launch and representative touch route on Windows WebKit with the iPhone 15 Pro profile; not a physical iPhone. See [QUALITY](QUALITY.md).
 
 - `node --test test/*.test.mjs` 通過 34 項（含原生設計密度、安全區與手牌幾何），規則、台數、存檔和雙語詞表不變。 · 34 Node tests cover native density and safe hand geometry, with unchanged rules, tai, saves and localization.
 - `node test/accept.mjs` 69/69 通過，涵蓋原生控件的键盘和语义树、横竖屏触控、吃牌有多个组合、碰、槓、荣和、自摸、暂停、四家结算和战绩。标题和规则有截图基线。 · All 69 browser assertions passed, covering native keyboard controls and semantics, touch in both orientations, multiple chow options, pong, kong, discard win, self-draw, pause, settlement, and records, with title and rules screenshot baselines.
@@ -168,10 +169,10 @@ quarter of their discards are not the best) and hardly defend; experts defend ha
 
 ## 引擎副本 · Engine copy
 
-引擎副本取自 [Egret_rebuild](https://github.com/cnedwin/Egret_rebuild) 提交 `13d70b73904266c11b23de4c09c239240a7162db`，由引擎仓库的 `tools/vendor-game.mjs` 复制，见 [vendor/SOURCE.md](vendor/SOURCE.md)。用到的入口见下方命令。
+引擎副本取自 [Egret_rebuild](https://github.com/cnedwin/Egret_rebuild) 提交 `82561d6338a805f0e0459a2d5d42a284f9385b30`，由引擎仓库的 `tools/vendor-game.mjs` 复制，见 [vendor/SOURCE.md](vendor/SOURCE.md)。用到的入口见下方命令。
 
 The engine copy is from [Egret_rebuild](https://github.com/cnedwin/Egret_rebuild) commit
-`13d70b73904266c11b23de4c09c239240a7162db`, copied by the engine's `tools/vendor-game.mjs`; see
+`82561d6338a805f0e0459a2d5d42a284f9385b30`, copied by the engine's `tools/vendor-game.mjs`; see
 [vendor/SOURCE.md](vendor/SOURCE.md) and the entries below.
 
 ```sh

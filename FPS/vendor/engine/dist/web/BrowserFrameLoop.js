@@ -13,7 +13,7 @@ const backpressure = (error) => {
 export function createBrowserFrameLoop(options) {
     if (options === null || typeof options !== 'object')
         throw invalid();
-    const { engine, frame, host, update, shouldRender, beforeRender, onError, renderRetry, onFrameTiming } = options, limit = options.maxPendingFrames ?? 2;
+    const { engine, frame, host, update, shouldRender, beforeRender, afterFrame, onError, renderRetry, onFrameTiming } = options, limit = options.maxPendingFrames ?? 2;
     const request = options.requestFrame ?? ((callback) => requestAnimationFrame(callback));
     const cancel = options.cancelFrame ?? ((handle) => cancelAnimationFrame(handle));
     if (engine === null ||
@@ -28,6 +28,7 @@ export function createBrowserFrameLoop(options) {
         (update !== undefined && typeof update !== 'function') ||
         (shouldRender !== undefined && typeof shouldRender !== 'function') ||
         (beforeRender !== undefined && typeof beforeRender !== 'function') ||
+        (afterFrame !== undefined && typeof afterFrame !== 'function') ||
         (renderRetry !== undefined &&
             (renderRetry === null ||
                 typeof renderRetry !== 'object' ||
@@ -67,7 +68,7 @@ export function createBrowserFrameLoop(options) {
         const started = onFrameTiming === undefined ? 0 : performance.now();
         const durations = onFrameTiming === undefined
             ? undefined
-            : { updateMs: 0, decisionMs: 0, hostCheckMs: 0, prepareMs: 0, renderMs: 0 };
+            : { updateMs: 0, decisionMs: 0, hostCheckMs: 0, prepareMs: 0, renderMs: 0, afterFrameMs: 0 };
         let phase = 'updateMs', phaseStart = started;
         let outcome = 'interrupted', observedPending;
         const nextPhase = durations === undefined
@@ -165,6 +166,13 @@ export function createBrowserFrameLoop(options) {
                 outcome = 'retained';
                 nextPhase?.();
             }
+            // A retained or temporarily refused primary frame can still accompany
+            // another presentation surface. Do not run a superseded turn's work.
+            if (afterFrame !== undefined && currentTick()) {
+                nextPhase?.('afterFrameMs');
+                afterFrame();
+                nextPhase?.();
+            }
             if (state === 'running' && handle === undefined)
                 handle = request(tick);
         }
@@ -196,12 +204,14 @@ export function createBrowserFrameLoop(options) {
         finally {
             if (onFrameTiming !== undefined && durations !== undefined) {
                 nextPhase?.();
+                const { afterFrameMs, ...measured } = durations;
                 const sample = Object.freeze({
                     id: ++timingId,
                     rafTimestampMs: milliseconds,
                     callbackStartMs: started,
                     callbackEndMs: performance.now(),
-                    ...durations,
+                    ...measured,
+                    ...(afterFrame === undefined ? {} : { afterFrameMs }),
                     outcome,
                     ...(observedPending === undefined ? {} : { pendingFrames: observedPending })
                 });

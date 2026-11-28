@@ -4,6 +4,7 @@ import { createBrowserHoverInput } from '@egret/engine/web/hover';
 import { createUiSemantics } from '@egret/engine/ui/semantics';
 import { createBrowserSemantics } from '@egret/engine/web/semantics';
 import { createUiTester } from '@egret/engine/ui/testing';
+import { createScreenPresentation } from './screen-present.mjs';
 
 export const LANDSCAPE = { width: 800, height: 420 };
 export const PORTRAIT = { width: 380, height: 680 };
@@ -24,6 +25,7 @@ export async function createInterfaceHost(canvas, { label, onError = console.err
     update: (dt) => host?.tick(dt), onError
   });
   const game = overlay.game;
+  const screenPresentation = createScreenPresentation(() => game.invalidate());
   const projection = createBrowserSemantics({ semantics, canvas: overlay.canvas, width: game.frame.width, height: game.frame.height, label, onError });
   // The overlay currently does not request a hover channel; create the normal browser adapter against its actual stage.
   const hover = game.hover ?? createBrowserHoverInput({ engine: game.engine, scope: game.scope, canvas: overlay.canvas,
@@ -69,6 +71,7 @@ export async function createInterfaceHost(canvas, { label, onError = console.err
       return { x: (x + world.left - front.left) / scale, y: (y + world.top - front.top) / scale };
     },
     track, requestPublish, requestRender: requestPublish, publish, focus, blurToBoard, commandKeys,
+    presentScreen: () => screenPresentation.changed(),
     registerLayout(fn) { layouts.add(fn); return () => layouts.delete(fn); },
     registerPainter(fn) { painters.add(fn); return () => painters.delete(fn); },
     async ready() {
@@ -99,7 +102,7 @@ export async function createInterfaceHost(canvas, { label, onError = console.err
     },
     get frames() { return frameCount; },
     async dispose() {
-      if (closed) return; closed = true; stopScreen(); layouts.clear(); painters.clear();
+      if (closed) return; closed = true; stopScreen(); screenPresentation.dispose(); layouts.clear(); painters.clear();
       projection.dispose(); semantics.dispose(); await overlay.dispose();
     }
   };

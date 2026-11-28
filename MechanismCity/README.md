@@ -115,9 +115,11 @@ The tests replay the recorded solution of every level in Node through the same s
 | `levels/`, `media/` | 生成的地图、瓦片图、开场短片 · generated maps, tiles and film |
 | `vendor/` | 引擎副本，见 `vendor/SOURCE.md` · the engine copy |
 
-引擎副本取自 Egret_rebuild 提交 `8637ace`，由引擎仓库的 `tools/vendor-game.mjs` 复制。The engine copy is from Egret_rebuild commit `8637ace`, copied by the engine's `tools/vendor-game.mjs`.
+引擎副本取自 Egret_rebuild 提交 `82561d6`，由引擎仓库的 `tools/vendor-game.mjs` 复制。The engine copy is from Egret_rebuild commit `82561d6`, copied by the engine's `tools/vendor-game.mjs`.
 
 ## 已验证 · Verified
+
+- 2026-11-28：WebKit 无音频宿主也可正常开始，开场短片可跳过至初试机弩；67 项 Node 测试通过。 · WebKit can start without an audio host and skip the opening film into the first level; 67 Node tests passed. 使用 Windows Playwright WebKit 的 iPhone 15 Pro 配置，不是 iPhone 真机；详见 [QUALITY.md](QUALITY.md)。 · iPhone 15 Pro device profile on Windows Playwright WebKit, not a physical iPhone; see QUALITY.md.
 
 - `node --test test/*.test.mjs`：关卡（每关的机关和锁都在、能被解开）、挑战、存档、合成声音、弹道预测、引擎副本的 import map。 · The Node tests: levels, challenges, the save, sound, the aiming trajectory and the engine copy's import map.
 - GitHub Pages 上的线上页面在 PR #95、#96 合并后打开并玩过第一关（无头 Chromium）。 · The live page was opened and its first level played after PRs #95 and #96 (headless Chromium).
@@ -143,8 +145,8 @@ The tests replay the recorded solution of every level in Node through the same s
 
 ## 引擎副本 · Engine copy
 
-引擎副本取自 [Egret_rebuild](https://github.com/cnedwin/Egret_rebuild) 提交 `8637ace9a40667714abd6d74157e8dcf4587232d`，由引擎仓库的 `tools/vendor-game.mjs` 复制，见 [vendor/SOURCE.md](vendor/SOURCE.md)。
+引擎副本取自 [Egret_rebuild](https://github.com/cnedwin/Egret_rebuild) 提交 `82561d6338a805f0e0459a2d5d42a284f9385b30`，由引擎仓库的 `tools/vendor-game.mjs` 复制，见 [vendor/SOURCE.md](vendor/SOURCE.md)。
 
-The engine copy is from [Egret_rebuild](https://github.com/cnedwin/Egret_rebuild) commit `8637ace9a40667714abd6d74157e8dcf4587232d`, copied by the engine's `tools/vendor-game.mjs`; see [vendor/SOURCE.md](vendor/SOURCE.md).
+The engine copy is from [Egret_rebuild](https://github.com/cnedwin/Egret_rebuild) commit `82561d6338a805f0e0459a2d5d42a284f9385b30`, copied by the engine's `tools/vendor-game.mjs`; see [vendor/SOURCE.md](vendor/SOURCE.md).
 
 入口 · Entries: `@egret/engine`, `@egret/engine/physics2d`, `@egret/engine/tilemap`, `@egret/engine/camera`, `@egret/engine/particles`, `@egret/engine/bitmapfont`, `@egret/engine/ui`, `@egret/engine/ui/semantics`, `@egret/engine/web/semantics`, `@egret/engine/kit`, `@egret/engine/web/kit`, `@egret/engine/audio`, `@egret/engine/web/audio`, `@egret/engine/web/video`, `@egret/engine/web/game`, `@egret/engine/web/hover`, `@egret/engine/text`, `@egret/engine/web/text`.

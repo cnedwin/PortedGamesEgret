@@ -43,9 +43,19 @@ async function renderOffThread(signal, phase) {
 export function createSound(game, { on = true, music = true } = {}) {
   game.sfx.muted = true;
   const owner = game.scope;
-  const { mixer, context } = owner.use(createBrowserAudio({
-    buses: ['music', 'effects'], limiter: true, maxVoices: 14, maxDecodedBytes: 40 * 1024 * 1024
-  }));
+  let audio;
+  try {
+    audio = owner.use(createBrowserAudio({
+      buses: ['music', 'effects'], limiter: true, maxVoices: 14, maxDecodedBytes: 40 * 1024 * 1024
+    }));
+  } catch (cause) {
+    if (cause?.code !== 'AUDIO_HOST_UNAVAILABLE') throw cause;
+    // Missing browser audio is not a failed character atlas or other game asset.
+    console.warn('Web Audio is unavailable; NezhaSea continues without sound.');
+    const silent = () => {};
+    return Object.assign(silent, { setOn() {}, setMusic() {}, music() {}, stopMusic() {}, pause() {}, resume() {} });
+  }
+  const { mixer, context } = audio;
   const musicBus = mixer.bus('music'), effectBus = mixer.bus('effects');
   musicBus.setMuted(!music);
   effectBus.setMuted(!on);

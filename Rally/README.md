@@ -216,9 +216,9 @@ The race rules (handling, rival driving, items, laps and places) can run a whole
 
 ## 引擎副本 · Engine copy
 
-`vendor/` 中是新白鹭引擎的运行时副本，采用 Apache-2.0 许可，引擎提交 `8ef4cf3a2cf507c58665de9f9b43c63b379121c2`，来源和版本见 [vendor/SOURCE.md](vendor/SOURCE.md)。
+`vendor/` 中是新白鹭引擎的运行时副本，采用 Apache-2.0 许可，引擎提交 `82561d6338a805f0e0459a2d5d42a284f9385b30`，来源和版本见 [vendor/SOURCE.md](vendor/SOURCE.md)。
 
-`vendor/` holds a copy of the Egret Rebuild runtime under Apache-2.0; engine commit `8ef4cf3a2cf507c58665de9f9b43c63b379121c2`; see [vendor/SOURCE.md](vendor/SOURCE.md) for its source and version.
+`vendor/` holds a copy of the Egret Rebuild runtime under Apache-2.0; engine commit `82561d6338a805f0e0459a2d5d42a284f9385b30`; see [vendor/SOURCE.md](vendor/SOURCE.md) for its source and version.
 
 官方生成命令（从引擎 8ef4cf3a 的检出目录运行，入口以 SOURCE.md 为准）：
 

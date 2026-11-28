@@ -102,6 +102,8 @@ rules and runaway numbers, while feel and difficulty still need people to play.
 
 ## 已验证 · Verified
 
+- 2026-11-28：WebKit 缺少音频、手柄宿主也能从标题进入选夜；26 项 Node 测试通过。 · WebKit reaches night selection without audio or gamepad hosts; 26 Node tests passed. 使用 Windows Playwright WebKit 的 iPhone 15 Pro 配置，不是 iPhone 真机；详见 [QUALITY.md](QUALITY.md)。 · iPhone 15 Pro device profile on Windows Playwright WebKit, not a physical iPhone; see QUALITY.md.
+
 - `node --test test/*.test.mjs`（Node 22，24 项全部通过）：规则——同种子同结果、符弩移动不出墙、瞄准离墙最近和会吐火的、击杀与魂珠计数、邪祟咬墙后消失、升级时给出三道不同的符法且整夜暂停、天雷充满前不能放和放出后全场受伤定身、首领按时现身并在倒下且清场后守住、城墙破了失守、星数、每道符法的效果（连弩、速射、朱砂、穿心、固城、火符、寒符、墨斗线、八卦镜）、全部叠满后升级改为修墙、替身玩家三夜各三个种子都在三到五分钟里结束且第一夜都守住；存档——新档只开第一夜、守住后记星数和最快用时并开下一夜、失守只记一次游玩、坏档另存、夜数越界重新开始、存储拒绝写入不报错、表达式箭头的 `update` 被拒；文字——两种语言齐全且占位符一致、每道符法每位首领每一夜都有名字、界面代码不写死中文；引擎副本——import map 一致、用到的入口都在副本里、规则文件不碰页面和引擎。 · All 24 Node tests pass: the rules, the save, the words and the engine copy.
 - `node test/accept.mjs`（无头 Chromium 153，SwiftShader 软件渲染，540×960 与 960×540）：只用键盘——标题 Enter 到选夜，新档只开第一夜，Enter 开第一夜；→ 键移动符弩；符弩自己射击并击杀；鼠标在路面上按住把符弩领过去；Esc 暂停时整夜不动，再按 Esc 继续；升级时按 2 选第二道符法；天雷充满后空格放出；替身快进到首领将至量帧时间；整夜守住后结算、存档记星并开第二夜；切到英文后按钮读英文；Esc 回选夜；存档改坏后标题提示并重新开始；横屏窗口进入宽舞台。标题和选夜两张截图基线一致，控制台没有错误。 · The whole path by keyboard plus a mouse drag in headless Chromium, two baselines matching and a clean console.
 - `node ../tools/quality.mjs NightWardens`：自动项全部达标，见 [QUALITY.md](QUALITY.md)。桌面帧时间 p95 16.8 ms（标题，无头 SwiftShader）；最忙的场景（第一夜首领将至）p95 33.4 ms，第三夜 190 秒 p50 16.7 ms，同一环境。 · Every automatic item passes; p95 16.8 ms on the title, 33.4 ms p95 in the busiest scene and 16.7 ms p50 on night three at 190 s, headless and software-drawn.
@@ -155,7 +157,7 @@ rules and runaway numbers, while feel and difficulty still need people to play.
 
 ## 引擎副本 · Engine copy
 
-- 引擎提交 · Engine commit：`a778bed53ecdbf9c65e9abc5624d4b3751a4331d`（与 `vendor/SOURCE.md` 一致 · as in `vendor/SOURCE.md`）。
+- 引擎提交 · Engine commit：`82561d6338a805f0e0459a2d5d42a284f9385b30`（与 `vendor/SOURCE.md` 一致 · as in `vendor/SOURCE.md`）。
 - 生成命令 · Made with（在引擎仓库里 · in the engine repository）：
 
 ```sh

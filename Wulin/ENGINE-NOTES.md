@@ -107,3 +107,11 @@ Engine copy: official main `a0fb4e6c40a93156acd49f78ebf622375193a92c` (including
 - 游戏里的处理 · Game use：[`src/ui/native-kit.mjs`](src/ui/native-kit.mjs) 从真实 backing/frame 与 uiScale 计算原生 paragraph density，精度稳定、最大保留2；[`src/ui/native-shell.mjs`](src/ui/native-shell.mjs) 编译当前原生描述时传入。同一弹窗三段实际匹配1:1、原1.333倍、位图字节541424→315484；与真实四组 nearest/linear 对照确认匹配+nearest 最清楚，不全局修改过滤。 · Match actual physical pixels and maintain existing cache budget; no custom page text or forced filter.
 - 状态 · Status：密度错配为游戏修复，现有正式引擎即可完成。引擎文档明确 weight/italic 只适用单行和按钮标题，`ViewParagraphStyle` 与段落 provider request/capability/cache key 没有字重；本轮不伪造 family 或扩大两种后端的字体契约。 · Game density mismatch resolved, paragraph weight remains an explicit native capability limit.
 - 建议 · Proposal：考虑让原生段落描述默认取当前实际栅格密度，支持显式可选精细字重（同步 Canvas/CanvasKit、measure、cache identity、fallback 和 raster 语义）。 · Consider adaptive paragraph density and formal optional weight across both providers; not a global texture filtering change.
+
+### 13. WebKit 按需绘制的首屏可见性 · WebKit on-demand first-frame presentation — 未解决 / open
+<!-- engine-note: {"id":"Wulin#13","status":"open","topic":"webkit-on-demand-first-presentation","workaround":["src/ui/native-shell.mjs"]} -->
+
+- **现象 / Observation**：Windows Playwright WebKit 26.6、iPhone 15 Pro 配置，标题画面一直停留加载 0/1；语义树已有标题，接收帧 4 页 / 11 区域 / 6,887,856 B，拒绝帧和文字队列各为 0。一次 invalidate 可恢复。 · The visible title stays on loading 0/1 although the title is in the semantic tree, the accepted frame has 4 pages/11 regions/6,887,856 bytes, and frame refusals and pending text are both zero. One invalidate restores it.
+- **游戏里的处理 / Workaround**：[src/ui/native-shell.mjs](src/ui/native-shell.mjs)：每个新打开的原生页面或弹层只在挂载后 250ms 额外重绘一次。 · Invalidate once 250 ms after a newly opened native page or modal mounts. 实拍首屏与触屏后画面正常，不强制连续重绘。 · Inspected title and subsequent touch screen both render correctly, without a continuous redraw loop.
+- **建议 / Proposal**：引擎异步资源就绪后保证最后接收帧正常交给合成器；测试静止首屏不点击即呈现，且呈现后不再连续提交。 · Ensure the last accepted asynchronously populated frame is presented; verify an untouched static page becomes visible and then stays on demand.
+- **状态 / Status**：对 Windows WebKit 已验证有限补帧绕过，未验证实体 iPhone。 · Bounded workaround verified on Windows WebKit; physical iOS remains unverified.

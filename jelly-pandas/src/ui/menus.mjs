@@ -515,6 +515,9 @@ export function createMenus(game, { semantics, atlas, locale, hover=game.hover, 
     if(page.kind==='title')onTitleLayout?.({portrait:layout.portrait,previewRect:layout.preview,panelRect:layout.panel});
     announceOffer(page);
     publish();
+    // A prepared static page may need one more presentation; never repaint it continuously.
+    clearTimeout(page.presentTimer);
+    page.presentTimer=setTimeout(()=>{if(page.scope.state==='open')game.invalidate();},250);
   }
   function rerender(page) {
     if(!page||page.scope.state!=='open')return;
@@ -558,7 +561,7 @@ export function createMenus(game, { semantics, atlas, locale, hover=game.hover, 
       try {await render(page);}
       catch(cause){pages.delete(id);scope.dispose();rejectOpened(cause);throw cause;}
       return {activate(){enablePage(page,true);resolveOpened(page);},deactivate(){enablePage(page,false);},
-        close(){pages.delete(id);scope.dispose();publish();}};
+        close(){pages.delete(id);clearTimeout(page.presentTimer);scope.dispose();publish();}};
     }},{});
     void lifetime.catch(rejectOpened);
     return opened;

@@ -85,6 +85,7 @@ Raids follow population, rank and raid count. Defence and losses are decided by 
 | `renderMode: 'on-demand'` | 标题静止时减少帧提交，交互或素材就绪后继续绘制 · idle title frame submission resumes for interaction or ready assets | `src/main.mjs` |
 
 ## 已验证 · Verified
+- 2026-11-28: Windows WebKit iPhone 15 Pro 配置的本机候选首屏、触屏代表路径；非物理 iPhone；见 [QUALITY](QUALITY.md)。 · Candidate launch and representative touch route on Windows WebKit with the iPhone 15 Pro profile; not a physical iPhone. See [QUALITY](QUALITY.md).
 
 - `node --test test/*.test.mjs` 覆盖经营数值、离线、升格、升迁、存档和中英文。 · The Node suite covers county rules, offline progress, advancement, promotion, saves and both languages.
 - `node test/accept.mjs` 在无头 Chromium 和 SwiftShader 运行实际键盘、鼠标及模拟触屏操作，并比对固定种子关键画面。具体环境及结果见 [QUALITY.md](QUALITY.md)。 · Browser acceptance uses real browser pointer and keyboard events and emulated touch, with fixed-seed screenshots. See [QUALITY.md](QUALITY.md) for the results and environment.
@@ -136,9 +137,9 @@ Raids follow population, rank and raid count. Defence and losses are decided by 
 
 ## 引擎副本 · Engine copy
 
-引擎副本使用白鹭主干 `94bd70fb26b1f81794c9c6fbbb258c655fcd19df`。生成记录见 [vendor/SOURCE.md](vendor/SOURCE.md)。
+引擎副本使用白鹭主干 `82561d6338a805f0e0459a2d5d42a284f9385b30`。生成记录见 [vendor/SOURCE.md](vendor/SOURCE.md)。
 
-The engine copy was generated from Egret main at `94bd70fb26b1f81794c9c6fbbb258c655fcd19df`. See [vendor/SOURCE.md](vendor/SOURCE.md) for the source and resolved entries.
+The engine copy was generated from Egret main at `82561d6338a805f0e0459a2d5d42a284f9385b30`. See [vendor/SOURCE.md](vendor/SOURCE.md) for the source and resolved entries.
 
 ```sh
 node tools/vendor-game.mjs <PeachCreek> @egret/engine @egret/engine/play @egret/engine/kit @egret/engine/web/kit @egret/engine/ui @egret/engine/ui/semantics @egret/engine/ui/testing @egret/engine/web/semantics

@@ -121,3 +121,10 @@ node test/rotation.mjs <new-directory>
 
 - **尺寸与转屏 · Geometry and rotation:** 最小原生命中边长约 **45.00 CSS px**（44.999284，CSS 布局浮点误差），矮横屏方向滑条 176.14×69.43 CSS px。与正式合并树字节相同的候选（`90fd8724`）专项转屏 4/4、8 次屏幕变更、空白拖动、营地保存及矮屏短测试 8/8 均通过。 · Candidate and merge tree identities are identical; actual software-browser rotation and short-screen checks are separate from the 66 checkpoint rerun.
 - **通用品质 · Generic quality:** 同一候选源码树的 `quality.mjs --no-write --json` 仍为 13/16 自动项通过，F1/I1/E2 三个已知缺口未达标（软件 p95 454.2 ms / 22 帧、无独立英文切换、资源加载失败无重试页），exit 1；6 项设备/人工未执行。未更新基准图，未把软件渲染数值当作真机性能。 · Existing generic failures remain separate; the capture does not claim hardware cadence or all-browser acceptance.
+
+## WebKit 手机兼容回归 · Mobile WebKit compatibility (2026-11-28)
+
+- Windows Playwright WebKit 26.6、iPhone 15 Pro 横屏配置（734×343 CSS px）：旧版依次复现无 Gamepad API、无 Web Audio API 导致启动中断，以及 `TEXT_MEASURE_FAILED`。对无 Gamepad 的浏览器保留键鼠、触屏；音频不存在时先保留完整玩法、禁用音频硬件解锁，浏览器标准或旧前缀 AudioContext 可用时仍启用音效；使用正式工具更新引擎副本。增加缺失/存在/旧前缀测试。 · Optional hardware APIs are capability-checked, not emulated.
+- 初步候选实际触屏「出发」→「跳过开场」可到驾驶，但 3D 合成仍为空。Renderer 记录 208 帧、242 draw calls、276,526 triangles，另次实际 render 后读回中心 RGBA [187,152,111,255]，GL error 0；隐藏叠加层、CSS 图层提升和中档冷启动均无效。只改变引擎正式 `dynamicResolution: false` 后同一路线恢复实拍世界。最终仅移动 Apple WebKit（含 iPad 桌面模式）禁用自适应分辨率，低档实际画布 734×343，而此前降到 440×205。 · The single-option A/B isolates the dynamic resize path; the former lower backing resolution was associated with a blank composited canvas despite successful rendering.
+- 最终无插桩本地候选再次冷启动，标题与实际触屏两次后 3D 驾驶画面可见，道路/植被/茶货/货车/HUD 及五个触控按钮均存在，茶货 72/72，时速随模拟进程变化，JS、控制台、HTTP 错误均 0，Node 47/47 通过。保留三个画质档和非移动 WebKit 的动态分辨率；固定分辨率可能提高像素负担，未宣称真机帧率改善。 · Final uninstrumented screenshot and actual touch route confirm visible scene and functional HUD; fixed resolution can increase pixel cost, so no device performance claim is made.
+- 不是实体 iPhone 或 Safari 系统验收，未跑完全程、未测实体扬声器或移动 GPU。 · Physical iOS, full journey, speaker and device GPU remain unverified.

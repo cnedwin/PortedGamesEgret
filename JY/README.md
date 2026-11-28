@@ -115,6 +115,8 @@ PC 上悬停可预览移动路线，单击执行；武学和暗器选好目标�
 
 ## 已验证 · Verified
 
+- 2026-11-28：Windows Playwright WebKit iPhone 15 Pro 配置下修复启动兼容问题，标题截图及触摸设置通过，75/75 Node 测试通过；不是 iPhone 真机验收。见 [QUALITY.md](QUALITY.md)。 · Startup, title screenshot and touch Settings pass on Windows Playwright WebKit in an iPhone 15 Pro profile; 75/75 Node tests pass. Not a physical iPhone test. See QUALITY.md.
+
 - 引擎副本 `c1570b0`：59 项 Node 测试通过。Windows Edge 使用同一套原版数据完成 691 开场、692 练功战（战斗 48）与奖励读档；实际 WebGL2 大地图可切换远近、出海和返岸。 · On `c1570b0`, 59 Node tests pass. Windows Edge runs opening 691, training fight 692 (battle 48), rewards and reload from the same original data, plus World3D zoom, sailing and return to shore.
 - 2026-11-21 引擎副本升级到 `b5628eb` 后：59 项 Node 测试通过；无头 Chromium 下下载原版数据、开始新游戏、第一个 3D 房间画出并走动，无控制台错误，与升级前相同。 · After the engine update: 59 tests pass, and a new game starts and walks in the first 3D room with a clean console, as before.
 - 2026-11-21 在提交 `fc1dacb`、Node 22.23.4 下运行 `node --test test/*.test.mjs`：59 项全部通过（原版数据格式、导航、事件、招募、经典战斗、原版存档、手柄映射）。 · `node --test` at commit `fc1dacb` with Node 22.23.4: all 59 tests pass.

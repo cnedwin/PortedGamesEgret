@@ -171,7 +171,10 @@ async function boot() {
   });
   app.canvas = canvas;
   app.sound = await createSound(app.game.scope, { on: settings.sound });
-  app.pads = app.game.scope.use(createBrowserGamepadInput({ onError: (cause) => console.warn('gamepad', cause) }));
+  // A gamepad is optional hardware; touch and keyboard remain usable without the browser API.
+  app.pads = typeof globalThis.navigator?.getGamepads === 'function'
+    ? app.game.scope.use(createBrowserGamepadInput({ onError: (cause) => console.warn('gamepad', cause) }))
+    : null;
   app.art = await loadArt(app.game);
   projection = app.game.scope.use(createBrowserSemantics({ semantics: app.semantics, canvas, width: app.stage.width, height: app.stage.height, label: t('stage'), onError: (cause) => console.warn('semantics', cause) }));
   browserActions = app.game.scope.use(bindBrowserInputActions(actions, { keyTarget: canvas, skipPrevented: true, passKeys: ['Tab', 'F5', 'F11', 'F12'] }));
@@ -184,7 +187,7 @@ let sinceSync = 0,
   lastFocus = '';
 function frame(seconds) {
   browserActions.poll();
-  app.pads.poll();
+  app.pads?.poll();
   if (actions.justPressed('pause') && screen?.pause) screen.pause();
   else if (actions.justPressed('back')) screen?.escape?.();
   if (actions.justPressed('confirm')) screen?.confirm?.();

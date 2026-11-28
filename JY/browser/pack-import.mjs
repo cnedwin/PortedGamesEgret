@@ -1,5 +1,7 @@
 import { checkPackEntries, maxArchiveBytes, normalizedPath, packSignature, requiredPaths, selectedPath } from './pack-format.mjs';
 
+import { completed, readStoredBlob, writePackBatch } from './pack-storage.mjs';
+
 const dbName = 'ported-games-egret:jy:original-packs';
 let opening;
 
@@ -7,13 +9,6 @@ function requestValue(request) {
   return new Promise((resolve, reject) => {
     request.onsuccess = () => resolve(request.result);
     request.onerror = () => reject(request.error);
-  });
-}
-
-function completed(tx) {
-  return new Promise((resolve, reject) => {
-    tx.oncomplete = resolve;
-    tx.onabort = tx.onerror = () => reject(tx.error ?? Error('浏览器未能写入原作资源。'));
   });
 }
 
@@ -40,7 +35,7 @@ function storeFor(db, record) {
     const canonical = normalizedPath(path);
     if (!canonical || !selectedPath(canonical)) return undefined;
     const tx = db.transaction('files', 'readonly');
-    return (await requestValue(tx.objectStore('files').get([record.id, canonical])))?.blob;
+    return readStoredBlob(await requestValue(tx.objectStore('files').get([record.id, canonical])));
   }
   return Object.freeze({
     id: record.id, paths, size: record.bytes, kind: record.kind,
@@ -64,14 +59,6 @@ export async function openPackStore() {
   const db = await database();
   const record = await requestValue(db.transaction('metadata', 'readonly').objectStore('metadata').get('active'));
   return record ? storeFor(db, record) : undefined;
-}
-
-async function writeBatch(db, id, rows) {
-  const tx = db.transaction('files', 'readwrite');
-  const done = completed(tx);
-  const files = tx.objectStore('files');
-  for (const { path, blob } of rows) files.add({ id, path, blob });
-  await done;
 }
 
 async function removeGeneration(db, id) {
@@ -191,8 +178,9 @@ export async function importGamePack(source, { onProgress, signal, validate } = 
   const id = crypto.randomUUID();
   const archive = source instanceof Blob;
   const entries = [];
+  let encoding = 'blob';
   async function save(rows) {
-    await writeBatch(db, id, rows);
+    encoding = await writePackBatch(db, id, rows, encoding);
     for (const { path, blob } of rows) entries.push({ path, size: blob.size });
   }
   try {

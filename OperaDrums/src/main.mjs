@@ -212,6 +212,7 @@ if (!loaded) {
   await new Promise(() => {});
 }
 sound = loaded[0];
+if (sound.unavailable) notice = 'audioUnavailable';
 buildWorld();
 function syncMotion() {
   game.reducedMotion = settings().reducedMotion || prefersReducedMotion();
@@ -533,7 +534,7 @@ async function startSong(id, difficulty, { step = null, completed = [] } = {}) {
     if (!voice) throw new Error('The backing voice did not start.');
   } catch (cause) {
     console.warn('Opera Drums score could not start', cause);
-    notice = 'audioError';
+    notice = sound.unavailable ? 'audioUnavailable' : 'audioError';
     return showTitle('start');
   }
   app.run = createRun(app.chart);
@@ -632,7 +633,7 @@ async function startCalibration() {
     sound.stop();
     app.screen = 'calIdle';
     app.cal.running = false;
-    app.cal.message = t('audioError');
+    app.cal.message = t(sound.unavailable ? 'audioUnavailable' : 'audioError');
   }
 }
 function calTap(ms, kind) {

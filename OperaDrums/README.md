@@ -83,6 +83,7 @@ gong pull, torn edge, a drum figure, and the bridge. Each piece has a written pe
 - 京胡、单皮鼓、大小锣、铙钹、鼓板均为原创合成。网页 Worker 负责合成伴奏和音效，白鹭负责解码和混音。击打声即时播放，音符判定继续使用伴奏声部的时间戳。 · The score and acoustic-style percussion are synthesized in a worker and decoded and mixed by Egret. Strikes play immediately, and the backing remains the timing reference.
 
 ## 验证 · Verification
+- 2026-11-28: Windows WebKit iPhone 15 Pro 配置的本机候选首屏、触屏代表路径；非物理 iPhone；见 [QUALITY](QUALITY.md)。 · Candidate launch and representative touch route on Windows WebKit with the iPhone 15 Pro profile; not a physical iPhone. See [QUALITY](QUALITY.md).
 
 - 在游戏目录执行 `node --test test/*.test.mjs`：谱面、判定、声音、存档、中英文字（包括 `src/ui/` 里的界面文字）与引擎入口。2026-11-26 共 38 项全部通过。 · `node --test test/*.test.mjs` checks the charts, judging, sound, saves, both languages (the words in `src/ui/` included) and the engine entries; 38 passed on 2026-11-26.
 - 执行 `node test/accept.mjs`：在无头 Chromium 里按控件名字操作，查 Tab、Shift+Tab、Enter、Space、Esc 走完标题、设置、校准、暂停和结算，换语言后读屏名字跟着换，鼠标按住敲击区按按下的时刻判定，暂停和继续，整首曲子按时钟敲（几次跑下来偏差中位数 9–10 毫秒），每次点击后 30 毫秒敲来测延迟（几次量得 39–46 毫秒，页面一帧最多 17 毫秒），竖屏手机上两行两列的敲击区和手指敲击，坏档提示，语义树里没有按部件名读出的组，并比对标题与结算截图。2026-11-26 共 47 项全部通过。 · `node test/accept.mjs` drives headless Chromium by control names through the title, settings, delay, pause and curtain call by keyboard, the language change in the accessible names, a held mouse press judged at its start, pause and resume, a whole song struck by the clock (median 9–10 ms off over several runs), the tap measure with strokes 30 ms after each click (39–46 ms over several runs, a page frame being up to 17 ms), the tall phone layout with finger strikes, the broken-save notice, no group of the tree read by its part's name, and the title and curtain-call baselines; 47 of 47 passed on 2026-11-26.
@@ -146,10 +147,10 @@ gong pull, torn edge, a drum figure, and the bridge. Each piece has a written pe
 
 ## 引擎副本 · Engine copy
 
-引擎副本取自 [Egret_rebuild](https://github.com/cnedwin/Egret_rebuild) 提交 `94bd70fb26b1f81794c9c6fbbb258c655fcd19df`，由引擎仓库的 `tools/vendor-game.mjs` 复制，见 [vendor/SOURCE.md](vendor/SOURCE.md)。用到的入口：`@egret/engine/play`、`@egret/engine/kit`、`@egret/engine/web/kit`、`@egret/engine/web/audio`（连同它的混音器 `@egret/engine/audio`）、`@egret/engine/ui`、`@egret/engine/ui/semantics`、`@egret/engine/web/semantics`、`@egret/engine/web/view`。
+引擎副本取自 [Egret_rebuild](https://github.com/cnedwin/Egret_rebuild) 提交 `82561d6338a805f0e0459a2d5d42a284f9385b30`，由引擎仓库的 `tools/vendor-game.mjs` 复制，见 [vendor/SOURCE.md](vendor/SOURCE.md)。用到的入口：`@egret/engine/play`、`@egret/engine/kit`、`@egret/engine/web/kit`、`@egret/engine/web/audio`（连同它的混音器 `@egret/engine/audio`）、`@egret/engine/ui`、`@egret/engine/ui/semantics`、`@egret/engine/web/semantics`、`@egret/engine/web/view`。
 
 The engine copy is from [Egret_rebuild](https://github.com/cnedwin/Egret_rebuild) commit
-`94bd70fb26b1f81794c9c6fbbb258c655fcd19df`, copied by the engine's `tools/vendor-game.mjs`; see
+`82561d6338a805f0e0459a2d5d42a284f9385b30`, copied by the engine's `tools/vendor-game.mjs`; see
 [vendor/SOURCE.md](vendor/SOURCE.md). Entries used: `@egret/engine/play`, `@egret/engine/kit`, `@egret/engine/web/kit`,
 `@egret/engine/web/audio` with its mixer `@egret/engine/audio`, `@egret/engine/ui`, `@egret/engine/ui/semantics`,
 `@egret/engine/web/semantics` and `@egret/engine/web/view`.

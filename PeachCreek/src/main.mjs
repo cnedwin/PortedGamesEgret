@@ -1288,7 +1288,7 @@ async function boot() {
     screenWidth: screen.width, screenHeight: screen.height }, STAGE);
   const game = await play({
     width: STAGE.width * 0.75, height: STAGE.height * 0.75, parent: host, transparent: true, semantics: bridge,
-    pixelRatio: uiDensity,
+    pixelRatio: uiDensity, audio: typeof globalThis.AudioContext === 'function',
     renderMode: 'on-demand',
     arrange: () => app.ui?.arrange(),
     update: (seconds) => {

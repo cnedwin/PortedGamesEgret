@@ -263,3 +263,12 @@ Fold7 Chrome 157 的无损追踪把松手关联到了对应的 surface frame。�
 | 对应 display 帧的交换确认 · Display swap ACK | +40.45 | 未关联 · unlinked | +44.26 |
 
 交换确认是浏览器记录的事件。它与屏幕扫描输出分开，历史 66.6 ms 样本也缺少足够的帧编号来追到 Viz。 · Swap ACK is a browser event, separate from physical scan-out. The historical 66.6 ms sample has no verified frame-ID chain into Viz.
+
+## 2026-11-28 WebKit 兼容回归 · WebKit compatibility regression
+
+- 引擎副本 · Engine copy: `82561d6338a805f0e0459a2d5d42a284f9385b30` (official vendor tool).
+- 环境 · Environment: Windows 上的 Playwright WebKit，iPhone 15 Pro 设备配置（393×659 页面视口、DPR 3），全新浏览器上下文及实际自动化触屏点击；改前 GitHub Pages，改后本地同一游戏目录。**不是 iPhone 或 iOS Safari 真机。** · Windows Playwright WebKit, iPhone 15 Pro device profile (393×659 page viewport, DPR 3), fresh context and actual browser touchscreen taps; public Pages baseline, local repaired build. **Not physical iPhone or iOS Safari.**
+- 改前 · Before: 无 Web Audio 宿主时，自定义声音初始化报 AUDIO_HOST_UNAVAILABLE，标题未出现。 · Custom sound initialization failed with AUDIO_HOST_UNAVAILABLE before the title on a host without Web Audio.
+- 改后 · After: 使用更新后的生产启动包，实际触屏点击「出海」，首波画面、操作区和文字均出现。无 Web Audio 仅静音，不改变战斗；有音频宿主时保留原混音。 · The regenerated launch bundle reached the first wave after a touchscreen Set Sail tap, with controls and text visible. An audio-less host plays silently; the normal mixer remains unchanged.
+- 验证 · Evidence: title and post-tap screenshots visually reviewed; zero uncaught page errors, console errors and HTTP error responses on the repaired route. The directory's `node --test test/*.test.mjs` suite passed 40/40. 未改写旧的截图与帧率基线。 · Existing screenshot and timing baselines are unchanged.
+- 范围 · Limits: 本轮为启动与代表性触屏路线，不是整局；没有测物理 iPhone、iOS Safari 音频、Safari GPU/帧时间、真机刘海区域或系统读屏。Windows WebKit 缺少 Web Audio 不代表实际 iPhone Safari 缺少 Web Audio。 · Startup and representative interaction, not a full session; no physical iPhone, iOS Safari audio, Safari GPU/frame time, physical notch or system screen reader was tested. Windows WebKit's absence of Web Audio does not imply the same limitation on an iPhone.

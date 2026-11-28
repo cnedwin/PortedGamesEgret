@@ -15,7 +15,18 @@ import { RATE, SOUNDS } from './synth.mjs';
  * `update(seconds, convoy)` each frame; `play(name, at?)` for a sound once (placed when `at` is given).
  */
 export function createSoundscape(scene, camera, { waters = [], volume = 0.8, music = true } = {}) {
-  const listener = createAudioListener3D({ volume });
+  // Sound is optional on browsers/embedded web views without Web Audio.
+  // Keep the controls and saved audio settings usable; do not fake a host API.
+  const nativeContext = globalThis.AudioContext;
+  const legacyContext = typeof nativeContext !== 'function' && typeof globalThis.webkitAudioContext === 'function'
+    ? new globalThis.webkitAudioContext() : undefined;
+  if (typeof nativeContext !== 'function' && !legacyContext) {
+    return {
+      available: false, started: false, volume, music,
+      async start() {}, attach() {}, play() {}, setMood() {}, hush() {}, update() {}, dispose() {}
+    };
+  }
+  const listener = createAudioListener3D({ volume, ...(legacyContext ? { context: legacyContext } : {}) });
   camera.addChild(listener);
   const context = listener.context,
     buffers = {};
@@ -126,6 +137,7 @@ export function createSoundscape(scene, camera, { waters = [], volume = 0.8, mus
   }
 
   return {
+    available: true,
     listener,
     attach,
     play,
@@ -193,6 +205,7 @@ export function createSoundscape(scene, camera, { waters = [], volume = 0.8, mus
       musicWorker?.terminate();
       musicWorker = null;
       listener.dispose();
+      if (legacyContext && legacyContext.state !== 'closed') void legacyContext.close().catch(() => {});
     }
   };
 }

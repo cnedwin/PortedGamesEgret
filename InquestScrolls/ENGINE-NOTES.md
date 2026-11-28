@@ -104,3 +104,11 @@ engine's own parts instead of drawing around it.
 - 建议：记录派发限制，并提供已改值的托管多行编辑器在 Tab 失焦后提交展示、退役只读控件和重新激活的示例。 · Document the dispatch restriction and provide a changed multiline example that publishes after Tab blur, retires the readonly control and reopens cleanly.
 - Fold7 额外复现：软键盘展开时，点「合上」的按下触发失焦。可见区域移动后，松手被引擎解析到按钮外。`src/view/notes.mjs` 用同一触点的物理落点复核松手，保留原生失焦提交。 · Fold7 also reproduced blur moving the visual viewport between touch down and up on Close. The game checks the release of the same touch in visual viewport coordinates while retaining native blur-to-commit.
 - 状态：游戏侧修复，白鹭副本保持 `95897d78`。 · Game-side workaround on unmodified Egret `95897d78`.
+
+### 13. 静止界面首绘仍保留旧帧 · Static screen retains prior presentation — 已在游戏侧绕过 / worked around
+<!-- engine-note: {"id":"InquestScrolls#13","status":"worked-around","topic":"static-webkit-presentation","files":["src/main.mjs"]} -->
+
+- 现象：候选版 Windows WebKit 上，标题控件已经出现在语义树里，等五秒仍是纯色；点开卷时可能仍显示标题。 · Candidate Windows WebKit retained a solid canvas despite ready title controls, and could retain the title after a touch.
+- 绕过办法：屏幕提交和弹窗打开时合并一次延迟 game.invalidate()；实际截图验证标题和序章可见。 · Coalesce one deferred game.invalidate() on screen commit and modal open; actual screenshots confirm title and prologue.
+- 建议：覆盖静止 WebKit 画布、异步资源和真实呈现的像素验收。 · Test actual presentation pixels for static WebKit canvases and async resources.
+- 状态：候选版本 WebKit 触屏路线实测通过；未在物理 iPhone 上验证。 · Candidate WebKit touch route tested; no physical iPhone verification.

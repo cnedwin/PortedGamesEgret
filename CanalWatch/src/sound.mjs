@@ -316,7 +316,7 @@ export function createSound(game, { on = true, music = true } = {}) {
     }
   }
 
-  if (host) {
+  if (host && typeof globalThis.AudioContext === 'function') {
     for (const event of gestures) page?.addEventListener(event, openAudio, true);
     try {
       worker = new Worker(new URL(import.meta.url), { type:'module', name:'Canal Watch score' });

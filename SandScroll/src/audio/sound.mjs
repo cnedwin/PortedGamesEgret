@@ -239,6 +239,10 @@ const simultaneous = { shine: 3, merge: 2, land: 2, collect: 2 };
 
 /** Gameplay cues drop while silent. Only the chosen music loop may wait for browser unlock. */
 export async function createSound(scope, { on = true } = {}) {
+  // A missing audio host must not block the independently playable strategy game.
+  if (typeof globalThis.AudioContext !== 'function') {
+    return { play() {}, async music() {}, stopMusic() {}, setOn() {}, setPaused() {} };
+  }
   const { mixer } = scope.use(createBrowserAudio({
     buses: [
       { name: 'effects', volume: 0.79 },

@@ -3,13 +3,14 @@
 import { Bitmap, DisplayObjectContainer, Sprite } from '@egret/engine';
 import { createActionControl, createControlKeys, createHoverControl, createRangeControl, createSelectionGroup, createToggleControl } from '@egret/engine/ui';
 import { semanticBoundsOf } from '@egret/engine/ui/semantics';
+import { createScratchCanvas } from './scratch-canvas.mjs';
 import { getLanguage } from '../i18n.mjs';
 
 export const COLORS = { ink:0x1b2340, soft:0x3a4670, panel:0xf4f7fb, pale:0xe4ebf5, gold:0xf5c542, blue:0x3d7bff, red:0xe8384a, green:0x3fbf6a, white:0xffffff };
 // Atlas raster requests accept one family; a CSS fallback list would be quoted as a single name.
 export const FONT = 'Arial';
 let sequence = 0;
-const measure = typeof OffscreenCanvas === 'function' ? new OffscreenCanvas(1,1).getContext('2d') : null;
+const measure = typeof document !== 'undefined' || typeof OffscreenCanvas === 'function' ? createScratchCanvas(1,1).getContext('2d') : null;
 const clamp = (n,a,b) => Math.max(a,Math.min(b,n));
 const live = (node) => {
   if (!node || node.isDisposed || !node.parent) return false;

@@ -83,6 +83,9 @@ function arrange(made) {
 await play({
   width: 1120, height: 680, portrait: { width: 540, height: 960 }, fit: 'expand',
   parent: frameElement, transparent: true, seed: app.seed, semantics,
+  // The richer score already opens its own host after a gesture. Avoid requiring
+  // the optional native SFX host before the game can even display its title.
+  audio: typeof globalThis.AudioContext === 'function',
   setup(made) {
     game = made;
     sound = createSound(game, { on: settings().sound, music: settings().music });

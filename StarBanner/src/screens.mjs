@@ -3,6 +3,7 @@
 import { DisplayObjectContainer } from '@egret/engine';
 import { createUiLayerManager, createUiRoot, createUiScreenStack } from '@egret/engine/ui';
 import { semanticBoundsOf } from '@egret/engine/ui/semantics';
+import { createScratchCanvas } from './ui/scratch-canvas.mjs';
 import { createKit, FONT } from './ui/kit.mjs';
 import { t, say } from './i18n.mjs';
 import { MAPS } from './sim/maps.mjs';
@@ -18,7 +19,7 @@ const COLORS = { plains: '#7cae4c', road: '#d8b77d', forest: '#3f7a35', mountain
 function mapThumb(map) {
   if (thumbs.has(map.id)) return thumbs.get(map.id);
   const k = Math.max(1, Math.floor(150 / Math.max(map.w, map.h)));
-  const canvas = new OffscreenCanvas(map.w * k, map.h * k), g = canvas.getContext('2d');
+  const canvas = createScratchCanvas(map.w * k, map.h * k), g = canvas.getContext('2d');
   for (let y=0; y<map.h; y++) for (let x=0; x<map.w; x++) {
     g.fillStyle=COLORS[map.terrain[y*map.w+x]] ?? '#888'; g.fillRect(x*k,y*k,k,k);
   }
@@ -39,7 +40,7 @@ function geometry(host, entry) {
 }
 const segments=(w,n,gap) => (w-(n-1)*gap)/n;
 const rows=(items,n) => Array.from({length:Math.ceil(items.length/n)},(_,i)=>items.slice(i*n,i*n+n));
-const textProbe=new OffscreenCanvas(1,1).getContext('2d');
+const textProbe=createScratchCanvas(1,1).getContext('2d');
 function textHeight(words,width,size,weight=400){
   textProbe.font=weight+' '+size+'px '+FONT;let lines=0;
   for(const paragraph of String(words).split('\n')){let line='';const parts=paragraph.match(/[\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}]|\s+|[^\s\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}]+/gu)??[''];
@@ -92,7 +93,7 @@ export function createScreens(host, app) {
     if(desired&&entry.focusIds.has(desired)) keyboard.focus(desired,{visible:true});
     else if(entry.focusIds.size&&!entry.focusIds.has(focusId())) keyboard.focus(entry.focusIds.values().next().value,{visible:true});
   };
-  const updatePublished=()=>{manager.sync();publish();};
+  const updatePublished=()=>{manager.sync();publish();host.presentScreen();};
   function setCovered(entry,covered) {
     entry.covered=covered;
     for(const s of entry.liveSlots) s.node.visible=!covered;

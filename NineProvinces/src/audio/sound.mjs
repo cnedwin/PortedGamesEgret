@@ -23,11 +23,34 @@ export async function createSound(scope, { sound = true, music = true, musicVolu
   const errors = [], scores = new Map(), effects = new Map(), controllers = new Set(), musicVoices = new Set();
   const played = new Map(), variants = new Map(), impacts = [];
   const counts = { effects: 0, rateLimited: 0, dense: 0, loads: 0, transitions: 0 };
-  const audio = scope.use(createBrowserAudio({
+  let nativeAudio;
+  try { nativeAudio = createBrowserAudio({
     buses: [{ name: 'effects', volume: effectsLevel, muted: !soundOn }, { name: 'music', volume: musicLevel, muted: !musicOn }],
     limiter: true, pauseWhenHidden: true, maxVoices: 24, maxDecodedBytes: BUDGET,
     onError: error => remember(error)
-  }));
+  }); } catch (error) {
+    if (error?.code !== 'AUDIO_HOST_UNAVAILABLE') throw error;
+    // Some browser hosts omit Web Audio entirely. Music/effects are optional;
+    // leave the game usable rather than failing its startup. Real Web Audio
+    // hosts still follow Egret's normal gesture-unlock and mixer path below.
+    remember(error);
+    return {
+      play() { return null; },
+      theme(name) { wanted = name ?? null; return Promise.resolve(null); },
+      setSound(on) { soundOn = !!on; },
+      setMusic(on) { musicOn = !!on; },
+      setVolumes({music: nextMusic, effects: nextEffects} = {}) {
+        if (nextMusic !== undefined) musicLevel = clamp(nextMusic, musicLevel);
+        if (nextEffects !== undefined) effectsLevel = clamp(nextEffects, effectsLevel);
+      },
+      snapshot() { return { state: 'unavailable', wanted, cache: [], budgetBytes: BUDGET,
+        levels: {music: musicLevel, effects: effectsLevel}, soundOn, musicOn, ducked: false,
+        counters: {...counts}, errors: [...errors] }; },
+      get state() { return 'unavailable'; },
+      get music() { return wanted; },
+    };
+  }
+  const audio = scope.use(nativeAudio);
   const mixer = audio.mixer;
   function remember(error) {
     errors.push(String(error?.code ?? error?.message ?? error));

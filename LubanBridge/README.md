@@ -53,6 +53,7 @@ The original 48-second stereo score alternates plucked guqin and a xiao-like mel
 | `game.text({ vertical })` | 标题竖排 · the title set vertically | `src/view/screens.mjs` |
 
 ## 已验证 · Verified
+- 2026-11-28: Windows WebKit iPhone 15 Pro 配置的本机候选首屏、触屏代表路径；非物理 iPhone；见 [QUALITY](QUALITY.md)。 · Candidate launch and representative touch route on Windows WebKit with the iPhone 15 Pro profile; not a physical iPhone. See [QUALITY](QUALITY.md).
 
 - `node --test LubanBridge/test/*.test.mjs`：44 项通过（Node 24.22.3）。二十五关的参考解都合规、在预算内、在 Node 里让全部车队过河且一根不断；只铺桥面不加支撑的桥在每一关都过不去；同一张图纸两次结果完全相同；图纸的检查、对称、撤销、造价、读档；存档的印章、最低造价、解锁、坏档；中英文字表齐全；引擎副本与 import map 一致，规则只用引擎的 2D 物理。 · 44 tests pass in Node 24.22.3: every level's reference is valid, within budget, and gets every cart across in Node with nothing broken; a bare deck fails on every level; one drawing ends the same way twice; the drawing's checks, mirror, undo, cost and reading back; the save's seals, lowest cost, unlocking and broken saves; the word table; the engine copy and the import map. Four additional checks cover the stereo score, all material cues, looped river audio, and independent mixer controls.
 - 23/23 浏览器自动回归（Windows Chrome / 无头 Chromium，1280×720 与 720×1280）：新版图像、第一关逐根搭建、撤销重做、右键拆、设置、三印结算/失败分支、立即进下一关、坏档、装饰资源故障回退与重试、三张截图基线。 · 23/23 browser checks: original pictures, piece-by-piece construction, undo/redo, removal, settings, three seals/failure, immediate next level, bad save, decorative image fallback and retry, and three screenshot baselines.
@@ -99,9 +100,9 @@ The original 48-second stereo score alternates plucked guqin and a xiao-like mel
 
 ## 引擎副本 · Engine copy
 
-引擎提交 `a7be833b09ddad1936c79ff148c909cf452bea7f`（见 `vendor/SOURCE.md`），在引擎仓库用 `node tools/vendor-game.mjs ../PortedGamesEgret/LubanBridge <入口…>` 生成。用到的入口：`@egret/engine`、`play`、`kit`、`web/kit`、`ui/semantics`、`web/semantics`、`physics2d`、`web/gestures`、`web/hover`、`web/screen`、`web/view`、`ui/testing`、`audio`、`web/audio`。
+引擎提交 `82561d6338a805f0e0459a2d5d42a284f9385b30`（见 `vendor/SOURCE.md`），在引擎仓库用 `node tools/vendor-game.mjs ../PortedGamesEgret/LubanBridge <入口…>` 生成。用到的入口：`@egret/engine`、`play`、`kit`、`web/kit`、`ui/semantics`、`web/semantics`、`physics2d`、`web/gestures`、`web/hover`、`web/screen`、`web/view`、`ui/testing`、`audio`、`web/audio`。
 
-Engine commit `a7be833b09ddad1936c79ff148c909cf452bea7f` (see `vendor/SOURCE.md`), made in the engine repository with `node tools/vendor-game.mjs ../PortedGamesEgret/LubanBridge <entries…>`. Entries used: `@egret/engine`, `play`, `kit`, `web/kit`, `ui/semantics`, `web/semantics`, `physics2d`, `web/gestures`, `web/hover`, `web/screen`, `web/view`, `ui/testing`, `audio`, `web/audio`.
+Engine commit `82561d6338a805f0e0459a2d5d42a284f9385b30` (see `vendor/SOURCE.md`), made in the engine repository with `node tools/vendor-game.mjs ../PortedGamesEgret/LubanBridge <entries…>`. Entries used: `@egret/engine`, `play`, `kit`, `web/kit`, `ui/semantics`, `web/semantics`, `physics2d`, `web/gestures`, `web/hover`, `web/screen`, `web/view`, `ui/testing`, `audio`, `web/audio`.
 
 ## 开发 · Development
 

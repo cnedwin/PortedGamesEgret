@@ -1,10 +1,8 @@
 // SPDX-License-Identifier: Apache-2.0
-import { DisplayObject, DisplayObjectContainer, EgretError, Event, createEventType } from '@egret/runtime';
+import { DisplayObject, EgretError, Event, createEventType } from '@egret/runtime';
 import { requireMouseInputEngine } from './internal/mouseInputFactoryState.js';
 import { captureUiInputDelivery } from './internal/uiFactoryState.js';
-const getter = (prototype, key) => Object.getOwnPropertyDescriptor(prototype, key).get;
-const parent = getter(DisplayObject.prototype, 'parent'), visible = getter(DisplayObject.prototype, 'visible');
-const touch = getter(DisplayObject.prototype, 'touchEnabled'), children = getter(DisplayObjectContainer.prototype, 'touchChildren');
+import { acceptsRoutedInput, createRoutedOperations, runCleanup } from './internal/routedInput.js';
 const reasons = Object.freeze([
     'target',
     'outside',
@@ -64,31 +62,8 @@ export function createHoverInput(options) {
     // Late subscribers to the same stream. They see what happened; they cannot fail it.
     const listeners = new Set();
     let input, state = 'active', closed = false, releaseEngine;
-    let revision = 0, sequence = 0, observedTime = 0, sampling = 0, calls = 0, failure;
-    const eligible = (target) => {
-        if (owner === undefined || scope === undefined || operations === undefined)
-            return false;
-        try {
-            owner.assertReady();
-            scope.assertOpen();
-        }
-        catch {
-            return false;
-        }
-        if (!operations.isAttached(target, maxNodes) || Reflect.apply(touch, target, []) !== true)
-            return false;
-        let node = target, visited = 0;
-        while (node !== undefined) {
-            if (++visited > maxNodes)
-                throw new EgretError('HIT_TEST_TREE_LIMIT');
-            if (Reflect.apply(visible, node, []) !== true)
-                return false;
-            if (node !== target && Reflect.apply(children, node, []) !== true)
-                return false;
-            node = Reflect.apply(parent, node, []);
-        }
-        return true;
-    };
+    let revision = 0, sequence = 0, observedTime = 0, sampling = 0, failure;
+    const eligible = (target) => acceptsRoutedInput(target, owner, scope, operations, maxNodes);
     function closeNative() {
         if (closed)
             return;
@@ -98,59 +73,22 @@ export function createHoverInput(options) {
         scope?.remove(retire);
         const callbacks = [...closers];
         closers.clear();
-        let first, failed = false;
-        const cleanup = [];
-        for (const callback of callbacks)
-            try {
-                callback();
-            }
-            catch (cause) {
-                if (!failed) {
-                    first = cause;
-                    failed = true;
-                }
-                else
-                    cleanup.push(cause);
-            }
+        const cleanup = runCleanup(callbacks);
         owner = undefined;
         scope = undefined;
         operations = undefined;
         onHover = undefined;
         onWheel = undefined;
         listeners.clear();
-        if (failed)
-            throw new EgretError('HOVER_INPUT_CLEANUP_FAILED', { cause: first, cleanupErrors: cleanup });
+        if (cleanup.failed)
+            throw new EgretError('HOVER_INPUT_CLEANUP_FAILED', { cause: cleanup.first, cleanupErrors: cleanup.others });
     }
     /** Every public operation: the first failure of a callback is kept, and a closed input lets go of the Engine. */
-    function invoke(operation) {
-        let value, first, failed = false;
-        calls++;
-        try {
-            value = operation();
-        }
-        catch (cause) {
-            failed = true;
-            first = cause;
-        }
-        finally {
-            calls--;
-        }
-        if (calls === 0) {
-            failure = undefined;
-            if (state === 'closed')
-                try {
-                    closeNative();
-                }
-                catch (cause) {
-                    if (failed)
-                        throw new EgretError('HOVER_INPUT_CALLBACK_FAILED', { cause: first, cleanupErrors: [cause] });
-                    throw cause;
-                }
-        }
-        if (failed)
-            throw first;
-        return value;
-    }
+    const invoke = createRoutedOperations(() => {
+        failure = undefined;
+        if (state === 'closed')
+            closeNative();
+    }, (cause, cleanup) => new EgretError('HOVER_INPUT_CALLBACK_FAILED', { cause, cleanupErrors: [cleanup] }));
     function stamp(value) {
         if (!Number.isSafeInteger(sequence + 1))
             throw new EgretError('HOVER_INPUT_EXHAUSTED');

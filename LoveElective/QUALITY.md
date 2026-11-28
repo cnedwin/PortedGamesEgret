@@ -72,3 +72,12 @@
 - Fold7: three 180/181 rAF windows: p95 all 16.7 ms; max 33.2 → 16.7 ms.
 - 相同两点染色值 #e6d477→#9126a3，旧存档隔离续读；原先软件 ratio=1 奇数高度断笔的 14 标签最小复现已通过。 / Identical dye values and save reload. The 14-label software ratio-1 odd-height repro is clear now.
 - 限制 · Limits: 短前台 rAF 不是独立 GPU 时间，也不是整局、所有设备或中端手机验收。未跑真实读屏、物理手柄、Safari 或整局声学测试。 · Short foreground rAF samples are not isolated GPU time or a whole-game/device matrix. No physical screen reader, controller, Safari or speaker/acoustic certification.
+
+## 2026-11-28 WebKit 兼容回归 · WebKit compatibility regression
+
+- 引擎副本 · Engine copy: `82561d6338a805f0e0459a2d5d42a284f9385b30` (official vendor tool).
+- 环境 · Environment: Windows 上的 Playwright WebKit，iPhone 15 Pro 设备配置（393×659 页面视口、DPR 3），全新浏览器上下文及实际自动化触屏点击；改前 GitHub Pages，改后本地同一游戏目录。**不是 iPhone 或 iOS Safari 真机。** · Windows Playwright WebKit, iPhone 15 Pro device profile (393×659 page viewport, DPR 3), fresh context and actual browser touchscreen taps; public Pages baseline, local repaired build. **Not physical iPhone or iOS Safari.**
+- 改前 · Before: 标题美术存在，但引擎绘制的按钮标题缺失。 · Title artwork appeared, but engine-drawn button captions were missing.
+- 改后 · After: 实际触屏点击「开始新学期」，序章正常进入，标题按钮和剧情对白均可读。 · A touchscreen tap on New Term entered the prologue with readable title buttons and dialogue.
+- 验证 · Evidence: title and post-tap screenshots visually reviewed; zero uncaught page errors, console errors and HTTP error responses on the repaired route. The directory's `node --test test/*.test.mjs` suite passed 65/65. 未改写旧的截图与帧率基线。 · Existing screenshot and timing baselines are unchanged.
+- 范围 · Limits: 本轮为启动与代表性触屏路线，不是整局；没有测物理 iPhone、iOS Safari 音频、Safari GPU/帧时间、真机刘海区域或系统读屏。Windows WebKit 缺少 Web Audio 不代表实际 iPhone Safari 缺少 Web Audio。 · Startup and representative interaction, not a full session; no physical iPhone, iOS Safari audio, Safari GPU/frame time, physical notch or system screen reader was tested. Windows WebKit's absence of Web Audio does not imply the same limitation on an iPhone.

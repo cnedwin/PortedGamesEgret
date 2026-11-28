@@ -4,7 +4,7 @@ import { sharedEffectGLSL, EFFECT_PASSES, EFFECT_UNIFORM_BYTES } from './sharedE
 import { SHARED_FRAME_PROFILE_2D } from '@egret/contracts';
 import { readOwnedSharedFrame } from '#egret-textured-frame-state';
 import { admitSharedWebGL2Options } from './sharedWebGL2Options.js';
-import { prepareSharedDraws2D, SharedPreparationError } from '../rendering/prepareSharedDraws2D.js';
+import { prepareSharedDrawsForSubmission2D, SharedPreparationError } from '../rendering/prepareSharedDraws2D.js';
 import { SharedPreparationRetention2D } from '../rendering/sharedPreparationRetention2D.js';
 import { GeometryPreparationError } from '../rendering/prepareRectangles2D.js';
 import { packSharedDraws2D, packSharedRegions2D, SHARED_BATCH_PAGES_2D, SHARED_REGION_WINDOW_BYTES_2D } from '../rendering/packSharedDraws2D.js';
@@ -1069,7 +1069,7 @@ class SharedGLHost {
                         width > Math.floor(options.maxBackingPixels / height))
                         throw glFailure('WEBGL2_BACKING_LIMIT');
                     // A frame baked into a layer is another sequence of frames; it neither takes nor replaces what the ordinary frames keep.
-                    const prepared = prepareSharedDraws2D(frame, width, height, options, layerWrite ? undefined : this.retention);
+                    const prepared = prepareSharedDrawsForSubmission2D(frame, width, height, options, layerWrite ? undefined : this.retention);
                     const ticket = !layerWrite && !staging && this.ticket && !this.ticket.bound ? this.ticket : undefined;
                     const reserve = staging ? options.enableReadback : !!ticket;
                     const fees = planSharedStorageFees2D(prepared, options), layout = withSharedReadbackLayout2D(fees, {

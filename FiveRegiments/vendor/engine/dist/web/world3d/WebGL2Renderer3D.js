@@ -1,4 +1,5 @@
 import { World3DError } from '../../rendering/world3d/core3D.js';
+import { Geometry3D } from '../../rendering/world3d/Geometry3D.js';
 import { linearToSrgb, mat3NormalFromMat4, mat4Invert } from '../../rendering/world3d/math3D.js';
 import { SkinnedInstancedMesh3D } from '../../rendering/world3d/AnimationTexture3D.js';
 import { GpuParticles3D } from '../../rendering/world3d/GpuParticles3D.js';
@@ -195,6 +196,99 @@ export class WebGL2Renderer3D {
             }
         }
         await this.#resources.preparePrograms(programs);
+    }
+    /**
+     * Upload an explicit list of geometries into the normal draw cache, without a draw or
+     * shader link. Yield before and between bounded slices, restoring touched GL bindings.
+     * This is CPU submission scheduling, not a GPU completion fence.
+     */
+    async prepareGeometries(geometries, options = {}) {
+        const gl = this.#gl, resources = this.#resources;
+        const requireCurrent = () => {
+            if (this.#disposed)
+                throw new World3DError('WORLD3D_DISPOSED', 'renderer');
+            if (this.isContextLost || this.#resources !== resources)
+                throw new World3DError('WORLD3D_CONTEXT_LOST', 'geometry preparation');
+        };
+        requireCurrent();
+        if (!Array.isArray(geometries) || !options || typeof options !== 'object')
+            throw new World3DError('WORLD3D_INPUT_INVALID', 'geometry preparation');
+        if (geometries.length > 16384)
+            throw new World3DError('WORLD3D_BUDGET', 'geometry preparation list');
+        const { budgetMs = 4, maxPerSlice = 16, signal } = options;
+        if (!Number.isFinite(budgetMs) ||
+            budgetMs < 0.25 ||
+            budgetMs > 16 ||
+            !Number.isInteger(maxPerSlice) ||
+            maxPerSlice < 1 ||
+            maxPerSlice > 64 ||
+            (signal !== undefined && (!signal || typeof signal !== 'object' || typeof signal.aborted !== 'boolean')))
+            throw new World3DError('WORLD3D_INPUT_INVALID', 'geometry preparation options');
+        const check = () => {
+            requireCurrent();
+            if (signal?.aborted)
+                throw new World3DError('WORLD3D_RESOURCE_FAILED', 'geometry preparation cancelled', signal.reason);
+        };
+        check();
+        const unique = new Set();
+        for (const geometry of geometries) {
+            if (!(geometry instanceof Geometry3D))
+                throw new World3DError('WORLD3D_INPUT_INVALID', 'geometry preparation input');
+            if (geometry.isDisposed)
+                throw new World3DError('WORLD3D_DISPOSED', 'geometry preparation input');
+            unique.add(geometry);
+        }
+        const inputs = [...unique];
+        let cursor = 0;
+        while (cursor < inputs.length) {
+            await new Promise(resolve => setTimeout(resolve, 0));
+            check();
+            const started = performance.now();
+            const end = Math.min(inputs.length, cursor + maxPerSlice);
+            const vao = gl.getParameter(gl.VERTEX_ARRAY_BINDING);
+            const array = gl.getParameter(gl.ARRAY_BUFFER_BINDING);
+            // Geometry normally only changes vertex/index bindings. Morph storage is a geometry-owned
+            // data texture, and additionally touches one texture unit and unpack flip state.
+            const hasMorph = inputs.slice(cursor, end).some(geometry => geometry.morphTargets.length > 0);
+            const morphUnit = gl.TEXTURE0 + TEXTURE_UNITS_3D.morph;
+            let active, texture = null, flip = false;
+            try {
+                if (hasMorph) {
+                    active = gl.getParameter(gl.ACTIVE_TEXTURE);
+                    flip = gl.getParameter(gl.UNPACK_FLIP_Y_WEBGL);
+                    gl.activeTexture(morphUnit);
+                    texture = gl.getParameter(gl.TEXTURE_BINDING_2D);
+                    gl.activeTexture(active);
+                }
+                do {
+                    check();
+                    const geometry = inputs[cursor];
+                    if (geometry.isDisposed)
+                        throw new World3DError('WORLD3D_DISPOSED', 'geometry preparation input');
+                    resources.geometry(geometry);
+                    cursor++;
+                    check();
+                } while (cursor < end && performance.now() - started < budgetMs);
+            }
+            finally {
+                // Do not resurrect handles from a lost generation. A layout refresh may retire a
+                // previously bound buffer/texture; in that case null is the only valid restoration.
+                if (!this.#disposed && this.#resources === resources && !this.isContextLost) {
+                    gl.bindVertexArray(vao && gl.isVertexArray(vao) ? vao : null);
+                    gl.bindBuffer(gl.ARRAY_BUFFER, array && gl.isBuffer(array) ? array : null);
+                    if (active !== undefined) {
+                        gl.activeTexture(morphUnit);
+                        gl.bindTexture(gl.TEXTURE_2D, texture && gl.isTexture(texture) ? texture : null);
+                        gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, flip);
+                        gl.activeTexture(active);
+                    }
+                }
+            }
+        }
+        check();
+        for (const geometry of inputs)
+            if (geometry.isDisposed)
+                throw new World3DError('WORLD3D_DISPOSED', 'geometry preparation input');
     }
     /** The underlying context, for advanced interop. Restore any state you change. */
     get context() {

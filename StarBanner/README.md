@@ -92,6 +92,8 @@ stronghold.
 
 ## 已验证 · Verified
 
+- 2026-11-28：Windows Playwright WebKit iPhone 15 Pro 配置下修复启动兼容问题，标题截图及触摸设置通过，64/64 Node 测试通过；不是 iPhone 真机验收。见 [QUALITY.md](QUALITY.md)。 · Startup, title screenshot and touch Settings pass on Windows Playwright WebKit in an iPhone 15 Pro profile; 64/64 Node tests pass. Not a physical iPhone test. See QUALITY.md.
+
 - `node --test test/*.test.mjs` 覆盖战斗数值和规则、AI 装卸与迷雾、战役解锁、存档迁移和双语文字。 · Node tests cover battle rules, AI transport and fog, chapter unlocks, save migration and bilingual text.
 - `node test/accept.mjs` 覆盖键盘出阵、移动、手选出兵、敌方回合、续档和坏档恢复。随仓库的截图基线来自 Linux 软件渲染，Windows 上需单独核对实际画面。 · The browser acceptance covers keyboard setup, movement, deployment, enemy turns, save resume and damaged save recovery. The bundled reference images use Linux software rendering. Review current images separately on Windows.
 - 原生叠加层相关的按名称控件验收、`test/touch-accept.mjs` 的拖动及多触点、`test/art-accept.mjs` 的合法存档战意技与 `test/screen-route.mjs` 的可重放多屏检查，详见 [UI-MIGRATION.md](UI-MIGRATION.md) 和 [QUALITY.md](QUALITY.md)。 · See UI-MIGRATION and QUALITY for native named-control acceptance, multi-touch, legal replay-based rally art and the multi-screen route.
@@ -158,7 +160,7 @@ stronghold.
 
 ## 引擎副本 · Engine copy
 
-- 引擎提交 · Engine commit：`0e7b29321a07ec956f66efb293c79798270512bd`（见 · see [vendor/SOURCE.md](vendor/SOURCE.md)；引擎 #528 merge `0e7b29321a07ec956f66efb293c79798270512bd`）。
+- 引擎提交 · Engine commit：`82561d6338a805f0e0459a2d5d42a284f9385b30`（见 · see [vendor/SOURCE.md](vendor/SOURCE.md)；引擎 #528 merge `0e7b29321a07ec956f66efb293c79798270512bd`）。
 - 生成命令 · Made with：`node tools/vendor-game.mjs ../PortedGamesEgret/StarBanner @egret/engine @egret/engine/world3d @egret/engine/webgpu/world3d @egret/engine/webgl2/world3d @egret/engine/kit @egret/engine/web/kit @egret/engine/audio @egret/engine/web/audio @egret/engine/input/gamepad @egret/engine/web/gamepad @egret/engine/input/hover @egret/engine/web/hover @egret/engine/ui/semantics @egret/engine/web/semantics @egret/engine/animation @egret/engine/ui @egret/engine/ui/testing`
 - 用到的入口 · Entries used：`@egret/engine/world3d`、`@egret/engine/webgpu/world3d`、`@egret/engine/webgl2/world3d`、`@egret/engine/kit`、`@egret/engine/web/kit`、`@egret/engine/web/audio`、`@egret/engine/input/gamepad`、`@egret/engine/ui`、`@egret/engine/ui/semantics`、`@egret/engine/web/semantics`、`@egret/engine/ui/testing`。
 - 生产交付 / Production delivery：固定开发期 esbuild 0.28.2，`npm ci --prefix tools/launch-bundle --ignore-scripts`，`node tools/launch-bundle/build.mjs`；更新引擎或修改游戏源码后重新生成 `bundle/`、入口 HTML 的 preload 和 manifest。普通用户直接打开网页，不需要 Node 或开发服务器。原 vendor/ 与可读 src/ 保留。 · Rebuild the content-hashed ESM outputs, HTML preloads and provenance manifest after source/vendor updates. The public player needs no Node or server; raw source and vendor remain available.

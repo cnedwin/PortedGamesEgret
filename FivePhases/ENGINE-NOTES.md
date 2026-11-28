@@ -58,3 +58,10 @@ This integration vendors official main `94bd70fb26b1f81794c9c6fbbb258c655fcd19df
 - 建议 · Suggestion：提供原生复合按钮/可选角色和禁用绑定、keyed/repeat 列表以复用同一个卡牌精灵、焦点、图标和段落。 · Add rich buttons with explicit role/disabled, and keyed repeat/reconciliation to retain focus, content and image/paragraph borrows.
 - 状态 · Status：#499 与 #506 提供相应原生能力；无需变更时保留行，位置、静态内容变化仍由引擎重建受影响的行。不是虚拟列表。 · Native role and keyed reconciliation are available; rows with changed static geometry or content may be rebuilt. This is not virtualization.
 
+### 7. WebKit 上中文字缺失 · Missing labels on WebKit — 已解决 / resolved
+<!-- engine-note: {"id":"FivePhases#7","status":"resolved","topic":"webkit-canvas-text-state"} -->
+
+- **现象 · What happens**：Windows Playwright WebKit 的 Canvas2D 能画出中文，但部分浏览器可选的上下文属性和排版状态没有实现；原先引擎要求显式提供这些状态，标题和牌阵文字不见。· This WebKit host could paint Chinese with Canvas2D but lacked several optional context and typography properties. The previous text provider required them explicitly; title and battle labels disappeared.
+- **绕过办法 · Workaround**：没有给游戏另做文字光栅化或 DOM 标题；使用正式生成的新版引擎副本。 · No separate text rasterizer or DOM labels; use the officially generated refreshed engine.
+- **建议 · Suggestion**：对缺省且不影响当前绘制的浏览器可选属性提供兼容处理，仍检验文字光栅化及真实错误。 · Accept missing optional default states while retaining actual raster and error validation.
+- **状态 · Status**：引擎 82561d63，Windows WebKit iPhone 15 Pro 配置标题、开阵画面实测恢复文字；物理 Safari 未测。 · The engine refresh restored both title and battle labels in the Windows WebKit iPhone profile; no physical Safari test.

@@ -66,3 +66,11 @@ Fold7 另用 14 次有效落块完成一局「今日试笔」的失败结算，�
 - Galaxy Z Fold7、Android 17、Chrome 157、WebGPU。用自动触控连续落块并暂停，从 873 × 325 CSS px 横屏实机转为 411 × 813 竖屏。同一局的计时及空中积木位置保持不动，继续后依次落在第 12、74、126 列。重复拖放没有覆盖等待中的积木。暂停和爆竹的横屏触控高度约 45.8 CSS px，近边缘点按生效。 · Injected touches and native rotation on the Fold7 preserved the same round, clock and falling piece. The three drops landed at columns 12, 74 and 126. The extra gesture left the queue intact. Landscape action buttons had roughly 45.8 CSS px of hit height and responded to taps near their edges.
 - Fold7 作画短样本共 89 个浏览器帧间隔，p95 16.6 ms，最大 16.7 ms。 · A short Fold7 Paint sample of 89 browser frame intervals had a 16.6 ms p95 and a 16.7 ms maximum.
 - 浏览器另用作画与拆画的已完成状态验证了结算前暂停、切换方向及继续。切换后保留原局和剩余倒计时。数字音频在暂停期间为零，重建音频设备后点继续会从曲目开头播放。 · A browser fixture finished both modes and paused and reoriented the game before the result was shown. The round and countdown persisted. Digital output stayed silent during pause. Music restarts on resume if reorientation rebuilt the audio device.
+
+## 2026-11-28 WebKit 兼容性 · WebKit compatibility
+
+- 旧公开版因 Web Audio 缺失中断；候选版静音启动、标题可见，真实触屏「作画」进入选卷。 · The public baseline stopped without Web Audio. The candidate starts silently and a real touchscreen tap opens painting selection.
+- Node: 36/36. 候选引擎 · candidate engine: `82561d6338a805f0e0459a2d5d42a284f9385b30`.
+- 本机 Windows Playwright WebKit 26.6，iPhone 15 Pro 设备配置（393×659 CSS px，DPR 3），真实浏览器触屏事件，无物理 iPhone；仅首屏和代表性操作，不是整局或实机性能、声学验收。 · Windows Playwright WebKit 26.6, iPhone 15 Pro device profile (393×659 CSS px, DPR 3), actual browser touchscreen events, not a physical iPhone; launch and representative interaction only, not full-session performance or acoustic certification.
+- 本轮候选烟测页面异常、控制台错误、HTTP 4xx/5xx 均为 0。 · Candidate smoke: no page exceptions, console errors or HTTP 4xx/5xx.
+- [全站记录 · Showcase compatibility record](../docs/SAFARI-WEBKIT-20261128.md)

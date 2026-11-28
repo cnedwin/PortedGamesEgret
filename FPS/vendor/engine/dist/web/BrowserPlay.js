@@ -272,7 +272,7 @@ class PlayingLoop {
 export async function play(options) {
     if (options === null || typeof options !== 'object')
         throw invalid('play takes an object of options');
-    const { width, height, background = 0, setup, update, onError } = options;
+    const { width, height, background = 0, setup, update, onError, onFrameTiming } = options;
     if (!Number.isSafeInteger(width) || !Number.isSafeInteger(height) || width <= 0 || height <= 0)
         throw invalid('width and height are whole numbers above 0');
     if (!colour(background))
@@ -288,6 +288,10 @@ export async function play(options) {
         throw invalid("renderMode is 'continuous' or 'on-demand'");
     if (onError !== undefined && typeof onError !== 'function')
         throw invalid('onError is a function');
+    if (onFrameTiming !== undefined && typeof onFrameTiming !== 'function')
+        throw invalid('onFrameTiming is a function');
+    if (options.afterFrame !== undefined && typeof options.afterFrame !== 'function')
+        throw invalid('afterFrame is a function');
     const fitAsked = options.fit ?? 'contain';
     if (!['contain', 'expand', 'fixedWidth', 'fixedHeight', 'fixedNarrow', 'fixedWide'].includes(fitAsked))
         throw invalid("fit is 'contain', 'expand', 'fixedWidth', 'fixedHeight', 'fixedNarrow' or 'fixedWide'");
@@ -386,6 +390,8 @@ export async function play(options) {
         ...(options.portrait === undefined ? {} : { portrait: options.portrait }),
         ...(options.insets === undefined ? {} : { insets: options.insets }),
         ...(options.backend === undefined ? {} : { backend: options.backend }),
+        ...(options.textWorkBudgetMs === undefined ? {} : { textWorkBudgetMs: options.textWorkBudgetMs }),
+        ...(options.textWorkBudgetWhen === undefined ? {} : { textWorkBudgetWhen: options.textWorkBudgetWhen }),
         pixelRatio: playDensity,
         ...(options.beforeRender === undefined ? {} : { beforeRender: options.beforeRender }),
         ...(options.renderRetry === undefined ? {} : { renderRetry: options.renderRetry }),
@@ -403,6 +409,7 @@ export async function play(options) {
             redraw++;
     };
     let sourceSeconds = 0, clockSeconds = 0, realStep = 0, playStep = 0, generation = 0;
+    let lastDrawAccepted = false;
     // Rendering keeps its wall-clock cadence; the real Engine clock advances only by gameplay time.
     const playLoop = createBrowserFrameLoop({
         engine: {
@@ -442,6 +449,8 @@ export async function play(options) {
                 const pending = redraw, next = revision?.revision, nextLayer = baseBrowser.staticLayers?.revision ?? 0;
                 // Drawn as the game draws: a frame of too many images is left undrawn with a warning, not the game stopped.
                 const submitted = baseBrowser.drawFrame(frame);
+                if (onFrameTiming !== undefined)
+                    lastDrawAccepted = submitted !== undefined;
                 if (submitted === undefined)
                     return undefined;
                 if (next !== undefined) {
@@ -456,6 +465,7 @@ export async function play(options) {
         host: baseBrowser.host,
         frame: () => baseBrowser.frame,
         ...(options.beforeRender === undefined ? {} : { beforeRender: options.beforeRender }),
+        ...(options.afterFrame === undefined ? {} : { afterFrame: options.afterFrame }),
         ...(options.renderRetry === undefined ? {} : { renderRetry: options.renderRetry }),
         ...(revision === undefined
             ? {}
@@ -464,6 +474,15 @@ export async function play(options) {
                     lastLayerRevision !== (baseBrowser.staticLayers?.revision ?? 0) ||
                     shownRedraw !== redraw ||
                     lastFrame !== baseBrowser.frame
+            }),
+        // Play owns the active loop. The BrowserGame below it is deliberately not auto-started.
+        ...(onFrameTiming === undefined
+            ? {}
+            : {
+                onFrameTiming: sample => {
+                    const outcome = sample.outcome === 'rendered' ? (lastDrawAccepted ? 'submitted' : 'refused') : sample.outcome;
+                    onFrameTiming(Object.freeze({ ...sample, outcome }));
+                }
             }),
         update: () => {
             if (!disposed && playLoop.state === 'running')
@@ -2634,6 +2653,10 @@ export async function play(options) {
             return device;
         },
         confirm: (question, confirmOptions) => views.confirm(question, confirmOptions),
+        select: (choices, selectOptions) => views.select(choices, selectOptions),
+        get editing() {
+            return views.editing;
+        },
         hints: list => views.hints(list),
         get uiScale() {
             return uiScaleNow();
@@ -2703,6 +2726,7 @@ export async function play(options) {
                 }
                 try {
                     stopLoops();
+                    views.reset();
                     resizeObserver?.disconnect();
                     for (const [target, type, listener] of listening)
                         target.removeEventListener(type, listener);

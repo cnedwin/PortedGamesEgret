@@ -197,9 +197,9 @@ Serve this folder with any static file server to run it, for example `npx serve 
 
 ## 引擎副本 · Engine copy
 
-引擎副本取自 [Egret_rebuild](https://github.com/cnedwin/Egret_rebuild) 正式 main 提交 `a0fb4e6c40a93156acd49f78ebf622375193a92c`（含 #557、#563、#567），由引擎仓库的 `tools/vendor-game.mjs` 复制，无本地引擎补丁；确切入口与版本见 [vendor/SOURCE.md](vendor/SOURCE.md)。
+引擎副本取自 [Egret_rebuild](https://github.com/cnedwin/Egret_rebuild) 正式 main 提交 `82561d6338a805f0e0459a2d5d42a284f9385b30`（含 #557、#563、#567），由引擎仓库的 `tools/vendor-game.mjs` 复制，无本地引擎补丁；确切入口与版本见 [vendor/SOURCE.md](vendor/SOURCE.md)。
 
-The engine copy is from [Egret_rebuild](https://github.com/cnedwin/Egret_rebuild) main commit `a0fb4e6c40a93156acd49f78ebf622375193a92c` (including #557, #563 and #567), copied by the engine's `tools/vendor-game.mjs` without local engine patches; see [vendor/SOURCE.md](vendor/SOURCE.md) for the exact version and entries.
+The engine copy is from [Egret_rebuild](https://github.com/cnedwin/Egret_rebuild) main commit `82561d6338a805f0e0459a2d5d42a284f9385b30` (including #557, #563 and #567), copied by the engine's `tools/vendor-game.mjs` without local engine patches; see [vendor/SOURCE.md](vendor/SOURCE.md) for the exact version and entries.
 
 在上述引擎提交的仓库根目录构建并生成副本；直接编辑和选择已由 Play 正式承接，不再单独加入浏览器 text-input 入口，音频则使用明确的可选 `web/audio` 入口。 · Build and vendor from the engine checkout at this pin. Play now supplies editing and selection, so the separate browser text-input entry is omitted; browser audio uses the explicit optional `web/audio` entry.
 

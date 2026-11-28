@@ -153,7 +153,9 @@ async function hasWebGPUAdapter(powerPreference) {
 export async function createWorld3DApp(canvas, options = {}) {
     if (typeof canvas !== 'object' || canvas === null)
         throw new World3DError('WORLD3D_INPUT_INVALID', 'canvas');
-    if (typeof options !== 'object' || options === null)
+    if (typeof options !== 'object' ||
+        options === null ||
+        (options.onLoopTiming !== undefined && typeof options.onLoopTiming !== 'function'))
         throw new World3DError('WORLD3D_INPUT_INVALID', 'options');
     const asked = options.backend ?? pickWorld3DBackend(options.query);
     if (asked !== 'webgl2' && asked !== 'webgpu')
@@ -266,6 +268,7 @@ export async function createWorld3DApp(canvas, options = {}) {
                 autoResize: false,
                 ...(show.mixers ? { mixers: show.mixers } : {}),
                 ...(show.controls ? { controls: show.controls } : {}),
+                ...(show.onFrameTiming === undefined ? {} : { onFrameTiming: show.onFrameTiming }),
                 ...(options.onError ? { onError: options.onError } : {}),
                 onUpdate(deltaSeconds, elapsedSeconds) {
                     resolution?.update(deltaSeconds);
@@ -283,7 +286,7 @@ export async function createWorld3DApp(canvas, options = {}) {
             loop ??= startWorld3DLoop(engine, cause => {
                 loop = undefined;
                 fail(cause);
-            });
+            }, options.onLoopTiming === undefined ? {} : { onFrameTiming: options.onLoopTiming });
         },
         stop() {
             loop?.dispose();

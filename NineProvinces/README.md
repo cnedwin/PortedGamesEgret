@@ -119,6 +119,8 @@ tally {"siegeWon":580,"ratio":12790.834146808944,"taken":692,"takenNeutral":55,"
 
 ## 已验证 · Verified
 
+- 2026-11-28：Windows Playwright WebKit iPhone 15 Pro 配置下修复启动兼容问题，标题截图及触摸设置通过，195/195 Node 测试通过；不是 iPhone 真机验收。见 [QUALITY.md](QUALITY.md)。 · Startup, title screenshot and touch Settings pass on Windows Playwright WebKit in an iPhone 15 Pro profile; 195/195 Node tests pass. Not a physical iPhone test. See QUALITY.md.
+
 - `node --test test/*.test.mjs` 共 77 项通过，覆盖剧本开局、沙盘、城港地标、疆域、存档、文字、引擎副本和武将图像。 · All 77 Node tests pass. They cover scenario starts, the sandbox, landmark cities and ports, domains, saves, text, the engine copy and officer art.
 - `node test/accept.mjs` 在无头浏览器的 SwiftShader 模式通过 31 项。覆盖中英文标题、音量保留、刘备立绘、桃园结义、平原出军、南皮布阵交战、结算、存读档和竖屏布局。 · All 31 acceptance checks pass in headless SwiftShader, including the volume setting, Liu Bei's illustration, the Peach Garden Oath, the battle at Nanpi and the save/load walk.
 - Windows Edge 跑到南皮攻城，实测布阵、四倍速和手动释放「武圣」。同机位中画质下，洛阳地图的 96 帧样本 p95 从 4.3 ms 到 8.3 ms。 · Windows Edge reached the siege at Nanpi and confirmed deployment, 4× speed and a manually targeted Wusheng hit. At Luoyang, the 96-frame same-camera medium-quality p95 rose from 4.3 ms to 8.3 ms.
@@ -177,10 +179,10 @@ tally {"siegeWon":580,"ratio":12790.834146808944,"taken":692,"takenNeutral":55,"
 
 ## 引擎副本 · Engine copy
 
-引擎副本取自 [Egret_rebuild](https://github.com/cnedwin/Egret_rebuild) 提交 `9d801beb0667dac833a57ae20a09b552e862b275`，由引擎仓库的 `tools/vendor-game.mjs` 复制，见 [vendor/SOURCE.md](vendor/SOURCE.md)。用到的入口：`@egret/engine`、`@egret/engine/world3d`、`@egret/engine/webgl2/world3d`、`@egret/engine/kit`、`@egret/engine/web/kit`、`@egret/engine/audio`、`@egret/engine/web/audio`。
+引擎副本取自 [Egret_rebuild](https://github.com/cnedwin/Egret_rebuild) 提交 `82561d6338a805f0e0459a2d5d42a284f9385b30`，由引擎仓库的 `tools/vendor-game.mjs` 复制，见 [vendor/SOURCE.md](vendor/SOURCE.md)。用到的入口：`@egret/engine`、`@egret/engine/world3d`、`@egret/engine/webgl2/world3d`、`@egret/engine/kit`、`@egret/engine/web/kit`、`@egret/engine/audio`、`@egret/engine/web/audio`。
 
 The engine copy is from [Egret_rebuild](https://github.com/cnedwin/Egret_rebuild) commit
-`9d801beb0667dac833a57ae20a09b552e862b275`, copied by the engine's `tools/vendor-game.mjs`; see
+`82561d6338a805f0e0459a2d5d42a284f9385b30`, copied by the engine's `tools/vendor-game.mjs`; see
 [vendor/SOURCE.md](vendor/SOURCE.md). Entries used are listed above.
 
 ```sh

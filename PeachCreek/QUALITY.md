@@ -159,3 +159,11 @@ The mixed entry point counts map interaction, visual feedback and UI actions, ex
 - Fold7: 121/121 rAF: p95/max 16.7/16.7 → 16.7/16.7 ms; scroll offset 303.36 → 303.36.
 - 原生 bind.label 保留独立美术文字语义，原两个失败断言恢复。共享管理模板 4 个 Node 与浏览器验收也通过。 / Native label restores two previously failing semantic assertions. Shared management preview also passes four Node tests and browser acceptance.
 - 限制 · Limits: 短前台 rAF 不是独立 GPU 时间，也不是整局、所有设备或中端手机验收。未跑真实读屏、物理手柄、Safari 或整局声学测试。 · Short foreground rAF samples are not isolated GPU time or a whole-game/device matrix. No physical screen reader, controller, Safari or speaker/acoustic certification.
+
+## 2026-11-28 WebKit 兼容性 · WebKit compatibility
+
+- 旧公开版缺少 Web Audio 时中断；候选版静音启动，标题可见，真实触屏「赴任」打开三存档槽。 · The public baseline stopped without Web Audio. The candidate starts silently, shows the title, and a real touchscreen tap opens the three save slots.
+- Node: 46/46. 候选引擎 · candidate engine: `82561d6338a805f0e0459a2d5d42a284f9385b30`.
+- 本机 Windows Playwright WebKit 26.6，iPhone 15 Pro 设备配置（393×659 CSS px，DPR 3），真实浏览器触屏事件，无物理 iPhone；仅首屏和代表性操作，不是整局或实机性能、声学验收。 · Windows Playwright WebKit 26.6, iPhone 15 Pro device profile (393×659 CSS px, DPR 3), actual browser touchscreen events, not a physical iPhone; launch and representative interaction only, not full-session performance or acoustic certification.
+- 本轮候选烟测页面异常、控制台错误、HTTP 4xx/5xx 均为 0。 · Candidate smoke: no page exceptions, console errors or HTTP 4xx/5xx.
+- [全站记录 · Showcase compatibility record](../docs/SAFARI-WEBKIT-20261128.md)

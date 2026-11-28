@@ -37,6 +37,15 @@ export const SCREENS = Object.freeze({
   'phone-tall': { width: 360, height: 800, scale: 3, touch: true, insets: { top: 24, right: 0, bottom: 0, left: 0 } },
   tablet: { width: 768, height: 1024, scale: 2, touch: true, insets: { top: 0, right: 0, bottom: 0, left: 0 } },
   'tablet-wide': { width: 1024, height: 768, scale: 2, touch: true, insets: { top: 0, right: 0, bottom: 0, left: 0 } },
+  // Galaxy Z Fold7 cover screen, landscape Chrome content viewport with browser chrome present.
+  // The measured page had no inset; this profile adds no simulated cutout. The unfolded profile stays separate.
+  'foldable-cover-wide': {
+    width: 873,
+    height: 325,
+    scale: 2.625,
+    touch: true,
+    insets: { top: 0, right: 0, bottom: 0, left: 0 }
+  },
   foldable: { width: 884, height: 1104, scale: 2.5, touch: true, insets: { top: 0, right: 0, bottom: 0, left: 0 } },
   desktop: { width: 1920, height: 1080, scale: 1, touch: false, insets: { top: 0, right: 0, bottom: 0, left: 0 } }
 });
@@ -68,19 +77,34 @@ export function controlFindings(controls, safe, touch) {
   for (const control of controls) {
     if (!inside(control, safe))
       found.push({ check: 'inSafeArea', severity: 'error', control: label(control), rect: round(control) });
-    if (touch && (control.width < TOUCH_TARGET - 0.5 || control.height < TOUCH_TARGET - 0.5))
+    // An exposed sliver of a deliberately clipped list row is not its
+    // authored touch target. Safety and overlap still use its visible hit box.
+    const target = control.authored ?? control;
+    if (touch && (target.width < TOUCH_TARGET - 0.5 || target.height < TOUCH_TARGET - 0.5))
       found.push({
         check: 'touchTarget',
         severity: 'warning',
         control: label(control),
-        size: [Math.round(control.width), Math.round(control.height)]
+        size: [Math.round(target.width), Math.round(target.height)]
       });
+    if (typeof control.blockedBy === 'string' && control.blockedBy)
+      found.push({ check: 'occluded', severity: 'warning', control: label(control), by: control.blockedBy });
+    for (const by of control.coveredBy ?? [])
+      if (typeof by === 'string' && by)
+        found.push({ check: 'occluded', severity: 'warning', control: label(control), by, source: 'paint' });
   }
   for (let a = 0; a < controls.length; a++)
     for (let b = a + 1; b < controls.length; b++) {
       const one = controls[a],
         other = controls[b];
-      if (inside(one, other, 0.5) || inside(other, one, 0.5)) continue;
+      // Modern receipts distinguish actual ancestors from unrelated controls
+      // that merely happen to be contained. Keep the legacy rule for older
+      // third-party reporters without native identity metadata.
+      const related =
+        one.id !== undefined && other.id !== undefined
+          ? one.ancestors?.includes(other.id) || other.ancestors?.includes(one.id)
+          : inside(one, other, 0.5) || inside(other, one, 0.5);
+      if (related) continue;
       if (overlap(one, other) > 1)
         found.push({ check: 'apart', severity: 'warning', controls: [label(one), label(other)] });
     }

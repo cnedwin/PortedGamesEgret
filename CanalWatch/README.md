@@ -104,6 +104,8 @@ node tools/balance.mjs 12
 
 ## 已验证 · Verified
 
+- 2026-11-28：WebKit 无音频宿主时仍可进入寻常首关；35 项 Node 测试通过。 · WebKit reaches the Normal map without an audio host; 35 Node tests passed. 使用 Windows Playwright WebKit 的 iPhone 15 Pro 配置，不是 iPhone 真机；详见 [QUALITY.md](QUALITY.md)。 · iPhone 15 Pro device profile on Windows Playwright WebKit, not a physical iPhone; see QUALITY.md.
+
 - Node 26：35/35 规则、存档、双语、引擎副本及三种屏幕布局几何测试。· 35/35 rule, save, locale, vendor and geometry tests.
 - 浏览器验收：51/51；标题、地图、结算三张新基线差异 0.00%，无控制台或页面错误。覆盖键盘、鼠标、模拟触屏、双语、横竖屏、建塔/升级/拆除、关闸、速度、暂停、胜败、存档及真实生成的载人船点击预判。· 51/51 browser checks and 0.00% differences against the three reviewed new baselines; keyboard, mouse, emulated touch, both languages, layout, tower actions, gates, speed, pause, results, saves and actual carrier preview.
 - 两种模式与原有数值、存档格式和美术资源均未变化。真机结果及性能限制见 [QUALITY.md](QUALITY.md)。· Both modes, numbers, save format and art are unchanged; see QUALITY.md for device results and performance limits.
@@ -156,10 +158,10 @@ node tools/balance.mjs 12
 
 ## 引擎副本 · Engine copy
 
-引擎副本取自 [Egret_rebuild](https://github.com/cnedwin/Egret_rebuild) 提交 `94bd70fb26b1f81794c9c6fbbb258c655fcd19df`，由引擎仓库的 `tools/vendor-game.mjs` 复制，见 [vendor/SOURCE.md](vendor/SOURCE.md)。用到的入口详见 SOURCE.md；包括 play、kit、UI、语义及浏览器语义投影。
+引擎副本取自 [Egret_rebuild](https://github.com/cnedwin/Egret_rebuild) 提交 `82561d6338a805f0e0459a2d5d42a284f9385b30`，由引擎仓库的 `tools/vendor-game.mjs` 复制，见 [vendor/SOURCE.md](vendor/SOURCE.md)。用到的入口详见 SOURCE.md；包括 play、kit、UI、语义及浏览器语义投影。
 
 The engine copy is from [Egret_rebuild](https://github.com/cnedwin/Egret_rebuild) commit
-`94bd70fb26b1f81794c9c6fbbb258c655fcd19df`, copied by the engine's `tools/vendor-game.mjs`; see
+`82561d6338a805f0e0459a2d5d42a284f9385b30`, copied by the engine's `tools/vendor-game.mjs`; see
 [vendor/SOURCE.md](vendor/SOURCE.md). Entries used include the play, kit, UI, semantics and browser semantics packages; see the exact list in SOURCE.md.
 
 ```sh

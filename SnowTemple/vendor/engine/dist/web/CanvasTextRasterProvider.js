@@ -22,7 +22,15 @@ function setState(context, key, value) {
     if (context[key] !== value)
         throw new EgretError('WEB_TEXT_STATE_UNSUPPORTED');
 }
-function drawingState(context, request, font) {
+function drawingState(context, request, font, compatible) {
+    // A fresh canvas already has the specified defaults. Older WebKit may not expose
+    // their setters; use those native defaults only for the game-label convenience.
+    // The strict WC1 provider still certifies every explicit state.
+    const defaultState = (key, value) => {
+        if (compatible && !(key in context))
+            return;
+        setState(context, key, value);
+    };
     // A legal font setter serializes canonically, so string equality with the
     // input is not a support test. A distinct, below-T1-size sentinel detects an
     // ignored assignment without creating another Canvas or parsing CSS ourselves.
@@ -34,19 +42,19 @@ function drawingState(context, request, font) {
     if (typeof context.font !== 'string' || context.font.length === 0 || context.font === sentinel) {
         throw new EgretError('WEB_TEXT_STATE_UNSUPPORTED');
     }
-    setState(context, 'lang', request.locale);
+    defaultState('lang', request.locale);
     setState(context, 'direction', request.direction);
     setState(context, 'textAlign', 'left');
     setState(context, 'textBaseline', 'alphabetic');
-    setState(context, 'fontKerning', 'auto');
-    setState(context, 'fontStretch', 'normal');
-    setState(context, 'fontVariantCaps', 'normal');
-    setState(context, 'letterSpacing', '0px');
-    setState(context, 'wordSpacing', '0px');
-    setState(context, 'textRendering', 'auto');
+    defaultState('fontKerning', 'auto');
+    defaultState('fontStretch', 'normal');
+    defaultState('fontVariantCaps', 'normal');
+    defaultState('letterSpacing', '0px');
+    defaultState('wordSpacing', '0px');
+    defaultState('textRendering', 'auto');
     setState(context, 'globalAlpha', 1);
     setState(context, 'globalCompositeOperation', 'source-over');
-    setState(context, 'filter', 'none');
+    defaultState('filter', 'none');
     setState(context, 'shadowBlur', 0);
     setState(context, 'shadowOffsetX', 0);
     setState(context, 'shadowOffsetY', 0);
@@ -84,7 +92,7 @@ function lineMetrics(metrics, strokeWidth = 0) {
         inkBottom: hasInk ? bottom + strokeWidth : 0
     };
 }
-function surface(document, width, height, work, cleanupFailure, reportSuccessfulCleanupAtRelease = false) {
+function surface(document, width, height, work, cleanupFailure, reportSuccessfulCleanupAtRelease = false, gameLocale) {
     let canvas;
     let context;
     let value;
@@ -95,18 +103,25 @@ function surface(document, width, height, work, cleanupFailure, reportSuccessful
         canvas = document.createElement('canvas');
         canvas.width = width;
         canvas.height = height;
+        if (gameLocale !== undefined)
+            canvas.lang = gameLocale;
         if (canvas.width !== width || canvas.height !== height)
             throw new EgretError('WEB_TEXT_STATE_UNSUPPORTED');
         // The hint must precede the surface's very first context acquisition.
         context =
             canvas.getContext('2d', { alpha: true, colorSpace: 'srgb', willReadFrequently: true }) ??
                 undefined;
-        if (context === undefined || typeof context.getContextAttributes !== 'function')
+        if (context === undefined)
             throw new EgretError('WEB_TEXT_STATE_UNSUPPORTED');
-        const attributes = context.getContextAttributes();
-        if (attributes.alpha !== true || attributes.colorSpace !== 'srgb')
+        const attributes = typeof context.getContextAttributes === 'function' ? context.getContextAttributes() : undefined;
+        // Omitted attributes follow the Canvas defaults (alpha and sRGB). Explicit
+        // reports of a different surface are never admitted, even in game mode.
+        if (gameLocale === undefined
+            ? attributes?.alpha !== true || attributes?.colorSpace !== 'srgb'
+            : (attributes?.alpha !== undefined && attributes.alpha !== true) ||
+                (attributes?.colorSpace !== undefined && attributes.colorSpace !== 'srgb'))
             throw new EgretError('WEB_TEXT_STATE_UNSUPPORTED');
-        const readbackHint = typeof attributes.willReadFrequently === 'boolean' ? attributes.willReadFrequently : undefined;
+        const readbackHint = typeof attributes?.willReadFrequently === 'boolean' ? attributes.willReadFrequently : undefined;
         value = work(context, readbackHint);
     }
     catch (error) {
@@ -149,8 +164,15 @@ function surface(document, width, height, work, cleanupFailure, reportSuccessful
         throw cause;
     return value;
 }
-/** Caller-owned fonts and explicit cache invalidation; no waiting or font loading. */
-export function createCanvasTextRasterProvider() {
+/** Caller-owned fonts and explicit cache invalidation; no font loading. */
+export function createCanvasTextRasterProvider(options = {}) {
+    if (options === null ||
+        typeof options !== 'object' ||
+        (options.schedule !== undefined && typeof options.schedule !== 'function') ||
+        (options.compatibility !== undefined && options.compatibility !== 'game-labels'))
+        throw new EgretError('WEB_TEXT_PROVIDER_INVALID');
+    const schedule = options.schedule;
+    const compatible = options.compatibility === 'game-labels';
     let owner;
     try {
         if (typeof window !== 'undefined' &&
@@ -175,7 +197,7 @@ export function createCanvasTextRasterProvider() {
     const plans = new WeakMap();
     const released = new WeakSet();
     const provider = Object.freeze({
-        identity: 'egret.canvas-text.wc1',
+        identity: compatible ? 'egret.canvas-text.game-labels' : 'egret.canvas-text.wc1',
         supportsStroke: true,
         profile: 'canvas-explicit-lines-v1',
         async measure(request, context) {
@@ -192,38 +214,42 @@ export function createCanvasTextRasterProvider() {
                     request.profile !== provider.profile ||
                     request.fontGeneration !== context.fontGeneration)
                     throw new EgretError('WEB_TEXT_PLAN_INVALID');
-                const font = fontFor(request);
-                ready(capturedDocument, font, request);
-                cancelled(context.signal);
-                const plan = surface(capturedDocument, 1, 1, (canvas, readbackHint) => {
-                    drawingState(canvas, request, font);
-                    canvas.setTransform(1, 0, 0, 1, 0, 0);
-                    const lines = request.sourceLines.map(line => lineMetrics(canvas.measureText(request.text.slice(line.start, line.end)), request.strokeWidth));
+                const work = () => {
                     cancelled(context.signal);
-                    // Exactly one authentic invocation issuer owns all plan geometry.
-                    issued = context.createPlan({ baselineOffset: request.fontSize, lines });
-                    plans.set(issued, {
-                        used: false,
-                        busy: true,
-                        quarantined: false,
-                        cleanupCause: undefined,
-                        measureReadbackHint: readbackHint,
-                        rasterReadbackHint: undefined
-                    });
+                    const font = fontFor(request);
+                    ready(capturedDocument, font, request);
                     cancelled(context.signal);
-                    return issued;
-                }, (errors, failed, cause) => {
-                    quarantined = true;
-                    if (issued === undefined)
-                        return new EgretError('WEB_TEXT_CLEANUP_FAILED', {
-                            cause: failed ? cause : errors[0],
-                            cleanupErrors: errors
+                    return surface(capturedDocument, 1, 1, (canvas, readbackHint) => {
+                        drawingState(canvas, request, font, compatible);
+                        canvas.setTransform(1, 0, 0, 1, 0, 0);
+                        const lines = request.sourceLines.map(line => lineMetrics(canvas.measureText(request.text.slice(line.start, line.end)), request.strokeWidth));
+                        cancelled(context.signal);
+                        // Exactly one authentic invocation issuer owns all plan geometry.
+                        issued = context.createPlan({ baselineOffset: request.fontSize, lines });
+                        plans.set(issued, {
+                            used: false,
+                            busy: true,
+                            quarantined: false,
+                            cleanupCause: undefined,
+                            measureReadbackHint: readbackHint,
+                            rasterReadbackHint: undefined
                         });
-                    const state = plans.get(issued);
-                    state.quarantined = true;
-                    state.cleanupCause = errors[0];
-                    return failed ? cause : errors[0];
-                });
+                        cancelled(context.signal);
+                        return issued;
+                    }, (errors, failed, cause) => {
+                        quarantined = true;
+                        if (issued === undefined)
+                            return new EgretError('WEB_TEXT_CLEANUP_FAILED', {
+                                cause: failed ? cause : errors[0],
+                                cleanupErrors: errors
+                            });
+                        const state = plans.get(issued);
+                        state.quarantined = true;
+                        state.cleanupCause = errors[0];
+                        return failed ? cause : errors[0];
+                    }, false, compatible ? request.locale : undefined);
+                };
+                const plan = schedule === undefined ? work() : await schedule(work, context.signal);
                 cancelled(context.signal);
                 return plan;
             }
@@ -253,43 +279,47 @@ export function createCanvasTextRasterProvider() {
                     context.reservedScratchBytes !== 2 * bytes)
                     throw new EgretError('WEB_TEXT_PLAN_INVALID');
                 cancelled(context.signal);
-                const font = fontFor(request);
-                ready(capturedDocument, font, request);
-                cancelled(context.signal);
-                if (placement === undefined)
-                    return undefined;
-                const image = surface(capturedDocument, placement.width, placement.height, (canvas, readbackHint) => {
-                    state.rasterReadbackHint = readbackHint;
-                    drawingState(canvas, request, font);
-                    canvas.setTransform(request.density, 0, 0, request.density, -placement.pixelLeft, -placement.pixelTop);
-                    for (const line of plan.metrics.lines) {
-                        const text = request.text.slice(line.source.start, line.source.end);
-                        if (request.strokeWidth !== undefined)
-                            canvas.strokeText(text, 0, line.baselineY);
-                        canvas.fillText(text, 0, line.baselineY);
-                    }
+                const work = () => {
                     cancelled(context.signal);
-                    const pixels = canvas.getImageData(0, 0, placement.width, placement.height);
-                    if (pixels.width !== placement.width ||
-                        pixels.height !== placement.height ||
-                        !(pixels.data instanceof Uint8ClampedArray) ||
-                        !(pixels.data.buffer instanceof ArrayBuffer) ||
-                        pixels.data.byteLength !== bytes ||
-                        pixels.colorSpace !== 'srgb') {
-                        throw new TypeError('Canvas text readback must be exact tight sRGB rgba8 bytes');
-                    }
+                    const font = fontFor(request);
+                    ready(capturedDocument, font, request);
                     cancelled(context.signal);
-                    // A view allocates no second pixel buffer. The existing public
-                    // image constructor makes the one owned immutable pixel copy.
-                    const view = new Uint8Array(pixels.data.buffer, pixels.data.byteOffset, pixels.data.byteLength);
-                    const result = createImageData2D({ width: placement.width, height: placement.height, pixels: view });
-                    cancelled(context.signal);
-                    return result;
-                }, (errors, failed, cause) => {
-                    state.quarantined = true;
-                    state.cleanupCause = errors[0];
-                    return failed ? cause : errors[0];
-                }, true);
+                    if (placement === undefined)
+                        return undefined;
+                    return surface(capturedDocument, placement.width, placement.height, (canvas, readbackHint) => {
+                        state.rasterReadbackHint = readbackHint;
+                        drawingState(canvas, request, font, compatible);
+                        canvas.setTransform(request.density, 0, 0, request.density, -placement.pixelLeft, -placement.pixelTop);
+                        for (const line of plan.metrics.lines) {
+                            const text = request.text.slice(line.source.start, line.source.end);
+                            if (request.strokeWidth !== undefined)
+                                canvas.strokeText(text, 0, line.baselineY);
+                            canvas.fillText(text, 0, line.baselineY);
+                        }
+                        cancelled(context.signal);
+                        const pixels = canvas.getImageData(0, 0, placement.width, placement.height);
+                        if (pixels.width !== placement.width ||
+                            pixels.height !== placement.height ||
+                            !(pixels.data instanceof Uint8ClampedArray) ||
+                            !(pixels.data.buffer instanceof ArrayBuffer) ||
+                            pixels.data.byteLength !== bytes ||
+                            (pixels.colorSpace !== 'srgb' && !(compatible && pixels.colorSpace === undefined))) {
+                            throw new TypeError('Canvas text readback must be exact tight sRGB rgba8 bytes');
+                        }
+                        cancelled(context.signal);
+                        // A view allocates no second pixel buffer. The existing public
+                        // image constructor makes the one owned immutable pixel copy.
+                        const view = new Uint8Array(pixels.data.buffer, pixels.data.byteOffset, pixels.data.byteLength);
+                        const result = createImageData2D({ width: placement.width, height: placement.height, pixels: view });
+                        cancelled(context.signal);
+                        return result;
+                    }, (errors, failed, cause) => {
+                        state.quarantined = true;
+                        state.cleanupCause = errors[0];
+                        return failed ? cause : errors[0];
+                    }, true, compatible ? request.locale : undefined);
+                };
+                const image = schedule === undefined ? work() : await schedule(work, context.signal);
                 cancelled(context.signal);
                 return image;
             }

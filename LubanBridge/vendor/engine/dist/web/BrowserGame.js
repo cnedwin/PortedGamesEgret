@@ -1,16 +1,32 @@
 // SPDX-License-Identifier: Apache-2.0
 // A game in a page from one call: a Host chosen for the browser, an Engine, a scope, pointer and keyboard input and
 // a frame loop, each made the way its own entry makes it, and all of them ended by one dispose.
-import { EgretError } from '@egret/runtime';
+import { EgretError, Scope as RuntimeScope } from '@egret/runtime';
 import { Bitmap, copyImageData2DPixels, createAssetRef, createAssetType, createEngineForProfile, createImageData2D, createTexture, isTexture, SHARED_FRAME_PROFILE_2D, Sprite } from '@egret/engine';
 import { createBrowserTextureProvider } from './image.js';
+import { createBrowserTextWork } from './browserTextWork.js';
+import { createBrowserStaticLayers } from './browserStaticLayers.js';
 import { decodeBrowserImage, sniffBrowserImageFormat } from './BrowserImageTextures.js';
+import { createGameImageAdmission } from './GameImageAdmission.js';
 import { createTextField, createTextRasterCache } from '@egret/engine/text';
 import { createBrowserFrameLoop } from './loop.js';
 import { createBrowserPointerInput } from './pointer.js';
 import { createBrowserKeyboardInput } from './keyboard.js';
 import { createBrowserStatsPanel } from './BrowserStatsPanel.js';
 import { planScreen } from './screen.js';
+const GAME_FITS = [
+    'none',
+    'contain',
+    'cover',
+    'stretch',
+    'expand',
+    'fixedWidth',
+    'fixedHeight',
+    'fixedNarrow',
+    'fixedWide'
+];
+/** The fits of which the stage follows the plan of the screen, its size included. */
+const plannedFit = (fit) => fit === 'none' || fit === 'cover' || fit === 'stretch' ? undefined : fit;
 const invalid = () => new EgretError('BROWSER_GAME_OPTIONS_INVALID');
 const whole = (value) => typeof value === 'number' && Number.isSafeInteger(value) && value > 0;
 const finite = (value) => typeof value === 'number' && Number.isFinite(value);
@@ -67,6 +83,32 @@ async function chooseBackend(asked) {
         return 'webgl2';
     }
 }
+/** Tells a tool's `globalThis.__egretAgent.warning`, where a page has one, of a warning; what it throws is the tool's. */
+function tellAgent(warning) {
+    const agent = globalThis.__egretAgent;
+    if (typeof agent?.warning !== 'function')
+        return;
+    try {
+        agent.warning(warning);
+    }
+    catch {
+        /* The tool's own failure, not the game's. */
+    }
+}
+/**
+ * The safe-area insets a tool's `globalThis.__egretAgent.insets` gives, in the window's CSS pixels, to fit the game as
+ * a phone with a notch would; undefined where a page has none, or none of 0 or more on each side.
+ */
+function agentInsets() {
+    const agent = globalThis.__egretAgent;
+    const insets = agent?.insets;
+    if (insets === null || typeof insets !== 'object')
+        return undefined;
+    const sides = [insets.top, insets.right, insets.bottom, insets.left];
+    if (!sides.every(side => typeof side === 'number' && Number.isFinite(side) && side >= 0))
+        return undefined;
+    return { top: insets.top, right: insets.right, bottom: insets.bottom, left: insets.left };
+}
 /**
  * What a game does with the diagnostics of its Engine. An error the Engine can only report, such as a listener of
  * pointer input that threw, which ends that input, is told as a failure of the loop is: to `onError`, or to the page,
@@ -94,11 +136,16 @@ export function gameDiagnostics(onError) {
  * to `game.stage`. Everything it makes is what the separate entries make; a game that outgrows it takes them apart.
  */
 export async function createBrowserGame(options) {
+    const started = performance.now();
     if (options === null || typeof options !== 'object')
         throw invalid();
-    const { canvas, width, height, update, onError, onWarning } = options;
-    const asked = options.backend ?? 'auto', clearColor = options.clearColor ?? 0, clearAlpha = options.clearAlpha ?? 1, blendSpace = options.blendSpace ?? 'linear', enableEffects = options.effects ?? false;
-    const device = Number(globalThis.devicePixelRatio), pixelRatio = options.pixelRatio ?? (device > 0 ? Math.min(device, 2) : 1);
+    const { canvas, width, height, update, onError, onWarning, onFrameTiming } = options;
+    const asked = options.backend ?? 'auto', clearColor = options.clearColor ?? 0, clearAlpha = options.clearAlpha ?? 1, blendSpace = options.blendSpace ?? 'linear', enableEffects = options.effects ?? false, renderMode = options.renderMode ?? 'continuous';
+    const deviceRatio = () => {
+        const ratio = Number(globalThis.devicePixelRatio);
+        return ratio > 0 && Number.isFinite(ratio) ? ratio : 1;
+    };
+    const wholeScale = options.wholeScale ?? false, pixelRatio = options.pixelRatio ?? (wholeScale ? 1 : Math.min(deviceRatio(), 2));
     if (canvas === null ||
         typeof canvas !== 'object' ||
         typeof canvas.getBoundingClientRect !== 'function' ||
@@ -115,11 +162,33 @@ export async function createBrowserGame(options) {
         !(clearAlpha >= 0 && clearAlpha <= 1) ||
         (blendSpace !== 'linear' && blendSpace !== 'srgb') ||
         typeof enableEffects !== 'boolean' ||
+        (renderMode !== 'continuous' && renderMode !== 'on-demand') ||
+        (options.textWorkBudgetMs !== undefined &&
+            (!Number.isFinite(options.textWorkBudgetMs) || options.textWorkBudgetMs <= 0 || options.textWorkBudgetMs > 16)) ||
+        (options.textWorkBudgetWhen !== undefined &&
+            (options.textWorkBudgetMs === undefined || typeof options.textWorkBudgetWhen !== 'function')) ||
+        (options.webgl2PageBatching !== undefined &&
+            options.webgl2PageBatching !== 'single-page' &&
+            options.webgl2PageBatching !== 'multi-page') ||
+        (options.uiScale !== undefined && (plannedFit(options.fit ?? 'none') === undefined || wholeScale)) ||
         (update !== undefined && typeof update !== 'function') ||
         (onError !== undefined && typeof onError !== 'function') ||
+        (options.beforeRender !== undefined && typeof options.beforeRender !== 'function') ||
+        (options.afterFrame !== undefined && typeof options.afterFrame !== 'function') ||
+        (onFrameTiming !== undefined && typeof onFrameTiming !== 'function') ||
+        (options.measureSharedFrames !== undefined && typeof options.measureSharedFrames !== 'boolean') ||
+        (options.renderRetry !== undefined &&
+            (options.renderRetry === null ||
+                typeof options.renderRetry !== 'object' ||
+                !Number.isSafeInteger(options.renderRetry.maxConsecutive) ||
+                options.renderRetry.maxConsecutive < 1 ||
+                options.renderRetry.maxConsecutive > 8 ||
+                typeof options.renderRetry.shouldRetry !== 'function')) ||
         (onWarning !== undefined && typeof onWarning !== 'function') ||
-        [options.pointer, options.keyboard, options.hover, options.autoStart, options.stats].some(flag => flag !== undefined && typeof flag !== 'boolean') ||
-        !['none', 'contain', 'cover', 'stretch', 'expand'].includes(options.fit ?? 'none') ||
+        [options.pointer, options.keyboard, options.hover, options.autoStart, options.stats, options.staticLayers].some(flag => flag !== undefined && typeof flag !== 'boolean') ||
+        !GAME_FITS.includes(options.fit ?? 'none') ||
+        typeof wholeScale !== 'boolean' ||
+        (wholeScale && (plannedFit(options.fit ?? 'none') === undefined || pixelRatio !== 1)) ||
         (options.fitTo !== undefined && (options.fitTo === null || typeof options.fitTo !== 'object')))
         throw invalid();
     // The plan of the stage: refused here, before anything is made, when the portrait size or the insets are not valid.
@@ -127,8 +196,10 @@ export async function createBrowserGame(options) {
         box,
         design: { width, height },
         ...(options.portrait === undefined ? {} : { portrait: options.portrait }),
-        fit: options.fit === 'expand' ? 'expand' : 'contain',
-        ...(insets === undefined ? {} : { insets })
+        fit: plannedFit(options.fit ?? 'none') ?? 'contain',
+        ...(wholeScale ? { wholeScale, pixelRatio: deviceRatio() } : {}),
+        ...(insets === undefined ? {} : { insets }),
+        ...(options.uiScale === undefined ? {} : { uiScale: options.uiScale })
     });
     try {
         planFor({ width, height }, options.insets);
@@ -137,14 +208,30 @@ export async function createBrowserGame(options) {
         throw invalid();
     }
     let screen = planFor({ width, height });
-    const backend = await chooseBackend(asked);
-    // Only the chosen backend's module is loaded.
+    const backend = await chooseBackend(asked), backendReady = performance.now();
+    // Measure the selected module and native host separately. Neither needs to load the other backend.
+    let moduleReady = backendReady;
     const host = backend === 'webgpu'
-        ? (await import('./webgpu.js')).createSharedWebGPUHost({ canvas, pixelRatio, blendSpace, enableEffects })
-        : (await import('./webgl2.js')).createSharedWebGL2Host({ canvas, pixelRatio, blendSpace, enableEffects });
+        ? await import('./webgpu.js').then(module => {
+            moduleReady = performance.now();
+            return module.createSharedWebGPUHost({ canvas, pixelRatio, blendSpace, enableEffects });
+        })
+        : await import('./webgl2.js').then(module => {
+            moduleReady = performance.now();
+            return module.createSharedWebGL2Host({
+                canvas,
+                pixelRatio,
+                blendSpace,
+                enableEffects,
+                ...(options.measureSharedFrames === undefined ? {} : { measureSharedFrames: options.measureSharedFrames }),
+                ...(options.webgl2PageBatching === undefined ? {} : { pageBatching: options.webgl2PageBatching })
+            });
+        });
+    const hostCreated = performance.now();
+    const staticCache = options.staticLayers === true && 'createSharedLayer2D' in host ? createBrowserStaticLayers(host) : undefined;
     let engine;
     try {
-        engine = await createEngineForProfile({ host, onDiagnostic: gameDiagnostics(onError) }, SHARED_FRAME_PROFILE_2D);
+        engine = await createEngineForProfile({ host: staticCache?.adapter ?? host, onDiagnostic: gameDiagnostics(onError) }, SHARED_FRAME_PROFILE_2D);
     }
     catch (cause) {
         try {
@@ -155,10 +242,23 @@ export async function createBrowserGame(options) {
         }
         throw cause;
     }
+    const engineOpened = performance.now();
+    const webgl2Startup = 'getStartupTiming' in host ? host.getStartupTiming() : undefined;
+    let ready = engineOpened, firstSubmit;
     let loop, stats, disposal;
     try {
         const scope = engine.createScope(), initialFrame = Object.freeze({ width, height, clearColor, clearAlpha });
+        const textWork = options.textWorkBudgetMs === undefined
+            ? undefined
+            : scope.use(createBrowserTextWork(options.textWorkBudgetMs, options.textWorkBudgetWhen));
+        const scheduleTextWork = textWork?.schedule;
         let frame = initialFrame;
+        const revision = renderMode === 'on-demand' ? engine.watchDisplayRevision(scope) : undefined;
+        let lastFrame, lastScreen, lastRevision = -1, lastLayerRevision = -1, lastGeneration = -1, redraw = 0, shownRedraw = -1;
+        const invalidate = () => {
+            if (revision !== undefined)
+                redraw++;
+        };
         const frameNow = () => frame;
         const stageSize = () => frame;
         const pointer = options.pointer === false
@@ -178,6 +278,7 @@ export async function createBrowserGame(options) {
             : undefined;
         const panel = (stats = options.stats === true ? createBrowserStatsPanel({ canvas, label: backend }) : undefined);
         let drawn;
+        let lastDrawAccepted = false;
         // What the last frame drawn held of a frame's images, and the frames not drawn for holding more.
         const FRAME_PAGES = 64, FRAME_REGIONS = 4096, FRAME_IMAGE_BYTES = 67108864;
         let usage = Object.freeze({
@@ -189,6 +290,7 @@ export async function createBrowserGame(options) {
         });
         let nearLimit = false, refusing = false;
         const warn = (warning) => {
+            tellAgent(Object.freeze(warning));
             if (onWarning === undefined)
                 return;
             try {
@@ -241,8 +343,12 @@ export async function createBrowserGame(options) {
         // the panel, and lets a frame that holds more images than a frame may go undrawn, with a warning, rather than stop
         // the game.
         const drawFrame = (given) => {
-            sweepLabels();
-            waitAtlas();
+            // Continuous mode keeps its old frame-time maintenance. On-demand performs it each display step below.
+            if (revision === undefined) {
+                sweepLabels();
+                waitAtlas();
+            }
+            const pending = redraw, nextRevision = revision?.revision, nextLayer = staticCache?.api.revision ?? 0, nextScreen = screen, nextGeneration = revision === undefined ? -1 : host.getSessionStatus().generation;
             {
                 let frame;
                 try {
@@ -268,6 +374,17 @@ export async function createBrowserGame(options) {
                     return undefined;
                 }
                 drawn = frame;
+                if (firstSubmit === undefined)
+                    firstSubmit = performance.now();
+                // A refused frame leaves the dirty request pending; a late mutation after capture is not acknowledged.
+                if (nextRevision !== undefined) {
+                    lastFrame = given;
+                    lastScreen = nextScreen;
+                    lastRevision = nextRevision;
+                    lastLayerRevision = nextLayer;
+                    lastGeneration = nextGeneration;
+                    shownRedraw = pending;
+                }
                 measureFrame(frame);
                 return frame;
             }
@@ -275,13 +392,45 @@ export async function createBrowserGame(options) {
         const drawing = {
             clock: engine.clock,
             advanceTime: (seconds) => engine.advanceTime(seconds),
-            renderSharedFrame: drawFrame
+            renderSharedFrame: onFrameTiming === undefined
+                ? drawFrame
+                : (given) => {
+                    const result = drawFrame(given);
+                    lastDrawAccepted = result !== undefined;
+                    return result;
+                }
         };
         // With a panel, each step tells it what the last one did.
         const made = (loop = createBrowserFrameLoop({
             engine: drawing,
             host,
             frame: frameNow,
+            ...(revision === undefined
+                ? {}
+                : {
+                    shouldRender: () => {
+                        // Raster packing/disposal is work that must settle even when a static frame is retained.
+                        sweepLabels();
+                        waitAtlas();
+                        return (lastRevision !== revision.revision ||
+                            lastLayerRevision !== (staticCache?.api.revision ?? 0) ||
+                            lastGeneration !== host.getSessionStatus().generation ||
+                            shownRedraw !== redraw ||
+                            lastFrame !== frame ||
+                            lastScreen !== screen);
+                    }
+                }),
+            ...(onFrameTiming === undefined
+                ? {}
+                : {
+                    onFrameTiming: (sample) => {
+                        const outcome = sample.outcome === 'rendered' ? (lastDrawAccepted ? 'submitted' : 'refused') : sample.outcome;
+                        onFrameTiming(Object.freeze({ ...sample, outcome }));
+                    }
+                }),
+            ...(options.beforeRender === undefined ? {} : { beforeRender: options.beforeRender }),
+            ...(options.afterFrame === undefined ? {} : { afterFrame: options.afterFrame }),
+            ...(options.renderRetry === undefined ? {} : { renderRetry: options.renderRetry }),
             ...(onError === undefined ? {} : { onError }),
             update(seconds) {
                 if (panel !== undefined) {
@@ -303,7 +452,7 @@ export async function createBrowserGame(options) {
         const imageType = createAssetType('egret.browser-game.image', isTexture);
         const pendingPngBytes = new WeakMap();
         const pngTextures = new WeakSet();
-        let imageJobs = 0;
+        const imageJobs = createGameImageAdmission(MAX_GAME_IMAGE_JOBS);
         const images = createBrowserTextureProvider({
             async readBytes(_ref, context) {
                 const bytes = pendingPngBytes.get(context);
@@ -316,14 +465,12 @@ export async function createBrowserGame(options) {
             async load(ref, context) {
                 // Hold the original admission budget through fetch and decode for every format.
                 // Even a cancelled native decode retains its slot until the browser settles it.
-                if (imageJobs >= MAX_GAME_IMAGE_JOBS)
-                    throw new EgretError('WEB_PNG_JOB_LIMIT', { cause: new RangeError('Game image occupied job limit') });
-                if (context.signal.aborted)
-                    throw context.signal.reason;
+                const release = await imageJobs.admit(context.signal);
                 const stop = new AbortController(), abort = () => stop.abort();
-                imageJobs++;
-                context.signal.addEventListener('abort', abort, { once: true });
                 try {
+                    context.signal.addEventListener('abort', abort, { once: true });
+                    if (context.signal.aborted)
+                        throw context.signal.reason;
                     let bytes;
                     try {
                         const response = await globalThis.fetch(ref.id, { signal: stop.signal });
@@ -357,9 +504,9 @@ export async function createBrowserGame(options) {
                     return texture;
                 }
                 finally {
-                    imageJobs--;
                     context.signal.removeEventListener('abort', abort);
                     pendingPngBytes.delete(context);
+                    release();
                 }
             },
             dispose(texture) {
@@ -384,7 +531,7 @@ export async function createBrowserGame(options) {
                 texture.dispose();
             }
         });
-        const leasePixels = async (width, height, pixels) => {
+        const leasePixels = async (width, height, pixels, owner = scope) => {
             if (!whole(width) ||
                 !whole(height) ||
                 !(pixels instanceof Uint8Array || pixels instanceof Uint8ClampedArray) ||
@@ -401,7 +548,14 @@ export async function createBrowserGame(options) {
             const key = 'painted-' + ++paintedCount;
             painted.set(key, texture);
             try {
-                return scope.use(await engine.assets.acquire(createAssetRef(paintedType, key), { signal: scope.signal }));
+                const lease = await engine.assets.acquire(createAssetRef(paintedType, key), { signal: owner.signal });
+                try {
+                    return owner.use(lease);
+                }
+                catch (cause) {
+                    lease.release();
+                    throw cause;
+                }
             }
             finally {
                 // Not loaded (the scope ended first): the texture is ended here.
@@ -409,7 +563,7 @@ export async function createBrowserGame(options) {
                     texture.dispose();
             }
         };
-        // The canvas in its element: sized now and whenever the element changes size. With "contain" and "expand" the
+        // The canvas in its element: sized now and whenever the element changes size. With the planned fits the
         // stage follows the plan of the screen: its size, and, with a portrait size, its shape.
         const fit = options.fit ?? 'none', holder = options.fitTo ?? canvas.parentElement;
         const screenListeners = new Set();
@@ -437,13 +591,20 @@ export async function createBrowserGame(options) {
                 page.body.appendChild(probe);
             }
             const style = view.getComputedStyle(probe), read = (value) => (Number.isFinite(parseFloat(value)) ? Math.max(0, parseFloat(value)) : 0);
+            // A tool may stand in for a phone's notch and home bar, which a headless browser does not have.
+            const standIn = agentInsets(), edges = standIn ?? {
+                top: read(style.paddingTop),
+                right: read(style.paddingRight),
+                bottom: read(style.paddingBottom),
+                left: read(style.paddingLeft)
+            };
             // Insets are of the window; the element may be anywhere in it.
             const box = (holder ?? canvas).getBoundingClientRect(), across = view.innerWidth, down = view.innerHeight;
             return {
-                top: Math.max(0, read(style.paddingTop) - box.top),
-                left: Math.max(0, read(style.paddingLeft) - box.left),
-                right: Math.max(0, read(style.paddingRight) - (finite(across) ? across - box.right : 0)),
-                bottom: Math.max(0, read(style.paddingBottom) - (finite(down) ? down - box.bottom : 0))
+                top: Math.max(0, edges.top - box.top),
+                left: Math.max(0, edges.left - box.left),
+                right: Math.max(0, edges.right - (finite(across) ? across - box.right : 0)),
+                bottom: Math.max(0, edges.bottom - (finite(down) ? down - box.bottom : 0))
             };
         };
         if (fit !== 'none' && holder !== null) {
@@ -471,10 +632,14 @@ export async function createBrowserGame(options) {
                     frame = Object.freeze({ width: next.width, height: next.height, clearColor, clearAlpha });
                 style.width = next.width * next.scale + 'px';
                 style.height = next.height * next.scale + 'px';
+                // Whole steps are enlarged as they are, a canvas pixel to a square of the device's.
+                if (wholeScale)
+                    style.imageRendering = 'pixelated';
                 style.marginLeft = next.left + 'px';
                 style.marginTop = next.top + 'px';
                 const moved = next.width !== before.width ||
                     next.height !== before.height ||
+                    next.scale !== before.scale ||
                     next.orientation !== before.orientation ||
                     ['x', 'y', 'width', 'height'].some(key => next.safe[key] !== before.safe[key]);
                 if (moved)
@@ -577,7 +742,9 @@ export async function createBrowserGame(options) {
             const { scope: owner = scope, ...given } = options;
             if (owner === null || typeof owner !== 'object')
                 throw invalid();
-            textCache ??= import('./text.js').then(text => (currentTextCache = createTextRasterCache(engine.assets, { provider: text.createCanvasTextRasterProvider() })));
+            textCache ??= import('./text.js').then(text => (currentTextCache = createTextRasterCache(engine.assets, {
+                provider: text.createCanvasTextRasterProvider({ compatibility: 'game-labels', ...(scheduleTextWork === undefined ? {} : { schedule: scheduleTextWork }) })
+            })));
             const cache = await textCache;
             const field = createTextField(engine, owner, cache);
             let now = {
@@ -588,6 +755,8 @@ export async function createBrowserGame(options) {
                 italic: false,
                 lineHeight: 0,
                 color: 0xffffff,
+                strokeWidth: 0,
+                strokeColor: 0,
                 locale: 'en',
                 direction: 'ltr'
             };
@@ -603,7 +772,9 @@ export async function createBrowserGame(options) {
                 locale: now.locale,
                 direction: now.direction,
                 density: pixelRatio,
-                fillColor: now.color
+                fillColor: now.color,
+                strokeWidth: now.strokeWidth,
+                strokeColor: now.strokeColor
             });
             const enterLabelLane = () => {
                 if (labelsDrawing < LABEL_LANES) {
@@ -901,7 +1072,9 @@ export async function createBrowserGame(options) {
             const { scope: owner = scope, ...given } = options;
             if (owner === null || typeof owner !== 'object')
                 throw invalid();
-            textCache ??= import('./text.js').then(text => (currentTextCache = createTextRasterCache(engine.assets, { provider: text.createCanvasTextRasterProvider() })));
+            textCache ??= import('./text.js').then(text => (currentTextCache = createTextRasterCache(engine.assets, {
+                provider: text.createCanvasTextRasterProvider({ compatibility: 'game-labels', ...(scheduleTextWork === undefined ? {} : { schedule: scheduleTextWork }) })
+            })));
             const cache = await textCache;
             const display = owner.use(new Sprite());
             let now = {
@@ -912,6 +1085,8 @@ export async function createBrowserGame(options) {
                 italic: false,
                 lineHeight: 0,
                 color: 0xffffff,
+                strokeWidth: 0,
+                strokeColor: 0,
                 locale: 'en',
                 direction: 'ltr'
             };
@@ -973,7 +1148,9 @@ export async function createBrowserGame(options) {
                             locale: now.locale,
                             direction: now.direction,
                             density: pixelRatio,
-                            fillColor: now.color
+                            fillColor: now.color,
+                            strokeWidth: now.strokeWidth,
+                            strokeColor: now.strokeColor
                         };
                         let prepared;
                         try {
@@ -1137,10 +1314,84 @@ export async function createBrowserGame(options) {
                 dispose: close
             });
         }
+        // The two extra text paths load only on first use; ordinary labels keep the existing T1 provider and identity.
+        let paragraphLabels;
+        const createParagraphLabel = async (options) => {
+            if (options === null || typeof options !== 'object' || options.width === undefined)
+                throw invalid();
+            const { scope: owner = scope, ...given } = options;
+            if (!(owner instanceof RuntimeScope) || owner.state !== 'open' || scope.state !== 'open')
+                throw invalid();
+            // Capture family candidates before the optional module is loaded.
+            if (given.fontFamilies !== undefined && (!Array.isArray(given.fontFamilies) || given.fontFamilies.length > 16))
+                throw invalid();
+            const captured = given.fontFamilies === undefined ? given : { ...given, fontFamilies: [...given.fontFamilies] };
+            paragraphLabels ??= import('./browserGameParagraph.js').then(({ createGameParagraphs }) => {
+                if (scope.state !== 'open')
+                    throw new EgretError('SCOPE_CLOSED');
+                return createGameParagraphs(engine, scheduleTextWork);
+            });
+            const labels = await paragraphLabels;
+            const label = labels.create(owner, captured, Math.max(0.25, Math.min(4, pixelRatio)), notDrawn);
+            const close = () => {
+                liveLabels.delete(live);
+                owner.signal.removeEventListener('abort', close);
+                label.dispose();
+            };
+            const live = { display: label.display, end: close, parent: undefined };
+            owner.signal.addEventListener('abort', close, { once: true });
+            liveLabels.add(live);
+            return Object.freeze({
+                display: label.display,
+                get text() {
+                    return label.text;
+                },
+                set text(value) {
+                    label.text = value;
+                },
+                get ready() {
+                    return label.ready;
+                },
+                get metrics() {
+                    return label.metrics;
+                },
+                get bounds() {
+                    return label.bounds;
+                },
+                set: label.set,
+                dispose: close
+            });
+        };
+        const createGlyphFont = async (options) => {
+            if (options === null || typeof options !== 'object')
+                throw invalid();
+            const { scope: owner = scope, ...given } = options;
+            if (!(owner instanceof RuntimeScope) || owner.state !== 'open' || scope.state !== 'open')
+                throw invalid();
+            if (given.fontFamilies !== undefined && (!Array.isArray(given.fontFamilies) || given.fontFamilies.length > 16))
+                throw invalid();
+            const captured = given.fontFamilies === undefined ? given : { ...given, fontFamilies: [...given.fontFamilies] };
+            const { buildGameGlyphFont } = await import('./browserGameGlyphFont.js');
+            if (owner.state !== 'open' || scope.state !== 'open')
+                throw new EgretError('SCOPE_CLOSED');
+            return buildGameGlyphFont(canvas.ownerDocument, captured, (width, height, pixels) => leasePixels(width, height, pixels, owner));
+        };
         const game = Object.freeze({
+            invalidate,
+            getStartupTiming: () => Object.freeze({
+                backendSelectMs: backendReady - started,
+                backendModuleMs: moduleReady - backendReady,
+                hostCreateMs: hostCreated - moduleReady,
+                engineOpenMs: engineOpened - hostCreated,
+                setupMs: ready - engineOpened,
+                readyMs: ready - started,
+                ...(firstSubmit === undefined ? {} : { firstSubmitMs: firstSubmit - started }),
+                ...(webgl2Startup === undefined ? {} : { webgl2: webgl2Startup })
+            }),
             backend,
             engine,
             host,
+            ...(staticCache === undefined ? {} : { staticLayers: staticCache.api }),
             stage: engine.stage,
             scope,
             get frame() {
@@ -1163,6 +1414,7 @@ export async function createBrowserGame(options) {
             hover,
             stats: panel,
             createLabel,
+            ...(scheduleTextWork === undefined ? {} : { scheduleTextWork }),
             getLabelStatus() {
                 sweepLabels();
                 return Object.freeze({
@@ -1177,6 +1429,8 @@ export async function createBrowserGame(options) {
                 });
             },
             createAtlasLabel,
+            createParagraphLabel,
+            createGlyphFont,
             getFrameUsage: () => usage,
             drawFrame,
             async loadTexture(url) {
@@ -1184,7 +1438,7 @@ export async function createBrowserGame(options) {
                     throw invalid();
                 return scope.use(await engine.assets.acquire(createAssetRef(imageType, url), { signal: scope.signal }));
             },
-            textureFromPixels: leasePixels,
+            textureFromPixels: (width, height, pixels) => leasePixels(width, height, pixels),
             async textureFromCanvas(source) {
                 if (source === null || typeof source !== 'object' || typeof source.getContext !== 'function')
                     throw invalid();
@@ -1270,11 +1524,14 @@ export async function createBrowserGame(options) {
                         cache?.dispose();
                         await cache?.whenIdle();
                     }
+                    if (paragraphLabels !== undefined)
+                        (await paragraphLabels.catch(() => undefined))?.dispose();
                     await engine.dispose();
                     await images.close();
                 })());
             }
         });
+        ready = performance.now();
         if (options.autoStart !== false)
             made.start();
         return game;

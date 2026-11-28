@@ -209,7 +209,14 @@ const CUES = {
  * setting; music plays on its own bus, a little lower.
  */
 export async function createSound(scope, { on = true } = {}) {
-  const backend = createWebAudioBackend({ limiter: true });
+  let backend;
+  try {
+    backend = createWebAudioBackend({ limiter: true });
+  } catch (cause) {
+    if (cause?.code !== 'AUDIO_HOST_UNAVAILABLE') throw cause;
+    console.warn('Web Audio is unavailable; Night Wardens continues without sound.');
+    return { play() {}, async music() {}, setOn() {} };
+  }
   const mixer = scope.use(createAudioMixer({ backend, locked: backend.locked, buses: [{ name: 'effects', volume: 0.8 }, { name: 'music', volume: 0.45 }] }));
   backend.attach(mixer);
   const decoded = {};

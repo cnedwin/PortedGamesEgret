@@ -199,3 +199,9 @@ PC 高、中两档 p95 6.1 ms。硬件计时是浏览器接受帧，不是 GPU �
 - 实际阻断 roster 图像或新字形模块请求，均显示原生 Reload 并复原标题；原存档与截图基线保留。未测实体手柄、真实读屏、Safari/Firefox/微信以及完整人工手机整局。 · Recovery tested by isolated request refusal; no real controller/accessibility/other-browser qualification.
 
 复跑 `node test/performance.mjs`，设置 JELLY_PERF_HARDWARE=1、JELLY_PERF_FRAMES=120、JELLY_PERF_DETAIL=1，需新增时序时加 JELLY_PERF_DIAGNOSTICS=1（生产正常 URL 不开启）。支持 CPU 阶段 rules/effects/models/camera/HUD/music/reflection，2D/3D 同 RAF 对齐；不叠加嵌套区间，不宣称 GPU 执行时间。 · Opt-in timestamps only, bounded diagnostics.
+
+## WebKit 手机兼容回归 · Mobile WebKit compatibility (2026-11-28)
+
+- Windows Playwright WebKit 26.6、iPhone 15 Pro 配置（393×659 CSS px）。公网旧版尝试启动超时；正式更新引擎副本后的本地标题已逻辑就绪，画面仍只显示空面板。原生菜单布局提交后 250 ms 只增加一次额外 `invalidate()`，页面关闭时取消，未引入持续重绘。 · A bounded repaint after a committed native menu restores the delayed static presentation.
+- 候选在同配置标题就绪约 10.44 s，画面可读、八个果冻熊猫头像正确；真实触屏点击「开始」，进入完整 3D 玩具岛及移动、跳跃、下砸、翻滚、暂停 HUD。JS、控制台、HTTP 错误 0；Node 49/49 通过。 · Both title and first gameplay screenshots were inspected, with actual emulated touch activation.
+- 未测试实体 iPhone、完整 15 分钟对局、各画质性能或手机声音。 · Physical iOS, full run, device performance and audio remain outside this sample.

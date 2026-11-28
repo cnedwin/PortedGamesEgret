@@ -141,6 +141,9 @@ The game uses Egret World3D and draws with WebGL2 by default; add `?backend=webg
 Characters, weapon visuals and station props use Tripo GLB assets simplified, texture-compressed and fitted to the game's attachment points. Egret loads the embedded materials and draws repeated props as instances. The game drives character joints, reloads, terminal interactions and extraction. Gunfire uses different real-time reverbs in the valley and powerhouse, while a step sequencer brings in bass and drums as enemies close in.
 
 ## 已验证 · Verified
+
+- 2026-11-28：Windows Playwright WebKit iPhone 15 Pro 配置下修复启动兼容问题，标题截图及触摸设置通过，107/107 Node 测试通过；不是 iPhone 真机验收。见 [QUALITY.md](QUALITY.md)。 · Startup, title screenshot and touch Settings pass on Windows Playwright WebKit in an iPhone 15 Pro profile; 107/107 Node tests pass. Not a physical iPhone test. See QUALITY.md.
+
 - 公网冷启动和实体 Fold7 长帧专项：保留原始几何、画质和玩法，使用扁平索引顶点缓存及原生 HUD 同状态保留绘制。实际PC同路线场景构建长任务约2.9→1.9秒；同引擎Fold7局部A/B界面实际提交比例81.2%→51.9%，平均回调36.03→39.86Hz，P95未改善。98项Node测试通过，结果和限制见 [QUALITY.md](QUALITY.md)。 · Public startup and physical Fold7 pacing: exact geometry and retained native HUD, unchanged quality and rules. Matched PC scene task ~2.9→1.9 s; handset A/B native UI submission share 81.2%→51.9%, callback cadence 36.03→39.86 Hz, unchanged p95. 98 Node tests pass; see QUALITY.md for evidence and limits.
 
 - 本次从 `4f08d2bcd25de3aafa7295f3b349970f8003ed71` 更新到 `d2e28f46182a563fd594cc51847240429ab0a5b5`：官方构建及引擎复制成功；引擎替换前后均通过原有 91 项 Node 测试，新增三项静态模型裁切等价检查后共 94 项通过，原有导入映射无需改动。实际设备复测与限制见 [QUALITY.md](QUALITY.md)。 · The official build and vendor refresh from `4f08d2bcd25de3aafa7295f3b349970f8003ed71` to `d2e28f46182a563fd594cc51847240429ab0a5b5` pass the same 91 Node tests before and after; three new static geometry equivalence checks bring the total to 94, with no import-map change required. Device retests and limits are recorded in QUALITY.md.
@@ -211,8 +214,8 @@ Characters, weapon visuals and station props use Tripo GLB assets simplified, te
 
 ## 引擎副本 · Engine copy
 
-引擎副本取自 [Egret_rebuild](https://github.com/cnedwin/Egret_rebuild) 提交 `d2e28f46182a563fd594cc51847240429ab0a5b5`，由引擎仓库的 `tools/vendor-game.mjs` 复制，见 [vendor/SOURCE.md](vendor/SOURCE.md)。
+引擎副本取自 [Egret_rebuild](https://github.com/cnedwin/Egret_rebuild) 提交 `82561d6338a805f0e0459a2d5d42a284f9385b30`，由引擎仓库的 `tools/vendor-game.mjs` 复制，见 [vendor/SOURCE.md](vendor/SOURCE.md)。
 
-The engine copy is from [Egret_rebuild](https://github.com/cnedwin/Egret_rebuild) commit `d2e28f46182a563fd594cc51847240429ab0a5b5`, copied by the engine's `tools/vendor-game.mjs`; see [vendor/SOURCE.md](vendor/SOURCE.md).
+The engine copy is from [Egret_rebuild](https://github.com/cnedwin/Egret_rebuild) commit `82561d6338a805f0e0459a2d5d42a284f9385b30`, copied by the engine's `tools/vendor-game.mjs`; see [vendor/SOURCE.md](vendor/SOURCE.md).
 
 入口 · Entries: `@egret/engine`, `@egret/engine/world3d`, `@egret/engine/webgl2/world3d`, `@egret/engine/webgpu/world3d`, `@egret/engine/web/kit`, `@egret/engine/play`, `@egret/engine/kit`, `@egret/engine/ui`, `@egret/engine/ui/semantics`, `@egret/engine/ui/testing`, `@egret/engine/web/semantics`, `@egret/engine/web/audio`, `@egret/engine/input`, `@egret/engine/web/hover`, `@egret/engine/web/view`.

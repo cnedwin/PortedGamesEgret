@@ -181,6 +181,8 @@ python3 -m http.server 4180      # 模型查看器 · model viewer: /SnowTemple/
 
 ## 已验证 · Verified
 
+- 2026-11-28：Windows Playwright WebKit iPhone 15 Pro 配置下修复启动兼容问题，标题截图及触摸设置通过，112/112 Node 测试通过；不是 iPhone 真机验收。见 [QUALITY.md](QUALITY.md)。 · Startup, title screenshot and touch Settings pass on Windows Playwright WebKit in an iPhone 15 Pro profile; 112/112 Node tests pass. Not a physical iPhone test. See QUALITY.md.
+
 - 2026-11-28 引擎 `a1d6bc6`：官方副本运行时代码与上一版一致。新雪夜材质、暖冷轮廓、首领演出和战斗反馈：112/112 Node、PC RTX 硬件完整回归 41/41、软件开场 8/8、Fold7 真机完整通关、重战和读档，536/536 资源一致。手机五个路段 RAF P95 仍为 16.7 ms，仍有偶发长帧；实拍、对照口径及限制见 [QUALITY.md](QUALITY.md)。 · Official source refresh with unchanged runtime bytes, 112 Node checks, 41 hardware and 8 software browser checks, and the complete Fold7 route including rematch/reload. Phone RAF P95 stays 16.7 ms across the five phases; occasional long frames remain. See QUALITY for comparison and limits.
 
 - 2026-11-27 引擎 `e15aabcf`：103/103 Node；原生 UI、中文／英语词表及字幕、9 种模拟屏幕 45/45 检查点零错误零警告，真实 Windows RTX 与 Fold7 走完第一回（Fold7 还验证实际横竖转屏、枪谱拾取、重战、复起和读档）；同条件轻量对照 Fold7 首波 RAF P95 均 16.7 ms。详见 [QUALITY.md](QUALITY.md) 与 [UI-MIGRATION.md](UI-MIGRATION.md)。 · 103 Node tests; 45/45 checks across nine simulated screen profiles; the full chapter on real Windows RTX and Fold7, including real phone rotation, manual pickup, rematch, revival and save. Controlled Fold7 first-wave RAF p95 is 16.7 ms for both interfaces.
@@ -224,8 +226,8 @@ python3 -m http.server 4180      # 模型查看器 · model viewer: /SnowTemple/
 
 ## 引擎副本 · Engine copy
 
-引擎副本取自 [Egret_rebuild](https://github.com/cnedwin/Egret_rebuild) 提交 `a1d6bc6215ce1fd9af1e9361286525ae737ad347`，由引擎仓库的 `tools/vendor-game.mjs` 复制，见 [vendor/SOURCE.md](vendor/SOURCE.md)。
+引擎副本取自 [Egret_rebuild](https://github.com/cnedwin/Egret_rebuild) 提交 `82561d6338a805f0e0459a2d5d42a284f9385b30`，由引擎仓库的 `tools/vendor-game.mjs` 复制，见 [vendor/SOURCE.md](vendor/SOURCE.md)。
 
-The engine copy is from [Egret_rebuild](https://github.com/cnedwin/Egret_rebuild) commit `a1d6bc6215ce1fd9af1e9361286525ae737ad347`, copied by the engine's `tools/vendor-game.mjs`; see [vendor/SOURCE.md](vendor/SOURCE.md).
+The engine copy is from [Egret_rebuild](https://github.com/cnedwin/Egret_rebuild) commit `82561d6338a805f0e0459a2d5d42a284f9385b30`, copied by the engine's `tools/vendor-game.mjs`; see [vendor/SOURCE.md](vendor/SOURCE.md).
 
 入口 · Entries: `@egret/engine`, `@egret/engine/world3d`, `@egret/engine/webgl2/world3d`, `@egret/engine/kit`, `@egret/engine/web/kit`, `@egret/engine/ui`, `@egret/engine/ui/semantics`, `@egret/engine/web/semantics`, `@egret/engine/ui/testing`, `@egret/engine/input`, `@egret/engine/bitmapfont`, `@egret/engine/web/hover`.

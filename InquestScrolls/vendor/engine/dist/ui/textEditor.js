@@ -27,14 +27,19 @@ function text(value, maximum) {
     return value;
 }
 function captureStyle(input) {
-    if (input === null || typeof input !== 'object' || !Array.isArray(input.fontFamilies))
+    if (input === null || typeof input !== 'object')
         return fail('STYLE');
-    const fontSet = text(input.fontSet, 256), count = input.fontFamilies.length;
+    // The font set itself gives its key, and its families unless they are given beside it.
+    const given = input.fontSet, set = given !== null && typeof given === 'object' ? given : undefined;
+    const families = input.fontFamilies ?? set?.fontFamilies;
+    if (!Array.isArray(families))
+        return fail('STYLE');
+    const fontSet = text(set === undefined ? given : set.key, 256), count = families.length;
     if (!Number.isInteger(count) || count < 1 || count > 16)
         return fail('STYLE');
     const fontFamilies = [];
     for (let index = 0; index < count; index++)
-        fontFamilies.push(text(input.fontFamilies[index], 256));
+        fontFamilies.push(text(families[index], 256));
     const fontSize = number(input.fontSize, 1, 512), locale = text(input.locale, 64), direction = input.direction;
     const lineHeight = input.lineHeight === undefined ? undefined : number(input.lineHeight, 1, 1024);
     const fillColor = number(input.fillColor, 0, 0xffffff), backgroundColor = input.backgroundColor === undefined ? undefined : number(input.backgroundColor, 0, 0xffffff), textAlign = input.textAlign;

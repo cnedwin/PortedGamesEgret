@@ -73,7 +73,7 @@ export function createAudioMixer(options) {
     let closed = false, locked = startLocked, decoding = 0, decodedBytes = 0, started = 0, ids = 0;
     let music;
     function makeBus(name, level, quiet, parent) {
-        const raw = guard(() => backend.createBus(parent));
+        const raw = guard(() => backend.createBus(parent, name));
         if (!callable(raw, ['setGain', 'release']))
             throw new EgretError('AUDIO_BACKEND_FAILED');
         const apply = (seconds) => {

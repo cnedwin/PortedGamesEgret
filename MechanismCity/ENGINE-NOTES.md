@@ -292,6 +292,22 @@ the upgrade. The game later moved to `8637ace` (engine #424–#485) and dropped 
 ---
 - 状态 · Status：已在 `1e60300` 解决（引擎 #424）：横向滚动控件读普通的竖向滚轮（`wheel.crossAxis`）。 · Resolved in `1e60300` (engine #424): a sideways scroll control reads the ordinary wheel (`wheel.crossAxis`).
 
+### 21. WebKit 的文字宿主 · WebKit text host — 已解决 / resolved
+<!-- engine-note: {"id":"MechanismCity#21","status":"resolved","topic":"webkit-canvas-text-state"} -->
+
+- **现象 · What happens**：Windows WebKit 的前一副本在文字测量时抛出 TEXT_MEASURE_FAILED，cause 为 WEB_TEXT_STATE_UNSUPPORTED。最小复现是在该宿主创建 Canvas2D 文字提供器；直接 fillText 能画中文，但 getContextAttributes 等未报告所有可选默认值。 · The earlier copy threw TEXT_MEASURE_FAILED with WEB_TEXT_STATE_UNSUPPORTED during text measurement. A Canvas2D text provider triggers it although direct fillText works and optional default states are not all reported.
+- **绕过办法 · Workaround**：用引擎工具生成新的副本，不修改游戏文字实现。 · Regenerate the engine copy without replacing the game's text renderer.
+- **建议 · Suggestion**：只对缺失的非必需默认状态作兼容处理，保持实际错误拒绝。 · Allow absent nonessential default states without accepting genuine errors.
+- **状态 · Status**：82561d63 上标题和初试机弩文字恢复，经 Windows WebKit 实际触屏检查。 · Title and first-level labels recovered in the Windows WebKit touch run.
+
+### 22. 可选声音宿主与开场视频 · Optional audio and opening video — 已在游戏侧绕过 / worked around
+<!-- engine-note: {"id":"MechanismCity#22","status":"worked-around","topic":"optional-media-host","workaround":["src/audio/sound.mjs","src/screens.mjs","src/intro-playback.mjs"]} -->
+
+- **现象 · What happens**：缺少 Web Audio 的浏览器宿主创建混音器会报 AUDIO_HOST_UNAVAILABLE。另一个真实重现是点击开始后视频播放 Promise 未完成，等待它会让界面不可操作。 · Creating a mixer without a Web Audio host throws AUDIO_HOST_UNAVAILABLE. In a separate reproduced path the opening video's play promise remained pending after Start, blocking the interface when awaited.
+- **绕过办法 · Workaround**：只在确切的音频宿主不可用时使用静音接口。开场视频的跳过按钮先就绪；播放异步启动，首帧十秒未呈现则继续游戏。该期限不截断已经正常呈现的视频。 · Use the silent interface only for the exact missing-host error. The skip control is available before asynchronous playback; advance after ten seconds without a first frame, not during a normally playing film.
+- **建议 · Suggestion**：媒体文档明确可选后端的宿主探测及播放承诺可能保持未决的处理建议。应用仍决定是否允许跳过。 · Document optional media-host checks and how to handle pending playback promises; the game decides whether to skip.
+- **状态 · Status**：Windows WebKit 实际触屏进入短片并跳过至首关，另一次不触屏跳过也自动进入首关；测试覆盖静音、其他错误继续抛出、超时与拒绝。物理 iPhone 音视频未测。 · Verified the skip and automatic progression routes in Windows WebKit, plus focused fallback/rejection tests. Physical iPhone audio/video is not tested.
+
 ## 用得顺手的地方 · What worked well
 
 - `importTiledMap` + `createTileMap`：Tiled JSON 原样导入，对象层的自定义属性直接变成记录；12 关全由脚本生成 `.tmj`。

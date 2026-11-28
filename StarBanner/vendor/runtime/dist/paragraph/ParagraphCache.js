@@ -10,6 +10,10 @@ import { createParagraphNode } from './Paragraph.js';
 import { snapshotParagraphRequest, snapshotParagraphRaster } from './request.js';
 import { snapshotParagraphTextGeometry } from './geometry.js';
 const states = new WeakMap();
+// Preserve the small default for ordinary games. Rich, materialized management
+// views can explicitly reserve more slots while retaining caller/byte limits.
+const DEFAULT_ENTRY_BUDGET = 32;
+const MAX_ENTRY_BUDGET = 128;
 const releaseLease = (lease) => {
     lease?.release();
 };
@@ -222,7 +226,7 @@ export function createParagraphCache(assets, options) {
             (fontSets === true && typeof hasFontSet !== 'function'))
             throw new EgretError('PARAGRAPH_PROVIDER_INVALID');
         const maxGeometryBytes = limit(options.maxGeometryBytes, 2097152, 0, 67108864);
-        const count = limit(options.maxEntries, 32, 1, 32), maxBytes = limit(options.maxImageBytes, 16777216, 4, 67108864), maxJobs = limit(options.maxPendingJobs, 32, 1, 32);
+        const count = limit(options.maxEntries, DEFAULT_ENTRY_BUDGET, 1, MAX_ENTRY_BUDGET), maxBytes = limit(options.maxImageBytes, 16777216, 4, 67108864), maxJobs = limit(options.maxPendingJobs, DEFAULT_ENTRY_BUDGET, 1, MAX_ENTRY_BUDGET);
         if (typeof identity !== 'string' || identity.length < 1 || identity.length > 8192 || typeof prepare !== 'function')
             throw new EgretError('PARAGRAPH_PROVIDER_INVALID');
         owner.assertOpen();

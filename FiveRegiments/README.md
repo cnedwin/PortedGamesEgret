@@ -151,6 +151,8 @@ Choose a regiment and make your way through Stonegate Pass, Red Banner Depot and
 
 ## 已验证 · Verified
 
+- 2026-11-28：Windows Playwright WebKit iPhone 15 Pro 配置下修复启动兼容问题，标题截图及触摸设置通过，172/172 Node 测试通过；不是 iPhone 真机验收。见 [QUALITY.md](QUALITY.md)。 · Startup, title screenshot and touch Settings pass on Windows Playwright WebKit in an iPhone 15 Pro profile; 172/172 Node tests pass. Not a physical iPhone test. See QUALITY.md.
+
 - `node --test test/*.test.mjs`（Node 22）：32 项全过——对决规则 17 项（轻击与蓄力、刀路对上才挡得住、弹刀、踢和体力见底破防、蛮牛冲击让人 4 秒不能攻防并撞人落马、箭与盾、毒瘴按秒掉血并传给身边同伴再免疫、每个战技要够怒气才能放并打中后进入冷却、盾牌猛击击倒、终结打击击杀后刷新、每个职业技能都能跑完、任意两营打到分出胜负且同种子同结果、一打二两人都倒下算赢、骑马加速疾驰和大弯、马跑起来才能架枪而职业技能要下马、架枪打马头右前方而不打正前方、骑手与马分担伤害和战马被砍倒落马、金戈铁马与龙精虎猛、伤害公式里普通一击掉 4%–20% 而最大一击也打不到 40%、绷带），存档 6 项、征途 2 项、人物与动作资源 3 项、文字 2 项、引擎副本 2 项。 · 32 pass, 17 of them on the fight rules: the Bull Charge, the poison, every weapon art and its rage, the couched ji taking a man off the horse's right front, the talents, and the damage formula's promise that an ordinary blow takes 4–20% and no single blow reaches 40%.
 - `node test/accept.mjs`（无头 Chromium + SwiftShader，1024×600）：21 项全过——卷首、键盘选营、配技能（虎步的两个天赋可去可回、战技列在同页）、阵前、开打、替身打完、结算、回卷首、设置里关血雾并存档、切英文、地址直接进一场以一敌二并打完、三张截图基线，全程无控制台错误、无缺文件。 · 21 pass in headless Chromium, the whole road and a one-against-two fight played out, with no console errors or missing files.
 - 电脑对电脑的平衡数字见上节；终局一打二用电脑替身当主角跑过每一营。 · The balance figures above; the last fight was run with a stand-in hero for every regiment.
@@ -235,7 +237,7 @@ Choose a regiment and make your way through Stonegate Pass, Red Banner Depot and
 
 ## 引擎副本 · Engine copy
 
-- 引擎提交 `5792d800a4932da81ddf6af9314a430c41cb0f30`（见 `vendor/SOURCE.md`）。 · Engine commit `5792d800` (see `vendor/SOURCE.md`).
+- 引擎提交 `82561d6338a805f0e0459a2d5d42a284f9385b30`（见 `vendor/SOURCE.md`）。 · Engine commit `82561d63` (see `vendor/SOURCE.md`).
 - 生成命令（在引擎仓库里）· Made with, in the engine repository:
 
 ```sh

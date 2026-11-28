@@ -18,6 +18,8 @@ import {
   loadGltf3D
 } from '@egret/engine/world3d';
 
+import { createScratchCanvas } from './scratch-canvas.mjs';
+
 const ASSETS = new URL('../../assets/', import.meta.url);
 
 const expeditionRoute = {
@@ -359,7 +361,7 @@ async function projectSkyInWorker(panorama, size) {
 /** Sky panorama → background and light cube. */
 async function skyCube(name, size, useWorker = false) {
   const bitmap = await image(new URL(`skies/${name}.jpg`, ASSETS));
-  const canvas = new OffscreenCanvas(1024, 512);
+  const canvas = createScratchCanvas(1024, 512);
   const g = canvas.getContext('2d');
   g.drawImage(bitmap, 0, 0, 1024, 512);
   bitmap.close();
