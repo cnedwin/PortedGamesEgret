@@ -1,6 +1,6 @@
 # 原生界面迁移 · Native UI migration
 
-引擎：`b5628eb9997b67cf6163a388f5aa06f321f3833a` → `8424ff2afb0afdc103b06d51e3fd749f7a8fc379`，官方 vendor 工具生成，无本地补丁。 · Official vendoring only; no local patch.
+引擎：`b5628eb9997b67cf6163a388f5aa06f321f3833a` → `39560b3ef608e4dda68c8461f435c279d1eba3d2`，官方 vendor 工具生成，无本地补丁。 · Official vendoring only; no local patch.
 
 ## 界面 · Screens
 
@@ -40,6 +40,6 @@ node tools/headless.mjs
 node tools/balance.mjs
 ```
 
-最终验收详情、物理设备、未覆盖条件与工具仍有的裁切报告差异见 [QUALITY.md](QUALITY.md) 与 [ENGINE-NOTES.md](ENGINE-NOTES.md)。 · See the quality record and engine notes for measured device results, unrun scenarios and clipped-control findings.
+最终验收详情、物理设备、未覆盖条件与工具裁切报告修复前后对比见 [QUALITY.md](QUALITY.md) 与 [ENGINE-NOTES.md](ENGINE-NOTES.md)。 · See the quality record and engine notes for measured device results, unrun scenarios and the before/after screen-verifier findings.
 
 [界面对照实拍 · Interface comparisons](docs/ui-migration-comparison.jpg) — 标题、山门及 Fold7 战斗指挥栏调整前后；非等种子的画质测量图。 · Title, seat and Fold7 combat HUD comparisons; not a seeded performance fixture.

@@ -20,3 +20,4 @@ export { WORLD3D_QUALITY_PRESETS, createDynamicResolution3D, createWorld3DApp, p
 export { createScreenMarkers3D, createOverlayScreenMarkers3D } from './markers3D.js';
 export { createWorld3DStats } from './stats3D.js';
 export { createWorld3DOverlay } from './overlay3D.js';
+export { play3dAttached } from './BrowserPlay3D.js';

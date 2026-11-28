@@ -4,9 +4,9 @@
 
 Made by `node tools/engine-notes.mjs --write` from the ENGINE-NOTES of the games; do not edit by hand, and `--check` says whether it is out of date. What the engine resolved is copied from the engine's `guide/resolved.json` into [engine-resolved.json](engine-resolved.json) (15 entries). The form of a note is in part 3 of [GAME-STANDARD.md](GAME-STANDARD.md).
 
-24 个游戏、244 条笔记：未解决 63，部分解决 29，游戏侧绕过 7，已写入文档 43，已解决 102。
+24 个游戏、246 条笔记：未解决 63，部分解决 24，游戏侧绕过 7，已写入文档 42，已解决 110。
 
-244 notes from 24 games: 63 open, 29 partly resolved, 7 worked around in the game, 43 documented, 102 resolved.
+246 notes from 24 games: 63 open, 24 partly resolved, 7 worked around in the game, 42 documented, 110 resolved.
 
 ## 1. 引擎已经解决、游戏还标着未解决 · Resolved by the engine, still open in a game
 
@@ -45,7 +45,6 @@ Write the lesson as a card of the engine's guide (`guide/cards` in the engine re
 | `burst-layer` | OperaDrums#20 `game.burst` 没有图层 · `game.burst` has no layer | 未解决 · open |
 | `camera-zoom-clamp` | NineProvinces#4 相机缩放超出范围时抛错而不是夹住 · The camera throws instead of clamping a zoom out of range | 未解决 · open |
 | `decal-changes-material` | TeaHorseRoad#8 `createDecal3D` 改写传入的材质 · `createDecal3D` changes the material it is given | 未解决 · open |
-| `embedded-play-gameplay-tab` | FPS#12 嵌入式 Play 无法接收场景专用 Tab 快捷键 · Embedded Play reserves Tab even during captured gameplay | 部分解决 · partly |
 | `expanded-stage-pixel-ratio` | LanternShadows#8 扩展舞台的画布像素密度 · Backing density on an expanded stage | 已在游戏侧绕过 · worked around |
 | `geometry-budget-reuse` | FivePhases#1 每帧的几何预算连复用的几何也一起算 · The per-frame geometry budget also counts reused geometry | 部分解决 · partly |
 | `gltf-webp-texture` | FiveRegiments#1 `loadGltf3D` 不认 `EXT_texture_webp` · `loadGltf3D` does not take `EXT_texture_webp` | 未解决 · open |
@@ -57,6 +56,7 @@ Write the lesson as a card of the engine's guide (`guide/cards` in the engine re
 | `mouse-right-button` | LubanBridge#5 `web/input` 的鼠标输入只认左键 · The mouse input of `web/input` knows only the left button | 未解决 · open |
 | `native-file-and-choice-controls` | Wulin#4 文件交换与原生表单 · File exchange and native forms | 部分解决 · partly |
 | `native-scrolling` | PeachCreek#2 经营单子的原生滚动 · Native scrolling for county inspectors | 部分解决 · partly |
+| `native-toast-placement-contrast` | Wulin#6 原生通知位置与配色 · Native toast placement and contrast | 部分解决 · partly |
 | `native-ui-artwork-slot` | LoveElective#5 运行时生成插画的视图挂载点 · Native view mount slots for generated artwork | 未解决 · open |
 | `native-ui-dense-spine-frame-time` | LanternShadows#9 百个 Spine 角色与原生 HUD 的手机密集帧 · Dense mobile frames with 100 Spine puppets and native HUD | 部分解决 · partly |
 | `native-ui-font-style` | LoveElective#4 原生短文字的字体控制和就绪 · Native short-label typography and readiness | 部分解决 · partly |
@@ -79,15 +79,11 @@ Write the lesson as a card of the engine's guide (`guide/cards` in the engine re
 | `play-gesture-session` | FivePhases#4 Play 手势入口未覆盖棋盘按下即预览的完整会话 · High-level Play gestures omit the whole press-to-preview session | 未解决 · open |
 | `play-hints-wrapping` | NezhaSea#12 提示换行、首领入场与启动失败 · Hint wrapping, Boss entry and boot recovery | 未解决 · open |
 | `play-owned-canvas-fit` | FPS#8 自有 canvas 的 Play fit 不能自动扩展 · Play fit does not expand a caller-owned canvas | 部分解决 · partly |
-| `play-pointer-lock-result` | FPS#7 Play 指针锁定没有结果或原始位移选项 · Play pointer-lock has no result or raw movement option | 部分解决 · partly |
 | `play-responsive-hold-controls` | FPS#9 Play 数据视图的连续设置与触控按钮 · Continuous settings and responsive touch buttons | 部分解决 · partly |
 | `play-startup-dependencies` | NezhaSea#13 静止视图重复提交，首屏依赖在后段串行加载 · Repeated static frames and late startup dependencies | 部分解决 · partly |
-| `play3d-existing-renderer` | FPS#6 Play3D 不接受现有世界宿主 · Play3D cannot adopt an existing World3D host | 部分解决 · partly |
-| `pointer-lock-native-capture` | FPS#11 浏览器指针锁定时原生 contact 尝试非法 capture · Native contact attempts prohibited capture during pointer lock | 部分解决 · partly |
 | `prepare-programs-meshes` | JY#2 预编译着色器要求给出已经存在的网格 · Preparing programs needs meshes that already exist | 未解决 · open |
 | `radial-gradient-triangles` | MechanismCity#6 径向渐变的三角形很多 · Radial gradients cost many triangles | 未解决 · open |
 | `save-update-return` | PeachCreek#6 存档更新与预制绘图对象 · Save updates and convenience drawing objects | 部分解决 · partly |
-| `screen-verification-scroll-clipping` | Wulin#2 多屏验收与滚动裁切边界 · Screen verification and clipped controls | 未解决 · open |
 | `screen-verifier-state-coverage` | TaiwanMahjong#12 多螢幕 CLI 只能檢查啟動狀態 · Multi-screen CLI is limited to the launch state | 未解决 · open |
 | `semantic-bounds-transform` | PeachCreek#1 变换和裁剪后的语义区域 · Semantic bounds after transforms and clipping | 部分解决 · partly |
 | `semantic-button-pressed-state` | Rally#5 原生语义按钮没有按住状态 · A native semantic button cannot report its held state | 未解决 · open |
@@ -107,8 +103,7 @@ Write the lesson as a card of the engine's guide (`guide/cards` in the engine re
 | `texture-from-canvas-scope` | NineProvinces#3 `textureFromCanvas` 的纹理只能归游戏本身的作用域 · Textures from `textureFromCanvas` belong to the game's own scope only | 未解决 · open |
 | `two-bone-ik` | FiveRegiments#5 引擎没有现成的两骨反向动力学 · No two-bone IK in the engine | 未解决 · open |
 | `ui-root-active-contacts-admission` | SnowTemple#8 按住触点时动态创建模态根拒绝 · Creating a modal root while contacts are held is refused | 未解决 · open |
-| `verify-native-action-controls` | FPS#14 多屏检查遗漏低层原生触屏控件 · Screen verifier omits lower-level native action controls | 部分解决 · partly |
-| `verify-scroll-clipped-controls` | FPS#13 原生滚动控件的检查未考虑裁切 · Screen verification ignores clipped scrolling controls | 部分解决 · partly |
+| `verify-startup-ready` | FPS#15 通用浏览器验收过早采样 · Generic browser verification samples before readiness | 未解决 · open |
 | `vertex-hook-error` | StarBanner#2 只有顶点钩子的着色器写进 `glsl` 时报错不直观 · A vertex-only hook given as `glsl` fails with an unhelpful error | 未解决 · open |
 | `vertical-text` | InquestScrolls#1 段落不支持竖排 · Paragraphs cannot set text vertically | 部分解决 · partly |
 | `view-accessible-label` | OperaDrums#13 按钮的读屏名字只能是它的字 · A button's accessible name is only its words | 未解决 · open |
@@ -138,7 +133,7 @@ Write the lesson as a card of the engine's guide (`guide/cards` in the engine re
 | [FengshenChronicle](../FengshenChronicle/ENGINE-NOTES.md) | 5 | 1 | 0 | 1 | 0 | 3 | 0 | `94bd70f` |
 | [FivePhases](../FivePhases/ENGINE-NOTES.md) | 6 | 1 | 1 | 0 | 0 | 4 | 0 | `94bd70f` |
 | [FiveRegiments](../FiveRegiments/ENGINE-NOTES.md) | 5 | 5 | 0 | 0 | 0 | 0 | 0 | `5792d80` |
-| [FPS](../FPS/ENGINE-NOTES.md) | 14 | 1 | 9 | 0 | 2 | 2 | 0 | `3389776` |
+| [FPS](../FPS/ENGINE-NOTES.md) | 15 | 2 | 3 | 0 | 2 | 8 | 0 | `4f08d2b` |
 | [InquestScrolls](../InquestScrolls/ENGINE-NOTES.md) | 12 | 0 | 1 | 2 | 1 | 8 | 0 | `95897d7` |
 | [jelly-pandas](../jelly-pandas/ENGINE-NOTES.md) | 9 | 2 | 2 | 0 | 0 | 5 | 0 | `8424ff2` |
 | [JY](../JY/ENGINE-NOTES.md) | 2 | 1 | 1 | 0 | 0 | 0 | 0 | `c1570b0` |
@@ -157,4 +152,4 @@ Write the lesson as a card of the engine's guide (`guide/cards` in the engine re
 | [StarBanner](../StarBanner/ENGINE-NOTES.md) | 11 | 1 | 0 | 0 | 4 | 6 | 0 | `0e7b293` |
 | [TaiwanMahjong](../TaiwanMahjong/ENGINE-NOTES.md) | 12 | 4 | 0 | 0 | 3 | 5 | 0 | `13d70b7` |
 | [TeaHorseRoad](../TeaHorseRoad/ENGINE-NOTES.md) | 31 | 6 | 1 | 0 | 7 | 17 | 0 | `2fbe556` |
-| [Wulin](../Wulin/ENGINE-NOTES.md) | 5 | 2 | 2 | 0 | 1 | 0 | 0 | `8424ff2` |
+| [Wulin](../Wulin/ENGINE-NOTES.md) | 6 | 1 | 3 | 0 | 0 | 2 | 0 | `39560b3` |

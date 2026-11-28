@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 export { createUiRoot } from './uiRoot.js';
+export { registerScreenOccluder } from '../internal/uiControlReportState.js';
 export { createUiTheme, selectUiSkin } from './theme.js';
 export { createMovementControl, createActionControl } from './controls.js';
 export { createHoverControl, createToggleControl, createSelectionGroup } from './stateControls.js';

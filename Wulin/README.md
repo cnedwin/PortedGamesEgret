@@ -148,12 +148,12 @@ Serve this folder with any static file server to run it, for example `npx serve 
 
 ## 已知问题 · Known issues
 
-- 原生滚动面板的裁切边界会触发多屏检查的原始矩形警告；通用 A1 探针无法读取画布内焦点，实际键盘路线通过。 · Clipped scroll rows trigger raw-rectangle findings; the generic A1 probe does not recognize canvas-native focus, although the keyboard route works.
 - 大规模富文本采用分页，音频保留原有混音；详见 [ENGINE-NOTES.md](ENGINE-NOTES.md)。 · Large rich-text lists page within the engine budget; the existing mix is retained.
 - 画卷模式以原生列表选择据点；3D 模式可直接点选地标。自定义姓名保持玩家输入，不保证自动翻译。 · Painted map locations use the native list; 3D supports direct selection. Custom names retain player-authored spelling.
 
 ## 已解决 · Solved
 
+- 原生滚动裁切多屏报告与键盘语义焦点验收（引擎 #549/#552）：九屏无错误或警告，通用 A1 识别实际原生焦点；矮横屏山门工具避让右侧命令面板，提示不再被顶栏遮挡。 · Correct native clipped-bound reports and keyboard focus verification; the short-landscape seat tools no longer overlap the command panel.
 - 开局改成可以直接上手的序章（`e526ab0`）。 · The start became a playable prologue.
 - 战斗前预热阵容旁白（`761ea74`）；战斗音效和画面的打击点对齐（`f5a87bd`）。 · Lineup narration is warmed up before combat; combat sounds land with the visible blows.
 - 对话框里的操作不再冲掉提示（`3d595cd`）；论剑大会的进度得以保留（`cdc3efd`）。 · Dialog actions keep the feedback; Sword Meet progress is kept.
@@ -181,6 +181,6 @@ Serve this folder with any static file server to run it, for example `npx serve 
 
 ## 引擎副本 · Engine copy
 
-引擎副本取自 [Egret_rebuild](https://github.com/cnedwin/Egret_rebuild) 提交 `8424ff2afb0afdc103b06d51e3fd749f7a8fc379`，由引擎仓库的 `tools/vendor-game.mjs` 复制，见 [vendor/SOURCE.md](vendor/SOURCE.md)。
+引擎副本取自 [Egret_rebuild](https://github.com/cnedwin/Egret_rebuild) 提交 `39560b3ef608e4dda68c8461f435c279d1eba3d2`，由引擎仓库的 `tools/vendor-game.mjs` 复制，见 [vendor/SOURCE.md](vendor/SOURCE.md)。
 
-The engine copy is from [Egret_rebuild](https://github.com/cnedwin/Egret_rebuild) commit `8424ff2afb0afdc103b06d51e3fd749f7a8fc379`, copied by the engine's `tools/vendor-game.mjs`; see [vendor/SOURCE.md](vendor/SOURCE.md).
+The engine copy is from [Egret_rebuild](https://github.com/cnedwin/Egret_rebuild) commit `39560b3ef608e4dda68c8461f435c279d1eba3d2`, copied by the engine's `tools/vendor-game.mjs`; see [vendor/SOURCE.md](vendor/SOURCE.md).
