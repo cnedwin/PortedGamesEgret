@@ -76,6 +76,9 @@ export function buildCampaignHeader(app,state,{selectSpeed}){
     control('campaign-saves','menuSave',()=>app.open('saves')),
     control('campaign-settings','settings',()=>app.open('settings'))
   ];
+  bind['campaign-generals'].badge=()=>app.game?.badges.count('campaign/officers')??0;
+  bind['campaign-diplomacy'].badge=()=>app.game?.badges.count('campaign/inbox/envoy')??0;
+  bind['campaign-chronicle'].badge=()=>((app.game?.badges.count('campaign/inbox/story')??0)+(app.game?.badges.count('campaign/reports')??0));
   const chips=Array.from({length:4},(_,i)=>{
     const name='campaign-domain-'+i,box=name+'-swatch';bind[name]={visible:()=>Boolean(state.domains[i])};bind[box]={color:()=>state.domains[i]?.colour??C.muted};
     return row([{type:'panel',name:box,color:C.muted,width:11,height:11,border:{color:0xc6b694,width:1}},named(name+'-label',()=>state.domains[i]?.name??'',{size:12,height:20,bold:true,color:C.paper,align:'left'})],{name,width:'fill',height:22,gap:3,align:'center'});

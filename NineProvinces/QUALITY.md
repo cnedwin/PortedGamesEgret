@@ -1,6 +1,63 @@
 # 品质验收 · Quality — 九州烽烟 · Nine Provinces Ablaze
 
+## 原生界面第三批 · Native interface batch three (2026-11-28–29)
+
+本节为本地候选阶段记录，沿用引擎 `7fb371acb8bab254cf1c49b9da0ac0eed0c06fb4`。原生化城池/军团详情、首月引导、记录/提示、互动地图名牌，以及包含原设置/存档在内的 18 类业务对话框。规则、数值、游戏资源、存档格式及 World3D 画质未改变；战场专用布阵、指挥与回放表现仍待第四批。 / This local-candidate record uses the same engine pin. The city/army sheets, first-month coach, journal/feedback, interactive map plates and 18 business-dialog types (including previous settings/saves) now use native UI. Simulation, balance, assets, save format and World3D quality remain unchanged. Battle-specific deployment, commands and replay presentation remain batch four.
+
+### 本地验收 · Local acceptance
+
+| 测项 · Check | 实际结果 · Observed result | 范围与限制 · Scope and limits |
+|---|---|---|
+| Node R1→R2 | 233/233 → **236/236** | 新增 3 项布局相关测试；R2 全集通过，严格引擎接口检查零错误。 · Three added layout-related tests; full R2 suite passes, with no strict engine-interface errors. |
+| 软件浏览器 · Software browser R2 | 53/53 | 保留原流程及断言，包括开局、武将、战果/存读档、横竖布局、城市面板、速度与暂停；最终小幅布局调整前。 · Existing route and assertions, before the last minor layout refinements. Not a device test. |
+| 最终软件浏览器 · Final software browser R5 | **54/54** | 最终确认取消回归新增一项，旧路线仍完整通过。固定参考截图：原生标题/设置 0.00% 差异、原战场 0.26%。 · All original assertions plus one native-confirmation cancellation; baseline title/settings 0.00% difference, original battle 0.26%. Not hardware/device metrics. |
+| PC 对话框 · Hardware dialog R4 | 15/15 | Windows Edge/RTX 实际浏览器，鼠标、键盘及原生文本编辑；两个隔离预览见下文。 · Actual PC hardware with mouse, keyboard and native editing; two isolated previews noted below. |
+| PC 地图名牌 · Hardware marker R1 | 20/20 | 同一个引擎和渲染器、城市/军团点击、模态遮挡、英文化、PC 窗口横竖重排、资源上限；非手机。 · Same renderer/engine, map picking, modal suppression, localization, desktop viewport reflow and bounded native resources. Not a phone test. |
+| 官方多屏 R2 · Official screen matrix | **126/126** | 9 种屏幕配置各 14 个检查点，零 findings/engine warnings；浏览器布局配置非真机。 · Nine browser profiles, 14 checkpoints each; no findings or engine warnings. Not devices. |
+| 实体 Fold7 · Physical Fold7 | **通过 · Pass** | 实际 Android 触摸、外屏横竖屏；22 个候选文件指纹及 8 项设备恢复均通过。详见下文。 · Actual Android touch on the cover display, all 22 selected source fingerprints and eight restoration checks. See below. |
+| PC 原生确认追加 · Native confirmation R1 | **4/4** | 实际 RTX 浏览器的独立外交取消流程；保留原外交状态、下层界面及原生焦点；零页面/控制台/HTTP 错误。后续新增确认/通知/提示不是此前手机路线的一部分。 · Separate hardware route for canceling native diplomacy confirmation preserves state, underlying sheet and focus, with no console/page/HTTP errors. Newly added confirmation/badge/hint behaviors are not included in the earlier phone coverage. |
+
+- R4 对话框实际流程：桃园结义事件不可被 Escape 跳过；武将名册通过引擎文本编辑器输入「刘备」、切换详情并显示画像；科技树 Graphics 连线与具名焦点、演义树 Graphics 连线、外交滚动。势力详情及出征滑条通过原有 `app.open` 独立预览（不执行出征）；实际键盘 Home/End 为原有范围 0/7,800。原第二批设置配乐滑条 Home 回归通过。无页面/控制台/HTTP 错误；此非完整战役或真人输入法验收。 / Actual R4 checks cover blocked story dismissal, browser-native roster search for 刘备, officer dossier and portrait, connected/focusable invention nodes, tale links and diplomacy scrolling. The realm sheet and muster slider use isolated existing-dialog entry, without issuing a campaign command; actual Home/End reaches 0/7,800, and the original music-volume Home check still passes. No console/page/HTTP errors. This is not a full campaign or physical IME test.
+- R3 曾实际发现城池侧栏覆盖顶栏势力按钮及首月提示右边裁切；随后的 HUD 位置调整与名牌路线是另一次验收。 / Actual R3 exposed the city sheet covering the faction control and a clipped guide. The subsequent HUD position changes and marker route are a separate verification run, not retroactive credit for R3.
+- 名牌 R1 环境：Windows Edge 158.0.4370.45，ANGLE D3D11 / NVIDIA GeForce RTX 5090 Laptop GPU。实点城市并选中对应原有 ID；通过已有游戏出征流程建立军团后，实点军团选中同一 ID；模态打开时地图名牌全部退场。英文和 PC 411×813 竖屏重排仍保留同一暂停战役、原有渲染器和 Engine；实际报告无页面/控制台报错、无遗留 campaign DOM 名牌。最终样本 127 个逻辑记录、2 个可见名牌/2 个池对象、1 个可见头像；本帧 7/64 图像页、refusedFrames=0。仅为该场景的诊断快照，非全部地图峰值或性能测量。 / Marker R1 used hardware Edge 158.0.4370.45 with RTX 5090 Laptop GPU. Actual pointer picks select the original city and newly mustered army IDs; modal views suppress underlying map plates. English and PC portrait reflow retain the paused campaign, engine and renderer. There are no runtime errors or remaining campaign DOM plates. The final snapshot has 127 logical records, two visible/pooled plates, one portrait, seven of 64 image pages and zero refused frames; this is neither a peak budget nor a frame-rate measurement.
+
+### 实体三星 Fold7 · Physical Galaxy Z Fold7 (candidate)
+
+- Galaxy SM-F966U1，Android 17 / Chrome 158.0.8127.44，ANGLE / Qualcomm Adreno 830，外屏实际 873×325 与 411×813 CSS px，DPR 2.625；本地候选和实际 CDP 触摸注入，22 个选定文件指纹匹配，零页面/HTTP 错误，8 项设备/测试环境恢复均通过。此为实体设备测试，不是徒手操作或内屏测试。 / Physical cover-display hardware in both orientations, local candidate with actual CDP touch injection; all 22 selected served-file hashes and all eight restoration checks passed, with no page/HTTP errors. This is device testing, not unaided hand input or inner-display testing.
+- 跟随开局剧情、首月提示、触摸原生城市名牌；切换营建/政令/武将/概况标签，实际滚动科技、外交与武将名册（原生各约 379.3 单位），旋转保留宿主/战役状态，单指拖动约 117.8 CSS px、双指地图缩放跨度 344.9→411.2，继续至 day38 后暂停。 / Actual opening story, first-month guide, native city picking, all four city tabs, genuine native list scrolling (~379.3 units each in inventions, diplomacy and officers), orientation changes retaining the game/host, real drag and pinch, and resume then pause at day 38.
+
+| 实体外屏场景 · Physical cover-screen (~5 s RAF sample) | 间隔数 · n | p95 / max (ms) | >50 ms |
+|---|---:|---:|---:|
+| 横屏标题 · Landscape title | 301 | 16.7 / 33.1 | 0 |
+| 横屏地图 · Landscape realm | 302 | 16.7 / 16.7 | 0 |
+| 竖屏地图 · Portrait realm | 304 | 16.7 / 16.7 | 0 |
+
+三组短样本只反映浏览器帧间隔，不是 GPU 执行、合成或整场战斗数据；单次标题从导航等待就绪约 2,219 ms，未经重复冷启动对照。 / These short samples measure browser-frame intervals, not GPU execution, compositor or full battle performance. The single observed title readiness was about 2,219 ms; no repeated matched cold-start experiment was conducted.
+
+官方多屏 R2：phone-small、phone-notch、phone-notch-wide、phone-tall、tablet、tablet-wide、foldable-cover-wide、foldable、desktop，全九种配置 14 个检查点通过；包含中英标题、设置、开局/自建势力/新武将、开篇、首月、城务、出征、科技、外交、武将和记录。自动验证通过不意味着每个滚动区域的初始所有文字同时可见。 / The nine official profiles passed all 126 listed checkpoints, including bilingual title, setup/registration, native campaign guide/city screens and dialog examples. This does not imply every scrollable item is simultaneously visible at the initial offset.
+
+- 126 张检查点原图均已通过独立汇总视觉复看（18 张适配缩放、未裁剪接触表）。所有屏幕未见操作按钮或固定底栏进入模拟刘海遮挡区；首月提示、城池与小地图各占独立区域。极短横屏 873×325 的科技树节点与武将列表要向下滚动才能见到，出征先显示第一位武将；固定返回/取消/出征仍可见。第二批遗留 873×325 标题语言切换时的滚动位置可裁掉部分第一个入口；桌面/平板英文标题尾注位于初始滚动视口之外。短剧情和记录模态仍有较多空白。这些是实际看图所得的体验限制，不是自动布局失效。 / All 126 checkpoint images were visually reviewed via 18 uncropped fit-only contact sheets. No actionable controls or fixed footers intruded into simulated notches; the coach, city sheet and minimap occupy separate regions. The shortest landscape view (873×325) requires scrolling to reach invention and officer rows and initially exposes only the top muster officer; fixed Back/Cancel/Muster controls remain visible. The batch-two language-switch title clipping remains in that viewport, English title attribution lies below the initial desktop/tablet viewport, and short story/chronicle dialogs contain excess blank space. These are observed UX caveats, distinct from layout-verifier failures.
+- 18 张实体 Fold7 画面复看确认首月引导、选择城市与四类城务标签、三类原生长列表滚动；近看部分小字号仍有轻微光栅阶梯。 / Review of all 18 physical-device captures corroborates the guide, picked city, four city tabs and three long-list scroll paths; some small native glyph edges remain visibly stepped at close inspection.
+
+### 实际画面 · Actual captures
+
+下表来自本地候选的 Windows 硬件浏览器测试。JPEG 是未经缩放或裁剪的审阅副本；PC 竖屏图来自窗口配置，**不是 Fold7 真机**。 / These JPEG review copies retain the original screenshot dimensions and are not pixel-assertion references. The PC portrait example is a viewport configuration, **not a physical Fold7**.
+
+| 对话框路线 R4 · Dialog route | 地图路线 R1 · Map route |
+|---|---|
+| [桃园结义 · Story](test/native-realm-evidence/pc-story.jpg) | [原生城池面板/名牌 · City sheet/plate](test/native-realm-evidence/pc-city-marker.jpg) |
+| [名册搜索 · Roster search](test/native-realm-evidence/pc-officer-search.jpg) | [出征选择 · Muster](test/native-realm-evidence/pc-muster.jpg) |
+| [武将详情 · Dossier](test/native-realm-evidence/pc-officer-dossier.jpg) | [原生军团面板/名牌 · Army sheet/plate](test/native-realm-evidence/pc-army-marker.jpg) |
+| [科技树 · Invention graph](test/native-realm-evidence/pc-tech-tree.jpg) | [PC 竖屏配置 · PC portrait emulation](test/native-realm-evidence/pc-portrait-emulation.jpg) |
+| [演义树 · Tale graph](test/native-realm-evidence/pc-tale-tree.jpg) | — |
+
+实体 Fold7 外屏（原图 1080×2283 px，竖屏 411×813 CSS px）：[首月引导 · Coach](test/native-realm-evidence/fold7-first-month.jpg)、[城务政令 · City orders](test/native-realm-evidence/fold7-city-orders.jpg)、[科技树滚动 · Scrolled inventions](test/native-realm-evidence/fold7-tech-scrolled.jpg)、[手势后地图 · Map after gestures](test/native-realm-evidence/fold7-map-portrait.jpg)。 / Physical Fold7 cover-display screenshots, kept at the original physical dimensions; these four are actual device captures rather than the PC emulated portrait example above.
+
+目前没有第三批同机位性能对照、第三批公开部署、实体内屏/完整手机战役或长时间高负载结论。官方多屏 R2 和实体外屏路线早于最后一次原生确认/通知/提示微调；其后另有最终软件 R5 54/54 和 PC 隔离确认 4/4，但尚未在同一手机或全部配置重复最后变更。第二批的性能和真机数据仍单独保留，不挪用为第三批结果。 / Batch-three matched performance, public release verification, the physical inner display/full mobile campaign and sustained high-load results remain unmeasured. The official screen matrix and physical-device route precede the last confirmation/badge/hint polish. Final software R5 (54/54) and isolated PC confirmation (4/4) followed, but the last changes have not been repeated across all profiles or on the same phone. Batch-two figures below remain separate evidence.
+
 ## 原生界面第二批 · Native interface batch two (2026-11-28)
+
+- 公开版追加复测 · Public follow-up: [PR #306](https://github.com/cnedwin/PortedGamesEgret/pull/306) 合并 `d726a21c220b9da308dffa247b5afca1e2bdbc88` 后，[Pages 运行 46160930591](https://github.com/cnedwin/PortedGamesEgret/actions/runs/46160930591) 成功。独立 Windows Edge 158.0.4370.45 访问实际公开英文版，**7/7** 通过：HTTP 200、实际英文标题及按钮、鼠标打开/关闭原生设置、index.html 和 main.mjs 绝对指纹吻合、零浏览器/HTTP 错误。单次公开标题就绪 9,138 ms，不能与下述本地启动值直接比较。 / The successful Pages deployment of merged batch two passed seven distinct assertions in an actual public English browsing session: HTTP, title/control, settings open/close, two served-file hashes and no errors. One public readiness measurement was 9,138 ms, not directly comparable to the local cold sample.
 
 - 版本与范围 · Pin and scope: `7fb371acb8bab254cf1c49b9da0ac0eed0c06fb4`，与独立引擎升级后的旧 UI 对照，保留 3D 场景、资源、规则、数值、存档格式。原生化标题、开局与自建势力、武将登录、设置/存档/确认、天下图顶栏和小地图，复用同一个 Play/World3D 宿主。 / Same pin on both sides of the UI comparison; gameplay, saves and World3D assets are retained. The native shell includes the title, campaign/custom banner setup, officer registration, settings/saves/confirmation, realm HUD top bar and minimap on the shared Play/World3D host.
 - 自动验收 · Automated acceptance: Node **217/217**；`test/accept.mjs` R6，SwiftShader 软件渲染 **53/53**（包括原路线、原生独立音量、存读档、中文武将姓名编辑与自建势力开局）；官方屏幕验收 **9/9** 配置各 6 个界面检查，共 **54/54**（中英标题、设置、剧本开局、自建势力、武将登录，含刘海/窄横屏/平板/折叠屏配置；无 findings 或 engine warnings）。屏幕配置不是物理设备。 / All 217 Node tests and 53 browser assertions passed, plus six official checkpoints on each of nine screen profiles. The 54 screen checks are browser layout configurations, not physical devices.

@@ -27,22 +27,32 @@ const capture = async (page,name) => {
 };
 // Data views are exercised by their human-readable semantics rather than DOM selectors.
 // Reveal a named row using its actual native scroll geometry before a semantic activation.
-const native = async (page, query, {part, dialog=false, focus=false}={}) => {
-  await page.evaluate(({query,part,dialog}) => {
+const native = async (page, query, {part, dialog=false, focus=false, surface='title'}={}) => {
+  await page.evaluate(({query,part,dialog,surface}) => {
     const {app,ui} = window.egretGame;
-    const view = dialog ? app.dialogs.view : app.nativeTitle.view;
+    const view = dialog ? app.dialogs.view : surface==='realm'?app.hud.view:surface==='coach'?app.coach.view:app.nativeTitle.view;
     if (!ui.exists(query) && part && view) {
-      const id=dialog?'dialog-body':'page-body';
+      const id=dialog?'dialog-body':surface==='realm'?'realm-body':surface==='coach'?'coach-body':'page-body';
       const r=view.rect(part), body=view.rect(id);
       if(r&&body) view.scroll(id).scrollTo(Math.max(0,r.y-body.y-body.height*.35));
     }
-  },{query,part,dialog});
+  },{query,part,dialog,surface});
   await page.waitForFunction(q=>window.egretGame?.ui?.exists(q),query,{timeout:10000});
   return page.evaluate(({query,focus})=> {
     const ui=window.egretGame.ui;
     return focus ? ui.focus(query) : ui.press(query);
   },{query,focus});
 };
+const dialogPart = async (page, name) => {
+  const query = await state(page, part => {
+    const {app}=window.egretGame;
+    const n=app.uiHost.semantics.publish().nodes.find(x=>x.id.endsWith(':'+part));
+    return n ? n.role+':'+n.name : null;
+  },name);
+  if(!query)throw Error('Missing named native dialog part '+name);
+  return native(page,query,{part:name,dialog:true});
+};
+const waitUi = (page,q) => page.waitForFunction(q=>window.egretGame?.ui?.exists(q),q,{timeout:12000});
 const hasNative = (page, query) => state(page, q => window.egretGame.ui.exists(q), query);
 const nativeOutline = page => state(page, () => window.egretGame.ui.outline());
 const tapPlace = async (page, id) => {
@@ -110,20 +120,46 @@ try {
   check(await state(page,()=>Boolean(window.egretGame.app.nativeTitle.view?.visibleRect('setup-ruler-art'))), 'campaign setup loads the assigned Liu Bei illustration');
   await native(page, 'button:开始', {part:'setup-start'});
   await until(page, () => window.egretGame.screen === 'play' && window.egretGame.app.dialogs.name === 'story', 10);
-  check(await state(page, () => document.querySelector('#sheet h2').textContent === '桃园结义' && document.querySelector('#sheet').classList.contains('scroll')), 'the oath of the peach garden unrolls as a scroll');
-  await page.click('.dlgFoot .btn.main');
+  check(await state(page, () => window.egretGame.ui.outline().includes('桃园结义') && Boolean(window.egretGame.app.dialogs.view?.rect('dialog-body'))), 'the oath of the peach garden unrolls as a scroll');
+  await native(page,'button:下一步',{part:'story-next',dialog:true});
   await page.waitForTimeout(300);
   await page.evaluate(() => window.egretGame.app.setPaused(true));
+
+  // Check an irreversible request through the native modal: cancelling it
+  // must not change the old save or diplomatic state.
+  await page.evaluate(()=>window.egretGame.app.dialogs.close(true));
+  await until(page,()=>!window.egretGame.app.dialogOpen&&window.egretGame.ui.exists('button:外交')&&!window.egretGame.ui.state('button:外交').disabled,12);
+  await native(page,'button:外交');
+  await until(page,()=>window.egretGame.app.dialogs.name==='diplomacy');
+  const demandPart=await state(page,()=>{
+    const view=window.egretGame.app.dialogs.view;
+    const {state}=window.egretGame;
+    return Object.values(state.factions).filter(f=>f.alive&&f.id!==state.player).map(f=>'demand-'+f.id).find(n=>view.rect(n));
+  });
+  const beforeCancel=await state(page,()=>JSON.stringify(window.egretGame.state));
+  const demandName=await state(page,name=>{
+    const {app}=window.egretGame,view=app.dialogs.view;
+    view.focus(name);
+    const node=app.uiHost.semantics.publish().nodes.find(n=>n.id.endsWith(':'+name));return node?.name;
+  },demandPart);
+  await page.waitForTimeout(150);
+  await native(page,'button:'+demandName+'#0',{part:demandPart,dialog:true});
+  await until(page,()=>window.egretGame.app.game.asking===true);
+  await page.keyboard.press('Escape');
+  await until(page,()=>!window.egretGame.app.game.asking);
+  check(await state(page,expected=>JSON.stringify(window.egretGame.state)===expected,beforeCancel),'cancelling a native irreversible action changes no campaign data');
+  await page.evaluate(()=>window.egretGame.app.dialogs.close(true));
 
   // Pingyuan: its details, then an army mustered and sent against Nanpi on the map.
   await tapPlace(page, 'pingyuan');
   await page.waitForTimeout(400);
-  check(await state(page, () => !document.querySelector('#side').hidden && document.querySelector('#side h2').textContent === '平原'), 'tapping Pingyuan opens its details');
-  await page.locator('#side').getByRole('tab', { name: '政令' }).click({ timeout: 2000 });
-  await page.click('#side .btn.main');
+  check(await state(page, () => window.egretGame.app.sel?.node==='pingyuan' && Boolean(window.egretGame.app.hud.view?.visibleRect('realm-shell'))), 'tapping Pingyuan opens its details');
+  if(await hasNative(page,'button:收起首月建议'))await native(page,'button:收起首月建议',{part:'coach-dismiss',surface:'coach'});
+  await native(page,'tab:政令',{part:'realm-tab-orders',surface:'realm'});
+  await native(page,'button:出征',{part:'muster',surface:'realm'});
   await page.waitForTimeout(300);
-  check(await state(page, () => window.egretGame.app.dialogs.name === 'muster' && document.querySelectorAll('.officer').length >= 3), 'the muster dialog lists the officers at Pingyuan');
-  await page.click('.dlgFoot .btn.main');
+  check(await state(page, () => window.egretGame.app.dialogs.name === 'muster' && ['liubei','guanyu','zhangfei'].every(id=>Boolean(window.egretGame.app.dialogs.view?.rect('muster-officer-'+id)))), 'the muster dialog lists the officers at Pingyuan');
+  await native(page,'button:出征',{part:'muster-confirm',dialog:true});
   await page.waitForTimeout(300);
   const army = await state(page, () => window.egretGame.app.sel?.army);
   check(army && (await state(page, () => window.egretGame.app.mode?.kind === 'march')), 'the army is mustered and waits for a destination');
@@ -139,7 +175,7 @@ try {
     }
   });
   check(await state(page, () => window.egretGame.app.dialogs.name === 'battle' && window.egretGame.app.dialogs.blocking), 'the siege of Nanpi comes to an assault to decide');
-  await page.click('.dlgFoot .btn.main');
+  await dialogPart(page, await state(page,()=>window.egretGame.app.dialogs.view.rect('campaign-command-siege')?'campaign-command-siege':'battle-command'));
   await until(page, () => window.egretGame.screen === 'battle', 10);
   await page.waitForTimeout(600);
   check(await state(page, () => window.egretGame.battle.phase === 'deploy' && document.querySelector('.bDeploy') !== null), 'the battle opens on deployment');
@@ -194,7 +230,7 @@ try {
   await until(page, () => window.egretGame.screen === 'play' && window.egretGame.app.dialogs.name === 'battleResult', 20);
   check(true, 'the battle ends with its outcome');
   const originalResultState = await state(page, () => JSON.stringify(window.egretGame.state));
-  await page.getByRole('button', { name: '回放战斗' }).click();
+  await native(page,'button:回放战斗',{part:'battle-replay',dialog:true});
   await until(page, () => !!window.egretGame.app.lab);
   const timeline = page.getByRole('slider', { name: '回放时间' });
   await timeline.press('End');
@@ -203,7 +239,7 @@ try {
   await until(page, () => !window.egretGame.app.lab);
   check(await state(page, (saved) => window.egretGame.app.dialogs.name === 'battleResult' &&
     JSON.stringify(window.egretGame.state) === saved, originalResultState), 'playing and closing the battle replay leaves the campaign unchanged');
-  await page.click('.dlgFoot .btn.main');
+  await dialogPart(page,'campaign-return');
 
   // A save in slot one, read back after a reload.
   await page.evaluate(() => window.egretGame.app.open('saves'));
@@ -234,25 +270,28 @@ try {
   // A phone held upright.
   phone = await openPage(browser, `${server.url}${path}/?seed=2&lang=zh&faction=caocao&branch=free`, { width: 390, height: 844, touch: true });
   await until(phone, () => window.egretGame?.ready && window.egretGame.screen === 'play');
-  await phone.getByRole('button', { name: '收起首月建议' }).tap();
+  await native(phone,'button:收起首月建议',{part:'coach-dismiss',surface:'coach'});
   await phone.waitForTimeout(600);
   const qiao = await phone.evaluate(() => window.egretGame.nodeAt('qiao'));
   await phone.touchscreen.tap(qiao.x, qiao.y);
   await phone.waitForTimeout(500);
   const sheet = await phone.evaluate(() => {
-    const r = document.querySelector('#side').getBoundingClientRect();
-    return { shown: !document.querySelector('#side').hidden, bottom: Math.round(r.bottom), width: Math.round(r.width) };
+    const {app}=window.egretGame,r=app.hud.view?.visibleRect('realm-shell');
+    if(!r)return {shown:false};
+    const a=app.game.fromStage(r.x,r.y),b=app.uiHost.designToClient(a.x+r.width,a.y+r.height),c=app.uiHost.designToClient(a.x,a.y);
+    return {shown:true,bottom:Math.round(b.y),width:Math.round(b.x-c.x),height:Math.round(b.y-c.y)};
   });
-  check(sheet.shown && sheet.bottom === 844 && sheet.width === 390, `on a phone the details rise from the bottom (${JSON.stringify(sheet)})`);
+  check(sheet.shown && sheet.bottom >= 828 && sheet.bottom<=844 && sheet.width >= 350 && sheet.width<=390, `on a phone the details rise from the bottom (${JSON.stringify(sheet)})`);
   check(await phone.evaluate(() => window.egretGame.app.stageSize.height > window.egretGame.app.stageSize.width), 'the stage stands upright on a phone');
-  const city = phone.locator('#side');
-  const overview = city.getByRole('tab', { name: '概况' });
-  check(await overview.getAttribute('aria-selected') === 'true', 'owned city opens in its compact overview');
-  check(await state(phone, () => document.querySelector('#side').offsetHeight < innerHeight * .4), 'phone city overview leaves most of the map unobstructed');
-  await overview.press('ArrowRight');
-  check(await city.getByRole('tab', { name: '营建' }).getAttribute('aria-selected') === 'true', 'arrow key selects the adjacent city section');
-  await city.getByRole('tab', { name: '政令' }).tap();
-  check(await city.getByRole('button', { name: '寻访', exact: true }).isVisible(), 'city orders are directly reachable from the fixed tabs');
+  check(await state(phone,()=>window.egretGame.ui.state('tab:概况').selected===true),'owned city opens in its compact overview');
+  check(sheet.height <= 844*.4,'phone city overview leaves most of the map unobstructed');
+  await phone.evaluate(()=>window.egretGame.app.game.canvas.focus({preventScroll:true}));
+  await native(phone,'tab:概况',{part:'realm-tab-overview',surface:'realm',focus:true});
+  await phone.keyboard.press('ArrowRight');
+  await phone.waitForTimeout(200);
+  check(await state(phone,()=>window.egretGame.ui.state('tab:营建').selected===true),'arrow key selects the adjacent city section');
+  await native(phone,'tab:政令',{part:'realm-tab-orders',surface:'realm'});
+  check(await hasNative(phone,'button:寻访'),'city orders are directly reachable from the fixed tabs');
 
   const speed = async value => {
     await native(phone,'button:推进速度');
@@ -275,7 +314,9 @@ try {
   const afterSpeed = await campaignClock();
   check(beforeSpeed.paused && afterSpeed.speed === 4 && afterSpeed.paused && afterSpeed.day === pausedDay,
     'changing the campaign speed keeps a paused day paused (' + JSON.stringify({ beforeSpeed, afterSpeed }) + ')');
-  await city.getByRole('tab', { name: '政令' }).press('Digit2');
+  await native(phone,'tab:政令',{part:'realm-tab-orders',surface:'realm',focus:true});
+  await phone.keyboard.press('Digit2');
+  await phone.waitForTimeout(150);
   const afterShortcut = await campaignClock();
   check(afterShortcut.speed === 1 && afterShortcut.paused && afterShortcut.day === pausedDay,
     'the campaign speed shortcut also preserves pause (' + JSON.stringify(afterShortcut) + ')');
@@ -298,18 +339,17 @@ try {
   await phone.setViewportSize({ width: 873, height: 325 });
   await until(phone, () => innerWidth > innerHeight);
   check(await state(phone, () => {
-    const details = document.querySelector('#side');
-    const hit = document.elementFromPoint(innerWidth / 2, innerHeight / 2);
-    return !details.hidden && details.getBoundingClientRect().right < innerWidth / 2 && !details.contains(hit);
+    const {app}=window.egretGame,r=app.hud.view?.visibleRect('realm-shell');
+    if(!r)return false;
+    const pos=app.game.fromStage(r.x,r.y),end=app.uiHost.designToClient(pos.x+r.width,pos.y+r.height);
+    return end.x<innerWidth/2;
   }), 'sideways phone details leave the centre of the map tappable');
   check(await state(phone, () => {
-    const root = document.querySelector('#side');
-    const body = root.querySelector('.placeBody'), close = root.querySelector('button.x');
-    body.scrollTop = body.scrollHeight;
-    const box = close.getBoundingClientRect();
-    return box.width >= 44 && box.height >= 44 && close.contains(document.elementFromPoint(box.x + box.width / 2, box.y + box.height / 2));
+    const {app,ui}=window.egretGame,view=app.hud.view;
+    view.scroll('realm-body').scrollTo(10000);
+    const root=view.visibleRect('realm-shell'),close=view.visibleRect('realm-close'),scale=app.uiHost.metrics().scale;
+    return Boolean(root&&close&&close.width*scale>=43.99&&close.height*scale>=43.99&&ui.exists('button:关闭'));
   }), 'sideways phone city close stays in reach while the contents scroll');
-
   // A broken autosave is set aside, and the title says so.
   await page.addInitScript(() => localStorage.setItem('nine-provinces.auto', '{broken'));
   await page.goto(`${server.url}${path}/?seed=1&lang=zh`);

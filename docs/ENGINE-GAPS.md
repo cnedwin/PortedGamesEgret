@@ -4,9 +4,9 @@
 
 Made by `node tools/engine-notes.mjs --write` from the ENGINE-NOTES of the games; do not edit by hand, and `--check` says whether it is out of date. What the engine resolved is copied from the engine's `guide/resolved.json` into [engine-resolved.json](engine-resolved.json) (15 entries). The form of a note is in part 3 of [GAME-STANDARD.md](GAME-STANDARD.md).
 
-24 个游戏、282 条笔记：未解决 77，部分解决 24，游戏侧绕过 18，已写入文档 42，已解决 121。
+24 个游戏、284 条笔记：未解决 79，部分解决 24，游戏侧绕过 18，已写入文档 42，已解决 121。
 
-282 notes from 24 games: 77 open, 24 partly resolved, 18 worked around in the game, 42 documented, 121 resolved.
+284 notes from 24 games: 79 open, 24 partly resolved, 18 worked around in the game, 42 documented, 121 resolved.
 
 ## 1. 引擎已经解决、游戏还标着未解决 · Resolved by the engine, still open in a game
 
@@ -51,6 +51,7 @@ Write the lesson as a card of the engine's guide (`guide/cards` in the engine re
 | `camera-zoom-clamp` | NineProvinces#4 相机缩放超出范围时抛错而不是夹住 · The camera throws instead of clamping a zoom out of range | 未解决 · open |
 | `decal-changes-material` | TeaHorseRoad#8 `createDecal3D` 改写传入的材质 · `createDecal3D` changes the material it is given | 未解决 · open |
 | `declarative-range-control` | NineProvinces#10 原生数据界面缺少具名范围控件 · Declarative views have no named range control | 未解决 · open |
+| `declarative-tab-arrow-selection` | NineProvinces#12 数据界面页签需要业务方显式实现方向键选中 · Declarative tabs require explicit arrow selection | 未解决 · open |
 | `expanded-stage-pixel-ratio` | LanternShadows#8 扩展舞台的画布像素密度 · Backing density on an expanded stage | 已在游戏侧绕过 · worked around |
 | `geometry-budget-reuse` | FivePhases#1 每帧的几何预算连复用的几何也一起算 · The per-frame geometry budget also counts reused geometry | 部分解决 · partly |
 | `gltf-webp-texture` | FiveRegiments#1 `loadGltf3D` 不认 `EXT_texture_webp` · `loadGltf3D` does not take `EXT_texture_webp` | 未解决 · open |
@@ -134,6 +135,7 @@ Write the lesson as a card of the engine's guide (`guide/cards` in the engine re
 | `webgpu-loading-atlas-prewarm` | NezhaSea#14 WebGPU 加载页与主动预热共享存储竞争 · WebGPU loading and manual warm-up compete for shared storage | 已在游戏侧绕过 · worked around |
 | `webkit-retained-presentation` | NezhaSea#19 WebKit 的按需首屏提交 · WebKit on-demand initial presentation | 已在游戏侧绕过 · worked around |
 | `webkit-world3d-canvas-presentation` | TeaHorseRoad#32 WebKit 世界画布未呈现 · WebKit World3D canvas presentation | 未解决 · open |
+| `world3d-attached-interactive-markers` | NineProvinces#11 原生 World3D 投影标记不能直接接入附着式 Play，且没有交互选项 · Native World3D projected markers cannot attach directly to attached Play and have no interactive option | 未解决 · open |
 | `world3d-native-marker-overlay-batching` | jelly-pandas#9 原生浮字触发整层界面提交 · Animated native markers wake the full overlay | 未解决 · open |
 | `world3d-overlay-frame-tail` | jelly-pandas#8 软件渲染下 3D 与原生叠加层的帧尾延迟 · Frame-tail latency with the native 3D overlay under software rendering | 部分解决 · partly |
 | `world3d-screen-markers-safe-insets` | TeaHorseRoad#29 3D 屏幕标记不能分边避让安全区 · 3D screen markers cannot respect per-edge safe areas | 未解决 · open |
@@ -156,7 +158,7 @@ Write the lesson as a card of the engine's guide (`guide/cards` in the engine re
 | [MechanismCity](../MechanismCity/ENGINE-NOTES.md) | 22 | 1 | 2 | 1 | 5 | 13 | 0 | `82561d6` |
 | [NezhaSea](../NezhaSea/ENGINE-NOTES.md) | 19 | 2 | 1 | 3 | 1 | 12 | 0 | `82561d6` |
 | [NightWardens](../NightWardens/ENGINE-NOTES.md) | 5 | 0 | 0 | 1 | 3 | 1 | 0 | `82561d6` |
-| [NineProvinces](../NineProvinces/ENGINE-NOTES.md) | 10 | 6 | 1 | 0 | 1 | 2 | 0 | `7fb371a` |
+| [NineProvinces](../NineProvinces/ENGINE-NOTES.md) | 12 | 8 | 1 | 0 | 1 | 2 | 0 | `7fb371a` |
 | [OperaDrums](../OperaDrums/ENGINE-NOTES.md) | 24 | 15 | 1 | 1 | 3 | 4 | 0 | `82561d6` |
 | [PeachCreek](../PeachCreek/ENGINE-NOTES.md) | 10 | 0 | 4 | 1 | 0 | 5 | 0 | `82561d6` |
 | [Rally](../Rally/ENGINE-NOTES.md) | 7 | 4 | 0 | 0 | 2 | 1 | 0 | `82561d6` |

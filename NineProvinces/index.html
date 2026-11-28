@@ -13,7 +13,6 @@
   <link rel="stylesheet" href="style-custom-faction.css">
   <link rel="stylesheet" href="src/ui/battle-polish.css">
   <link rel="stylesheet" href="src/ui/battle-lab.css">
-  <link rel="stylesheet" href="src/ui/player-flow.css">
   <link rel="stylesheet" href="src/ui/campaign-battle.css">
   <!-- The engine is a copy inside this folder (vendor/SOURCE.md); this map is vendor/importmap.json, pasted in. -->
   <script type="importmap">
@@ -57,17 +56,8 @@
 <body>
   <main id="frame" data-screen="loading">
     <div id="stageHost"></div>
-    <div id="hud" hidden>
-      <header id="topbar"></header>
-      <aside id="side" hidden aria-live="off"></aside>
-      <section id="log"></section>
-      <div id="toasts" aria-live="polite"></div>
-    </div>
     <div id="battleHud"></div>
     <div id="battleFx" aria-hidden="true"></div>
-    <div id="title" hidden></div>
-    <div id="tip" hidden role="tooltip"></div>
-    <div id="modal" hidden><section id="sheet" class="sheet" role="dialog" aria-modal="true" aria-labelledby="dlgTitle"></section></div>
     <p id="loading">载入中 · Loading</p>
   </main>
   <noscript>这个游戏需要 JavaScript · This game needs JavaScript.</noscript>

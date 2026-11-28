@@ -5,6 +5,8 @@ import { SCENARIOS } from '../sim/scenarios.mjs';
 import { SLOTS } from '../saves.mjs';
 import { dayWords, pair } from './text.mjs';
 import { progressPrompt } from './player-flow.mjs';
+import { campaignBuilders } from './native-campaign-builders.mjs';
+import { eventBuilders } from './native-campaign-event-builders.mjs';
 
 const C = { ink:0x18272a, panel:0x233337, border:0xa38651, text:0xf2e4c6, muted:0xb7b6a7,
   gold:0xe7c78b, button:0x354747, active:0x825045, danger:0x9f3c36, disabled:0x515454, track:0x131f23 };
@@ -26,14 +28,26 @@ const small=(text,height=26)=>txt(text,height,16,{color:C.muted});
 const section=text=>txt(text,34,20,{color:C.gold,bold:true});
 const clamp=(n,lo,hi)=>Math.max(lo,Math.min(hi,n));
 const nativeView=(name,text,extra={})=>({type:'button',name,text:String(text),width:'fill',height:48,size:17,border:{color:C.border,width:1},...extra});
-function ctxBuilder(width){
-  const bind={},ranges=[];
+function ctxBuilder(width,app){
+  const bind={},ranges=[],decorations=[];
   const act=(name,label,callback,{disabled=false,selected=false,main=false,danger=false,semanticLabel,width:buttonWidth='fill',height=48,...rest}={})=>{
-    bind[name]={disabled:()=>Boolean(disabled),...(semanticLabel?{label:()=>String(semanticLabel)}:{}),tap:()=>{if(!disabled)callback?.();}};
+    const unavailable=()=>typeof disabled==="function"?Boolean(disabled()):Boolean(disabled);
+    bind[name]={disabled:unavailable,...(semanticLabel?{label:()=>String(semanticLabel)}:{}),...(rest.role==="tab"?{selected:()=>Boolean(selected)}:{}),tap:()=>{if(!unavailable())callback?.();}};
     return nativeView(name,label,{width:buttonWidth,height,color:danger?C.danger:main||selected?C.active:C.button,...rest});
   };
   const note=(words,size=17)=>paragraph(words,width-28,size,{color:C.muted});
-  return {bind,ranges,act,note,width,txt,paragraph:(words,size=18,extra={})=>paragraph(words,width-28,size,extra),row,column,panel,section,small,gap};
+  const dynamicText=(name,read,height=30,size=18,extra={})=>{bind[name]={text:()=>String(read())};return {...txt(read(),height,size,extra),name};};
+  const range=(name,label,opts)=>{
+    const r={name:name+'-slider',label,min:opts.min,max:opts.max,step:Math.min(opts.step,opts.max-opts.min),value:opts.value,
+      preview:opts.preview??(()=>{}),commit:opts.commit??(()=>{})};
+    if(r.max<=r.min)return note((opts.format??String)(r.value));
+    ranges.push(r);bind[r.name]={tap:()=>{}};bind[name+'-meter']={value:()=>clamp((r.value-r.min)/(r.max-r.min),0,1)};
+    return column([row([txt(label,32,18,{color:C.gold}),dynamicText(name+'-amount',()=> (opts.format??String)(r.value),32,17,{width:135,align:'right'})],32),
+      {type:'panel',name:r.name,role:"button",card:true,color:C.button,height:48,width:'fill',padding:12,border:{color:C.border,width:1},children:[{type:'bar',name:name+'-meter',semantic:false,value:clamp((r.value-r.min)/(r.max-r.min),0,1),height:16,width:'fill',anchor:'center'}]}],88,{gap:6});
+  };
+  const graph=(name,height,children,paths)=>{decorations.push({name,paths});return {type:'panel',name,width:'fill',height,layout:'free',children};};
+  return {app,bind,ranges,decorations,act,note,width,txt,dynamicText,range,graph,paragraph:(words,size=18,extra={})=>{
+    const {maxWidth=width-28,...props}=extra;return paragraph(words,maxWidth,size,props);},row,column,panel,section,small,gap};
 }
 function settings(app,args,again,b){
   const st=app.settings;
@@ -53,7 +67,7 @@ function settings(app,args,again,b){
     b.bind[key+'-meter']={value:()=>range.value/100};
     b.bind[key+'-amount']={text:()=>range.value+'%'};
     return column([row([txt(t(key),32,18,{color:C.gold}),{...txt(level+'%',32,18,{width:72,align:'right',bold:true,color:C.gold}),name:key+'-amount'}],32),
-      {type:'panel',name:range.name,role:'button',card:true,color:C.button,height:48,width:'fill',padding:12,border:{color:C.border,width:1},children:[
+      {type:'panel',name:range.name,role:"button",card:true,color:C.button,height:48,width:'fill',padding:12,border:{color:C.border,width:1},children:[
         {type:'bar',name:key+'-meter',semantic:false,value:level/100,color:C.gold,height:16,width:'fill',anchor:'center'}]}],88,{gap:6});
   };
   const language=column([txt(t('languageLabel'),28,18,{color:C.gold}),row([
@@ -93,19 +107,21 @@ function confirmProgress(app,args,again,b){
     b.act('dialog-cancel',t('cancel'),cancel),args.reason!=='overwrite'&&app.state?b.act('confirm-save-first',pair(['先去存档','Save first']),()=>app.open('saves')):null,
     b.act('confirm-proceed',prompt.action,()=>{app.dialogs.close(true);args.proceed();},{main:true})],initialFocus:'dialog-cancel',dismiss:cancel};
 }
-export const nativeBuilders = {settings,saves,confirmProgress};
+export const nativeBuilders = {settings,saves,confirmProgress,...campaignBuilders,...eventBuilders};
 
 /** Build native Play view data. Dimensions are the host's logical safe-area units. */
 export function buildDialog(name,app,args,again,viewport,host){
-  const width=Math.max(240,Math.min(760,Math.floor(viewport.width-20))),height=Math.max(240,Math.min(740,Math.floor(viewport.height-20)));
-  const b=ctxBuilder(width-32),fn=nativeBuilders[name];if(!fn)return null;
+  const wide=["muster","generals","tech","realm","chronicle","battle","battleResult"].includes(name);
+  const width=Math.max(240,Math.min(wide?1240:760,Math.floor(viewport.width-20))),height=Math.max(240,Math.min(740,Math.floor(viewport.height-20)));
+  const b=ctxBuilder(width-32,app),fn=nativeBuilders[name];if(!fn)return null;
   const spec=fn(app,args,again,b,host);if(!spec)return null;
-  const body=spec.body.filter(Boolean),actions=spec.actions.filter(Boolean);
+  const body=spec.body.filter(Boolean),actions=(spec.actions??[]).filter(Boolean);
+  if(!actions.length&&!spec.blocking)actions.push(b.act('dialog-close',t('close'),()=>app.dialogs.close()));
   const footerStack=actions.length>1&&width<600&&height>=480;
   const footerHeight=footerStack?actions.length*48+(actions.length-1)*8:48;
   const header=txt(spec.title,44,Math.min(25,Math.max(19,Math.floor(width/20))),{color:C.gold,bold:true});
   const root={type:'panel',name:'dialog-root',anchor:'center',width,height,card:true,color:C.ink,border:{color:C.border,width:1},padding:15,layout:'column',gap:8,children:[
     header,{type:'panel',name:'dialog-body',scroll:'vertical',layout:'column',width:'fill',height:'fill',gap:10,children:body},
     footerStack?column(actions,footerHeight,{gap:8}):row(actions,48)]};
-  return {description:{label:spec.title,area:'safe',modal:true,uiScale:true,skin:dialogSkin,root},bind:b.bind,ranges:b.ranges,initialFocus:spec.initialFocus,blocking:Boolean(spec.blocking),dismiss:spec.dismiss};
+  return {description:{label:spec.title,area:'safe',modal:true,uiScale:true,skin:dialogSkin,root},bind:b.bind,ranges:b.ranges,decorations:b.decorations,initialFocus:spec.initialFocus??actions[0]?.name,blocking:Boolean(spec.blocking),dismiss:spec.dismiss};
 }

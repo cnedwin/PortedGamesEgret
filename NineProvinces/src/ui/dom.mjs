@@ -1,6 +1,4 @@
-// 网页元素的小工具：造元素、清空、按钮、进度条、印章、武将小像。界面的每一处都由这些拼出来。
-// Small tools for page elements: making an element, emptying one, buttons, bars, seals, a general's small portrait.
-// Every part of the interface is put together from these.
+// Legacy battlefield presentation utilities retained until the native battle migration.
 import { GENERALS } from '../data/generals.mjs';
 import { portrait } from '../view/portrait.mjs';
 import { FACTIONS, LATER } from '../data/factions.mjs';

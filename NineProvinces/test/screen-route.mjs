@@ -7,14 +7,14 @@ async function until(player,fn,arg,label) {
   }
   throw Error(label+' did not become ready');
 }
-async function press(player,query,part=null,dialog=false) {
-  await player.read(({query,part,dialog})=>{
-    const {app,ui}=window.egretGame,view=dialog?app.dialogs.view:app.nativeTitle.view;
+async function press(player,query,part=null,dialog=false,surface='title') {
+  await player.read(({query,part,dialog,surface})=>{
+    const {app,ui}=window.egretGame,view=dialog?app.dialogs.view:surface==='realm'?app.hud.view:surface==='coach'?app.coach.view:app.nativeTitle.view;
     if(part&&view&&!ui.exists(query)){
-      const id=dialog?'dialog-body':'page-body',r=view.rect(part),b=view.rect(id);
+      const id=dialog?'dialog-body':surface==='realm'?'realm-body':surface==='coach'?'coach-body':'page-body',r=view.rect(part),b=view.rect(id);
       if(r&&b)view.scroll(id).scrollTo(Math.max(0,r.y-b.y-b.height*.35));
     }
-  },{query,part,dialog});
+  },{query,part,dialog,surface});
   await until(player,q=>window.egretGame?.ui?.exists(q),query,query);
   await player.read(q=>window.egretGame.ui.press(q),query);
   await player.wait(.3);
@@ -42,4 +42,26 @@ export default async function(player){
   await press(player,'button:登录新武将','title-roster');
   await until(player,()=>window.egretGame.screen==='roster'&&window.egretGame.app.nativeTitle.view?.visibleRect('roster-name'),null,'officer roster');
   await player.checkpoint('officer-roster');
+  await press(player,'button:返回','roster-back');
+  await press(player,'button:新的征程','title-new');
+  await press(player,'button:季汉春秋','branch-liubei');
+  await press(player,'button:开始','setup-start');
+  await until(player,()=>window.egretGame.app.dialogs.name==='story'&&window.egretGame.ui.exists('button:下一步'),null,'opening story');
+  await player.checkpoint('opening-story');
+  await press(player,'button:下一步','story-next',true);
+  await until(player,()=>!window.egretGame.app.dialogOpen&&window.egretGame.app.hud.view?.visibleRect('realm-shell'),null,'realm');
+  await player.checkpoint('realm-first-month');
+  if(await player.read(()=>window.egretGame.ui.exists('button:收起首月建议')))await press(player,'button:收起首月建议','coach-dismiss',false,'coach');
+  await press(player,'tab:政令','realm-tab-orders',false,'realm');
+  await player.checkpoint('city-orders');
+  await press(player,'button:出征','muster',false,'realm');
+  await until(player,()=>window.egretGame.app.dialogs.name==='muster'&&window.egretGame.ui.exists('button:取消'),null,'muster');
+  await player.checkpoint('muster');
+  await press(player,'button:取消','dialog-cancel',true);
+  for(const [name,button] of [['tech','科技'],['diplomacy','外交'],['generals','武将'],['chronicle','记录']]){
+    await press(player,'button:'+button+(name==='chronicle'?'#0':''));
+    await until(player,n=>window.egretGame.app.dialogs.name===n&&window.egretGame.ui.exists('button:关闭'),name,name);
+    await player.checkpoint(name);
+    await press(player,'button:关闭','dialog-close',true);
+  }
 }

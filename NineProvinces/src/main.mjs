@@ -21,20 +21,17 @@ import { registerCustom } from './sim/newblood.mjs';
 import { die, giveTreasure, issueTalentOrder, moveGeneral, persuade, release, searchCity } from './sim/people.mjs';
 import { answerStory } from './sim/story.mjs';
 import { advance, createGame, power, recruit, setGovernorDuty, setGovernorRecruitment, startWork, study, transfer } from './sim/world.mjs';
-import { createDialogs } from './ui/dialogs.mjs';
 import { $, button, clear, h } from './ui/dom.mjs';
-import { createHud, SPEEDS, tipFor } from './ui/hud.mjs';
+import { createNativeRealmHud, nativeTipFor as tipFor } from './ui/native-realm-hud.mjs';
+import { createCampaignCoach } from './ui/native-campaign-coach.mjs';
 import { eventOf, logLine, pair, treatyAt } from './ui/text.mjs';
 import { startBattle } from './ui/battleui.mjs';
 import { battleOutcomeReason } from './ui/battle-copy.mjs';
-import { createPlates } from './ui/plates.mjs';
 import { createNativeTitleScreens } from './ui/native-title.mjs';
 import { createNativeDialogs } from './ui/native-dialogs.mjs';
-import { createNativeTopbar } from './ui/native-topbar.mjs';
+import { createNativeTopbar, CAMPAIGN_SPEEDS as SPEEDS } from './ui/native-topbar.mjs';
 import { createNativeMinimap } from './ui/native-minimap.mjs';
-import { renderFirstMonth } from './ui/player-flow.mjs';
 import { campaignAftermathView, captureCampaignBattle, campaignBattleAftermath, campaignBattlePresentation } from './ui/campaign-battle.mjs';
-import { renderSiegeWait } from './ui/siege-council.mjs';
 import { createRealmView } from './view3d/realm.mjs';
 import { homeCity } from './view/home-city.mjs';
 import { factionName, generalName, placeName } from './view/names.mjs';
@@ -70,7 +67,6 @@ function softwareRenderer() {
 
 const app = {
   game: null,
-  back: $('#back'),
   stageSize: { width: 1600, height: 900 },
   settings: settingsStore.data.settings,
   sound: { play() {}, theme() {}, setSound() {}, setMusic() {} },
@@ -106,7 +102,18 @@ const app = {
   rulers() {
     return app.rulerSet;
   },
-  open: (name, args) => app.dialogs.open(name, args),
+  open: (name,args)=>{
+    if(name==='chronicle'||name==='realm')app.game?.badges.clear('campaign/reports');
+    if(name==='generals')app.game?.badges.clear('campaign/officers');
+    return app.dialogs.open(name,args);
+  },
+  async confirmAction(prompt,proceed){
+    if(app.game.asking)return false;
+    const state=app.state;
+    const accepted=await app.game.confirm(prompt,{title:pair(['请确认','Confirm action']),yes:pair(['确认','Confirm']),no:t('cancel'),skin:{panel:0x18272a,button:0x354747,text:0xf2e4c6,accent:0xe7c78b,buttonText:0xf2e4c6}});
+    if(accepted&&app.state===state){proceed();return true;}
+    return false;
+  },
   homeCity: () => homeCity(app.state, app.lastOwnedCity),
   goHome() {
     if (app.screen !== 'play' || app.dialogOpen || app.lab) return;
@@ -136,7 +143,7 @@ const app = {
   setPaused(v) {
     app.paused = v;
     app.hud?.refresh();
-    renderFirstMonth(app);
+    app.coach?.refreshFirst();
   },
   setSpeed(i) {
     app.speed = i;
@@ -163,6 +170,7 @@ const app = {
     }
   },
   setLanguage(language) {
+    app.hud?.clearTransient?.();
     setLanguage(language);
     app.setSetting('language', language);
     document.documentElement.lang = language === 'zh' ? 'zh-CN' : 'en';
@@ -171,7 +179,7 @@ const app = {
     if (['title','setup','roster'].includes(app.screen)) app.nativeTitle?.refresh();
     if (app.dialogs?.name) app.dialogs.render();
     app.hud?.refresh(true);
-    if (app.state) renderFirstMonth(app);
+    if (app.state) app.coach?.refreshFirst();
   },
   slotSummary(slot) {
     return slots[slot].data.summary;
@@ -226,13 +234,13 @@ const app = {
     app.select({ node: setup.place.node });
     app.dialogs.close(true);
     app.setPaused(false);
-    renderSiegeWait(app, activeSiegeWait(app.state));
+    app.coach?.refreshWait(activeSiegeWait(app.state));
   },
   cancelSiegeSupport() {
     if (!app.state || app.screen !== 'play' || app.dialogOpen) return;
     if (!cancelSiegeWait(app.state)) return;
     app.setPaused(true);
-    renderSiegeWait(app, activeSiegeWait(app.state));
+    app.coach?.refreshWait(activeSiegeWait(app.state));
     nextInbox();
   },
   endBattle(done) {
@@ -270,7 +278,7 @@ const app = {
     if (target.camera) app.map.rig.jumpTo(target.camera.x, target.camera.z, target.camera.d);
     app.dialogs.close(true);
     app.hud.refresh(true);
-    renderFirstMonth(app);
+    app.coach?.refreshFirst();
     // Losing the final town may settle the campaign during finishBattle. Do
     // not require an extra running world day to reveal an existing ending.
     if (app.state.over && !app.endingShown) {
@@ -347,7 +355,9 @@ async function openBattleLab(tape = null) {
   const trial = nanpiResult?.tape === tape && tape !== null;
   const returnFocus = document.activeElement;
   const nativeFocus = app.nativeTitle?.view?.focused;
-  const background = ['#stageHost', '#title', '#hud', '#modal', '#battleHud'].map(selector => $(selector));
+  const nativeDialog = app.dialogs?.view;
+  const dialogFocus = nativeDialog?.focused;
+  const background = ['#stageHost','#battleHud'].map(selector => $(selector)).filter(Boolean);
   function close() {
     const active = app.lab;
     if (!active) return;
@@ -356,6 +366,8 @@ async function openBattleLab(tape = null) {
     for (const node of background) node.inert = false;
     app.map.setVisible(true);
     if (screen === 'title') { app.nativeTitle?.view?.show(); if (nativeFocus) focusNativeTitle(nativeFocus); }
+    if (nativeDialog && app.dialogs.view === nativeDialog) { nativeDialog.show(); if(dialogFocus) nativeDialog.focus(dialogFocus); }
+    app.hud.refresh(true);
     app.sound.theme(trial ? 'battle' : screen === 'title' ? 'title' : 'realm');
     if (returnFocus?.isConnected) returnFocus.focus({ preventScroll: true });
   }
@@ -368,6 +380,8 @@ async function openBattleLab(tape = null) {
     app.lab = { controller, close };
     for (const node of background) node.inert = true;
     app.nativeTitle?.view?.hide();
+    nativeDialog?.hide();
+    app.hud.refresh(true);
     app.map.setVisible(false);
     app.sound.theme('battle');
   } catch (error) {
@@ -382,27 +396,18 @@ async function openBattleLab(tape = null) {
 }
 
 
-/** During the staged migration old world/battle dialogs remain available until replaced. */
-function bridgeDialogs(legacy, native) {
-  let active = legacy;
+/** Native campaign dialogs own their lifecycle; the old battle layer remains until battle migration. */
+function bridgeDialogs(native) {
   return {
-    open(name, args) {
-      const next = native.supports(name) ? native : legacy;
-      if (active !== next && active.name) active.close(true);
-      active = next;
-      frame.classList.toggle('native-modal', next === native);
-      return next.open(name, args);
+    open(name,args) {
+      const opened=native.open(name,args);
+      if(opened){frame.classList.add('native-modal');app.hud?.refresh(true);app.coach?.refreshFirst();}
+      return opened;
     },
-    close(force) {
-      active.close(force);
-      if (!active.name) frame.classList.remove('native-modal');
-    },
-    render() { return active.render(); },
-    update(dt) { if (active === native) native.update?.(dt); },
-    get name() { return active.name; },
-    get blocking() { return active.blocking; },
-    get nativeActive() { return active === native && Boolean(native.name); },
-    get view() { return active === native ? native.view : undefined; }
+    close(force){const closed=native.close(force);if(!native.name)frame.classList.remove('native-modal');return closed;},
+    render(){return native.render();}, update(dt){native.update(dt);},
+    get name(){return native.name;},get blocking(){return native.blocking;},
+    get nativeActive(){return Boolean(native.name);},get view(){return native.view;}
   };
 }
 function reportUiError(cause) {
@@ -432,7 +437,8 @@ async function boot() {
     plates,
     uiParent: $('#stageHost'),
     getState: () => app.state ?? app.demoState,
-    plateFor: createPlates(app),
+    getPlayer: () => app.state?.player,
+    showMapMarkers: () => !app.lab && !app.dialogOpen && ['setup','play'].includes(app.screen),
     quality: params.get('quality') ?? (app.settings.quality && app.settings.quality !== 'auto' ? app.settings.quality : undefined),
     tick: (seconds) => tick(seconds),
     onError: (cause) => console.error(cause),
@@ -459,36 +465,49 @@ async function boot() {
   [app.sound] = await app.game.loading([() => createSound(app.map.app.scope, app.settings)], {
     label: pair(['准备配乐与界面','Preparing sound and interface'])
   });
-  app.hud = createHud(app);
-  const legacyDialogs = createDialogs(app);
+  app.hud = createNativeRealmHud(app, app.uiHost);
   const nativeDialogs = createNativeDialogs(app, {
     game: app.game, stack: app.uiHost.stack, paragraphCache: app.uiHost.paragraphCache, semantics: app.uiHost.semantics,
     viewport: () => app.game.safe, onError: reportUiError
   });
-  app.dialogs = bridgeDialogs(legacyDialogs, nativeDialogs);
+  app.dialogs = bridgeDialogs(nativeDialogs);
   app.nativeTitle = createNativeTitleScreens(app.game, {
     app, stack: app.uiHost.stack, paragraphCache: app.uiHost.paragraphCache, onError: reportUiError
   });
-  app.topbar = createNativeTopbar(app, app.uiHost, { onGeometry({ heightCss }) {
-    if (heightCss) $('#hud').style.setProperty('--campaign-hud-bottom', heightCss + 'px');
+  app.topbar = createNativeTopbar(app, app.uiHost, { onGeometry() {
     app.minimap?.relayout();
+    app.hud?.refresh();app.coach?.refreshFirst();
   } });
-  app.minimap = createNativeMinimap(app, app.uiHost, { topbar: app.topbar });
-  const refreshHud = app.hud.refresh;
-  app.hud.refresh = (...args) => {
-    refreshHud(...args);
-    const active = app.screen === 'play' && !app.lab;
+  app.minimap = createNativeMinimap(app, app.uiHost, { topbar:app.topbar });
+  app.coach = createCampaignCoach(app, app.uiHost);
+  app.hints=app.game.hints([]);let hintKey='';
+  app.updateHints=()=>{
+    const active=app.screen==='play'&&!app.lab&&!app.dialogOpen&&!app.sel&&!app.coach.view&&!app.game.asking;
+    const key=active?app.language()+':'+app.paused:'';
+    if(key===hintKey)return;hintKey=key;
+    app.hints.set(active?[{action:pair(['移动镜头','Camera']),key:'WASD',touch:pair(['拖动地图','Drag map'])},{action:pair(['缩放','Zoom']),key:'+ / −',touch:pair(['双指缩放','Pinch'])},{action:t(app.paused?'resume':'pause'),key:'Space'}]:[]);
+  };
+  const host=app.uiHost;
+  host.addMapOcclusion(()=>{const m=app.minimap?.snapshot();return m?.visible?[m.box]:[];});
+  host.addMapOcclusion(()=>app.hud.occlusionRects());
+  host.addMapOcclusion(()=>app.coach.occlusionRects());
+  host.addMapOcclusion(()=>{
+    if(app.screen!=='setup')return [];
+    const r=app.nativeTitle?.view?.visibleRect('painted-panel');
+    if(!r)return [];
+    const p=app.game.fromStage(r.x,r.y);return [{...p,width:r.width,height:r.height}];
+  });
+  const refreshHud=app.hud.refresh;
+  app.hud.refresh=(...args)=>{
+    const active=app.screen==='play'&&!app.lab;
     app.topbar.setVisible(active);
-    app.minimap.setVisible?.(active);
-    if (active) {
-      app.topbar.refresh(...args);
-      const mini = app.minimap.snapshot?.().box;
-      if (mini) {
-        const a=app.uiHost.designToClient(mini.x,mini.y), b=app.uiHost.designToClient(mini.x+mini.width,mini.y+mini.height);
-        $('#hud').style.setProperty('--native-minimap-width', (b.x-a.x)+'px');
-        $('#hud').style.setProperty('--native-minimap-bottom', b.y+'px');
-      }
-    }
+    app.minimap.setVisible(active);
+    if(active)app.topbar.refresh(...args);
+    refreshHud(...args);
+    app.coach.refreshFirst();
+    app.coach.refreshWait(app.state?activeSiegeWait(app.state):null);
+    const inbox=app.state?.inbox??[];app.game.badges.set('campaign/inbox/story',inbox.filter(m=>m.kind==='story').length+app.tales.length);app.game.badges.set('campaign/inbox/envoy',inbox.filter(m=>m.kind==='envoy').length);
+    app.game.badges.set('campaign/inbox/captive',inbox.filter(m=>m.kind==='captive').length);
   };
   const arrange = () => {
     const { width, height } = app.game.screen;
@@ -569,44 +588,36 @@ function hoverChanged() {
 
 // ——— Keys (dragging, the wheel and two fingers belong to the realm view) ———
 function bindKeys() {
-  window.addEventListener(
-    'keydown',
-    (e) => {
-      if (app.lab || e.defaultPrevented) return;
-      if (e.target instanceof HTMLInputElement && e.target.type !== 'range') return;
-      if (e.altKey || e.ctrlKey || e.metaKey) return;
-      if (app.battle && !app.dialogOpen) {
-        if (app.battle.key(e.code)) return e.preventDefault();
-      }
-      if (e.code === 'Escape') {
-        if (app.dialogOpen) app.dialogs.close();
-        else if (app.mode) app.setMode(null);
-        else if (app.sel) app.select(null);
-        return;
-      }
-      if (app.screen !== 'play' && app.screen !== 'battle') return;
-      if (app.dialogOpen) return;
-      const pan = { ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, -1], ArrowDown: [0, 1], KeyA: [-1, 0], KeyD: [1, 0], KeyW: [0, -1], KeyS: [0, 1] }[e.code];
-      if (pan) {
-        app.map.panBy(pan[0] * 140, pan[1] * 140);
-        e.preventDefault();
-        return;
-      }
-      if (e.key === '+' || e.key === '=') return app.map.zoomBy(1.25);
-      if (e.key === '-' || e.key === '_') return app.map.zoomBy(1 / 1.25);
-      if (app.screen !== 'play') return;
-      if (e.code === 'KeyH') {
-        e.preventDefault();
-        if (!e.repeat) app.goHome();
-      } else if (e.code === 'Space' && !(e.target instanceof HTMLButtonElement)) {
-        e.preventDefault();
-        app.setPaused(!app.paused);
-      } else if (/^Digit[1-5]$/.test(e.code)) app.setSpeed(+e.code.slice(5) - 1);
-    },
-    false
-  );
+  const keys=app.game.keys;
+  const worldActive=()=>app.screen==='play'&&!app.dialogOpen&&!app.game.asking&&!app.lab&&!app.battle;
+  // Arrow navigation belongs to a focused native sheet, and the world when no
+  // sheet has focus. WASD and the campaign shortcuts are explicitly claimed.
+  const sheetFocus=()=>Boolean(app.hud?.view?.focused||app.coach?.view?.focused||app.topbar?.snapshot()?.focus);
+  for(const code of ['KeyA','KeyD','KeyW','KeyS','Equal','Minus','NumpadAdd','NumpadSubtract','KeyH','Digit1','Digit2','Digit3','Digit4','Digit5'])keys.claim(code,worldActive);
+  for(const code of ['ArrowLeft','ArrowRight'])keys.claim(code,()=>worldActive()&&(!sheetFocus()||app.hud.view?.focused?.startsWith('realm-tab-')));
+  for(const code of ['ArrowUp','ArrowDown','Space'])keys.claim(code,()=>worldActive()&&!sheetFocus());
+  // Until batch four the independent battle screen still owns its old commands.
+  window.addEventListener('keydown',e=>{
+    if(app.lab||!app.battle||app.dialogOpen||e.defaultPrevented||e.altKey||e.ctrlKey||e.metaKey||e.target instanceof HTMLInputElement)return;
+    if(app.battle.key(e.code))e.preventDefault();
+  });
 }
-
+let panHold=0;
+function realmKeys(dt){
+  const keys=app.game?.keys;
+  if(!keys||app.lab||app.dialogOpen||app.game.asking||app.screen!=='play'||app.battle){panHold=0;return;}
+  if(keys.pressed('Escape')){if(app.mode)app.setMode(null);else if(app.sel)app.select(null);return;}
+  if(keys.pressed('KeyH'))app.goHome();
+  if(keys.pressed('Space'))app.setPaused(!app.paused);
+  for(let i=1;i<=5;i++)if(keys.pressed('Digit'+i))app.setSpeed(i-1);
+  if(keys.pressed('Equal','NumpadAdd'))app.map.zoomBy(1.25);
+  if(keys.pressed('Minus','NumpadSubtract'))app.map.zoomBy(1/1.25);
+  if(app.hud.view?.focused?.startsWith('realm-tab-')){if(keys.pressed('ArrowRight'))app.hud.stepTab(1);if(keys.pressed('ArrowLeft'))app.hud.stepTab(-1);if(!keys.down('KeyA','KeyD','KeyW','KeyS')){panHold=0;return;}}
+  const x=Number(keys.down('KeyD','ArrowRight'))-Number(keys.down('KeyA','ArrowLeft'));
+  const y=Number(keys.down('KeyS','ArrowDown'))-Number(keys.down('KeyW','ArrowUp'));
+  if(x||y){if(!panHold){app.map.panBy(x*140,y*140);panHold=0.22;}else{panHold-=dt;if(panHold<=0){app.map.panBy(x*140,y*140);panHold=0.075;}}}
+  else panHold=0;
+}
 // ——— Time ———
 let acc = 0,
   sinceHud = 0;
@@ -615,11 +626,13 @@ function tick(dt) {
   app.dialogs?.update(dt);
   if (frame.dataset.screen !== app.screen) frame.dataset.screen = app.screen;
   if (app.lab) return;
+  realmKeys(dt);
+  app.updateHints?.();
   if (app.battle) {
     app.battle.update(dt);
     return;
   }
-  if (app.screen === 'play' && app.state && !app.paused && !app.dialogOpen && (!app.state.over || app.watching)) {
+  if (app.screen === 'play' && app.state && !app.paused && !app.dialogOpen && !app.game.asking && (!app.state.over || app.watching)) {
     acc += dt * SPEEDS[app.speed];
     let steps = 0;
     while (acc >= 1 && steps < 12) {
@@ -637,8 +650,8 @@ function tick(dt) {
     sinceHud = 0;
     if (app.screen === 'play') app.hud.refresh();
     if (app.screen === 'play') {
-      renderFirstMonth(app);
-      renderSiegeWait(app, activeSiegeWait(app.state));
+      app.coach?.refreshFirst();
+      app.coach?.refreshWait(activeSiegeWait(app.state));
     }
     app.minimap?.draw();
   }
@@ -703,6 +716,8 @@ function newsSince(before) {
       continue;
     }
     if (!mine) continue;
+    if(['logDebutJoin','logGovernorFind'].includes(l.key))app.game.badges.set('campaign/officers',app.game.badges.count('campaign/officers')+1);
+    if(['logGovernorFind','logWorkDone','logTech'].includes(l.key))app.game.badges.set('campaign/reports',app.game.badges.count('campaign/reports')+1);
     if (l.key === 'logTaken') app.sound.play(v.faction === s.player ? 'seal' : 'gong');
     else if (l.key === 'logWorkDone') app.sound.play('build');
     else if (l.key === 'logTech') app.sound.play('coin');
@@ -715,7 +730,7 @@ function newsSince(before) {
 /** Take the next thing from the inbox that waits for the player. */
 function nextInbox() {
   const s = app.state;
-  if (!s || app.dialogOpen || app.battle || app.screen !== 'play') return;
+  if (!s || app.dialogOpen || app.game?.asking || app.battle || app.screen !== 'play') return;
   const m = s.inbox.find((x) => x.blocks) ?? (app.tales.length ? null : s.inbox[0]);
   if (!m && app.tales.length) {
     app.sound.play('event');
@@ -931,7 +946,7 @@ function saveSlot(slot, confirmed = false) {
   if (!app.state || slot === 'auto' || !slots[slot]) return;
   const previous = slots[slot].data.game;
   if (!confirmed && previous && JSON.stringify(previous) !== JSON.stringify(app.state)) {
-    app.open('confirmProgress', { reason: 'overwrite', slot, backToSaves: true, proceed: () => saveSlot(slot, true) });
+    void app.confirmAction(pair(['覆盖存档位 ','Replace save slot '])+slot+pair(['？其他档位不会受影响。','? Other slots are unchanged.']),()=>saveSlot(slot,true));
     return;
   }
   if (writeSlot(slots[slot], app.state, power(app.state, app.state.player).cities, captureCampaignView(app))) {
@@ -972,6 +987,7 @@ function play(state, savedView = null) {
   app.map.setDrift(null);
   registerCustom(state);
   app.state = state;
+  app.game.badges.clear('campaign');
   app.lastOwnedCity = resume.lastOwnedCity;
   app.firstMonth = resume.firstMonth;
   app.tales = [];
@@ -981,7 +997,7 @@ function play(state, savedView = null) {
   app.screen = 'play';
   frame.dataset.screen = 'play';
   app.nativeTitle?.close();
-  $('#hud').hidden = false;
+
   app.select(resume.selection);
   app.mode = null;
   app.map.showRoute(null);
@@ -995,8 +1011,8 @@ function play(state, savedView = null) {
   if (resume.speed !== null) app.speed = resume.speed;
   progress.saved(state);
   app.hud.refresh(true);
-  renderFirstMonth(app);
-  renderSiegeWait(app, activeSiegeWait(state));
+  app.coach?.refreshFirst();
+  app.coach?.refreshWait(activeSiegeWait(state));
   app.sound.theme('realm');
   setTimeout(nextInbox, 300);
 }
@@ -1013,10 +1029,10 @@ function toTitle(confirmed = false, focusName = null) {
   progress.clear();
   if (app.demoState?.scenario !== '184') app.demoState = createGame({ seed: 184 });
   app.screen = 'title';
-  renderFirstMonth(app);
-  renderSiegeWait(app, null);
+  app.coach?.refreshFirst();
+  app.coach?.refreshWait(null);
   frame.dataset.screen = 'title';
-  $('#hud').hidden = true;
+
   app.topbar?.setVisible(false);
   app.minimap?.setVisible?.(false);
   app.select(null);
