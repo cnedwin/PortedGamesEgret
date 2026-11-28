@@ -18,7 +18,6 @@ import {
   createStandardMaterial3D,
   linearColor3D,
   mat4Compose,
-  projectToViewport3D,
   quatFromEuler
 } from '@egret/engine/world3d';
 import { UNITS } from '../data/battle.mjs';
@@ -28,17 +27,15 @@ import { distance, neighbours, ring as hexRing, tacticPreview } from '../sim/bat
 import { FERRY_HOLD_SECONDS } from '../sim/battle-ferry.mjs';
 import { HEX_W, hexCenter } from '../sim/hexgrid.mjs';
 import { FOOTPRINTS } from '../sim/land.mjs';
-import { generalName } from '../view/names.mjs';
-import { portrait } from '../view/portrait.mjs';
 import { wallTop } from './cities.mjs';
 import { figureOf, isSiegeFigure } from './troops.mjs';
 import {formationSlots, freshAttack, createSiegeLighting, battleCameraFrame} from './battle-staging.mjs';
-import { createBattlePlateLayout } from './battle-plate-layout.mjs';
+import { createNativeBattleMarkers } from './native-battle-markers.mjs';
+import {createBattleReframeGate,battleReframeIndices} from './battle-viewport-reframe.mjs';
 import { catapultStone, CATAPULT_ARM_PIVOT, CATAPULT_LOAD_POINT, TOWER_DECK_PIVOT, TOWER_DECK_PITCH } from './siege-tall-equipment.mjs';
 import { catapultPitch, siegeMount, CATAPULT_RELEASE_PITCH, CATAPULT_RELEASE_TIME, CATAPULT_RESET_TIME } from './siege-motion.mjs';
 import { createSiegeShots } from './siege-shots.mjs';
 
-const hex = (n) => '#' + n.toString(16).padStart(6, '0');
 
 function softDot() {
   const n = 32,
@@ -53,10 +50,10 @@ function softDot() {
 }
 
 /**
- * Lay battle `b` over `realm`. `colours` are the two sides' colours, `side` the player's side (or -1), `fx` the page
- * layer for numbers and calligraphy, `plates` the page layer for unit plates, `on` hears taps on units and hexes.
+ * Lay the battle over the realm. The attached Play host draws native unit plates and calligraphy;
+ * on hears taps on units and hexes.
  */
-export function createBattle3D(realm, b, { colours, side, fx, plates, rulers, on, calm, canDeploy }) {
+export function createBattle3D(realm, b, { colours, side, rulers, on, calm, canDeploy, showMarkers=()=>true }) {
   const { scene, land, troops, camera, rig } = realm;
   const siegeSample = b.setup.presentation === 'nanpi-sunset';
   const tacticalFormation = siegeSample || (b.setup.kind === 'field' && !b.setup.special);
@@ -84,15 +81,18 @@ export function createBattle3D(realm, b, { colours, side, fx, plates, rulers, on
   for (const p of pos) (minX = Math.min(minX, p.x)), (minZ = Math.min(minZ, p.z)), (maxX = Math.max(maxX, p.x)), (maxZ = Math.max(maxZ, p.z));
   const centre = { x: (minX + maxX) / 2, z: (minZ + maxZ) / 2 };
   let introFramed=false,lastOrderFrame='',framing=null;
+  const viewportReframe=createBattleReframeGate();
   function frameScene(indices, seconds=.6, entering=false) {
     const points=indices.map(i=>pos[i]).filter(Boolean);if(!points.length)return;
-    const r=realm.canvasRect(),field={width:r.width,height:r.height,left:20,right:r.width-20,top:100,bottom:r.height-25};
-    for(const selector of['.bSide.ours','.bSide.theirs','.bCommand','.bDeploy']){
-      const panel=document.querySelector('#battleHud '+selector);if(!panel||!panel.getClientRects().length)continue;
-      const box=panel.getBoundingClientRect(),left=box.left-r.left,right=box.right-r.left,top=box.top-r.top;
-      if(box.width<r.width*.4&&left<r.width*.2)field.left=Math.max(field.left,right+12);
-      else if(box.width<r.width*.45&&right>r.width*.8)field.right=Math.min(field.right,left-12);
-      else if(top>r.height*.35)field.bottom=Math.min(field.bottom,top-12);
+    const r=realm.canvasRect(),host=realm.uiHost,mapper=host.mapper(),safe=host.metrics().safe;
+    const lo=mapper.toScene(safe.x,safe.y),hi=mapper.toScene(safe.x+safe.width,safe.y+safe.height);
+    const field={width:r.width,height:r.height,left:Math.max(20,lo.x+12),right:Math.min(r.width-20,hi.x-12),top:Math.max(20,lo.y+12),bottom:Math.min(r.height-25,hi.y-12)};
+    for(const rect of host.mapOcclusionRects()){
+      const a=mapper.toScene(rect.x,rect.y),b=mapper.toScene(rect.x+rect.width,rect.y+rect.height),w=b.x-a.x;
+      if(w>r.width*.55&&a.y<r.height*.2)field.top=Math.max(field.top,b.y+12);
+      else if(w<r.width*.4&&a.x<r.width*.2)field.left=Math.max(field.left,b.x+12);
+      else if(w<r.width*.45&&b.x>r.width*.8)field.right=Math.min(field.right,a.x-12);
+      else if(a.y>r.height*.35)field.bottom=Math.min(field.bottom,a.y-12);
     }
     const target=battleCameraFrame(points,field);framing={...target,field,indices:indices.slice()};
     follow=null;
@@ -207,7 +207,7 @@ export function createBattle3D(realm, b, { colours, side, fx, plates, rulers, on
     rangeCells.count = targetCells.count = dangerCells.count = 0;
     routeLines.count=attackLine.count=0;
     previewLines.count=previewCells.count=0;
-    for(const plate of unitPlates)plate.el.classList.remove('targetable');
+    targetable.clear();
     if (!u || u.gone || u.pos < 0 || u.side !== side||viewPhase==='result') return;
     if (viewPhase === 'deploy') {
       putCells(rangeCells, pos.flatMap((_, i) => canDeploy?.(u, i) ? [i] : []));
@@ -237,7 +237,7 @@ export function createBattle3D(realm, b, { colours, side, fx, plates, rulers, on
       const goal=foe?.pos??u.goal;if(goal!==null)putCells(targetCells,[goal]);return;
     }
     const target=armedTactic.target!=null?b.units[armedTactic.target]:b.units.find(o=>!o.gone&&o.pos===hoverHex&&o.side!==u.side);
-    for(const o of b.units)if(o.side!==u.side&&tacticPreview(b,u,tc.id,o).valid)unitPlates[o.id].el.classList.add('targetable');
+    for(const o of b.units)if(o.side!==u.side&&tacticPreview(b,u,tc.id,o).valid)targetable.add(o.id);
     const preview=tacticPreview(b,u,tc.id,target);if(preview.valid)putCells(dangerCells,preview.hexes);
   }
   let gateMesh = null, gateYaw = 0, gateImpact = 0, gateFall = 0;
@@ -345,48 +345,15 @@ export function createBattle3D(realm, b, { colours, side, fx, plates, rulers, on
     return { x: p.x, z: p.z, y: p.y ?? 0, heading: 0, troops: u.troops, loss: 0, lossAt: 0, lunge: 0, attackStamp:null, attackPose:0, siegePose:0, hit:0, hitWait:0, colour:new Float32Array(3), slots:[], slotsKey:'',
       cell: u.pos, climbPose: 0, deck: 0, throwAge: CATAPULT_RESET_TIME, stoneTarget: null };
   });
-  const unitPlates = b.units.map((u, i) => {
-    const el = document.createElement('div');
-    el.className = 'plate unit' + (u.side === side ? ' mine' : '');
-    el.tabIndex = 0;el.setAttribute('role','button');el.setAttribute('aria-label',(u.general ? generalName(u.general) : nm(UNITS[u.kind])) + ' · ' + nm(UNITS[u.kind]));
-    el.innerHTML = '<span class="ring"><img class="face" alt=""></span><span class="ainfo"><b class="aname"></b><span class="atroops"></span><span class="pbar"><i></i></span><span class="rbar"><i></i></span></span>';
-    el.firstChild.style.setProperty('--c', hex(colours[u.side]));
-    const img = el.querySelector('img');
-    if (u.general) img.src = portrait(u.general, 48, rulers);
-    else img.replaceWith(Object.assign(document.createElement('span'), { className: 'face blank', textContent: (nm(UNITS[u.kind]) || '?').slice(0, 1) }));
-    el.querySelector('.aname').textContent = u.general ? generalName(u.general) : nm(UNITS[u.kind]);
-    el.addEventListener('click', (e) => {
-      e.stopPropagation();
-      on.tapUnit(i);
-    });
-    el.addEventListener('pointerenter',()=>{hoverHex=u.pos;});
-    el.addEventListener('keydown', e => {if(e.key==='Enter'||e.key===' '){e.preventDefault();e.stopPropagation();on.tapUnit(i);}});
-    plates.append(el);
-    const anchor = [0, 0, 0];
-    const marker = realm.markers.add(el, { target: anchor, maxDistance: 400 });
-    return { el, marker, anchor, key: '' };
-  });
-  plates.classList.add('battle');
-  const plateLayout = createBattlePlateLayout(plates, unitPlates);
+  const targetable=new Set();
+  const nativeMarkers=createNativeBattleMarkers(realm.uiHost,{camera,canvasRect:realm.canvasRect,units:b.units,shown,colours,side,
+    onTap:i=>on.tapUnit(i),onHover:i=>{hoverHex=b.units[i].pos;},onFocus:on.focusUnit,visible:showMarkers});
+  function floatText(x,y,z,text,kind){nativeMarkers.spawn(x,y,z,text,kind);}
 
-  // ——— Floating numbers and calligraphy ———
-  const floaters = [];
-  function floatText(x, y, z, text, kind) {
-    if (floaters.length >= 36) return;
-    const el = document.createElement('div');
-    el.className = 'floater ' + kind;
-    el.textContent = text;
-    fx.append(el);
-    floaters.push({ el, x, y, z, age: 0, life: kind === 'tactic' ? 1.8 : 1.15 });
-  }
   function showTactic(u, tacticId, targetId) {
     const tc = TACTICS[tacticId];
     const s = shown[u.id];
-    const el = document.createElement('div');
-    el.className = 'brush ' + (u.side === side ? 'ours' : 'theirs') + (tc.general ? ' sig' : '');
-    el.textContent = nm(tc);
-    fx.append(el);
-    floaters.push({ el, x: s.x, y: s.y + 2.2, z: s.z, age: 0, life: 1.9, brush: true });
+    nativeMarkers.spawn(s.x,s.y+2.2,s.z,nm(tc),'brush',{ours:u.side===side,signature:Boolean(tc.general)});
     const helping = ['atk','def','spd','heal','rally','rage'].includes(tc.kind);
     const colour = tc.kind === 'burn' ? 0xe58237 : tc.kind === 'heal' || tc.kind === 'rally' ? 0x88c8ad : tc.kind === 'confuse' || tc.kind === 'fear' ? 0xb6a0cf : 0xe6c078;
     const affected = helping ? b.units.filter(o => !o.gone && o.pos >= 0 && o.side === u.side && (tc.shape==='all'||tc.shape==='self'&&o===u||tc.shape==='allies'&&distance(u.pos,o.pos)<=3)).map(o=>o.pos) : tacticCells(u, tc, b.units[targetId]?.pos ?? u.pos);
@@ -441,6 +408,14 @@ export function createBattle3D(realm, b, { colours, side, fx, plates, rulers, on
   const stop = realm.onFrame((dt) => {
     time += dt;
     if(siegeSample&&!introFramed){introFramed=true;frameScene([...b.units.map(u=>u.pos),b.gate?.at].filter(Number.isInteger),.7,true);}
+    const viewport=realm.canvasRect(),host=realm.uiHost;
+    if(viewportReframe.observe(viewport.width,viewport.height,host.metrics().portrait,host.game.pointer.down||!showMarkers())){
+      // Native HUD has already arranged this size. Refit the same battle
+      // extents without advancing it, resurrecting a unit, or making a new
+      // renderer. Do not alter the player's camera on unchanged viewports.
+      const indices=battleReframeIndices(b,{selected,preview:pendingOrder,includeObjectives:siegeSample});
+      if(indices.length){frameScene(indices,0);rig.snap();}
+    }
     lightLease?.update(centre,land.heightAt(centre.x,centre.z));
     // Events since the last frame.
     for (; seenEvents < b.events.length; seenEvents++) {
@@ -503,12 +478,8 @@ export function createBattle3D(realm, b, { colours, side, fx, plates, rulers, on
     shots?.update(dt);
     // Units.
     b.units.forEach((u, i) => {
-      const s = shown[i],
-        plate = unitPlates[i];
-      if (u.gone || u.pos < 0) {
-        plate.el.hidden = true;
-        return;
-      }
+      const s = shown[i];
+      if (u.gone || u.pos < 0) return;
       const p = pos[u.pos];
       s.throwAge = Math.min(CATAPULT_RESET_TIME, s.throwAge + dt);
       s.climbPose = Math.max(0, s.climbPose - dt);
@@ -580,23 +551,6 @@ export function createBattle3D(realm, b, { colours, side, fx, plates, rulers, on
           for (let a = 0; a < (isCalm()?3:7); a++) flights.push({ fx: s.x + (Math.random() - 0.5), fy: s.y + 0.65, fz: s.z + (Math.random() - 0.5), tx: f.x + (Math.random() - 0.5) * 1.4, ty: f.y + 0.2, tz: f.z + (Math.random() - 0.5) * 1.4, t: -a * 0.022, dur: 0.42 });
         }
       }
-      // The plate.
-      plate.el.hidden = false;
-      plate.anchor[0] = s.x;
-      plate.anchor[1] = s.y + 2.9;
-      plate.anchor[2] = s.z;
-      plate.marker.retarget(plate.anchor);
-      const key = [Math.round(u.troops), Math.round(u.rage / 5), u.routed, selected === i].join('|');
-      if (key !== plate.key) {
-        plate.key = key;
-        plate.el.querySelector('.atroops').textContent = Math.round(u.troops).toLocaleString();
-        plate.el.querySelector('.pbar i').style.width = Math.round((u.troops / Math.max(1, u.start)) * 100) + '%';
-        plate.el.querySelector('.rbar i').style.width = Math.min(100, Math.round(u.rage)) + '%';
-        plate.el.classList.toggle('routed', u.routed);
-        plate.el.classList.toggle('chosen', selected === i);
-        plate.el.setAttribute('aria-pressed',String(selected===i));
-        plate.el.classList.toggle('full', u.rage >= 100);
-      }
     });
     // Arrows in flight.
     let na = 0;
@@ -619,21 +573,6 @@ export function createBattle3D(realm, b, { colours, side, fx, plates, rulers, on
       arrows.setMatrixAt(na++, m);
     }
     arrows.count = na;
-    // Floating numbers and calligraphy.
-    const r = realm.canvasRect();
-    for (let k = floaters.length - 1; k >= 0; k--) {
-      const f = floaters[k];
-      f.age += dt;
-      if (f.age >= f.life) {
-        f.el.remove();
-        floaters.splice(k, 1);
-        continue;
-      }
-      const p = projectToViewport3D(camera, [f.x, f.y + (f.brush ? 0 : f.age * 0.9), f.z], r.width, r.height);
-      const fade = f.brush ? Math.min(1, (f.life - f.age) * 2.5) : 1 - Math.max(0, f.age / f.life - 0.5) * 2;
-      f.el.style.transform = `translate(${p.x.toFixed(1)}px, ${p.y.toFixed(1)}px) translate(-50%, -50%)` + (f.brush ? ` scale(${(1 + Math.min(0.25, f.age * 0.6)).toFixed(3)})` : '');
-      f.el.style.opacity = fade.toFixed(2);
-    }
     // The view keeps a unit it was asked to look at in the middle, until the player moves it.
     if (follow !== null) {
       const fu = b.units[follow];
@@ -652,7 +591,7 @@ export function createBattle3D(realm, b, { colours, side, fx, plates, rulers, on
       ring.setPosition(s.x, s.y + 0.08, s.z);
       ringMaterial.emissiveIntensity = isCalm()?1.1:1.15+Math.sin(time*3)*.18;
     }
-    plateLayout.update(b.units);
+    nativeMarkers.frame(dt,{selected,targetable});
   });
   let seenEvents = b.events.length;
 
@@ -727,6 +666,7 @@ export function createBattle3D(realm, b, { colours, side, fx, plates, rulers, on
   }
 
   return {
+    markers:nativeMarkers,
     preview(phase, armed) { viewPhase=phase;armedTactic=armed; },
     commandPlan: drawCommandPlan,
     orderPreview(preview) {
@@ -758,16 +698,10 @@ export function createBattle3D(realm, b, { colours, side, fx, plates, rulers, on
     },
     destroy() {
       stop();
-      plateLayout.destroy();
+      nativeMarkers.dispose();
       shots?.destroy();
       realm.setMode(null);
       land.setField(null);
-      plates.classList.remove('battle');
-      for (const p of unitPlates) {
-        p.marker.dispose();
-        p.el.remove();
-      }
-      for (const f of floaters) f.el.remove();
       for (const mesh of own) scene.removeChild(mesh);
       for (const f of fires.values()) {
         scene.removeChild(f.flame);

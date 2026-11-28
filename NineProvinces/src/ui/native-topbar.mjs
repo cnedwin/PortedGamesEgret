@@ -7,7 +7,7 @@ import { getLanguage, nm, num, t } from '../i18n.mjs';
 import { factionName, placeName } from '../view/names.mjs';
 import { seasonOf } from '../view3d/seasons.mjs';
 import { dayWords, pair } from './text.mjs';
-import { markOf } from './dom.mjs';
+import { markOf } from './seal-copy.mjs';
 
 export const CAMPAIGN_SPEEDS=[0.5,1,2,4,8];
 const C={ink:0x172529,slate:0x273c3d,paper:0xf2e6c7,gold:0xe2bd83,muted:0xc0cdbc,edge:0x93784d,bad:0xf5a49a};

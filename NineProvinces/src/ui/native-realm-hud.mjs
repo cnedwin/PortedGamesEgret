@@ -176,7 +176,7 @@ export function createNativeRealmHud(app,host) {
     journal?.close();journal=game.show({label:t('menuStory'),skin,root:column([c.action('realm-journal',t('menuStory'),()=>app.open('chronicle')),column(lines,{name:'journal-body',scroll:'vertical'})],{name:'journal-shell',anchor:'bottom-right',width:gutter.portrait?'92%':Math.min(315,host.metrics().safe.width/host.metrics().uiScale*.31),height:Math.min(200,48+lines.length*41),card:true,color:C.ink,border:{color:C.frame,width:1},padding:5,gap:2})},{bind:c.bind,paragraphCache:host.paragraphCache});logKey=key;
   }
   function showTip(words,x,y){
-    if(!words||app.dialogOpen||host.metrics().portrait){tip?.close();tip=null;tipKey='';return;}
+    if(!words||app.screen!=='play'||app.lab||app.dialogOpen||host.metrics().portrait){tip?.close();tip=null;tipKey='';return;}
     const list=Array.isArray(words)?words:[words],key=list.join('|');if(key===tipKey)return;tipKey=key;
     const m=host.metrics(),pos=host.clientToDesign(x,y),unit=m.uiScale, w=Math.min(270,m.safe.width/unit-14),h=Math.min(140,26*list.length+10);
     // Use the real native safe area, never viewport globals.

@@ -29,7 +29,7 @@ used or not; only each game's own code is read, not `vendor/`, tests or tools. T
 | `@egret/engine/web/gestures` | 2 |  |  |  |  |  |  |  |  |  |  | [✔](LubanBridge/src/view/build.mjs) |  |  |  | [✔](NineProvinces/src/view3d/realm.mjs) |  |  |  |  |  |  |  |  |  |
 | `@egret/engine/web/view` | 2 |  |  |  |  |  |  |  |  |  |  | [✔](LubanBridge/src/view/screens.mjs) |  |  |  |  |  |  |  |  |  |  | [✔](TaiwanMahjong/src/ui.mjs) |  |  |
 | `@egret/engine/web/pointer` | 0 |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |
-| `@egret/engine/ui` | 16 |  |  |  | [✔](FiveRegiments/src/hud.mjs) | [✔](FPS/src/ui/hud.mjs) |  | [✔](jelly-pandas/src/ui/menus.mjs) |  |  | [✔](LoveElective/src/engine/ui.mjs) |  | [✔](MechanismCity/src/screens.mjs) | [✔](NezhaSea/src/main.mjs) | [✔](NightWardens/src/screens.mjs) | [✔](NineProvinces/src/ui/native-dialogs.mjs) | [✔](OperaDrums/src/ui/screens.mjs) | [✔](PeachCreek/src/main.mjs) | [✔](Rally/src/ui/kit.mjs) | [✔](SandScroll/src/ui/kit.mjs) | [✔](SnowTemple/src/ui/combat-hud.mjs) | [✔](StarBanner/src/ui/kit.mjs) |  | [✔](TeaHorseRoad/src/ui/card.mjs) | [✔](Wulin/src/ui/native-shell.mjs) |
+| `@egret/engine/ui` | 16 |  |  |  | [✔](FiveRegiments/src/hud.mjs) | [✔](FPS/src/ui/hud.mjs) |  | [✔](jelly-pandas/src/ui/menus.mjs) |  |  | [✔](LoveElective/src/engine/ui.mjs) |  | [✔](MechanismCity/src/screens.mjs) | [✔](NezhaSea/src/main.mjs) | [✔](NightWardens/src/screens.mjs) | [✔](NineProvinces/src/ui/native-battle-replay.mjs) | [✔](OperaDrums/src/ui/screens.mjs) | [✔](PeachCreek/src/main.mjs) | [✔](Rally/src/ui/kit.mjs) | [✔](SandScroll/src/ui/kit.mjs) | [✔](SnowTemple/src/ui/combat-hud.mjs) | [✔](StarBanner/src/ui/kit.mjs) |  | [✔](TeaHorseRoad/src/ui/card.mjs) | [✔](Wulin/src/ui/native-shell.mjs) |
 | `@egret/engine/animation` | 1 |  |  |  |  |  |  |  |  |  |  |  |  |  | [✔](NightWardens/src/view/field.mjs) |  |  |  |  |  |  |  |  |  |  |
 | `@egret/engine/paragraph` | 7 |  | [✔](FengshenChronicle/src/native-rpg-ui.mjs) | [✔](FivePhases/src/ui/hud.mjs) | [✔](FiveRegiments/src/screens.mjs) |  | [✔](InquestScrolls/src/view/type.mjs) |  |  | [✔](LanternShadows/src/native-ui.mjs) |  |  |  |  |  | [✔](NineProvinces/src/view3d/native-host.mjs) |  |  |  |  |  |  |  |  | [✔](Wulin/src/ui/native-shell.mjs) |
 | `@egret/engine/web/paragraph` | 7 |  | [✔](FengshenChronicle/src/native-rpg-ui.mjs) | [✔](FivePhases/src/ui/hud.mjs) | [✔](FiveRegiments/src/screens.mjs) |  | [✔](InquestScrolls/src/view/type.mjs) |  |  | [✔](LanternShadows/src/native-ui.mjs) |  |  |  |  |  | [✔](NineProvinces/src/view3d/native-host.mjs) |  |  |  |  |  |  |  |  | [✔](Wulin/src/ui/native-shell.mjs) |
@@ -63,6 +63,7 @@ used or not; only each game's own code is read, not `vendor/`, tests or tools. T
 | `@egret/spine` | 1 |  |  |  |  |  |  |  |  | [✔](LanternShadows/src/puppets.mjs) |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |
 | `@egret/spine/web` | 0 |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |
 | `@egret/contracts/resources` | 2 |  |  |  |  |  | [✔](InquestScrolls/src/view/type.mjs) |  |  | [✔](LanternShadows/src/puppets.mjs) |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |
+| `@egret/runtime` | 1 |  |  |  |  |  |  |  |  |  |  |  |  |  |  | [✔](NineProvinces/src/ui/native-lab-board.mjs) |  |  |  |  |  |  |  |  |  |
 
 ## 关键 API · Key APIs
 

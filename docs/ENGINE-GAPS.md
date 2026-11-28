@@ -4,9 +4,9 @@
 
 Made by `node tools/engine-notes.mjs --write` from the ENGINE-NOTES of the games; do not edit by hand, and `--check` says whether it is out of date. What the engine resolved is copied from the engine's `guide/resolved.json` into [engine-resolved.json](engine-resolved.json) (15 entries). The form of a note is in part 3 of [GAME-STANDARD.md](GAME-STANDARD.md).
 
-24 个游戏、284 条笔记：未解决 79，部分解决 24，游戏侧绕过 18，已写入文档 42，已解决 121。
+24 个游戏、285 条笔记：未解决 80，部分解决 24，游戏侧绕过 18，已写入文档 42，已解决 121。
 
-284 notes from 24 games: 79 open, 24 partly resolved, 18 worked around in the game, 42 documented, 121 resolved.
+285 notes from 24 games: 80 open, 24 partly resolved, 18 worked around in the game, 42 documented, 121 resolved.
 
 ## 1. 引擎已经解决、游戏还标着未解决 · Resolved by the engine, still open in a game
 
@@ -29,6 +29,7 @@ The same workaround in two or more games means the fault is in the engine's inte
 | `webkit-on-demand-first-presentation` | 3 | jelly-pandas#10 WebKit 按需绘制的首屏可见性 · WebKit on-demand first-frame presentation (open)<br>Rally#7 WebKit 按需绘制的首屏可见性 · WebKit on-demand first-frame presentation (open)<br>Wulin#13 WebKit 按需绘制的首屏可见性 · WebKit on-demand first-frame presentation (open) |
 | `webkit-retained-screen-presentation` | 3 | FPS#17 WebKit 按需画面晚一屏 · WebKit retains earlier on-demand frame (open)<br>SnowTemple#9 WebKit 按需画面晚一屏 · WebKit retains earlier on-demand frame (open)<br>StarBanner#12 WebKit 的按需画面提交晚一屏 · WebKit retains earlier on-demand frame (open) |
 | `first-draw-program-link` | 2 | FPS#4 材质变体第一次绘制时链接着色器造成停顿 · The first draw of a material variant stalls while its program links (partly)<br>jelly-pandas#2 倒影通道和第一次出现的特效在第一次绘制时编译 · The mirror pass and first-use effects compile on first draw (partly) |
+| `geometry-budget-reuse` | 2 | FivePhases#1 每帧的几何预算连复用的几何也一起算 · The per-frame geometry budget also counts reused geometry (partly)<br>NineProvinces#13 大型静态战场图形耗尽二维几何准备预算 · A large static board exhausts the 2D geometry-preparation budget (open) |
 | `optional-web-audio-host` | 2 | CanalWatch#7 Play 可选音频宿主 · Optional Play audio host (worked-around)<br>NezhaSea#18 无 Web Audio 宿主时的游戏启动 · Startup without a Web Audio host (worked-around) |
 | `ui-typography-styling` | 2 | OperaDrums#7 界面文字不能选字体 · View text has no typeface (open)<br>PeachCreek#3 文字和按钮样式需要显示对象补充 · Typography and button styling need display-object extensions (partly) |
 | `vertex-layout-program` | 2 | jelly-pandas#1 顶点布局不同就要另编一条管线 · A different vertex layout needs a pipeline of its own (open)<br>Rally#2 少一个顶点色属性就是另一个着色器 · A missing vertex-colour attribute makes another program (open) |
@@ -53,7 +54,6 @@ Write the lesson as a card of the engine's guide (`guide/cards` in the engine re
 | `declarative-range-control` | NineProvinces#10 原生数据界面缺少具名范围控件 · Declarative views have no named range control | 未解决 · open |
 | `declarative-tab-arrow-selection` | NineProvinces#12 数据界面页签需要业务方显式实现方向键选中 · Declarative tabs require explicit arrow selection | 未解决 · open |
 | `expanded-stage-pixel-ratio` | LanternShadows#8 扩展舞台的画布像素密度 · Backing density on an expanded stage | 已在游戏侧绕过 · worked around |
-| `geometry-budget-reuse` | FivePhases#1 每帧的几何预算连复用的几何也一起算 · The per-frame geometry budget also counts reused geometry | 部分解决 · partly |
 | `gltf-webp-texture` | FiveRegiments#1 `loadGltf3D` 不认 `EXT_texture_webp` · `loadGltf3D` does not take `EXT_texture_webp` | 未解决 · open |
 | `guide-card-crlf` | TeaHorseRoad#31 guide 卡片只接受 LF 行尾 · Guide cards reject CRLF line endings | 未解决 · open |
 | `horizontal-touch-stick` | LanternShadows#4 原生触屏控件的横向模拟摇杆 · Horizontal analog touch control | 已在游戏侧绕过 · worked around |
@@ -158,7 +158,7 @@ Write the lesson as a card of the engine's guide (`guide/cards` in the engine re
 | [MechanismCity](../MechanismCity/ENGINE-NOTES.md) | 22 | 1 | 2 | 1 | 5 | 13 | 0 | `82561d6` |
 | [NezhaSea](../NezhaSea/ENGINE-NOTES.md) | 19 | 2 | 1 | 3 | 1 | 12 | 0 | `82561d6` |
 | [NightWardens](../NightWardens/ENGINE-NOTES.md) | 5 | 0 | 0 | 1 | 3 | 1 | 0 | `82561d6` |
-| [NineProvinces](../NineProvinces/ENGINE-NOTES.md) | 12 | 8 | 1 | 0 | 1 | 2 | 0 | `7fb371a` |
+| [NineProvinces](../NineProvinces/ENGINE-NOTES.md) | 13 | 9 | 1 | 0 | 1 | 2 | 0 | `7fb371a` |
 | [OperaDrums](../OperaDrums/ENGINE-NOTES.md) | 24 | 15 | 1 | 1 | 3 | 4 | 0 | `82561d6` |
 | [PeachCreek](../PeachCreek/ENGINE-NOTES.md) | 10 | 0 | 4 | 1 | 0 | 5 | 0 | `82561d6` |
 | [Rally](../Rally/ENGINE-NOTES.md) | 7 | 4 | 0 | 0 | 2 | 1 | 0 | `82561d6` |

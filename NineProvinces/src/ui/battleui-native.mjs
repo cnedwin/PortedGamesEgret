@@ -16,11 +16,12 @@ import { finishBattle } from '../sim/military.mjs';
 import { getLanguage, nm, num, t } from '../i18n.mjs';
 import { factionName, generalName, placeName } from '../view/names.mjs';
 import { createBattle3D } from '../view3d/battle3d.mjs';
-import { $, bar, clear, face, seal } from './dom.mjs';
-import {hudElement as h, hudButton as button, updateBattleHud} from './battle-hud.mjs';
+import {portrait} from '../view/portrait.mjs';
+import {createNativeBattleHud,makeBattleControl as control,makeBattleText as line,makeBattleToggle as toggle,makeBattleRow as row,makeBattleGroup as group} from './native-battle-hud.mjs';
+import {nativeBattleCommandRows} from './native-battle-command.mjs';
 import {tacticPresentation,battleOutcomeReason} from './battle-copy.mjs';
 import {createTempoMilestones,inspectTempoMilestones,beginTacticAim,selectTacticTarget,restoreTacticPause} from './battle-tempo.mjs';
-import { renderBattleCommandPanel, battleCommandPlanReason } from './battle-command-panel.mjs';
+import { battleCommandPlanReason } from './battle-command-panel.mjs';
 
 const SPEEDS = [1, 2, 4];
 const WIND = ['→', '↘', '↙', '←', '↖', '↗'];
@@ -30,7 +31,7 @@ const unitName = u => u.general ? generalName(u.general) : t('captain');
 const intentLabel = kind => kind === 'guard' ? words('守住阵线', 'Guard line')
   : kind === 'range' ? words('保持射程', 'Keep range') : words('自由机动', 'Free movement');
 
-export function startBattle(app, setup, { state: s = app.state, onTrialResult, onTrialExit } = {}) {
+export function startBattle(app, setup, { state: s = app.state, onTrialResult, onTrialExit, createView = createBattle3D, presentation = app.battlePresentation ?? {} } = {}) {
   const trial = Boolean(onTrialResult);
   const nanpi = setup.presentation === 'nanpi-sunset';
   const b = createBattle(setup, s);
@@ -38,8 +39,7 @@ export function startBattle(app, setup, { state: s = app.state, onTrialResult, o
   const side = setup.factions.indexOf(s.player);
   const fieldCommand = !trial && setup.kind === 'field' && !setup.special && side >= 0;
   const colours = setup.factions.map((f, i) => (f ? s.factions[f].colour : i ? 0x8a7d66 : 0x6a5a4a));
-  const hud = $('#battleHud');
-  const fx = $('#battleFx');
+  const hud = createNativeBattleHud(app.uiHost,{onError:presentation.onError??console.error});
   let selected = null,
     armed = null,
     phase = 'deploy',
@@ -55,26 +55,21 @@ export function startBattle(app, setup, { state: s = app.state, onTrialResult, o
   let draft = null, reviewedPlan = null, observedOrders = null;
   let planReceipt = '';
   let occupiedKeep = false;
-  let heldControl=false,pendingHud=false,releaseTimer=0;
-  const pointers=new Set();
-  const holdHud=event=>{if(event.target.closest('button,input,select')){clearTimeout(releaseTimer);pointers.add(event.pointerId);heldControl=true;}};
-  const releaseHud=event=>{pointers.delete(event.pointerId);clearTimeout(releaseTimer);releaseTimer=setTimeout(()=>{if(pointers.size||ended)return;heldControl=false;if(pendingHud){pendingHud=false;draw(true);}},0);};
-  const blurHud=()=>{pointers.clear();releaseHud({pointerId:null});};
-  hud.addEventListener('pointerdown',holdHud,true);window.addEventListener('pointerup',releaseHud,true);window.addEventListener('pointercancel',releaseHud,true);window.addEventListener('blur',blurHud);
   // Manual command retains ordinary movement/attacks; only the player's tactics are delegated explicitly.
   for(const u of b.units)if(u.side===side){
     simCommand(b,u.id,'autoTactic',false);record.action('autoTactic',{unit:u.id,arg:false});
     if (trial) { simCommand(b, u.id, 'hold'); record.action('hold', {unit: u.id}); }
   }
-  const view = createBattle3D(app.map, b, {
+  const view = createView(app.map, b, {
+    ...presentation,
     colours,
     side,
-    fx,
-    plates: $('#plates'),
     rulers: app.rulers(),
     calm: () => app.calm(),
+    showMarkers:()=>!ending&&!ended&&!app.dialogOpen&&!app.lab,
     canDeploy,
     on: {
+      focusUnit(i){return hud.view?.focus('battle-unit-'+i)??false;},
       tapUnit(i) {
         activateUnit(i);
       },
@@ -327,16 +322,7 @@ export function startBattle(app, setup, { state: s = app.state, onTrialResult, o
     feed = feed.slice(0, 5);
     shownKey = '';
   }
-  function flash(name, ours) {
-    if (app.calm()) return;
-    const el = h(`div.callout${ours ? '.ours' : ''}`, name);
-    fx.append(el);
-    setTimeout(() => el.remove(), 1700);
-  }
-  function orderButton(u, what, label, active, arg) {
-    const el=button(label,()=>{clearOrder(true);issue(u.id,what,arg);draw(true);},{kind:active?'on':''});
-    el.dataset.k='order-'+u.id+'-'+what;el.setAttribute('aria-pressed',String(Boolean(active)));return el;
-  }
+  function flash(name,ours){if(!app.calm())hud.flash(name,ours);}
   function issue(unit,what,arg) {
     const ok=simCommand(b,unit,what,arg),u=b.units[unit];
     if(ok){record.action(what,{unit,arg:arg??null});record.capture(phase,{force:true});commandBad=false;
@@ -346,7 +332,10 @@ export function startBattle(app, setup, { state: s = app.state, onTrialResult, o
     return ok;
   }
   function setSpeed(i){speed=i;record.action('speed',{speed:SPEEDS[i]});draw(true);}
-  function keyButton(key,label,action,options){const el=button(label,action,options);el.dataset.k=key;return el;}
+  // Native presentation builders; all callbacks below call the existing
+  // unchanged battle controller. UI values never write directly into b.
+  function keyButton(key,label,action,options={}){return control(key,label,action,{active:options.kind==='on'||options.kind==='main',disabled:Boolean(options.why),detail:options.title??options.why??undefined,lines:2});}
+  function orderButton(u,what,label,active,arg){return control('order-'+u.id+'-'+what,label,()=>{clearOrder(true);issue(u.id,what,arg);draw(true);},{active});}
   function nanpiInstructions(unit) {
     if (phase === 'deploy') return trial
       ? words('布阵后鸣鼓。让枪兵接应、弓兵压制、冲车撞门。', 'Deploy, then sound the drums. Screen with spears, suppress with bows, and drive the ram into the gate.')
@@ -360,41 +349,21 @@ export function startBattle(app, setup, { state: s = app.state, onTrialResult, o
     }
     return words('城门已破。清理本营附近的守军，进驻并守满10秒。', 'The gate is open. Clear the defenders around the keep, then occupy it for 10 seconds.');
   }
-  function nanpiOrders(unit) {
-    if (phase !== 'fight' || !unit || unit.gone || unit.routed) return null;
-    const foes = b.units.filter(foe => foe.side !== side && !foe.gone && !foe.routed);
-    const keeper = foes.find(foe => foe.pos === b.keep) ?? foes.find(foe => !foe.onWall) ?? foes[0];
-    const occupied = b.units.some(other => other !== unit && !other.gone && other.pos === b.keep);
-    return h('div.bTrialOrders',
-      !b.gate.open && unit.kind === 'ram' && keeper
-        ? keyButton('trial-gate', words('撞城门','Ram the gate'), () => requestOrder(unit.id,'attack',keeper.id), {kind:'main'})
-        : null,
-      b.gate.open
-        ? keyButton('trial-keep', words('占据本营','Move to the keep'), () => requestOrder(unit.id,'move',b.keep),
-          {kind:'main', why:occupied?words('本营有部队，请先清理或让路','Clear the unit occupying the keep first'):null})
-        : null,
-      ...foes.map(foe => keyButton('trial-foe-'+foe.id, words('进攻 ','Attack ')+unitName(foe),
-        () => requestOrder(unit.id,'attack',foe.id),{small:true})));
+  function nanpiOrders(unit){
+    if(phase!=='fight'||!unit||unit.gone||unit.routed)return null;
+    const foes=b.units.filter(foe=>foe.side!==side&&!foe.gone&&!foe.routed),keeper=foes.find(foe=>foe.pos===b.keep)??foes.find(foe=>!foe.onWall)??foes[0],occupied=b.units.some(other=>other!==unit&&!other.gone&&other.pos===b.keep);
+    return group('trial-orders',[
+      !b.gate.open&&unit.kind==='ram'&&keeper?keyButton('trial-gate',words('撞城门','Ram the gate'),()=>requestOrder(unit.id,'attack',keeper.id),{kind:'main'}):null,
+      b.gate.open?keyButton('trial-keep',words('占据本营','Move to the keep'),()=>requestOrder(unit.id,'move',b.keep),{kind:'main',why:occupied?words('本营有部队，请先清理或让路','Clear the unit occupying the keep first'):null}):null,
+      ...foes.map(foe=>keyButton('trial-foe-'+foe.id,words('进攻 ','Attack ')+unitName(foe),()=>requestOrder(unit.id,'attack',foe.id)))
+    ]);
   }
-  function orderConfirmation() {
-    if (!pendingOrder) return null;
-    const {plan} = pendingOrder;
-    const distanceText = plan.path.length + words(' 格',' hexes');
-    const behindGate = plan.kind === 'attack' && !b.gate?.open && b.gate &&
-      ['town', 'wall', 'gate'].includes(b.tiles[b.units[plan.target]?.pos]);
-    const blocked = behindGate
-      ? words('目前无法进攻城内目标。可以等破门，或选其他目标。', 'This target is beyond reach. Breach the gate or choose another target.')
-      : words('目前没有可用路线，请换一个目标。', 'No route is available. Choose another destination.');
-    const message = !plan.valid ? blocked
-      : plan.gate ? words('先沿标线破门，门开后再追击。','Follow the marked approach and breach the gate before pursuing.')
-      : plan.kind === 'attack' ? words('进攻 ','Attack ')+unitName(b.units[plan.target])+' · '+distanceText
-      : words('移动至标记地格','Move to the marked hex')+' · '+distanceText;
-    return h('div.bTrialPreview',
-      h('p',{role:'status'},message),
-      h('div.bTrialOrders',
-        keyButton('confirm-order',words('确认军令','Confirm order'),confirmOrder,
-          {kind:'main',why:plan.valid?null:message}),
-        keyButton('cancel-order',words('取消预览','Cancel preview'),cancelOrder)));
+  function orderConfirmation(){
+    if(!pendingOrder)return null;const {plan}=pendingOrder,distanceText=plan.path.length+words(' 格',' hexes');
+    const behindGate=plan.kind==='attack'&&!b.gate?.open&&b.gate&&['town','wall','gate'].includes(b.tiles[b.units[plan.target]?.pos]);
+    const blocked=behindGate?words('目前无法进攻城内目标。可以等破门，或选其他目标。','This target is beyond reach. Breach the gate or choose another target.'):words('目前没有可用路线，请换一个目标。','No route is available. Choose another destination.');
+    const message=!plan.valid?blocked:plan.gate?words('先沿标线破门，门开后再追击。','Follow the marked approach and breach the gate before pursuing.'):plan.kind==='attack'?words('进攻 ','Attack ')+unitName(b.units[plan.target])+' · '+distanceText:words('移动至标记地格','Move to the marked hex')+' · '+distanceText;
+    return group('order-preview',[line('order-preview-text',message,{lines:3,tone:plan.valid?'good':'bad'}),keyButton('confirm-order',words('确认军令','Confirm order'),confirmOrder,{kind:'main',why:plan.valid?null:message}),keyButton('cancel-order',words('取消预览','Cancel preview'),cancelOrder)]);
   }
   function orderStatus(u){
     if(!u||u.gone)return words('选择己方部队下达军令','Select your unit to issue an order');
@@ -410,177 +379,41 @@ export function startBattle(app, setup, { state: s = app.state, onTrialResult, o
     return words('自动寻敌与基础作战','Automatic movement and ordinary attacks')+waiting;
   }
   const signed=n=>(n>=0?'+':'')+Math.round(n*100)+'%';
-  function battleIntentControls(u) {
-    const options = battleIntentOptions(b, u.id);
-    return h('section.bIntent', {'aria-label':words('作战意图','Battle intent')},
-      h('p.bFormationInfo', words('作战意图','Battle intent') + ' · ' + intentLabel(u.intent)),
-      h('div.bOrderRow', options.filter(option => option.available).map(option => {
-        const control = keyButton('intent-' + option.kind, intentLabel(option.kind),
-          () => { issue(u.id, 'intent', option.kind); draw(true); }, {kind:option.active?'on':'',small:true});
-        control.setAttribute('aria-pressed', String(option.active));
-        return control;
-      })));
-  }
   function formationText(f){return words('攻','ATK ')+signed(f.atk)+' · '+words('守','DEF ')+signed(f.def)+' · '+words('速','SPD ')+signed(f.spd)+(f.front?' · '+words('正面','Front ')+signed(f.front):'')+(f.flank?' · '+words('夹击','Flank ')+signed(f.flank):'');}
-
-  function crossingStatus() {
-    const securing = b.keepHeld === 0;
-    const needed = securing ? FERRY_HOLD_SECONDS : 10;
-    const held = securing ? b.ferry.secured : b.keepHeld;
-    const label = securing ? words('守','Hold') : words('攻','Take');
-    return h('div.bObj.bCrossing', h('span', words('渡口','Crossing')),
-      bar(held / needed, securing ? 'blue' : 'gold'),
-      h('small', b.ferry.engaged ? label + ' ' + Math.min(needed, Math.floor(held)) + '/' + needed + words('秒','s')
-        : words('待接敌','Await contact')));
+  function battleIntentControls(u){const options=battleIntentOptions(b,u.id);return group('intent',[line('intent-label',words('作战意图','Battle intent')+' · '+intentLabel(u.intent)),...options.filter(o=>o.available).map(o=>keyButton('intent-'+o.kind,intentLabel(o.kind),()=>{issue(u.id,'intent',o.kind);draw(true);},{kind:o.active?'on':''}))]);}
+  function crossingStatus(){const securing=b.keepHeld===0,needed=securing?FERRY_HOLD_SECONDS:10,held=securing?b.ferry.secured:b.keepHeld,label=securing?words('守','Hold'):words('攻','Take');return {id:'crossing',label:words('渡口','Crossing'),share:held/needed,color:securing?0x7cabc9:0xdeb77b,text:b.ferry.engaged?label+' '+Math.min(needed,Math.floor(held))+'/'+needed+words('秒','s'):words('待接敌','Await contact')};}
+  function card(u){
+    const mine=u.side===side,actions=[];
+    if(mine&&phase==='fight')for(const id of u.tactics){const tc=TACTICS[id],explanation=tacticPresentation(tc,tacticPreview(b,u,id).reach,{language:getLanguage()}),ready=u.rage>=100&&!u.routed&&!u.gone&&!(u.status.stun>0);actions.push(control('tac'+u.id+id,nm(tc),()=>armTactic(u.id,id),{active:armed?.unit===u.id&&armed.tactic===id,disabled:!ready,detail:explanation.effect+' · '+explanation.cost,accessible:nm(tc)+' · '+explanation.detail+' · '+explanation.cost,lines:2}));}
+    // In the legacy HUD the in-fight duplicates in the card are hidden; the
+    // same actions remain in the order rail below.
+    if(mine&&phase==='deploy')for(const f of Object.values(FORMATIONS).filter(f=>formationAllowed(u.kind,f.id)))actions.push(keyButton('formation-'+u.id+'-'+f.id,nm(f),()=>{issue(u.id,'formation',f.id);draw(true);},{title:formationText(f),kind:u.formation===f.id?'on':''}));
+    return {id:u.id,name:unitName(u),type:armName(u)+(mine?' · '+nm(FORMATIONS[u.formation]):''),portrait:u.general?portrait(u.general,30):null,troops:u.gone?(u.end==='fled'?t('fled'):t('destroyed')):num(u.troops),morale:u.morale,rage:u.rage,share:u.troops/u.start,status:[...(u.routed?[t('routed')]:[]),...Object.keys(u.status).map(m=>t('st_'+m))],selected:selected===u.id,gone:u.gone,select:()=>activateUnit(u.id),actions};
   }
-
-  // ——— The HUD ———
-  function card(u) {
-    const share = u.troops / u.start;
-    const mine = u.side === side;
-    const tactics = mine
-      ? h(
-          'div.tactics',
-          u.tactics.map((id) => {
-            const tc = TACTICS[id];
-            const explanation=tacticPresentation(tc,tacticPreview(b,u,id).reach,{language:getLanguage()});
-            const ready = u.rage >= 100 && !u.routed && !u.gone && phase === 'fight' && !(u.status.stun > 0);
-            return h(
-              'button.tac',
-              {
-                type: 'button',
-                disabled: !ready,
-                'aria-pressed': armed?.unit === u.id && armed.tactic === id ? 'true' : 'false',
-                className: tc.general ? 'tac sig' : 'tac',
-                title: nm(tc) + ' — ' + explanation.detail + (!ready ? ' · '+(phase==='deploy'?words('开战后可用','Available after deployment'):u.routed?t('routed'):u.status.stun>0?t('st_stun'):t('rage')+' '+Math.floor(u.rage)+'/100') : ''),
-                dataset: { k: 'tac' + u.id + id },
-                onclick: (e) => {
-                  e.stopPropagation();
-                  armTactic(u.id,id);
-                }
-              },
-              h('span.tacName',nm(tc)),h('small.tacEffect',explanation.effect),h('small.tacCost',explanation.cost)
-            );
-          })
-        )
-      : null;
-    const marks = Object.keys(u.status).map((m) => h('span.mark.' + m, t('st_' + m)));
-    return h(
-      `div.ucard${u.side === side ? '.ours' : '.theirs'}${selected === u.id ? '.on' : ''}${u.gone ? '.gone' : ''}${u.routed ? '.routed' : ''}`,
-      {
-        dataset: { k: 'u' + u.id },
-        tabIndex: 0,
-        role: 'group',
-        'aria-label': unitName(u)+' · '+armName(u)+' · '+num(u.troops)+' '+t('troops'),
-        onkeydown: e => {if(e.target===e.currentTarget&&e.key==='Enter'){e.preventDefault();e.stopPropagation();activateUnit(u.id);}},
-        onclick: () => {
-          activateUnit(u.id);
-        }
-      },
-      h('div.uh', u.general ? face(u.general, 30, app.rulers()) : h('span.face.blank'), h('span.un', unitName(u), h('small', armName(u) + (mine ? ' · ' + nm(FORMATIONS[u.formation]) : ''))), h('b.ut', u.gone ? (u.end === 'fled' ? t('fled') : t('destroyed')) : num(u.troops))),
-      h('div.ub', bar(share, share > 0.5 ? 'good' : share > 0.25 ? 'gold' : 'bad', t('troops')), bar(Math.max(0, u.morale) / 100, 'blue', t('morale')), bar(u.rage / 100, u.rage >= 100 ? 'fire' : 'rage', t('rage'))),
-      h('div.uVitals',h('span',t('morale')+' ',h('b',Math.round(u.morale))),h('span'+(u.rage>=100?'.ready':''),t('rage')+' ',h('b',Math.floor(u.rage)+'/100'))),
-      marks.length || u.routed ? h('div.marks', u.routed ? h('span.mark.rout', t('routed')) : null, marks) : null,
-      tactics,
-      mine && phase === 'fight' && !u.gone && !u.routed && !draft
-        ? h(
-            'div.uo',
-            keyButton('card-order-'+u.id+'-hold',t('hold'), (e) => (e.stopPropagation(), issue(u.id, u.order === 'hold' ? 'auto' : 'hold'), draw(true)), { small: true, kind: u.order === 'hold' ? 'on' : '' }),
-            keyButton('card-order-'+u.id+'-auto',t('auto'), (e) => (e.stopPropagation(), issue(u.id, 'auto'), draw(true)), { small: true, kind: u.order === 'auto' ? 'on' : '' }),
-            keyButton('card-order-'+u.id+'-autoTactic',t('autoTactic'), (e) => (e.stopPropagation(), issue(u.id, 'autoTactic', !u.autoTactic), draw(true)), { small: true, kind: u.autoTactic ? 'on' : '' })
-          )
-        : null,
-      mine && phase === 'deploy'
-        ? h(
-            'div.uo',
-            Object.values(FORMATIONS)
-              .filter((f) => formationAllowed(u.kind,f.id))
-              .map((f) => keyButton('formation-'+u.id+'-'+f.id,nm(f), (e) => (e.stopPropagation(), issue(u.id, 'formation', f.id), draw(true)), { small: true, title:formationText(f),kind: u.formation === f.id ? 'on' : '' }))
-          )
-        : null
-    );
-  }
-
-  function draw(force = false) {
-    if(heldControl){pendingHud=true;return;}
+  function draw(force=false){
     if(ending){renderEnding();return;}
-    const key = JSON.stringify([phase, paused, speed, selected, armed,commandNotice,planReceipt,tempoNotice,milestonePauses,Math.ceil(executionLeft??-1), Math.floor(b.time), b.units.map((u) => [Math.round(u.troops / 50), Math.round(u.morale / 4), Math.floor(u.rage / 10), u.order, u.autoTactic, u.formation, u.intent, u.intentAnchor, Object.keys(u.status).join(), u.gone, u.routed]), Math.round(b.gate?.hp ?? 0), Math.round(b.depot?.hp ?? 0), Math.round(b.keepHeld), b.ferry?.engaged, Math.floor(b.ferry?.secured ?? 0), feed.length && feed[0].at]);
-    if (!force && key === shownKey) return;
-    shownKey = key;
-    const place = setup.place.node ? placeName(setup.place.node) : placeName(setup.place.link[0]);
-    const left = Math.max(0, b.limit - b.time);
-    view.preview(phase, armed);
-    hud.dataset.phase=phase;hud.classList.toggle('is-paused',paused&&phase==='fight');
-    hud.classList.toggle('is-nanpi-trial', nanpi);
-    const chosen = selected !== null ? b.units[selected] : null;
-    const active = chosen && !chosen.gone && chosen.side===side;
-    const readyCount = b.units.filter(u=>u.side===side&&!u.gone&&!u.routed&&u.rage>=100).length;
-    const aimPreview=armed?tacticPreview(b,b.units[armed.unit],armed.tactic,armed.target==null?null:b.units[armed.target]):null;
-    const commandText = armed ? nm(TACTICS[armed.tactic])+' · '+tacticPresentation(TACTICS[armed.tactic],aimPreview.reach,{language:getLanguage()}).detail : phase==='deploy' ? words('基础作战照旧；战法由你施展，也可交还自动。','Ordinary combat continues automatically. Use tactics yourself, or delegate them.') : orderStatus(chosen);
-    updateBattleHud(hud,
-      h(
-        'header.bTop',
-        h('div.bTitle', h('span.bPhase',phase==='deploy'?words('部署 · 战鼓未鸣','DEPLOYMENT'):paused?words('暂停 · 运筹帷幄','TACTICAL PAUSE'):executionLeft!==null?words('观察执行 · 余','OBSERVE · ')+Math.ceil(executionLeft)+words('秒','s'):words('交战 · 将令已下','BATTLE IN PROGRESS')),h('b', trial?words('夕照南皮','Nanpi at sunset'):t('battleAt', { place })), h('small', factionName(s, setup.factions[0]) + ' ⚔ ' + (setup.factions[1] ? factionName(s, setup.factions[1]) : t('noOwner')))),
-        h('div.bTime', h('span', t('sunset') + ' ' + Math.floor(left / 60) + ':' + String(Math.floor(left % 60)).padStart(2, '0')), bar(left / b.limit, 'gold'), h('span.wind', { title: t('windLabel') }, t('windLabel') + ' ' + WIND[b.wind % 6])),
-        b.gate ? h('div.bObj', h('span', t('gate')), bar(Math.max(0, b.gate.hp) / (1500 + setup.wall * 60), 'stone'), h('small', b.gate.open ? t('gateOpen') : num(b.gate.hp))) : null,
-        b.depot ? h('div.bObj', h('span', t('depot')), bar(Math.max(0, b.depot.hp) / 1000, 'fire'), h('small', b.depot.burnt ? t('depotBurnt') : num(b.depot.hp))) : null,
-        b.ferry ? crossingStatus() : b.keep !== null ? h('div.bObj', h('span', t('keepHold')), bar(b.keepHeld / 10, 'gold'),
-          nanpi && b.gate?.open ? h('small',Math.min(10,Math.floor(b.keepHeld))+' / 10 '+words('秒','s')) : null) : null,
-        phase === 'fight'
-          ? h(
-              'div.clock',
-              h('button.pause', { type: 'button', 'aria-label':paused?t('resume'):t('pause'),'aria-pressed': paused ? 'true' : 'false', dataset: { k: 'bpause' }, title: (paused ? t('resume') : t('pause')) + ' (Space)', onclick: () => setPaused(!paused) }, paused ? '▶' : '❚❚'),
-              SPEEDS.map((v, i) => h('button.spd', { type: 'button', 'aria-pressed': speed === i ? 'true' : 'false', dataset: { k: 'bs' + i }, title: v + '×', onclick: () => setSpeed(i) }, v + '×'))
-            )
-          : null,
-        trial ? keyButton('leave-trial',words('离开演武','Leave trial'),leaveTrial,{small:true})
-          : phase === 'fight' ? keyButton('retreat',t('retreat'), () => end({ winner: 1 - side, why: 'retreat' }), { kind: 'danger', small: true }) : null
-      ),
-      h('aside.bSide.ours',{'aria-label':words('己方部队','Your army')},h('div.bSideTitle',words('我军','YOUR ARMY'),h('small',b.units.filter(u=>u.side===side&&!u.gone).length+' '+words('部','units'))),b.units.filter((u) => u.side === side).map(card)),
-      h('aside.bSide.theirs',{'aria-label':words('敌方部队','Enemy army')},h('div.bSideTitle',words('敌军','OPPOSITION'),h('small',b.units.filter(u=>u.side!==side&&!u.gone).length+' '+words('部','units'))),b.units.filter((u) => u.side !== side).map(card)),
-      h('section.bCommand'+(armed?'.aiming':'')+(draft?'.planning':''),{'aria-label':words('战场指挥','Battlefield command')},
-        h('div.bCommandHeading',h('span.bCommandSeal',phase==='deploy'?words('阵','Ⅰ'):words('令','Ⅱ')),h('div',h('small',armed?words('选择战法目标','CHOOSE A TACTIC TARGET'):words('当前指挥','BATTLEFIELD COMMAND')),h('strong',active?unitName(chosen)+' · '+armName(chosen):words('点选己方部队','Select one of your units'))),
-          h('div.bViewTools',keyButton('locate',words('定位','Locate'),()=>{if(active)view.lookAtHex(chosen.pos);},{small:true,why:active?null:words('先选择己方部队','Select your unit first')}),keyButton('overview',words('俯视','Overview'),()=>view.overview(),{small:true})),
-          fieldCommand && phase === 'fight' && !armed ? h('div.bPlanToggle',
-            keyButton('plan-mode', draft ? words('退出拟令', 'Leave planning') : words('协同下令', 'Plan orders'),
-              () => { changePlanMode(!draft); draw(true); }, {kind: draft ? 'on' : 'main', small:true})) : null,
-          planReceipt ? h('small.bCommandStickyNotice', {role:'status'}, planReceipt) : null),
-        tempoNotice?h('p.bTempoCue',{role:'status'},tempoNotice):null,
-        b.ferry && !draft && !armed ? h('div.bOrderRow',
-          keyButton('ferry-locate', words('定位渡口','Locate crossing'), () => view.lookAtHex(b.ferry.at), {small:true})) : null,
-        h('p.bCommandHint',commandText),
-        commandNotice?h('p.bOrderFeedback'+(commandBad?'.bad':''),{role:'status'},commandNotice):null,
-        active&&!armed?h('p.bFormationInfo',nm(FORMATIONS[chosen.formation])+' · '+formationText(FORMATIONS[chosen.formation])):null,
-        fieldCommand && phase==='fight' && active && !chosen.routed && !armed && !draft ? battleIntentControls(chosen) : null,
-        active&&!armed&&!pendingOrder&&chosen.target&&!chosen.target.gone?(()=>{const p=combatPreview(b,chosen,chosen.target);return p?h('p.bMatchupInfo',words('兵种修正','Weapon match ')+p.weaponMultiplier.toFixed(2)+'× · '+words('射程内普通命中约','Ordinary hit in reach: ')+p.minLoss+'–'+p.maxLoss+words(' 人（不含暴击）',' troops (before criticals)')):null;})():null,
-        nanpi&&!armed&&!pendingOrder?h('p.bTrialGuide',nanpiInstructions(chosen)):null,
-        nanpi&&!armed&&!pendingOrder?nanpiOrders(chosen):null,
-        !draft ? orderConfirmation() : null,
-        draft && !armed ? renderBattleCommandPanel({
-          preview: pendingOrder?.plan, plans: reviewedPlan?.orders, unitName: id => unitName(b.units[id]),
-          summary: planSummary(), reason: draft.length ? reviewedPlan?.reason : '',
-          onQueue: queueOrder, onCancel: cancelOrder, onRemove: removeOrder,
-          onAdvance: () => dispatchPlan(true), onContinue: () => dispatchPlan(false)
-        }) : null,
-        armed?h('div.bAimControls',
-          h('p#battleAimSummary',armed.target==null?words('选择敌军目标，查看覆盖后确认。','Choose an enemy target, review the area, then confirm.'):unitName(b.units[armed.target])+' · '+words('覆盖 ','Covers ')+aimPreview.targets.length+words(' 部敌军',' enemy units')),
-          h('div.bAimTargets',b.units.filter(u=>u.side!==side&&!u.gone).map(u=>keyButton('target-'+u.id,unitName(u)+' · '+distance(b.units[armed.unit].pos,u.pos)+words('格',' hexes'),()=>chooseTarget(u.id),{kind:armed.target===u.id?'on':'',why:tacticPreview(b,b.units[armed.unit],armed.tactic,u).reason==='range'?words('超出战法范围','Outside tactic reach'):null,small:true}))),
-          h('div.bAimActions',keyButton('confirm-tactic',words('确认施策','Confirm tactic'),()=>fire(armed.unit,armed.tactic,armed.target),{kind:'main',why:aimPreview.valid?null:words('先选择有效目标','Choose a valid target first')}),keyButton('cancel-tactic',words('取消施策','Cancel tactic'),cancelAim)))
-        :phase==='fight'&&!draft?h('div.bOrderRow',
-          active&&!chosen.routed?orderButton(chosen,'hold',t('hold'),chosen.order==='hold'):null,
-          active&&!chosen.routed?orderButton(chosen,'auto',t('auto'),chosen.order==='auto'):null,
-          active&&!chosen.routed?orderButton(chosen,'autoTactic',chosen.autoTactic?words('战法：自动','Tactics: auto'):words('战法：手动','Tactics: manual'),chosen.autoTactic,!chosen.autoTactic):null,
-          keyButton('execute',paused?words('继续执行','Continue'):words('暂停','Pause'),()=>setPaused(!paused),{kind:paused?'main':''}),
-          paused&&!pendingOrder?keyButton('observe',words('推进3秒','Observe 3s'),observeThree,{title:words('按当前速度执行3秒战场时间，然后暂停；可随时再停。','Run 3 battle seconds at the current speed, then pause. You may pause sooner.')}):null):null,
-        !armed?h('div.bTempoOptions',h('label',h('input',{type:'checkbox',checked:milestonePauses,dataset:{k:'milestones'},onchange:e=>{milestonePauses=e.target.checked;draw(true);}}),words('关键时刻暂停','Pause at milestones')),
-          phase==='deploy'&&active?orderButton(chosen,'autoTactic',chosen.autoTactic?words('战法：自动','Tactics: auto'):words('战法：手动','Tactics: manual'),chosen.autoTactic,!chosen.autoTactic):phase==='fight'?h('small',readyCount?words(readyCount+' 部战法可施展',readyCount+' units can use tactics'):words('部队基础作战持续执行','Ordinary combat remains automatic')):null):null),
-      h('div.bFeed', { 'aria-live': 'polite' }, feed.map((f) => h(`p.${f.kind}`, f.text))),
-      phase === 'deploy'
-        ? h('div.bDeploy', h('h3', t('deploy')), h('p', t('deployHelp')), h('div.row', trial?null:keyButton('entrust',t('battleEntrust'), () => autoFinish()), keyButton('begin',trial?words('鸣鼓开战','Sound the drums'):t('fight'), () => begin(), { kind: 'main' })))
-        : h('p.bHelp',armed?t('tacticPick'):paused?words('已暂停 · 空格继续 · 可继续下达指令','Paused · Space to resume · Orders remain available'):words('空格 暂停  /  1–3 倍速  /  Esc 取消选择','Space pause  /  1–3 speed  /  Esc clear selection'))
-    );
+    const key=JSON.stringify([phase,paused,speed,selected,armed,commandNotice,planReceipt,tempoNotice,milestonePauses,Math.ceil(executionLeft??-1),Math.floor(b.time),b.units.map(u=>[Math.round(u.troops/50),Math.round(u.morale/4),Math.floor(u.rage/10),u.order,u.autoTactic,u.formation,u.intent,u.intentAnchor,Object.keys(u.status).join(),u.gone,u.routed]),Math.round(b.gate?.hp??0),Math.round(b.depot?.hp??0),Math.round(b.keepHeld),b.ferry?.engaged,Math.floor(b.ferry?.secured??0),feed.length&&feed[0].at,getLanguage()]);
+    if(!force&&key===shownKey)return;shownKey=key;const place=setup.place.node?placeName(setup.place.node):placeName(setup.place.link[0]);const left=Math.max(0,b.limit-b.time);
+    view.preview(phase,armed);const chosen=selected!==null?b.units[selected]:null,active=chosen&&!chosen.gone&&chosen.side===side,readyCount=b.units.filter(u=>u.side===side&&!u.gone&&!u.routed&&u.rage>=100).length,aimPreview=armed?tacticPreview(b,b.units[armed.unit],armed.tactic,armed.target==null?null:b.units[armed.target]):null;
+    const commandText=armed?nm(TACTICS[armed.tactic])+' · '+tacticPresentation(TACTICS[armed.tactic],aimPreview.reach,{language:getLanguage()}).detail:phase==='deploy'?words('基础作战照旧；战法由你施展，也可交还自动。','Ordinary combat continues automatically. Use tactics yourself, or delegate them.'):orderStatus(chosen);
+    const objectives=[b.gate?{id:'gate',label:t('gate'),share:Math.max(0,b.gate.hp)/(1500+setup.wall*60),text:b.gate.open?t('gateOpen'):num(b.gate.hp),color:0x95948c}:null,b.depot?{id:'depot',label:t('depot'),share:Math.max(0,b.depot.hp)/1000,text:b.depot.burnt?t('depotBurnt'):num(b.depot.hp),color:0xb97b51}:null,b.ferry?crossingStatus():b.keep!==null?{id:'keep',label:t('keepHold'),share:b.keepHeld/10,text:nanpi&&b.gate?.open?Math.min(10,Math.floor(b.keepHeld))+' / 10 '+words('秒','s'):''}:null].filter(Boolean);
+    const controls=[...(phase==='fight'?[keyButton('bpause',paused?t('resume'):t('pause'),()=>setPaused(!paused),{kind:paused?'main':''}),...SPEEDS.map((v,i)=>keyButton('bs'+i,v+'×',()=>setSpeed(i),{kind:speed===i?'on':''}))]:[]),trial?keyButton('leave-trial',words('离开演武','Leave trial'),leaveTrial):phase==='fight'?keyButton('retreat',t('retreat'),()=>end({winner:1-side,why:'retreat'})):null].filter(Boolean);
+    const tools=[keyButton('locate',words('定位','Locate'),()=>{if(active)view.lookAtHex(chosen.pos);},{why:active?null:words('先选择己方部队','Select your unit first')}),keyButton('overview',words('俯视','Overview'),()=>view.overview()),fieldCommand&&phase==='fight'&&!armed?keyButton('plan-mode',draft?words('退出拟令','Leave planning'):words('协同下令','Plan orders'),()=>{changePlanMode(!draft);draw(true);},{kind:draft?'on':'main'}):null].filter(Boolean);
+    const rows=[planReceipt?line('plan-receipt',planReceipt,{tone:'good',lines:2}):null,tempoNotice?line('tempo-cue',tempoNotice,{tone:'gold',lines:3}):null,
+      b.ferry&&!draft&&!armed?keyButton('ferry-locate',words('定位渡口','Locate crossing'),()=>view.lookAtHex(b.ferry.at)):null,
+      line('command-hint',commandText,{lines:4}),commandNotice?line('command-feedback',commandNotice,{tone:commandBad?'bad':'good',lines:3}):null,
+      active&&!armed?line('formation-info',nm(FORMATIONS[chosen.formation])+' · '+formationText(FORMATIONS[chosen.formation]),{lines:3}):null,
+      fieldCommand&&phase==='fight'&&active&&!chosen.routed&&!armed&&!draft?battleIntentControls(chosen):null,
+      active&&!armed&&!pendingOrder&&chosen.target&&!chosen.target.gone?(()=>{const p=combatPreview(b,chosen,chosen.target);return p?line('matchup-info',words('兵种修正','Weapon match ')+p.weaponMultiplier.toFixed(2)+'× · '+words('射程内普通命中约','Ordinary hit in reach: ')+p.minLoss+'–'+p.maxLoss+words(' 人（不含暴击）',' troops (before criticals)'),{lines:3}):null;})():null,
+      nanpi&&!armed&&!pendingOrder?line('trial-guide',nanpiInstructions(chosen),{lines:4}):null,nanpi&&!armed&&!pendingOrder?nanpiOrders(chosen):null,!draft?orderConfirmation():null,
+      ...(draft&&!armed?nativeBattleCommandRows({preview:pendingOrder?.plan,plans:reviewedPlan?.orders,unitName:id=>unitName(b.units[id]),summary:planSummary(),reason:draft.length?reviewedPlan?.reason:'',onQueue:queueOrder,onCancel:cancelOrder,onRemove:removeOrder,onAdvance:()=>dispatchPlan(true),onContinue:()=>dispatchPlan(false)}):[]),
+      ...(armed?[line('aim-summary',armed.target==null?words('选择敌军目标，查看覆盖后确认。','Choose an enemy target, review the area, then confirm.'):unitName(b.units[armed.target])+' · '+words('覆盖 ','Covers ')+aimPreview.targets.length+words(' 部敌军',' enemy units'),{lines:3}),...b.units.filter(u=>u.side!==side&&!u.gone).map(u=>keyButton('target-'+u.id,unitName(u)+' · '+distance(b.units[armed.unit].pos,u.pos)+words('格',' hexes'),()=>chooseTarget(u.id),{kind:armed.target===u.id?'on':'',why:tacticPreview(b,b.units[armed.unit],armed.tactic,u).reason==='range'?words('超出战法范围','Outside tactic reach'):null})),row('aim-actions',[keyButton('confirm-tactic',words('确认施策','Confirm tactic'),()=>fire(armed.unit,armed.tactic,armed.target),{kind:'main',why:aimPreview.valid?null:words('先选择有效目标','Choose a valid target first')}),keyButton('cancel-tactic',words('取消施策','Cancel tactic'),cancelAim)])]:phase==='fight'&&!draft?[row('battle-execution-actions',[
+        active&&!chosen.routed?orderButton(chosen,'hold',t('hold'),chosen.order==='hold'):null,active&&!chosen.routed?orderButton(chosen,'auto',t('auto'),chosen.order==='auto'):null,active&&!chosen.routed?orderButton(chosen,'autoTactic',chosen.autoTactic?words('战法：自动','Tactics: auto'):words('战法：手动','Tactics: manual'),chosen.autoTactic,!chosen.autoTactic):null,keyButton('execute',paused?words('继续执行','Continue'):words('暂停','Pause'),()=>setPaused(!paused),{kind:paused?'main':''}),paused&&!pendingOrder?keyButton('observe',words('推进3秒','Observe 3s'),observeThree,{title:words('按当前速度执行3秒战场时间，然后暂停；可随时再停。','Run 3 battle seconds at the current speed, then pause. You may pause sooner.')}):null] )]:[]),
+      ...(!armed?[toggle('milestones',words('关键时刻暂停','Pause at milestones'),milestonePauses,()=>{milestonePauses=!milestonePauses;draw(true);}),phase==='deploy'&&active?orderButton(chosen,'autoTactic',chosen.autoTactic?words('战法：自动','Tactics: auto'):words('战法：手动','Tactics: manual'),chosen.autoTactic,!chosen.autoTactic):phase==='fight'?line('tactics-ready',readyCount?words(readyCount+' 部战法可施展',readyCount+' units can use tactics'):words('部队基础作战持续执行','Ordinary combat remains automatic'),{lines:2,tone:'dim'}):null]:[])
+    ].filter(Boolean);
+    const footer=phase==='deploy'?{text:t('deployHelp'),actions:[trial?null:keyButton('entrust',t('battleEntrust'),autoFinish),keyButton('begin',trial?words('鸣鼓开战','Sound the drums'):t('fight'),begin,{kind:'main'})].filter(Boolean)}:{text:armed?t('tacticPick'):paused?words('已暂停 · 空格继续 · 可继续下达指令','Paused · Space to resume · Orders remain available'):words('空格 暂停  /  1–3 倍速  /  Esc 取消选择','Space pause  /  1–3 speed  /  Esc clear selection'),actions:[]};
+    hud.render({phase,title:trial?words('夕照南皮','Nanpi at sunset'):t('battleAt',{place}),phaseTitle:phase==='deploy'?words('部署 · 战鼓未鸣','DEPLOYMENT'):paused?words('暂停 · 运筹帷幄','TACTICAL PAUSE'):executionLeft!==null?words('观察执行 · 余','OBSERVE · ')+Math.ceil(executionLeft)+words('秒','s'):words('交战 · 将令已下','BATTLE IN PROGRESS'),subtitle:factionName(s,setup.factions[0])+' ⚔ '+(setup.factions[1]?factionName(s,setup.factions[1]):t('noOwner')),clock:t('sunset')+' '+Math.floor(left/60)+':'+String(Math.floor(left%60)).padStart(2,'0'),timeShare:left/b.limit,wind:t('windLabel')+' '+WIND[b.wind%6],objectives,controls,owned:b.units.filter(u=>u.side===side).map(card),enemy:b.units.filter(u=>u.side!==side).map(card),command:{title:armed?words('选择战法目标','CHOOSE A TACTIC TARGET'):words('当前指挥','BATTLEFIELD COMMAND'),selection:active?unitName(chosen)+' · '+armName(chosen):words('点选己方部队','Select one of your units'),tools,rows},feed,footer});
   }
-
   function setPaused(v) {
     if (!v && draft) {
       if (draft.length || pendingOrder) {
@@ -645,8 +478,7 @@ export function startBattle(app, setup, { state: s = app.state, onTrialResult, o
   }
   function renderEnding(){
     if(!ending)return;
-    hud.dataset.phase='result';
-    clear(hud).append(h('section.bOutcomeHold',{'aria-label':words('战斗结束','Battle ended')},h('small',words('战局已定','THE BATTLE IS DECIDED')),h('h2',ending.result.winner===side?t('victory'):t('defeat')),h('p',battleOutcomeReason(ending.result,side,getLanguage())),keyButton('finish-result',words('查看战果','View results'),completeEnding,{kind:'main'}),h('small',words('片刻后进入战果 · 可立即跳过','Results follow shortly · Skip at any time'))));
+    hud.finish({title:ending.result.winner===side?t('victory'):t('defeat'),reason:battleOutcomeReason(ending.result,side,getLanguage()),label:words('查看战果','View results'),help:words('片刻后进入战果 · 可立即跳过','Results follow shortly · Skip at any time'),action:completeEnding});
   }
   function completeEnding(){
     if(ended||!ending)return;
@@ -657,11 +489,8 @@ export function startBattle(app, setup, { state: s = app.state, onTrialResult, o
     app.endBattle({ setup, result, tape, report });
   }
   function cleanBattle() {
-    clearTimeout(releaseTimer);hud.removeEventListener('pointerdown',holdHud,true);window.removeEventListener('pointerup',releaseHud,true);window.removeEventListener('pointercancel',releaseHud,true);window.removeEventListener('blur',blurHud);
     view.destroy();
-    clear(hud);
-    clear(fx);
-    hud.classList.remove('is-nanpi-trial');
+    hud.close();
   }
   function leaveTrial() {
     if (!trial || ended) return;
@@ -718,11 +547,8 @@ export function startBattle(app, setup, { state: s = app.state, onTrialResult, o
     },
     key(code) {
       if(ending){if(['Enter','Space','Escape'].includes(code)){completeEnding();return true;}return false;}
-      // The global listener runs in capture: focused controls own their native
-      // Enter/Space action, so a selection must not also start/pause the battle.
-      // A group card uses Enter only; Space keeps the battle pause shortcut.
-      if ((code === 'Space' || code === 'Enter') && document.activeElement?.closest?.('#battleHud button, #plates .plate.unit[role="button"]')) return false;
-      if (code === 'Enter' && document.activeElement?.closest?.('#battleHud .ucard[tabindex]')) return false;
+      // Native focused controls consume their own Enter/Space activation.
+      if ((code === 'Space' || code === 'Enter') && (hud.view?.focused||view.markers?.ownsFocus?.())) return false;
       if (code === 'Space' && phase === 'fight') setPaused(!paused);
       else if (/^Digit[1-3]$/.test(code) && phase === 'fight') {
         setSpeed(+code.slice(5)-1);
@@ -739,6 +565,8 @@ export function startBattle(app, setup, { state: s = app.state, onTrialResult, o
     },
     zoomBy: (f) => app.map.zoomBy(f),
     panBy: (x, y) => app.map.panBy(x, y),
+    get nativeHud(){return hud.snapshot()},
+    get nativeView(){return hud.view},
     get battle() {
       return b;
     },
@@ -755,5 +583,3 @@ export function startBattle(app, setup, { state: s = app.state, onTrialResult, o
     command: (...a) => issue(...a)
   };
 }
-
-export { seal };

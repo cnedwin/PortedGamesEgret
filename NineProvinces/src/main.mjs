@@ -6,7 +6,7 @@
 // days a second), with an autosave on the first of each month; the tale, battles, envoys and captives come out of the
 // inbox one at a time for the player to decide. Drag to pan, the wheel or two fingers to zoom, Space to pause, 1–5 for
 // speed, arrows to move, +/- to zoom, H to return to town, Esc to close.
-import { browserSaveStorage, downloadBrowserTextFile, pickBrowserTextFile } from '@egret/engine/web/kit';
+import { browserSaveStorage, downloadBrowserTextFile, pickBrowserTextFile, prefersReducedMotion, watchReducedMotion } from '@egret/engine/web/kit';
 import { NODES } from './data/map.mjs';
 import { createSound } from './audio/sound.mjs';
 import { getLanguage, setLanguage, t } from './i18n.mjs';
@@ -21,12 +21,11 @@ import { registerCustom } from './sim/newblood.mjs';
 import { die, giveTreasure, issueTalentOrder, moveGeneral, persuade, release, searchCity } from './sim/people.mjs';
 import { answerStory } from './sim/story.mjs';
 import { advance, createGame, power, recruit, setGovernorDuty, setGovernorRecruitment, startWork, study, transfer } from './sim/world.mjs';
-import { $, button, clear, h } from './ui/dom.mjs';
 import { createNativeRealmHud, nativeTipFor as tipFor } from './ui/native-realm-hud.mjs';
 import { createCampaignCoach } from './ui/native-campaign-coach.mjs';
 import { eventOf, logLine, pair, treatyAt } from './ui/text.mjs';
-import { startBattle } from './ui/battleui.mjs';
-import { battleOutcomeReason } from './ui/battle-copy.mjs';
+import { startBattle } from './ui/battleui-native.mjs';
+import {createNativeBattleLabRouter,createNativeNanpiResult} from './ui/native-battle-lab-router.mjs';
 import { createNativeTitleScreens } from './ui/native-title.mjs';
 import { createNativeDialogs } from './ui/native-dialogs.mjs';
 import { createNativeTopbar, CAMPAIGN_SPEEDS as SPEEDS } from './ui/native-topbar.mjs';
@@ -39,6 +38,7 @@ import { TREASURES } from './data/treasures.mjs';
 import { nm } from './i18n.mjs';
 
 const params = new URLSearchParams(location.search);
+const $=selector=>document.querySelector(selector);
 const frame = $('#frame');
 
 // ——— Settings and language ———
@@ -65,6 +65,7 @@ function softwareRenderer() {
   }
 }
 
+let systemReducedMotion=prefersReducedMotion();
 const app = {
   game: null,
   stageSize: { width: 1600, height: 900 },
@@ -98,7 +99,7 @@ const app = {
   openNanpi: () => openNanpiTrial(),
   openBattleReplay: tape => openBattleLab(tape),
   /** Whether to keep motion down: the setting, or the system's own preference. */
-  calm: () => Boolean(app.settings.reducedMotion) || matchMedia('(prefers-reduced-motion: reduce)').matches,
+  calm: () => Boolean(app.settings.reducedMotion) || systemReducedMotion,
   rulers() {
     return app.rulerSet;
   },
@@ -165,7 +166,6 @@ const app = {
       app.hud?.refresh();
     }
     if (key === 'reducedMotion') {
-      frame.classList.toggle('calm', value);
       app.map?.setReducedMotion?.(app.calm());
     }
   },
@@ -218,6 +218,7 @@ const app = {
     app.campaignBattle = { state: app.state, id: setup.id, before: captureCampaignBattle(app.state, setup) };
     app.dialogs.close(true);
     app.screen = 'battle';
+    app.hud.clearTransient?.();
     app.topbar?.setVisible(false);
     app.minimap?.setVisible?.(false);
     app.map.setTerritoryVisible(false);
@@ -288,123 +289,41 @@ const app = {
     }
   },
   afterDialog() {
-    frame.classList.toggle('native-modal', Boolean(app.dialogs?.nativeActive));
     app.hud?.refresh(true);
     setTimeout(nextInbox, 0);
   }
 };
 
-let labLoading = false;
-let nanpiResult = null;
-function openNanpiTrial() {
-  if (app.lab || app.battle || labLoading || (app.screen !== 'title' && !nanpiResult)) return;
-  const { state, setup } = createNanpiTrial();
-  nanpiResult = null;
-  app.dialogs.close(true);
-  app.nativeTitle?.close();
-  app.screen = 'battle';
-  frame.dataset.screen = 'battle';
-  app.map.setDrift(null);
-  app.map.setTerritoryVisible(false);
-  app.battle = startBattle(app, setup, {
-    state,
-    onTrialExit: leaveNanpi,
-    onTrialResult: showNanpiResult,
-  });
-  $('#battleHud [data-k="begin"]')?.focus({ preventScroll: true });
+let nanpiResult=null,nanpiView=null,labRouter=null;
+function closeNanpiView(){nanpiView?.destroy();nanpiView=null;}
+function getLabRouter(){return labRouter??=createNativeBattleLabRouter(app,{onError:error=>{console.error(error);if(app.screen==='title'){app.notice=t('battleLabFailed');app.nativeTitle?.showTitle();}else app.hud.toast(t('battleLabFailed'),'bad');}});}
+function openNanpiTrial(){
+  if(app.lab||app.battle||getLabRouter().loading||(app.screen!=='title'&&!nanpiResult))return;
+  const {state,setup}=createNanpiTrial();closeNanpiView();nanpiResult=null;
+  app.dialogs.close(true);app.nativeTitle?.close();app.screen='battle';frame.dataset.screen='battle';
+  app.map.setDrift(null);app.map.setTerritoryVisible(false);
+  // Supply the native World3D presentation adapter after B4 scene markers are integrated.
+  app.battle=startBattle(app,setup,{state,onTrialExit:leaveNanpi,onTrialResult:showNanpiResult});
 }
-
-function leaveNanpi() {
-  nanpiResult = null;
-  app.battle = null;
-  clear($('#battleHud'));
-  toTitle(true,'title-nanpi');
+function leaveNanpi(){closeNanpiView();nanpiResult=null;app.battle=null;toTitle(true,'title-nanpi');}
+function showNanpiResult(done){
+  app.battle=null;closeNanpiView();nanpiResult=done;
+  nanpiView=createNativeNanpiResult(app.uiHost,done,{onReplay:()=>openBattleLab(done.tape),onRetry:openNanpiTrial,onExit:leaveNanpi});
 }
-
-function showNanpiResult(done) {
-  app.battle = null;
-  nanpiResult = done;
-  const times = done.tape.events;
-  const breach = times.find(e => e.kind === 'gateOpen');
-  const hold = done.tape.frames.at(-1).keepHeld;
-  const ours = done.report.sides[0];
-  const display = value => Math.round(value).toLocaleString(getLanguage() === 'zh' ? 'zh-CN' : 'en');
-  const hud = clear($('#battleHud'));
-  hud.append(h('section.bOutcomeHold.bTrialResult', { 'aria-label': pair(['夕照南皮战果','Nanpi trial results']) },
-    h('small', pair(['夕照南皮 · 演武战果','NANPI AT SUNSET · TRIAL RESULTS'])),
-    h('h2', done.result.winner === 0 ? t('victory') : t('defeat')),
-    h('p', battleOutcomeReason(done.result, 0, getLanguage())),
-    h('dl',
-      h('div', h('dt',pair(['破门用时','Gate breached at'])), h('dd',breach ? display(breach.t) + pair([' 秒',' s']) : pair(['未破门','Gate held']))),
-      h('div', h('dt',pair(['本营控制','Keep held'])), h('dd',Math.min(10, hold).toFixed(1)+' / 10 '+pair(['秒','s']))),
-      h('div', h('dt',pair(['我军余部','Your survivors'])), h('dd',display(ours.remaining))),
-      h('div', h('dt',pair(['我军减员','Your losses'])), h('dd',display(ours.losses)))),
-    h('div.bTrialActions',
-      button(pair(['关键时刻回放','Replay key moments']), () => openBattleLab(done.tape), {kind:'main'}),
-      button(pair(['再战南皮','Try Nanpi again']), openNanpiTrial),
-      button(pair(['回到标题','Return to title']), leaveNanpi)),
-    h('small', pair(['独立演武 · 不写入战役存档','Standalone trial · Campaign saves are unaffected']))));
-  hud.querySelector('.bTrialActions .btn.main')?.focus({ preventScroll: true });
+function openBattleLab(tape=null){
+  const trial=nanpiResult?.tape===tape&&tape!==null;
+  return getLabRouter().open(tape,{trial,trialView:trial?nanpiView:null,tab:'replay',validate:()=>trial?nanpiResult?.tape===tape:!tape||app.dialogs.name==='battleResult'});
 }
-
-async function openBattleLab(tape = null) {
-  if (app.lab || labLoading) return;
-  labLoading = true;
-  const screen = app.screen;
-  const state = app.state;
-  const trial = nanpiResult?.tape === tape && tape !== null;
-  const returnFocus = document.activeElement;
-  const nativeFocus = app.nativeTitle?.view?.focused;
-  const nativeDialog = app.dialogs?.view;
-  const dialogFocus = nativeDialog?.focused;
-  const background = ['#stageHost','#battleHud'].map(selector => $(selector)).filter(Boolean);
-  function close() {
-    const active = app.lab;
-    if (!active) return;
-    app.lab = null;
-    active.controller.destroy();
-    for (const node of background) node.inert = false;
-    app.map.setVisible(true);
-    if (screen === 'title') { app.nativeTitle?.view?.show(); if (nativeFocus) focusNativeTitle(nativeFocus); }
-    if (nativeDialog && app.dialogs.view === nativeDialog) { nativeDialog.show(); if(dialogFocus) nativeDialog.focus(dialogFocus); }
-    app.hud.refresh(true);
-    app.sound.theme(trial ? 'battle' : screen === 'title' ? 'title' : 'realm');
-    if (returnFocus?.isConnected) returnFocus.focus({ preventScroll: true });
-  }
-  try {
-    const { openBattleSandbox, openBattleReplay } = await import('./ui/battle-lab.mjs');
-    if (screen !== app.screen || state !== app.state ||
-      (trial ? nanpiResult?.tape !== tape : tape && app.dialogs.name !== 'battleResult')) return;
-    const options = { onExit: close };
-    const controller = tape ? openBattleReplay(app, tape, { ...options, tab: 'replay', ...(trial ? {playerSide: 0} : {}) }) : openBattleSandbox(app, options);
-    app.lab = { controller, close };
-    for (const node of background) node.inert = true;
-    app.nativeTitle?.view?.hide();
-    nativeDialog?.hide();
-    app.hud.refresh(true);
-    app.map.setVisible(false);
-    app.sound.theme('battle');
-  } catch (error) {
-    console.error(error);
-    if (app.screen === 'title') {
-      app.notice = t('battleLabFailed');
-      app.nativeTitle?.showTitle();
-    } else app.hud.toast(t('battleLabFailed'), 'bad');
-  } finally {
-    labLoading = false;
-  }
-}
-
 
 /** Native campaign dialogs own their lifecycle; the old battle layer remains until battle migration. */
 function bridgeDialogs(native) {
   return {
     open(name,args) {
       const opened=native.open(name,args);
-      if(opened){frame.classList.add('native-modal');app.hud?.refresh(true);app.coach?.refreshFirst();}
+      if(opened){app.hud?.refresh(true);app.coach?.refreshFirst();}
       return opened;
     },
-    close(force){const closed=native.close(force);if(!native.name)frame.classList.remove('native-modal');return closed;},
+    close(force){return native.close(force);},
     render(){return native.render();}, update(dt){native.update(dt);},
     get name(){return native.name;},get blocking(){return native.blocking;},
     get nativeActive(){return Boolean(native.name);},get view(){return native.view;}
@@ -425,20 +344,18 @@ function focusNativeTitle(name) {
 
 // ——— Booting the engine and the views ———
 async function boot() {
-  const canvas = h('canvas#stage', { tabIndex: -1 });
-  const plates = h('div#plates');
-  $('#stageHost').replaceChildren(canvas, plates);
+  const canvas=document.createElement('canvas');canvas.id='stage';canvas.tabIndex=-1;
+  $('#stageHost').replaceChildren(canvas);
   app.demoState = createGame({ seed: 184, faction: 'caocao', branch: 'free' });
   app.canvas = canvas;
   app.tapNode = tapNode;
   app.tapArmy = tapArmy;
   app.map = await createRealmView({
     canvas,
-    plates,
     uiParent: $('#stageHost'),
     getState: () => app.state ?? app.demoState,
     getPlayer: () => app.state?.player,
-    showMapMarkers: () => !app.lab && !app.dialogOpen && ['setup','play'].includes(app.screen),
+    showMapMarkers: () => !app.lab && !app.dialogOpen && !app.game?.asking && ['setup','play'].includes(app.screen),
     quality: params.get('quality') ?? (app.settings.quality && app.settings.quality !== 'auto' ? app.settings.quality : undefined),
     tick: (seconds) => tick(seconds),
     onError: (cause) => console.error(cause),
@@ -459,6 +376,7 @@ async function boot() {
   app.quality = app.map.app.quality;
   app.uiHost = app.map.uiHost;
   app.game = app.uiHost.game;
+  app.game.scope.use({dispose:watchReducedMotion(value=>{systemReducedMotion=value;app.map.setReducedMotion?.(app.calm());})});
   app.map.setReducedMotion?.(app.calm());
   // The low-level canvas host owns the game; report real remaining boot work in its native loading UI.
   $('#loading')?.remove();
@@ -596,11 +514,12 @@ function bindKeys() {
   for(const code of ['KeyA','KeyD','KeyW','KeyS','Equal','Minus','NumpadAdd','NumpadSubtract','KeyH','Digit1','Digit2','Digit3','Digit4','Digit5'])keys.claim(code,worldActive);
   for(const code of ['ArrowLeft','ArrowRight'])keys.claim(code,()=>worldActive()&&(!sheetFocus()||app.hud.view?.focused?.startsWith('realm-tab-')));
   for(const code of ['ArrowUp','ArrowDown','Space'])keys.claim(code,()=>worldActive()&&!sheetFocus());
-  // Until batch four the independent battle screen still owns its old commands.
-  window.addEventListener('keydown',e=>{
-    if(app.lab||!app.battle||app.dialogOpen||e.defaultPrevented||e.altKey||e.ctrlKey||e.metaKey||e.target instanceof HTMLInputElement)return;
-    if(app.battle.key(e.code))e.preventDefault();
-  });
+  // The same native Play input snapshot drives battle and independent replay.
+  // Native view focus consumes its own buttons; no separate window key listener.
+  const combatActive=()=>!!(app.lab||app.battle)&&!app.game.asking&&(!app.dialogOpen||Boolean(app.lab));
+  for(const code of ['Digit1','Digit2','Digit3','Digit4','Escape'])keys.claim(code,combatActive);
+  for(const code of ['Space','Enter'])keys.claim(code,()=>combatActive()&&!app.battle?.nativeHud?.focus&&!app.battle?.view?.markers?.ownsFocus?.());
+
 }
 let panHold=0;
 function realmKeys(dt){
@@ -624,14 +543,16 @@ let acc = 0,
 function tick(dt) {
   app.frames = (app.frames ?? 0) + 1;
   app.dialogs?.update(dt);
-  if (frame.dataset.screen !== app.screen) frame.dataset.screen = app.screen;
-  if (app.lab) return;
-  realmKeys(dt);
   app.updateHints?.();
-  if (app.battle) {
-    app.battle.update(dt);
+  if (frame.dataset.screen !== app.screen) frame.dataset.screen = app.screen;
+  if(app.lab||app.battle){
+    const controller=app.lab?.controller??app.battle,keys=app.game.keys;
+    if(!app.game.asking)for(const code of ['Escape','Enter','Space','Digit1','Digit2','Digit3','Digit4','ArrowLeft','ArrowRight','Home','End'])if(keys.pressed(code))controller.key?.(code);
+    // A key may have closed or replaced the active controller this update.
+    if((app.lab?.controller??app.battle)===controller)controller.update(dt);
     return;
   }
+  realmKeys(dt);
   if (app.screen === 'play' && app.state && !app.paused && !app.dialogOpen && !app.game.asking && (!app.state.over || app.watching)) {
     acc += dt * SPEEDS[app.speed];
     let steps = 0;
@@ -1022,6 +943,7 @@ function toTitle(confirmed = false, focusName = null) {
     return;
   }
   app.lab?.close();
+  closeNanpiView();nanpiResult=null;
   app.dialogs.close(true);
   if (app.battle) app.battle = null;
   app.state = null;
@@ -1070,7 +992,6 @@ try {
 }
 document.title = t('title') + (getLanguage() === 'zh' ? ' · Nine Provinces Ablaze' : ' · 九州烽烟');
 if (app.screen !== 'error') $('#loading')?.remove();
-frame.classList.toggle('calm', Boolean(app.settings.reducedMotion));
 if (app.screen === 'error') { /* Keep the retry screen available. */ }
 else if (params.get('slot') && slots[params.get('slot')]?.data.game) loadSlot(params.get('slot'));
 else if (params.get('faction')) newGame({ faction: params.get('faction'), scenario: params.get('scenario') ?? '184',
