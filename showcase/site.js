@@ -155,7 +155,7 @@ function renderCase(game) {
     </section>
     <section class="case-section" aria-labelledby="features-title">
       <h2 id="features-title">${words.capabilities}</h2>
-      <div class="capability-grid">
+      <div class="capability-grid" data-count="${game.features.length}">
         ${game.features.map((feature) => `
           <div class="capability">
             <h3>${escape(feature.title[lang])}</h3>

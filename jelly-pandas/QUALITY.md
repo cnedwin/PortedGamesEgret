@@ -7,8 +7,8 @@ this file; items by hand or on a device are marked not run until someone runs th
 
 ## 测量环境 · Where it was measured
 
-- 日期 · Date: 2026-11-27
-- 浏览器 · Browser: 无头 Chromium 158.0.8127.37，SwiftShader 软件渲染（没有显卡） · headless, software rendering, no GPU
+- 日期 · Date: 2026-11-28
+- 浏览器 · Browser: 无头 Chromium 157.0.8103.6，SwiftShader 软件渲染（没有显卡） · headless, software rendering, no GPU
 - 机器 · Machine: Linux 容器 · a Linux container, win32 x64, Node v26.7.0
 - 首屏一项的限速 · Start-up throttling: 下行 10 Mbps、上行 5 Mbps、往返 40 ms，CPU 降速 ×4 · down 10 Mbps, up 5 Mbps, 40 ms round trip, CPU slowed ×4
 - 帧时间是软件渲染下的数字，只说明无头环境里的情况，不代表真机 · Frame times are from software rendering and say nothing of real devices.
@@ -20,9 +20,9 @@ this file; items by hand or on a device are marked not run until someone runs th
 | T1 | 触屏走完主流程 · The whole game by touch | 真机 · device | 未运行 · not run |  |
 | T2 | 触控区 ≥ 44×44 CSS px · Touch targets ≥ 44 × 44 CSS px | 自动 · automatic | 达标 · pass | 15 controls, all at least 44×44 |
 | T3 | 不误触下拉刷新和双击缩放 · No pull-to-refresh or double-tap zoom | 自动 · automatic | 达标 · pass | overscroll held, touch-action none, double-tap zoom off |
-| F1 | 桌面帧时间 p95 ≤ 16.7 ms · Desktop frame time p95 ≤ 16.7 ms | 自动 · automatic | 不达标 · fail | p95 370.8 ms over 25 frames |
+| F1 | 桌面帧时间 p95 ≤ 16.7 ms · Desktop frame time p95 ≤ 16.7 ms | 自动 · automatic | 不达标 · fail | p95 320.8 ms over 27 frames |
 | F2 | 中端手机帧时间 p95 ≤ 33 ms · Mid-range phone frame time p95 ≤ 33 ms | 真机 · device | 未运行 · not run |  |
-| L1 | 首屏 ≤ 3 s（10/5 Mbps、40 ms、CPU ×4） · Start-up ≤ 3 s (10/5 Mbps, 40 ms, CPU ×4) | 自动 · automatic | 达标 · pass | 1.5 s to the first playable screen, 1.4 MB |
+| L1 | 首屏 ≤ 3 s（10/5 Mbps、40 ms、CPU ×4） · Start-up ≤ 3 s (10/5 Mbps, 40 ms, CPU ×4) | 自动 · automatic | 不达标 · fail | 10.4 s to the first playable screen, 3.2 MB |
 | O1 | 横竖屏与窗口尺寸 · Orientation and window sizes | 自动 · automatic | 达标 · pass | 1280×800, 390×844, 844×390, 768×1024 and live resizing: fits, no errors |
 | I1 | 中英文全可切换，英文下无中文 · Both languages; no Chinese left in English | 自动 · automatic | 达标 · pass | html lang "en", no Chinese in page text or names |
 | I2 | 画布上的字也随语言切换 · Words drawn on the canvas follow the language | 人工 · by hand | 未运行 · not run |  |
@@ -40,7 +40,7 @@ this file; items by hand or on a device are marked not run until someone runs th
 | E3 | 切到后台再回来不出错 · Hidden and shown again without errors | 自动 · automatic | 达标 · pass | no errors; the game or the engine loop watches visibility |
 | E4 | 切回后声音和计时正常 · Sound and timers right after coming back | 真机 · device | 未运行 · not run |  |
 
-自动项不达标 · Automatic items failing: F1。真机项（T1、F2、E4）和人工项（I2、A1m、S4）未运行，除非上表另有记录 · Device and by-hand items were not run unless the table says otherwise.
+自动项不达标 · Automatic items failing: F1, L1。真机项（T1、F2、E4）和人工项（I2、A1m、S4）未运行，除非上表另有记录 · Device and by-hand items were not run unless the table says otherwise.
 
 ## 2026-11-27 原生界面迁移专项 · Native UI migration qualification
 
@@ -169,3 +169,33 @@ PC 高、中两档 p95 6.1 ms。硬件计时是浏览器接受帧，不是 GPU �
 - [小手机/平板/折叠屏修复前后](test/evidence/quality-portrait-hud.jpg) · [瞬态演出生命周期](test/evidence/quality-lifecycle.jpg) · [完整横屏迁移/美术对照](test/evidence/quality-before-after-844.jpg)。九屏 UI 全路线基线保留在上一提交；画质提交只改变世界美术、角色/预览和非交互的竖屏 HUD 间距，对受影响的规格定向回归。 · Preserve all nine migration routes and recheck layouts affected by the separate visual pass.
 - 新美术导致截图内容有意变化。视觉对照确认角色、岛屿及道具都正确后，单独更新 `test/baseline/title.png` 和 `end.png`（原 UI 阶段基线仍在 `9f7de9ed`）。最终默认 `node test/accept.mjs` 163/163，标题差异 0.09%、结算 0.13%，原 2% 门槛不变。 · Intentional art changes reviewed before adopting two new goldens; final unchanged-threshold repeat passed all 163 assertions.
 - 最终硬件版静止标题、暂停、选卡、结算各采 30 个世界帧（`JELLY_PERF_STATIC=title|pause|cards|end`），四组均只有 3D stage GL 调用，原生 2D 的绘制、buffer 与纹理调用为 **0**。 · All four settled screens retain the UI frame for 30 world frames each on hardware, with zero overlay GL submissions.
+## 2026-11-28 原生接口后续适配 · Native API follow-up (#545)
+
+引擎 [#545](https://github.com/cnedwin/Egret_rebuild/pull/545) 通过最终 M0、Windows 四分片、Linux/macOS 检查后合入主干 `8424ff2afb0afdc103b06d51e3fd749f7a8fc379`，官方工具生成 325 文件副本。固定中心摇杆、Tap 暂停、Hover、相对位移、原生世界标记、段落标签和字体图页均改用引擎公开接口；游戏规则、敌人/武器/护符、角色模型、岛屿、音频、画质设置、存档字段不变。 · All replacements use the native API; no changes to the rules, original audio/visual assets, or saves.
+
+### 真实硬件与同场景性能 · Physical hardware and controlled performance
+
+统一既有规则步进至 t285：种子 7、Mint 单人、中档、17,100 次原规则更新、80 个敌人、18 级、1701 击杀、120 HP；12 帧预热。仅性能样本使用规则步进，正常功能用真实键盘/鼠标或 CDP 触点操作，无改血量、时钟、装备。 · Same seeded rules and warm-up for each pair; no fabricated battle state.
+
+| 环境 · Environment | 设置和样本 · Sample | 接受帧 p95/max 旧→新 (ms) | 独立 RAF p95/max 旧→新 (ms) |
+|---|---|---:|---:|
+| RTX 5090 Laptop / ANGLE D3D11, Chrome 157 (正式主干) | 844×390, ratio=1, 120 accepted | 6.1/13.6 → 5.5/14.9 | 4.4/12.6 → 4.4/12.5 |
+| Fold7 Adreno 830, Android 17 Chrome 157 (预验收) | 实际 873×325 DPR 2.625, ratio=1, 180 intervals | 28.6/33.8 → 20.9/26.0 | 16.7/33.2 → 16.7/16.7 |
+| Same physical Fold7 (预验收，字距/描边精修后) | 873×325 DPR 2.625, 默认分辨率, 180 intervals | 28.4/31.1 → 19.7/34.9 | 16.7/33.1 → 16.7/16.7 |
+| SwiftShader (软件，预验收) | 844×390, ratio=1, 60 accepted | 523.6/541.5 → 365.7/373.0 | 345.9/362.6 → 358.3/370.8 |
+
+- 实体 Fold7 两轮新旧预验收均为真实前台 Chrome、实际设备分辨率、实际注入触点（不是人工手指或模拟 viewport）：64/64、63/63 检查，通过选角、摇杆越界、三指同用、取消、暂停恢复、选卡重抽。完成均恢复设备设置、租约和自身标签/映射。默认比例候选中一次接受间隔 34.9 ms，与前一 World 回调 24.9 ms（应用 view 22.4 ms）相邻，独立 RAF 仍无 >16.7 ms；不能归因到具体子函数或 GPU。 · The two phone comparisons are genuine physical-browser qualification of the engine candidate, not human input. The isolated accepted interval was not an observed long RAF.
+- 正式 vendor 的 319 个运行时 JS SHA-256 与上述真实手机候选完全一致。最终源码相对默认比例候选只追加启动重试/就绪与可选应用阶段时序（`index.html`、`src/hud.mjs`、`src/main.mjs`），玩法、触控、字形、标记、模型均不改。正式主干再次计划真机运行时 ADB 中已无设备，故没有把最终公开版本说成手机验收。 · Exact runtime identity, but the final physical device was disconnected; no final-candidate phone claim.
+- 正式 PC 120/120 timing 对齐；静止标题 30 帧全部 retained，0 次 2D Host submit 或 GL 调用。真实 PC 无 >20 ms RAF，实际手机两个候选运行无 >30 ms RAF。CPU/RAF 与 GPU/合成时间分开。 · The static overlay is retained; separate app/World/UI callbacks are observed, not GPU or presentation time.
+- 软件长尾仍存在；373.0 ms 最长接受间隔中 2D WebGL2 Host 的实际区间并集覆盖 370.0 ms，50 个 >50ms 间隔的累计区间 98.1% 与 Host 重合，主要是提交、completion-error-query、sync-delete-error-query（retire 包含后者，不能重复相加）。该采样 0 纹理上传。独立 RAF 没有证明软件 FPS 提升；严格所有权/错误检查不跳过，见 ENGINE-NOTES #8。 · Software F1 remains genuinely failing; CPU call-wall attribution is not GPU execution or compositor presentation.
+- 原生浮字使 HUD 画布的实际 GL 绘制增多（PC 预验收 120 接受帧 190→2926 drawArrays）；固定字形页复用，手机默认候选零额外纹理上传且实际 RAF 稳定。建议引擎跨标记批处理或独立保留 HUD 层与动态浮字合成，见 ENGINE-NOTES #9。 · Marker animation wakes the overlay; batching / retained layers are future optimization directions.
+
+### 启动、布局与自动检查 · Startup, layout and automatic checks
+
+- 官方多屏预验收 9 个规格、108 个检查点，0 findings / 0 warnings；标题、HUD、选卡的九屏截图均核对，正式运行时逐字节一致。实际原生控件用 `window.egretGame.ready` 宣告可操作标题/恢复界面，通用 T2 再测 15/15 满足 44 CSS px。
+- 限速（10/5 Mbps、40 ms、CPU×4）时，通用工具过去仅看到已分配画布便固定等待 1.5 s，并非可操作首屏。纠正就绪契约后 L1 实测 10.4 s；独立同条件、从导航至真实 Play 语义可用：旧版 10.186 s/3.169 MB，新版 10.192 s/3.192 MB（均 250 个资源，最后资源约 3.8 s），没有发现本轮启动退化，3 s 目标仍未达到，不能把剩余时间全部归给某一 CPU/GPU 阶段。 · True readiness reveals the existing slow cold path; no measurable regression in this pair. Do not move the delay after Play.
+- 通用质量 F1、L1 未通过；T2、T3、O1、I1、I3、A1、A2、A3、S1–S3、E1–E3 通过。通用工具使用 Windows 上的 SwiftShader（不是实体 GPU）；真实硬件数据见上表。 · Do not mark F1/L1 as pass. Static/native overlay geometry and physical A/B are distinct.
+- 正式版 49/49 Node、168/168 browser acceptance、7/7 verify（无 console/engine warnings），原 title/end 基准 0.55%/0.40% 差异并通过原阈值。 · All scoped functional checks passed against the existing goldens.
+- 实际阻断 roster 图像或新字形模块请求，均显示原生 Reload 并复原标题；原存档与截图基线保留。未测实体手柄、真实读屏、Safari/Firefox/微信以及完整人工手机整局。 · Recovery tested by isolated request refusal; no real controller/accessibility/other-browser qualification.
+
+复跑 `node test/performance.mjs`，设置 JELLY_PERF_HARDWARE=1、JELLY_PERF_FRAMES=120、JELLY_PERF_DETAIL=1，需新增时序时加 JELLY_PERF_DIAGNOSTICS=1（生产正常 URL 不开启）。支持 CPU 阶段 rules/effects/models/camera/HUD/music/reflection，2D/3D 同 RAF 对齐；不叠加嵌套区间，不宣称 GPU 执行时间。 · Opt-in timestamps only, bounded diagnostics.

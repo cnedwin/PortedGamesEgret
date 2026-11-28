@@ -6,7 +6,7 @@
 //   island.mjs         the height grid shared by drawing and collision
 //   data.mjs           pandas, toys, charms, enemies, bosses and text
 //   view.mjs, panda.mjs  everything drawn in 3D
-//   hud.mjs            the native overlay and scene-marker layer
+//   hud.mjs            the native overlay and native world markers
 //   input.mjs, audio.mjs  devices and sound
 import { createEngine } from '@egret/engine';
 import { createWorld3DOverlay } from '@egret/engine/webgl2/world3d';
@@ -41,6 +41,20 @@ const canvas = document.querySelector('#stage');
 /** State for the browser console and for automated checks; the game never reads it. */
 const status = { error: '', frames: 0, mode: 'title', game: undefined };
 globalThis.__jellyPandas = status;
+
+// The repository's startup contract means an actual playable or recoverable
+// screen, not merely a canvas that has been allocated.
+let bootReady=false;
+globalThis.egretGame=Object.freeze({
+  get ready(){
+    if(bootReady)return true;
+    const nodes=status.ui?.semantics.snapshot.nodes??[];
+    const usable=id=>nodes.some(n=>n.id===id&&!n.hidden&&!n.inert&&!n.disabled);
+    if(status.error)bootReady=usable('menu-failure-reload')||!document.querySelector('#error').hidden;
+    else bootReady=status.frames>1&&(usable('menu-title-play')||['play','paused','over'].includes(status.mode));
+    return bootReady;
+  }
+});
 
 let nativeFailure;
 function fail(cause) {
@@ -138,12 +152,32 @@ async function main() {
   let prepareOpeningEffects = useWebGPU;
   let prepareOpeningReflection = true;
   let hud,titleLayout={portrait:false,previewRect:null},titleSnap=true,priorTouchMode=input.touchMode,priorPadMode=input.gamepadMode;
+  // An opt-in bounded capture keeps normal gameplay free of timing observers.
+  // These timestamps measure CPU/RAF and host admission, not presentation.
+  const diagnostics=params.get('diag')==='1'?{world:[],view:[],ui:[],game:[]}:null;
+  const capture=key=>sample=>{
+    const rows=diagnostics[key];
+    if(rows.length>=2048)rows.shift();
+    rows.push(sample);
+  };
+  const captureGame=diagnostics?capture('game'):null;
+  const phaseTime=()=>captureGame?performance.now():0;
   const overlay=await createWorld3DOverlay(canvas,{
     width:960,height:540,portrait:{width:390,height:760},fit:'expand',
-    uiScale:{min:1,max:1.25},renderMode:'on-demand',
+    uiScale:{min:1,max:1.25},renderMode:'on-demand',hover:true,
     pixelRatio:Math.min(devicePixelRatio||1,Number(params.get('ratio'))||2),
-    update:()=>hud?.tick(),onError:fail
+    update:()=>hud?.tick(),onError:fail,
+    ...(diagnostics?{onFrameTiming:capture('ui'),measureSharedFrames:true}:{})
   });
+  if(diagnostics) {
+    const host=()=>overlay.game.host.getSharedFrameTiming?.();
+    let baseline=host();
+    status.diagnostics={
+      reset(){for(const rows of Object.values(diagnostics))rows.length=0;baseline=host();},
+      snapshot(){return {world:diagnostics.world.slice(),view:diagnostics.view.slice(),ui:diagnostics.ui.slice(),game:diagnostics.game.slice(),
+        host:{before:baseline,after:host()}};}
+    };
+  }
   // The engine owns this canvas and its responsive holder for the entire game.
   overlay.canvas.parentElement.style.zIndex='2';
   scope.use({dispose:()=>{void overlay.dispose();}});
@@ -157,7 +191,7 @@ async function main() {
     debugLabel=await overlay.game.createAtlasLabel({text:'',fontSize:12,color:0xffffff,strokeColor:0x2a1838,strokeWidth:1});
     overlay.game.stage.addChild(debugLabel.display);
   }
-  if(hud.failed){status.error='Roster asset loading failed';status.mode='error';return;}
+  if(hud.failed){status.error=String(hud.failureCause?.stack??hud.failureCause??'UI initialization failed');status.mode='error';input.enabled=false;input.setTouchEnabled(false);input.release();return;}
   function syncTouchControls() {
     const playing=mode==='play'&&!cardsShown&&game?.state==='play';
     input.commandMode=cardsShown?'cards':playing?'play':'menu';
@@ -312,6 +346,7 @@ async function main() {
 
   // ---- one frame ---------------------------------------------------------------------------
   function frame(deltaSeconds) {
+    const started=phaseTime();
     stats.begin();
     const real = Math.min(deltaSeconds, 1 / 20);
     now += real;
@@ -361,6 +396,7 @@ async function main() {
     }
 
     stats.lap('rules');
+    const rulesEnd=phaseTime();
 
     // 3. Effects, text and sound for what just happened.
     const events = game.events;
@@ -373,8 +409,10 @@ async function main() {
       events.length = 0;
     }
 
+    const effectsEnd=phaseTime();
     // 4. Draw state. A paused game holds its pose.
     view.update(mode === 'paused'||(mode==='title'&&reducedMotion) ? 0 : dt, game);
+    const modelsEnd=phaseTime();
 
     // 5. Camera: follow the player, or a standing friend while the player is down.
     //    Leave room for the title panel when it overlays the full-screen canvas.
@@ -418,10 +456,13 @@ async function main() {
     camera.updateWorldMatrix();
     camera.updateViewMatrices();
 
+    const cameraEnd=phaseTime();
     // 6. Page and music. The tune is calm on the title and picks up for surges and bosses.
     if (mode==='play'&&!cardsShown) hud.update(game,now,input.captured||input.touchMode);
+    const hudEnd=phaseTime();
     audio.music(mode === 'title' || mode === 'over' ? 0 : game.boss || game.t < game.surgeUntil ? 2 : 1);
     stats.lap('view');
+    const musicEnd=phaseTime();
 
     // 7. Drawing starts here: the water's mirror image now, the main view as soon as this function returns.
     stats.end(game.aliveCount ?? 0);
@@ -438,7 +479,14 @@ async function main() {
     }
     const warmReflection = prepareOpeningReflection && mode === 'title' && view.reflect;
     if (warmReflection) prepareOpeningReflection = false;
+    const reflectionStart=phaseTime();
     view.renderReflection(renderer, camera, warmReflection);
+    if(captureGame){
+      const end=performance.now();
+      captureGame({id:status.frames,callbackStartMs:started,callbackEndMs:end,
+        rulesMs:rulesEnd-started,effectsMs:effectsEnd-rulesEnd,modelsMs:modelsEnd-effectsEnd,
+        cameraMs:cameraEnd-modelsEnd,hudMs:hudEnd-cameraEnd,musicMs:musicEnd-hudEnd,reflectionMs:end-reflectionStart});
+    }
   }
 
   // The Engine clock calls `frame`, then the view draws the scene.
@@ -449,6 +497,7 @@ async function main() {
     maxPixelRatio: Number(params.get('ratio')) || 1.5,
     onUpdate: frame,
     onError: fail,
+    ...(diagnostics?{onFrameTiming:capture('view')}:{})
   });
 
   // For the console and automated checks: draw one extra frame and return what each pass cost (WebGL2 only).
@@ -458,7 +507,7 @@ async function main() {
       renderer.render(scene, camera);
     });
   showTitle();
-  startWorld3DLoop(engine, fail);
+  startWorld3DLoop(engine, fail, diagnostics?{onFrameTiming:capture('world')}:undefined);
 }
 
 main().catch(fail);

@@ -282,6 +282,13 @@ h1:focus, h2:focus, main:focus { outline: none; }
 .case-section { margin-top: clamp(34px, 5vw, 69px); }
 .case-section > h2 { margin-bottom: 18px; }
 .capability-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 15px; }
+/* Three, four or five cards always fill their rows: three across, two by two, or three over two. */
+@media (min-width: 691px) {
+  .capability-grid { grid-template-columns: repeat(6, minmax(0, 1fr)); }
+  .capability { grid-column: span 2; }
+  .capability-grid[data-count="4"] .capability,
+  .capability-grid[data-count="5"] .capability:nth-child(n + 4) { grid-column: span 3; }
+}
 .capability {
   display: flex;
   flex-direction: column;
