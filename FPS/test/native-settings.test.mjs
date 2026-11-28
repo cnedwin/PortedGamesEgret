@@ -42,3 +42,18 @@ test('storage refusal does not break settings UI',()=>{
   assert.equal(store.save({...defaults,volume:.2}),false);
   assert.equal(problems.at(-1),'write-failed');
 });
+
+test('ordinary, raw and drag pointer preferences persist without rewriting older settings',()=>{
+  const storage=createMemorySaveStorage(),store=createSettingsStore({storage});
+  const defaults=store.load(new URLSearchParams('lang=en'));
+  assert.equal(Object.hasOwn(defaults,'mouseMode'),false,'absence retains historical ordinary lock default');
+  for(const mouseMode of ['lock','raw','drag']){
+    assert.ok(store.save({...defaults,mouseMode,futureChoice:'keep'}));
+    const loaded=createSettingsStore({storage}).load();
+    assert.equal(loaded.mouseMode,mouseMode);assert.equal(loaded.futureChoice,'keep');
+  }
+  const original=JSON.stringify({quality:'medium',mouseMode:'unknown',futureChoice:'keep'});
+  storage.setItem(SETTINGS_KEY,original);
+  assert.equal(store.load().mouseMode,'lock','unknown explicit mode falls back to ordinary lock');
+  assert.equal(storage.getItem(SETTINGS_KEY),original,'load does not alter old storage');
+});

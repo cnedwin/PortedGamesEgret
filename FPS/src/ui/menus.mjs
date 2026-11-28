@@ -106,9 +106,9 @@ export function buildMenuView(kind, state, actions) {
       bag:'bag',boot:'loading',error:'dead'};
     return kind==='error'?local(state,'載入失敗','Loading failed'):layoutLabel(state,labels[kind]);
   };
-  const full=(name,hideTouch=false)=>act(name,s=>s.full.active?copy(s).exitFullscreen:copy(s).enterFullscreen,
-    ()=>actions.toggleFullscreen(),{},{
-      disabled:s=>s.full.busy||!s.full.available,...(hideTouch?{visible:s=>!s.touch}:{})
+  const full=(name,hideTouch=false,blocked=()=>false)=>act(name,s=>s.full.active?copy(s).exitFullscreen:copy(s).enterFullscreen,
+    s=>{if(!blocked(s))actions.toggleFullscreen();},{},{
+      disabled:s=>s.full.busy||!s.full.available||blocked(s),...(hideTouch?{visible:s=>!s.touch}:{})
     });
   const fullNote=(name)=>wrapped(name,s=>s.full.failed?copy(s).fullscreenFailed:'',3,36,13,12,{color:C.amber});
   function wrapped(name,get,count,width,height=22,size=15,extra={}) {
@@ -152,16 +152,25 @@ export function buildMenuView(kind, state, actions) {
   }
   function pause(variant) {
     const w=variant==='portrait'?'94%':variant==='tabletPortrait'?520:560;
+    // Keep navigation stable while the asynchronous trusted browser request is
+    // pending. Once the result arrives (or Escape cancels it), normal controls
+    // are immediately available again.
+    const waiting=s=>s.mouseStatus==='waiting';
+    const onceReady=callback=>(s,activation)=>{if(!waiting(s))callback(s,activation);};
+    const pendingBinding={disabled:waiting};
     const resume=act('resume',s=>s.mouseStatus==='failed'?copy(s).retryPointerLock:copy(s).resume,
-      ()=>actions.resume(),{color:C.active},{disabled:s=>s.mouseStatus==='waiting'});
+      onceReady(()=>actions.resume()),{color:C.active},pendingBinding);
     const drag=act('dragLook',t('dragLook'),()=>actions['drag-look'](),{}, {visible:s=>s.mouseStatus==='failed'});
     return outer(card('mainCard',[
       tx('sub',t('paused'),18,13,{color:C.amber,align:'center'}),
       header('headline','title'),
-      ...wrapped('pointerNote',s=>copy(s).pointerLock[s.mouseStatus]??'',3,38,16,13,{align:'center',color:C.amber}),
+      ...wrapped('pointerNote',s=>s.mouseStatus==='failed'&&s.settings.mouseMode==='raw'
+        ?local(s,'原始锁定未获支持或授权。请在设置中改用普通锁定，或选择拖动。',
+          'Raw lock was not granted. Choose Lock in Settings or use Drag.')
+        :copy(s).pointerLock[s.mouseStatus]??'',3,38,16,13,{align:'center',color:C.amber}),
       pair(resume,drag),
-      pair(act('settings',t('settings'),()=>actions.openPanel('settings')),act('controls',t('controls'),()=>actions.openPanel('controls'))),
-      pair(act('restart',t('restart'),()=>actions.restart()),full('fullscreen',true)),
+      pair(act('settings',t('settings'),onceReady(()=>actions.openPanel('settings')),{},pendingBinding),act('controls',t('controls'),onceReady(()=>actions.openPanel('controls')),{},pendingBinding)),
+      pair(act('restart',t('restart'),onceReady(()=>actions.restart()),{},pendingBinding),full('fullscreen',true,waiting)),
       ...fullNote('fullscreenNote')
     ],w,variant==='portrait'?390:344,{gap:2,padding:8,justify:'center'}));
   }
@@ -239,7 +248,7 @@ export function buildMenuView(kind, state, actions) {
     const select=(key,options,labels,label=t(key==='invertY'?'invert':key==='lang'?'language':key))=>{
       // Older saved choices have no explicit mouse or motion preference.
       const selected=s=>key==='invertY'?(s.settings[key]?'on':'off'):
-        key==='mouseMode'?(s.settings[key]??'lock'):
+        key==='mouseMode'?(['lock','raw','drag'].includes(s.settings[key])?s.settings[key]:'lock'):
         key==='reducedMotion'?(s.settings[key]??'system'):s.settings[key];
       const b=options.map(o=>act(key+(o[0].toUpperCase()+o.slice(1)),s=>labels(s,o),s=>{
         const value=key==='invertY'?o==='on':o;
@@ -269,8 +278,9 @@ export function buildMenuView(kind, state, actions) {
         })[o],s=>local(s,'动效偏好','Motion preference')),
       ],
       input:[
-        select('mouseMode',['lock','drag'],(s,o)=>o==='lock'?local(s,'锁定','Lock'):local(s,'拖动','Drag'),
-          s=>local(s,'鼠标模式','Mouse mode')),
+        select('mouseMode',['lock','raw','drag'],(s,o)=>({
+          lock:local(s,'锁定','Lock'),raw:local(s,'原始锁定','Raw lock'),drag:local(s,'拖动','Drag')
+        })[o],s=>local(s,'鼠标模式 · 原始锁定可选','Mouse mode · Raw optional')),
         range('sensitivity'),range('adsSensitivity'),
         select('invertY',['off','on'],(s,o)=>copy(s)[o]),
       ],

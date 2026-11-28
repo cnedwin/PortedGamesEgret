@@ -28,9 +28,9 @@ Operation Cutoff is an independently developed first-person tactical shooter dem
 
 On touch, you can move and fire together. Pushing the stick all the way starts a sprint, and firing brings you back to a walk. Dragging turns the view more slowly while aiming.
 
-PC 部署和继续时会请求锁定鼠标。锁定后可直接移动鼠标转向。若请求失败，可在暂停菜单重试，或主动选择按住鼠标键拖动视角。设置里的鼠标瞄准倍率用于单独调整右键瞄准时的灵敏度。
+PC 部署和继续时会请求锁定鼠标。默认保留浏览器普通锁定；设置「输入」分类另有可选的「原始锁定」和「拖动」。原始锁定依浏览器与设备支持，拒绝时不会自动改用其他模式：可在暂停菜单重试，或回设置选择普通锁定，也可明确选择拖动。设置里的鼠标瞄准倍率仍独立保存。
 
-On PC, Deploy and Resume request mouse lock so you can turn by moving the mouse. If the request fails, retry from the pause menu or choose to aim by dragging with a mouse button held. The mouse aim multiplier adjusts right-button aim independently.
+On PC, Deploy and Resume request ordinary browser mouse lock by default. The Input preferences add optional Raw lock and Drag modes. Raw lock depends on browser and device support; a denied request never silently substitutes another policy. Retry, choose ordinary Lock in Settings, or explicitly choose Drag. The mouse aim multiplier remains an independent saved preference.
 
 - 三把武器：全自动突击步枪、备弹无限的手枪，以及带瞄准镜的半自动精确射手步枪；另有手雷和绷带。物资箱里能找到前握把（降低后坐力）和扩容弹匣，捡到即装在步枪上。瞄准时散布更小、后坐力更低，移动、跳跃和连发都会让准星张开。
 - 右上角的小地图随视角转动，标出建筑、终端、撤离点、没搜过的物资箱和已经暴露位置的敌人。
@@ -121,12 +121,15 @@ The game uses Egret World3D and draws with WebGL2 by default; add `?backend=webg
 | `createSpotLight3D` 投射阴影，加可见光锥 · casting shadows, with visible beams | 探照灯 · Floodlights | `src/view.mjs` |
 | `createParticleEmitter3D`，`createPointLight3D` | 枪口火光、尘土、火花、爆炸、水雾 · Muzzle flash, dust, sparks, blasts, mist | `src/view.mjs` |
 | 程序绘制的 `CubeTexture3D`（云、日晕），线性雾 · a painted `CubeTexture3D` (clouds, sun glow), linear fog | 天空与雾 · Sky and haze | `src/textures.mjs` |
-| `play` + `createWorld3DView` | 透明 2D UI 与原生 3D 共用一个引擎时钟 · shared Engine clock for the transparent 2D UI and native 3D | `src/main.mjs` |
+| `play3dAttached`（WebGL2 / WebGPU） | 接入现有配置的渲染器、场景与相机；透明 Play UI 与 3D 共享一个引擎时钟和生命周期 · attach the configured renderer, scene and camera to a shared Play clock and lifetime | [src/main.mjs](src/main.mjs) |
 | `game.show`，`createUiScreenStack` | 原生标题、设置、暂停、背包、结算、错误，具名屏幕与焦点 · native menus, inventory, results and named focus | `src/ui/menus.mjs` |
 | `fit: 'expand'`，`portrait`，`uiScale`，`game.safe` | 横竖屏、安全区及独立 2D 2× 栅格密度 · adaptive safe layout and independent 2× UI raster | `src/main.mjs` |
 | `game.keys`，`game.pointer`，`game.touchStick`，`createActionControl` | 键鼠、手柄、原生触点归属、浮动摇杆与按住按钮 · native desktop, pad and touch controls | `src/input.mjs`，`src/ui/touch.mjs` |
+| `game.pointer.lock({ unadjustedMovement?, signal? })`，`lockPending`，`buttons` / `pressedButtons` / `releasedButtons` | 原生锁定结果、可选原始锁定与多键状态；锁定触点的所有权及取消由引擎管理 · native lock outcomes, opt-in raw lock and button chords; engine-owned contact lifetime/cancellation | [src/input.mjs](src/input.mjs)，[src/ui/menus.mjs](src/ui/menus.mjs) |
+| `game.keys.claim(name, when)` | 游戏模式限定的 Tab 快捷键，菜单焦点与普通页面导航由引擎保留 · scoped gameplay Tab without replacing native menu focus or normal page navigation | [src/input.mjs](src/input.mjs) |
 | `game.hints`，`projectToViewport3D`，`Sprite`/`Graphics` | 原生操作提示、世界标记、指南针、准星、小地图 · native hints, markers, compass and minimap | `src/ui/hud.mjs` |
 | `createUiSemantics`，`createBrowserSemantics`，`createUiTester` | 具名控件、绑定状态、读屏投影与按名称验收 · named controls, accessibility projection and named testing | `src/main.mjs`，`test/accept.mjs` |
+| `registerScreenOccluder`、`verify --screens` | 真实原生控件的裁切、安全区和触控范围；标记实际 HUD 绘制面，检测几何覆盖而非推断不透明像素 · clipped native action bounds and safe targets, with explicitly declared painted HUD faces for coverage diagnostics, not inferred opacity | [src/ui/hud.mjs](src/ui/hud.mjs)，[test/screen-route.mjs](test/screen-route.mjs) |
 | `game.loading`，`renderer.preparePrograms` | 原生加载界面及材质预编译 · loading view and program preparation | `src/main.mjs`，`src/view.mjs` |
 | `createSaveStore`，`browserSaveStorage` | 向后兼容的设置存储 · backward-compatible settings | `src/native-settings.mjs` |
 | `createWorld3DStats` | 区分游戏、视图与提交时间 · frame-stage timing | `src/native-stats.mjs` |
@@ -139,6 +142,8 @@ Characters, weapon visuals and station props use Tripo GLB assets simplified, te
 
 ## 已验证 · Verified
 
+- 正式接口适配（`4f08d2bcd25de3aafa7295f3b349970f8003ed71`，引擎 [PR #549](https://github.com/cnedwin/Egret_rebuild/pull/549)）：91/91 Node、实体 Windows Edge/RTX 桌面 33/33、同机宽屏模拟 17/17、Fold7 物理设备原生触摸与五状态双向旋转、9 种屏幕 × 10 个状态均通过；WebGPU 硬件初段检查通过。 · Formal API adoption at `4f08d2bcd25de3aafa7295f3b349970f8003ed71` (engine PR #549): 91/91 Node tests, 33/33 on physical Windows Edge/RTX desktop, 17/17 on the same PC in wide touch emulation, real Fold7 native touch and five bidirectional state rotations, 9 screen profiles × 10 checkpoints passed; hardware WebGPU initial-play smoke passed. 实际设备、版本、复跑条件和未覆盖范围另见 [QUALITY.md](QUALITY.md)；引擎侧功能用例不等同于本游戏验收。 · Device, revision, repeat conditions and remaining limits are in QUALITY.md; engine fixtures are not game-device acceptance.
+
 - 2026-11-28：更新引擎至 `33897768`，先独立通过原 51 项测试和 PC 基线，再迁移透明 Play 原生 UI；真显卡的布局、键鼠、指针锁定、全屏、高画质阴影、资源失败重试及旧设置兼容见 [QUALITY.md](QUALITY.md)。迁移架构、界面对应关系和复跑方法见 [UI-MIGRATION.md](UI-MIGRATION.md)。 · On 2026-11-28 the engine is refreshed to `33897768`; the standalone upgrade passed all 51 existing tests and the hardware baseline before the native interface migration. Hardware measurements and test boundaries are in QUALITY.md; architecture and reproduction are in UI-MIGRATION.md.
 
 - 2026-11-21 引擎副本升级到 `b5628eb` 后：51 项 Node 测试通过；无头 Chromium 下标题画面与升级前逐像素相同，`?auto=1` 自动游玩 40–60 秒无控制台错误，中等画质下 `renderer.info.lightsTiled` 为 2。 · After the engine update on 2026-11-21: 51 tests pass, the title is pixel for pixel as before, and automatic play runs clean.
@@ -148,12 +153,16 @@ Characters, weapon visuals and station props use Tripo GLB assets simplified, te
 
 ## 已知问题 · Known issues
 
+- 通用 verify 的固定 2.5 秒冷启动采样在旧版和新版都早于完整标题；独立原生具名验收路线通过。详见 ENGINE-NOTES 第 15 条。 · The fixed 2.5-second cold-start probe in generic verify precedes the complete title in both releases; the readiness-aware named route passes (ENGINE-NOTES 15).
+
 - 杉树在阴影里偏黑，背光时层次看不清 · Firs go nearly black in shade.
 - 代打程序（`?auto=1`）不搜物资箱，自动演示里看不到搜集和背包 · The stand-in player never searches crates.
 - 阵亡后从头开始；配件只作用于突击步枪，捡到即装、不能卸下 · Death restarts the run; attachments fit only the assault rifle.
-- 原生 Play 指针不提供 raw unadjustedMovement 与锁请求结果；数据视图缺少连续滑杆和响应式 touchButton 接口。见 [ENGINE-NOTES.md](ENGINE-NOTES.md) 第 6–10 条。 · Native Play has no raw mouse option or request result, no data slider or responsive touchButton API; see ENGINE-NOTES 6–10.
+- 原生数据视图的连续滑杆、调用方 canvas 的自适应和完整数据式 hold/touchButton 接口仍有缺口；设置保留原生步进按钮，触屏使用原生动作控件。原始锁定仅在浏览器支持和授权时生效，不承诺任何环境都可获得。见 [ENGINE-NOTES.md](ENGINE-NOTES.md) 第 7–10 条。 · Declarative sliders, caller-owned canvas fitting and complete data-view hold/touch controls remain gaps; native steppers and action controls are retained. Raw lock remains browser-dependent and permission-dependent. See ENGINE-NOTES 7–10.
 
 ## 已解决 · Solved
+
+- 原生 World3D 宿主、鼠标锁定与双键、快捷键声明、实际控件裁切及遮挡检测已使用正式接口；删除游戏自写指针事件、锁定确认和 Tab 监听桥接，见 ENGINE-NOTES 第 6、7、11–14 条。 · Formal World3D attachment, mouse locking/chords, scoped key claims, clipped controls and occlusion detection replace the previous compatibility bridges (ENGINE-NOTES 6, 7, 11–14).
 
 - 第一次出现补给箱时约 130 ms 的两次停顿：启动时在加载提示下把两种材质路径真实预绘一遍（`src/view.mjs` 的 `view.warm`），见 ENGINE-NOTES 第 4 条。 · Two stalls of about 130 ms when the first crate appeared: both material paths are drawn once under the loading screen (ENGINE-NOTES item 4).
 - 加色混合的太阳光晕、枪口火光、红点画成不透明方块：材质设 `alphaMode: 'blend'`、`blending: 'additive'`（ENGINE-NOTES 第 2 条）。 · Additive glows drew as opaque squares (item 2).
@@ -165,7 +174,7 @@ Characters, weapon visuals and station props use Tripo GLB assets simplified, te
 
 ## 未完成 · Unfinished
 
-- WebGPU 后端没有做过单独的真机验收；覆盖整块显示屏的原生全屏、真人难度评估和专门的听音检查都没做（STATUS.md「验收边界」）。 · No device test of the WebGPU backend, native full-monitor fullscreen, human difficulty assessment or listening test.
+- WebGPU 后端已通过 RTX PC 标题至初段移动检查，未跑完整局及手机 WebGPU；覆盖整块显示屏的原生全屏、真人难度评估和专门的听音检查都没做（STATUS.md「验收边界」）。 · Initial WebGPU title and movement passed on the RTX PC; no whole WebGPU mission or handset WebGPU, native full-monitor fullscreen, human difficulty assessment or listening test.
 - 没有检查点和难度选择，只有一张地图、一个任务；背包是等大的十二格，不能丢弃；只有三把枪、两种配件；敌人没有小队配合，喊话没有语音；未做真手柄验收。完整清单与下一步建议见 [STATUS.md](STATUS.md)。 · No checkpoints, difficulty or second map; a twelve-slot backpack; three guns and two attachments; no squad tactics or voiced callouts; physical gamepad not yet qualified. See STATUS.md.
 
 ## 目录 · Layout
@@ -192,8 +201,8 @@ Characters, weapon visuals and station props use Tripo GLB assets simplified, te
 
 ## 引擎副本 · Engine copy
 
-引擎副本取自 [Egret_rebuild](https://github.com/cnedwin/Egret_rebuild) 提交 `33897768c4f7933d289f083e4f34b3209b0aef31`，由引擎仓库的 `tools/vendor-game.mjs` 复制，见 [vendor/SOURCE.md](vendor/SOURCE.md)。
+引擎副本取自 [Egret_rebuild](https://github.com/cnedwin/Egret_rebuild) 提交 `4f08d2bcd25de3aafa7295f3b349970f8003ed71`，由引擎仓库的 `tools/vendor-game.mjs` 复制，见 [vendor/SOURCE.md](vendor/SOURCE.md)。
 
-The engine copy is from [Egret_rebuild](https://github.com/cnedwin/Egret_rebuild) commit `33897768c4f7933d289f083e4f34b3209b0aef31`, copied by the engine's `tools/vendor-game.mjs`; see [vendor/SOURCE.md](vendor/SOURCE.md).
+The engine copy is from [Egret_rebuild](https://github.com/cnedwin/Egret_rebuild) commit `4f08d2bcd25de3aafa7295f3b349970f8003ed71`, copied by the engine's `tools/vendor-game.mjs`; see [vendor/SOURCE.md](vendor/SOURCE.md).
 
 入口 · Entries: `@egret/engine`, `@egret/engine/world3d`, `@egret/engine/webgl2/world3d`, `@egret/engine/webgpu/world3d`, `@egret/engine/web/kit`, `@egret/engine/play`, `@egret/engine/kit`, `@egret/engine/ui`, `@egret/engine/ui/semantics`, `@egret/engine/ui/testing`, `@egret/engine/web/semantics`, `@egret/engine/web/audio`, `@egret/engine/input`, `@egret/engine/web/hover`, `@egret/engine/web/view`.

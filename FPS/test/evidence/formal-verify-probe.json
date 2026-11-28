@@ -1,0 +1,81 @@
+{
+  "engine": "4f08d2bcd25de3aafa7295f3b349970f8003ed71",
+  "oldBare": {
+    "pass": false,
+    "colors": 1,
+    "framesPerSecondIdle": 1
+  },
+  "formal": {
+    "pass": false,
+    "checks": {
+      "noErrors": {
+        "pass": true,
+        "errors": [],
+        "failedRequests": []
+      },
+      "noExternalRequests": {
+        "pass": true,
+        "externalRequests": []
+      },
+      "hasCanvas": {
+        "pass": true,
+        "canvases": [
+          {
+            "x": 0,
+            "y": 0,
+            "w": 960,
+            "h": 640,
+            "pixelWidth": 960,
+            "pixelHeight": 640
+          },
+          {
+            "x": 0,
+            "y": 0,
+            "w": 960,
+            "h": 640,
+            "pixelWidth": 1920,
+            "pixelHeight": 1280
+          }
+        ]
+      },
+      "drawsSomething": {
+        "pass": false,
+        "colors": 1,
+        "dominant": 1,
+        "note": "colours are counted in steps of sixteen; dominant is the share of the commonest colour"
+      },
+      "keepsRunning": {
+        "pass": false,
+        "framesPerSecondIdle": 1,
+        "framesPerSecondPlaying": 206.8,
+        "note": "software rendering: frames must keep advancing while idle and during input"
+      },
+      "reactsOrMoves": {
+        "pass": true,
+        "changedAfterFirstInputs": 0.9533821614583333,
+        "changedAtEnd": 0.6210074869791666,
+        "changedMostDuringInput": 1
+      },
+      "makesSound": {
+        "pass": true,
+        "audioContexts": 1,
+        "soundsStarted": 484
+      },
+      "played": {
+        "pass": true,
+        "pictures": [
+          "title-ready",
+          "moving",
+          "pause"
+        ],
+        "checkpoints": [
+          "title-ready",
+          "moving",
+          "pause"
+        ]
+      }
+    },
+    "engineWarnings": [],
+    "consoleWarnings": []
+  }
+}
