@@ -9,6 +9,7 @@ import { createRig } from './rig.mjs';
 import { createAnimator, heavyFootwork, impactWeight, interpolateDirection, returnSpearPhase, signatureBodyWeight, swingPhase, TIGER_SWORD } from './motion.mjs';
 import { createFooting } from './footing.mjs';
 import { createPreviewPosture } from './preview-posture.mjs';
+import { createPreviewIdleSampler } from './preview-idle.mjs';
 import { createLocomotionBlend, createGaitCadence, createClosedLocomotionSampler, GAIT_NAMES } from './locomotion-blend.mjs';
 import { createDecorativePoseTransition } from './decorative-pose-transition.mjs';
 import { bowLoosePose, bowReleasePose } from './bow-release.mjs';
@@ -379,6 +380,7 @@ export function createFigure({ regiment, body, motion, world, height = 1.8 }) {
     layer = motion.pose();
   const locomotion = createLocomotionBlend();
   const neutralCadence = createGaitCadence(motion), sampleLocomotion = createClosedLocomotionSampler(motion);
+  let previewIdle = null;
   const decorativeHead = createDecorativePoseTransition();
   const state = {
     phase: 0,
@@ -649,7 +651,7 @@ export function createFigure({ regiment, body, motion, world, height = 1.8 }) {
     }
   }
 
-  function arrange(man, game, dt, contactTime, mountedContact, preview) {
+  function arrange(man, game, dt, contactTime, mountedContact, preview, previewTime) {
     // ---- locomotion ---------------------------------------------------------------------------------------
     const f = man.face;
     const vFwd = man.vx * Math.sin(f) + man.vz * Math.cos(f),
@@ -685,7 +687,11 @@ export function createFigure({ regiment, body, motion, world, height = 1.8 }) {
     }
     const ph = state.phase;
     const sampleAt = (name, out) => sampleLocomotion(name, ph * motion.duration(name), out, smoothNeutral);
-    sampleLocomotion('idle', (game.time * 0.9 + man.id.length) % motion.duration('idle'), base, smoothNeutral);
+    const idleBaseline = (game.time * 0.9 + man.id.length) % motion.duration('idle');
+    if (preview && previewTime > 0) {
+      previewIdle ??= createPreviewIdleSampler(motion, sampleLocomotion, regiment);
+      previewIdle(idleBaseline, previewTime, base);
+    } else sampleLocomotion('idle', idleBaseline, base, smoothNeutral);
     if (moving > 0) {
       const gaits = GAIT_NAMES.map((name, i) => [name, gaitBlend.weights[i]]).filter(([, w]) => w > 0.02);
       let acc = 0;
@@ -1031,7 +1037,7 @@ export function createFigure({ regiment, body, motion, world, height = 1.8 }) {
     held,
     rig,
     /** Follow the man for one frame. */
-    update(man, game, dt, { seat = null, contactTime = null, mountedContact = null, preview = false } = {}) {
+    update(man, game, dt, { seat = null, contactTime = null, mountedContact = null, preview = false, previewTime } = {}) {
       if (!man.alive) {
         if (state.fall === 0 && state.impactBearing === null) state.impactBearing = man.face + Math.PI;
         state.fall = Math.min(1, state.fall + dt * 1.6);
@@ -1063,7 +1069,7 @@ export function createFigure({ regiment, body, motion, world, height = 1.8 }) {
       const anchorInRig = mountedContact && saddleRotation
         ? rig.toRig(qrot(qinv(saddleRotation), sub(mountedContact, saddleAt))) : null;
       let spin = 0, floorLift = 0;
-      if (state.fall < 1) ({ spin, floorLift } = arrange(man, game, dt, contactTime, anchorInRig, preview));
+      if (state.fall < 1) ({ spin, floorLift } = arrange(man, game, dt, contactTime, anchorInRig, preview, previewTime));
       const air = man.act?.air ?? 0;
       const fallTilt = 1.45 * ease((state.fall - 0.19) / 0.68) + 0.76 * ease(state.down);
       const landing = state.fall === 0 ? 0 : 0.045 * Math.sin(Math.PI * clamp((state.fall - 0.27) / 0.66, 0, 1));
