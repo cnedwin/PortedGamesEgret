@@ -3,6 +3,7 @@
 // drawing, input ownership or frame maintenance outside a tooling receipt.
 import { DisplayObjectContainer } from '@egret/runtime';
 import { screenControlFor, screenOccludersFor } from '#egret-pointer-input';
+import { intersectClipPolygons, polygonBounds, rectanglePolygon } from './screenClipGeometry.js';
 export const usefulScreenRect = (rect) => [rect.x, rect.y, rect.width, rect.height].every(Number.isFinite) && rect.width > 0 && rect.height > 0;
 export function screenIntersection(a, b) {
     const x = Math.max(a.x, b.x), y = Math.max(a.y, b.y);
@@ -13,17 +14,7 @@ export function screenIntersection(a, b) {
         height: Math.max(0, Math.min(a.y + a.height, b.y + b.height) - y)
     };
 }
-function onStage(node, local) {
-    const right = local.x + local.width, bottom = local.y + local.height;
-    const corners = [
-        node.localToGlobal(local.x, local.y),
-        node.localToGlobal(right, local.y),
-        node.localToGlobal(local.x, bottom),
-        node.localToGlobal(right, bottom)
-    ];
-    const xs = corners.map(point => point.x), ys = corners.map(point => point.y), x = Math.min(...xs), y = Math.min(...ys);
-    return { x, y, width: Math.max(...xs) - x, height: Math.max(...ys) - y };
-}
+const clipShape = (shape, clip) => clip === undefined ? shape : intersectClipPolygons(shape, clip);
 const same = (a, b) => Math.abs(a.x - b.x) <= 1e-6 &&
     Math.abs(a.y - b.y) <= 1e-6 &&
     Math.abs(a.width - b.width) <= 1e-6 &&
@@ -57,22 +48,25 @@ function walk(stage) {
         let clipped = parentClip;
         const clip = node.clipRect;
         if (clip !== undefined) {
-            const stageClip = onStage(node, clip);
-            clipped = clipped === undefined ? stageClip : screenIntersection(clipped, stageClip);
-            if (!usefulScreenRect(clipped))
+            // Preserve the actual transformed clip polygon through the walk.
+            // Intersecting just its AABB admits controls outside diagonal clips.
+            clipped = clipShape(rectanglePolygon(clip, node), clipped);
+            if (polygonBounds(clipped) === undefined)
                 continue;
         }
         if (alpha > 0)
             for (const claim of screenOccludersFor(node)) {
-                const transformed = onStage(node, claim.rect), rect = clipped === undefined ? transformed : screenIntersection(transformed, clipped);
-                if (usefulScreenRect(rect))
+                const rect = polygonBounds(clipShape(rectanglePolygon(claim.rect, node), clipped));
+                if (rect !== undefined && usefulScreenRect(rect))
                     paints.push({ id, ancestors, order: here, name: claim.name, rect });
             }
         if (node !== stage && pickable && node.touchEnabled) {
             const local = node.hitArea ?? node.getBounds();
             if (usefulScreenRect(local)) {
-                const authored = onStage(node, local), hit = clipped === undefined ? authored : screenIntersection(authored, clipped);
-                if (usefulScreenRect(hit))
+                const shape = rectanglePolygon(local, node), authored = polygonBounds(shape), hit = polygonBounds(clipShape(shape, clipped));
+                // Do not clip to the safe or canvas rectangle here. The verifier
+                // still needs to see an un-clipped misplaced target to report it.
+                if (authored !== undefined && hit !== undefined && usefulScreenRect(authored) && usefulScreenRect(hit))
                     candidates.push({
                         node,
                         id,
@@ -105,11 +99,11 @@ function matchingClaims(item, claims) {
         return [];
     // Use the semantic painted extent only to find the name/state. The actual
     // report uses the native hit extent, even for a larger focus outline.
-    const visual = onStage(item.node, item.node.getBounds()), exposed = item.clip === undefined ? visual : screenIntersection(visual, item.clip);
+    const shape = rectanglePolygon(item.node.getBounds(), item.node), visual = polygonBounds(shape), exposed = polygonBounds(clipShape(shape, item.clip));
     return claims.filter(claim => same(claim.bounds, item.hit) ||
         same(claim.bounds, item.authored) ||
-        same(claim.bounds, visual) ||
-        same(claim.bounds, exposed));
+        (visual !== undefined && same(claim.bounds, visual)) ||
+        (exposed !== undefined && same(claim.bounds, exposed)));
 }
 function contains(node, local, x, y) {
     try {

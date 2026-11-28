@@ -142,6 +142,8 @@ Characters, weapon visuals and station props use Tripo GLB assets simplified, te
 
 ## 已验证 · Verified
 
+- 本次从 `4f08d2bcd25de3aafa7295f3b349970f8003ed71` 更新到 `d2e28f46182a563fd594cc51847240429ab0a5b5`：官方构建及引擎复制成功；引擎替换前后均通过原有 91 项 Node 测试，新增三项静态模型裁切等价检查后共 94 项通过，原有导入映射无需改动。实际设备复测与限制见 [QUALITY.md](QUALITY.md)。 · The official build and vendor refresh from `4f08d2bcd25de3aafa7295f3b349970f8003ed71` to `d2e28f46182a563fd594cc51847240429ab0a5b5` pass the same 91 Node tests before and after; three new static geometry equivalence checks bring the total to 94, with no import-map change required. Device retests and limits are recorded in QUALITY.md.
+
 - 正式接口适配（`4f08d2bcd25de3aafa7295f3b349970f8003ed71`，引擎 [PR #549](https://github.com/cnedwin/Egret_rebuild/pull/549)）：91/91 Node、实体 Windows Edge/RTX 桌面 33/33、同机宽屏模拟 17/17、Fold7 物理设备原生触摸与五状态双向旋转、9 种屏幕 × 10 个状态均通过；WebGPU 硬件初段检查通过。 · Formal API adoption at `4f08d2bcd25de3aafa7295f3b349970f8003ed71` (engine PR #549): 91/91 Node tests, 33/33 on physical Windows Edge/RTX desktop, 17/17 on the same PC in wide touch emulation, real Fold7 native touch and five bidirectional state rotations, 9 screen profiles × 10 checkpoints passed; hardware WebGPU initial-play smoke passed. 实际设备、版本、复跑条件和未覆盖范围另见 [QUALITY.md](QUALITY.md)；引擎侧功能用例不等同于本游戏验收。 · Device, revision, repeat conditions and remaining limits are in QUALITY.md; engine fixtures are not game-device acceptance.
 
 - 2026-11-28：更新引擎至 `33897768`，先独立通过原 51 项测试和 PC 基线，再迁移透明 Play 原生 UI；真显卡的布局、键鼠、指针锁定、全屏、高画质阴影、资源失败重试及旧设置兼容见 [QUALITY.md](QUALITY.md)。迁移架构、界面对应关系和复跑方法见 [UI-MIGRATION.md](UI-MIGRATION.md)。 · On 2026-11-28 the engine is refreshed to `33897768`; the standalone upgrade passed all 51 existing tests and the hardware baseline before the native interface migration. Hardware measurements and test boundaries are in QUALITY.md; architecture and reproduction are in UI-MIGRATION.md.
@@ -153,7 +155,7 @@ Characters, weapon visuals and station props use Tripo GLB assets simplified, te
 
 ## 已知问题 · Known issues
 
-- 通用 verify 的固定 2.5 秒冷启动采样在旧版和新版都早于完整标题；独立原生具名验收路线通过。详见 ENGINE-NOTES 第 15 条。 · The fixed 2.5-second cold-start probe in generic verify precedes the complete title in both releases; the readiness-aware named route passes (ENGINE-NOTES 15).
+- 软件渲染下复杂 3D 场景可能低于验收器的动画回调门槛；真实标题已显示时仍可能报告等待帧循环超时，这不是首屏黑图误判或真实硬件性能结论。 · Complex 3D under software rendering can fall below the verifier's animation-callback threshold even after the real title is visible; this is neither a premature black screenshot nor a hardware performance measurement.
 
 - 杉树在阴影里偏黑，背光时层次看不清 · Firs go nearly black in shade.
 - 代打程序（`?auto=1`）不搜物资箱，自动演示里看不到搜集和背包 · The stand-in player never searches crates.
@@ -161,6 +163,8 @@ Characters, weapon visuals and station props use Tripo GLB assets simplified, te
 - 原生数据视图的连续滑杆、调用方 canvas 的自适应和完整数据式 hold/touchButton 接口仍有缺口；设置保留原生步进按钮，触屏使用原生动作控件。原始锁定仅在浏览器支持和授权时生效，不承诺任何环境都可获得。见 [ENGINE-NOTES.md](ENGINE-NOTES.md) 第 7–10 条。 · Declarative sliders, caller-owned canvas fitting and complete data-view hold/touch controls remain gaps; native steppers and action controls are retained. Raw lock remains browser-dependent and permission-dependent. See ENGINE-NOTES 7–10.
 
 ## 已解决 · Solved
+
+- 通用 verify 在启动就绪前过早保存第一张图的问题由引擎 [PR #555](https://github.com/cnedwin/Egret_rebuild/pull/555) 修复；现在先等可见画布、有效画面和动画回调，超时会明确报告原因而不提前操作。具名功能路线仍保留，见 ENGINE-NOTES 第 15 条。 · PR #555 fixes premature generic verification by waiting for a visible canvas, nonblank picture and advancing animation callbacks before input; bounded timeouts report why readiness was not established. Named functional routes remain (ENGINE-NOTES 15).
 
 - 原生 World3D 宿主、鼠标锁定与双键、快捷键声明、实际控件裁切及遮挡检测已使用正式接口；删除游戏自写指针事件、锁定确认和 Tab 监听桥接，见 ENGINE-NOTES 第 6、7、11–14 条。 · Formal World3D attachment, mouse locking/chords, scoped key claims, clipped controls and occlusion detection replace the previous compatibility bridges (ENGINE-NOTES 6, 7, 11–14).
 
@@ -201,8 +205,8 @@ Characters, weapon visuals and station props use Tripo GLB assets simplified, te
 
 ## 引擎副本 · Engine copy
 
-引擎副本取自 [Egret_rebuild](https://github.com/cnedwin/Egret_rebuild) 提交 `4f08d2bcd25de3aafa7295f3b349970f8003ed71`，由引擎仓库的 `tools/vendor-game.mjs` 复制，见 [vendor/SOURCE.md](vendor/SOURCE.md)。
+引擎副本取自 [Egret_rebuild](https://github.com/cnedwin/Egret_rebuild) 提交 `d2e28f46182a563fd594cc51847240429ab0a5b5`，由引擎仓库的 `tools/vendor-game.mjs` 复制，见 [vendor/SOURCE.md](vendor/SOURCE.md)。
 
-The engine copy is from [Egret_rebuild](https://github.com/cnedwin/Egret_rebuild) commit `4f08d2bcd25de3aafa7295f3b349970f8003ed71`, copied by the engine's `tools/vendor-game.mjs`; see [vendor/SOURCE.md](vendor/SOURCE.md).
+The engine copy is from [Egret_rebuild](https://github.com/cnedwin/Egret_rebuild) commit `d2e28f46182a563fd594cc51847240429ab0a5b5`, copied by the engine's `tools/vendor-game.mjs`; see [vendor/SOURCE.md](vendor/SOURCE.md).
 
 入口 · Entries: `@egret/engine`, `@egret/engine/world3d`, `@egret/engine/webgl2/world3d`, `@egret/engine/webgpu/world3d`, `@egret/engine/web/kit`, `@egret/engine/play`, `@egret/engine/kit`, `@egret/engine/ui`, `@egret/engine/ui/semantics`, `@egret/engine/ui/testing`, `@egret/engine/web/semantics`, `@egret/engine/web/audio`, `@egret/engine/input`, `@egret/engine/web/hover`, `@egret/engine/web/view`.

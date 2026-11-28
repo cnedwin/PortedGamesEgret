@@ -1,5 +1,56 @@
 # 品质验收 · Quality — Operation Cutoff · 断流行动
 
+## Latest main, physical mission and startup regression / 最新主干、真机整局与启动验收
+
+Engine / 引擎：`4f08d2bc` → `d2e28f46182a563fd594cc51847240429ab0a5b5` ([PR #555](https://github.com/cnedwin/Egret_rebuild/pull/555)), officially generated 15-entry vendor; 32 import mappings are unchanged. 引擎正式复制工具生成，无手改副本。Native input, art, rules, damage, collision, save format and audio are unchanged / 原生输入、美术、玩法、数值、碰撞、存档格式和音频不变。The only game-code optimization skips unnecessary scenery geometry clipping and allocation during startup, with exact-output tests / 游戏代码仅优化首屏场景网格裁切，精确输出回归保持原始顶点、索引、法线、UV、切线及材质。
+
+| Physical device / 真机 | Complete mission / 整局 | Callback interval p50 / p95 / p99 / max | >50 ms |
+|---|---|---|---:|
+| Windows Edge 158, RTX 5090 Laptop, D3D11, WebGL2, 1440×900, medium, seed 7 | 359.03 s, 3/3 objectives, 6/6 calibration, A, won | 4.2 / 8.4 / 12.5 / 34.6 ms (60,561 intervals) | 0 |
+| Galaxy Z Fold7, Android 17, Chrome 158, Adreno 830, WebGL2, 873×325 CSS, medium, seed 3 | 411.735 s, 3/3 objectives, 6/6 calibration, B, won | 33.1 / 49.8 / 66.4 / 364.7 ms (14,686 intervals) | 612 |
+
+Both missions ran at normal time using actual browser keyboard/mouse or physical-device touch events, without overriding simulation state or rules. These full-route runs preceded the byte-equivalent scenery clipping optimization at the same engine pin; the optimized build was separately checked with startup and input smoke. Fold7's maximum interval crossed the transition into play; largest later interval was 132.5 ms, with six later intervals over 100 ms. USB battery temperature 32.7→35.4 °C during the complete Fold7 run. Callback intervals are not GPU execution or display FPS. / 两台真机以真实浏览器键鼠、触屏事件按正常时间完成整局，不写入模拟状态、不修改规则。整局在同一引擎版本且裁切优化前完成，裁切精确输出回归与优化后首屏及操作复测另行执行。手机最大间隔跨越进入游玩时点，随后最大132.5 ms、有6次超过100 ms；USB连接，整局电池温度32.7→35.4°C。回调间隔不等于GPU执行或屏幕呈现帧率。
+
+- PC native acceptance: 33/33 desktop, 17/17 mobile-size emulation (not phone), actual fullscreen enter/exit, right-button gameplay input while the browser context menu is suppressed, independent button state, explicit raw/normal lock, loss→pause→resume, asset-error retry, no runtime/HTTP errors. / PC原生验收通过，全屏、右键、失锁和恢复均实际验证，手机尺寸模拟单独计。Final local native smoke: 11/11 (title, deploy, movement, aim, inventory, pause/resume, exact file hashes, renderer and errors). / 优化后本地关键流程11/11。
+- Fold7 physical smoke: fresh-context cold title around 7.4 s (36/36 models), physical orientation changes in five states, joystick excursion, simultaneous contacts, cancellation, pause and resume; no errors, device restoration complete. An initial smoke and full-route attempt ended in ordinary defeat; revised automation clicked release-activated native controls as actual touches, not changing the game. / 实体折叠屏横竖屏、摇杆越界、多点、取消和暂停恢复通过。首轮测试自然阵亡，后改正测试脚本松手触发语义，未改游戏规则。System screenshot for the private browser context was blank; the visible CDP browser capture below is from actual phone Chrome, not a simulated desktop viewport. / 系统截图未显示私密浏览器内容，以下是实际手机 Chrome 的浏览器画面截图。
+- Debrief evidence / 结算截图：[PC](test/evidence/engine-main-d2e28f46-pc-debrief.png) · [Fold7](test/evidence/engine-main-d2e28f46-fold7-debrief.png).
+
+### Startup / 冷启动
+
+RTX hardware bare `node vendor/egret.mjs verify` (ordinary route, no `--play`) passed all 8 checks, with 318 colors and observed `startupReady` at 9.545 s; the optimized run again passed all 8, readiness 7.652 s, 307 colors. No early black-image failure or blind inputs before readiness. The old fixed-delay false report remains documented in the previous record. / 新版通用验收器真实显卡两次8/8，确认真正非空标题后验收；优化后实测7.652秒，不在资源等待阶段误操作。软件光栅器历史运行能显示标题但帧回调低于门槛，不能称硬件帧率。
+
+A targeted real Edge CPU profile repeated the 3.8 s main-thread task after 36 resources were marked loaded, before shader warmup. `createView`→`buildScenery`→`buildSections` was the main source. / 冷启动主线程任务在资源进度完成及着色预热之前，实际CPU追踪定位到场景裁切。
+
+| Same-route CPU profile / 同路线采样 | Before / 前 | After / 后 |
+|---|---:|---:|
+| Ready title / 标题可用 | 8374.9 ms | 8030.6 ms |
+| Long main task / 最大初始化长任务 | 3824 ms | 3288 ms |
+| `buildSections` sampled inclusive / 裁切采样归属耗时 | 2775.2 ms | 2168.1 ms |
+| `buildScenery` sampled inclusive / 场景组装 | 3196.5 ms | 2637.7 ms |
+| `createView` sampled inclusive / 创建场景视图 | 3537.6 ms | 3028.4 ms |
+
+Independent bare runs measured 3787→2987 ms for the corresponding startup task; conditions/cache can vary, so the profile-pair comparison is the scoped evidence, not a guaranteed speedup. The startup still has a multi-second synchronous task, but no work was deferred to deploying. The two title captures preserve the same scene and UI; weather/camera animation means they cannot be compared pixel-for-pixel. Exact geometry fingerprints cover synthetic boundaries and actual container/plant GLBs with unchanged index, attribute and material identity. / 独立裸验收另测到对应任务3787→2987毫秒，缓存在不同轮可能不同，应以同路线CPU采样为证；仍有同步启动长任务，未挪到部署之后。标题观感一致，天气与镜头动画不同不可逐像素比较；测试用几何哈希保证原始输出。
+
+### Fold7 paired short route / 手机短路线对照
+
+Same 873×325 CSS, DPR 2.625, medium WebGL2, seed 7, fresh contexts, USB, approximately 34.6°C; five seconds each. / 同一设备同画质、同一自然出生点各五秒，A旧引擎，B新引擎和裁切优化。
+
+| Sample / 采样 | A `4f08d2bc` | B `d2e28f46` + crop optimization |
+|---|---:|---:|
+| Title usable wall / 标题就绪 | 7212 ms | 10414 ms |
+| Title p95 / max | 16.7 / 16.7 ms | 33.2 / 49.8 ms |
+| Play p95 / max | 49.8 / 82.9 ms | 66.4 / 99.5 ms |
+| Play >50 ms | 8 | 12 |
+
+Both passed, with equal 125 world draws and approximately 9.4058M triangles at spawn. Earlier new-pin runs showed title ~7.4 s and play p95 49.7/66.3 ms. This single pair plus preceding samples show a mobile performance limit and variability, not an isolated engine regression; optimization does not change steady-state geometry. Do not infer causation or promise steady 60 FPS. / 两轮都通过，世界绘制数与三角形量一致；前两轮新版标题约7.4秒。手机高负载有实际性能限制，不能只凭单次A/B归因引擎，仍需多轮单阶段追踪。
+
+### Rerun and limits / 复跑与边界
+
+- `node --test test/*.test.mjs` (including exact geometry fixtures); `node tools/headless.mjs` preserves deterministic rules tests. `node vendor/egret.mjs verify` uses the default software renderer unless an actual hardware browser is selected via the verification configuration. `FPS_HARDWARE=1` and installed Chromium for `node test/accept.mjs`. / 软件验收与显卡验收分开记录。
+- 本次原91项Node测试升级前后全部通过，新增3项精确裁切回归后94/94；原规则无头完整模拟357/358/357秒三轮通过（不是真机）。仓库规范与展示站检查通过；能力矩阵、重复代码及引擎问题清单在规范LF生成输入上复查通过，能力矩阵与重复代码无FPS变化，仅引擎问题清单更新FPS#15（保留246条记录）。直接Windows CRLF检出会使旧清单解析误报，未改其他游戏行尾。 / All original 91 Node tests pass before and after the refresh; 94/94 including three geometry regressions. Three headless rule simulations finish in 357/358/357 seconds (not device runs). Standard and showcase checks pass. Capability, duplication and engine-notes generators pass on canonical LF inputs; only the generated engine-notes ledger changes for FPS#15, retaining all 246 records. Direct Windows CRLF checkouts cause false generator drift; other games are untouched.
+- Evidence / 证据：[sanitized machine receipt](test/evidence/engine-main-d2e28f46-receipt.json).
+- Full-device runs use trusted protocol inputs, not human finger/keyboard play; complete manual difficulty assessment, other browsers and devices, real controller, and listening tests remain unverified. No WebGPU performance conclusion from this WebGL2 run. / 真机为协议输入，不等于真人操作；未覆盖其他设备、浏览器、真实手柄、人工听音及WebGPU性能。No private serial, unrelated app data, or browser storage published. / 未发布设备序号、其他应用或浏览器内容。
+
 ## Formal native input and attached World3D verification / 正式原生输入与 World3D 接入验收
 
 Engine / 引擎: `33897768` → `4f08d2bcd25de3aafa7295f3b349970f8003ed71`. Real Windows Edge WebGL2 hardware / 实体 Windows PC：ANGLE (NVIDIA, NVIDIA GeForce RTX 5090 Laptop GPU (0x00002C58) Direct3D11 vs_5_0 ps_5_0, D3D11). Actual / 真机 Fold7：SM-F966U1, Android 17, Chrome/158.0.8127.44, ANGLE (Qualcomm, Adreno (TM) 830, OpenGL ES 3.2), 873×325 CSS @ 2.625 DPR. Seed 7, medium, zh. PC conditions match / PC 条件一致：true; handset conditions match / 手机条件一致：true.

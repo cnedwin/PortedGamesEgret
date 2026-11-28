@@ -18,6 +18,8 @@ This document records where this version stands: problems already solved, parts 
 
 ## 验证情况 · What has been verified
 
+- 引擎正式副本更新至 `d2e28f46182a563fd594cc51847240429ab0a5b5`，引擎替换前后原有 Node 均 91/91，静态模型裁切新增三项等价检查后共 94 项通过，原生接口及导入映射保持不变。引擎 PR #555 修复历史通用验收过早采样问题；实际当前版设备与裸验收复跑记录见 QUALITY.md。 · The official engine copy is refreshed to `d2e28f46182a563fd594cc51847240429ab0a5b5`, with 91/91 existing Node tests before and after and 94 total including three new geometry-equivalence checks; native APIs and import mappings remain. Engine PR #555 fixes historical premature generic sampling; actual current-run device and ordinary verifier receipts are in QUALITY.md.
+
 - 正式接口适配版本 `4f08d2bcd25de3aafa7295f3b349970f8003ed71`（引擎 [PR #549](https://github.com/cnedwin/Egret_rebuild/pull/549)）的本游戏验收：91/91 Node、实体 Windows Edge/RTX 桌面 33/33、同机宽屏模拟 17/17、Fold7 物理设备原生触摸与五状态双向旋转、9 种屏幕 × 10 个状态均通过；WebGPU 硬件初段检查通过。 · Game acceptance at the formal API adoption pin `4f08d2bcd25de3aafa7295f3b349970f8003ed71`: 91/91 Node tests, 33/33 on physical Windows Edge/RTX desktop, 17/17 on the same PC in wide touch emulation, real Fold7 native touch and five bidirectional state rotations, 9 screen profiles × 10 checkpoints passed; hardware WebGPU initial-play smoke passed. [QUALITY.md](QUALITY.md) 单列引擎 fixture、PC、模拟多屏和可用真机结果；上述接口的存在并不证明每种设备的体验。
 
 - 2026-11-28 原生 UI 迁移和最新引擎适配的实际设备及性能边界见 [QUALITY.md](QUALITY.md)，界面映射与复跑步骤见 [UI-MIGRATION.md](UI-MIGRATION.md)。下列历史整局数据不能代替新版实机结果。 · For the native UI migration and current engine adaptation, see QUALITY.md for actual devices and measured limits, and UI-MIGRATION.md for the implementation and replay steps. The historical full runs below are not current device acceptance.

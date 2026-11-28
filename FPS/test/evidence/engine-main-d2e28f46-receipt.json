@@ -1,0 +1,163 @@
+{
+  "engine": "d2e28f46182a563fd594cc51847240429ab0a5b5",
+  "previousEngine": "4f08d2bcd25de3aafa7295f3b349970f8003ed71",
+  "gameBase": "bc83dc47415662355627a11b28faf2160473bfb1",
+  "vendorEntries": 15,
+  "importMappings": 32,
+  "qualification": "Physical device browser protocol inputs, no human input or simulation-state mutation. Full routes before byte-equivalent geometry optimization; post-optimization startup and controls independently verified.",
+  "tests": {
+    "originalNodeBefore": 91,
+    "originalNodeAfter": 91,
+    "withGeometry": 94,
+    "geometryExact": 3,
+    "headlessCompleteSeconds": [
+      357,
+      358,
+      357
+    ]
+  },
+  "pc": {
+    "browser": "Edge 158",
+    "gpu": "RTX 5090 Laptop / ANGLE D3D11",
+    "backend": "WebGL2",
+    "viewport": [
+      1440,
+      900
+    ],
+    "quality": "medium",
+    "seed": 7,
+    "missionSeconds": 359.03,
+    "objectives": 3,
+    "calibrations": 6,
+    "won": true,
+    "grade": "A",
+    "models": 36,
+    "errors": 0,
+    "httpErrors": 0,
+    "frameIntervals": {
+      "count": 60561,
+      "p50": 4.2,
+      "p95": 8.4,
+      "p99": 12.5,
+      "max": 34.6,
+      "over50": 0
+    },
+    "titleMs": 8188.2,
+    "nativeDesktopChecks": 33,
+    "mobileSizeEmulationChecks": 17,
+    "postOptimizationSmokeChecks": 11,
+    "debrief": "engine-main-d2e28f46-pc-debrief.png"
+  },
+  "fold7": {
+    "device": "Galaxy Z Fold7 (SM-F966U1)",
+    "os": "Android 17",
+    "browser": "Chrome 158",
+    "gpu": "Adreno 830",
+    "backend": "WebGL2",
+    "viewportCss": [
+      873,
+      325
+    ],
+    "dpr": 2.625,
+    "quality": "medium",
+    "seed": 3,
+    "missionSeconds": 411.735,
+    "objectives": 3,
+    "calibrations": 6,
+    "won": true,
+    "grade": "B",
+    "models": 36,
+    "errors": 0,
+    "httpErrors": 0,
+    "trustedTouchMoves": 681,
+    "maxContacts": 4,
+    "titleWallMs": 7160,
+    "frameIntervals": {
+      "count": 14686,
+      "p50": 33.1,
+      "p95": 49.8,
+      "p99": 66.4,
+      "max": 364.7,
+      "maxLater": 132.5,
+      "over50": 612,
+      "over100": 7,
+      "over100Later": 6,
+      "maxCrossesPlayTransition": true
+    },
+    "currentPairedSmoke": {
+      "A": {
+        "engine": "4f08d2bc",
+        "titleMs": 7212,
+        "titleP95": 16.7,
+        "titleMax": 16.7,
+        "playP95": 49.8,
+        "playMax": 82.9,
+        "playOver50": 8
+      },
+      "B": {
+        "engine": "d2e28f46",
+        "includesCropOptimization": true,
+        "titleMs": 10414,
+        "titleP95": 33.2,
+        "titleMax": 49.8,
+        "playP95": 66.4,
+        "playMax": 99.5,
+        "playOver50": 12
+      },
+      "seed": 7,
+      "draws": 125,
+      "approxTriangles": 9405800,
+      "temperatureC": 34.6,
+      "interpretation": "One pair; variability and mobile workload limit, engine-only regression unproven."
+    },
+    "restorationAllTrue": true,
+    "debrief": "engine-main-d2e28f46-fold7-debrief.png",
+    "capture": "CDP compositor on physical device; private context OS screenshot did not show content."
+  },
+  "ordinaryVerifier": {
+    "actualHardware": true,
+    "checks": 8,
+    "beforeCrop": {
+      "pass": true,
+      "readyMs": 9545,
+      "colors": 318
+    },
+    "afterCrop": {
+      "pass": true,
+      "readyMs": 7652,
+      "colors": 307
+    },
+    "noEarlyInput": true
+  },
+  "startupProfile": {
+    "sameRoute": true,
+    "titleMs": [
+      8374.9,
+      8030.6
+    ],
+    "maxLongTaskMs": [
+      3824,
+      3288
+    ],
+    "buildSectionsMs": [
+      2775.2,
+      2168.1
+    ],
+    "buildSceneryMs": [
+      3196.5,
+      2637.7
+    ],
+    "createViewMs": [
+      3537.6,
+      3028.4
+    ],
+    "finalSceneSourceSha256": "63c3ef66693ed7758123b389332c640e72164d51436d8b9fdb69e73b07947842",
+    "qualification": "CPU profile inclusive samples, individual paired measurements not a guaranteed speedup."
+  },
+  "limitations": [
+    "Full mission tested before geometry-only optimization; exact geometry regression and later input checks cover optimized source.",
+    "RAF callback intervals not GPU execution/present FPS.",
+    "No human finger/keyboard, independent real controller, Safari/Firefox, WebGPU performance or speaker listening qualification.",
+    "Mobile high geometry load and scene initialization still have long frames."
+  ]
+}

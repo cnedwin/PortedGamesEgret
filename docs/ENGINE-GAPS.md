@@ -4,9 +4,9 @@
 
 Made by `node tools/engine-notes.mjs --write` from the ENGINE-NOTES of the games; do not edit by hand, and `--check` says whether it is out of date. What the engine resolved is copied from the engine's `guide/resolved.json` into [engine-resolved.json](engine-resolved.json) (15 entries). The form of a note is in part 3 of [GAME-STANDARD.md](GAME-STANDARD.md).
 
-24 个游戏、246 条笔记：未解决 63，部分解决 24，游戏侧绕过 7，已写入文档 42，已解决 110。
+24 个游戏、246 条笔记：未解决 62，部分解决 24，游戏侧绕过 7，已写入文档 42，已解决 111。
 
-246 notes from 24 games: 63 open, 24 partly resolved, 7 worked around in the game, 42 documented, 110 resolved.
+246 notes from 24 games: 62 open, 24 partly resolved, 7 worked around in the game, 42 documented, 111 resolved.
 
 ## 1. 引擎已经解决、游戏还标着未解决 · Resolved by the engine, still open in a game
 
@@ -103,7 +103,6 @@ Write the lesson as a card of the engine's guide (`guide/cards` in the engine re
 | `texture-from-canvas-scope` | NineProvinces#3 `textureFromCanvas` 的纹理只能归游戏本身的作用域 · Textures from `textureFromCanvas` belong to the game's own scope only | 未解决 · open |
 | `two-bone-ik` | FiveRegiments#5 引擎没有现成的两骨反向动力学 · No two-bone IK in the engine | 未解决 · open |
 | `ui-root-active-contacts-admission` | SnowTemple#8 按住触点时动态创建模态根拒绝 · Creating a modal root while contacts are held is refused | 未解决 · open |
-| `verify-startup-ready` | FPS#15 通用浏览器验收过早采样 · Generic browser verification samples before readiness | 未解决 · open |
 | `vertex-hook-error` | StarBanner#2 只有顶点钩子的着色器写进 `glsl` 时报错不直观 · A vertex-only hook given as `glsl` fails with an unhelpful error | 未解决 · open |
 | `vertical-text` | InquestScrolls#1 段落不支持竖排 · Paragraphs cannot set text vertically | 部分解决 · partly |
 | `view-accessible-label` | OperaDrums#13 按钮的读屏名字只能是它的字 · A button's accessible name is only its words | 未解决 · open |
@@ -133,7 +132,7 @@ Write the lesson as a card of the engine's guide (`guide/cards` in the engine re
 | [FengshenChronicle](../FengshenChronicle/ENGINE-NOTES.md) | 5 | 1 | 0 | 1 | 0 | 3 | 0 | `94bd70f` |
 | [FivePhases](../FivePhases/ENGINE-NOTES.md) | 6 | 1 | 1 | 0 | 0 | 4 | 0 | `94bd70f` |
 | [FiveRegiments](../FiveRegiments/ENGINE-NOTES.md) | 5 | 5 | 0 | 0 | 0 | 0 | 0 | `5792d80` |
-| [FPS](../FPS/ENGINE-NOTES.md) | 15 | 2 | 3 | 0 | 2 | 8 | 0 | `4f08d2b` |
+| [FPS](../FPS/ENGINE-NOTES.md) | 15 | 1 | 3 | 0 | 2 | 9 | 0 | `d2e28f4` |
 | [InquestScrolls](../InquestScrolls/ENGINE-NOTES.md) | 12 | 0 | 1 | 2 | 1 | 8 | 0 | `95897d7` |
 | [jelly-pandas](../jelly-pandas/ENGINE-NOTES.md) | 9 | 2 | 2 | 0 | 0 | 5 | 0 | `8424ff2` |
 | [JY](../JY/ENGINE-NOTES.md) | 2 | 1 | 1 | 0 | 0 | 0 | 0 | `c1570b0` |
