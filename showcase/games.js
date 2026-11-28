@@ -397,7 +397,7 @@ export const GAMES = [
       },
       {
         title: { zh: "原生 3D 叠加界面", en: "Native 3D overlay UI" },
-        description: { zh: "HUD 和菜单是 3D 画面上的透明原生界面，数字用共享字形，静止时保留上一帧不重画。", en: "The HUD and menus are a clear native interface over the 3D view, counters on shared glyphs, keeping the last frame while nothing changes." },
+        description: { zh: "HUD、菜单和伤害浮字都由透明原生叠加层绘制，复用引擎字形页，静止时保留上一帧。", en: "HUD, menus and floating damage are drawn by the native overlay, sharing engine glyph pages and retaining static frames." },
         source: 'src/hud.mjs',
       },
       {

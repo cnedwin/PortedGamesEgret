@@ -3,7 +3,6 @@ import { DisplayObjectContainer } from '@egret/engine';
 import { createUiSemantics } from '@egret/engine/ui/semantics';
 import { createUiTester } from '@egret/engine/ui/testing';
 import { createBrowserSemantics } from '@egret/engine/web/semantics';
-import { createBrowserHoverInput } from '@egret/engine/web/hover';
 import { TEXT } from './data.mjs';
 import { createTextTable } from '@egret/engine/kit';
 import { createMenus } from './ui/menus.mjs';
@@ -16,7 +15,7 @@ const chooseLang=lang=>lang==='zh'||lang==='en'?lang:(navigator.language??'en').
 
 export async function createHud(overlay,{canvas,input,camera,lang,onError,onTitleLayout,onFailureReady}) {
   const game=overlay.game,scope=game.scope,semantics=createUiSemantics();
-  let language=chooseLang(lang),needsPublish=true,disposed=false,play,touch,menus,atlasError,atlas;
+  let language=chooseLang(lang),needsPublish=true,disposed=false,play,touch,menus,startupError,atlas,markers;
   const table=createTextTable({languages:Object.fromEntries(['en','zh'].map(lang=>[lang,Object.fromEntries(Object.entries(TEXT).map(([key,value])=>[key,value[lang]]))])),language,fallback:'en'});
   const locale={
     get lang(){return language;},zh:()=>language==='zh',
@@ -40,10 +39,7 @@ export async function createHud(overlay,{canvas,input,camera,lang,onError,onTitl
   const root=game.stage.addChild(scope.use(new DisplayObjectContainer()));
   const playRoot=root.addChild(scope.use(new DisplayObjectContainer()));
   const touchRoot=root.addChild(scope.use(new DisplayObjectContainer()));
-  const markers=createJellyMarkers(document.querySelector('#scene-markers'),camera);
-  scope.use({dispose:()=>markers.dispose()});
-  // World3DOverlay currently has no hover option; use the engine's existing browser hover adapter.
-  const hover=game.hover??createBrowserHoverInput({engine:game.engine,scope,canvas:overlay.canvas,width:game.screen.width,height:game.screen.height,size:()=>game.screen,onError});
+  const hover=game.hover;
   function mark(){needsPublish=true;}
   function publish(force=false){
     if(disposed||(!needsPublish&&!force))return;
@@ -55,36 +51,41 @@ export async function createHud(overlay,{canvas,input,camera,lang,onError,onTitl
   const onChanged=()=>{mark();game.invalidate();};
   const focusCanvas=()=>overlay.canvas.focus?.({preventScroll:true});
   try{atlas=await game.loadTexture(new URL('../assets/panda-roster.webp',import.meta.url).href);}
-  catch(error){atlasError=error;}
-  // Menus are created even when the roster resource failed; retry remains an engine control.
+  catch(error){startupError=error;}
+  // Create the native recovery menu before any optional HUD/glyph resources.
   menus=await createMenus(game,{semantics,atlas,locale,hover,onError,onTitleLayout,
     getTouchMode:()=>input.touchMode,getGamepadMode:()=>!!input.gamepadMode,onChanged,focusCanvas});
   const failure=(cause)=>{
-    play?.hide();touch?.setActive(false);markers.setVisible(false);
+    play?.hide();touch?.setActive(false);markers?.setVisible(false);
     menus.showFailure(cause,()=>location.reload());focusCanvas();onChanged();
   };
   onFailureReady?.(failure);
-  if(!atlasError){
-    play=await createPlayHud(game,{root:playRoot,atlas,locale,semantics,onChanged,onError});
-    touch=await createTouchUi({game,root:touchRoot,semantics,t:locale.t,onChanged},input);
-    touch?.setActive(false);
+  if(!startupError){
+    try {
+      markers=await createJellyMarkers(overlay,camera,canvas);
+      scope.use({dispose:()=>markers?.dispose()});
+      play=await createPlayHud(game,{root:playRoot,atlas,locale,semantics,onChanged,onError});
+      touch=await createTouchUi({game,root:touchRoot,semantics,t:locale.t,onChanged},input);
+      touch.setActive(false);
+    } catch(error){startupError=error;}
   }
   const place=(screen=game.screen)=>{
-    play?.layout(screen);touch?.layout(screen);menus?.layout?.(screen);markers.layout(screen,overlay.box);
-    projection.sync({width:screen.width,height:screen.height});hover.sync?.();mark();game.invalidate();
+    play?.layout(screen);touch?.layout(screen);menus?.layout?.(screen);markers?.layout(screen);
+    projection.sync({width:screen.width,height:screen.height});hover?.sync?.();mark();game.invalidate();
   };
   scope.use({dispose:game.onScreenChange(place)});
   const tester=createUiTester({semantics,update:()=>publish(true),...(menus.stack?{screens:menus.stack}:{})});
-  let touchMode=input.touchMode,previousRectSnapshot,previousRectScale,protectedRects=[];
+  let touchMode=input.touchMode,previousRectSnapshot,protectedRects=[];
   const hud={
     overlay,game,semantics,projection,tester,menus,markers,play,touch,
     get lang(){return locale.lang;},
     get kind(){return menus.kind;},
-    get failed(){return !!atlasError;},
+    get failed(){return !!startupError;},
+    get failureCause(){return startupError;},
     tick(){menus.update?.();publish();},
     flush(){publish(true);},
     showTitle(state,handlers){
-      root.visible=false;play?.hide();touch?.setActive(false);markers.setVisible(false);menus.showTitle(state,handlers);focusCanvas();onChanged();
+      root.visible=false;play?.hide();touch?.setActive(false);markers?.setVisible(false);menus.showTitle(state,handlers);focusCanvas();onChanged();
     },
     startPlay(){
       menus.startPlay?.();root.visible=true;play?.start();markers.reset();markers.setVisible(true);onChanged();
@@ -102,18 +103,17 @@ export async function createHud(overlay,{canvas,input,camera,lang,onError,onTitl
     },
     update(sim,now,captured){
       play?.update(sim,now,captured);
-      const k=overlay.box.scale;
       const snapshot=semantics.snapshot;
-      if(snapshot!==previousRectSnapshot||k!==previousRectScale){previousRectSnapshot=snapshot;previousRectScale=k;protectedRects=snapshot.nodes.filter(n=>!n.inert&&(n.id!=='jelly-announcement'||!!n.name)&&(
+      if(snapshot!==previousRectSnapshot){previousRectSnapshot=snapshot;protectedRects=snapshot.nodes.filter(n=>!n.inert&&(n.id!=='jelly-announcement'||!!n.name)&&(
         ['play-hud','jelly-boss','jelly-announcement','jelly-tricks','jelly-build','touch-move','touch-jump','touch-slam','touch-roll','touch-pause'].includes(n.id)||n.id.startsWith('jelly-party-')
-      )).filter(n=>n.bounds.width>0&&n.bounds.height>0).map(n=>({x:n.bounds.x*k,y:n.bounds.y*k,width:n.bounds.width*k,height:n.bounds.height*k}));}
+      )).filter(n=>n.bounds.width>0&&n.bounds.height>0).map(n=>n.bounds);}
       markers.update(sim,now,protectedRects);
     },
     consume(events,sim,now){play?.consume(events,sim,now);markers.consume(events,now);},
     say(text,now,seconds,kind){play?.say(text,now,seconds,kind);},
     dispose(){disposed=true;menus.dispose?.();touch?.dispose?.();},
   };
-  root.visible=false;markers.setVisible(false);place(game.screen);
-  if(atlasError)failure(atlasError);
+  root.visible=false;markers?.setVisible(false);place(game.screen);
+  if(startupError)failure(startupError);
   return hud;
 }

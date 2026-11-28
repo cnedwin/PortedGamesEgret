@@ -64,7 +64,10 @@ async function setup(t, coarse = true) {
   const stick = make(0, 0, 100, 100);
   const actions = Object.fromEntries(['jump','slam','roll','pause'].map((key,i)=>[key,make(120+i*60,0,50,50)]));
   const pointer = createPointerInput({ engine, scope, width: 400, height: 300 });
-  const native = bindNativeTouchControls({ pointer, stick, actions }, input);
+  const movementPaint = [];
+  const native = bindNativeTouchControls({ pointer, stick, actions,
+    onMovement(value, pressed) { movementPaint.push({ ...value, pressed }); }
+  }, input);
   t.after(async () => {
     native.dispose(); input.dispose(); pointer.dispose(); await engine.dispose();
     for (const [name, descriptor] of originals) {
@@ -74,12 +77,12 @@ async function setup(t, coarse = true) {
   input.setTouchEnabled(true);
   native.setActive(true);
   let stamp = 0;
-  const begin = (id,x,y) => pointer.begin({ pointerId: id, pointerType: 'touch', globalX: x, globalY: y, buttons: 1, timestamp: ++stamp });
+  const begin = (id,x,y,extra={}) => pointer.begin({ pointerId: id, pointerType: 'touch', globalX: x, globalY: y, buttons: 1, timestamp: ++stamp, ...extra });
   const move = (s,x,y) => pointer.move(s,{globalX:x,globalY:y,buttons:1,timestamp:++stamp});
   const end = (s,x,y) => pointer.end(s,{globalX:x,globalY:y,buttons:0,timestamp:++stamp});
   const cancel = s => pointer.cancel(s,'pointercancel');
   const action = (name,id) => begin(id, actions[name].x + 25, 25);
-  return { input, canvas, native, pointer, begin, move, end, cancel, action, actions, gamepads };
+  return { input, canvas, native, pointer, begin, move, end, cancel, action, actions, stick, movementPaint, gamepads };
 }
 
 test('native stick preserves fixed-center deflection, rejects second movement owner, and independently holds roll', async t => {
@@ -255,12 +258,12 @@ test('gamepad confirm that starts a game does not also charge jump until its nex
   assert.equal(input.poll().jump,true);
 });
 
-test('mouse drag without pointer lock uses client deltas when forwarded overlay copies omit movementX/Y', async t => {
+test('mouse drag without pointer lock consumes native forwarded relative movement once', async t => {
   const {input,canvas}=await setup(t,false);
   point(canvas,'pointerdown',1,50,20,{pointerType:'mouse',movementX:0,movementY:0});
   assert.equal(canvas.lockRequests,1);
-  point(canvas,'pointermove',1,65,27,{pointerType:'mouse',movementX:0,movementY:0});
-  const f=input.poll();assert.deepEqual([f.lookX,f.lookY],[15,7]);
+  point(canvas,'pointermove',1,65,27,{pointerType:'mouse',movementX:11,movementY:-5});
+  const f=input.poll();assert.deepEqual([f.lookX,f.lookY],[11,-5], 'native relative motion, not reconstructed client deltas');
   point(canvas,'pointerup',1,65,27,{pointerType:'mouse'});
   point(canvas,'pointermove',1,70,30,{pointerType:'mouse'});
   assert.equal(input.poll().lookX,0);
@@ -282,4 +285,55 @@ test('unconsumed menu arrow keys move native focus without becoming gameplay or 
   key('keydown','ArrowLeft');
   assert.equal(input.poll().right,-1);
   assert.deepEqual(commands,['up','down','right']);
+});
+
+test('centered movement paints pressed and released even without a direction change; resize retires its old owner',async t=>{
+  const {input,native,stick,movementPaint,begin,move,end}=await setup(t);
+  const centered=begin(1,50,50);
+  assert.deepEqual(movementPaint.at(-1),{x:0,y:0,pressed:true});
+  end(centered,50,50);
+  assert.deepEqual(movementPaint.at(-1),{x:0,y:0,pressed:false});
+  const held=begin(2,50,30);
+  assert.ok(input.poll().forward>0.6);
+  native.layout(1); // unchanged native geometry does not release an active stick
+  assert.ok(input.poll().forward>0.6);
+  stick.hitArea={x:0,y:0,width:80,height:80};
+  native.layout(1);
+  assert.equal(input.poll().forward,0);
+  assert.deepEqual(movementPaint.at(-1),{x:0,y:0,pressed:false});
+  move(held,10,10);
+  assert.equal(input.poll().forward,0);
+  const fresh=begin(3,40,15);assert.ok(input.poll().forward>0.99);
+  end(held,10,10);
+  assert.ok(input.poll().forward>0.99,'retired contact cannot release the new owner');
+  end(fresh,40,15);
+  assert.equal(input.poll().forward,0);
+});
+
+test('pause tap preserves the 12 CSS-pixel tolerance across scale changes without transferring a held contact',async t=>{
+  const {input,native,begin,move,end,action}=await setup(t);
+  const commands=[];input.onCommand=c=>commands.push(c);
+  for(const scale of [0.5,1.5]){
+    native.layout(scale);
+    let s=action('pause',1);
+    move(s,325-12/scale,25);
+    end(s,325,25);
+    assert.equal(commands.length,scale===0.5?1:2,'tolerance edge is inclusive');
+    s=action('pause',1);
+    move(s,325-12.5/scale,25);
+    end(s,325,25);
+    assert.equal(commands.length,scale===0.5?1:2,'an excursion over 12 CSS px cannot become a tap again');
+  }
+  const held=action('pause',2);
+  native.layout(1);
+  const fresh=action('pause',3);
+  end(held,325,25);
+  assert.equal(commands.length,2,'the pre-resize contact cannot open the menu');
+  end(fresh,325,25);
+  assert.deepEqual(commands,['menu','menu','menu']);
+  const right=begin(4,325,25,{pointerType:'mouse',buttons:2});
+  end(right,325,25);
+  assert.equal(commands.length,3,'right mouse button is never a Pause press');
+  native.activate('pause');
+  assert.equal(commands.length,4,'the semantic action uses the native scripted activation path');
 });

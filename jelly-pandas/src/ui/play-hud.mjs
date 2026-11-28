@@ -1,6 +1,6 @@
 // Native battle HUD. Text is held by the engine atlas; counters share a fixed bitmap-font page.
 import { Bitmap, DisplayObjectContainer, Sprite } from '@egret/engine';
-import { createBitmapText, parseBitmapFont } from '@egret/engine/bitmapfont';
+import { createBitmapText } from '@egret/engine/bitmapfont';
 import { semanticBoundsOf } from '@egret/engine/ui/semantics';
 import { CHARMS, RUN, SKINS, TOYS } from '../data.mjs';
 
@@ -12,29 +12,12 @@ const clock=(s)=>Math.floor(s/60)+':'+String(Math.floor(s%60)).padStart(2,'0');
 const assign=(obj,key,value)=>{if(obj[key]===value)return false;obj[key]=value;return true;};
 const faceRect=i=>({x:i%4*384+32,y:Math.floor(i/4)*512+24,width:320,height:320});
 
-/** Generate one immutable font texture at startup, not one raster per changing number. */
-async function numericAtlas(game) {
-  const chars='0123456789:/+-…?★', cw=32,ch=48;
-  const canvas=typeof OffscreenCanvas==="function"?new OffscreenCanvas(cw*chars.length,ch):Object.assign(document.createElement("canvas"),{width:cw*chars.length,height:ch});
-  const ctx=canvas.getContext('2d');
-  if(!ctx) throw new Error('Counter font raster unavailable');
-  ctx.clearRect(0,0,canvas.width,canvas.height);
-  ctx.font='900 38px Arial, sans-serif';ctx.textAlign='center';ctx.textBaseline='middle';
-  ctx.lineJoin='round';ctx.lineWidth=2.6;ctx.strokeStyle='#2a1838';ctx.fillStyle='#ffffff';
-  const glyphs=[];
-  Array.from(chars).forEach((c,i)=>{
-    const x=i*cw;ctx.strokeText(c,x+cw/2,ch/2);ctx.fillText(c,x+cw/2,ch/2);
-    glyphs.push({id:c.codePointAt(0),x,y:0,width:cw,height:ch,xoffset:0,yoffset:0,xadvance:cw,page:0,chnl:15});
-  });
-  const font=parseBitmapFont({info:{face:'Jelly counters',size:38},common:{lineHeight:ch,base:38,scaleW:canvas.width,scaleH:ch},pages:['counter-page'],chars:glyphs,kernings:[]});
-  return {font,pages:[await game.textureFromCanvas(canvas)]};
-}
-
 /** All UI art is drawn by the native stage. Positions and widths are stage units, kept inside the current safe part. */
 export async function createPlayHud(game,{root,atlas,locale,semantics,onChanged,onError}) {
   const scope=game.scope,hold=node=>scope.use(node),{t,name}=locale;
   const keepSemantic=handle=>scope.use({dispose:()=>handle.remove()});
-  const numbers=await numericAtlas(game);
+  const numbers=await game.createGlyphFont({scope,characters:'0123456789:/+-…?★',fontFamilies:['Arial','sans-serif'],
+    fontSize:38,fontWeight:900,strokeWidth:1.3,strokeColor:C.ink});
   let dirty=false,visible=false,touch=false,screen=game.screen,current=null,now=0,layoutChanged=true;
   let partySignature='',toySignature='',mask=-1,challengeUntil=Infinity,announceUntil=0,announceText='',hurtUntil=0;
   const mark=()=>{dirty=true;};
@@ -69,8 +52,10 @@ export async function createPlayHud(game,{root,atlas,locale,semantics,onChanged,
     };
   };
   const number=(parent,value,size,color=C.cream)=>{
-    const text=scope.use(createBitmapText({...numbers,text:String(value),color}));
-    parent.addChild(text.display);const scale=size/48;
+    const text=scope.use(createBitmapText({...numbers,text:String(value),color,
+      // Keep the original compact counter advance with the engine's padded glyph page.
+      letterSpacing:Math.min(0,32-numbers.font.glyph(48).xAdvance)}));
+    parent.addChild(text.display);const scale=size/numbers.font.lineHeight;
     text.display.scaleX=text.display.scaleY=scale;
     let anchor=[0,0,'left'];
     const align=()=>place(text.display,anchor[0]-(anchor[2]==='center'?text.width*scale/2:anchor[2]==='right'?text.width*scale:0),anchor[1]);

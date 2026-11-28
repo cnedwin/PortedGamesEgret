@@ -39,6 +39,7 @@ async function keyboardControl(player, name) {
 async function keyboardSemantics(){
   const pg=await makePage('en',{width:844,height:390}),p=driver(pg);
   await ready(p);
+  check(await pg.evaluate(()=>window.egretGame?.ready===true),'boot readiness names the actual usable title');
   check(await keyboardControl(p,'Settings'),'Tab reaches the native Settings action and publishes focus');
   await pg.keyboard.press('Enter');
   await control(p,{id:'menu-settings-sound'});
@@ -111,22 +112,24 @@ async function saveCompatibility(){
   await ready(b);check((await state(b)).skin===0&&(await state(b)).party===1,'malformed old settings fall back safely');
   await broken.context().close();
 }
-async function refusedAsset(){
+async function refusedAsset(resource='roster'){
+  const file=resource==='glyph'?'/vendor/engine/dist/web/browserGameGlyphFont.js':'/assets/panda-roster.webp';
   let refused=0;const failures=[];
   const pg=await makePage('en',{width:844,height:390,before:async page=>{
     page.on('requestfailed',r=>failures.push({url:r.url(),error:r.failure()?.errorText}));
-    await page.route('**/assets/panda-roster.webp',route=>{
+    await page.route('**'+file,route=>{
       if(refused===0){refused++;return route.abort('failed');}return route.continue();
     });
   }}),p=driver(pg);
   // The failure screen is a real engine overlay, even before the roster texture loaded.
   await wait(p,()=>window.__jellyPandas?.ui?.semantics?.snapshot?.nodes.some(n=>!n.hidden&&!n.inert&&!n.disabled&&n.name==='Reload'),
     undefined,'native recovery control',90000);
-  check(refused===1&&failures.some(f=>f.url.includes('/assets/panda-roster.webp')),'intentional asset failure was exercised');
-  if(candidate){await mkdir(candidate,{recursive:true});await pg.screenshot({path:resolve(candidate,'failure.png'),timeout:90000});}
+  check(await pg.evaluate(()=>window.egretGame?.ready===true),'native recovery is a ready interactive screen');
+  check(refused===1&&failures.some(f=>f.url.includes(file)),'intentional '+resource+' resource failure was exercised');
+  if(candidate){await mkdir(candidate,{recursive:true});await pg.screenshot({path:resolve(candidate,resource==='glyph'?'failure-glyph.png':'failure.png'),timeout:90000});}
   await tap(p,{name:'Reload'});await ready(p);
-  check((await state(p)).mode==='title','real recovery button successfully reloads after the asset becomes available');
-  observations.refusal={refused,failures,mode:(await state(p)).mode};
+  check((await state(p)).mode==='title','real recovery button reloads after '+resource+' resource becomes available');
+  observations['refusal-'+resource]={refused,failures,mode:(await state(p)).mode};
   // Only the deliberate one-file abort may produce a failed-resource console message. Other page/HTTP errors remain.
   pg.problems=pg.problems.filter(m=>!(m.startsWith('console: Failed to load resource: net::ERR_FAILED')&&failures.length===1));
   await pg.context().close();
@@ -145,6 +148,7 @@ try {
   await touch.context().close();
   await saveCompatibility();
   await refusedAsset();
+  await refusedAsset('glyph');
 }catch(error){checks.push([false,error.stack??String(error)]);}
 finally{
   const problems=pages.flatMap(p=>p.problems??[]);

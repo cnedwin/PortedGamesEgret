@@ -4,9 +4,9 @@
 
 Made by `node tools/duplication.mjs --write` from the `src/` of every game; do not edit by hand, and `--check` says whether it is out of date. Code three or more games each wrote belongs in the engine's kit or in the template; "Engine has" names what can replace it.
 
-24 个游戏，4408 段至少 40 个词元的顶层代码。名字、数字和字符串都换成同一个记号后，连续 8 个词元的 Jaccard 指数不小于 0.6 就算相同。
+24 个游戏，4449 段至少 40 个词元的顶层代码。名字、数字和字符串都换成同一个记号后，连续 8 个词元的 Jaccard 指数不小于 0.6 就算相同。
 
-24 games, 4408 top-level units of at least 40 tokens. With every name, number and string made one token, two units are alike when the Jaccard index of their runs of 8 tokens is 0.6 or more.
+24 games, 4449 top-level units of at least 40 tokens. With every name, number and string made one token, two units are alike when the Jaccard index of their runs of 8 tokens is 0.6 or more.
 
 ## 1. 3 个以上游戏写了几乎相同的代码 · Code that 3 or more games wrote nearly alike
 
@@ -25,8 +25,8 @@ One name is not always one piece of code: games write an `update` or a `draw` of
 | 名字 · Name | 游戏数 · Games | 引擎已有 · Engine has | 游戏 · Games |
 |---|:-:|---|---|
 | `createSound` | 15 | `createAudioCues`, `encodeWav` (@egret/engine/kit) | CanalWatch, FengshenChronicle, FiveRegiments, InquestScrolls, LanternShadows, LubanBridge, MechanismCity, NezhaSea, NightWardens, NineProvinces, OperaDrums, PeachCreek, SandScroll, StarBanner, TaiwanMahjong |
+| `WORDS` | 15 | `createTextTable`, `pickLanguage` (@egret/engine/kit) | CanalWatch, FiveRegiments, InquestScrolls, LanternShadows, LubanBridge, NezhaSea, NightWardens, NineProvinces, OperaDrums, PeachCreek, SandScroll, SnowTemple, StarBanner, TaiwanMahjong, Wulin |
 | `app` | 14 | – | CanalWatch, InquestScrolls, LubanBridge, MechanismCity, NezhaSea, NightWardens, NineProvinces, OperaDrums, PeachCreek, SandScroll, StarBanner, TaiwanMahjong, TeaHorseRoad, Wulin |
-| `WORDS` | 14 | `createTextTable`, `pickLanguage` (@egret/engine/kit) | CanalWatch, FiveRegiments, InquestScrolls, LanternShadows, LubanBridge, NezhaSea, NightWardens, NineProvinces, OperaDrums, PeachCreek, SandScroll, StarBanner, TaiwanMahjong, Wulin |
 | `openSave` | 13 | `createSaveStore` + `shapeOf` (@egret/engine/kit) | CanalWatch, FiveRegiments, InquestScrolls, LubanBridge, MechanismCity, NezhaSea, NightWardens, OperaDrums, SandScroll, SnowTemple, StarBanner, TaiwanMahjong, TeaHorseRoad |
 | `createHud` | 12 | – | FPS, FivePhases, FiveRegiments, MechanismCity, NezhaSea, NineProvinces, Rally, SnowTemple, StarBanner, TaiwanMahjong, TeaHorseRoad, jelly-pandas |
 | `noise` | 12 | – | FPS, FiveRegiments, LanternShadows, LubanBridge, MechanismCity, NightWardens, NineProvinces, SandScroll, SnowTemple, StarBanner, TeaHorseRoad, Wulin |
@@ -69,5 +69,6 @@ One name is not always one piece of code: games write an `update` or a `draw` of
 | `showTitle` | 5 | – | CanalWatch, NezhaSea, NineProvinces, OperaDrums, TeaHorseRoad |
 | `smooth` | 5 | – | FPS, LoveElective, NineProvinces, SnowTemple, jelly-pandas |
 | `strike` | 5 | – | FiveRegiments, NezhaSea, NightWardens, OperaDrums, Wulin |
+| `stroke` | 5 | – | CanalWatch, FengshenChronicle, LoveElective, SnowTemple, Wulin |
 | `t` | 5 | `createTextTable`, `pickLanguage` (@egret/engine/kit) | FiveRegiments, NightWardens, NineProvinces, SandScroll, StarBanner |
 | `text` | 5 | – | CanalWatch, LanternShadows, OperaDrums, PeachCreek, TaiwanMahjong |

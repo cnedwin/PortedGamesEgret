@@ -13,7 +13,6 @@ export function createInput(canvas) {
   const touchPressed = new Set(), touchTaps = new Set();
   let enabled = true, touchEnabled = false, resetNativeTouch;
   let lookX = 0, lookY = 0, zoom = 0, slamQueued = false, mouseButtons = 0, dragging = false;
-  let mouseLastX = 0, mouseLastY = 0;
   let touchForward = 0, touchRight = 0, sampledTouchJump = false;
   let lookOwner, lastX, lastY, touchLookX = 0, touchLookY = 0, releasedLookX = 0, releasedLookY = 0;
   let previousPad = new Set(), gamepadMode = false;
@@ -150,7 +149,6 @@ export function createInput(canvas) {
     }
     if (!input.captured) {
       dragging = true;
-      mouseLastX = event.clientX; mouseLastY = event.clientY;
       canvas.requestPointerLock?.()?.catch?.(() => {});
       return;
     }
@@ -164,15 +162,9 @@ export function createInput(canvas) {
       return;
     }
     if (!enabled || event.pointerType === 'touch' || !(input.captured || dragging)) return;
-    if (input.captured) {
-      buttons(event, true); // Mouse chords change buttons on pointermove, not just pointerdown/up.
-      lookX += event.movementX || 0; lookY += event.movementY || 0;
-    } else {
-      // The overlay's forwarded DOM copy may omit movementX/Y; a free drag is
-      // measured from client coordinates, not from a fabricated relative event.
-      lookX += event.clientX - mouseLastX; lookY += event.clientY - mouseLastY;
-      mouseLastX = event.clientX; mouseLastY = event.clientY;
-    }
+    if (input.captured) buttons(event, true); // Mouse chords change buttons on pointermove, not just pointerdown/up.
+    // Native relative motion is preserved by overlay passthrough; use the same motion whether locked or dragging.
+    lookX += event.movementX || 0; lookY += event.movementY || 0;
   });
   on(window, 'pointerup', event => {
     if (event.pointerId === lookOwner) { releaseLook(false); return; }
