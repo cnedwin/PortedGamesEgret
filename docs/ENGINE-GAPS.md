@@ -4,9 +4,9 @@
 
 Made by `node tools/engine-notes.mjs --write` from the ENGINE-NOTES of the games; do not edit by hand, and `--check` says whether it is out of date. What the engine resolved is copied from the engine's `guide/resolved.json` into [engine-resolved.json](engine-resolved.json) (15 entries). The form of a note is in part 3 of [GAME-STANDARD.md](GAME-STANDARD.md).
 
-24 个游戏、248 条笔记：未解决 63，部分解决 22，游戏侧绕过 7，已写入文档 42，已解决 114。
+24 个游戏、249 条笔记：未解决 64，部分解决 22，游戏侧绕过 7，已写入文档 42，已解决 114。
 
-248 notes from 24 games: 63 open, 22 partly resolved, 7 worked around in the game, 42 documented, 114 resolved.
+249 notes from 24 games: 64 open, 22 partly resolved, 7 worked around in the game, 42 documented, 114 resolved.
 
 ## 1. 引擎已经解决、游戏还标着未解决 · Resolved by the engine, still open in a game
 
@@ -74,6 +74,7 @@ Write the lesson as a card of the engine's guide (`guide/cards` in the engine re
 | `physics2d-joints-ropes` | MechanismCity#1 关节、绳索和旋转 · Joints, ropes and rotation | 部分解决 · partly |
 | `physics2d-truss-joints` | LubanBridge#1 距离关节连成桁架又软又偏，也读不到杆件受了多大的力 · Distance joints chained into a truss are soft and lopsided, and give no member force | 未解决 · open |
 | `play-existing-browser-game-views` | FengshenChronicle#3 RPG 面板接入现有浏览器场景 · Attaching RPG panels to an existing browser game | 未解决 · open |
+| `play-frame-timing-forwarding` | FPS#16 Play 未公开实际帧循环时序回调 · Play does not expose the active loop timing callback | 未解决 · open |
 | `play-gesture-session` | FivePhases#4 Play 手势入口未覆盖棋盘按下即预览的完整会话 · High-level Play gestures omit the whole press-to-preview session | 未解决 · open |
 | `play-hints-wrapping` | NezhaSea#12 提示换行、首领入场与启动失败 · Hint wrapping, Boss entry and boot recovery | 未解决 · open |
 | `play-owned-canvas-fit` | FPS#8 自有 canvas 的 Play fit 不能自动扩展 · Play fit does not expand a caller-owned canvas | 部分解决 · partly |
@@ -131,7 +132,7 @@ Write the lesson as a card of the engine's guide (`guide/cards` in the engine re
 | [FengshenChronicle](../FengshenChronicle/ENGINE-NOTES.md) | 5 | 1 | 0 | 1 | 0 | 3 | 0 | `94bd70f` |
 | [FivePhases](../FivePhases/ENGINE-NOTES.md) | 6 | 1 | 1 | 0 | 0 | 4 | 0 | `94bd70f` |
 | [FiveRegiments](../FiveRegiments/ENGINE-NOTES.md) | 5 | 5 | 0 | 0 | 0 | 0 | 0 | `5792d80` |
-| [FPS](../FPS/ENGINE-NOTES.md) | 15 | 1 | 3 | 0 | 2 | 9 | 0 | `d2e28f4` |
+| [FPS](../FPS/ENGINE-NOTES.md) | 16 | 2 | 3 | 0 | 2 | 9 | 0 | `d2e28f4` |
 | [InquestScrolls](../InquestScrolls/ENGINE-NOTES.md) | 12 | 0 | 1 | 2 | 1 | 8 | 0 | `95897d7` |
 | [jelly-pandas](../jelly-pandas/ENGINE-NOTES.md) | 9 | 2 | 2 | 0 | 0 | 5 | 0 | `8424ff2` |
 | [JY](../JY/ENGINE-NOTES.md) | 2 | 1 | 1 | 0 | 0 | 0 | 0 | `c1570b0` |

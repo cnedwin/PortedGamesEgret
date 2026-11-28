@@ -1,0 +1,259 @@
+{
+  "baselineGame": "91e1f0e47b7d15a12e958a44bfcd2b6502876aa6",
+  "matchedDemoEngine": "d2e28f46182a563fd594cc51847240429ab0a5b5",
+  "publicPcCold": {
+    "runs": 3,
+    "fileHashes": 16,
+    "uniqueGLB": 34,
+    "roles": 36,
+    "encodedBytes": 48171392,
+    "htmlTTFBms": [
+      264,
+      9,
+      259
+    ],
+    "firstGLBms": [
+      3299,
+      344,
+      3818
+    ],
+    "lastGLBms": [
+      5316,
+      1730,
+      5492
+    ],
+    "assetsCompleteMs": [
+      5340,
+      1754,
+      5528
+    ],
+    "sceneLongTaskMs": [
+      3325,
+      3536,
+      3543
+    ],
+    "prepare3Dms": [
+      762,
+      793,
+      908
+    ],
+    "firstViewWarmupMs": [
+      1505,
+      1597,
+      1702
+    ],
+    "titleMs": [
+      13564,
+      9035,
+      15002
+    ],
+    "deployLockMs": [
+      268,
+      346,
+      274
+    ],
+    "local2DHostProgramPreparationMs": "about 1800–2000",
+    "qualification": "Stages can overlap; not additive; native startup program preparation separate from download and scene work."
+  },
+  "sceneAB": {
+    "A": {
+      "titleMs": [
+        7150,
+        6994
+      ],
+      "longTaskMs": [
+        2906,
+        2929
+      ],
+      "sectionsMs": 1949.6,
+      "gcMs": 192.1,
+      "viewMs": 2694.6,
+      "deployMs": [
+        241,
+        256
+      ]
+    },
+    "B": {
+      "titleMs": [
+        6253,
+        6295
+      ],
+      "longTaskMs": [
+        1903,
+        1932
+      ],
+      "sectionsMs": 991.3,
+      "gcMs": 153.6,
+      "viewMs": 1748.2,
+      "deployMs": [
+        270,
+        257
+      ]
+    },
+    "visualExactRegression": true,
+    "rejectedExperiments": [
+      "JS tuple object cache increased GC",
+      "Six modulepreload hints did not reliably improve controlled title latency",
+      "Early scene creation blocked host module initialization"
+    ]
+  },
+  "fold7": {
+    "device": "Galaxy Z Fold7 / Android17 Chrome158 / Adreno830",
+    "cssViewport": [
+      873,
+      325
+    ],
+    "dpr": 2.625,
+    "seed": 3,
+    "quality": "medium",
+    "gpuTimingStatus": "unsupported",
+    "publicStableBaseline": {
+      "samples": 4352,
+      "p95": 49.8,
+      "max": 99.5,
+      "over50": 103,
+      "over100": 0
+    },
+    "attribution": {
+      "playTimingSamples": 0,
+      "worldTimingSamples": 751,
+      "naturalDeathSeconds": 16.31,
+      "matchedCallbackGapsMs": [
+        82.8,
+        67.4,
+        66.3
+      ],
+      "worldCPUms": [
+        13.4,
+        2.6,
+        3.5
+      ],
+      "shared2DCPUms": [
+        57.7,
+        53.6,
+        58.9
+      ],
+      "mainSubmissionP95ms": 3.5,
+      "reflectionSubmissionP95ms": 1.6,
+      "note": "Combined native shared capture and submission, not GPU execution, host-only or bytes transferred."
+    },
+    "localAB": {
+      "A": {
+        "samples": 4114,
+        "median": 33,
+        "p95": 49.8,
+        "max": 99.5,
+        "over50": 137,
+        "over100": 0,
+        "callbackHz": 36.03,
+        "submissions": 3458,
+        "steps": 4258,
+        "submissionPerSec": 29.39,
+        "uploadCreditP95KB": 936,
+        "drawEWMAMedian": 19.52,
+        "titleMs": 6796,
+        "temperatureC": [
+          32.1,
+          33.2
+        ]
+      },
+      "B": {
+        "samples": 4552,
+        "median": 16.6,
+        "p95": 49.8,
+        "max": 116,
+        "over50": 132,
+        "over100": 1,
+        "callbackHz": 39.86,
+        "submissions": 2477,
+        "steps": 4777,
+        "submissionPerSec": 20.84,
+        "uploadCreditP95KB": 810,
+        "drawEWMAMedian": 16.55,
+        "titleMs": 7206,
+        "temperatureC": [
+          33.4,
+          34.4
+        ]
+      },
+      "seconds": 115,
+      "firstObjectiveCompletedBoth": true,
+      "deviceRestored": true,
+      "qualification": "Actual protocol touch, natural path and temperature differ. Strong fewer 2D submissions, not uniform tail latency win."
+    }
+  },
+  "finalPCBasePin": {
+    "ordinaryChecks": 8,
+    "ordinaryPass": true,
+    "readyMs": 7820,
+    "colors": 319,
+    "nativeControlsDesktop": 33,
+    "emulatedViewportChecks": 17,
+    "cameraResizeChecks": 14,
+    "cameraResizeTitleMs": 5842,
+    "cameraResizeMaxTaskMs": 1839,
+    "playP95": 4.3,
+    "playMax": 8.3,
+    "over50": 0,
+    "errors": 0
+  },
+  "tests": {
+    "node": 98,
+    "headlessCompleteSeconds": [
+      357,
+      358,
+      357
+    ]
+  },
+  "engineDiagnostics": {
+    "pr": 562,
+    "scope": "Expose optional actual Play loop timing, not an optimization itself",
+    "initialEngineCommit": "6dc78d4616dec18d03475e5e369b79676e92f124",
+    "unitChecks": 42,
+    "hardwareWebGL2": true,
+    "hardwareWebGPU": true,
+    "observations": [
+      104,
+      105
+    ],
+    "activeUpdatesPerSamples": [
+      12,
+      12
+    ],
+    "outcomes": [
+      "submitted",
+      "retained",
+      "refused"
+    ]
+  },
+  "limitations": [
+    "Physical device protocol input not human input.",
+    "No GPU timing support on Fold7.",
+    "Longframes remain and route temperature/path differ.",
+    "Prior full missions are not repeated for this specific performance batch."
+  ],
+  "independentEngineCandidate": {
+    "pin": "51c5e43eba9de9c00e3412d6b9db2b805157dfb2",
+    "upstreamPR": 560,
+    "officialVendorScratch": true,
+    "node": 98,
+    "adopted": false,
+    "reason": "All attempts ended ordinary defeat, insufficient common high-load comparison; same-game early data do not establish benefit.",
+    "commonPlaySeconds": "1–11.92",
+    "A": {
+      "samples": 432,
+      "p95": 49.7,
+      "max": 82.9,
+      "over50": 6,
+      "callbackHz": 39.49
+    },
+    "B": {
+      "samples": 404,
+      "p95": 49.8,
+      "max": 114.6,
+      "over50": 10,
+      "callbackHz": 35.79
+    },
+    "errors": 0
+  }
+}

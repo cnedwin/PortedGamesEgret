@@ -35,20 +35,37 @@ function buildSections(model, sections) {
     const normal = part.geometry.getAttribute('normal')?.data;
     const uv = part.geometry.getAttribute('uv')?.data;
     const faces = part.geometry.index?.data ?? Array.from({ length: position.length / 3 }, (_, index) => index);
+    // Reused indices refer to the same immutable source tuple. A flat, local
+    // cache retains the original double-precision normal/UV values without
+    // keeping a large object graph alive across every face of this part.
+    const vertexCount = position.length / 3, reuse = faces.length > vertexCount;
+    const tuples = reuse ? new Float64Array(vertexCount * 8) : undefined;
+    const converted = reuse ? new Uint8Array(vertexCount) : undefined;
+    const m = part.matrix;
     const positions = [], normals = [], uvs = [], indices = [];
+    // Only clipping intersections allocate new tuples. The three source
+    // corners can be reused after the previous face's output has been consumed.
+    const triangle = [new Array(8), new Array(8), new Array(8)];
     for (let face = 0; face < faces.length; face += 3) {
-      const triangle = [];
       for (let corner = 0; corner < 3; corner++) {
-        const vertex = faces[face + corner], offset = vertex * 3, m = part.matrix;
-        point.set(position.subarray(offset, offset + 3));
-        vec3TransformMat4(point, point, m);
-        const n = normal ? [normal[offset], normal[offset + 1], normal[offset + 2]] : [0, 1, 0];
-        const transformedNormal = [
-          m[0] * n[0] + m[4] * n[1] + m[8] * n[2],
-          m[1] * n[0] + m[5] * n[1] + m[9] * n[2],
-          m[2] * n[0] + m[6] * n[1] + m[10] * n[2],
-        ];
-        triangle.push([...point, ...transformedNormal, uv?.[vertex * 2] ?? 0, uv?.[vertex * 2 + 1] ?? 0]);
+        const vertex = faces[face + corner], tuple = triangle[corner], at = vertex * 8;
+        if (converted?.[vertex]) {
+          for (let component = 0; component < 8; component++) tuple[component] = tuples[at + component];
+        } else {
+          const offset = vertex * 3;
+          point.set(position.subarray(offset, offset + 3));
+          vec3TransformMat4(point, point, m);
+          const nx = normal ? normal[offset] : 0, ny = normal ? normal[offset + 1] : 1, nz = normal ? normal[offset + 2] : 0;
+          tuple[0] = point[0]; tuple[1] = point[1]; tuple[2] = point[2];
+          tuple[3] = m[0] * nx + m[4] * ny + m[8] * nz;
+          tuple[4] = m[1] * nx + m[5] * ny + m[9] * nz;
+          tuple[5] = m[2] * nx + m[6] * ny + m[10] * nz;
+          tuple[6] = uv?.[vertex * 2] ?? 0; tuple[7] = uv?.[vertex * 2 + 1] ?? 0;
+          if (tuples) {
+            for (let component = 0; component < 8; component++) tuples[at + component] = tuple[component];
+            converted[vertex] = 1;
+          }
+        }
       }
       const [a, b, c] = triangle;
       const minX = Math.min(a[0], b[0], c[0]), maxX = Math.max(a[0], b[0], c[0]);
@@ -72,7 +89,7 @@ function buildSections(model, sections) {
             bounds[component] = Math.min(bounds[component], value);
             bounds[component + 3] = Math.max(bounds[component + 3], value);
           }
-          const magnitude = Math.hypot(...vertex.slice(3, 6)) || 1;
+          const magnitude = Math.hypot(vertex[3], vertex[4], vertex[5]) || 1;
           normals.push(vertex[3] / magnitude, vertex[4] / magnitude, vertex[5] / magnitude);
           uvs.push(vertex[6], vertex[7]);
         }

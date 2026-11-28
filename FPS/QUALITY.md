@@ -1,5 +1,74 @@
 # 品质验收 · Quality — Operation Cutoff · 断流行动
 
+## Fold7 frame pacing and public startup / Fold7 长帧与公网冷启动专项
+
+Baseline / 基线：game release `91e1f0e4`, engine `d2e28f46182a563fd594cc51847240429ab0a5b5`, seed 3 medium WebGL2 on Fold7 and seed 7 medium on Windows Edge RTX 5090 Laptop. The geometry-cache and HUD-revision experiments retain the engine pin for attribution. No art, quality setting, simulation, input, save or audio change. / 模型、画质、规则、操作、存档、声音不变，以下A/B固定引擎以区分Demo改动与引擎。
+
+### Public cold startup attribution / 公网冷启动归因
+
+Three fresh exact-public-file PC runs (one CPU-profiled), 16/16 source hashes and 36 models in each, no errors. Durations are measured in the actual page; overlapping intervals are not additive. / 三轮实际冷启动（其中一轮CPU追踪），资源版本一致，以下阶段有重叠不能相加。
+
+| Stage / 阶段 | Run 1 | Run 2 | Run 3 |
+|---|---:|---:|---:|
+| HTML TTFB / 首字节 | 264 ms | 9 ms | 259 ms |
+| First model request → last model end / GLB首请求至末尾 | 3.299→5.316 s | 0.344→1.730 s | 3.818→5.492 s |
+| Asset progress complete / 模型进度完成 | 5.340 s | 1.754 s | 5.528 s |
+| Scene long task / 场景同步长任务 | 3325 ms | 3536 ms | 3543 ms |
+| Native 3D prepare / 着色变体准备 | 762 ms | 793 ms | 908 ms |
+| Total first-view warmup / 3D首绘预热 | 1505 ms | 1597 ms | 1702 ms |
+| Title usable wall / 标题可用 | 13.564 s | 9.035 s | 15.002 s |
+| Deploy lock / 部署锁定 | 268 ms | 346 ms | 274 ms |
+
+34 unique GLBs / 34个唯一GLB，36个角色与场景资源槽，公网编码传输约48.17 MB; public network request timing varies with RTT and module discovery. Native 2D host `getStartupTiming()` on matched local PC reports context creation ~5–6 ms, parallel program preparation ~1.8–2.0 s (distinct from 3D preparation). CPU profile puts the main scene task in `createView`→`buildScenery`→`buildSections`; GLTF accessor/geometry work is much smaller. / 本地2D正式宿主时序表明创建上下文和着色程序准备是不同阶段，后者约2秒，不能把这段时间都归入解码。模块预加载的受控四轮平均标题仅改善约0.7%，未采用；提前同步构建整个场景会阻塞宿主模块发现，也未采用。 / Six exact module preload hints in a controlled 120 ms/100 Mbps HTTP1 test did not reliably shorten the critical path (average title -0.7%, no duplicates); rejected. A scratch early-scene prototype delayed host module readiness and produced no wall benefit; rejected. Neither experiment is a measured public h2 speedup.
+
+### Exact geometry optimization / 精确场景优化
+
+The flat per-part typed cache retains exact transformed vertex and normal/UV values, reuses three corner tuples in each clipping calculation, and avoids rebuilding the same indexed input. Intersections, output order, bounds, indices and attributes remain byte-exact on generated boundary fixtures and authored plant/container GLBs. No additional objects kept alive across scene creation. / 每个网格部件用扁平数字缓存和三个可复用角点，保留原始输出及碰撞，四项回归验证（含非单位变换共享索引）。
+
+| Matched local RTX runs / 同路线本地PC | Prior A | Candidate B |
+|---|---:|---:|
+| Title ready (two runs) / 标题可用 | 7150 / 6994 ms | 6253 / 6295 ms |
+| Scene long task / 场景长任务 | 2906 / 2929 ms | 1903 / 1932 ms |
+| CPU profile `buildSections` inclusive / 裁切采样 | 1949.6 ms | 991.3 ms |
+| GC CPU sample / 垃圾回收采样 | 192.1 ms | 153.6 ms |
+| `createView` inclusive / 场景创建采样 | 2694.6 ms | 1748.2 ms |
+| Delay to deploy lock / 部署输入锁定 | 241 / 256 ms | 270 / 257 ms |
+
+The preliminary cache of retained JS arrays reduced clipping work but increased GC and did not improve end-to-end startup, so it was replaced with bounded flat storage. Actual results show the revised representation reduces the scene long task about one second without deferring the work to the first action; shader preparation not claimed faster. / 首个JS对象缓存方案被实测否决，扁平缓存实际使场景长任务减少约1秒，无首操作等待转移。
+
+### Physical Fold7 pacing / 三星真机帧间隔
+
+Adreno 830, Android17 Chrome158, 873×325 CSS, DPR2.625, medium WebGL2. Fresh owned browser contexts, ordinary trusted-protocol touch, seed3, ~115s gameplay through the same first objective. Untouched public baseline measured 4352 stable intervals, p95/max49.8/99.5ms, 103>50ms, zero>100ms. A separate public attribution run measured 4515 stable intervals, p95/max49.7/99.5ms, 29>50. GPU timer extension unavailable on this device; numbers are actual callback gaps and synchronous CPU metrics, not GPU or screen presentation FPS. / 不把部署/暂停时跨边界间隔当稳定长帧，不把手机模拟或协议输入当真人操作。
+
+Actual time-aligned scratch diagnosis (same original game and engine, normal defeat at16.31s): top-level Play timing hook supplied but 0 samples, World3D hook 751; 82.8ms gap aligned with native World3D13.4ms and actual 2D shared capture/submission57.7ms, another67.4/66.3ms gap aligned with world2.6/3.5ms and 2D53.6/58.9ms. The separate public scoped renderer samples had main CPU submission p95 3.5ms, reflection1.6ms; the actual GPU-query status was unsupported. These native CPU scopes overlap and there is no proof of GPU execution time or host-only texture time. / 诊断正常阵亡仍保留原始证据；正式Play接口缺少帧采样回调，已单独向引擎提交 [#562](https://github.com/cnedwin/Egret_rebuild/pull/562)，它修的是观察能力，不是性能数字本身。
+
+The HUD no longer flips an already-visible stable marker off/on each update or rebuilds hidden hit graphics when only the crosshair spacing changes. The displayed quantized shape, presence, position, and event timing stay the same. / 优化指南针同状态显示及隐藏命中图形的重复标脏，保留反馈即时性、位置及画面。Three native Sprite/Graphics tests verify stable no-change and independent shape/event updates; combined with four geometry tests 98 Node tests pass.
+
+| Matched local Fold7 A/B, 115s / 同机局部线路 | A old game | B geometry + HUD |
+|---|---:|---:|
+| Steady samples / 稳定区间样本量 | 4114 | 4552 |
+| Callback median / 中位数 | 33.0 ms | 16.6 ms |
+| Callback P95 / P95 | 49.8 ms | 49.8 ms |
+| Maximum / 最大 | 99.5 ms | 116.0 ms |
+| Intervals >50ms / 超过50ms | 137 (33.3/1000) | 132 (29.0/1000) |
+| Intervals >100ms / 超过100ms | 0 | 1 |
+| Callback cadence / 平均回调频率 | 36.03 Hz | 39.86 Hz |
+| Actual native UI submissions / steps | 3458/4258 (81.2%) | 2477/4777 (51.9%) |
+| Estimated submissions per second / 提交频率 | 29.39 | 20.84 |
+| Outstanding upload credit p95 / 在途存储信用费P95（非上传字节） | 936 KB | 810 KB |
+| Broad native draw EWMA median / 宽口径draw均值的中位数 | 19.52 ms | 16.55 ms |
+
+Both routes reached the first objective and restored the device; no errors, 16/16 expected files each. The path naturally varied; start/end battery 32.1→33.2°C vs33.4→34.4°C, USB. B title6796→7206ms did not show a phone startup gain in this pair; the improvement in actual UI submissions is measured, cadence direction is encouraging, P95 unchanged and a longer event remains. Do not claim a uniform long-frame or GPU regression fix; source identity, screenshots and raw private recordings remain separate. / 实际提交比例明确下降，帧间隔P95未改善且仍有长帧，不宣称全部消除，也不从单次A/B推断纯引擎因果。任务全流程在上一轮两台设备完成，本轮高负载路线与操作回归不重复完整撤离。
+
+### Separate engine candidate / 独立引擎候选对照
+
+An isolated official vendor build of unmerged engine candidate `51c5e43e` (related [engine PR #560](https://github.com/cnedwin/Egret_rebuild/pull/560), clip reuse and other upstream changes) used the exact same final game HUD/geometry source. Node98/98 passed. The extra physical test ended in ordinary defeat in both editions, without runtime/HTTP failure. In the common early game-time 1→11.92 s interval, current A and candidate B had 432/404 callback intervals, p95 49.7/49.8 ms, max82.9/114.6 ms, >50 6/10, callback39.49/35.79Hz; sample counts and actual paths differ. This cannot establish a matched high-load gain or blame one change. The candidate is not adopted, and no unmerged engine code is published. / 独立测试候选包含相关引擎裁切复用改动与其他更新，不归因为单一变更。共同早期区间较短，实际流程正常阵亡，证据不足以证明改善；保持原已合并引擎副本。
+### Verification / 复跑与边界
+
+- `node --test test/*.test.mjs` (98/98), headless rules 3/3 with 357/358/357s. Root standard (FPS strict), showcase, canonical LF capability/duplication checks pass; only generated note ledger changes when a new engine note is recorded. / 全量规则和工程标准检查通过；未改其他游戏。
+- Final hardware bare verifier and native PC controls checked separately; physical Fold7 A/B is not desktop emulation. Exact runtime pin, profile phases, outcomes and later public results are recorded in [the sanitized receipt](test/evidence/fps-performance-20261128.json). User-facing visuals and mechanics unchanged / 保留原画质和玩法。
+- No real human input, external browser/controller, speaker listening, direct GPU timing or present FPS claim. Raw source-hash/trace records private; no personal device identifiers included. / 不将协议输入当真人，不对未测设备、听音、屏幕呈现或GPU执行作推断。
+
 ## Latest main, physical mission and startup regression / 最新主干、真机整局与启动验收
 
 Engine / 引擎：`4f08d2bc` → `d2e28f46182a563fd594cc51847240429ab0a5b5` ([PR #555](https://github.com/cnedwin/Egret_rebuild/pull/555)), officially generated 15-entry vendor; 32 import mappings are unchanged. 引擎正式复制工具生成，无手改副本。Native input, art, rules, damage, collision, save format and audio are unchanged / 原生输入、美术、玩法、数值、碰撞、存档格式和音频不变。The only game-code optimization skips unnecessary scenery geometry clipping and allocation during startup, with exact-output tests / 游戏代码仅优化首屏场景网格裁切，精确输出回归保持原始顶点、索引、法线、UV、切线及材质。

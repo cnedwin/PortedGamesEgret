@@ -5,6 +5,7 @@
 This document records where this version stands: problems already solved, parts not yet verified, known issues, unfinished features, and how far each model has been taken. Please keep it up to date as changes land.
 
 ## 这一版有什么 · What this version contains
+- 首屏几何缓存和HUD同状态保留优化，不改变原始模型和玩法；真机与公网数据见 [QUALITY.md](QUALITY.md)。 · Exact startup geometry caching and retained HUD updates; original art and rules remain, with physical-device and public startup data in QUALITY.md.
 
 | 方面 · Area | 内容 · Content |
 | --- | --- |
@@ -46,6 +47,7 @@ Before formal API adoption, the runtime's refresh to `33897768` passed 51 Node c
 The historical device acceptance focused on WebGL2. Consult the formal-adoption record above before attributing full-monitor native PC fullscreen, dedicated game WebGPU qualification, human difficulty assessment or listening checks to the current version. Characters use continuous original-UV surfaces with baked weights and independent sixteen-bone Egret skeletons, driven procedurally rather than by motion capture. Terrain, foliage, ground, rails, signs and lighting retain their existing implementation.
 
 ## 已知问题 · Known issues
+- Fold7高负载时偶发长帧仍存在，P95约49.8ms；本轮已减少2D提交，但不是完全解决。 · Fold7 heavy-load hitches remain, p95 around49.8ms in the matched Demo-side A/B; native submissions decrease without a uniform tail-latency fix.
 
 | 问题 · Issue | 影响 · Effect |
 | --- | --- |
