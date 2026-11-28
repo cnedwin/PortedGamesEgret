@@ -19,7 +19,7 @@ try {
       const settings = window.testInputSettings = { control: 'direction', sensitivity: 1 };
       const game=await play({canvas,width:400,height:250,fit:'expand',audio:false,renderMode:'on-demand'});
       const input=window.testInput=createInput(game,{settings});
-      canvas.addEventListener('click', () => input.capture(true), { once: true });
+      input.capture(true);
     </script>` }));
   await page.goto(url);
   await page.waitForFunction(() => window.testInput);

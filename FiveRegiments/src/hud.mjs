@@ -130,10 +130,16 @@ export function createHud(game,{touch=false,semantics}={}){
     const m=cssLayer(game,root),a=m.safe,mid=a.left+a.width/2,k=[a.left,a.top,a.width,a.height,touch,currentHero?.horse?1:0].join(':');
     if(!force&&layoutKey===k)return m;layoutKey=k;
     const short=a.height<440,portrait=a.height>a.width;
-    cw=Math.min(touch&&portrait?a.width-24:300,Math.max(132,a.width-(touch&&!portrait?310:42)));
-    box(compassBg,cw,34,C.ink,C.edge,.70);put(compass,mid-cw/2,a.top+5);put(needle,cw/2-1,1);
-    box(meBg,210,currentHero?.horse?122:79,C.ink,C.edge,.86);
-    put(me,a.left+8,touch?(portrait?a.top+46:a.top+7):a.bottom-(currentHero?.horse?136:91));
+    const meHeight=currentHero?.horse?122:79;
+    // The compass occupies only the safe lane left of Pause; in landscape its
+    // lane also excludes the status card, so neither can hide the health or bearing.
+    const compassLeft=touch?(portrait?a.left+8:a.left+226):a.left+8;
+    const compassRight=a.right-(touch?64:8),laneWidth=Math.max(90,compassRight-compassLeft);
+    cw=Math.min(portrait&&touch?420:300,laneWidth);
+    const compassX=clamp(mid-cw/2,compassLeft,Math.max(compassLeft,compassRight-cw));
+    box(compassBg,cw,34,C.ink,C.edge,.70);put(compass,compassX,a.top+5);put(needle,cw/2-1,1);
+    box(meBg,210,meHeight,C.ink,C.edge,.86);
+    put(me,a.left+8,touch?(portrait?a.top+46:a.top+7):a.bottom-(meHeight+12));
     const sw=Math.max(1,slotViews.length*38-4),aw=Math.max(1,skillViews.length*92-4),w=Math.max(sw,aw);
     visible(equipment,!touch);const scale=touch?1:clamp((a.width-260)/w,.6,1);equipment.scaleX=equipment.scaleY=scale;
     put(equipment,mid-w*scale/2,a.bottom-90*scale);put(slots,(w-sw)/2,42);put(skills,(w-aw)/2,0);
@@ -145,10 +151,22 @@ export function createHud(game,{touch=false,semantics}={}){
     const msgW=Math.min(310,a.width-20);tell.resize(msgW,28);cover.resize(msgW,26);
     put(tell.root,-msgW/2,-91);put(cover.root,-msgW/2,62);toast.resize(msgW,26);hint.resize(msgW,35);
     put(toast.root,mid-msgW/2,Math.min(a.bottom-40,cy+82));put(hint.root,mid-msgW/2,cy+46);
-    const objW=Math.min(320,a.width-16);objective.resize(objW,28);put(objective.root,mid-objW/2,a.top+(touch&&portrait?174:43));
-    put(banner,mid,a.top+(kind==='start'?(short?40:53):a.height*.25));
-    const size=Math.min(kind==='start'?38:64,Math.max(24,a.width*.075));setFont(bannerTitle,size);put(bannerTitle,0,0);put(bannerSub,0,size+7);
-    const bw=Math.min(a.width-16,Math.max(270,a.width*.52));box(bannerBg,bw,size+30,C.ink,null,.55);put(bannerBg,-bw/2,-3);
+    const bannerLaneLeft=touch&&!portrait?a.left+226:a.left+8;
+    const bannerLaneRight=touch&&!portrait?a.right-64:a.right-8;
+    const bannerLaneWidth=Math.max(90,bannerLaneRight-bannerLaneLeft);
+    const objW=Math.min(320,bannerLaneWidth);
+    const objMid=clamp(mid,bannerLaneLeft+objW/2,Math.max(bannerLaneLeft+objW/2,bannerLaneRight-objW/2));
+    const objY=touch&&portrait?me.y+meHeight+8:a.top+43;
+    objective.resize(objW,28);put(objective.root,objMid-objW/2,objY);
+    const start=kind==='start';
+    // Opening banners are deliberately short-lived but never dim the persistent
+    // self status. Portrait stacks beneath it; landscape uses the free center lane.
+    const bw=start&&touch?Math.min(bannerLaneWidth,Math.max(220,a.width*.36)):Math.min(a.width-16,Math.max(270,a.width*.52));
+    const bx=start&&touch?clamp(mid,bannerLaneLeft+bw/2,Math.max(bannerLaneLeft+bw/2,bannerLaneRight-bw/2)):mid;
+    const by=start?(touch&&portrait?objY+(objective.root.visible?34:0)+5:a.top+(objective.root.visible?77:43)):a.top+a.height*.25;
+    put(banner,bx,by);
+    const size=Math.min(start?38:64,Math.max(24,a.width*.075));setFont(bannerTitle,size);put(bannerTitle,0,0);put(bannerSub,0,size+7);
+    fit(bannerSub,bw,16,11);box(bannerBg,bw,size+30,C.ink,null,.55);put(bannerBg,-bw/2,-3);
     return m;
   }
   const stopResize=game.browser.onScreenChange(()=>place(true));
@@ -298,7 +316,7 @@ export function createHud(game,{touch=false,semantics}={}){
   }
   return {
     root,setup,update,show(on){visible(root,on);if(on)place(true);},
-    objective(value){txt(objective.label,value);fit(objective.label,objective.w,13,10);visible(objective.root,!!value);},
+    objective(value){txt(objective.label,value);fit(objective.label,objective.w,13,10);const shown=objective.root.visible;visible(objective.root,!!value);if(shown!==!!value)place(true);},
     banner(value,sub='',seconds=2.2,type=''){kind=type;bannerTimer=seconds;txt(bannerTitle,value);txt(bannerSub,sub);bannerTitle.color=kind==='lose'?C.danger:C.gold;visible(banner,true);place(true);},
     hideBanner(){visible(banner,false);bannerTimer=0;},
     toast(value,type=''){txt(toast.label,value);fit(toast.label,toast.w,14,10);toast.label.color=type==='bad'?C.danger:type==='good'?C.good:C.paper;toastTimer=.9;visible(toast.root,true);},

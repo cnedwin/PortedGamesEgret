@@ -64,3 +64,20 @@ test('HUD labels rasterize at matching stage density without changing CSS size',
   assert(Math.abs(self.size*self.scaleX-16)<.01);
   hud.dispose();ui.dispose();
 });
+test('opening banner, objective, self status and pause lane do not overlap on narrow touch screens',()=>{
+  const fight=createFight({hero:{regiment:'plume'},foes:[{regiment:'tiger'}]});
+  for(const [w,h,left,top,right,bottom] of [[375,667,0,0,0,0],[393,852,0,59,0,34],[852,393,59,0,59,21],[873,325,0,0,0,18],[768,1024,0,0,0,0]]){
+    const ui=new Sprite(),screen={x:0,y:0,width:w,height:h},safe={x:left,y:top,width:w-left-right,height:h-top-bottom};
+    const game={ui,screen,safe,browser:{screen:{scale:1},onScreenChange:()=>()=>{}},
+      text(value,o){const n=new Sprite();n.text=String(value);Object.assign(n,{x:o.x??0,y:o.y??0,size:o.size??16,color:o.color});o.layer.addChild(n);return n;}};
+    const hud=createHud(game,{touch:true});hud.setup(fight);hud.show(true);hud.objective('Objective');hud.banner('Fight','County',2,'start');
+    const panels=hud.root.getChildByName('battle-panels'),me=panels.getChildByName('fighter-status'),compass=panels.getChildByName('compass'),
+      objective=panels.getChildByName('objective'),banner=hud.root.getChildByName('banner');
+    const bound=(n)=>{const r=n.getChildByName('frame');return {x:n.x+r.x,y:n.y+r.y,w:r.width,h:r.height};};
+    const overlaps=(a,b)=>a.x<b.x+b.w-.01&&b.x<a.x+a.w-.01&&a.y<b.y+b.h-.01&&b.y<a.y+a.h-.01;
+    const a=bound(me),b=bound(banner),c=bound(compass),d=bound(objective);
+    const pause={x:w-right-56,y:top+6,w:48,h:48};
+    for(const [x,y] of [[a,b],[a,c],[a,d],[c,pause],[b,pause],[b,d]])assert(!overlaps(x,y),JSON.stringify({w,h,x,y}));
+    hud.dispose();ui.dispose();
+  }
+});

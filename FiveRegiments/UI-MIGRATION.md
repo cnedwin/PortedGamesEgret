@@ -29,3 +29,19 @@ The transparent Play interface is attached to the existing World3D renderer with
 原有五套动捕步态保持，普通无特殊动作的起停、转向使用短时间过渡；静止马匹头颈微动。试验光带在同时间、同机位实拍中没有证实可见改善，故保留既有光效。 / The original capture sets are retained; ordinary locomotion transitions and a small horse idle movement are refined. The alternative ribbon was not retained because the matched visible capture did not establish an improvement.
 
 PC 实际键鼠进入、选营、指针锁定、移动起停通过（RTX 5090 Laptop GPU；303 isolated rAF intervals, p95 4.3 ms, max 12.7 ms, no >50 ms). Automated browser input is not human play. The focused motion tests used actual capture data; all 194 Node tests passed in the retained version.
+
+## V5 — 易用性、性能与验收 · Reliability, controls and acceptance
+
+- 进场与返回标题的异步失败进入可重试的原生错误页；真实加载进度、有限的下一场模型字节预取、画质档位修复。 / Native retry for asynchronous load failures, real title progress, bounded asset-byte prefetch and correct picture-tier switching.
+- 关闭未使用的 UI 音频上下文，游戏自行管理的粒子只更新一次。 / The unused Play audio context is disabled; game-owned emitters advance only once.
+- 鼠标锁定仅在明确的战场点击释放后请求，进入与继续时不继承前一屏点击；保留退出、失败回退与清理。 / Explicit battle click on release requests pointer lock; entry and resume do not inherit a prior menu gesture.
+- 首页展示专用胸、头、颈姿态；两档实际模型各五套独立验证，腿、碰撞、实战动作与座位保持。 / Preview-only upright posture, validated on all five low and mid assets. Grounded feet, seat, rules and combat pose behavior remain unchanged.
+- 小屏标题四个模式完整显示；战场罗盘与暂停分离、开场信息不遮血条。 / Four visible title modes on small screens; compass and pause separated, opening banner no longer covers health.
+- 200/200 Node tests and 21 browser flow checks; deliberate HTTP failure/retry and low/high quality round-trip passed. Nine screen profiles, 63 checkpoints and nine final states: zero findings/warnings/errors; final compact title rerun on three portrait profiles, all seven controls visible with 48 CSS px height. Native Chromium touch (including multi-contact) and pointer-lock checks passed.
+- Windows physical PC, RTX 5090 Laptop GPU, Edge, 1280×800/high: normal browser mouse and keys through title, selection, loadout, battle, pointer lock, pause, resume/relock and natural settlement (18.9 s, loss). 860 gameplay intervals, p95 4.3 ms, max 8.3 ms, zero >50 ms, no console/page errors.
+- Samsung Galaxy Z Fold7, SM-F966U1, Android 17, Chrome 158, Adreno 830, actual 873×325/medium: normal on-screen touch through title/settings/selection/loadout, joystick exit/release, simultaneous three-point touch, pause/resume and natural settlement (16.1 s, loss). 845 gameplay intervals, p95 16.7 ms, max 33.2 ms, zero >50 ms, no exceptions. Device lease and prior state restored. Browser-generated actual device input, not human fingers; screenshots were taken outside cadence samples.
+- Full campaign completion, physical controller, screen-reader listening, Safari/Firefox/WeChat and exhaustive device performance were not tested in this batch. No claim of AAA-equivalent art or game balance changes. Historical software-rendering results are distinct from hardware results.
+
+使用 `node --test test/*.test.mjs`、`node test/accept.mjs`、`node test/error-accept.mjs`、`node test/pointer-accept.mjs`、`node test/touch-accept.mjs` 和 `node vendor/egret.mjs verify --screens --play test/screen-route.mjs` 复跑。 / Reproduce with the same commands. The device test additionally requires an authorized physical device and real browser input.
+
+截图 / Visual references: the original title/selection/bamboo references were retained throughout V1 and V2; final native UI/lighting candidates differed intentionally (39.12%, 36.91%, 57.58%). The two menu reference captures now use a fixed camera only in the existing ?fixed verification mode so variable load time does not change the reference. Normal menu camera animation remains unchanged. The replacement images were visually reviewed before copying; no comparison threshold was relaxed.

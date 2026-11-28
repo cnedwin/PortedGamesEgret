@@ -23,6 +23,16 @@ async function screen(kind){
   const frame=await page.evaluate(()=>egretGame.status.frames);
   await page.waitForFunction(n=>egretGame.status.frames>=n+2,frame,{timeout:30000});
 }
+async function clickIntoFight(){
+  // The player now explicitly enters pointer-lock on a completed canvas click;
+  // a menu gesture must not be carried across an asynchronous level load.
+  await page.waitForFunction(()=>egretGame?.mode==='fight'&&egretGame.screens.current===null);
+  if(await page.evaluate(()=>egretGame.input.state.wantLock&&!egretGame.input.state.pointerLocked)){
+    const bounds=await page.evaluate(()=>{const r=egretGame.uiGame.canvas.getBoundingClientRect();return {x:r.left+r.width/2,y:r.top+r.height/2};});
+    await page.mouse.click(bounds.x,bounds.y);
+    await page.waitForFunction(()=>egretGame.input.state.pointerLocked,null,{timeout:10000});
+  }
+}
 async function pressControl(name,id) {
   // Use the actual semantic tester, but also require the part be present before
   // activation. The visible UI and native buttons serve the same input action.
@@ -60,6 +70,7 @@ try {
   check(men[0]==='tiger'&&men.length===2,`the fight is on: ${men.join(' against ')}`);
   check(await page.evaluate(()=>{const h=egretGame.hud.snapshot();return h.visible&&h.skillCount===3&&h.slotCount===10&&h.compass}),
     'the native HUD shows the compass, ten slots, two skills and the art');
+  await clickIntoFight();
   const over=await page.evaluate(()=>window.egretGame.run(240));
   check(over==='won'||over==='lost',`a stand-in plays it out: ${over}`);
   await screen('result');
@@ -77,6 +88,7 @@ try {
   await page.goto(`${server.url}${path}/?seed=5&lang=zh&quality=low&duel=vanguard,plume,archer&place=palace`);
   await until(page,()=>window.egretGame?.mode==='fight',180);
   check(await page.evaluate(()=>egretGame.hud.snapshot().plates===2),'a native nameplate for each foe');
+  await clickIntoFight();
   const two=await page.evaluate(()=>window.egretGame.run(300));
   check(two==='won'||two==='lost',`one against two plays out: ${two}`);
   await screen('result');check(true,'and ends on a result');

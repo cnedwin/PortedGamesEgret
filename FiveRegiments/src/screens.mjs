@@ -26,6 +26,10 @@ const headline=(name,words,props={})=>text(name,words,{fontFamily:titleFont(),fo
 const scroll=(children)=>col(children,{name:'page-scroll',scroll:'vertical',height:'fill',gap:8});
 const labelFor=(label,words)=>label+' · '+words;
 const roughUnits=(value)=>[...String(value)].reduce((n,c)=>n+(c.codePointAt(0)>255?1:.62),0);
+function paragraphBoxHeight(words,width,size,lineHeight=Math.ceil(size*1.5)){
+  const lines=String(words).split('\n').reduce((sum,line)=>sum+Math.max(1,Math.ceil(roughUnits(line)*size/Math.max(50,width-18))),0);
+  return Math.max(lineHeight+3,Math.ceil(lines*lineHeight+7));
+}
 const split=(arr,count)=>Array.from({length:Math.ceil(arr.length/count)},(_,i)=>arr.slice(i*count,(i+1)*count));
 const ornament=(width,height,anchor,x=0,y=0,color=gold)=>({type:'panel',width,height,anchor,x,y,color,semantic:false});
 function seal(){
@@ -42,7 +46,20 @@ function frameMotif(){
   ])};
 }
 
-export function createScreens(game,{onLanguage,coarse=false,paragraphCache}={}) {
+export function createScreens(game,{onLanguage,onError,coarse=false,paragraphCache}={}) {
+  function report(cause){
+    if(!onError){console.error(cause);return;}
+    try{void Promise.resolve(onError(cause)).catch(error=>console.error(error));}
+    catch(error){console.error(error);}
+  }
+  // A native tap itself stays synchronous. App actions may start a load or
+  // transition and return a promise; route late rejection to the same fault
+  // surface as a thrown callback, without returning a promise to input.
+  function invoke(action,...args){
+    if(typeof action!=='function')return;
+    try{void Promise.resolve(action(...args)).catch(report);}
+    catch(cause){report(cause);}
+  }
   // Keep one cache for menu lifetimes. All prepared borrows are owned by the views.
   if(paragraphCache===undefined){
     const provider=createCanvasParagraphProvider(game.browser.scheduleTextWork?{schedule:game.browser.scheduleTextWork}:{});
@@ -50,7 +67,7 @@ export function createScreens(game,{onLanguage,coarse=false,paragraphCache}={}) 
     game.scope.use({dispose(){cache.dispose();provider.dispose();}});
     paragraphCache=cache;
   }
-  const stack=createUiScreenStack();
+  const stack=createUiScreenStack({onError:report});
   let current=null,view=null,mountedModel=null,slot=null,pending=Promise.resolve(),revision=0;
   let bind={},partWidth=480,paragraphDensity=1.5,backingDensity=1.5;
   function heading(name,words,props={}){
@@ -69,8 +86,7 @@ export function createScreens(game,{onLanguage,coarse=false,paragraphCache}={}) 
   }
   function paragraph(name,words,width=partWidth,props={}){
     const size=props.size??15,lineHeight=props.lineHeight??Math.ceil(size*1.5);
-    const logicalLines=String(words).split('\n').reduce((sum,line)=>sum+Math.max(1,Math.ceil(roughUnits(line)*size/Math.max(50,width-18))),0);
-    const height=Math.max(lineHeight+3,Math.ceil(logicalLines*lineHeight+7));
+    const height=paragraphBoxHeight(words,width,size,lineHeight);
     const style={fontFamilies:[bodyFont(),'Noto Sans CJK SC','sans-serif'],locale:getLanguage()==='zh'?'zh-CN':'en',lineHeight,density:paragraphDensity};
     const {lineHeight:_lineHeight,...rest}=props;
     return text(name,words,{size,height,color:muted,...(paragraphCache?{paragraph:style}:{}),...rest});
@@ -79,7 +95,7 @@ export function createScreens(game,{onLanguage,coarse=false,paragraphCache}={}) 
   function button(id,words,action,props={}){
     const {chosen=false,primary=false,label=words,...rest}=props;
     const shade=()=>primary?vermilion:read(chosen)?selected:lacquer;
-    bind[id]={tap:action,label:()=>read(label),...(typeof words==='function'?{text:words}:{}),
+    bind[id]={tap:()=>invoke(action),label:()=>read(label),...(typeof words==='function'?{text:words}:{}),
       ...(typeof chosen==='function'?{color:shade}:{})};
     return {type:'button',name:id,text:read(words),height:48,width:'fill',size:15,fontFamily:bodyFont(),fontWeight:primary?700:600,
       color:shade(),textColor:paper,
@@ -92,7 +108,7 @@ export function createScreens(game,{onLanguage,coarse=false,paragraphCache}={}) 
   }
   function toggleControl(id,words,action,checked,props={}){
     const {label=words,...rest}=props;
-    bind[id]={tap:action,checked:()=>read(checked),label:()=>read(label),...(typeof words==='function'?{text:words}:{})};
+    bind[id]={tap:()=>invoke(action),checked:()=>read(checked),label:()=>read(label),...(typeof words==='function'?{text:words}:{})};
     return {type:'toggle',name:id,text:read(words),checked:read(checked),height:48,width:'fill',size:15,fontFamily:bodyFont(),border:{color:bronze,width:1},...rest};
   }
   function buttons(items,count=2){
@@ -114,14 +130,28 @@ export function createScreens(game,{onLanguage,coarse=false,paragraphCache}={}) 
     const cap=kind==='title'?(d.portrait?400:350):kind==='choose'?420:kind==='loadout'?960:kind==='free'?820:kind==='result'?680:kind==='settings'?740:640;
     const margin=d.short?5:12;
     const width=Math.max(200,Math.min(cap,d.width-2*margin,lateral&&!d.portrait?Math.max(286,d.width*.43):d.width-2*margin));
-    const height=titleSide?(d.short?d.height-10:d.portrait?Math.min(d.height-10,Math.max(318,Math.min(416,d.height*.50))):Math.min(d.height-24,466))
+    let height=titleSide?(d.short?d.height-10:d.portrait?Math.min(d.height-10,Math.max(318,Math.min(416,d.height*.50))):Math.min(d.height-24,466))
       :kind==='choose'?(d.portrait?Math.min(d.height-10,Math.max(306,d.height*.68)):d.height-2*margin)
       :Math.min(d.height-2*margin,kind==='loadout'?780:kind==='free'||kind==='settings'?700:kind==='result'?510:430);
+    let padding=d.short?10:17,gap=d.short?6:9,compact=false;
+    if(titleSide&&d.portrait&&d.width<500){
+      // Preserve the composed title where there is room. Switch to a two-row
+      // mode grid only if all original mode targets would be clipped.
+      const standardBody=paragraphBoxHeight(t('tagline'),width-2*padding,15)+3*48+3*8;
+      const standardRoom=height-2*padding-59-26-1-48-4*gap;
+      compact=standardRoom<standardBody;
+      if(compact){
+        padding=12;gap=6;
+        const body=paragraphBoxHeight(t('tagline'),width-2*padding,14)+2*48+2*8;
+        const needed=2*padding+42+1+48+3*gap+body+4;
+        height=Math.min(d.height-10,Math.max(height,needed));
+      }
+    }
     return {width,height,anchor:lateral?(d.portrait?'bottom':titleSide?'left':'right'):'center',
-      x:lateral&&!d.portrait?margin:0,y:lateral&&d.portrait?margin:0,padding:d.short?10:17,gap:d.short?6:9};
+      x:lateral&&!d.portrait?margin:0,y:lateral&&d.portrait?margin:0,padding,gap,compact};
   }
   function pane(kind,d,body,actions,props={}){
-    const {padding,gap,...outer}=panelMetrics(kind,d);
+    const {padding,gap,compact,...outer}=panelMetrics(kind,d);
     // Bronze corners are drawn as native decorative parts, never focus targets.
     // The camera can frame the actual menu-panel rect, including this rim.
     return {type:'panel',name:'menu-panel',layout:'free',...outer,color:ink,alpha:.91,
@@ -140,13 +170,13 @@ export function createScreens(game,{onLanguage,coarse=false,paragraphCache}={}) 
     const d=dims(),model=current;
     const old=view,focus=old?.focused;
     let offset=0;
-    if(old){try{offset=old.scroll('page-scroll').offset;}catch{} old.close();}
+    if(old){try{offset=old.scroll('page-scroll').offset;}catch{} retireView();}
     bind={};partWidth=paneWidth(model.kind,d);
     const root=model.draw(d);
     const desc={label:model.label,root,skin,...(model.modal?{modal:true}:{})};
     const options={bind,state:model,gamepad:true,...(paragraphCache?{paragraphCache}:{}),
-      ...(model.modal&&model.back?{dismiss:model.back}:{}),
-      ...(model.kind==='pause'?{resume:model.primary}:{}),
+      ...(model.modal&&model.back?{dismiss:()=>invoke(model.back)}:{}),
+      ...(model.kind==='pause'?{resume:()=>invoke(model.primary)}:{}),
       ...(model.modal&&model.initial?{initialFocus:model.initial}:{})};
     view=game.show(desc,options);mountedModel=model;
     try{view.scroll('page-scroll').scrollTo(offset);}catch{}
@@ -157,20 +187,25 @@ export function createScreens(game,{onLanguage,coarse=false,paragraphCache}={}) 
     if(!old)game.canvas?.focus({preventScroll:true});
     game.invalidate?.();
   }
+  function retireView(){
+    const owned=view;view=null;mountedModel=null;owned?.close();
+  }
   function show(model){
     // Settings resend the same page when a choice changes; retain the scroll
     // viewport and keyboard focus rather than returning to Done each time.
     if(model&&current?.kind===model.kind&&slot?.id==='menu-'+model.kind&&view){
-      if(model.kind==='settings'&&model.settings===current.settings&&model.language===current.language){updateView();return;}
-      current=model;refresh();return;
+      if(model.kind==='settings'&&model.settings===current.settings&&model.language===current.language){invoke(updateView);return;}
+      current=model;invoke(refresh);return;
     }
     current=model;
     const token=++revision;
     pending=pending.then(async()=>{
       if(token!==revision)return;
       if(slot){
-        await stack.closeAll();
+        // closeAll settles its own stack even if a cleanup handle reports a
+        // failure. Release the caller's slot, report, and permit later routes.
         slot=null;
+        try{await stack.closeAll();}catch(cause){report(cause);}
       }
       if(token!==revision||!model)return;
       slot={id:'menu-'+model.kind,layer:'page',back:'none',open(){
@@ -178,26 +213,26 @@ export function createScreens(game,{onLanguage,coarse=false,paragraphCache}={}) 
         render();
         return {show(){view?.show();},hide(){view?.hide();},cover(){view?.cover();},reveal(){view?.reveal();},
           activate(){view?.activate();},deactivate(){view?.deactivate();},
-          close(){view?.close();view=null;mountedModel=null;}};
+          close(){retireView();}};
       }};
-      void stack.open(slot).catch(cause=>{model.onError?.(cause);console.error(cause);});
-    });
+      void stack.open(slot).catch(report);
+    }).catch(report);
   }
   function refresh(){if(slot&&current)render();}
   function updateView(){view?.refresh();game.invalidate?.();}
-  const onScreen=()=>{if(current&&slot)refresh();};
+  const onScreen=()=>{if(current&&slot)invoke(refresh);};
   const unlisten=game.browser?.onScreenChange?.(onScreen)??game.onScreenChange?.(onScreen);
-  game.scope.use({dispose(){unlisten?.();void stack.dispose();}});
+  game.scope.use({dispose(){invoke(unlisten);invoke(()=>stack.dispose());}});
   function update(){
     const m=current;if(!m)return;
     if(m.kind==='choose'){
-      if(game.keys.pressed('right','d'))m.cycle(1);
-      else if(game.keys.pressed('left','a'))m.cycle(-1);
+      if(game.keys.pressed('right','d'))invoke(m.cycle,1);
+      else if(game.keys.pressed('left','a'))invoke(m.cycle,-1);
     }
     // Focused native buttons get Enter/Space themselves. This is the original
     // default action only when no actionable menu is focused.
-    if(!m.modal&&game.keys.pressed('escape','pad:b')&&m.back)m.back();
-    if(!view?.focused&&game.keys.pressed('enter')&&m.primary)m.primary();
+    if(!m.modal&&game.keys.pressed('escape','pad:b')&&m.back)invoke(m.back);
+    if(!view?.focused&&game.keys.pressed('enter')&&m.primary)invoke(m.primary);
   }
   const artRows=(r,d)=>{
     const rows=[];
@@ -231,14 +266,16 @@ export function createScreens(game,{onLanguage,coarse=false,paragraphCache}={}) 
             button('expedition',t('expedition'),onExpedition,{size:17,fontFamily:titleFont(),color:0x594025,border:{color:edge,width:1}}),
             button('free',t('free'),onFree,{size:14}),button('series',t('duelSeries'),onSeries,{size:14})
           ];
-          const routes=m.help?[]:d.short?buttons(choices,2):[row([choices[0]]),row([choices[1]]),row(choices.slice(2))];
-          const header=heading('title-heading',t('title'),{color:paper,size:d.short?29:48,height:d.short?38:59});
-          const intro=paragraph('tagline',t('tagline'),partWidth,{color:gold,size:d.short?13:15});
+          const compact=panelMetrics(m.kind,d).compact;
+          const routes=m.help?[]:d.short||compact?buttons(choices,2):[row([choices[0]]),row([choices[1]]),row(choices.slice(2))];
+          const header=compact?row([seal(),heading('title-heading',t('title'),{color:paper,width:'fill',size:Math.min(34,Math.floor((partWidth-38)/Math.max(1,roughUnits(t('title'))))),height:42})],{height:42,gap:8,align:'center'})
+            :heading('title-heading',t('title'),{color:paper,size:d.short?29:48,height:d.short?38:59});
+          const intro=paragraph('tagline',t('tagline'),partWidth,{color:gold,size:compact?14:d.short?13:15});
           const helpBody=paragraph('controls',t(coarse?'touchText':'controlsText'),partWidth,{size:15});
           const nav=row([button('settings',t('settings'),onSettings,{size:14}),button('help',t(m.help?'back':'howto'),toggleHelp,{size:14}),
             button('lang',t('language'),onLanguage,{size:14})],{height:48});
           return pane(m.kind,d,[header,
-            ...(d.short?[]:[row([ornament('fill',1,'center'),seal(),ornament('fill',1,'center')],{height:26,align:'center',gap:7})]),
+            ...(d.short||compact?[]:[row([ornament('fill',1,'center'),seal(),ornament('fill',1,'center')],{height:26,align:'center',gap:7})]),
             scroll(m.help?[heading('help-heading',t('howto'),{size:18,height:29}),helpBody]
               :[intro,...routes,...(best?[paragraph('best',best,partWidth,{color:gold})]:[]),...(note?[paragraph('title-note',note)]:[])])],nav);
         }};
@@ -249,16 +286,16 @@ export function createScreens(game,{onLanguage,coarse=false,paragraphCache}={}) 
       show(m);
     },    choose({selected:regiment='yulin',onPick,onLook,onBack,title=t('chooseRegiment'),veteran=null,onDifficulty}) {
       const m={kind:'choose',label:title,initial:'pick',selected:regiment,veteran,back:onBack,
-        primary:()=>onPick(m.selected),cycle(delta){m.selected=ORDER[(ORDER.indexOf(m.selected)+delta+ORDER.length)%ORDER.length];onLook?.(m.selected);refresh();},
+        primary:()=>onPick(m.selected),cycle(delta){m.selected=ORDER[(ORDER.indexOf(m.selected)+delta+ORDER.length)%ORDER.length];invoke(onLook,m.selected);refresh();},
         draw(d){
           const difficulty=m.veteran===null?[]:[nativeTabs('difficulty',t('expeditionDifficulty'),['march','veteran'].map(id=>tab('difficulty-'+id,t(id==='march'?'expeditionMarch':'expeditionVeteran'),()=>{
-            m.veteran=id==='veteran';onDifficulty?.(m.veteran);updateView();
+            m.veteran=id==='veteran';invoke(onDifficulty,m.veteran);updateView();
           },()=>m.veteran===(id==='veteran'))),2)];
-          const tabs=ORDER.map(id=>tab('look-'+id,say(REGIMENTS[id].name),()=>{m.selected=id;onLook?.(id);refresh();},m.selected===id,{size:14}));
+          const tabs=ORDER.map(id=>tab('look-'+id,say(REGIMENTS[id].name),()=>{m.selected=id;invoke(onLook,id);refresh();},m.selected===id,{size:14}));
           return pane(m.kind,d,[sectionTitle(title),scroll([...difficulty,nativeTabs('regiments',t('chooseRegiment'),tabs,d.short&&partWidth>=420?3:2),rule(),
             ...chooseCards(m,REGIMENTS[m.selected]),paragraph('choose-hint',t('chooseHint'))])],footer(onBack,m.primary,'back','pick',t('back'),t('next')));
         }};
-      onLook?.(m.selected);show(m);
+      invoke(onLook,m.selected);show(m);
     },
     loadout({regiment,chosen,onDone,onBack}) {
       const r=REGIMENTS[regiment],pick=playerLoadout(regiment,chosen);
@@ -340,7 +377,7 @@ export function createScreens(game,{onLanguage,coarse=false,paragraphCache}={}) 
         const children=[];
         for(const [key,label,choices] of lines){
           children.push(text('setting-label-'+key,t(label),{color:gold,height:22,fontWeight:700}));
-          const items=choices.map(([value,word])=>tab('set-'+key+'-'+String(value),t(word),()=>{onChange(key,value);},()=>String(settings[key])===String(value),{label:labelFor(t(label),t(word)),size:14}));
+          const items=choices.map(([value,word])=>tab('set-'+key+'-'+String(value),t(word),()=>onChange(key,value),()=>String(settings[key])===String(value),{label:labelFor(t(label),t(word)),size:14}));
           children.push(nativeTabs('setting-'+key,t(label),items,key==='control'&&partWidth<520?1:choices.length));
         }
         return pane(m.kind,d,[sectionTitle(t('settings')),scroll(children)],
@@ -351,7 +388,7 @@ export function createScreens(game,{onLanguage,coarse=false,paragraphCache}={}) 
       const m={kind:'free',label:t(series?'duelSeries':'free'),choice:state,series,initial:'go',back:onBack,primary:()=>onGo(state),modal:true,draw(d){
         const me=ORDER.map(r=>tab('me-'+r,say(REGIMENTS[r].name),()=>{
           state.me=r;state.foes=state.foes.filter(f=>f!==r);if(!state.foes.length)state.foes=[ORDER.find(x=>x!==r)];
-          onLook?.(r);refresh();
+          invoke(onLook,r);refresh();
         },state.me===r,{label:labelFor(t('you'),say(REGIMENTS[r].name)),size:14}));
         const foes=ORDER.filter(r=>r!==state.me).map(r=>(series?tab:toggleControl)('foe-'+r,say(REGIMENTS[r].name),()=>{
           if(series)state.foes=[r];else{const at=state.foes.indexOf(r);if(at>=0){if(state.foes.length>1)state.foes.splice(at,1);}
@@ -365,7 +402,7 @@ export function createScreens(game,{onLanguage,coarse=false,paragraphCache}={}) 
           text('foes-label',t('foes'),{color:gold}),(series?nativeTabs('foe-regiment',t('foes'),foes,count):col(buttons(foes,foeCount),{name:'foe-regiment',label:t('foes'),height:Math.ceil(foes.length/foeCount)*54-6,gap:6})),
           text('places-label',t(series?'seriesPlace':'place'),{color:gold}),nativeTabs('arenas',t(series?'seriesPlace':'place'),places,placeCount)])],
           footer(onBack,m.primary,'back','go'));
-      }};onLook?.(state.me);show(m);
+      }};invoke(onLook,state.me);show(m);
     },
     loading(words) {
       const m={kind:'loading',label:words,text:words,progress:.1,modal:true,draw(d){
@@ -389,6 +426,8 @@ export function createScreens(game,{onLanguage,coarse=false,paragraphCache}={}) 
     lang:getLanguage
   };
 }
+
+
 
 
 

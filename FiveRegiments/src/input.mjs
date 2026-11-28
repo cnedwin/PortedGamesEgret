@@ -47,7 +47,7 @@ const MOUSE_STROKE_IDLE_MS = 90;
 export function createInput(game, { settings, isActive = () => true, onPause = () => {}, onLock = () => {} } = {}) {
   const canvas = game.canvas;
   const active = () => !disposed && isActive();
-  let disposed = false;
+  let disposed = false, armedClick = false;
   const clearListeners = new Set();
   const releaseClaims = [];
   const claimed = new Set();
@@ -131,10 +131,13 @@ export function createInput(game, { settings, isActive = () => true, onPause = (
   }
   const onDown = (e) => {
     if (!active()) return;
-    if (!state.pointerLocked) {
-      tryPointerLock();
+    if (!game.pointer.locked) {
+      // A fresh battle press, not the earlier menu gesture, arms the explicit click.
+      // Native pointer capture is still active at down, so acquire only after its release.
+      armedClick = state.wantLock && !game.pointer.lockPending && e.button === 0;
       return;
     }
+    state.pointerLocked = true;
     state.lastDevice = 'mouse';
     if (e.button === 0 && !heldTouchAttack) {
       if (!state.attack) heldMouseAttack = startGesture(state.line, !state.combo);
@@ -146,6 +149,11 @@ export function createInput(game, { settings, isActive = () => true, onPause = (
     }
     if (e.button === 1) onLock();
     e.preventDefault();
+  };
+  const onClick = e => {
+    const requested = armedClick;
+    armedClick = false;
+    if (requested && e.button === 0) tryPointerLock();
   };
   const onUp = (e) => {
     if (e.button === 0 && heldMouseAttack) {
@@ -228,6 +236,7 @@ export function createInput(game, { settings, isActive = () => true, onPause = (
     } else down.delete(name);
   };
   function clearAllInput() {
+    armedClick = false;
     down.clear();
     // Notify held touch controls first so charge timers and captured ownership are canceled too.
     for (const listener of clearListeners) listener();
@@ -244,6 +253,7 @@ export function createInput(game, { settings, isActive = () => true, onPause = (
   // Pointer-locked moves already bubble from the canvas to the window.
   addEventListener('mousemove', onMove);
   canvas.addEventListener('mousedown', onDown);
+  canvas.addEventListener('click', onClick);
   addEventListener('mouseup', onUp);
   document.addEventListener('pointerlockchange', onLockChange);
   const onContext = e => { if (active()) e.preventDefault(); };
@@ -412,12 +422,14 @@ export function createInput(game, { settings, isActive = () => true, onPause = (
     },
     /** Hold the mouse inside the page (on a click) while fighting. */
     capture(on) {
+      armedClick = false;
       state.wantLock = !!on && typeof canvas.requestPointerLock === 'function';
-      if (state.wantLock) tryPointerLock();
-      else game.pointer.unlock();
+      // Scene loading or resume may complete inside the preceding menu click.
+      // Never start a native lock request there; the battle's next clear click does it.
+      if (!state.wantLock) game.pointer.unlock();
     },
     waitingForPointer() {
-      if (!state.wantLock || state.pointerLocked) return false;
+      if (!state.wantLock || game.pointer.locked) return false;
       // A standard pad can drive the fight even without a captured mouse.
       return connectedPad()?.mapping !== 'standard';
     },
@@ -439,6 +451,7 @@ export function createInput(game, { settings, isActive = () => true, onPause = (
       pads.dispose();
       removeEventListener('mousemove', onMove);
       canvas.removeEventListener('mousedown', onDown);
+      canvas.removeEventListener('click', onClick);
       removeEventListener('mouseup', onUp);
       document.removeEventListener('pointerlockchange', onLockChange);
       removeEventListener('keydown', onKey);

@@ -2,7 +2,7 @@
 // is not accelerated: checkpoints inspect the real HUD and pause screen.
 export default async function screenRoute(player) {
   const {page}=player;
-  const screen=kind=>page.waitForFunction(k=>window.egretGame?.screens?.current===k,k,{timeout:180000});
+  const screen=kind=>page.waitForFunction(k=>window.egretGame?.screens?.current===k,kind,{timeout:180000});
   const activate=async(zh,en)=>{
     const name=await page.evaluate(({zh,en})=>document.documentElement.lang.startsWith('zh')?zh:en,{zh,en});
     await page.waitForFunction(n=>egretGame.tester.exists(n),name,{timeout:30000});

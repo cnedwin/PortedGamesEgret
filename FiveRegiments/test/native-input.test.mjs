@@ -39,6 +39,11 @@ test('native pointer ownership follows Play API and gameplay keys leave the menu
   assert.equal(input.sample(1/60).step,false);
   active=true;
   input.capture(true);
+  assert.deepEqual(h.calls,[],'entering the battle only arms capture; a previous menu activation must not request lock');
+  h.event(h.canvas,'mousedown',{button:0});
+  assert.deepEqual(h.calls,[],'do not request lock while native pointer capture is still held');
+  h.event(h.w,'mouseup',{button:0});
+  h.event(h.canvas,'click',{button:0});
   assert.deepEqual(h.calls,['lock']);
   assert.equal(input.state.pointerLocked,true);
   assert.equal(h.claims.get('Tab')(),true);
@@ -60,6 +65,8 @@ test('clear and lost lock retire pending input so resume never commits gestures'
   const input=createInput(h.game,{settings:{},onPause:()=>pauses++});
   t.after(()=>{input.dispose();h.restore();});
   input.capture(true);
+  h.event(h.canvas,'mousedown',{button:0});h.event(h.w,'mouseup',{button:0});
+  h.event(h.canvas,'click',{button:0});
   h.event(h.w,'mousemove',{movementX:24,movementY:0});
   h.event(h.canvas,'mousedown',{button:0});
   assert.equal(input.sample(1/60).meleeDown,true);

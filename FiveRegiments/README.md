@@ -115,6 +115,8 @@ Choose a regiment and make your way through Stonegate Pass, Red Banner Depot and
 每营的全部技能（共二十一个）、天赋、战技、伤害公式和每个数的出处见 [docs/DESIGN.md](docs/DESIGN.md)。 · All the skills (twenty-one), talents, weapon arts, the damage formula and where every number comes from are in docs/DESIGN.md.
 
 ## 美术、声音与平衡 · Art, sound and balance
+- 卷首和选营使用独立的挺拔展示姿态与自适应镜头，不修改实战骨骼动作或判定。五套真实步态保留，并优化普通移动的起停、转向衔接；马匹静止时保留细微自然动作。 / The title and selection use a composed preview-only posture and screen-aware camera, separate from combat. Captured locomotion transitions and small horse idle movements are refined.
+- 竹林、雪地与校场保留原有地形和资产，调整雾、光照、地面纹理和道路细节；原生 HUD 的字号、层级与对比度适配安全区域。 / Existing environment assets and gameplay terrain are preserved, with refined fog, light, ground and path detail and a legible native HUD.
 
 - 人物（五营各一）、披甲战马和三十二件场景物件用 Tripo 生成：城门楼、宫门、亭子、烽火台、石桥、桃树、竹、松、旗、兵器架、草靶、鼓、木栅、山石、火盆、石狮、铜鼎，以及营寨和关城的城墙段、木寨门、箭楼、营帐、拒马、投石车、床弩、茅草土屋、马厩、篝火、粮车、军需堆。人物带标准人形骨架，战马带四足骨骼；再用 gltfpack 减面、量化和 meshopt 压缩成高、中、低三档（人物和马合计 10.6 / 4.3 / 2.3 MB，每个场景只载入自己用到的物件）。 · The five men, the armoured horse and thirty-two props — among them the camp and fort pieces: crenellated wall sections, a stockade gate, arrow towers, tents, cheval-de-frise, a trebuchet, bed crossbows, a thatched hut, a stable, a campfire, a cart and supplies — were generated with Tripo, the men rigged to a humanoid skeleton and the horse to a four-legged one, then reduced, quantized and meshopt-compressed into high, medium and low sets (men and horse 10.6 / 4.3 / 2.3 MB; each place loads only its own props).
 - 兵器（环首刀、汉剑、双手长斧、方天戟及两侧月牙和红缨、狩猎刀、角弓及弓弦、圆盾、箭）用代码按尺寸建模，钢刃双面、盾背有握把。 · The weapons, the fangtian ji with its two crescents and the long axe among them, are modelled in code to size.
@@ -181,7 +183,7 @@ Choose a regiment and make your way through Stonegate Pass, Red Banner Depot and
 - 界面布局和按键按公开的按键表和沙盒战争类 PC 游戏的常见布局做，没有对着原作截图逐像素比对；手上没有截图可对，罗盘、名牌、物品栏的样式是自己画的。 · The panels and keys follow published key lists and the usual layout of sandbox-war PC games, not a pixel comparison with screenshots; the compass, nameplates and bar are drawn here.
 - 战马的骨骼里右后腿只有一节骨头，跑起来那条腿只能整条摆动、不能弯膝。马上不能跳、没有马上弓射。 · The horse's rig has a single bone for the right hind leg, so that leg swings without bending. No jumping on horseback, and no mounted archery.
 - 刀路只有四个方向；原作武器面板上的八个方向没有做全。 · Four lines of cut; the original's eight directions are not all made.
-- 品质验收未达标 · Quality items failing（[QUALITY.md](QUALITY.md)，2026-11-24，无头 Chromium + SwiftShader · headless, software rendering）：F1 桌面帧时间 p95 ≤ 16.7 ms（p95 383.4 ms over 23 frames）。
+- 品质验收未达标 · Quality items failing（[QUALITY.md](QUALITY.md)，2026-11-28，无头 Chromium + SwiftShader · headless, software rendering）：F1 桌面帧时间 p95 ≤ 16.7 ms（p95 129.2 ms over 51 frames）。
 
 ## 已解决 · Solved
 

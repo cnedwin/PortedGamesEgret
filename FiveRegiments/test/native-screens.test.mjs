@@ -6,7 +6,7 @@ import {setLanguage,t} from '../src/i18n.mjs';
 const {createScreens}=await import('../src/screens.mjs');
 const {checkView,planView}=await import('../vendor/engine/dist/web/view.js');
 
-function harness(width=852,height=393){
+function harness(width=852,height=393,onError){
   let mounted=null,onScreenChange=null,keys=new Set();
   const game={
     screen:{width,height},safe:{x:0,y:0,width,height},uiScale:1,
@@ -16,9 +16,9 @@ function harness(width=852,height=393){
     show(desc,opts){
       const names=checkView(desc);for(const id of Object.keys(opts.bind))assert.ok(names.has(id),'binding belongs to the current native view: '+id);
       const screen={x:0,y:0,...game.screen};
-      const plan=planView(desc,{screen,safe:screen,orientation:screen.width<screen.height?'portrait':'landscape'});
+      const plan=planView(desc,{screen,safe:{...game.safe},orientation:screen.width<screen.height?'portrait':'landscape'});
       for(const {part,rect} of plan.parts)if(part.type==='button'||part.type==='toggle'){assert.ok(rect.width>=44,part.name+' width '+rect.width);assert.ok(rect.height>=44,part.name+' height '+rect.height);}
-      const result={desc,opts,focused:undefined,visible:true,closed:false,
+      const result={desc,opts,plan,focused:undefined,visible:true,closed:false,
         close(){this.closed=true;if(mounted===this)mounted=null;},
         hide(){this.visible=false;},show(){this.visible=true;},
         activate(){},deactivate(){},cover(){this.hide();},reveal(){this.show();},
@@ -28,7 +28,7 @@ function harness(width=852,height=393){
     },
     invalidate(){},scope:{use(x){return x;}},
   };
-  const screens=createScreens(game,{coarse:false,onLanguage(){},paragraphCache:null});
+  const screens=createScreens(game,{coarse:false,onLanguage(){},paragraphCache:null,onError});
   return {screens,game,get mounted(){return mounted;},async ready(){for(let i=0;i<15;i++)await Promise.resolve();assert.ok(mounted);return mounted;},
     async press(id){const v=await this.ready();assert.ok(v.opts.bind[id]?.tap,id);v.opts.bind[id].tap(v.opts.state);return await this.ready();},
     async key(key){keys.add(key);screens.update();keys.clear();return await this.ready();},
@@ -127,3 +127,56 @@ test('the framed title keeps all main actions and makes full controls separately
   setLanguage('zh');
 });
 
+
+test('rejected menu actions are reported and later native transitions still work',async()=>{
+  const errors=[],h=harness(852,393,error=>errors.push(error)),noop=()=>{};
+  const fault=new Error('arena preparation failed');
+  h.screens.stageCard({stage:{place:'county',index:0,foes:['tiger']},total:1,onBack:noop,onGo:async()=>{throw fault;}});
+  await h.ready();await h.press('go');
+  assert.deepEqual(errors,[fault]);
+  h.screens.pause({onResume:noop,onSettings:noop,onLeave:noop});await h.ready();
+  h.screens.title({onRoad:noop,onExpedition:noop,onFree:noop,onSeries:noop,onSettings:noop});
+  await h.ready();assert.equal(h.screens.current,'title');
+});
+
+test('a rejected modal dismissal or a throwing callback goes through the same error handler',async()=>{
+  const errors=[],h=harness(852,393,error=>errors.push(error)),noop=()=>{};
+  const resumeFault=new Error('resume rejected'),settingsFault=new Error('settings refused');
+  h.screens.pause({onResume:async()=>{throw resumeFault;},onSettings:()=>{throw settingsFault;},onLeave:noop});
+  const v=await h.ready();v.opts.dismiss();await h.ready();await h.press('settings');
+  assert.deepEqual(errors,[resumeFault,settingsFault]);
+  h.screens.loading('next');await h.ready();assert.equal(h.screens.current,'loading');
+});
+
+test('one failed screen handle close does not poison the transition queue',async()=>{
+  const errors=[],h=harness(852,393,error=>errors.push(error)),noop=()=>{};
+  h.screens.title({onRoad:noop,onExpedition:noop,onFree:noop,onSeries:noop,onSettings:noop});
+  const v=await h.ready(),close=v.close.bind(v),fault=new Error('failed native cleanup');
+  v.close=()=>{close();throw fault;};
+  h.screens.choose({onPick:noop,onBack:noop,onLook:noop});
+  for(let i=0;i<20;i++)await Promise.resolve();
+  assert.deepEqual(errors,[fault]);
+  h.screens.loading('next');await h.ready();assert.equal(h.screens.current,'loading');
+});
+
+test('all four title modes and fixed footer are fully visible on short upright phones',async()=>{
+  const noop=()=>{};
+  for(const lang of ['zh','en']){
+    setLanguage(lang);
+    for(const [width,height,top,bottom] of [[320,568,0,0],[375,667,0,0],[393,852,59,34],[360,800,24,0],[430,932,50,34]]){
+      const h=harness(width,height);
+      Object.assign(h.game.safe,{x:0,y:top,width,height:height-top-bottom});
+      h.screens.title({onRoad:noop,onExpedition:noop,onFree:noop,onSeries:noop,onSettings:noop});
+      const v=await h.ready(),rect=id=>v.plan.parts[v.plan.names.get(id)].rect;
+      const clip=rect('page-scroll'),panel=rect('menu-panel');
+      for(const id of ['road','expedition','free','series']){
+        const b=rect(id);
+        assert.ok(b.x>=clip.x-.01&&b.x+b.width<=clip.x+clip.width+.01&&b.y>=clip.y-.01&&b.y+b.height<=clip.y+clip.height+.01,
+          lang+' '+width+'x'+height+' '+id+' must not be clipped');
+      }
+      for(const id of ['settings','help','lang']){const b=rect(id);assert.ok(b.y+b.height<=height-bottom&&b.y>=top);}
+      assert.ok(panel.y-top>=Math.min(160,(height-top-bottom)*.30),'preserve an unobstructed preview');
+    }
+  }
+  setLanguage('zh');
+});
