@@ -17,6 +17,7 @@ export { FollowControls3D, createFollowControls3D } from './FollowControls3D.js'
 export { Atmosphere3D, createAtmosphere3D } from './atmosphere3D.js';
 export { createCanvasFont3D } from './canvasFont3D.js';
 export { WORLD3D_QUALITY_PRESETS, createDynamicResolution3D, createWorld3DApp, pickWorld3DBackend, pickWorld3DQuality, isSoftwareRendered3D } from './app3D.js';
-export { createScreenMarkers3D } from './markers3D.js';
+export { createScreenMarkers3D, createOverlayScreenMarkers3D } from './markers3D.js';
 export { createWorld3DStats } from './stats3D.js';
 export { createWorld3DOverlay } from './overlay3D.js';
+export { play3dAttached } from './BrowserPlay3D.js';

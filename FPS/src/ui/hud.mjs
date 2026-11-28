@@ -1,5 +1,6 @@
 // The combat interface is entirely native Play. The rules/view remain authoritative.
 import { projectToViewport3D } from '@egret/engine/world3d';
+import { registerScreenOccluder } from '@egret/engine/ui';
 import { BOUNDS, BOXES, PLACES } from '../level.mjs';
 import { MISSION } from '../data.mjs';
 import { TEXT } from '../text.mjs';
@@ -105,7 +106,26 @@ export function createCombatHud(play,{camera,stage,settings,actions={}}){
   hit.graphics.clear();hit.graphics.lineStyle(2.2,state.hitColor,.94);for(const [sx,sy]of [[-1,-1],[1,-1],[-1,1],[1,1]])hit.graphics.moveTo(sx*5,sy*5).lineTo(sx*11,sy*11);hit.graphics.lineStyle(0);
  }
  function syncHints(){const allowed=visible&&!touch&&play.safe.width>=720&&play.safe.height>=400, key=allowed?lang:'';if(key===hintKey)return;hintKey=key;hints.set(allowed?[{action:lang==='zh'?'背包':'Backpack',key:'Tab'},{action:lang==='zh'?'暂停':'Pause',key:'Escape'}]:[]);}
- function makeView(){view?.close();view=play.show({label:'Operation HUD',area:'safe',root:describe(touch),portrait:describe(touch,true)},{state,bind:bindings(state)});if(visible)view.show();else view.hide();}
+ // Name only the actual painted HUD faces. Feed/loot are transparent containers
+ // and the minimap/markers/crosshair are not rectangular panels.
+ const paintedCards={objective:['任务目标','Mission objective'],uplink:['终端状态','Terminal status'],vitals:['状态','Vitals'],ammo:['装备','Equipment'],prompt:['互动提示','Interaction prompt'],busy:['当前进度','Current progress'],comms:['无线电讯息','Radio message'],warning:['警示','Warning']};
+ let paintClaims=[];
+ function releasePaintClaims(){for(const claim of paintClaims)claim.dispose();paintClaims=[];}
+ function registerPaintedCards(built){
+  // A portrait/tablet variant creates new Sprites. The native built callback
+  // reconnects each registration to the actual face, not its semantic group.
+  releasePaintClaims();
+  for(const [name,labels] of Object.entries(paintedCards)){
+   const face=built.get(name);
+   paintClaims.push(registerScreenOccluder(face,{name:()=>labels[lang==='zh'?0:1],rect:()=>{
+    const {width,height}=built.rect(name),inset=Math.min(10,width/4,height/4);
+    return{x:inset,y:inset,width:width-2*inset,height:height-2*inset};
+   }}));
+  }
+ }
+ // The Play scope may be closed without an explicit HUD.dispose() call.
+ play.scope.use({dispose:releasePaintClaims});
+ function makeView(){releasePaintClaims();view?.close();view=play.show({label:'Operation HUD',area:'safe',root:describe(touch),portrait:describe(touch,true)},{state,bind:bindings(state),built:registerPaintedCards});if(visible)view.show();else view.hide();}
  makeView();layout();
  return {
   update(game,dt,eye){if(disposed)return;advanceHudTimers(state,dt);if(!visible)return;refreshHudState(state,game,t,touch);const key=state.commsText+'/'+(touch?1:0)+'/'+play.orientation;if(key!==state.commsKey){state.commsKey=key;state.commsLines=splitLine(state.commsText,lang==='zh'?(touch?25:34):(touch?46:64));}
@@ -120,6 +140,6 @@ export function createCombatHud(play,{camera,stage,settings,actions={}}){
   handle(event){if(!disposed)applyHudEvent(state,event,t);},reset(){const fresh=newHudState();Object.assign(state,fresh);state.touch=touch;state.lang=lang;mapAt=-1;shapeStamp='';for(const m of markers.values()){m.node.visible=false;if(m.onCompass)m.onCompass.visible=false;}},
   setVisible(on){if(visible===!!on)return;visible=!!on;root.visible=visible;visible?view.show():view.hide();syncHints();},setTouch(on){on=!!on;if(touch===on)return;touch=on;state.touch=on;stamp='';makeView();layout();},setLanguage(next){lang=TEXT[next]?next:'en';t=TEXT[lang];state.lang=lang;for(const q of ticks)q.degree=-1;state.commsKey='';syncHints();},
   snapshot(){return{visible,touch,lang,objective:state.title,clock:state.clock,health:Number(state.health),armor:Number(state.armor),ammo:Number(state.ammo),reserve:state.reserve,weapon:state.weaponKey,prompt:state.promptVisible,scope:state.scope,mapDots:{...mapCount},markerCount:[...markers.values()].filter(m=>m.node.visible).length,root:screen&&{...screen},state:{...state,feed:state.feed.map(r=>({...r})),loot:state.loot.map(r=>({...r}))}};},
-  dispose(){if(disposed)return;disposed=true;hints.dispose();view.close();play.remove(root);}
+  dispose(){if(disposed)return;disposed=true;releasePaintClaims();hints.dispose();view.close();play.remove(root);}
  };
 }

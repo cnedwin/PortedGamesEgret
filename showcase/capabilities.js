@@ -356,7 +356,7 @@ export const MATRIX = {
    "games": [
     {
      "game": "FPS",
-     "file": "FPS/src/ui/menus.mjs"
+     "file": "FPS/src/ui/hud.mjs"
     },
     {
      "game": "jelly-pandas",
@@ -951,10 +951,6 @@ export const MATRIX = {
     {
      "game": "FivePhases",
      "file": "FivePhases/src/main.mjs"
-    },
-    {
-     "game": "FPS",
-     "file": "FPS/src/main.mjs"
     },
     {
      "game": "InquestScrolls",

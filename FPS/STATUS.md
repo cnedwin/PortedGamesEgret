@@ -12,15 +12,17 @@ This document records where this version stands: problems already solved, parts 
 | 武器 · Weapons | 突击步枪、手枪、带瞄准镜的精确射手步枪、手雷；前握把和扩容弹匣两种配件 · assault rifle, pistol, scoped marksman rifle, grenades; two attachments, a foregrip and an extended magazine |
 | 敌人 · Enemies | 步枪兵、突击兵、重装兵；会换弹、找掩体、包抄、扔手雷、喊话，中弹后变成布娃娃 · riflemen, assaulters, heavies; they reload, take cover, flank, throw grenades and call out, and go limp when shot |
 | 搜集 · Looting | 十个物资箱，十二格背包，按稀有度分色，结算计总价值 · ten crates, a twelve-slot backpack, items coloured by rarity, total value at the debrief |
-| 界面 · Interface | 原生 Play 数据界面、屏幕栈、语义树、指南针、目标列表、小地图、三页背包、横竖屏、双语及原生触控 · native Play data views, screen stack, semantics, compass, objective list, minimap, three inventory tabs, landscape/portrait, languages and native contacts |
+| 界面 · Interface | 原生 Play 数据界面、屏幕栈、语义树、指南针、目标列表、小地图、三页背包、横竖屏、双语及原生触控；正式指针结果、可选原始锁定、模式限定的 Tab 请求及原生屏幕覆盖诊断 · native Play data views, screen stack, semantics, compass, objective list, minimap, three inventory tabs, landscape/portrait, languages and native contacts; explicit lock outcomes, opt-in raw lock, scoped Tab claim and native screen-coverage diagnostics |
 | 画面 · Picture | 三级级联阴影、投影探照灯、雨、湿地面镜面反射、掉漆锈蚀、贴花弹孔、景深、受伤调色、大气散射、泛光、环境光遮蔽 · three shadow cascades, shadow-casting floodlights, rain, mirror reflection on wet ground, chipped paint and rust, decal bullet marks, depth of field, hurt grading, atmospheric scattering, bloom, ambient occlusion |
 | 声音 · Sound | 保留合成配乐与音效、环境循环、两种混响空间，白鹭原生主混音与限幅 · retained synthesised score/effects, ambience and two reverb spaces with Egret master mixer and limiter |
 
 ## 验证情况 · What has been verified
 
+- 正式接口适配版本 `4f08d2bcd25de3aafa7295f3b349970f8003ed71`（引擎 [PR #549](https://github.com/cnedwin/Egret_rebuild/pull/549)）的本游戏验收：91/91 Node、实体 Windows Edge/RTX 桌面 33/33、同机宽屏模拟 17/17、Fold7 物理设备原生触摸与五状态双向旋转、9 种屏幕 × 10 个状态均通过；WebGPU 硬件初段检查通过。 · Game acceptance at the formal API adoption pin `4f08d2bcd25de3aafa7295f3b349970f8003ed71`: 91/91 Node tests, 33/33 on physical Windows Edge/RTX desktop, 17/17 on the same PC in wide touch emulation, real Fold7 native touch and five bidirectional state rotations, 9 screen profiles × 10 checkpoints passed; hardware WebGPU initial-play smoke passed. [QUALITY.md](QUALITY.md) 单列引擎 fixture、PC、模拟多屏和可用真机结果；上述接口的存在并不证明每种设备的体验。
+
 - 2026-11-28 原生 UI 迁移和最新引擎适配的实际设备及性能边界见 [QUALITY.md](QUALITY.md)，界面映射与复跑步骤见 [UI-MIGRATION.md](UI-MIGRATION.md)。下列历史整局数据不能代替新版实机结果。 · For the native UI migration and current engine adaptation, see QUALITY.md for actual devices and measured limits, and UI-MIGRATION.md for the implementation and replay steps. The historical full runs below are not current device acceptance.
 
-- 白鹭运行时更新为 main 的 `33897768c4f7933d289f083e4f34b3209b0aef31`（2026-11-28 从 `b5628eb9` 升级；更新前后均通过 51 项 Node 自动检查，新增原生 UI/音频入口均已通过导入验证，本项不代替设备验收）。51 项自动测试覆盖规则、输入、完整美术载入、模型挂点、连续蒙皮、硬表面保形、投影代理、共享实例、启动预绘及动态部件。
+- 历史运行时升级到 main 的 `33897768c4f7933d289f083e4f34b3209b0aef31`（2026-11-28 从 `b5628eb9` 升级；更新前后均通过 51 项 Node 自动检查，新增原生 UI/音频入口均已通过导入验证，本项不代替设备验收）。51 项自动测试覆盖规则、输入、完整美术载入、模型挂点、连续蒙皮、硬表面保形、投影代理、共享实例、启动预绘及动态部件。
 - 本次美术修复在 PC 与三星 SM-F966U1 的真实 WebGL2 上检查了三类角色的持枪、侧面步行和蹲姿。角色诊断是受控相机检查，不能代替完整游玩。第一人称枪械另检查了瞄准、后坐、换弹和近裁切；场景保留原 UV、法线和金属粗糙度。公开版本整局与性能复跑结果见 [PR #82 的验收记录](https://github.com/cnedwin/PortedGamesEgret/pull/82)。
 - 以下两段 PC、三星整局数字属于美术修复前的历史基线，不能作为本次资源升级后的帧率结论。
 - PC 使用 RTX 5090 Laptop 和 Edge 157，在 1440×900、高画质下从正常标题页开始，以实际键鼠事件完成三终端、六次校准和登机结算，用时 360.85 秒。模型首帧加载齐全，无回退。以下整局帧间隔是比例修订前的设备基线。最后一次手套比例微调另做了 PC 瞄准、射击、换弹、切枪和暂停恢复复测。
@@ -28,18 +30,18 @@ This document records where this version stands: problems already solved, parts 
 - 历史 PC 整局 P95 为 4.3 毫秒，最大帧间隔 175.1 毫秒，有两次相邻长任务。缺少对应的性能追踪，原因未定。样本包含约 5.6 秒辅助计算并行，应保留该测量条件。
 - 历史 PC 的 ANGLE D3D11 阴影路径曾丢失 WebGL 上下文，当时对识别到的 RTX 5090 Laptop 关闭实时阴影；新版验证结果另见 QUALITY.md。
 
-The runtime was refreshed to the Egret main commit recorded above. The 51 Node checks pass before and after the engine refresh, and the new native UI/audio entries import successfully. This result does not constitute physical-device acceptance. This revision checks continuous characters on physical PC and Samsung WebGL2 using controlled pose diagnostics, plus first-person aiming, recoil, reload and near-plane checks. The complete-run numbers above are historical, preceding this art repair. See [PR #82](https://github.com/cnedwin/PortedGamesEgret/pull/82) for current public-run results. The adapter-specific PC shadow fallback preserves the other high-quality effects.
+Before formal API adoption, the runtime's refresh to `33897768` passed 51 Node checks both before and after the upgrade, and the then-new native UI/audio entries imported successfully. This result does not constitute physical-device acceptance. Earlier controlled character and equipment checks ran on physical PC and Samsung WebGL2. The complete-run numbers above are historical, preceding the art repair. See [PR #82](https://github.com/cnedwin/PortedGamesEgret/pull/82) for those public-run results, not the formal API adaptation. The former adapter-specific PC shadow fallback preserved other high-quality effects.
 
 ### 验收边界 · Test boundaries
 
 - 本轮以 WebGL2 为主，WebGPU 尚待独立真机验收。
-- PC 已验证页面全屏与鼠标锁定的状态及恢复。覆盖整块显示屏的原生窗口边界验收未完成。
+- 历史 PC 已验证页面全屏与鼠标锁定的状态及恢复；正式接口适配后的结果以上方本轮实测为准。覆盖整块显示屏的原生窗口边界验收未完成。
 - 自动输入与自动控制用于可复跑验收，真实玩家的难度和熟练度分布还需要玩家反馈。
 - 音乐和声音沿用现有合成实现，本轮未做专门的人工听音验收。
 - 角色使用完整连续网格、原始 UV/PBR、预烘权重和独立的 16 骨白鹭骨架；不再把身体切成刚性片。动作仍由程序驱动；左右各一组指节闭握，并非逐指动捕。
 - 地形、植被、地面、栏杆、标识和灯光等辅助元素沿用既有实现。
 
-This batch focuses on WebGL2. Full-monitor native PC fullscreen, dedicated WebGPU qualification, human difficulty assessment and listening tests remain outside this acceptance pass. Characters use continuous original-UV surfaces with baked weights and independent sixteen-bone Egret skeletons, driven procedurally rather than by motion capture. Terrain, foliage, ground, rails, signs and lighting retain their existing implementation.
+The historical device acceptance focused on WebGL2. Consult the formal-adoption record above before attributing full-monitor native PC fullscreen, dedicated game WebGPU qualification, human difficulty assessment or listening checks to the current version. Characters use continuous original-UV surfaces with baked weights and independent sixteen-bone Egret skeletons, driven procedurally rather than by motion capture. Terrain, foliage, ground, rails, signs and lighting retain their existing implementation.
 
 ## 已知问题 · Known issues
 

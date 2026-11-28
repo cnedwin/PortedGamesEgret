@@ -32,6 +32,9 @@ export async function createWorld3DOverlay(canvas, options) {
         throw new EgretError('WORLD3D_OVERLAY_OPTIONS_INVALID');
     if ((options.renderMode !== undefined && options.renderMode !== 'continuous' && options.renderMode !== 'on-demand') ||
         (options.effects !== undefined && typeof options.effects !== 'boolean') ||
+        (options.hover !== undefined && typeof options.hover !== 'boolean') ||
+        (options.onFrameTiming !== undefined && typeof options.onFrameTiming !== 'function') ||
+        (options.measureSharedFrames !== undefined && typeof options.measureSharedFrames !== 'boolean') ||
         (options.webgl2PageBatching !== undefined &&
             options.webgl2PageBatching !== 'single-page' &&
             options.webgl2PageBatching !== 'multi-page'))
@@ -102,6 +105,9 @@ export async function createWorld3DOverlay(canvas, options) {
             clearAlpha: 0,
             effects: options.effects ?? true,
             ...(options.renderMode === undefined ? {} : { renderMode: options.renderMode }),
+            ...(options.hover === undefined ? {} : { hover: options.hover }),
+            ...(options.onFrameTiming === undefined ? {} : { onFrameTiming: options.onFrameTiming }),
+            ...(options.measureSharedFrames === undefined ? {} : { measureSharedFrames: options.measureSharedFrames }),
             ...(options.webgl2PageBatching === undefined ? {} : { webgl2PageBatching: options.webgl2PageBatching }),
             ...(options.uiScale === undefined ? {} : { uiScale: options.uiScale }),
             ...(fills && holder !== undefined ? { fit: fit, fitTo: holder } : {}),
@@ -136,13 +142,32 @@ export async function createWorld3DOverlay(canvas, options) {
             return true;
         }
     };
+    const reportHoverFailure = (cause) => {
+        if (options.onError !== undefined)
+            options.onError(cause);
+        else if (typeof globalThis.reportError === 'function')
+            globalThis.reportError(cause);
+        else
+            void Promise.reject(cause);
+    };
     const forward = (event) => {
-        if (options.passThrough === false || event.target !== overlay)
+        if (options.passThrough === false)
             return;
         const pointer = event;
-        const id = typeof pointer.pointerId === 'number' ? pointer.pointerId : -1;
+        const id = Number.isSafeInteger(pointer.pointerId) ? pointer.pointerId : -1;
+        // A scene listener may obtain actual native capture from a forwarded down. Its trusted terminal
+        // event then bypasses the overlay. Never retain that ownership for the next use of the same id.
+        if (event.target !== overlay) {
+            if (event.isTrusted && (event.type === 'pointerup' || event.type === 'pointercancel')) {
+                passing.delete(id);
+                if (pointer.isPrimary)
+                    pendingClick = undefined;
+            }
+            return;
+        }
         let send;
         if (event.type === 'pointerdown') {
+            passing.delete(id);
             if (pointer.isPrimary)
                 pendingClick = undefined;
             send = empty(pointer);
@@ -192,6 +217,8 @@ export async function createWorld3DOverlay(canvas, options) {
             clientY: pointer.clientY,
             screenX: pointer.screenX,
             screenY: pointer.screenY,
+            movementX: pointer.movementX,
+            movementY: pointer.movementY,
             button: pointer.button,
             buttons: pointer.buttons,
             pointerId: pointer.pointerId,
@@ -207,10 +234,50 @@ export async function createWorld3DOverlay(canvas, options) {
             deltaMode: event.deltaMode
         });
         canvas.dispatchEvent(copy);
+        // A scene-owned original never reaches the overlay adapter. End its former hover, even if an
+        // app's leave callback fails: the scene has already received its event.
+        if (game.hover?.state === 'active' &&
+            id >= 0 &&
+            (pointer.pointerType === 'mouse' || pointer.pointerType === 'pen')) {
+            try {
+                if (event.type === 'pointerdown')
+                    game.hover.leave(id, 'contact');
+                else if (event.type === 'pointercancel')
+                    game.hover.leave(id, 'pointercancel');
+                else if (event.type === 'pointermove')
+                    game.hover.leave(id, pointer.buttons === 0 ? 'outside' : 'contact');
+            }
+            catch (cause) {
+                reportHoverFailure(cause);
+            }
+        }
     };
     // Capturing on the window runs before the 2D game's own listeners on the overlay.
     for (const type of FORWARDED)
         win.addEventListener(type, forward, { capture: true, passive: false });
+    const releaseOwnership = () => {
+        passing.clear();
+        pendingClick = undefined;
+    };
+    const visibility = () => {
+        if (doc.visibilityState === 'hidden')
+            releaseOwnership();
+    };
+    const lock = () => {
+        releaseOwnership();
+        if (doc.pointerLockElement !== null && game.hover?.state === 'active') {
+            try {
+                game.hover.leaveAll('outside');
+            }
+            catch (cause) {
+                reportHoverFailure(cause);
+            }
+        }
+    };
+    win.addEventListener('blur', releaseOwnership);
+    win.addEventListener('pagehide', releaseOwnership);
+    doc.addEventListener('visibilitychange', visibility);
+    doc.addEventListener('pointerlockchange', lock);
     const stopScreenReport = createOverlayScreenReporter(game, overlay, canvas);
     const ready = performance.now();
     return {
@@ -233,6 +300,11 @@ export async function createWorld3DOverlay(canvas, options) {
             stopScreenReport();
             for (const type of FORWARDED)
                 win.removeEventListener(type, forward, { capture: true });
+            win.removeEventListener('blur', releaseOwnership);
+            win.removeEventListener('pagehide', releaseOwnership);
+            doc.removeEventListener('visibilitychange', visibility);
+            doc.removeEventListener('pointerlockchange', lock);
+            releaseOwnership();
             observer?.disconnect();
             win.removeEventListener('resize', place);
             await game.dispose();

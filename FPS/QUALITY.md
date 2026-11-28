@@ -1,8 +1,57 @@
 # 品质验收 · Quality — Operation Cutoff · 断流行动
 
-按 [QUALITY-CHECKLIST.md](../docs/QUALITY-CHECKLIST.md) 验收。下方为 2026-11-28 原生 UI 迁移的实测，后附历史检查表；历史结果不代表本次版本。引擎固定于 `33897768c4f7933d289f083e4f34b3209b0aef31`，旧副本 `b5628eb`，更新旧界面的独立提交 `44cffe9e`。
+## Formal native input and attached World3D verification / 正式原生输入与 World3D 接入验收
 
-Current native UI measurements precede the historical checklist. Engine revision `33897768c4f7933d289f083e4f34b3209b0aef31`; engine-only migration commit `44cffe9e`. The historical table must not be interpreted as the current build's results.
+Engine / 引擎: `33897768` → `4f08d2bcd25de3aafa7295f3b349970f8003ed71`. Real Windows Edge WebGL2 hardware / 实体 Windows PC：ANGLE (NVIDIA, NVIDIA GeForce RTX 5090 Laptop GPU (0x00002C58) Direct3D11 vs_5_0 ps_5_0, D3D11). Actual / 真机 Fold7：SM-F966U1, Android 17, Chrome/158.0.8127.44, ANGLE (Qualcomm, Adreno (TM) 830, OpenGL ES 3.2), 873×325 CSS @ 2.625 DPR. Seed 7, medium, zh. PC conditions match / PC 条件一致：true; handset conditions match / 手机条件一致：true.
+
+Five-second callback cadence / 5 秒回调采样（P95 / max; >50 ms interval count; 2D submit / steps；均非 GPU 执行耗时或屏幕呈现 FPS）:
+
+| Device / 设备 | State / 状态 | Before / 改造前 | After / 改造后 |
+|---|---|---|---|
+| PC 1280×800 | title / 标题 | 4.3 / 4.7 ms; >50: 0; 0/1202 | 4.3 / 4.5 ms; >50: 0; 0/1203 |
+| PC 1280×800 | play / 游玩 | 4.3 / 4.8 ms; >50: 0; 743/1204 | 4.3 / 8.5 ms; >50: 0; 823/1170 |
+| PC 873×325 emulation / 手机尺寸模拟 | title / 标题 | 4.3 / 4.8 ms; >50: 0; 0/1203 | 4.3 / 16.7 ms; >50: 0; 0/1199 |
+| PC 873×325 emulation / 手机尺寸模拟 | play / 游玩 | 8.3 / 12.5 ms; >50: 0; 866/1107 | 8.4 / 12.6 ms; >50: 0; 716/821 |
+| Fold7 physical / 真机 | title / 标题 | 16.7 / 16.7 ms; >50: 0; 0/304 | 16.7 / 16.7 ms; >50: 0; 0/306 |
+| Fold7 physical / 真机 | play / 游玩 | 33.2 / 49.8 ms; >50: 0; 191/218 | 33.3 / 66.3 ms; >50: 4; 184/208 |
+
+- PC named acceptance / PC 具名操作：33/33 desktop、17/17 mobile-size geometry; 9 actual file identities each; runtime/HTTP errors 0. Exact renderer/scene/camera/canvas retained; native lock locked, raw one explicit request → locked, ordinary resume locked. Native mouse masks 2 → 3 → 2 → 0 (trusted event receipt), independent edges. Tab and modal navigation, pause and native asset refusal: UI-only then retry, 36 models restored.
+- Fold7 physical / 手机真机：11 file hashes, 36 loaded models, 5 states × 2 physical orientation transitions; joystick boundary and 2 simultaneous contacts, cancellation 0 contacts, no page scroll; all restoration receipts true. Battery 29.7→30.8 °C, USB. Actual injected touch / 真机协议触控，而非真人操作。
+
+Native screen verifier / 原生屏幕检查 (90→90 checkpoints, all 9 profiles): errors 0→0; warnings 0→0; engine warnings 0→0. Fresh receipts / 全部新鲜回执。Play checkpoint's native control counts / 对局原生控件数量：
+
+| Profile / 机型 | Before / 前 | After / 后 | Errors / 警告数(错误/警告) |
+|---|---:|---:|---:|
+| phone-small (375×667) | 0 | 11 | 0/0 |
+| phone-notch (393×852) | 0 | 11 | 0/0 |
+| phone-notch-wide (852×393) | 0 | 11 | 0/0 |
+| phone-tall (360×800) | 0 | 11 | 0/0 |
+| tablet (768×1024) | 0 | 11 | 0/0 |
+| tablet-wide (1024×768) | 0 | 11 | 0/0 |
+| foldable-cover-wide (873×325) | 0 | 11 | 0/0 |
+| foldable (884×1104) | 0 | 11 | 0/0 |
+| desktop (1920×1080) | 0 | 0 | 0/0 |
+
+
+### Rerun / 复跑
+
+- `node --test test/*.test.mjs`
+- `node test/accept.mjs` (software title/menu smoke / 软件标题与菜单检查).
+- Set `FPS_HARDWARE=1` and `CHROMIUM_PATH` to installed Chromium; run `node test/accept.mjs` (actual PC and geometry-emulated screens / 实体 PC 与手机尺寸模拟).
+- `node vendor/egret.mjs verify --screens --play test/screen-route.mjs --playwright test/screen-browser.mjs` (hardware opt-in; actual reviewed screen checkpoints / 实际多机型截图检查).
+
+Limits / 未覆盖：the observed route is not a whole real-device mission; handset cadence is not GPU execution/presented FPS; no human finger or hand-controller test, Safari/Firefox or audio-perception claim. 真机采样是有界初段路线，不是整章通关；手机温度与 GPU 缓存不作全局控制，不把桌面模拟当真机。No private serials, target IDs, browser storage or unrelated phone data are included.
+
+- 本轮 Node 测试 91/91，规则模拟三次完整到撤离（357、358、357 s），不是人工/真机整局。保留原始玩法、资产与画质。 · 91/91 Node tests; 3 complete deterministic rule simulations, 357/358/357 seconds, not whole real-device missions. Original rules, art and renderer settings remain unchanged.
+- RTX 5090 Laptop 的正式 WebGPU 初段检查：实际 NVIDIA Blackwell adapter，未回退；标题、原生菜单及初段移动通过，九个源文件核验、零运行异常。 · Actual hardware WebGPU initial title/menu/movement passed on NVIDIA Blackwell with no renderer fallback, nine file identities and zero errors; no whole WebGPU mission or handset WebGPU.
+- Fold7 同条件短样本存在波动。未合并候选的两次初段 P95 49.7/66.3 ms，最长 66.3/82.9 ms；稍后同版旧引擎 A2 复跑 P95 66.4 ms、最长 83.0 ms，候选 B3 P95 67.6 ms、最长 82.9 ms。两者每帧 World3D 绘制 125，平滑规则/视图/CPU 提交中位数 A2 0.309/1.307/21.357 ms，B3 0.360/1.495/22.670 ms；非 GPU 执行时间。不能把短采样波动归因于新接口，保留正式版偶发长帧记录，不因假设降画质。 · Short handset callback samples vary, including on the older engine. The later instrumented A2/B3 old/candidate repeat recorded P95 66.4/67.6 ms and maximum 83.0/82.9 ms, 125 world draws each and smoothed rules/view/CPU-submit medians 0.309/1.307/21.357 versus 0.360/1.495/22.670 ms. These are diagnostic runs, not causal proof or GPU execution timings. Retain the final long-frame observations, no speculative quality downgrade.
+- 正式 SwiftShader 软件兼容：3/3，通过标题、设置、说明；标题基线差异 4.05%，未更新原基线，零运行/HTTP 错误。 · Formal SwiftShader smoke 3/3, title/settings/help, title baseline difference 4.05%, original baseline retained, zero runtime/HTTP errors.
+- 通用 verify 默认 2.5 秒探针历史同样失败：旧/正式版均为 1 色、1 idle frame；正式硬件脚本路线 title-ready/moving/pause 3 个检查点、声音和输入均通过，无运行/外部请求错误。保留 overall pass=false，不把子项通过冒充通用探针通过。见第 15 条引擎笔记及 [formal-verify-probe.json](test/evidence/formal-verify-probe.json)。 · Bare generic probe fails before assets are ready in both old and formal builds; the readiness-aware route passes all three scripted checkpoints, input and sound, with no errors/external requests. Preserve overall false and distinguish played.pass=true (ENGINE-NOTES 15).
+- 可核对的精简正式验收记录：[formal-api-receipt.json](test/evidence/formal-api-receipt.json)。 · Sanitized formal device and screen receipt: [formal-api-receipt.json](test/evidence/formal-api-receipt.json).
+
+按 [QUALITY-CHECKLIST.md](../docs/QUALITY-CHECKLIST.md) 验收。下方为历史 2026-11-28 原生 UI 迁移的实测，后附历史检查表；历史结果不代表本次版本。引擎固定于 `33897768c4f7933d289f083e4f34b3209b0aef31`，旧副本 `b5628eb`，更新旧界面的独立提交 `44cffe9e`。
+
+Historical initial native UI measurements precede the earlier checklist. Engine revision `33897768c4f7933d289f083e4f34b3209b0aef31`; engine-only migration commit `44cffe9e`. The historical table must not be interpreted as the current build's results.
 
 ## 2026-11-28 对照实测 · Matched measurements
 
