@@ -1,5 +1,30 @@
 # 品质验收 · Quality — Operation Cutoff · 断流行动
 
+## Scene art repair / 场景美术缺陷修复
+
+Baseline / 基线：`3ca60f0edb0898f4b3222f7a93c67bafab099b61`；引擎固定为 `d2e28f46182a563fd594cc51847240429ab0a5b5`。仅替换场景表现，地图坐标、碰撞、玩法、存档、画质选项和音频不变。 / Same engine and rules, collision, placements, settings and audio; only scene presentation changed.
+
+- 大坝：三个泄洪口的无纹理实心白色流体/泡沫盒改为透明水纹及柔边水花，地面十处重叠黑色多边形积水改为单层不规则纹理，复用原生平面反射与雨水法线。 / Feathered textured sluice sheets/spray and a single irregular puddle surface retain native planar reflection and rain normals (`src/water-details.mjs`). 两类表面各保留一个网格，无额外反射通道。 / Two mesh surfaces, no extra reflection pass.
+- 植被：原 10 株阔叶、43 株杉树的坐标和尺寸不变，改为独立树干枝条、带颜色和法线纹理的树皮和透明裁切叶片；共四个原生实例批次，保留投影及背光层次。叶片色调和杉树枝条倾角再次精修。 / Native instanced bark and masked foliage replace the cone/ball placeholders at the original tree locations. Four shared batches with shadows, muted foliage and varied spray angles (`src/vegetation.mjs`). No external downloads or new binary art assets; four 256² RGBA vegetation maps (1 MiB raw) and two small water maps are generated locally.
+- 物资箱：移除整块发光内板，保留原开盖动画及搜集逻辑，用受光内衬、隔板和通用小包装形成真正的箱内层次；回退箱子也改为同外边界的空壳。 / Recessed lit lining, dividers and packages replace the luminous rarity slab in one mesh; the fallback is hollow. No change to the opening threshold or inventory (`src/supply-crate-art.mjs`).
+
+同机位美术检查：Windows Edge、RTX 5090 Laptop 实际 WebGL2 D3D11、1400×900、中画质、seed 7，旧版与最终修订版均完整加载 36 个模型。两次各六组场景定点画面，分别核对水闸宽/近景、积水、阔叶与混合植被、杉树、开启物资箱；截图已逐张检查，无运行或 HTTP 错误。 [五组前后对照](test/evidence/scene-art-before-after.jpg)。定点相机和仅用于检查外观的开箱状态设置均只在独立诊断页面，在规则暂停后执行，不计为正常游玩。 / Matched real-GPU art checks at six cameras were inspected individually, with 36 models and no runtime/HTTP errors on either revision. The isolated fixed-camera/open-case presentation fixture is not a playthrough or a frame benchmark.
+
+### Device and regression checks / 设备与回归
+
+| Condition / 条件 | Before / 改造前 | Initial candidate / 初版修复 | Final / 最终修订 |
+| --- | ---: | ---: | ---: |
+| PC RTX 5090, 7 s starting-area rAF, medium/seed 7 (callbacks / P95 / max) | 1668 / 4.3 / 12.5 ms | 1661 / 4.3 / 41.9 ms | 1678 / 4.3 / 8.3 ms |
+| Fold7 start-area A→B (Hz / P95 / max) | 59.76 / 16.7 / 33.2 ms | 50.34 / 33.2 / 49.8 ms | — |
+| Fold7 fresh contexts in reverse B→A | 39.79 / 49.7 / 66.3 ms | 59.76 / 16.7 / 33.2 ms | — |
+| Fold7 final art, same route, battery 32.6→32.7°C | — | — | 50.23 / 33.2 / 82.9 ms |
+
+三星 Galaxy Z Fold7 实体手机（Adreno 830、外屏横屏 873×325，WebGL2，中画质）两组顺序相反的约 7 秒正常开局对照，结果反转，因此未确认可重复的美术改动引起的性能下降。最终修订版真实源文件 35/35 校验通过，完成触屏移动、取消、暂停及恢复；36/36 模型正常，无运行或请求错误。最终 7.03 秒样本出现 82.9 ms 和 66.3 ms 两次长间隔，平均 50.23 次回调/秒；不是持续满帧或混战性能结论。开局场景实际绘制由 125→129 次、三角数 9,405,794→9,416,038（约 +0.11%）。另行检查最终版六个定点镜头，未出现原白块、黑圆盘或发光内板。 / Physical Fold7 smoke used actual touch input, source hashes and six isolated art cameras. Two short A/B pairs reverse the apparent cadence difference, so causality is not established. The final sample has two >50 ms intervals; no claim of a universal frame-rate improvement or high-load qualification.
+
+最终版本 107/107 Node 测试（新增 9 项针对性场景与材质检查）、三组无页面规则模拟分别 357/358/357 秒到达撤离终点；实际 RTX 桌面原生交互验收 33/33，同机手机尺寸模拟 17/17，官方硬件通用验收 7/7，均无运行异常或 HTTP 失败，实际资源拒绝后重试恢复 36 个模型。13/13 桌面及尺寸模拟路径的源码校验包括新美术实现；35/35 真机源码/关键引擎入口校验。 / Final 107 tests, three deterministic no-browser rule runs, 33/33 hardware desktop, 17/17 PC-emulated phone layout and 7/7 official hardware verification; the last three rule simulations are not manually completed missions. New art modules are generated at scene creation, not downloaded as GLB assets.
+
+本轮没有改动存档、引擎副本及游戏规则；没有重新执行两台设备上的完整高负载撤离、WebGPU、Safari、Firefox、实机手柄或专门听音。水流和树木是高效实时美术表现，非真实流体或全叶片三维模拟。手机长帧仍应独立追踪，不能从本短样本断言引擎缺陷。 / No final full high-load device mission, WebGPU, Safari/Firefox, physical controller or dedicated listening test. This is an art repair with bounded visual and interaction evidence, not a fluid simulation or a general performance guarantee.
+
 ## Fold7 frame pacing and public startup / Fold7 长帧与公网冷启动专项
 
 Baseline / 基线：game release `91e1f0e4`, engine `d2e28f46182a563fd594cc51847240429ab0a5b5`, seed 3 medium WebGL2 on Fold7 and seed 7 medium on Windows Edge RTX 5090 Laptop. The geometry-cache and HUD-revision experiments retain the engine pin for attribution. No art, quality setting, simulation, input, save or audio change. / 模型、画质、规则、操作、存档、声音不变，以下A/B固定引擎以区分Demo改动与引擎。

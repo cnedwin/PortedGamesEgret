@@ -8,6 +8,8 @@ import { createBuilder, rgb } from './build.mjs';
 import { BOUNDS, BOXES, PLACES } from './level.mjs';
 import { weather } from './grime.mjs';
 import { canvasTexture, dotTexture } from './textures.mjs';
+import { createWaterDetails } from './water-details.mjs';
+import { buildVegetation } from './vegetation.mjs';
 
 const WHITE = [1, 1, 1];
 const shade = (c, k) => [c[0] * k, c[1] * k, c[2] * k];
@@ -877,104 +879,12 @@ export function buildScenery(scene, surfaces, models = {}) {
       for (const dx of [-0.42, 0.42]) plain.box(35.1 + dx, 0.95, z + dz, 0.05, 1.9, 0.05, { tint: rgb(0x3a3d40) });
   }
 
-  // ---- trees: dark firs beyond the wall and a few inside it ---------------------------------
-  const fir = (x, z, size) => {
-    plain.limb([x, 0, z], [x + 0.05 * size, size * 3.4, z], 0.13 * size, 0.03 * size, { sides: 6, tint: rgb(0x3b2f24) });
-    // Six tiers of branches, each a shallow cone drooping over the one below, narrowing and lightening towards the top.
-    for (let tier = 0; tier < 6; tier++) {
-      const y = size * (0.7 + tier * 0.48),
-        reach = size * (1.15 - tier * 0.16),
-        lean = Math.sin(x * 3.1 + tier * 1.7) * 0.08 * size,
-        green = [rgb(0x1a2c1e), rgb(0x1f3524), rgb(0x243d29)][tier % 3];
-      plain.cylinder(x + lean, y, z - lean, reach, size * 0.62, {
-        top: reach * 0.18,
-        sides: 11,
-        tint: shade(green, 0.85 + tier * 0.05),
-        caps: false,
-      });
-      plain.cylinder(x + lean, y - size * 0.31, z - lean, reach * 0.55, 0.02, { sides: 8, tint: shade(green, 0.5) });
-    }
-  };
-  /** A broad-leaved tree: a forked trunk under a crown of overlapping leaf masses. */
-  const oak = (x, z, size) => {
-    plain.limb([x, 0, z], [x + 0.1, size * 1.5, z + 0.05], 0.16 * size, 0.11 * size, { sides: 7, tint: rgb(0x3a2e24) });
-    for (const [dx, dz] of [
-      [0.5, 0.2],
-      [-0.45, 0.3],
-      [0.1, -0.5],
-    ])
-      plain.limb([x + 0.1, size * 1.4, z + 0.05], [x + dx * size, size * 2.3, z + dz * size], 0.08 * size, 0.04 * size, {
-        sides: 5,
-        tint: rgb(0x3a2e24),
-      });
-    for (const [dx, dy, dz, r] of [
-      [0, 2.7, 0, 1.15],
-      [0.75, 2.4, 0.3, 0.85],
-      [-0.7, 2.45, 0.35, 0.9],
-      [0.15, 2.35, -0.75, 0.85],
-      [-0.2, 3.25, 0.1, 0.8],
-    ])
-      plain.ball(x + dx * size, dy * size, z + dz * size, r * size, r * size * 0.8, r * size, {
-        tint: shade(rgb(0x35522f), 0.85 + (dx + dz) * 0.12),
-        sides: 9,
-        rings: 6,
-      });
-  };
-  for (const [x, z, size] of [
-    [-34.5, 30, 1.25],
-    [34.5, 30.2, 1.3],
-    [36, -27.5, 1.2],
-    [-12.5, 30.3, 1.1],
-    [45, 6, 2],
-    [-46, 12, 2.2],
-    [-44, -14, 1.9],
-    [10, 40, 2.1],
-    [-20, 41, 1.8],
-    [47, 26, 1.9],
-  ])
-    oak(x, z, size);
-  for (let i = 0; i < 54; i++) {
-    // Spread round the outside of the compound, a little unevenly.
-    const angle = (i / 54) * Math.PI * 2 + Math.sin(i * 3.7) * 0.05,
-      reach = 50 + ((i * 37) % 11) * 1.6,
-      x = Math.sin(angle) * reach * 1.05,
-      z = Math.cos(angle) * reach * 0.95 + 2;
-    if (z < -24 && Math.abs(x) < 50) continue; // the dam stands there
-    fir(x, z, 2.2 + ((i * 13) % 7) * 0.22);
-  }
-  for (const [x, z, size] of [
-    [-35.5, 29.5, 1.5],
-    [35, -24.5, 1.7],
-    [36, 12.5, 1.4],
-    [-10.5, 29.8, 1.3],
-  ])
-    fir(x, z, size);
+  // The same authored tree sites, now shaded from shared native bark and leaf-spray models.
+  buildVegetation(scene);
 
-  // ---- water falling from the sluice gates ---------------------------------------------------
-  const water = createBuilder();
-  for (const x of [-25, -15, 25]) {
-    water.box(x, 3.4, BOUNDS.minZ + 0.35, 5.4, 6.4, 0.3, { tint: [0.75, 0.85, 0.9] });
-    water.box(x, 0.2, BOUNDS.minZ + 1.6, 6.2, 0.5, 1.6, { tint: [0.9, 0.95, 0.97] });
-  }
-
-  // ---- puddles: last night's rain, lying in the low spots and mirroring the sky --------------
-  const puddles = createBuilder();
-  for (const [x, z, w, d, turn] of [
-    [-6, 17, 3.2, 2, 0.3],
-    [7.5, 5.5, 2.6, 3.6, 1.1],
-    [-12, -6.5, 3.8, 2.2, 0.6],
-    [15, 19, 2.4, 2.4, 0],
-    [-24, 13.2, 2.2, 1.4, 0.2],
-    [3, -6.2, 4.2, 1.6, 0],
-    [24, 10, 3, 2.2, 0.8],
-    [-30, -17.5, 2.6, 1.8, 0.4],
-    [20.5, -11, 1.8, 3, 0.1],
-    [-3, 27, 2.6, 1.6, 0.5],
-  ])
-    puddles
-      .cylinder(x, 0.016, z, Math.min(w, d) / 2, 0.004, { sides: 14 })
-      .cylinder(x + Math.cos(turn) * w * 0.28, 0.016, z + Math.sin(turn) * d * 0.28, Math.min(w, d) * 0.36, 0.004, { sides: 12 })
-      .cylinder(x - Math.cos(turn) * w * 0.3, 0.016, z - Math.sin(turn) * d * 0.22, Math.min(w, d) * 0.3, 0.004, { sides: 12 });
+  // The authored gate structures remain behind thin streaked water sheets,
+  // and each rain puddle is one feathered surface rather than overlapping solids.
+  const { sluice, puddles, puddleStrength } = createWaterDetails(BOUNDS.minZ);
 
   // ---- one mesh per surface ----------------------------------------------------------------
   const meshes = {};
@@ -1062,32 +972,10 @@ export function buildScenery(scene, surfaces, models = {}) {
     shadows: false,
     tangents: false,
   });
-  add(
-    water,
-    createUnlitMaterial3D({ color: 0xffffff, vertexColors: true, opacity: 0.6, alphaMode: 'blend', depthWrite: false }),
-    {
-      shadows: false,
-      tangents: false,
-    },
-  );
-  mirror(
-    add(
-      puddles,
-      createStandardMaterial3D({
-        color: 0x0b0e11,
-        roughness: 0.03,
-        opacity: 0.78,
-        alphaMode: 'blend',
-        depthWrite: false,
-        environmentIntensity: 2.2,
-      }),
-      {
-        shadows: false,
-        tangents: false,
-      },
-    ),
-    0.95,
-  );
+  scene.addChild(sluice);
+  weather(puddles.material, { streaks: 0, foot: 0, stains: 0.12, tone: 0.08, rain: true });
+  scene.addChild(puddles);
+  mirror(puddles, puddleStrength);
 
   // ---- the sun, just clear of the ridge: a bright disc inside a wide soft glow ----------------
   {
