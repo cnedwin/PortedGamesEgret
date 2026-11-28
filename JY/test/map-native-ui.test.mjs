@@ -19,5 +19,9 @@ test('HUD updates only changes, uses engine state bindings, and abort closes nat
  assert.equal(binding['scene-location'].text(),'古道'); assert.equal(binding['scene-notice'].text(),'Starting');
  hud.coordinates.textContent='格点 7 · 12'; assert.equal(binding.coordinates.text(),'Tile 7 · 12');
  const n=calls.length; hud.coordinates.textContent='格点 7 · 12'; assert.equal(calls.length,n);
+ hud.hint.textContent='Sample instruction'; hud.setBattleMode(true);
+ assert.equal(binding['scene-card'].visible(),false); assert.equal(binding['context-card'].visible(),false);
+ assert.equal(binding['notice-card'].visible(),true);
+ hud.setBattleMode(false); assert.equal(binding['scene-card'].visible(),true); assert.equal(binding['context-card'].visible(),true);
  hud.notice.hidden=true; assert.equal(binding['notice-card'].visible(),false); cancel.abort(); assert.equal(calls.at(-1),'close');
 });

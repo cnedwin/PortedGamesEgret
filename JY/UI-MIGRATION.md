@@ -29,3 +29,15 @@
 640×360 / 360×640 设计，Play `fit: expand` 原地调整，并使用其 safe/screen 几何；经典格子仍使用原来规则坐标，映射由 `web/board-viewport.mjs` 负责。 · Expand and portrait are native; board coordinates are preserved and mapped only for presentation/picking.
 
 不能把帧接收当成真实 GPU 完成或合成呈现。 · A submitted host frame is not a GPU completion or compositor guarantee. See ENGINE-NOTES JY#5.
+
+## 原生战斗与旧页面清理（第四批） · Native encounters and shell cleanup (batch 4)
+
+| 原界面 · Previous layer | 原生实现 · Native layer |
+|---|---|
+| 状态栏、操作/武学/物品/支援、待机/自动 | `web/jyx2/ui/native/battle-ui.mjs`: native data bindings, actor/target bars, command rail, compact More, valid preview; existing command IDs. |
+| 原战斗高亮单独 Canvas | `web/battle-view.mjs` + retained native Graphics grid helper: same board projection, stable draw signature; no per-frame new DOM canvas. |
+| 投降/重开确认与战果 | `battle-ui.mjs`, `battle-result-ui.mjs`: native modal stack with explicit continue, existing result/reward callbacks and revision unchanged. |
+| 多余 DOM/UI 样式与旧手柄合成器 | `web/index.html` now only host/title containers, canvas placeholder, minimal boot/error text and noscript; `web/style.css` is 20 lines of host layout. Only the minimum file chooser is kept for actual file import/export. |
+| 键鼠、手柄和焦点 | `native-input.mjs`, `input-mapping.mjs`: Play routes named inputs, official lower-level snapshot only for missing raw channels. Previous runtime gamepad adapter removed. |
+
+保持原战斗分支、数值、AI、技能、场景、动画、结算和存档不变；新增控件只调用既有命令。 · Native controls invoke existing commands without changing the rules, animation, rewards or saves. Parent-owned expand layout retains the original classic board coordinate mapping; portrait and short screen arrange through engine geometry.

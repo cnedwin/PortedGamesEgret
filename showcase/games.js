@@ -207,7 +207,7 @@ export const GAMES = [
     features: [
       {
         title: { zh: "原生数据界面与屏幕栈", en: "Native data views and screen stack" },
-        description: { zh: "原生标题、设置、存档、行囊、剧情对白与探索控件使用数据界面、安全区、模态屏幕栈及具名语义；资料后台验证。", en: "Title, settings, saves, inventory, dialogue and travel controls use native data views, safe-area layouts, modal screen stacks and named semantics while data is prepared in the background." },
+        description: { zh: "原生标题、设置、存档、行囊、剧情对白、探索与战斗指令使用数据界面、安全区、模态屏幕栈及具名语义；资料后台验证。", en: "Title, settings, saves, inventory, dialogue, travel and battle controls use native data views, safe-area layouts, modal screen stacks and named semantics while data is prepared in the background." },
         source: 'web/jyx2/ui/native/front-end.mjs',
       },
       {

@@ -32,7 +32,8 @@ export const MAP = {
   "@egret/engine/web/kit": "./engine/dist/web/kit.js",
   "@egret/engine/ui/semantics": "./engine/dist/semantics.js",
   "@egret/engine/ui/testing": "./engine/dist/ui/testing.js",
-  "@egret/engine/web/semantics": "./engine/dist/web/semantics.js"
+  "@egret/engine/web/semantics": "./engine/dist/web/semantics.js",
+  "@egret/engine/web/view": "./engine/dist/web/view.js"
 };
 export function resolve(specifier, context, next) {
   const file = MAP[specifier];

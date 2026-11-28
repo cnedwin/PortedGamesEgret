@@ -3,7 +3,7 @@ import { join } from 'node:path';
 
 // Read only public named UI geometry and lifecycle counters. Drive the real
 // controls; neither scripted dialogue text nor underlying save data is read.
-export async function acceptNativeTravel(page,{out,stamp,check}){
+export async function acceptNativeTravel(page,{out,stamp,check,runBattle=false,battleFinish='auto-after-manual',battleOrder}){
  const state=()=>page.evaluate(()=>{const d=document.querySelector('#game')?.dataset??{},host=globalThis.__jyNativeQa?.host,stats=host?.stats;return{scene:d.scene,mode:d.mode,phase:d.phase,opening:d.opening,page:d.talkPage,pages:d.talkPages,animationFrames:d.animationFrames,worldView:d.worldView,host:!!host,
   ...(stats&&{frames:{submitted:stats.submitted,retained:stats.retained,refused:stats.refused,retry:stats.retry,revision:stats.requestedRevision}})}});
  async function bounds(name){return page.evaluate(async label=>{
@@ -60,6 +60,10 @@ export async function acceptNativeTravel(page,{out,stamp,check}){
  }
  current=await state();if(current.opening!=='complete')await page.screenshot({path:join(out,'native-opening-timeout.png')});
  assert(current.opening==='complete','Opening did not complete: '+JSON.stringify(current));stamp('native-opening-complete',{steps,scene:current.scene,elapsed:Date.now()-began});
+ if(runBattle){
+  const {acceptNativeBattle}=await import('./native-battle-browser.mjs');
+  return await acceptNativeBattle(page,{out,stamp,check,finish:battleFinish,manualOrder:battleOrder});
+ }
  // The normal opening offers a short-lived exit guide. Use it before the
  // inventory/menu checks, and require actual world entry rather than silently
  // skipping the verification when the guide expires.
