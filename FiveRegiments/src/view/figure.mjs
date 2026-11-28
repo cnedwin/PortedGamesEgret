@@ -8,6 +8,7 @@ import { add, axisAngle, basis, cross, dot, fitLinkedGrip, gripRotation, len, le
 import { createRig } from './rig.mjs';
 import { createAnimator, heavyFootwork, impactWeight, interpolateDirection, returnSpearPhase, signatureBodyWeight, swingPhase, TIGER_SWORD } from './motion.mjs';
 import { createFooting } from './footing.mjs';
+import { createLocomotionBlend, GAIT_NAMES } from './locomotion-blend.mjs';
 import { bowLoosePose, bowReleasePose } from './bow-release.mjs';
 import { ordinaryCuts } from './ordinary-poses.mjs';
 import { ARTS, SKILLS } from '../sim/regiments.mjs';
@@ -373,6 +374,7 @@ export function createFigure({ regiment, body, motion, world, height = 1.8 }) {
   const base = motion.pose(),
     gait = motion.pose(),
     layer = motion.pose();
+  const locomotion = createLocomotionBlend();
   const state = {
     phase: 0,
     primaryGrip: { axis: null, edge: null },
@@ -657,12 +659,16 @@ export function createFigure({ regiment, body, motion, world, height = 1.8 }) {
     const staggerWeight = state.thrown?.roll ?? Number(fallen);
     state.down += (staggerWeight - state.down) * (1 - Math.exp(-dt * (staggerWeight > state.down ? 18 : 7)));
     const movement = clamp((speed - 0.15) / 0.5, 0, 1);
-    const moving = movement * (1 - state.ride) * (man.alive && !stunned ? 1 : 0.16);
     const fwdW = Math.max(0, vFwd) / (speed || 1),
       backW = Math.max(0, -vFwd) / (speed || 1),
       leftW = Math.max(0, vLeft) / (speed || 1),
       rightW = Math.max(0, -vLeft) / (speed || 1);
     const runW = clamp((speed - 1.7) / 1.6, 0, 1);
+    // Blend only neutral, on-foot movement. Action, aim, guard, impact, dismount and rider poses are unchanged.
+    const neutralLocomotion = man.alive && !man.mounted && !man.act && !man.guard && !man.draw && !(man.stun > 0) &&
+      state.ride === 0 && !state.thrown && state.dismountLand <= .02 && impact < .001;
+    const gaitBlend = locomotion.update(fwdW, backW, leftW, rightW, runW, movement, dt, neutralLocomotion);
+    const moving = gaitBlend.moving * (1 - state.ride) * (man.alive && !stunned ? 1 : 0.16);
     // One phase for all the gaits, run at the pace of the strongest.
     const natural = fwdW * (runW * 3.1 + (1 - runW) * 1.33) + backW * 0.9 + (leftW + rightW) * 1.1;
     const cycle = fwdW * (runW * motion.duration('run') + (1 - runW) * motion.duration('walk')) + backW * motion.duration('back') + (leftW + rightW) * motion.duration('sideA');
@@ -671,13 +677,7 @@ export function createFigure({ regiment, body, motion, world, height = 1.8 }) {
     const sampleAt = (name, out) => motion.sample(name, ph * motion.duration(name), out);
     motion.sample('idle', (game.time * 0.9 + man.id.length) % motion.duration('idle'), base);
     if (moving > 0) {
-      const gaits = [
-        ['walk', fwdW * (1 - runW)],
-        ['run', fwdW * runW],
-        ['back', backW],
-        ['sideB', leftW],
-        ['sideA', rightW]
-      ].filter(([, w]) => w > 0.02);
+      const gaits = GAIT_NAMES.map((name, i) => [name, gaitBlend.weights[i]]).filter(([, w]) => w > 0.02);
       let acc = 0;
       for (const [name, w] of gaits) {
         if (acc === 0) sampleAt(name, gait);

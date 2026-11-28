@@ -23,3 +23,9 @@ The transparent Play interface is attached to the existing World3D renderer with
 - 原生漆木、铜线框饰、分层入口及独立操作指南；跟随实际菜单可见矩形调整预览镜头。 / Native lacquer-and-bronze framing, hierarchical choices, a dedicated guide and preview camera framing around the menu.
 - 地表宏观色调和连续纹理、道路磨损、校正竹林和雪地雾、场景环境照明。远景山体候选因实拍呈单色板状而撤回；地形、碰撞和场景路线不变。 / Ground and path detail, corrected fog and lighting. An opaque horizon candidate was rejected after visual review; gameplay terrain remains unchanged.
 - 190/190 Node checks. On Windows RTX 5090 Laptop GPU, headed high-quality fixed-seed scene captures: five routes passed, four duel samples p95 4.3 ms, maxima 4.4–12.4 ms without screenshotting during sampling. Public baseline and local candidate differ in network and code, so startup comparisons are not causal. Phone-sized viewport captures are not physical-phone tests.
+
+## V4 — 动作连续性 · Animation continuity
+
+原有五套动捕步态保持，普通无特殊动作的起停、转向使用短时间过渡；静止马匹头颈微动。试验光带在同时间、同机位实拍中没有证实可见改善，故保留既有光效。 / The original capture sets are retained; ordinary locomotion transitions and a small horse idle movement are refined. The alternative ribbon was not retained because the matched visible capture did not establish an improvement.
+
+PC 实际键鼠进入、选营、指针锁定、移动起停通过（RTX 5090 Laptop GPU；303 isolated rAF intervals, p95 4.3 ms, max 12.7 ms, no >50 ms). Automated browser input is not human play. The focused motion tests used actual capture data; all 194 Node tests passed in the retained version.

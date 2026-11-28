@@ -4,6 +4,7 @@
 // when killed. It reads the fight's horse each frame and never changes it. `seat()` tells the rider where the saddle is.
 import { Mesh3D, Object3D } from '@egret/engine/world3d';
 import { axisAngle, qinv, qmul, qrot } from './rig.mjs';
+import { createHorseIdlePitch } from './locomotion-blend.mjs';
 
 const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
 const ease = (t) => (t <= 0 ? 0 : t >= 1 ? 1 : t * t * (3 - 2 * t));
@@ -88,6 +89,7 @@ export function createHorse({ body, world }) {
     node.setQuaternion(q[0], q[1], q[2], q[3]);
   };
 
+  const idleHead = createHorseIdlePitch();
   const state = { phase: 0, mix: { walk: 1, trot: 0, gallop: 0 }, rein: 0, rear: 0, fall: 0, fallSide: 1, lean: 0 };
 
   /** The swing and bend of one leg at a point in its cycle: forward and back, the lower joints folding as it lifts. */
@@ -155,7 +157,9 @@ export function createHorse({ body, world }) {
         root.setPosition(p[0], p[1], p[2]);
       }
       turnBone('tripo::Spine_0', -rock * 0.5);
-      turnBone('tripo::Head_0', rock * 1.6 + Math.sin(state.phase * Math.PI * 4) * 0.03 * moving + state.rear * 0.35 - state.rein * 0.09);
+      // The idle breath lives only on the head bone; the saddle/body transforms stay authored by the gait.
+      const breath = idleHead(speed, h.alive, rearing || state.rear > .02, dt);
+      turnBone('tripo::Head_0', rock * 1.6 + Math.sin(state.phase * Math.PI * 4) * 0.03 * moving + state.rear * 0.35 - state.rein * 0.09 + breath);
       // The whole horse: heading, the rear (up about the hind feet), the fall (over onto its side).
       const yaw = h.face ?? 0;
       const rearAngle = ease(state.rear) * 0.55 + rock * 0.4;
