@@ -44,3 +44,11 @@ This game uses Egret Rebuild `21297267`. The integration notes and remaining gam
 - **现象 / Observation**：Windows Playwright WebKit iPhone 15 Pro 配置，公开旧版自动导入/标题正常，实际「開始新遊戲」时低层 Canvas 缺少严格 WC1 状态，691 触发 `TEXT_MEASURE_FAILED / WEB_TEXT_STATE_UNSUPPORTED`。 · Entering the Home scene triggered a strict Canvas text capability refusal even after a normal title.
 - **游戏里 / Game use**：[web/main.mjs](web/main.mjs) 的真实游戏文字栅格缓存采用合并引擎 [#570](https://github.com/cnedwin/Egret_rebuild/pull/570) 提供的 `createCanvasTextRasterProvider({compatibility:'game-labels'})`，通过正式工具重新生成引擎副本及模块映射。未伪造 Canvas 状态、未更改文字、规则或存档。 · Use the opt-in game-label mode; strict callers retain their own contract.
 - **状态 / Status**：该 Windows WebKit 样本采用正式引擎 `ca9ff2a0` 后 691 首句及 3D 场景实拍通过、Node 76/76。实体 iPhone 尚未验证。 · Resolved in the measured browser configuration; physical iOS remains unverified.
+
+### 4. 屏幕栈关闭模态后焦点恢复 · Screen-stack modal focus return — 未解决 / open
+<!-- engine-note: {"id":"JY#4","status":"open","topic":"stack-modal-focus-return","workaround":["web/jyx2/ui/native/front-end.mjs","browser/import-ui.mjs"]} -->
+
+- 现象 · Observation：模态独立的视图焦点与屏幕栈关闭顺序不同，标题恢复后焦点未必落回开启它的按钮；同一视图旋转亦有复现。 · Closing a named modal can leave the underlying title unfocused when view and stack activation complete at different times; this also reproduced after rotation.
+- 处理 · Handling：保留原生模态及屏幕栈，待关闭 Promise 完成且标题再次激活后调用公开 `view.focus(opener)`。 · Restore the opener through the public native focus API once the underlying page has been activated.
+- 建议 · Suggestion：屏幕栈在重新激活下层页面后，原子恢复原控件焦点，覆盖旋转及多层模态。 · Restore the originating control after reactivating the lower page, including orientation and nested views.
+- 状态 · Status：在固定引擎版本上保留此小范围适配，具名回归。 · Narrow adapter retained at the pinned revision with named regression coverage.

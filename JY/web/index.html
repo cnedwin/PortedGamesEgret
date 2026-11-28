@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="zh-CN">
+<html lang="zh-Hant">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
@@ -10,24 +10,7 @@
 </head>
 <body>
   <main>
-    <section id="title-screen" class="title-screen" aria-labelledby="title-logo" hidden>
-      <picture class="title-landscape" aria-hidden="true">
-        <img class="title-art" src="./title-art/wuxia-dawn.webp" alt="" width="1536" height="1024" fetchpriority="high">
-      </picture>
-      <div class="title-content">
-        <h1 id="title-logo">金庸群俠傳</h1>
-        <p class="title-edition">白鷺引擎 · 武俠遊戲 Demo</p>
-        <nav class="title-actions" aria-label="主選單">
-          <button type="button" class="title-journey" data-title-action="continue"><span>繼續遊戲</span><span aria-hidden="true">›</span></button>
-          <button type="button" class="title-journey" data-title-action="new"><span>開始新遊戲</span><span aria-hidden="true">›</span></button>
-          <button type="button" class="title-library" data-title-action="load">讀取存檔</button>
-          <button type="button" class="title-library" data-title-action="settings">設定</button>
-          <button type="button" class="title-library" data-title-action="help">操作說明</button>
-        </nav>
-        <p id="title-status" class="title-status" role="status"></p>
-      </div>
-      <dialog id="title-dialog" class="title-dialog" aria-labelledby="title-dialog-heading"></dialog>
-    </section>
+    <section id="title-screen" class="title-screen" hidden><div id="native-title-holder"></div></section>
     <div id="play-screen">
     <header class="masthead">
       <div>

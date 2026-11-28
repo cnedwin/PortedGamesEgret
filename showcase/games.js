@@ -206,9 +206,9 @@ export const GAMES = [
     summary: { zh: "走江湖、访客栈、招募同伴，体验经典回合制战斗。向《金庸群侠传》、智冠公司与金庸先生致敬。", en: "Explore inns, recruit companions and fight classic turn-based battles. A tribute to Heroes of Jin Yong, Soft-World and Jin Yong." },
     features: [
       {
-        title: { zh: "2D 与 3D 共用上下文", en: "One WebGL2 context for 2D and 3D" },
-        description: { zh: "立绘、对白框和战斗界面的 2D 层，与大地图、场景和战场的 3D 画面共用一个 WebGL2 上下文。", en: "Portraits, the dialogue frame and the battle interface share one WebGL2 context with the 3D world map, places and battlefields." },
-        source: 'web/main.mjs',
+        title: { zh: "原生数据界面与屏幕栈", en: "Native data views and screen stack" },
+        description: { zh: "标题、设置与存档使用原生数据界面、自适应安全区、模态屏幕栈及具名语义控件；资料在后台验证。", en: "Title, settings and saves use native data views, safe-area layouts, modal screen stacks and named semantics while data is prepared in the background." },
+        source: 'web/jyx2/ui/native/front-end.mjs',
       },
       {
         title: { zh: "三维场景与模型加载", en: "3D scenes and model loading" },
