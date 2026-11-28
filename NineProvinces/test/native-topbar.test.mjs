@@ -1,10 +1,11 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { setLanguage } from '../src/i18n.mjs';
-import { createGame, income, upkeep, power } from '../src/sim/world.mjs';
-import { readCampaignHeader, buildCampaignHeader, campaignHeaderHeight } from '../src/ui/native-topbar.mjs';
-import { miniMapTarget, miniMapMarks, layoutMiniMap } from '../src/ui/native-minimap-model.mjs';
-import { MAP, NODES } from '../src/data/map.mjs';
+import '../vendor/node-register.mjs';
+const { setLanguage } = await import('../src/i18n.mjs');
+const { createGame, income, upkeep, power } = await import('../src/sim/world.mjs');
+const { readCampaignHeader, buildCampaignHeader, campaignHeaderHeight } = await import('../src/ui/native-topbar.mjs');
+const { miniMapTarget, miniMapMarks, layoutMiniMap } = await import('../src/ui/native-minimap-model.mjs');
+const { MAP, NODES } = await import('../src/data/map.mjs');
 import { pathToFileURL } from 'node:url';
 async function enginePath(){if(process.env.NINE_ENGINE_VIEW)return pathToFileURL(process.env.NINE_ENGINE_VIEW);await import('../vendor/node-register.mjs');return new URL('../vendor/engine/dist/web/view.js',import.meta.url);}
 

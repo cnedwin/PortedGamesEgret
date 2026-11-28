@@ -169,12 +169,12 @@ export const GAMES = [
     features: [
       {
         title: { zh: "流式六角地形", en: "Streamed hex terrain" },
-        description: { zh: "3600×2600 的天下按镜头远近流式加载高度块，地貌颜色、六角格线和选中高亮在一个自定义着色器里画。", en: "A realm 3,600 by 2,600 streams in height tiles around the camera, with ground colours, hex lines and highlights in one custom shader." },
+        description: { zh: "3600×2600 的天下按镜头远近流式加载高度块，Worker 计算采样，原生地形流和自定义着色器绘制地貌；快速移动时退休过期请求。", en: "A realm 3,600 by 2,600 streams terrain around the camera. A Worker computes samples, while the native terrain stream and custom shader draw the land; stale requests retire during rapid travel." },
         source: 'src/view3d/terrain.mjs',
       },
       {
         title: { zh: "代码搭出的城池", en: "Cities built in code" },
-        description: { zh: "七十六座城的城墙、角楼、城门和里坊由几何构建器拼成，镜头走近才搭建；全城旗帜共用一个实例化网格。", en: "Seventy-six cities of walls, towers, gates and wards are assembled by the geometry builder as the camera nears, their banners sharing one instanced mesh." },
+        description: { zh: "七十六座城由几何构建器拼成，原生 prepareGeometries 分批准备细节，期间保留低精度模型；城旗共用实例化网格。", en: "Seventy-six cities are assembled by the geometry builder; native prepareGeometries stages detailed meshes while retaining visible proxies, and banners share an instanced mesh." },
         source: 'src/view3d/cities.mjs',
       },
       {

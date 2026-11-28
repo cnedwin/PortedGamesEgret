@@ -1,9 +1,11 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { buildRealmSheet,nativeTipFor } from '../src/ui/native-realm-hud.mjs';
-import { createCampaignCoach } from '../src/ui/native-campaign-coach.mjs';
-import { createGame } from '../src/sim/world.mjs';
-import { setLanguage } from '../src/i18n.mjs';
+import '../vendor/node-register.mjs';
+const { buildRealmSheet,nativeTipFor } = await import('../src/ui/native-realm-hud.mjs');
+const { createCampaignCoach } = await import('../src/ui/native-campaign-coach.mjs');
+const { createGame } = await import('../src/sim/world.mjs');
+const { setLanguage } = await import('../src/i18n.mjs');
+const { muster } = await import('../src/sim/military.mjs');
 function namedParts(description){const list=new Map(),walk=n=>{if(n?.name)list.set(n.name,n);for(const child of n?.children??[])walk(child)};walk(description.root);return list;}
 const all=['overview','works','orders','officers'];
 const s=createGame({seed:184,faction:'liubei',branch:'free'});
@@ -40,4 +42,14 @@ test('first-month coach renders a native named fixed footer without spending day
  const c=createCampaignCoach(app,host);c.refreshFirst();
  assert(last.parts.has('coach-dismiss'));assert(last.parts.has('coach-start'));const day=s.day;
  last.options.bind['coach-start'].tap();assert(app.firstMonth.dismissed);assert.equal(paused,false);assert.equal(s.day,day);c.dispose();
+});
+
+test('own army sheet keeps map command and adds a genuine named native list opener',()=>{
+  const state=createGame({seed:184,faction:'liubei',branch:'free'});
+  const issued=muster(state,state.player,'pingyuan',{commander:'liubei',troops:1000});assert(issued.ok);
+  let picked;const fixture={...app,state,sel:{army:issued.army},mode:null,destinationPicker:{open(id){picked=id}},setMode(v){fixture.mode=v}};
+  const spec=buildRealmSheet(fixture,'overview',{portrait:false,width:340,height:450,top:100},()=>{}),parts=namedParts(spec.description);
+  assert(parts.has('army-destination-list'));assert(parts.get('army-destination-list').height>=48);
+  spec.bind['army-destination-list'].tap();assert.equal(picked,issued.army);assert.equal(fixture.mode,null);
+  spec.bind['army-march'].tap();assert.deepEqual(fixture.mode,{kind:'march',army:issued.army});
 });

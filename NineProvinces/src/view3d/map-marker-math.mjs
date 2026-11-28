@@ -29,3 +29,12 @@ export function reliefDrop(rect,reservedBottom,scale) {
   const delta=Math.max(0,reservedBottom-rect.y);
   return delta*scale<=56?delta:null;
 }
+
+/** In a short landscape, the fixed top bar can cover a nearby town label even
+ * though the town itself is visible. Move just that label within the same
+ * bounded screen-space distance used for relief labels, then re-test actual
+ * safe-area occlusion/overlap. Do not move the object or change its pick ID. */
+export function mapPlateHudDrop(rect,bottom,scale,viewportHeight,type) {
+  if(type==='relief'||(type==='place'&&viewportHeight<450))return reliefDrop(rect,bottom,scale);
+  return 0;
+}

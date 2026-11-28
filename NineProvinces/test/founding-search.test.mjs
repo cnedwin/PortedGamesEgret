@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { filterFoundingOfficers } from '../src/ui/founding.mjs';
+import '../vendor/node-register.mjs';
+const { filterFoundingOfficers } = await import('../src/ui/founding.mjs');
 
 const officers = [
   { ref: 'history:zhaoyun', id: 'zhaoyun', zh: '赵云', en: 'Zhao Yun' },

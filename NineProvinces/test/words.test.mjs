@@ -10,7 +10,8 @@ import { readFile, readdir } from 'node:fs/promises';
 import { test } from 'node:test';
 import '../vendor/node-register.mjs';
 
-const { WORDS, t, setLanguage, dateWords, hanzi } = await import('../src/i18n.mjs');
+const { WORDS, t, setLanguage, getLanguage, dateWords, hanzi, nm, num } = await import('../src/i18n.mjs');
+const { createTextTable } = await import('@egret/engine/kit');
 const { GENERALS } = await import('../src/data/generals.mjs');
 const { NODES, PROVINCES } = await import('../src/data/map.mjs');
 const { FACTIONS, LATER } = await import('../src/data/factions.mjs');
@@ -86,4 +87,33 @@ test('era dates: the first year is 元, then Chinese numerals; English uses the 
   assert.equal(dateWords(184, 2), 'February 184');
   assert.equal(t('marching', { place: 'Ye', days: 3 }), 'Marching to Ye, about 3 days');
   setLanguage('zh');
+});
+
+test('native text table preserves authored copy, missing substitutions, and exact language contract', () => {
+  const before=getLanguage();
+  try {
+    const pairs=Object.entries(WORDS),languages=Object.fromEntries(['zh','en'].map(lang=>[lang,Object.fromEntries(pairs.map(([key,entry])=>[key,entry[lang]]))]));
+    const engine=createTextTable({languages,language:'zh',fallback:'zh'});
+    assert.deepEqual(engine.missing(),{zh:[],en:[]});
+    let compared=0;
+    for(const lang of ['zh','en']){
+      assert.equal(setLanguage(lang),lang);
+      for(const [key,entry] of pairs){
+        const names=[...entry[lang].matchAll(/\{(\w+)\}/g)].map(x=>x[1]);
+        const values=(value)=>Object.fromEntries(names.map(name=>[name,value]));
+        for(const input of [{},values('张 $& {x}'),values(0),values(false),values(null),Object.create(values(17))]){
+          const expected=entry[lang].replace(/\{(\w+)\}/g,(_,name)=>String(input[name]??''));
+          assert.equal(t(key,input),expected,lang+':'+key);compared++;
+        }
+        assert.equal(t(key),entry[lang].replace(/\{(\w+)\}/g,''));compared++;
+      }
+      assert.throws(()=>t('not-a-known-word'),/no words for not-a-known-word/);
+      assert.equal(nm({zh:'原名'}),'原名');assert.equal(nm(null),'');
+      assert.equal(num(100000),lang==='zh'?'10.0万':'100k');
+    }
+    assert.equal(compared,pairs.length*14);
+    for(const v of ['zh','en','en-US','EN',null,undefined,'',false]){
+      assert.equal(setLanguage(v),v==='en'?'en':'zh');assert.equal(getLanguage(),v==='en'?'en':'zh');
+    }
+  } finally {setLanguage(before);}
 });

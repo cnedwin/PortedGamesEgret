@@ -1,7 +1,7 @@
 import '../vendor/node-register.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { buildBattleHudDescription, layoutBattleHud, createBattleHudModelStore, makeBattleControl, makeBattleText } from '../src/ui/native-battle-hud.mjs';
+const { buildBattleHudDescription, layoutBattleHud, createBattleHudModelStore, makeBattleControl, makeBattleText } = await import('../src/ui/native-battle-hud.mjs');
 
 const fixture=()=>({title:'Battle title',subtitle:'Faction A · Faction B',phase:'deploy',phaseTitle:'Deployment',clock:'1:07',wind:'Wind',timeShare:.7,objectives:[{id:'keep',label:'Objective',text:'0/10',share:0,color:0xc5a95c}],controls:[makeBattleControl('pause','Pause',()=>{}),makeBattleControl('speed-1','1×',()=>{})],owned:[{id:0,name:'Unit A',type:'Unit',portrait:'a.png',troops:'6000',morale:75,rage:30,share:.8,status:['Ready'],selected:true,select:()=>{},actions:[makeBattleControl('formation-0','Formation A',()=>{})]}],enemy:[{id:1,name:'Unit B',type:'Unit',troops:'5000',morale:68,rage:0,share:.7,status:[],selected:false,select:()=>{},actions:[]}],command:{title:'Command',selection:'Unit A',tools:[makeBattleControl('overview','Overview',()=>{})],rows:[makeBattleText('instruction','An existing game instruction.'),makeBattleControl('begin','Begin',()=>{})]},feed:[{text:'A note',tone:'good'}],footer:{text:'Help',actions:[]}});
 const names=(node,out=new Map())=>{if(node.name){assert(!out.has(node.name),node.name);out.set(node.name,node.type)}node.children?.forEach(n=>names(n,out));return out;};
@@ -33,4 +33,13 @@ test('Pinned engine planner validates the authored parts and native touch target
 });
 test('Retired native controls retain a valid semantic name while disabled until structural commit',()=>{
  const store=createBattleHudModelStore(),m=fixture();store.update(m);const old=buildBattleHudDescription(store,layoutBattleHud(1280,720,1));const calls=[];m.controls[0].action=()=>calls.push(1);m.controls.shift();store.update(m);assert.equal(old.bind['battle-pause'].label(),'Pause');assert.equal(old.bind['battle-pause'].text(),'Pause');assert.equal(old.bind['battle-pause'].disabled(),true);old.bind['battle-pause'].tap();assert.deepEqual(calls,[]);
+});
+
+test('five portrait battle header actions keep 44 CSS px on a tall 360px phone',async()=>{
+ const {planView}=await import('@egret/engine/web/view');
+ const store=createBattleHudModelStore(),m=fixture(),scale=44/48,width=360/scale,height=776/scale;
+ m.controls=['bpause','bs0','bs1','bs2','leave-trial'].map((id,i)=>makeBattleControl(id,['Continue','1×','2×','4×','Leave'][i],()=>{}));store.update(m);
+ const {description}=buildBattleHudDescription(store,layoutBattleHud(width,height,scale)),safe={x:0,y:0,width,height};
+ const plan=planView(description,{screen:safe,safe,orientation:'portrait'});
+ for(const id of m.controls.map(c=>'battle-'+c.id)){const item=plan.parts.find(x=>x.part.name===id);assert(item&&item.rect.width*scale>=44-.01&&item.rect.height*scale>=44-.01,id);}
 });

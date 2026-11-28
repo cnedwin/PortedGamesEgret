@@ -1,7 +1,7 @@
 import '../vendor/node-register.mjs';
 import test from 'node:test';import assert from 'node:assert/strict';
-import {encounterConfig} from '../src/sim/battle-sandbox.mjs';
-import {createReplayCursor} from '../src/ui/native-replay-model.mjs';
+const {encounterConfig} = await import('../src/sim/battle-sandbox.mjs');
+const {createReplayCursor} = await import('../src/ui/native-replay-model.mjs');
 
 test('Native sandbox delegates real simulation, single external clock, natural result, replay and rematch; campaign unchanged',async()=>{
  const {createNativeBattlePlayground}=await import('../src/ui/battle-playground-native.mjs');let setup,scene,child,closed=false,draws=0,ticks=0,model;

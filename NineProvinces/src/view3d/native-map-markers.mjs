@@ -8,7 +8,7 @@ import {NODES} from '../data/map.mjs';
 import {nm,getLanguage} from '../i18n.mjs';
 import {createMapPlatePool} from '../ui/native-map-plates.mjs';
 import {placePlate,armyPlate,plateExtent} from '../ui/native-map-plate-model.mjs';
-import {placedRect,selectVisibleMarkers,markerHitArea,reliefDrop} from './map-marker-math.mjs';
+import {placedRect,selectVisibleMarkers,markerHitArea,mapPlateHudDrop} from './map-marker-math.mjs';
 
 export function createNativeMapMarkers(host,{camera,sceneCanvas,onNode,onArmy,onWarning}={}){
   const game=host.game,layer=game.sprite(undefined,game.ui),records=new Map();
@@ -61,12 +61,12 @@ export function createNativeMapMarkers(host,{camera,sceneCanvas,onNode,onArmy,on
       const data=model(record,state,selection,player,sieges,far);if(!data)continue;
       const origin=mapper.toDesign(projected.x,projected.y),extent=record.visual?.extent(data)??plateExtent(data),passive=record.type==='relief';
       let rect=placedRect(origin,passive?extent:markerHitArea(extent),scale);
-      if(passive){
-        // Old labels moving out from under the top HUD travelled at most 56
-        // CSS pixels; retain that bounded accommodation in native units.
-        const drop=reliefDrop(rect,reservedBottom+4/scale,scale);if(drop===null)continue;
-        origin.y+=drop;rect={...rect,y:rect.y+drop};
-      }
+      // The short landscape header can cover a label while its town is
+      // still in view. Keep the shift bounded and let native overlap/safe
+      // selection reject anything which would intersect another control.
+      const drop=mapPlateHudDrop(rect,reservedBottom+4/scale,scale,scene.height,record.type);
+      if(drop===null)continue;
+      origin.y+=drop;rect={...rect,y:rect.y+drop};
       candidates.push({id:record.id,record,data,origin,rect,priority:data.priority,distance:length,passive,retained:Boolean(record.visual)});
     }
     const chosen=selectVisibleMarkers(candidates,safe,occluders),ids=new Set(chosen.map(item=>item.id));
@@ -88,6 +88,9 @@ export function createNativeMapMarkers(host,{camera,sceneCanvas,onNode,onArmy,on
     addArmy(id,target,opts){return add('army',id,target,opts);},
     addRelief(id,target,label,opts){return add('relief',id,target,{...opts,label});},
     update,dispose(){if(closed)return;closed=true;for(const r of records.values())releaseVisual(r);records.clear();pool.dispose();if(!layer.isDisposed)layer.dispose();},
+    // The public PlayText.ready promises describe the captured visible label
+    // revisions, not GPU presentation; diagnostic reads do not rasterize again.
+    async textReadySnapshot(){const shown=[...records.values()].filter(r=>r.visual),results=await Promise.all(shown.map(async r=>({id:r.id,...await r.visual.textReady()})));return {markers:results.length,labels:results.reduce((s,x)=>s+x.count,0),ready:results.reduce((s,x)=>s+x.ready,0),aborted:results.reduce((s,x)=>s+x.aborted,0),failed:results.flatMap(x=>x.failed),ids:results.map(x=>x.id)};},
     // Read-only diagnostics for the native screen/interaction acceptance.
     snapshot(){return {records:records.size,visible:active,visiblePortraits,pool:pool.stats(),shown:[...records.values()].filter(r=>r.visual).map(r=>({id:r.id,entity:r.entity,type:r.type,x:r.visual.root.x,y:r.visual.root.y,bounds:r.visual.stageBounds}))};}
   };

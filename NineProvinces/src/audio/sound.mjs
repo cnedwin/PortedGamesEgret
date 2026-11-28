@@ -16,7 +16,7 @@ const delay = milliseconds => new Promise(resolve => setTimeout(resolve, millise
  * most two decoded music decks (not three full stereo songs in phone memory).
  * A failed or superseded load leaves the current music and gameplay intact.
  */
-export async function createSound(scope, { sound = true, music = true, musicVolume = .55, effectsVolume = .8 } = {}) {
+export async function createSound(scope, { sound = true, music = true, musicVolume = .55, effectsVolume = .8 } = {}, {onThemeFailure} = {}) {
   let disposed = false, wanted = null, request = 0, queue = Promise.resolve(), pending = null;
   let musicLevel = clamp(musicVolume, .55), effectsLevel = clamp(effectsVolume, .8);
   let soundOn = !!sound, musicOn = !!music, duckUntil = 0, duckTimer;
@@ -192,7 +192,12 @@ export async function createSound(scope, { sound = true, music = true, musicVolu
       // A rejection must not poison later scene requests; callers may safely
       // fire-and-forget a title request that occurs before the first gesture.
       const task = queue.then(() => enterTheme(name, token)).catch(error => {
-        if (!disposed && token === request && error?.name !== 'AbortError') remember(error);
+        // A current timeout/refused fetch is a genuine recoverable resource
+        // failure. Superseded and disposed requests must not raise a prompt.
+        if(!disposed&&token===request){
+          remember(error);
+          if(musicOn&&onThemeFailure)onThemeFailure(name);
+        }
         return null;
       });
       queue = task.then(() => undefined);

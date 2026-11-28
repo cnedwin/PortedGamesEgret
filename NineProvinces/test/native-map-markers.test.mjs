@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {placedRect, selectVisibleMarkers, markerHitArea, reliefDrop} from '../src/view3d/map-marker-math.mjs';
+import {placedRect, selectVisibleMarkers, markerHitArea, reliefDrop, mapPlateHudDrop} from '../src/view3d/map-marker-math.mjs';
 import {createMapOcclusionRegistry} from '../src/view3d/map-occlusion.mjs';
 
 const safe={x:0,y:0,width:500,height:300};
@@ -36,4 +36,14 @@ test('real native UI occlusion providers follow retained geometry and unregister
   registry.addMapOcclusion(()=>null);assert.deepEqual(registry.mapOcclusionRects(),[first]);
   first.width=200;assert.equal(registry.mapOcclusionRects()[0].width,200);
   active=false;assert.deepEqual(registry.mapOcclusionRects(),[]);active=true;remove();assert.deepEqual(registry.mapOcclusionRects(),[]);
+});
+
+test('short landscape town labels can move a bounded distance below the top bar',()=>{
+  const r={x:200,y:44,width:80,height:44},o={x:0,y:0,width:500,height:80};
+  assert.equal(mapPlateHudDrop(r,84,1,325,'place'),40);
+  assert.equal(mapPlateHudDrop(r,104,1,325,'place'),null);
+  assert.equal(mapPlateHudDrop(r,84,1,800,'place'),0);
+  assert.equal(mapPlateHudDrop(r,84,1,325,'army'),0);
+  const shifted={...r,y:r.y+mapPlateHudDrop(r,84,1,325,'place')};
+  assert.deepEqual(selectVisibleMarkers([entry('town',shifted)],safe,[o]).map(x=>x.id),['town']);
 });

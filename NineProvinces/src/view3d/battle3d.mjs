@@ -31,7 +31,7 @@ import { wallTop } from './cities.mjs';
 import { figureOf, isSiegeFigure } from './troops.mjs';
 import {formationSlots, freshAttack, createSiegeLighting, battleCameraFrame} from './battle-staging.mjs';
 import { createNativeBattleMarkers } from './native-battle-markers.mjs';
-import {createBattleReframeGate,battleReframeIndices} from './battle-viewport-reframe.mjs';
+import {createBattleReframeGate,battleReframeIndices,chooseBattleLocateAnchor,locateCameraOffset} from './battle-viewport-reframe.mjs';
 import { catapultStone, CATAPULT_ARM_PIVOT, CATAPULT_LOAD_POINT, TOWER_DECK_PIVOT, TOWER_DECK_PITCH } from './siege-tall-equipment.mjs';
 import { catapultPitch, siegeMount, CATAPULT_RELEASE_PITCH, CATAPULT_RELEASE_TIME, CATAPULT_RESET_TIME } from './siege-motion.mjs';
 import { createSiegeShots } from './siege-shots.mjs';
@@ -374,7 +374,7 @@ export function createBattle3D(realm, b, { colours, side, rulers, on, calm, canD
   let hoverHex = -1,
     selected = null,
     goalHex = -1,
-    follow = null;
+    follow = null, followOffset={x:0,z:2};
   realm.setMode({
     hides: (a) => Boolean(a.inBattle),
     pick(g) {
@@ -578,8 +578,8 @@ export function createBattle3D(realm, b, { colours, side, rulers, on, calm, canD
       const fu = b.units[follow];
       if (fu.gone || fu.pos < 0) follow = null;
       else {
-        rig.view.tx = shown[follow].x;
-        rig.view.tz = shown[follow].z + 2;
+        rig.view.tx = shown[follow].x+followOffset.x;
+        rig.view.tz = shown[follow].z+followOffset.z;
       }
     }
     // The ring under the chosen unit.
@@ -685,10 +685,22 @@ export function createBattle3D(realm, b, { colours, side, rulers, on, calm, canD
       goalHex = hexIndex;
     },
     lookAtHex(i) {
-      if (i < 0) return;
-      rig.glideTo(pos[i].x, pos[i].z, Math.min(rig.view.td, 45), 0.6);
-      const u = b.units.findIndex((o) => !o.gone && o.pos === i);
-      follow = u >= 0 ? u : null;
+      if (i < 0 || !pos[i]) return;
+      const u=b.units.findIndex(o=>!o.gone&&o.pos===i),r=realm.canvasRect(),host=realm.uiHost;
+      const d=Math.min(rig.view.td,45);
+      follow=u>=0?u:null;
+      followOffset={x:0,z:u>=0?2:0};
+      if(r.height<=500||r.height>r.width){
+        const mapper=host.mapper(),rectCss=box=>{
+          const a=mapper.toScene(box.x,box.y),b=mapper.toScene(box.x+box.width,box.y+box.height);
+          return {left:a.x,top:a.y,right:b.x,bottom:b.y};
+        };
+        const field={width:r.width,height:r.height,safe:rectCss(host.metrics().safe),obstacles:host.mapOcclusionRects().map(rectCss)};
+        const anchor=chooseBattleLocateAnchor(field);
+        if(anchor)followOffset=locateCameraOffset(field,d,anchor,u>=0?2.9:0);
+      }
+      const point=u>=0?shown[u]:pos[i];
+      rig.glideTo(point.x+followOffset.x,point.z+followOffset.z,d,.6);
     },
     overview(){
       if(siegeSample){frameScene([...b.units.filter(u=>!u.gone).map(u=>u.pos),b.gate?.at,b.keep].filter(Number.isInteger));return;}
