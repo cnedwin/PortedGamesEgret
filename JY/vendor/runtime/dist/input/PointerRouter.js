@@ -450,4 +450,3 @@ export function createPointerRouter(options) {
         }
     });
 }
-//# sourceMappingURL=PointerRouter.js.map

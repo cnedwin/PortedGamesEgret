@@ -112,4 +112,3 @@ export function commitParagraphCacheLifetime(manager, close) {
     state.paragraphLifetimeCommitted = true;
     state.closeParagraphCache = close;
 }
-//# sourceMappingURL=assetManagerOwnerState.js.map

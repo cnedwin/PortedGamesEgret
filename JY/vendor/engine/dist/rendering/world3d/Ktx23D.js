@@ -109,4 +109,3 @@ export async function parseKtx23D(bytes, options = {}) {
         colorSpace: known.colorSpace
     };
 }
-//# sourceMappingURL=Ktx23D.js.map

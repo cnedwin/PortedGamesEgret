@@ -130,4 +130,3 @@ export class Scope {
         }
     }
 }
-//# sourceMappingURL=Scope.js.map

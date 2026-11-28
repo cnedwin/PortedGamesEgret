@@ -59,4 +59,3 @@ export { createSdfRig3D } from './Rig3D.js';
 export { createSdfLod3D } from './SdfLod3D.js';
 export { createSurfaceMaterial3D, surfaceShaderSources3D } from './SurfaceMaterial3D.js';
 export { retargetAnimationClip3D } from './Retarget3D.js';
-//# sourceMappingURL=index.js.map

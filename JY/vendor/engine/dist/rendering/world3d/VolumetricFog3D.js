@@ -227,4 +227,3 @@ export class VolumetricFog3D extends Mesh3D {
 export function createVolumetricFog3D(options = {}) {
     return new VolumetricFog3D(options);
 }
-//# sourceMappingURL=VolumetricFog3D.js.map

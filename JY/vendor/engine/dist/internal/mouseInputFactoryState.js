@@ -122,4 +122,3 @@ const inputRuntimePrimitives = Object.freeze({
 export function captureMouseInputRuntimePrimitives() {
     return inputRuntimePrimitives;
 }
-//# sourceMappingURL=mouseInputFactoryState.js.map

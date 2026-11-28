@@ -66,4 +66,3 @@ export class SequencePlayer {
         stateOf(this).binding = undefined;
     }
 }
-//# sourceMappingURL=SequencePlayer.js.map

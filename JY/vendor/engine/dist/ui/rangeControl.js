@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 import { EgretError } from '@egret/runtime';
+import { trackScreenControl } from '../internal/uiControlReportState.js';
 const finite = (value) => typeof value === 'number' && Number.isFinite(value);
 /** A slider on a target: dragging along its track or pressing keys sets a value between its least and greatest. */
 export function createRangeControl(options) {
@@ -91,6 +92,7 @@ export function createRangeControl(options) {
                 setDragging(undefined);
         })
     ];
+    const untrack = trackScreenControl(input, target, 'range', () => enabled && !closed);
     return Object.freeze({
         get value() {
             return value;
@@ -146,6 +148,7 @@ export function createRangeControl(options) {
             if (closed)
                 return;
             closed = true;
+            untrack();
             let failure;
             try {
                 setDragging(undefined);
@@ -165,4 +168,3 @@ export function createRangeControl(options) {
         }
     });
 }
-//# sourceMappingURL=rangeControl.js.map

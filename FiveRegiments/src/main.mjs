@@ -9,6 +9,7 @@
 //   ?fixed           each frame drawn is one tick of the world (slow-motion captures on slow machines)
 import { Scene3D, createPerspectiveCamera3D, loadGltf3D, projectToViewport3D } from '@egret/engine/world3d';
 import { createWorld3DApp } from '@egret/engine/webgpu/world3d';
+import { useFixedWorldResolution } from './view/canvas-policy.mjs';
 import { browserSaveStorage } from '@egret/engine/web/kit';
 import { createFight, step, TICK } from './sim/fight.mjs';
 import { incomingAttack } from './sim/combat-tells.mjs';
@@ -77,6 +78,7 @@ async function main() {
   const coarse = matchMedia('(pointer: coarse)').matches;
   const backend = params.get('backend') === 'webgpu' && navigator.gpu ? 'webgpu' : 'webgl2';
   const app = await createWorld3DApp(canvas, {
+    ...(useFixedWorldResolution(globalThis.navigator) ? { dynamicResolution: false } : {}),
     backend,
     quality: params.get('quality') ?? (settings.quality === 'auto' ? 'auto' : settings.quality),
     onError: fail,

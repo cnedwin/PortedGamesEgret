@@ -454,4 +454,3 @@ export function getResourceManifestIdentityInputs(manifest, id) {
         throw new RangeError('Resource ID is absent from this manifest.');
     return result;
 }
-//# sourceMappingURL=manifestAdmission.js.map

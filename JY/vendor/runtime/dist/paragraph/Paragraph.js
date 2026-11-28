@@ -190,4 +190,3 @@ class ParagraphNode extends DisplayObjectContainer {
 export function createParagraphNode(scope, cache) {
     return new ParagraphNode(scope, cache, creationToken);
 }
-//# sourceMappingURL=Paragraph.js.map

@@ -103,7 +103,7 @@ function contains(rectangle, point) {
  * Whether a point, in a node's own units, is on what the node itself draws: one of its filled rectangles, a triangle
  * of its shapes, or its bitmap's rectangle. A node that is touch enabled and has no hit area is hit by this.
  */
-function onContent(node, point) {
+export function containsOwnPaint(node, point) {
     const visual = visualOf(node), x = point.x, y = point.y;
     for (const { rect } of visual.primitives)
         if (rect.width > 0 && rect.height > 0 && contains(rect, point))
@@ -208,7 +208,7 @@ export function queryDisplayHit(receiver, x, y, options) {
             // Keep evaluating every eligible candidate after the first winner so a
             // topmost hit cannot hide another active branch's arithmetic failure.
             if (winner === undefined &&
-                (cursor.area === true ? onContent(cursor.node, localPoint) : contains(cursor.area, localPoint)))
+                (cursor.area === true ? containsOwnPaint(cursor.node, localPoint) : contains(cursor.area, localPoint)))
                 winner = cursor.node;
         }
         stack.pop();
@@ -216,4 +216,3 @@ export function queryDisplayHit(receiver, x, y, options) {
     live(root, engine);
     return winner;
 }
-//# sourceMappingURL=displayHitTest.js.map

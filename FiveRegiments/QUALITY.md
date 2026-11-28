@@ -1,5 +1,14 @@
 # 品质验收 · Quality — 五营争锋 · Five Regiments
 
+## iPhone 配置的 World3D 首场景追加验收 · WebKit first-world-scene check
+
+- Windows Playwright WebKit 26.6，iPhone 15 Pro 竖屏配置，393 × 659 CSS px；公开 Pages d1bcff69 与候选本地 HTTP，均全新上下文与实际浏览器触摸。 / Windows WebKit in an iPhone 15 Pro portrait profile, fresh contexts and actual touch events; public baseline d1bcff69 and local candidate, not a physical iPhone.
+- 路线：标题→征途→选角色及默认配置→进入首个场景，仅检查可见画面，未执行战斗动作。 / Route: title → journey → default character and settings → first world scene; visual startup only, no player combat actions.
+- 改前：标题背景及首场景均全黑，只剩 DOM / HUD；第 702 帧、24 draw calls、87,538 triangles，另一次第 803 帧、27 draw calls、108,385 triangles；3D backing buffer 为 235 × 395。 / Before: the title background and first scene are absent despite the renderer's frame/draw receipts; 235 × 395 backing buffer.
+- 改后：标题、选择页及第一场景可见角色、城墙、旗帜、地面与天空；第 714 帧、29 draw calls、109,851 triangles，另一次第 817 帧、27 draw calls、130,220 triangles；backing buffer 为 393 × 659。 / After: the title, selection and world scene visibly contain the original models, walls, flags, ground and sky. Stable 393 × 659 backing buffer; two independently captured frames show the world.
+- src/main.mjs 只在移动 Apple WebKit 指定引擎正式 `dynamicResolution:false`，其他平台和画质选择不变，不修改玩法及资源。Node 173/173 通过；页面异常、控制台错误、HTTP 错误、失败请求均为 0；仅本 Windows WebKit 无 AudioContext 的诊断。 / Official dynamicResolution:false only on mobile Apple WebKit; other hosts, quality choices, assets and gameplay unchanged. 173/173 Node checks, zero page exceptions, console errors, HTTP errors or failed requests; only the no-AudioContext diagnostic in this host.
+- 固定尺寸将该 CSS 视口的实际像素数由 92,825 增至 258,987（2.79 倍），可能增加渲染成本。未测实体 iPhone 性能，不能把此处的 frame 计数当 FPS，也未确认故障根因在引擎还是浏览器。 / Pixel area rises by 2.79×, with a potential GPU cost. Real iPhone performance and ultimate engine/browser root cause remain unverified; frame counts are not FPS.
+
 ## iPhone 配置 WebKit 启动回归（2026-11-28） · WebKit startup compatibility
 
 Windows 上的 Playwright WebKit 26.6，iPhone 15 Pro 设备配置，竖屏 393 × 659 CSS px，独立的新浏览器上下文；不是 iPhone 真机或 iOS Safari 本体。改造前测试公开 Pages，改造后测试候选工作树的本地 HTTP 服务。

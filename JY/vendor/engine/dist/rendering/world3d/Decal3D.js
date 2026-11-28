@@ -239,4 +239,3 @@ export function createDecal3D(mesh, material, options) {
         decal.bind(mesh.skeleton, mesh.bindMatrix);
     return decal;
 }
-//# sourceMappingURL=Decal3D.js.map

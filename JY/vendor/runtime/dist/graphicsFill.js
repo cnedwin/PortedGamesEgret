@@ -299,4 +299,3 @@ export function refineForGradient(triangles, gradient, maxTriangles, boundary) {
     }
     return out;
 }
-//# sourceMappingURL=graphicsFill.js.map

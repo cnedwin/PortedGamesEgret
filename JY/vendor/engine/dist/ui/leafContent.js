@@ -75,10 +75,13 @@ export function captureUiTree(input) {
                 content === null ||
                 typeof content !== 'object')
                 throw new EgretError('UI_CONTENT_INVALID');
-            const source = content, revision = source.revision, prepare = source.prepare;
-            if (!Number.isSafeInteger(revision) || revision < 0 || typeof prepare !== 'function')
+            const source = content, revision = source.revision, prepare = source.prepare, onAttach = source.onAttach;
+            if (!Number.isSafeInteger(revision) ||
+                revision < 0 ||
+                typeof prepare !== 'function' ||
+                (onAttach !== undefined && typeof onAttach !== 'function'))
                 throw new EgretError('UI_CONTENT_INVALID');
-            contents.set(raw.id, Object.freeze({ identity: source, revision, prepare }));
+            contents.set(raw.id, Object.freeze({ identity: source, revision, prepare, onAttach }));
         }
         if (container) {
             if (!Array.isArray(raw.children))
@@ -133,4 +136,3 @@ export function leafMeasuredTree(tree, measures) {
     }
     return captureUiLayout(copy(tree.root));
 }
-//# sourceMappingURL=leafContent.js.map

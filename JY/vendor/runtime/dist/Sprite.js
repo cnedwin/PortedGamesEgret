@@ -9,4 +9,3 @@ export class Sprite extends DisplayObjectContainer {
         Object.defineProperty(this, 'graphics', { value: this.graphics, writable: false, configurable: false });
     }
 }
-//# sourceMappingURL=Sprite.js.map

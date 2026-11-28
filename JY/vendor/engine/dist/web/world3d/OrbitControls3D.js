@@ -186,4 +186,3 @@ export class OrbitControls3D {
 export function createOrbitControls3D(camera, element, options = {}) {
     return new OrbitControls3D(camera, element, options);
 }
-//# sourceMappingURL=OrbitControls3D.js.map

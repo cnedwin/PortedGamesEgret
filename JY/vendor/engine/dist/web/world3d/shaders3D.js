@@ -848,4 +848,3 @@ void main() {
 }
 `
 });
-//# sourceMappingURL=shaders3D.js.map

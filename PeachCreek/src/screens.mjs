@@ -74,11 +74,24 @@ async function loadIllustration(game, layer) {
 /** Title, save slots, settings and offline harvest, using the engine's screen stack. */
 export function createScreens(game, ui, { slots, problems, preferences, uiDensity, isPlaying, isCompact, onEnter, onSetting, onReturnTitle, onAwayClose }) {
   const screens = createUiScreenStack({ onError: console.error });
-  // One extra presentation for static views whose first WebKit composition remains stale.
+  // Public WebKit can retain an artwork-only frame when the first retry precedes
+  // async label admission. Wait for the real native label queue, then present once more.
   let screenRefresh;
   function present() {
     clearTimeout(screenRefresh);
-    screenRefresh = setTimeout(() => game.invalidate(), 250);
+    const deadline = performance.now() + 3000;
+    game.invalidate();
+    const settle = () => {
+      const status = game.browser.getLabelStatus();
+      const pending = status.drawing || status.queued || status.atlasPending || status.cache?.pendingJobs;
+      if (pending && performance.now() < deadline) {
+        screenRefresh = setTimeout(settle, 100);
+        return;
+      }
+      game.invalidate();
+      screenRefresh = setTimeout(() => game.invalidate(), 250);
+    };
+    screenRefresh = setTimeout(settle, 500);
   }
   const measure = document.createElement('canvas').getContext('2d');
   const art = game.sprite(undefined, game.ui);
@@ -180,6 +193,7 @@ export function createScreens(game, ui, { slots, problems, preferences, uiDensit
             next.label = label;
             node.addChild(label.display);
             place(next);
+            present(); // The actual label mount can finish after the initial screen retry.
           } else label.dispose();
         } catch (error) {
           label.dispose();

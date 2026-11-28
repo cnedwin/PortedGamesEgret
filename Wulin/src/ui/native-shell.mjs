@@ -6,6 +6,7 @@ import {createParagraphCache} from '@egret/engine/paragraph';
 import {createPage} from './native-pages.mjs';
 import {createSheet} from './native-sheets.mjs';
 import {createNativeNotices} from './native-notice.mjs';
+import {createBackdropPresentation} from './backdrop-presentation.mjs';
 import {COLORS,SKIN,BODY_FONT,TITLE_FONT,commandSeal,text,button,row,col,scroll,space,compile,createParagraphDensity} from './native-kit.mjs';
 import {SECT_BY_ID} from '../data/sects.mjs';
 import {dateText} from '../core/world.mjs';
@@ -113,13 +114,16 @@ export function createNativeUi(game,{context,locale,dispatch,change,onClose,onEr
   function closeChoice(){const previous=choiceAbort;choiceAbort=null;previous?.abort();}
   function makeSlot(kind,id,raw,label){
     const slot={kind,id,raw,label,view:null,revision:'',screen:null,live:{current:{},next:{}}};
+    slot.backdrop=createBackdropPresentation({load:url=>game.browser.loadTexture(url),invalidate:()=>game.invalidate(),active:()=>!failed&&(pageSlot===slot||modalSlot===slot)});
     const def={id,layer:kind,back:kind==='modal'?()=>{onClose();return true;}: 'none',open(){
-      mount(slot,slot.raw,slot.label);return {show:()=>slot.view?.show(),hide:()=>slot.view?.hide(),close:()=>slot.view?.close(),cover:()=>slot.view?.cover(),reveal:()=>slot.view?.reveal(),activate:()=>slot.view?.activate(),deactivate:()=>slot.view?.deactivate()};
+      mount(slot,slot.raw,slot.label);return {show:()=>slot.view?.show(),hide:()=>slot.view?.hide(),close:()=>{slot.backdrop.dispose();slot.view?.close();},cover:()=>slot.view?.cover(),reveal:()=>slot.view?.reveal(),activate:()=>slot.view?.activate(),deactivate:()=>slot.view?.deactivate()};
     }};
     slot.screen=def;return slot;
   }
   function mount(slot,raw,label){
     slot.live.next={};const hasVariants=Object.hasOwn(raw,'root');const first=hasVariants?raw.root:raw;const c=compileFor(first,slot);const variants={};if(hasVariants){for(const k of ['portrait','tablet','tabletPortrait'])if(raw[k])variants[k]=compileFor(raw[k],slot).root;}const revision=JSON.stringify({root:c.root,...variants});slot.live.current=slot.live.next;
+    // The title is already preloaded; later artwork can settle after the mount-time redraw.
+    if(slot.kind==='page'&&slot.id!=='page-title')slot.backdrop.request(slot.live.current['scene-backdrop']?.src);
     if(slot.revision===revision&&slot.view){slot.view.refresh();return;}
     // Native keyed lists are safe when the replacement children are shared by
     // every orientation; retain the outer viewport and focus rather than replace it.

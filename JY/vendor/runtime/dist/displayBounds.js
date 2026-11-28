@@ -178,4 +178,3 @@ export function queryDisplayBounds(receiver, options) {
         height: height === 0 ? 0 : height
     });
 }
-//# sourceMappingURL=displayBounds.js.map

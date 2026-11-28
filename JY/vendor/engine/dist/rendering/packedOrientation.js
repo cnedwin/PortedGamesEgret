@@ -4,4 +4,3 @@ export function packedOrientation(ax, ay, bx, by, cx, cy, budget) {
     budget?.admitPredicate();
     return -Math.sign(orient2d(ax, ay, bx, by, cx, cy));
 }
-//# sourceMappingURL=packedOrientation.js.map

@@ -191,4 +191,3 @@ export function musicMix(intensity) {
     const ramp = (from) => Math.max(0, Math.min(1, (x - from) / 0.2));
     return { pad: 1, bass: ramp(0.15), drums: ramp(0.45), tune: ramp(0.7) };
 }
-//# sourceMappingURL=playMusic.js.map

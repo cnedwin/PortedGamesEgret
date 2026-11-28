@@ -63,4 +63,3 @@ export async function captureCubeTexture3D(renderer, scene, position, options = 
     }
     return new CubeTexture3D(faces, { colorSpace: 'srgb', mipmaps: true, name: 'probe' });
 }
-//# sourceMappingURL=probe3D.js.map

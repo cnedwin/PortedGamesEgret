@@ -223,4 +223,3 @@ export class DisplayObjectContainer extends DisplayObject {
             throw new EgretError("DISPLAY_TREE_CLEANUP_FAILED", { cause: failures[0], cleanupErrors: failures.slice(1) });
     }
 }
-//# sourceMappingURL=DisplayObjectContainer.js.map

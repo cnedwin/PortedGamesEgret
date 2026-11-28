@@ -363,4 +363,3 @@ export class DisplayObject extends EventDispatcher {
         this.clearListeners();
     }
 }
-//# sourceMappingURL=DisplayObject.js.map

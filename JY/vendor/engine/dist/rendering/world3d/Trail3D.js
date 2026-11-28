@@ -192,4 +192,3 @@ export class Trail3D extends Mesh3D {
 export function createTrail3D(options = {}) {
     return new Trail3D(options);
 }
-//# sourceMappingURL=Trail3D.js.map

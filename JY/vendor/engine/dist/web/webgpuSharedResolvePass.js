@@ -31,4 +31,3 @@ fn encoded(c: vec3<f32>) -> vec3<f32> {
         multisample: { count: 1, alphaToCoverageEnabled: false }
     });
 }
-//# sourceMappingURL=webgpuSharedResolvePass.js.map

@@ -18,4 +18,3 @@ export function writeMeshState(node, value) {
     if (changed)
         recordVisualChange(node, VISUAL_CONTENT | VISUAL_BINDING);
 }
-//# sourceMappingURL=meshDisplayState.js.map

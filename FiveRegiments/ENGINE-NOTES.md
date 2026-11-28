@@ -44,3 +44,12 @@ part 3 of [docs/GAME-STANDARD.md](../docs/GAME-STANDARD.md).
 - 绕过办法：自己写了两骨 IK、肘部朝向和手腕扭转，算在模型根节点的空间里（`src/view/rig.mjs` 的 `reachArm`），姿态表在 `src/view/figure.mjs`。 · Workaround: our own two-bone IK with a pole and wrist roll (`reachArm` in `src/view/rig.mjs`).
 - 建议：提供 `solveTwoBoneIK3D(root, mid, tip, target, pole)` 和"看向"约束，能在动画混合之后、蒙皮之前运行。 · Suggestion: a two-bone IK and a look-at constraint that run after mixing and before skinning.
 - 状态：未解决。 · Status: open.
+
+### 6. 移动 Apple WebKit 动态分辨率后画面不可见 · Mobile Apple WebKit loses the composited World3D surface after dynamic resizing — 未解决 / open
+<!-- engine-note: {"id": "FiveRegiments#6", "status": "open", "topic": "world3d-webkit-dynamic-resize-presentation", "workaround": ["src/view/canvas-policy.mjs", "src/main.mjs"]} -->
+
+- **现象 · What happens**：Windows Playwright WebKit 26.6 iPhone 15 Pro 配置下，渲染帧持续递增、draw calls 非零，自适应缩至 235×395 后却只呈现界面，3D 像素全部缺失。 · Renderer frames and draws advance yet the composited 3D pixels are absent at 235×395.
+- **最小复现 · Reproduce**：在 393×659 CSS px 竖屏进入游戏首个场景，比较实际页面截图和引擎帧回执。 · Open the first world scene at 393×659 CSS px and compare its actual screenshot against the renderer receipt.
+- **绕过 · Workaround**：仅移动 Apple WebKit 使用官方 `dynamicResolution:false`，固定 393×659 的 backing 后恢复 3D 画面。 · Disable dynamic resolution with its official option only on mobile Apple WebKit; stable dimensions restore the scene.
+- **建议 · Proposal**：验证 canvas 背缓冲变化后的实际 WebKit 浏览器呈现，提供无需禁用动态分辨率的解决方式。 · Verify actual compositor output across backing-buffer changes and provide a fix without requiring dynamic resolution to be disabled.
+- **状态 · Status**：游戏级兼容处理通过关键截图；可能增大像素渲染开销，未做真实 iPhone 性能和不同 Safari 版本的覆盖。 · Game workaround passes key screenshot checks, with potential pixel-rendering cost; physical iPhone and other Safari versions remain untested.

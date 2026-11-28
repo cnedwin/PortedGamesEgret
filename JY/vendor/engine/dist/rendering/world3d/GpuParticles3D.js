@@ -398,4 +398,3 @@ export class GpuParticles3D extends InstancedMesh3D {
 export function createGpuParticles3D(options = {}) {
     return new GpuParticles3D(options);
 }
-//# sourceMappingURL=GpuParticles3D.js.map

@@ -130,4 +130,3 @@ export function copyImageData2DPixels(image) {
     const source = apply(weakGet, owned, [image]);
     return cloneBytes(source, apply(lengthGetter, source, []));
 }
-//# sourceMappingURL=ImageData2D.js.map

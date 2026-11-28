@@ -51,3 +51,5 @@ The faults found in the new Egret engine (commit `a7be833`) while making this ga
 - 绕过办法：切屏时在原有立即 invalidate 外再合并一次 250 ms 延迟刷新，浏览器路线中标题正常可见。 · Add one coalesced deferred invalidation to the immediate redraw on transitions; the browser route shows the title.
 - 建议：复现并解决按需模式中首帧呈现，避免游戏各自延时。 · Reproduce and fix first presentation in on-demand mode without per-game timers.
 - 状态：候选版本 WebKit 触屏路线实测通过；未在物理 iPhone 上验证。 · Candidate WebKit touch route tested; no physical iPhone verification.
+
+- 公网后续复现：初始标题文字已经出现，而异步封面仍停留程序景色；一次人工 invalidate 恢复完整美术。在 `src/view/art.mjs` 的原生纹理实际挂入节点后再安排一次刷新，移除对象时取消；真实公网资产候选正确显示原插画。 · Public repetition found stale decorative art despite visible title text. Invalidate once more only after the image has attached; cancel on disposal.

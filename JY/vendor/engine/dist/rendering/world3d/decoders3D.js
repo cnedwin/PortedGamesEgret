@@ -130,4 +130,3 @@ export function createBasisTranscoder3D(basis, supports) {
         }
     };
 }
-//# sourceMappingURL=decoders3D.js.map

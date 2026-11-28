@@ -82,4 +82,3 @@ export function createWebGPURetentionPool(session, diagnostics) {
         detachIdleForClose: () => ledger.detachIdleForClose()
     };
 }
-//# sourceMappingURL=webgpuRetentionPool.js.map

@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 import { EgretError } from '@egret/runtime';
-import { createActionControl } from './controls.js';
+import { createActionControl, createSelectionItemAction } from './controls.js';
 const MAX_DEPTH = 4096;
 function record(options) {
     if (options === null || typeof options !== 'object' || Array.isArray(options))
@@ -11,6 +11,14 @@ function displayTarget(value) {
     if (value === null || typeof value !== 'object' || typeof value.on !== 'function')
         throw new EgretError('UI_CONTROL_OPTIONS');
     return value;
+}
+/** The release policy a toggle or a selection group hands to the action control of each press; checked there. */
+function releasePolicy(options) {
+    const { activation, tapTolerance } = options;
+    return {
+        ...(activation === undefined ? {} : { activation }),
+        ...(tapTolerance === undefined ? {} : { tapTolerance })
+    };
 }
 function callback(value) {
     if (value !== undefined && typeof value !== 'function')
@@ -135,7 +143,8 @@ export function createToggleControl(options) {
         input,
         target,
         onActivate: () => set(!checked),
-        ...(onPressChange === undefined ? {} : { onPressChange })
+        ...(onPressChange === undefined ? {} : { onPressChange }),
+        ...releasePolicy(options)
     });
     let closed = false;
     function open() {
@@ -250,14 +259,16 @@ export function createSelectionGroup(options) {
     }
     try {
         // Each item takes its press through an action control; whether the press may select is decided in one place, above.
+        const policy = releasePolicy(options);
         for (const entry of entries)
-            entry.action = createActionControl({
+            entry.action = createSelectionItemAction({
                 input,
                 target: entry.target,
                 onActivate: () => {
                     choose(entry);
-                }
-            });
+                },
+                ...policy
+            }, () => enabled && entry.enabled && !closed);
     }
     catch (cause) {
         for (const entry of entries)
@@ -328,4 +339,3 @@ export function createSelectionGroup(options) {
         }
     });
 }
-//# sourceMappingURL=stateControls.js.map

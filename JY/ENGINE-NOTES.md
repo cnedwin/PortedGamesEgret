@@ -35,3 +35,10 @@ This game uses Egret Rebuild `c1570b0`. The integration notes and remaining game
 - 游戏里 · In the game：`web/jyx2/scene/native-battle-view.mjs` 在加载画面里先建好所有角色，遍历场景对每个网格和材质（含阴影通道）调用 `renderer.preparePrograms`；纸片人用接触阴影的平面和贴图做替身材质预编译，然后丢掉（`58783c3`、`e8db2ea`）。 · Under the loading screen every actor is made, every mesh and material (and shadow pass) is prepared, and the billboard actors are prepared with a stand-in material that is then disposed.
 - 建议 · Suggestion：提供按材质描述（不需要网格）的预编译，或者 `renderer.prepareScene(scene)` 自动收集场景里的全部变体。 · Allow preparing from a material description without a mesh, or offer `prepareScene(scene)` that gathers every variant.
 - 状态 · Status：游戏里已绕过；引擎还没有这样的接口 · worked around here; no such call in the engine.
+
+### 3. WebKit 游戏文字读取兼容性 · WebKit game-label raster compatibility — 已解决 / resolved
+<!-- engine-note: {"id":"JY#3","status":"resolved","topic":"browser-canvas-text-safari"} -->
+
+- **现象 / Observation**：Windows Playwright WebKit iPhone 15 Pro 配置，公开旧版自动导入/标题正常，实际「開始新遊戲」时低层 Canvas 缺少严格 WC1 状态，691 触发 `TEXT_MEASURE_FAILED / WEB_TEXT_STATE_UNSUPPORTED`。 · Entering the Home scene triggered a strict Canvas text capability refusal even after a normal title.
+- **游戏里 / Game use**：[web/main.mjs](web/main.mjs) 的真实游戏文字栅格缓存采用合并引擎 [#570](https://github.com/cnedwin/Egret_rebuild/pull/570) 提供的 `createCanvasTextRasterProvider({compatibility:'game-labels'})`，通过正式工具重新生成引擎副本及模块映射。未伪造 Canvas 状态、未更改文字、规则或存档。 · Use the opt-in game-label mode; strict callers retain their own contract.
+- **状态 / Status**：该 Windows WebKit 样本采用正式引擎 `ca9ff2a0` 后 691 首句及 3D 场景实拍通过、Node 76/76。实体 iPhone 尚未验证。 · Resolved in the measured browser configuration; physical iOS remains unverified.

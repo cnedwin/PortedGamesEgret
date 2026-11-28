@@ -92,6 +92,8 @@ stronghold.
 
 ## 已验证 · Verified
 
+- WebKit 首场景追加检查：遭遇战→出阵→第 1 回合后的真实 3D 场景可见；移动 Apple WebKit 固定背缓冲，保留画质档及玩法；65/65 Node。详见 QUALITY，未测 iPhone 真机性能。 / Actual first-world-scene screenshots pass after the mobile Apple WebKit fixed-back-buffer fallback, preserving quality and rules; 65/65 Node tests. See QUALITY; physical iPhone performance untested.
+
 - 2026-11-28：Windows Playwright WebKit iPhone 15 Pro 配置下修复启动兼容问题，标题截图及触摸设置通过，64/64 Node 测试通过；不是 iPhone 真机验收。见 [QUALITY.md](QUALITY.md)。 · Startup, title screenshot and touch Settings pass on Windows Playwright WebKit in an iPhone 15 Pro profile; 64/64 Node tests pass. Not a physical iPhone test. See QUALITY.md.
 
 - `node --test test/*.test.mjs` 覆盖战斗数值和规则、AI 装卸与迷雾、战役解锁、存档迁移和双语文字。 · Node tests cover battle rules, AI transport and fog, chapter unlocks, save migration and bilingual text.

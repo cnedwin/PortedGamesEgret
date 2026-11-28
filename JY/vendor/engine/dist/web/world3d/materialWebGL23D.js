@@ -215,4 +215,3 @@ export function applyMaterialWebGL23D(gl, u, resources, scratch9, material, dept
     if (u['uAttenuation'])
         gl.uniform3f(u['uAttenuation'], material.attenuationColor[0], material.attenuationColor[1], material.attenuationColor[2]);
 }
-//# sourceMappingURL=materialWebGL23D.js.map

@@ -99,4 +99,3 @@ export function createWebGL2LayerProgram(native, effect) {
     };
     return variant;
 }
-//# sourceMappingURL=webgl2LayerState.js.map

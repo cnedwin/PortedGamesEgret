@@ -109,4 +109,3 @@ export function registerWorld3DAssets(assets, options = {}) {
         dispose
     });
 }
-//# sourceMappingURL=assets3D.js.map

@@ -266,4 +266,3 @@ export function createSpriteMaterial3D(options = {}) {
     material.rotation = options.rotation ?? 0;
     return material;
 }
-//# sourceMappingURL=Material3D.js.map

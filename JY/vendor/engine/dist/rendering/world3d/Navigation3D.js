@@ -1040,4 +1040,3 @@ export function findGridPath3D(width, height, cost, start, end, options = {}) {
     }
     return undefined;
 }
-//# sourceMappingURL=Navigation3D.js.map

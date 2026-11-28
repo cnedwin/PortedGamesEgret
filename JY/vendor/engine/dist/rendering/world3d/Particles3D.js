@@ -274,4 +274,3 @@ export class ParticleEmitter3D extends InstancedMesh3D {
 export function createParticleEmitter3D(options = {}) {
     return new ParticleEmitter3D(options);
 }
-//# sourceMappingURL=Particles3D.js.map

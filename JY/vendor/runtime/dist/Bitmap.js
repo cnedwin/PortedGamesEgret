@@ -5,9 +5,11 @@ import { DisplayObject } from "./DisplayObject.js";
 import { hasBitmapState, readBitmapState, writeBitmapState } from "./bitmapDisplayState.js";
 import { assertLive, isStageRoot, isTerminated } from "./displayTreeState.js";
 import { collectPreparedSharedFrameContent } from "./sharedFrameCapture.js";
+import { readBitmapImage } from "./bitmapImage.js";
+// The capture reads bitmap images through this module, so it does not import Bitmap back.
+export { readBitmapImage, readBitmapSource } from "./bitmapImage.js";
 import { EgretError } from "./EgretError.js";
 import { claimOwner, ownerOf, commitBinding, engineOf } from "./ownership.js";
-import { isTexture, readTextureImage, readTextureSnapshot } from "./Texture.js";
 /** Internal-only original Bitmap operations; neither public root forwards this port. */
 export let spriteSheetBitmapOperations;
 const mutations = new WeakSet();
@@ -472,25 +474,6 @@ export function readBitmapBinding(node) {
     engineOf(node).assertOpen();
     return readBitmapState(node);
 }
-/** Exact entitlement precedes value/live checks; public value getters are not authority. */
-export function readBitmapImage(lease) {
-    if (!isAssetLease(lease))
-        throw new EgretError("BITMAP_LEASE_INVALID");
-    const value = readAssetLeaseValue(lease);
-    if (!isTexture(value))
-        throw new EgretError("BITMAP_TEXTURE_INVALID");
-    return readTextureSnapshot(value);
-}
-/**
- * The image of a lease that `readBitmapImage` has admitted before: the same entitlement, value and live
- * checks with the same refusals, and no record made. A lease stays a lease, so that one check is not repeated.
- */
-export function readBitmapSource(lease) {
-    const value = readAssetLeaseValue(lease);
-    if (!isTexture(value))
-        throw new EgretError("BITMAP_TEXTURE_INVALID");
-    return readTextureImage(value);
-}
 /** Private complete-frame bridge; public crop setters deliberately ignore layout. */
 export function applyBitmapAtlasFrame(bitmap, region) {
     const engine = beginMutation(bitmap);
@@ -542,4 +525,3 @@ export function applyBitmapAtlasFrame(bitmap, region) {
         mutations.delete(bitmap);
     }
 }
-//# sourceMappingURL=Bitmap.js.map

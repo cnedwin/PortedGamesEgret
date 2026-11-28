@@ -197,4 +197,3 @@ export class Mesh2D extends DisplayObject {
         super.dispose();
     }
 }
-//# sourceMappingURL=Mesh2D.js.map

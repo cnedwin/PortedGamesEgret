@@ -188,4 +188,3 @@ export function snapshotParagraphRaster(value, request) {
         throw new EgretError('PARAGRAPH_PROVIDER_RESULT_INVALID', { cause });
     }
 }
-//# sourceMappingURL=request.js.map

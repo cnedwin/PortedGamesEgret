@@ -63,4 +63,3 @@ export function closeHost(host, timeoutMs, releaseSurface, errors, onDiagnostic)
         }
     });
 }
-//# sourceMappingURL=closeHost.js.map

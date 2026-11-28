@@ -559,4 +559,3 @@ export function createMouseInputWithNative(options, nativeFactory) {
     }
     throw new EgretError('MOUSE_INPUT_SETUP_FAILED', { cause: failure, cleanupErrors: record.cleanupErrors });
 }
-//# sourceMappingURL=mouseInput.js.map

@@ -1,4 +1,4 @@
-import { enginePackages, makeGameImports, shippedGameFile } from './src/browser-imports.mjs';
+import { makeGameImports, shippedGameFile } from './src/browser-imports.mjs';
 import { startupModules } from './src/browser-startup-modules.mjs';
 import { createPackData } from './browser/pack-data.mjs';
 import { createPackFetch } from './browser/pack-api.mjs';
@@ -19,12 +19,11 @@ self.addEventListener('message', event => {
 });
 
 function importedModules() {
-  gameImports ??= Promise.all(enginePackages.map(async folder => {
-    // Revalidate package exports when a worker starts after an engine upgrade.
-    const response = await fetch(new URL(`vendor/${folder}/package.json`, root), { cache: 'no-cache' });
-    if (!response.ok) throw Error('Cannot load the engine package manifest.');
-    return [folder, await response.json()];
-  })).then(manifests => makeGameImports(manifests,
+  gameImports ??= fetch(new URL('vendor/importmap.json', root), { cache: 'no-cache' }).then(async response => {
+    // Revalidate the actual vendored entry closure when a worker starts after an engine upgrade.
+    if (!response.ok) throw Error('Cannot load the engine import map.');
+    return response.json();
+  }).then(manifests => makeGameImports(manifests,
     (folder, name) => new URL(`vendor/${folder}/${name}`, root).href,
     name => new URL(`third-party/${name}/index.js`, root).href)).catch(error => {
     gameImports = undefined;

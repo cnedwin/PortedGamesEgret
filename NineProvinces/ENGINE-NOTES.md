@@ -71,3 +71,11 @@ uses the interfaces of the first five; they are kept for the engine's sake.
 - 建议：超出时把视距夹到上限并给一次警告，或提供 `maxViewDistance` 只读值。 · Suggestion: clamp the view distance to the limit with one warning, or expose a read-only `maxViewDistance`.
 - 状态：未解决。 · Status: open.
 
+### 9. 移动 Apple WebKit 动态分辨率后画面不可见 · Mobile Apple WebKit loses the composited World3D surface after dynamic resizing — 未解决 / open
+<!-- engine-note: {"id": "NineProvinces#9", "status": "open", "topic": "world3d-webkit-dynamic-resize-presentation", "workaround": ["src/view3d/canvas-policy.mjs", "src/view3d/stage.mjs"]} -->
+
+- **现象 · What happens**：Windows Playwright WebKit 26.6 iPhone 15 Pro 配置下，Renderer frame 递增且 draw calls 非零，但自适应缩至 235×395 后 3D 不可见、只剩界面。 · Renderer frames and draw calls advance, yet the composited 3D surface is absent after adapting down to 235×395.
+- **最小复现 · Reproduce**：从公开页沿 New campaign → start → city map 进入 393×659 CSS 尺寸的实际场景，查看截图而非仅检查语义或渲染器计数。 · Enter the actual scene at 393×659 CSS px and compare screenshots, not only semantics or submission statistics.
+- **绕过 · Workaround**：移动 Apple WebKit 通过官方 `dynamicResolution:false` 固定背缓冲；同条件 393×659 可见。 · Request the official option only on mobile Apple WebKit, restoring visible pixels with stable backing dimensions.
+- **建议 · Proposal**：引擎验证动态尺寸变化后在 WebKit 中的浏览器呈现，提供诊断及无需关闭动态分辨率的修复。 · Validate browser presentation after backing-buffer changes and supply a diagnostic and a fix without requiring dynamic resolution to be disabled.
+- **状态 · Status**：游戏侧已通过关键截图复测，保留原质量选择。固定 backing buffer 可能增加像素渲染开销；未进行实体 iPhone 性能或其他 Safari 版本验收。 · Game workaround passes visible screenshots and preserves quality options. Fixed backing may increase pixel cost; physical iPhone performance and other Safari versions remain untested.

@@ -12,4 +12,3 @@ export function reserveSurface(surface) {
             reservations.delete(surface);
     };
 }
-//# sourceMappingURL=surfaceOwnership.js.map

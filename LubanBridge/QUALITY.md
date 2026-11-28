@@ -56,3 +56,7 @@
 - 本机 Windows Playwright WebKit 26.6，iPhone 15 Pro 设备配置（393×659 CSS px，DPR 3），真实浏览器触屏事件，无物理 iPhone；仅首屏和代表性操作，不是整局或实机性能、声学验收。 · Windows Playwright WebKit 26.6, iPhone 15 Pro device profile (393×659 CSS px, DPR 3), actual browser touchscreen events, not a physical iPhone; launch and representative interaction only, not full-session performance or acoustic certification.
 - 本轮候选烟测页面异常、控制台错误、HTTP 4xx/5xx 均为 0。 · Candidate smoke: no page exceptions, console errors or HTTP 4xx/5xx.
 - [全站记录 · Showcase compatibility record](../docs/SAFARI-WEBKIT-20261128.md)
+
+## 2026-11-28 公网插画呈现复查 · Public art presentation follow-up
+
+- PR #303 公网标题语义和文字正常，异步插画仍停在旧程序景色；500 ms、5 s、10 s 后采样，手动 invalidate 后 250 ms 即出现完整插画。候选仅在 `game.image` 完成、实际纹理进入树时作一次延迟补绘，销毁则取消。真实公网资源仅替换 art.mjs 后，未点击标题已呈现原版插画，触屏仍进入首关。 · Public title controls and text were visible but the decorative plate retained the vector fallback after loading. A single manual invalidation restored the intended art. The candidate invalidates once more after the actual image has attached and cancels on disposal. With real public assets and only the candidate module substituted, the original illustration was present before touch and the first level remained accessible. Not yet a successor Pages deployment in this record.

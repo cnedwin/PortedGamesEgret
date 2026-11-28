@@ -312,4 +312,3 @@ export class Scene3D extends Object3D {
         super('scene');
     }
 }
-//# sourceMappingURL=Object3D.js.map

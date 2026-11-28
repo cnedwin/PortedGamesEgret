@@ -60,4 +60,3 @@ export function packSharedRegionWindows2D(frame) {
         table.set(rows.subarray(12 * SHARED_REGION_WINDOW_2D * i, Math.min(rows.length, 12 * SHARED_REGION_WINDOW_2D * (i + 1))), (i * SHARED_REGION_WINDOW_STRIDE_2D) / 4);
     return table;
 }
-//# sourceMappingURL=prepareSharedSubmission2D.js.map

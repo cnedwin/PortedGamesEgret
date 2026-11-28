@@ -91,7 +91,7 @@ Nezha Stirs the Sea is a survival action game built with [Egret Rebuild](https:/
 
 ## 已验证 · Verified
 
-- 2026-11-28：WebKit 无音频宿主可正常出海，生产启动包与 40 项 Node 测试通过。 · WebKit can set sail without an audio host; the production launch bundle and 40 Node tests pass. 使用 Windows Playwright WebKit 的 iPhone 15 Pro 配置，不是 iPhone 真机；详见 [QUALITY.md](QUALITY.md)。 · iPhone 15 Pro device profile on Windows Playwright WebKit, not a physical iPhone; see QUALITY.md.
+- 2026-11-28：WebKit 首屏可自动显示并触屏出海，生产启动包与 43 项 Node 测试通过。 · WebKit title presents without a gesture and can set sail; the production launch bundle and 43 Node tests pass. 使用 Windows Playwright WebKit 的 iPhone 15 Pro 配置，不是 iPhone 真机；详见 [QUALITY.md](QUALITY.md)。 · iPhone 15 Pro device profile on Windows Playwright WebKit, not a physical iPhone; see QUALITY.md.
 
 在 `NezhaSea` 目录运行 `node --test test/*.test.mjs` 和 `node test/accept.mjs`，覆盖规则、存档、中英文、界面键盘流程、购买、合成及结算基线。Chromium 的胜负和解锁界面用测试场景驱动。
 

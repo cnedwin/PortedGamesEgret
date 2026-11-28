@@ -36,6 +36,7 @@ import { loadCharacterGroup, loadOpeningCharacter } from './view/characters.mjs'
 import { loadPropAtlas } from './view/prop-atlas.mjs';
 import { createSnowLook } from './view/look.mjs';
 import { createView } from './view/view.mjs';
+import { useFixedWorldResolution } from './view/canvas-policy.mjs';
 
 const params = new URLSearchParams(location.search),
   canvas = document.querySelector('#stage'),
@@ -582,7 +583,7 @@ async function main() {
   const resolutionPace = (max) => createDynamicResolution3D({
     min: Math.min(0.7, max), max, step: 0.25, lowFps: 42, highFps: 57, downAfter: 2.5, upAfter: 8
   });
-  const autoResolution = settings.quality === 'auto';
+  const autoResolution = settings.quality === 'auto' && !useFixedWorldResolution(globalThis.navigator);
   let scaleCap = displayScale(), ratio = scaleCap, pace = resolutionPace(scaleCap), slowFor = 0;
   function frame(dt) {
     stats.end();

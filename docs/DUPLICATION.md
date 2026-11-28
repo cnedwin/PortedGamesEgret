@@ -4,15 +4,16 @@
 
 Made by `node tools/duplication.mjs --write` from the `src/` of every game; do not edit by hand, and `--check` says whether it is out of date. Code three or more games each wrote belongs in the engine's kit or in the template; "Engine has" names what can replace it.
 
-24 个游戏，4615 段至少 40 个词元的顶层代码。名字、数字和字符串都换成同一个记号后，连续 8 个词元的 Jaccard 指数不小于 0.6 就算相同。
+24 个游戏，4624 段至少 40 个词元的顶层代码。名字、数字和字符串都换成同一个记号后，连续 8 个词元的 Jaccard 指数不小于 0.6 就算相同。
 
-24 games, 4615 top-level units of at least 40 tokens. With every name, number and string made one token, two units are alike when the Jaccard index of their runs of 8 tokens is 0.6 or more.
+24 games, 4624 top-level units of at least 40 tokens. With every name, number and string made one token, two units are alike when the Jaccard index of their runs of 8 tokens is 0.6 or more.
 
 ## 1. 3 个以上游戏写了几乎相同的代码 · Code that 3 or more games wrote nearly alike
 
 | 名字 · Names | 游戏数 · Games | 相似度 · Alike | 词元 · Tokens | 引擎已有 · Engine has | 位置 · Where |
 |---|:-:|:-:|:-:|---|---|
 | `seeded`, `createRandom`, `rng`, `randomSource`, `random` | 11 | 0.84 | 109 | `createRandom`, `hashSeed` (@egret/engine/kit) | CanalWatch/src/sim/world.mjs:27<br>FiveRegiments/src/sim/fight.mjs:78<br>NezhaSea/src/sim/world.mjs:41<br>NineProvinces/src/sim/battle.mjs:85<br>NineProvinces/src/view/mapart.mjs:18<br>OperaDrums/src/sim/bot.mjs:7<br>PeachCreek/src/sim/world.mjs:47<br>Rally/src/sim.mjs:13<br>… +4 |
+| `useFixedWorldResolution` | 4 | 0.82 | 57 | – | FiveRegiments/src/view/canvas-policy.mjs:2<br>NineProvinces/src/view3d/canvas-policy.mjs:2<br>SnowTemple/src/view/canvas-policy.mjs:2<br>StarBanner/src/view/canvas-policy.mjs:2 |
 | `rgb` | 3 | 0.98 | 53 | – | FPS/src/build.mjs:9<br>Rally/src/shapes.mjs:19<br>jelly-pandas/src/panda.mjs:21<br>jelly-pandas/src/view.mjs:34 |
 
 ## 2. 5 个以上游戏用的同一个函数名 · Names that 5 or more games gave a function

@@ -175,4 +175,3 @@ export class ByteReader {
         state.position = 0;
     }
 }
-//# sourceMappingURL=ByteReader.js.map

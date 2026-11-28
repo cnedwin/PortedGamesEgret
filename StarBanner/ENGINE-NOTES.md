@@ -121,3 +121,12 @@ Engine problems met while making this game, what the game does about them, and s
 - **绕过 · Workaround**：仅在原生屏幕提交时调用 `game.invalidate()`，合并 250 ms 后一次补绘；销毁时取消定时器，无持续渲染。 · Invalidate on screen publication and coalesce one follow-up after 250 ms; cancel on disposal. No continuous rendering.
 - **建议 · Proposal**：引擎提供可观测的提交与呈现确认，检查 WebKit 对按需模式和异步图集内容的呈现。 · Add observable submission/presentation confirmation and investigate on-demand presentation after asynchronous atlas changes in WebKit.
 - **状态 · Status**：游戏侧补绘通过实际标题与设置截图复测；未在物理 iPhone 验证，尚不能断言根因在引擎或浏览器。 · Game workaround verified by screenshots; physical iPhone and the ultimate engine/browser root cause remain unverified.
+
+### 13. 移动 Apple WebKit 动态分辨率后画面不可见 · Mobile Apple WebKit loses the composited World3D surface after dynamic resizing — 未解决 / open
+<!-- engine-note: {"id": "StarBanner#13", "status": "open", "topic": "world3d-webkit-dynamic-resize-presentation", "workaround": ["src/view/canvas-policy.mjs", "src/view/stage.mjs"]} -->
+
+- **现象 · What happens**：Windows Playwright WebKit 26.6 iPhone 15 Pro 配置下，Renderer frame 递增且 draw calls 非零，但自适应缩至 235×395 后 3D 不可见、只剩界面。 · Renderer frames and draw calls advance, yet the composited 3D surface is absent after adapting down to 235×395.
+- **最小复现 · Reproduce**：从公开页沿 Skirmish → deploy → turn 1 进入 393×659 CSS 尺寸的实际场景，查看截图而非仅检查语义或渲染器计数。 · Enter the actual scene at 393×659 CSS px and compare screenshots, not only semantics or submission statistics.
+- **绕过 · Workaround**：移动 Apple WebKit 通过官方 `dynamicResolution:false` 固定背缓冲；同条件 393×659 可见。 · Request the official option only on mobile Apple WebKit, restoring visible pixels with stable backing dimensions.
+- **建议 · Proposal**：引擎验证动态尺寸变化后在 WebKit 中的浏览器呈现，提供诊断及无需关闭动态分辨率的修复。 · Validate browser presentation after backing-buffer changes and supply a diagnostic and a fix without requiring dynamic resolution to be disabled.
+- **状态 · Status**：游戏侧已通过关键截图复测，保留原质量选择。固定 backing buffer 可能增加像素渲染开销；未进行实体 iPhone 性能或其他 Safari 版本验收。 · Game workaround passes visible screenshots and preserves quality options. Fixed backing may increase pixel cost; physical iPhone performance and other Safari versions remain untested.

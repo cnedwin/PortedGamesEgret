@@ -109,9 +109,10 @@ Engine copy: official main `a0fb4e6c40a93156acd49f78ebf622375193a92c` (including
 - 建议 · Proposal：考虑让原生段落描述默认取当前实际栅格密度，支持显式可选精细字重（同步 Canvas/CanvasKit、measure、cache identity、fallback 和 raster 语义）。 · Consider adaptive paragraph density and formal optional weight across both providers; not a global texture filtering change.
 
 ### 13. WebKit 按需绘制的首屏可见性 · WebKit on-demand first-frame presentation — 未解决 / open
-<!-- engine-note: {"id":"Wulin#13","status":"open","topic":"webkit-on-demand-first-presentation","workaround":["src/ui/native-shell.mjs"]} -->
+<!-- engine-note: {"id":"Wulin#13","status":"open","topic":"webkit-on-demand-first-presentation","workaround":["src/ui/native-shell.mjs","src/ui/backdrop-presentation.mjs"]} -->
 
 - **现象 / Observation**：Windows Playwright WebKit 26.6、iPhone 15 Pro 配置，标题画面一直停留加载 0/1；语义树已有标题，接收帧 4 页 / 11 区域 / 6,887,856 B，拒绝帧和文字队列各为 0。一次 invalidate 可恢复。 · The visible title stays on loading 0/1 although the title is in the semantic tree, the accepted frame has 4 pages/11 regions/6,887,856 bytes, and frame refusals and pending text are both zero. One invalidate restores it.
 - **游戏里的处理 / Workaround**：[src/ui/native-shell.mjs](src/ui/native-shell.mjs)：每个新打开的原生页面或弹层只在挂载后 250ms 额外重绘一次。 · Invalidate once 250 ms after a newly opened native page or modal mounts. 实拍首屏与触屏后画面正常，不强制连续重绘。 · Inspected title and subsequent touch screen both render correctly, without a continuous redraw loop.
 - **建议 / Proposal**：引擎异步资源就绪后保证最后接收帧正常交给合成器；测试静止首屏不点击即呈现，且呈现后不再连续提交。 · Ensure the last accepted asynchronously populated frame is presented; verify an untouched static page becomes visible and then stays on demand.
-- **状态 / Status**：对 Windows WebKit 已验证有限补帧绕过，未验证实体 iPhone。 · Bounded workaround verified on Windows WebKit; physical iOS remains unverified.
+- **公网补测 / Public follow-up**：序章资源较慢时，标题修复后仍可复现背景图缺失（10 s，帧使用 5 页/10 区域/7,233,232 B、拒绝帧 0）；单次 invalidate 即呈现且使用量不变。静态背景的额外重绘现绑定到真实共享纹理加载承诺，取消过期页面，仅一次补帧。用 WebKit 延迟原生背景资源 5 s 的路线上实拍完整序章，背景 HTTP 读取恰为一次。 · An asynchronous image can finish after mount-time invalidation; schedule the bounded retry after the actual shared texture settles. A five-second delayed native image fetch is visible in the final scene and issued just once.
+- **状态 / Status**：两种有限补帧已在 Windows WebKit 实拍验证，未验证实体 iPhone。 · Bounded mount and late-image presentation workarounds verified on Windows WebKit; physical iOS remains unverified.

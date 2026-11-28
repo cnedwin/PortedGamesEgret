@@ -175,4 +175,3 @@ export class ScreenLayer3D extends Mesh3D {
 export function createScreenLayer3D(source, options = {}) {
     return new ScreenLayer3D(source, options);
 }
-//# sourceMappingURL=helpers3D.js.map

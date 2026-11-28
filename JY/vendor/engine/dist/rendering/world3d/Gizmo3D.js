@@ -511,4 +511,3 @@ export class TransformGizmo3D extends Object3D {
 export function createTransformGizmo3D(camera, options = {}) {
     return new TransformGizmo3D(camera, options);
 }
-//# sourceMappingURL=Gizmo3D.js.map

@@ -61,4 +61,3 @@ export function cleanupWebGPUTexture(resource) {
         return [cause];
     }
 }
-//# sourceMappingURL=webgpuLifetime.js.map

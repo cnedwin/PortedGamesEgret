@@ -958,4 +958,3 @@ function edgeOwns(fromX, fromY, toX, toY, area) {
     const sign = area > 0 ? 1 : -1;
     return sign * dy < 0 || (dy === 0 && sign * dx > 0);
 }
-//# sourceMappingURL=graphicsShape.js.map

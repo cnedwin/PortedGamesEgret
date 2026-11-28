@@ -65,3 +65,11 @@ and two page buttons) in headless Chromium.
 - **绕过办法 · Workaround**：依据实际宿主能力启用 Play 音效；缺少宿主时不合成无从播放的音乐，正常宿主保留原混音路径。 · Enable Play audio on a capable host and avoid synthesizing unusable sound otherwise. Retain the normal mixer when available.
 - **建议 · Suggestion**：在标准播放入口说明音频为可选能力时的宿主探测方式。 · Document host detection when audio is optional to gameplay.
 - **状态 · Status**：Windows WebKit 通过标题到寻常首关的触屏路线；未测真 iPhone 声音。 · The title-to-Normal route works in Windows WebKit; physical iPhone audio is untested.
+
+### 8. 快速变化文字的空白期 · Blank intervals in rapidly changing labels — 已在游戏侧绕过 / worked around
+<!-- engine-note: {"id":"CanalWatch#8","status":"worked-around","topic":"rapid-label-raster-supersession","workaround":["src/native-field-ui.mjs","src/main.mjs","src/hud-text-gate.mjs"]} -->
+
+- **现象 · What happens**：Windows WebKit 中地图进入约 1.18 s 后，倒计时与迎第一波文字为空；语义、点击区域均正常，约 6.32 s 自然恢复。 · The countdown and call action were blank for an early map sample even though names and hit areas were present. They became visible later.
+- **绕过办法 · Workaround**：利用原生容器与文字分隔稳定动作/语境和易变数字，初次使用 textReady 的有界就绪等待，保留完整语义。 · Separate stable context from changing numeric labels and briefly bound the initial readiness gate, retaining complete semantics.
+- **建议 · Suggestion**：针对 HUD 的频繁数字变化，支持固定字形或表达稳定文案与数字的低开销控件；文档解释 readiness 与真实呈现之间的区别。 · Provide efficient fixed-glyph or mixed stable/numeric HUD text, and document text readiness versus actual presentation.
+- **状态 · Status**：本地候选 Windows WebKit 1.1 s 观测正常，实际触屏叫波通过。未测试物理 iPhone。 · Readable candidate at 1.1 s and successful touchscreen call-wave, not physical iPhone.

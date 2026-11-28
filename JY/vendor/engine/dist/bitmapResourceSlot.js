@@ -337,4 +337,3 @@ export function createBitmapResourceSlotOwner(context, acquisitions, targets) {
         }
     });
 }
-//# sourceMappingURL=bitmapResourceSlot.js.map

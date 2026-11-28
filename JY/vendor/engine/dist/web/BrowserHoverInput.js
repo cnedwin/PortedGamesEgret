@@ -13,9 +13,10 @@ const same = (a, b) => a.left === b.left && a.top === b.top && a.width === b.wid
 export function createBrowserHoverInput(options) {
     if (options === null || typeof options !== 'object' || Array.isArray(options))
         throw new EgretError('HOVER_INPUT_OPTIONS_INVALID');
-    const { canvas: surface, wheelPage = 'unconsumed', onError, ...configuration } = options;
+    const { canvas: surface, wheelPage = 'unconsumed', onError, size, ...configuration } = options;
     if ((wheelPage !== 'unconsumed' && wheelPage !== 'never' && wheelPage !== 'always') ||
         (onError !== undefined && typeof onError !== 'function') ||
+        (size !== undefined && typeof size !== 'function') ||
         surface === null ||
         typeof surface !== 'object')
         throw new EgretError('HOVER_INPUT_OPTIONS_INVALID');
@@ -53,7 +54,7 @@ export function createBrowserHoverInput(options) {
         const win = globalThis.window, page = globalThis.document;
         if (win === undefined || page === undefined || typeof win.getComputedStyle !== 'function')
             throw new EgretError('HOVER_INPUT_SURFACE_INVALID');
-        const { width, height } = input;
+        const { width: givenWidth, height: givenHeight } = input;
         /** The rectangle of the canvas on the page, refused unless one scale and one offset map it. */
         function profile() {
             if (typeof surface?.getBoundingClientRect !== 'function' ||
@@ -164,6 +165,8 @@ export function createBrowserHoverInput(options) {
             const rect = current();
             if (!finite(event.clientX) || !finite(event.clientY))
                 throw new EgretError('HOVER_INPUT_EVENT_INVALID');
+            const now = size?.(), sized = now !== undefined && finite(now.width) && finite(now.height) && now.width > 0 && now.height > 0;
+            const width = sized ? now.width : givenWidth, height = sized ? now.height : givenHeight;
             const globalX = ((event.clientX - rect.left) * width) / rect.width, globalY = ((event.clientY - rect.top) * height) / rect.height;
             return globalX >= 0 && globalY >= 0 && globalX < width && globalY < height ? { globalX, globalY } : undefined;
         }
@@ -263,4 +266,3 @@ export function createBrowserHoverInput(options) {
         throw new EgretError('HOVER_INPUT_SURFACE_INVALID', { cause, cleanupErrors });
     }
 }
-//# sourceMappingURL=BrowserHoverInput.js.map

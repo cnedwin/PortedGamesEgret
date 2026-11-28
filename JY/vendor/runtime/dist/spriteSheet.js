@@ -318,4 +318,3 @@ export function createSpriteSheet(atlasLease, frames, profile) {
     commitBinding(binding, engine);
     return sheet;
 }
-//# sourceMappingURL=spriteSheet.js.map

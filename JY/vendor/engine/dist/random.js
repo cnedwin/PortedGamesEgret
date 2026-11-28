@@ -128,4 +128,3 @@ export function createRandom(seed = Date.now()) {
     };
     return Object.freeze(random);
 }
-//# sourceMappingURL=random.js.map

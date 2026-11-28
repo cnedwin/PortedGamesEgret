@@ -405,4 +405,3 @@ export function sharedWebGL2BlendFactors(blend) {
             throw new TypeError('Unsupported shared blend');
     }
 }
-//# sourceMappingURL=sharedWebGL2Shaders.js.map

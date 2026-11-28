@@ -27,4 +27,3 @@ export class PreparedBatchScratch2D {
         plan.logicalSpans.length = 0;
     }
 }
-//# sourceMappingURL=preparedBatches2D.js.map

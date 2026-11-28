@@ -734,7 +734,7 @@ async function openMap(game, destination, takePreparedHome) {
     return new Promise((resolve, reject) => frameWaiters.push({ resolve, reject }));
   }
 
-  const cache = scope.use(createTextRasterCache(engine.assets, { provider: createCanvasTextRasterProvider() }));
+  const cache = scope.use(createTextRasterCache(engine.assets, { provider: createCanvasTextRasterProvider({ compatibility: 'game-labels' }) }));
   const speakerNames = new Map();
   for (const role of catalog.roles) {
     if (!role?.name) continue;

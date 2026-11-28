@@ -932,4 +932,3 @@ function assembleBrowserTextureProvider(options, owner) {
     });
     return provider;
 }
-//# sourceMappingURL=BrowserTextureProvider.js.map

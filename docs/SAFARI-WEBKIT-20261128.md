@@ -55,3 +55,24 @@
 Use Playwright WebKit with the iPhone 15 Pro profile and start a fresh browser context on the public URL or a local HTTP server. Inspect both before-touch and after-touch screenshots, semantic controls with bounds, exceptions, console and failed HTTP responses. Each game also has the independent `node --test test/*.test.mjs` suite. See each game's QUALITY.md for route details.
 
 使用全新浏览器上下文，观察实际图像而不是只读语义树；按游戏的 QUALITY.md 中的入口复跑。物理 iPhone、真实扬声器与节奏音频、不同 iOS 版本、VoiceOver、长局稳定性和手机 GPU 性能尚未验证。 / Physical iPhone, actual speaker/rhythm audio, iOS version matrix, VoiceOver, long sessions and mobile GPU performance are not certified by this run.
+
+## 公网发布后补验 · Public release follow-up
+
+PR [#303](https://github.com/cnedwin/PortedGamesEgret/pull/303) merged as `d1bcff6913dd62eaf46d4d8158f11bd6a6645e50`; [Pages deployment 46142807438](https://github.com/cnedwin/PortedGamesEgret/actions/runs/46142807438) completed, and 28 critical served files (including game versions and generated bundles) matched the merge bytes. The showcase itself opened with all 24 play links, no page or HTTP errors. All 24 public entries were revisited in WebKit. / 首轮发布实际核验，不用部署状态代替浏览器测试。
+
+The public routes uncovered additional cases that a local title/semantic check could miss. The follow-up changes only the affected games; the existing assets and rules are retained. / 公网慢资源与进入真实首场景暴露了更深的兼容问题：
+
+| 游戏 / Game | 可复现现象 / Observation | 补救 / Remedy |
+|---|---|---|
+| PeachCreek | Artwork-only title persisted 500 ms, 5 s and 10 s despite idle labels; explicit invalidate restores it | Bounded present after actual native label attachment and queue settlement |
+| LubanBridge | Visible title labels but the decoded decorative image stayed at the procedural fallback until invalidate | Follow-up present on real texture attachment; cancel on disposal |
+| NezhaSea | Four identical loading-screen captures through 18 s even though title semantics and text queues were ready | Actual native text-ready plus delayed presentation; portrait attachment also invalidates |
+| CanalWatch | Rapidly changing initial time and action label were temporarily blank on WebKit | Stable caption and independent changing number, bounded first text-ready gate; Chinese and English actual call-wave touch |
+| Wulin | Prologue backdrop absent after 10 s, despite accepted native frame and no errors; explicit invalidate restores it | Observe the same shared texture settlement once and present after attachment, verified with a 5-second resource delay and one request |
+| StarBanner / NineProvinces / FiveRegiments | 3D title/first scene missing despite ongoing frames and draw calls; low dynamic buffer 235×395 | Mobile Apple WebKit fixed resolution restores actual rendered scene at 393×659, preserves quality choices elsewhere; 2.79× pixel area in this sample |
+| SnowTemple | Opening scene displayed; once normal play enabled automatic resolution, 3D canvas went dark while HUD and frames continued | Mobile Apple WebKit keeps a fixed rendering resolution in auto quality; actual opening and playable snow road both restored (491×823 rather than 294×494, 241 accepted frames) |
+| JY | Title and pack import worked, but entering opening scene failed native text measure | Generated engine copy from merged main ca9ff2a0, explicit game-labels HUD mode; actual fresh hosted candidate imported 37.4 MB pack and opened 691 dialogue and full visible 3D home |
+
+The canvas-resize and retained-frame cases are still tracked as engine/browser presentation investigations in the individual ENGINE-NOTES. On affected games the narrow workarounds are explicit, not a permanent render loop or a simulated game. Fixed resolution can increase real-device GPU cost; that is not a measured mobile performance improvement. / 引擎底层呈现机制问题继续保持独立记录，不把游戏绕过当作引擎完全修复。
+
+- 补充候选全部通过独立 Node 测试，游戏全站 Node 合计 1,676/1,676（StarBanner 65, NineProvinces 196, FiveRegiments 173, SnowTemple 113, JY 76, CanalWatch 39, NezhaSea 43, Wulin 133；其余数量不变）。共享模板另 4/4。 / Final candidate aggregate: 1,676/1,676 game Node tests and 4/4 management starter. The additional browser observations and fixes are covered by the actual per-game screenshot routes above and their QUALITY records.

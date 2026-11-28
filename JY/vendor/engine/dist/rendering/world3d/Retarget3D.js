@@ -182,4 +182,3 @@ export function retargetAnimationClip3D(clip, options) {
         tracks.push({ targetName: rootName, path: 'position', times, values: rootPositions });
     return new AnimationClip3D(options.name ?? clip.name, tracks, clip.duration);
 }
-//# sourceMappingURL=Retarget3D.js.map

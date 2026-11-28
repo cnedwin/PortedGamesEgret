@@ -778,4 +778,3 @@ fn fragmentMain(input: MipOutput) -> @location(0) vec4f {
     return textureSample(source, sourceSampler, input.uv);
 }
 `;
-//# sourceMappingURL=wgsl3D.js.map

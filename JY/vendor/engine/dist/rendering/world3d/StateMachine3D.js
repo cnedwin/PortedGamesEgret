@@ -277,4 +277,3 @@ export class AnimationStateMachine3D {
 export function createAnimationStateMachine3D(mixer) {
     return new AnimationStateMachine3D(mixer);
 }
-//# sourceMappingURL=StateMachine3D.js.map

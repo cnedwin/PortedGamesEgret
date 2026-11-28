@@ -39,7 +39,7 @@ const batches = (items, columns) => {
 const strip = (items, columns=2) => batches(items,columns);
 const backdrop = (ctx, name, mode) => {
   const url=ctx.helpers.sceneUrl(name);
-  return url?image(url,{width:mode==='portrait'?1500:mode==='tabletPortrait'?1850:'100%',height:mode==='wide'?640:'100%',anchor:'center'}):col([],{width:'100%',height:'100%',anchor:'center',color:C.dark});
+  return url?image(url,{name:'scene-backdrop',width:mode==='portrait'?1500:mode==='tabletPortrait'?1850:'100%',height:mode==='wide'?640:'100%',anchor:'center'}):col([],{width:'100%',height:'100%',anchor:'center',color:C.dark});
 };
 const portrait = (ctx,p,view='bust',props={}) => {
   const url=ctx.helpers.faceUrl(p,view);

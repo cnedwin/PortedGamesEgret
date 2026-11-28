@@ -259,4 +259,3 @@ export function createLightHelper3D(light, size, color) {
 export function createSkeletonHelper3D(root, color) {
     return new SkeletonHelper3D(root, color);
 }
-//# sourceMappingURL=debug3D.js.map

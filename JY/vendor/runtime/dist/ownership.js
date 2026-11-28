@@ -1,17 +1,16 @@
 import { EgretError } from './EgretError.js';
-import { recordVisualChange, VISUAL_BINDING } from './displayVisualState.js';
+import { recordVisualChange, watchDisplayRevision, VISUAL_BINDING } from './displayVisualState.js';
+import { engineOf, engines } from './engineAffinity.js';
+export { engineOf } from './engineAffinity.js';
 import { assertLive, captureChildInsertion, childrenOf, isDisplayNode, prepareCapturedInsertionTree, publishCapturedInsertionTree, validateCapturedInsertionNode, validateCapturedInsertionRoots, validateCapturedInsertionSource } from './displayTreeState.js';
 export const OWNERSHIP_CHILDREN = Symbol('egret.ownershipChildren');
 export const ASSERT_BINDABLE = Symbol('egret.assertBindable');
 export const ASSERT_ATTACHABLE = Symbol('egret.assertAttachable');
 // Cleanup ownership and engine affinity are separate lifetime identities.
 const owners = new WeakMap();
-const engines = new WeakMap();
+const readInsertionEngine = engines.get.bind(engines);
 export function ownerOf(value) {
     return owners.get(value);
-}
-export function engineOf(value) {
-    return engines.get(value);
 }
 export function claimOwner(value, owner) {
     owners.set(value, owner);
@@ -83,8 +82,11 @@ export function bind(value, engine) {
     preflightBinding(value, engine);
     commitBinding(validateBinding(value, engine), engine);
 }
+/** Enrol every Stage's engine in visual observation only when that engine asks for a watch. */
+export function registerStageDisplayRevision(engine) {
+    engine.registerDisplayRevision?.(() => watchDisplayRevision(engine));
+}
 // The new finite coordinator owns captured affinity reads/writes, separate from legacy bind.
-const readInsertionEngine = engines.get.bind(engines);
 const writeInsertionEngine = engines.set.bind(engines);
 const InsertionBindingSet = Set;
 const insertionBindingHas = Set.prototype.has.call.bind(Set.prototype.has);
@@ -154,4 +156,3 @@ export function publishPreparedChildInsertion(plan) {
     }
     publishCapturedInsertionTree(plan.tree);
 }
-//# sourceMappingURL=ownership.js.map

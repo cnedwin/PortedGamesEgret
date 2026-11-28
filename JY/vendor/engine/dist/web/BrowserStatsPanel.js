@@ -140,4 +140,3 @@ export function createBrowserStatsPanel(options) {
         }
     });
 }
-//# sourceMappingURL=BrowserStatsPanel.js.map

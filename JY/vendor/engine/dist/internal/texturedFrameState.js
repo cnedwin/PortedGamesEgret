@@ -9,4 +9,3 @@ export function registerSharedFrame(frame) {
 export function readOwnedSharedFrame(value) {
     return apply(weakGet, completedSharedFrames, [value]);
 }
-//# sourceMappingURL=texturedFrameState.js.map

@@ -583,4 +583,3 @@ export function createUiLayerManager(options) {
         throw cause;
     }
 }
-//# sourceMappingURL=layers.js.map

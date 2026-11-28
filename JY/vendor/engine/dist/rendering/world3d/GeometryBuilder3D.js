@@ -193,4 +193,3 @@ export function projectToViewport3D(camera, point, width, height, out = { x: 0, 
     out.onScreen = inFront && nx >= -1 && nx <= 1 && ny >= -1 && ny <= 1 && out.depth <= 1;
     return out;
 }
-//# sourceMappingURL=GeometryBuilder3D.js.map

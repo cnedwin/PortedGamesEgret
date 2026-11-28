@@ -53,3 +53,10 @@ this file; items by hand or on a device are marked not run until someone runs th
 | E4 | 切回后声音和计时正常 · Sound and timers right after coming back | 真机 · device | 未运行 · not run |  |
 
 自动项不达标 · Automatic items failing: T3, L1, I1。真机项（T1、F2、E4）和人工项（I2、A1m、S4）未运行，除非上表另有记录 · Device and by-hand items were not run unless the table says otherwise.
+
+## WebKit 开场事件 691 回归 · WebKit opening event 691 (2026-11-28)
+
+- 公开旧版冷启动导入原版数据、标题后，实际触屏「開始新遊戲」进入 691 时复现 `TEXT_MEASURE_FAILED / WEB_TEXT_STATE_UNSUPPORTED`。由正式引擎 main `ca9ff2a0ef9ff67af7795f9600ba40668383a0a2` 构建并按九个实际入口生成副本（327 个文件）。JY 自己创建的低层 Canvas 游戏文字缓存显式采用引擎 `compatibility:'game-labels'`；保留严格 WC1 的底层语义。 · The hosted title worked while entering the opening aborted on strict text state. Use the merged engine's documented compatibility option only for ordinary game labels.
+- 浏览器服务工作线程和本地服务优先读取真正的官方生成 `vendor/importmap.json`，而非旧的全包版本导出表；重新生成及核验标题 175、小蝦米居 155 条额外 modulepreload。新增正式映射中所有入口均实际存在的测试。Node **76/76** 通过。
+- Windows Playwright WebKit 26.6、iPhone 15 Pro 配置（393×659 CSS px，非真机），全新本地 HTTP 公开版等价路线实际自动导入原版 37.4 MB 数据；标题约 30.673 s（该机本次样本），真实触控「開始新遊戲」，实拍小蝦米居 3D 树木、家具、角色、光影及 691 第一句对白、角色立绘、继续按钮均完整可见。JS、控制台和 HTTP 错误 0。 · Actual hosted-style fresh data import to title and opening dialogue in the browser; source artwork, rules, IDB compatibility and save format are unchanged.
+- 未测实体 iPhone、全部 691 后续对白、全流程和移动 GPU 帧率；本机截图计时不代表用户网络或手机性能。 · This does not qualify full campaign, physical Safari performance or audio.

@@ -1,3 +1,4 @@
+import { EgretError } from '@egret/runtime';
 import { World3DError } from '../../rendering/world3d/core3D.js';
 /**
  * Host adapter that reserves `canvas` for one Engine. The world3d renderer
@@ -24,30 +25,79 @@ export function createWorld3DHost(canvas) {
  * before disposing the Engine. Failures stop the loop and go to `onError`
  * when given, otherwise they surface as uncaught errors.
  */
-export function startWorld3DLoop(engine, onError) {
+export function startWorld3DLoop(engine, onError, options = {}) {
     if (!engine || typeof engine.advanceTime !== 'function')
         throw new World3DError('WORLD3D_INPUT_INVALID', 'engine');
+    if (!options ||
+        typeof options !== 'object' ||
+        (options.onFrameTiming !== undefined && typeof options.onFrameTiming !== 'function'))
+        throw new World3DError('WORLD3D_INPUT_INVALID', 'loop options');
+    const observer = options.onFrameTiming;
+    let timingId = 0;
     let request = 0, stopped = false, previous;
+    const reanchor = () => {
+        engine.clock.pause();
+        engine.clock.resume();
+    };
     const frame = (milliseconds) => {
         if (stopped)
             return;
+        const started = observer === undefined ? 0 : performance.now();
         request = requestAnimationFrame(frame);
         const seconds = milliseconds / 1000;
+        const advanceStart = observer === undefined ? 0 : performance.now();
+        let reanchored = false;
+        let outcome = 'advanced';
+        let ended;
         try {
             if (previous !== undefined && seconds - previous > engine.clock.maxDeltaSeconds) {
-                // Resuming discards the old anchor, so this sample dispatches no tick.
-                engine.clock.pause();
-                engine.clock.resume();
+                reanchor();
+                reanchored = true;
+            }
+            try {
+                engine.advanceTime(seconds);
+            }
+            catch (cause) {
+                // A restarted loop has no previous RAF timestamp. The Engine refuses an oversized first
+                // sample before ticking, so only that refusal can be retried against a fresh anchor.
+                if (previous !== undefined || !(cause instanceof EgretError) || cause.code !== 'CLOCK_DELTA_LIMIT')
+                    throw cause;
+                reanchor();
+                reanchored = true;
+                engine.advanceTime(seconds);
             }
             previous = seconds;
-            engine.advanceTime(seconds);
+            if (observer !== undefined)
+                ended = performance.now();
         }
         catch (cause) {
+            if (observer !== undefined)
+                ended = performance.now();
+            outcome = 'failed';
             stopped = true;
             cancelAnimationFrame(request);
             if (!onError)
                 throw cause;
             onError(cause);
+        }
+        finally {
+            if (observer !== undefined) {
+                const end = performance.now();
+                try {
+                    observer(Object.freeze({
+                        id: ++timingId,
+                        rafTimestampMs: milliseconds,
+                        callbackStartMs: started,
+                        callbackEndMs: end,
+                        advanceMs: (ended ?? end) - advanceStart,
+                        reanchored,
+                        outcome
+                    }));
+                }
+                catch {
+                    /* Diagnostic only. */
+                }
+            }
         }
     };
     request = requestAnimationFrame(frame);
@@ -58,4 +108,3 @@ export function startWorld3DLoop(engine, onError) {
         }
     };
 }
-//# sourceMappingURL=host3D.js.map

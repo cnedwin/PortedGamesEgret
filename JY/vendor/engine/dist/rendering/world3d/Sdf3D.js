@@ -1133,4 +1133,3 @@ function creaseNormals(geometry, degrees) {
     out.setIndex(order.length > 65535 ? index : Uint16Array.from(index));
     return out;
 }
-//# sourceMappingURL=Sdf3D.js.map

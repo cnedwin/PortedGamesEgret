@@ -55,4 +55,3 @@ export function createManifestAssetBinding(manifest, assetId, type) {
     APPLY(SET, refStates, [ref, state]);
     return binding;
 }
-//# sourceMappingURL=manifestResourceState.js.map

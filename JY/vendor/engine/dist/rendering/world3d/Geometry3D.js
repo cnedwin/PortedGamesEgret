@@ -332,4 +332,3 @@ export function createGeometry3D(input) {
         geometry.computeNormals();
     return geometry;
 }
-//# sourceMappingURL=Geometry3D.js.map

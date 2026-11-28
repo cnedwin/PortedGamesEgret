@@ -185,4 +185,3 @@ export function createSharedMaterial2D(input) {
 export function isSharedMaterial2D(value) {
     return typeof value === 'object' && value !== null && apply(weakHas, owned, [value]);
 }
-//# sourceMappingURL=SharedMaterial2D.js.map

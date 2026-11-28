@@ -199,4 +199,3 @@ export class Ragdoll3D {
 export function createRagdoll3D(world, root, parts, options = {}) {
     return new Ragdoll3D(world, root, parts, options);
 }
-//# sourceMappingURL=Ragdoll3D.js.map

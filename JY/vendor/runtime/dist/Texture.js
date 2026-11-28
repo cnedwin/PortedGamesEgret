@@ -175,4 +175,3 @@ export function readTextureSnapshot(texture) {
         throw new EgretError("TEXTURE_DISPOSED");
     return freeze({ image: state.image, sourceRect: state.sourceRect, viewRegion: state.viewRegion });
 }
-//# sourceMappingURL=Texture.js.map

@@ -329,4 +329,3 @@ export function createBatchedMesh3D(material) {
 export function createFatLine3D(points, options = {}) {
     return new FatLine3D(points, options);
 }
-//# sourceMappingURL=Batch3D.js.map

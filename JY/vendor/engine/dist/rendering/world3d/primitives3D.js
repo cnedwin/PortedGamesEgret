@@ -194,4 +194,3 @@ export function createCapsuleGeometry3D(options = {}) {
 export function createQuadGeometry3D() {
     return createPlaneGeometry3D({ width: 1, height: 1 });
 }
-//# sourceMappingURL=primitives3D.js.map

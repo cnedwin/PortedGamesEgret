@@ -824,4 +824,3 @@ export class TerrainStream3D extends Object3D {
 export function createTerrainStream3D(options) {
     return new TerrainStream3D(options);
 }
-//# sourceMappingURL=Terrain3D.js.map

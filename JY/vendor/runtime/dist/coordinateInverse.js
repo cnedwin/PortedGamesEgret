@@ -104,4 +104,3 @@ export function invertCoordinatePoint(matrix, x, y) {
     // Both coordinates finish before the caller can publish an owned point.
     return { x: roundDyadicRatio(nx, determinant), y: roundDyadicRatio(ny, determinant) };
 }
-//# sourceMappingURL=coordinateInverse.js.map

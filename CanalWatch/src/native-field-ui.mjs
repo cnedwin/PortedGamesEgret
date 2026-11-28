@@ -1,6 +1,7 @@
 // Native control deck and tower picker. The rules and world geometry remain in their own modules.
 import { getLanguage, t } from './i18n.mjs';
 import { FIELD, PLOTS, REFUND, TOWERS, TOWER_KINDS } from './sim/data.mjs';
+import { splitCallWords, splitWaveWords } from './hud-text-gate.mjs';
 
 const INK = 0x142725, JADE = 0x274640, DEEP = 0x1b3330, IVORY = 0xffeed0,
   GOLD = 0xe8c185, DIM = 0xbcc5b4, RED = 0x9b3e2d, MUTE = 0x485650, LINE = 0x657263,
@@ -71,6 +72,8 @@ export function buildFieldUi({ layout, app, uiState, actions }) {
         .replace(/: ready in (\d+) s$/, ' · ready $1s') : words;
     }
     if (name === 'landing-preview') return t('landingPreview');
+    if (name === 'wave') return uiState.waveText ?? uiState.wave;
+    if (name === 'call') return uiState.callText ?? uiState.call;
     return uiState[name] ?? '';
   };
   const gateColor = name => {
@@ -82,14 +85,42 @@ export function buildFieldUi({ layout, app, uiState, actions }) {
     const cap = isWide ? (stat ? 24 : 28) : isPortrait ? 22 : 18;
     const size = clamp(13, cap, Math.min(h * (isWide && stat ? 0.52 : 0.43),
       w / (name === 'wave' ? 9.8 : name.startsWith('gate-') ? 10.5 : name === 'landing-preview' ? 10.8 : 7.5)));
+    if (name === 'wave') {
+      const waiting = () => uiState.callReady, language = getLanguage(), first = language === 'zh';
+      const words = () => splitWaveWords(value(name)(), language), countW = (w - 10) * 0.28, captionW = w - 10 - countW;
+      parts.push(panel(x, y, w, h, DEEP, { border: { color: LINE, width: 1 } }));
+      parts.push(label('wave-caption', x + 5 + (first ? countW : 0), y, captionW, h, words().caption, size,
+        { bold: true, visible: waiting() }));
+      parts.push(label('wave-time', x + 5 + (first ? 0 : captionW), y, countW, h, words().value, size,
+        { bold: true, visible: waiting(), semantic: false }));
+      parts.push(label('wave', x + 5, y, w - 10, h, value(name)(), size, { bold: true, visible: !waiting() }));
+      bind['wave-caption'] = { text: () => words().caption, visible: waiting, label: () => uiState.wave };
+      bind['wave-time'] = { text: () => words().value, visible: waiting };
+      bind.wave = { text: value(name), visible: () => !waiting() };
+      return;
+    }
+    if (name === 'call') {
+      const waiting = () => uiState.callReady, words = () => splitCallWords(value(name)());
+      const captionW = w * 0.68, numberW = w - captionW;
+      parts.push(panel(x, y, w, h, RED, { name, role: 'button', alpha: 1, children: [
+        label('call-caption', 0, 0, captionW, h, words().caption, size, { bold: true, semantic: false, visible: waiting() }),
+        label('call-bonus', captionW, 0, numberW, h, words().value, size, { bold: true, semantic: false, visible: waiting() }),
+        label('call-running', 0, 0, w, h, words().caption, size, { bold: true, semantic: false, visible: !waiting() })
+      ] }));
+      bind.call = { label: () => uiState.call, tap: () => actions.call(), color: () => waiting() ? RED : MUTE };
+      bind['call-caption'] = { text: () => words().caption, visible: waiting };
+      bind['call-bonus'] = { text: () => words().value, visible: waiting };
+      bind['call-running'] = { text: () => words().caption, visible: () => !waiting() };
+      return;
+    }
     if (stat) {
       parts.push(panel(x, y, w, h, DEEP, { border: { color: LINE, width: 1 } }));
       const color = name === 'silver' ? GOLD : name === 'lives' ? 0xffc2ac : IVORY;
-      parts.push(label(name, x + 5, y, w - 10, h, '', size, { color, bold: true }));
+      parts.push(label(name, x + 5, y, w - 10, h, value(name)(), size, { color, bold: true }));
       bind[name] = { text: value(name) };
       return;
     }
-    parts.push(button(name, x, y, w, h, '', size));
+    parts.push(button(name, x, y, w, h, value(name)(), size));
     const action = name.startsWith('gate-') ? () => actions.gate(Number(name.slice(-1))) :
       name === 'landing-preview' ? actions.landing : actions[name];
     bind[name] = {

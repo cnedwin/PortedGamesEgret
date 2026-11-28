@@ -116,4 +116,3 @@ export class FollowControls3D {
 export function createFollowControls3D(camera, element, target, options = {}) {
     return new FollowControls3D(camera, element, target, options);
 }
-//# sourceMappingURL=FollowControls3D.js.map

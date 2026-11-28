@@ -545,4 +545,3 @@ function gradientStops(stops) {
     }
     return out;
 }
-//# sourceMappingURL=Graphics.js.map

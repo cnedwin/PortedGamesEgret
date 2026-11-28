@@ -317,4 +317,3 @@ export function createBitmapText(options) {
         }
     });
 }
-//# sourceMappingURL=bitmapText.js.map

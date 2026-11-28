@@ -200,3 +200,9 @@ PC 实际鼠标点击建筑、空地、拖视角、滚轮缩放、右拖平移 5
 - Windows Playwright WebKit 26.6、iPhone 15 Pro 配置（393×659 CSS px）。公开旧版标题/序章部分绘制文字缺失；更新正式引擎副本后标题逻辑已经就绪，但可见画面仍停留在加载 0/1。实测引擎帧已接收（4 页、11 区域、6,887,856 B、拒绝帧 0；文字任务待处理 0）。独立调用一次 `game.invalidate()` 后完整标题立即出现。 · The accepted scene update did not reach the visible initial frame; no texture-budget refusal or pending text job was present.
 - 新打开的页面/弹层挂载后 250 ms 仅安排一次原生重绘。候选首屏和点击「开创新局」后的完整序章画面均实拍正确，JS、控制台、HTTP 错误均 0；Node 128/128 通过；无持续强制绘制。 · One bounded presentation retry fixes both static screens without a continuous render loop.
 - 未测试实体 iPhone、完整经营流程或真实手机 GPU 性能。 · This is a Windows WebKit compatibility sample, not physical iOS acceptance.
+
+### 公网慢资源后的静态画面 · Static presentation with a delayed public asset
+
+公开已部署版本实际点「开创新局」10 秒后，序章正文、人物和按钮已正确，背景却仍为空；引擎帧 5 页/10 区域/7,233,232 B，拒绝帧为 0。仅调用一次原生 `game.invalidate()`（不改变游戏状态），背景立即完整出现，帧使用量不变且零 JS/HTTP 错误。 · The public prologue backdrop stayed absent despite an accepted frame. A single native invalidation reveals the art at unchanged frame usage.
+
+修复在新背景 URL 的真实共享资源承诺完成后安排一次 250 ms 原生重绘；临时纹理租约释放，切页/换 URL 丢弃旧请求及计时，不增加常驻帧或重复读资源。Windows Playwright WebKit 26.6、iPhone 15 Pro 配置，本地实际 HTTP 路线独立延迟序章 `decree.webp` 5 s，只收到 1 个该图片请求，最终实拍完整背景、立绘、对白与按钮，零 JS/控制台/HTTP 错误。包括新资源生命周期回归的 Node 133/133 通过；保留最新段落密度实现。 · The fix is tied to a genuinely settled shared texture and not a polling loop. A five-second image-delay sample requests the image once and presents it without another user input. No physical iPhone or full campaign claim.

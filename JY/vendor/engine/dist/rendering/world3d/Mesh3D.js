@@ -334,4 +334,3 @@ export class Sprite3D extends Mesh3D {
 export function createSprite3D(options = {}) {
     return new Sprite3D(createSpriteMaterial3D(options));
 }
-//# sourceMappingURL=Mesh3D.js.map

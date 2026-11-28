@@ -154,3 +154,11 @@ SwiftShader. Sections 4 and 5 use Chrome with hardware acceleration.
 - **绕过办法 · Workaround**：只捕获该确切错误码并返回无声接口；其他声音初始化失败仍然报告，真实音频宿主保留原有声音。生产启动包同步生成。 · Catch that precise error and use silent methods; preserve other failures and the normal mixer on capable hosts. Regenerate the production bundle.
 - **建议 · Suggestion**：把可选声音的后端能力探测作为标准集成说明；不要把所有音频初始化失败等同于宿主不支持。 · Document detection of optional audio support; distinguish unsupported host from other audio failures.
 - **状态 · Status**：Windows WebKit 实测出海进入首波，两个针对性 fallback/拒绝测试通过；没有测试物理 iPhone 音频。 · WebKit reached wave one; focused fallback and rejection tests passed. Physical iPhone sound is untested.
+
+### 19. WebKit 的按需首屏提交 · WebKit on-demand initial presentation — 已在游戏侧绕过 / worked around
+<!-- engine-note: {"id":"NezhaSea#19","status":"worked-around","topic":"webkit-retained-presentation","workaround":["src/main.mjs","src/present-static-screen.mjs","src/ui-screens.mjs"]} -->
+
+- **现象 · What happens**：Windows WebKit 公网 d1bcff69 在 title/ready 时仍原封不动画载入遮罩达 18 s；文字队列和拒帧均为零。一次手动 game.invalidate() 后 180 ms 变成完整标题。 · The loading overlay persisted for 18 s in a ready title, with no queued text or refused frame. One invalidate restored the title in 180 ms.
+- **绕过办法 · Workaround**：在确切原生 textReady 和肖像真实挂接后安排有限补绘；从标题离开不执行延迟重画。 · Schedule bounded presentation after real text readiness and image attachment; stop the delayed draw when leaving the title.
+- **建议 · Suggestion**：按需渲染宿主应在异步显示树变更的最终提交得到可见帧时才认定该修订已呈现，验收器同时量真实绘制而非语义。 · Ensure asynchronous display revisions reach a visible presentation before marking them presented; tests should observe actual rendered output rather than semantics alone.
+- **状态 · Status**：本地候选无输入截图与正确公网参考 SHA-256 相同，触屏出海通过。物理 iOS Safari 未测。 · Byte-identical correct no-input candidate and a touchscreen route to the first wave; physical iOS untested.

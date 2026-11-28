@@ -381,4 +381,3 @@ export class AnimationMixer3D {
         this.#actions.delete(clip);
     }
 }
-//# sourceMappingURL=Animation3D.js.map

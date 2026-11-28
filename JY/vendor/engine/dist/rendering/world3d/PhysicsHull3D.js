@@ -226,4 +226,3 @@ export function createConvexHullShape3D(source) {
     }
     return new ConvexHullShape3D(source);
 }
-//# sourceMappingURL=PhysicsHull3D.js.map

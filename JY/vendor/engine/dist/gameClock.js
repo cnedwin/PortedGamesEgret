@@ -243,4 +243,3 @@ export function createGameClockOwner(context, options) {
         }
     });
 }
-//# sourceMappingURL=gameClock.js.map

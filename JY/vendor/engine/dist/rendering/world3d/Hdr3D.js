@@ -188,4 +188,3 @@ export function createCubeTextureFromEquirect3D(image, options = {}) {
     }
     return new CubeTexture3D(faces, { colorSpace: 'srgb', mipmaps: true, name: 'equirect' });
 }
-//# sourceMappingURL=Hdr3D.js.map

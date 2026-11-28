@@ -10,9 +10,9 @@
     "minify": true,
     "keepNames": true
   },
-  "entry": "main-ZEJSGW36.mjs",
+  "entry": "main-3MJEK6GV.mjs",
   "startupPreloads": [
-    "main-ZEJSGW36.mjs",
+    "main-3MJEK6GV.mjs",
     "chunk-2LVHNTHP.mjs",
     "chunk-2PKRZAXY.mjs",
     "chunk-AOUSCME6.mjs",
@@ -29,7 +29,7 @@
     "chunk-ALUQKS75.mjs"
   ],
   "inputs": {
-    "index.html": "d447a8e9d31bd6b7125ad1b38cd50ae1326912820bf4713c33e66effb2369075",
+    "index.html": "cb28beec5a52cf3322f0033909f1fa6bdc96c3f684f468cfabb39183cda50d86",
     "src/asset-url.mjs": "6507b8239b7c243f95b36211159057a359c93e12d4036cc44cd94ce054beaff2",
     "src/audio/sound.mjs": "656f3c26b9167a182838ad83ed0af1fdef82b5c3c1397fbe0e310b93b806d10b",
     "src/audio/synth.mjs": "ad70799fdda71bff8fac676f670334c7ba20699a0dc3fd91878b821aedb17914",
@@ -55,12 +55,13 @@
     "src/ui/screen-present.mjs": "8a0526efc1c05cf1f95d5262edde01e443faf3c306a9f718349dc58a49588390",
     "src/view/assets.mjs": "51b246270b8fa9df92c79b66f97d7e6c32209789d8f6047dcb897ac3ec228d00",
     "src/view/board.mjs": "251721c958e46daef72a6472e355feb1296b9ee0e55d20a494120a59ccc9d6b4",
+    "src/view/canvas-policy.mjs": "29bcec84306e57ef25d02a3d39d06df63bda373a787b32ac663015e21c1b4b12",
     "src/view/effects.mjs": "dec1efe9e9efa6198f9a1f693018f8197b189568ca334aaef6578e88afb43497",
     "src/view/figures.mjs": "619f812baf5794c749f28a634dc258bc80442641e10aee33fc306dc1e2d552b1",
     "src/view/model-bytes.mjs": "4a049bfb1f78fa5cb226af796e67df4e5ea3794e83ca4842c6bd17393c6aaba0",
     "src/view/model-plan.mjs": "ff68ba132b5176d48c561b1efd10d8421644a8d04c8d492a6cbbd2e321e215ee",
     "src/view/overlay.mjs": "1cd5494e9f39320eafcb75f113ecf2abd1ec46d13790c1a078d4f2b8015644ad",
-    "src/view/stage.mjs": "58e3c3e70fd5fa74f11025401ae5a5f46c4754c99071694d7715bc355a4498eb",
+    "src/view/stage.mjs": "0fd3e26cd4fe83dc7bc884f361e040839a463f739109424387b3da69208f95fb",
     "src/view/surface.mjs": "ed5c63aa75b4505af82f7062c24d7fb8014ca47ca0c48373da01b4c3cba8b201",
     "src/view/toon.mjs": "75f9329d3bbe7fe1f446f64ef9ff248ae9c57e76ca8a890dbcec36db3ace2981",
     "tools/launch-bundle/build.mjs": "d1dcd03843c960236dc23904cc40ee812b6131e9b431112063a97c41ab732438",
@@ -427,7 +428,7 @@
     "chunk-UXPV6Y2Q.mjs": "6afe6a0907d8aa871ed961a9097521ee2d4ee34d932be12859b96b4efb022a2d",
     "chunk-XWIQF4ME.mjs": "01b35cf968c62366a786bb5ed112ba9f5083c5804f6f8182399d5114a4a0265c",
     "chunk-Z7E6SBRV.mjs": "3e675df33869ea6aa68784045ea35595ed0c4a2bf138d20641d1961814073664",
-    "main-ZEJSGW36.mjs": "6893a0c3b5b51fc01cde9a778fcee95971ed5e9d9f5b7eb2834ed01d84ea9f55"
+    "main-3MJEK6GV.mjs": "7a5b103e1c929d87163544eb2a5d371a361ff760e505fd52dcf201aea0ff62ff"
   },
   "graph": {
     "chunk-SREGYTXB.mjs": {
@@ -468,7 +469,7 @@
         }
       ]
     },
-    "main-ZEJSGW36.mjs": {
+    "main-3MJEK6GV.mjs": {
       "entryPoint": "src/main.mjs",
       "imports": [
         {

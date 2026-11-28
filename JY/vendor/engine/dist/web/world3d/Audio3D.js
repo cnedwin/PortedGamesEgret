@@ -268,4 +268,3 @@ export function createAudioListener3D(options = {}) {
 export function createPositionalAudio3D(listener, options = {}) {
     return new PositionalAudio3D(listener, options);
 }
-//# sourceMappingURL=Audio3D.js.map

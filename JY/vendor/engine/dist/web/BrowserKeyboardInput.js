@@ -220,4 +220,3 @@ export function createBrowserKeyboardInput(options) {
         throw cause;
     }
 }
-//# sourceMappingURL=BrowserKeyboardInput.js.map

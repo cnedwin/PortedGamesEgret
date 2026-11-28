@@ -219,6 +219,27 @@ class TextFieldLeaf extends DisplayObject {
             metrics: state.metrics
         });
     }
+    releaseRaster() {
+        const state = stateOf(this);
+        live(state);
+        if (state.reading)
+            throw new EgretError('TEXT_FIELD_BUSY');
+        const pending = state.pending, committed = state.committed;
+        if (pending === undefined && committed === undefined)
+            return;
+        state.pending = undefined;
+        state.committed = undefined;
+        state.committedRevision = undefined;
+        state.metrics = undefined;
+        // Publish the empty display before cancellation or lease cleanup can reenter.
+        publish(this, state);
+        try {
+            cancel(pending, new EgretError('TEXT_FIELD_SUPERSEDED'));
+        }
+        finally {
+            release(committed);
+        }
+    }
     dispose() {
         const state = stateOf(this);
         if (state.disposed)
@@ -258,4 +279,3 @@ class TextFieldLeaf extends DisplayObject {
 export function createTextFieldLeaf(scope, cache) {
     return new TextFieldLeaf(scope, cache, CREATION_TOKEN);
 }
-//# sourceMappingURL=TextField.js.map

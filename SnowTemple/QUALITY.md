@@ -1,5 +1,14 @@
 # 品质验收 · Quality — Snow at the Mountain Temple · 风雪山神庙
 
+## iPhone 配置的序幕与 World3D 首场景追加验收 · WebKit first-world-scene check
+
+- Windows Playwright WebKit 26.6，iPhone 15 Pro 竖屏配置，393 × 659 CSS px；公开 Pages d1bcff69 与候选本地 HTTP，均为全新上下文和实际浏览器触摸，不是 iPhone 真机。 / Actual touch events in fresh Windows WebKit contexts with the iPhone 15 Pro portrait profile; public baseline d1bcff69 and local candidate, not physical iPhone.
+- 对照路线：踏雪上路→序幕对白→雪路可操作界面。 / Route: open the chapter, watch the opening dialogue, reach the initial scene with HUD.
+- 改前：标题、序幕 491 × 823 的 3D backing buffer 正常，第 246 帧、33 draw calls、279,388 triangles，动态降到 294 × 494 后实际 3D 画面完全消失，仅 HUD。 / Before: title and cutscene are visible at 491 × 823; at frame 246 the renderer still reports 33 draws / 279,388 triangles, but the actual scene is blank after the adaptive resize to 294 × 494.
+- 改后：默认自动画质在移动 Apple WebKit 保持当前档位的 491 × 823，序幕、人物、雪地、石砖、灯光、HUD 均清楚可见（第 241 帧、33 draws、279,386 triangles）。其他平台仍启用原分辨率自动策略，固定画质档、窗口尺寸变化、模型资源和玩法不变。 / After: the current quality tier's 491 × 823 backing buffer remains stable on mobile Apple WebKit, so both the cutscene and initial scene visibly show the original character, snow, masonry, lighting and HUD. Frame 241 still has 33 draws / 279,386 triangles. Other hosts retain dynamic sizing; fixed quality options, normal window resize, assets and rules are unchanged.
+- 113/113 Node 测试通过；页面异常、控制台错误、HTTP 错误及失败请求均为 0；唯一警告是原开场图片未及时消费的 preload 提示。 / 113/113 Node checks pass, zero page/console/HTTP/failed-request errors. The only warning is the original boot image preload advisory.
+- 固定尺寸像素面积为 404,093，旧的降分辨率为 145,236，约 2.78 倍；可能增加 GPU 负荷。未测试实际 iPhone 性能、完整游玩或音频。renderer frame 回执不表示 FPS，最终根因属于浏览器还是引擎仍未确认。 / The fixed pixel area is approximately 2.78× the adapted area, potentially increasing GPU cost. Physical iPhone performance, full playthrough and audio are untested. Render receipts are not FPS, and ultimate engine/browser root cause remains unverified.
+
 ## iPhone 配置 WebKit 启动回归（2026-11-28） · WebKit startup compatibility
 
 Windows 上的 Playwright WebKit 26.6，iPhone 15 Pro 设备配置，竖屏 393 × 659 CSS px，独立的新浏览器上下文；不是 iPhone 真机或 iOS Safari 本体。改造前测试公开 Pages，改造后测试候选工作树的本地 HTTP 服务。

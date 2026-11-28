@@ -2837,4 +2837,3 @@ export function createPhysicsWorld3D(options = {}) {
 export function createCharacterController3D(world, options = {}) {
     return new CharacterController3D(world, options);
 }
-//# sourceMappingURL=Physics3D.js.map

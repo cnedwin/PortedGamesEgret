@@ -151,6 +151,8 @@ Choose a regiment and make your way through Stonegate Pass, Red Banner Depot and
 
 ## 已验证 · Verified
 
+- WebKit 首场景追加验证：初次进入的实际 3D 场景已恢复，移动 Apple WebKit 稳定背缓冲，其他画质及玩法不变；173/173 Node。真实 iPhone 性能未测，详见 QUALITY。 / First-world-scene pixels now appear after the mobile Apple WebKit fixed-back-buffer fallback; 173/173 Node checks. Physical iPhone performance untested; see QUALITY.
+
 - 2026-11-28：Windows Playwright WebKit iPhone 15 Pro 配置下修复启动兼容问题，标题截图及触摸设置通过，172/172 Node 测试通过；不是 iPhone 真机验收。见 [QUALITY.md](QUALITY.md)。 · Startup, title screenshot and touch Settings pass on Windows Playwright WebKit in an iPhone 15 Pro profile; 172/172 Node tests pass. Not a physical iPhone test. See QUALITY.md.
 
 - `node --test test/*.test.mjs`（Node 22）：32 项全过——对决规则 17 项（轻击与蓄力、刀路对上才挡得住、弹刀、踢和体力见底破防、蛮牛冲击让人 4 秒不能攻防并撞人落马、箭与盾、毒瘴按秒掉血并传给身边同伴再免疫、每个战技要够怒气才能放并打中后进入冷却、盾牌猛击击倒、终结打击击杀后刷新、每个职业技能都能跑完、任意两营打到分出胜负且同种子同结果、一打二两人都倒下算赢、骑马加速疾驰和大弯、马跑起来才能架枪而职业技能要下马、架枪打马头右前方而不打正前方、骑手与马分担伤害和战马被砍倒落马、金戈铁马与龙精虎猛、伤害公式里普通一击掉 4%–20% 而最大一击也打不到 40%、绷带），存档 6 项、征途 2 项、人物与动作资源 3 项、文字 2 项、引擎副本 2 项。 · 32 pass, 17 of them on the fight rules: the Bull Charge, the poison, every weapon art and its rage, the couched ji taking a man off the horse's right front, the talents, and the damage formula's promise that an ordinary blow takes 4–20% and no single blow reaches 40%.

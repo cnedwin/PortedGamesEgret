@@ -109,4 +109,3 @@ export function synthesizeSfx(recipe, sampleRate = 22050, seed = 1) {
     });
     return samples;
 }
-//# sourceMappingURL=playSfx.js.map

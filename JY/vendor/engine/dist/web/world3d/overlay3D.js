@@ -6,6 +6,10 @@
 // below, so the scene can still be orbited, aimed at and picked.
 import { EgretError } from '@egret/runtime';
 import { createBrowserGame } from '../game.js';
+import { createOverlayScreenReporter } from './overlayScreenReport.js';
+/** The fits an overlay takes: three that lay a stage of fixed size over the 3D canvas, and five that fill it. */
+const PLANNED = ['expand', 'fixedWidth', 'fixedHeight', 'fixedNarrow', 'fixedWide'];
+const OVERLAY_FITS = ['stretch', 'contain', 'cover', ...PLANNED];
 const FORWARDED = [
     'pointerdown',
     'pointermove',
@@ -21,22 +25,55 @@ const FORWARDED = [
  * Give interface nodes hit areas as usual; presses elsewhere fall through to the 3D canvas.
  */
 export async function createWorld3DOverlay(canvas, options) {
+    const started = performance.now();
     if (!canvas || typeof canvas.getBoundingClientRect !== 'function' || !canvas.parentElement)
         throw new EgretError('WORLD3D_OVERLAY_OPTIONS_INVALID');
     if (!options || !(options.width > 0) || !(options.height > 0))
         throw new EgretError('WORLD3D_OVERLAY_OPTIONS_INVALID');
-    const fit = options.fit ?? 'stretch';
-    if (fit !== 'stretch' && fit !== 'contain' && fit !== 'cover')
+    if ((options.renderMode !== undefined && options.renderMode !== 'continuous' && options.renderMode !== 'on-demand') ||
+        (options.effects !== undefined && typeof options.effects !== 'boolean') ||
+        (options.hover !== undefined && typeof options.hover !== 'boolean') ||
+        (options.onFrameTiming !== undefined && typeof options.onFrameTiming !== 'function') ||
+        (options.measureSharedFrames !== undefined && typeof options.measureSharedFrames !== 'boolean') ||
+        (options.webgl2PageBatching !== undefined &&
+            options.webgl2PageBatching !== 'single-page' &&
+            options.webgl2PageBatching !== 'multi-page'))
         throw new EgretError('WORLD3D_OVERLAY_OPTIONS_INVALID');
+    const fit = options.fit ?? 'stretch';
+    if (!OVERLAY_FITS.includes(fit))
+        throw new EgretError('WORLD3D_OVERLAY_OPTIONS_INVALID');
+    // With a fit that fills the 3D canvas, the 2D game plans its own stage in an element laid exactly over it.
+    const fills = PLANNED.includes(fit);
+    if ((options.portrait !== undefined || options.insets !== undefined || options.uiScale !== undefined) && !fills)
+        throw new EgretError('WORLD3D_OVERLAY_OPTIONS_INVALID', {
+            cause: 'portrait, insets and uiScale go with a fit that fills the 3D canvas: ' + PLANNED.join(', ')
+        });
     let placed = { x: 0, y: 0, width: 0, height: 0, scale: 0 };
     const doc = canvas.ownerDocument;
     const overlay = doc.createElement('canvas');
     overlay.className = 'egret-world3d-overlay';
     overlay.style.cssText = 'position:absolute;left:0;top:0;width:0;height:0;touch-action:none;background:transparent';
-    canvas.parentElement.appendChild(overlay);
+    const holder = fills ? doc.createElement('div') : undefined;
+    if (holder !== undefined) {
+        holder.className = 'egret-world3d-overlay-box';
+        holder.style.cssText = 'position:absolute;left:0;top:0;width:0;height:0;overflow:hidden;pointer-events:none';
+        overlay.style.pointerEvents = 'auto';
+        // The whole element until the 2D game sizes it, so that its input has a surface to measure from the start.
+        overlay.style.width = overlay.style.height = '100%';
+        holder.appendChild(overlay);
+    }
+    canvas.parentElement.appendChild(holder ?? overlay);
     // The overlay follows the 3D canvas's box, wherever the page lays it out.
     const place = () => {
         const parent = canvas.parentElement.getBoundingClientRect(), box = canvas.getBoundingClientRect();
+        if (holder !== undefined) {
+            // The 2D game sizes its canvas inside this element, and plans its stage, as the element changes.
+            holder.style.left = `${box.left - parent.left + canvas.parentElement.scrollLeft}px`;
+            holder.style.top = `${box.top - parent.top + canvas.parentElement.scrollTop}px`;
+            holder.style.width = `${box.width}px`;
+            holder.style.height = `${box.height}px`;
+            return;
+        }
         let width = box.width, height = box.height;
         if (fit !== 'stretch' && width > 0 && height > 0) {
             const wide = width / options.width, tall = height / options.height, scale = fit === 'contain' ? Math.min(wide, tall) : Math.max(wide, tall);
@@ -56,6 +93,7 @@ export async function createWorld3DOverlay(canvas, options) {
     observer?.observe(canvas);
     const win = doc.defaultView ?? globalThis;
     win.addEventListener('resize', place);
+    const placedAt = performance.now();
     let game;
     try {
         game = await createBrowserGame({
@@ -65,7 +103,16 @@ export async function createWorld3DOverlay(canvas, options) {
             backend: options.backend ?? 'webgl2',
             clearColor: 0,
             clearAlpha: 0,
-            effects: true,
+            effects: options.effects ?? true,
+            ...(options.renderMode === undefined ? {} : { renderMode: options.renderMode }),
+            ...(options.hover === undefined ? {} : { hover: options.hover }),
+            ...(options.onFrameTiming === undefined ? {} : { onFrameTiming: options.onFrameTiming }),
+            ...(options.measureSharedFrames === undefined ? {} : { measureSharedFrames: options.measureSharedFrames }),
+            ...(options.webgl2PageBatching === undefined ? {} : { webgl2PageBatching: options.webgl2PageBatching }),
+            ...(options.uiScale === undefined ? {} : { uiScale: options.uiScale }),
+            ...(fills && holder !== undefined ? { fit: fit, fitTo: holder } : {}),
+            ...(options.portrait === undefined ? {} : { portrait: options.portrait }),
+            ...(options.insets === undefined ? {} : { insets: options.insets }),
             ...(options.blendSpace === undefined ? {} : { blendSpace: options.blendSpace }),
             ...(options.pixelRatio === undefined ? {} : { pixelRatio: options.pixelRatio }),
             ...(options.update ? { update: options.update } : {}),
@@ -75,7 +122,7 @@ export async function createWorld3DOverlay(canvas, options) {
     catch (cause) {
         observer?.disconnect();
         win.removeEventListener('resize', place);
-        overlay.remove();
+        (holder ?? overlay).remove();
         throw cause;
     }
     // Pointers that started on an empty part of the interface belong to the 3D canvas until they lift.
@@ -85,7 +132,9 @@ export async function createWorld3DOverlay(canvas, options) {
         const box = overlay.getBoundingClientRect();
         if (!(box.width > 0 && box.height > 0))
             return true;
-        const x = ((event.clientX - box.left) / box.width) * options.width, y = ((event.clientY - box.top) / box.height) * options.height;
+        // The stage's size now: the design, or with a fit that fills the 3D canvas, the plan's.
+        const stage = fills ? game.screen : options;
+        const x = ((event.clientX - box.left) / box.width) * stage.width, y = ((event.clientY - box.top) / box.height) * stage.height;
         try {
             return game.stage.hitTest(x, y) === undefined;
         }
@@ -93,13 +142,32 @@ export async function createWorld3DOverlay(canvas, options) {
             return true;
         }
     };
+    const reportHoverFailure = (cause) => {
+        if (options.onError !== undefined)
+            options.onError(cause);
+        else if (typeof globalThis.reportError === 'function')
+            globalThis.reportError(cause);
+        else
+            void Promise.reject(cause);
+    };
     const forward = (event) => {
-        if (options.passThrough === false || event.target !== overlay)
+        if (options.passThrough === false)
             return;
         const pointer = event;
-        const id = typeof pointer.pointerId === 'number' ? pointer.pointerId : -1;
+        const id = Number.isSafeInteger(pointer.pointerId) ? pointer.pointerId : -1;
+        // A scene listener may obtain actual native capture from a forwarded down. Its trusted terminal
+        // event then bypasses the overlay. Never retain that ownership for the next use of the same id.
+        if (event.target !== overlay) {
+            if (event.isTrusted && (event.type === 'pointerup' || event.type === 'pointercancel')) {
+                passing.delete(id);
+                if (pointer.isPrimary)
+                    pendingClick = undefined;
+            }
+            return;
+        }
         let send;
         if (event.type === 'pointerdown') {
+            passing.delete(id);
             if (pointer.isPrimary)
                 pendingClick = undefined;
             send = empty(pointer);
@@ -149,6 +217,8 @@ export async function createWorld3DOverlay(canvas, options) {
             clientY: pointer.clientY,
             screenX: pointer.screenX,
             screenY: pointer.screenY,
+            movementX: pointer.movementX,
+            movementY: pointer.movementY,
             button: pointer.button,
             buttons: pointer.buttons,
             pointerId: pointer.pointerId,
@@ -164,24 +234,81 @@ export async function createWorld3DOverlay(canvas, options) {
             deltaMode: event.deltaMode
         });
         canvas.dispatchEvent(copy);
+        // A scene-owned original never reaches the overlay adapter. End its former hover, even if an
+        // app's leave callback fails: the scene has already received its event.
+        if (game.hover?.state === 'active' &&
+            id >= 0 &&
+            (pointer.pointerType === 'mouse' || pointer.pointerType === 'pen')) {
+            try {
+                if (event.type === 'pointerdown')
+                    game.hover.leave(id, 'contact');
+                else if (event.type === 'pointercancel')
+                    game.hover.leave(id, 'pointercancel');
+                else if (event.type === 'pointermove')
+                    game.hover.leave(id, pointer.buttons === 0 ? 'outside' : 'contact');
+            }
+            catch (cause) {
+                reportHoverFailure(cause);
+            }
+        }
     };
     // Capturing on the window runs before the 2D game's own listeners on the overlay.
     for (const type of FORWARDED)
         win.addEventListener(type, forward, { capture: true, passive: false });
+    const releaseOwnership = () => {
+        passing.clear();
+        pendingClick = undefined;
+    };
+    const visibility = () => {
+        if (doc.visibilityState === 'hidden')
+            releaseOwnership();
+    };
+    const lock = () => {
+        releaseOwnership();
+        if (doc.pointerLockElement !== null && game.hover?.state === 'active') {
+            try {
+                game.hover.leaveAll('outside');
+            }
+            catch (cause) {
+                reportHoverFailure(cause);
+            }
+        }
+    };
+    win.addEventListener('blur', releaseOwnership);
+    win.addEventListener('pagehide', releaseOwnership);
+    doc.addEventListener('visibilitychange', visibility);
+    doc.addEventListener('pointerlockchange', lock);
+    const stopScreenReport = createOverlayScreenReporter(game, overlay, canvas);
+    const ready = performance.now();
     return {
         game,
         canvas: overlay,
+        getStartupTiming: () => Object.freeze({ placementMs: placedAt - started, readyMs: ready - started, game: game.getStartupTiming() }),
         get box() {
-            return placed;
+            if (!fills)
+                return placed;
+            const screen = game.screen;
+            return Object.freeze({
+                x: screen.left,
+                y: screen.top,
+                width: screen.width * screen.scale,
+                height: screen.height * screen.scale,
+                scale: screen.scale
+            });
         },
         async dispose() {
+            stopScreenReport();
             for (const type of FORWARDED)
                 win.removeEventListener(type, forward, { capture: true });
+            win.removeEventListener('blur', releaseOwnership);
+            win.removeEventListener('pagehide', releaseOwnership);
+            doc.removeEventListener('visibilitychange', visibility);
+            doc.removeEventListener('pointerlockchange', lock);
+            releaseOwnership();
             observer?.disconnect();
             win.removeEventListener('resize', place);
             await game.dispose();
-            overlay.remove();
+            (holder ?? overlay).remove();
         }
     };
 }
-//# sourceMappingURL=overlay3D.js.map

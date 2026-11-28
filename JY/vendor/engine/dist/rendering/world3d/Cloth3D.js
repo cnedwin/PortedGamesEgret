@@ -500,4 +500,3 @@ export function createRope3D(options) {
 export function createCloth3D(options) {
     return new Cloth3D(options);
 }
-//# sourceMappingURL=Cloth3D.js.map
