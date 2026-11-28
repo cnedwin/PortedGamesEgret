@@ -26,6 +26,11 @@
     "@egret/runtime/ui": "./vendor/runtime/dist/ui/index.js",
     "@egret/engine/ui": "./vendor/engine/dist/ui/index.js",
     "@egret/engine/webgl2/world3d": "./vendor/engine/dist/web/world3d/index.js",
-    "@egret/engine/world3d": "./vendor/engine/dist/rendering/world3d/index.js"
+    "@egret/engine/world3d": "./vendor/engine/dist/rendering/world3d/index.js",
+    "@egret/engine/play": "./vendor/engine/dist/web/play.js",
+    "@egret/engine/web/kit": "./vendor/engine/dist/web/kit.js",
+    "@egret/engine/ui/semantics": "./vendor/engine/dist/semantics.js",
+    "@egret/engine/ui/testing": "./vendor/engine/dist/ui/testing.js",
+    "@egret/engine/web/semantics": "./vendor/engine/dist/web/semantics.js"
   }
 }

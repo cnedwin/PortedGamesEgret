@@ -4,26 +4,40 @@ const manifestUrl = new URL('../data/full-game.json', import.meta.url);
 const requestOptions = { credentials: 'omit', redirect: 'error' };
 
 export async function findHostedPack(signal) {
-  const timeout = AbortSignal.timeout(8000);
-  const response = await fetch(manifestUrl, {
-    ...requestOptions, cache: 'no-cache', signal: signal ? AbortSignal.any([signal, timeout]) : timeout,
-  });
-  if (response.status === 404) return;
-  if (!response.ok) throw Error('暂时无法获取在线游戏数据。');
+  // Keep one ordinary controller alive throughout both the fetch and body read.
+  // In WebKit, cancellation of a held manifest was not reliable with an inline composite signal.
+  const request = new AbortController();
+  const forwardAbort = () => request.abort(signal?.reason);
+  if (signal?.aborted) forwardAbort();
+  else signal?.addEventListener('abort', forwardAbort, { once: true });
+  const timer = setTimeout(() => request.abort(new DOMException('Game data request timed out.', 'TimeoutError')), 8000);
+  try {
+    request.signal.throwIfAborted();
+    const response = await fetch(manifestUrl, {
+      ...requestOptions, cache: 'no-cache', signal: request.signal,
+    });
+    request.signal.throwIfAborted();
+    if (response.status === 404) return;
+    if (!response.ok) throw Error('暂时无法获取在线游戏数据。');
 
-  const { version, enabled, archive, bytes } = (await response.json()) ?? {};
-  if (version === 1 && enabled === false) return;
-  if (version !== 1 || (enabled !== undefined && enabled !== true) || typeof archive !== 'string' || !archive
-    || !Number.isSafeInteger(bytes) || bytes < 1 || bytes > maxArchiveBytes) {
-    throw Error('在线游戏数据的配置有误。');
+    const { version, enabled, archive, bytes } = (await response.json()) ?? {};
+    request.signal.throwIfAborted();
+    if (version === 1 && enabled === false) return;
+    if (version !== 1 || (enabled !== undefined && enabled !== true) || typeof archive !== 'string' || !archive
+      || !Number.isSafeInteger(bytes) || bytes < 1 || bytes > maxArchiveBytes) {
+      throw Error('在线游戏数据的配置有误。');
+    }
+    const url = new URL(archive, manifestUrl);
+    const sameOriginHttp = url.protocol === 'http:' && url.origin === manifestUrl.origin;
+    if ((url.protocol !== 'https:' && !sameOriginHttp)
+      || url.username || url.password || url.hash || !/\.7z$/i.test(url.pathname)) {
+      throw Error('在线游戏数据的地址无效。');
+    }
+    return { url, bytes };
+  } finally {
+    clearTimeout(timer);
+    signal?.removeEventListener('abort', forwardAbort);
   }
-  const url = new URL(archive, manifestUrl);
-  const sameOriginHttp = url.protocol === 'http:' && url.origin === manifestUrl.origin;
-  if ((url.protocol !== 'https:' && !sameOriginHttp)
-    || url.username || url.password || url.hash || !/\.7z$/i.test(url.pathname)) {
-    throw Error('在线游戏数据的地址无效。');
-  }
-  return { url, bytes };
 }
 
 export async function downloadHostedPack({ url, bytes }, { signal, onProgress }) {

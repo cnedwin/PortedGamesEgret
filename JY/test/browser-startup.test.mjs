@@ -24,7 +24,9 @@ test('hosted startup preloads refer to shipped static modules at their real impo
 test('the Home scene manifest hints only additional renderer modules', async () => {
   const { modulePreloads } = JSON.parse(await readFile(new URL('../web/jyx2/home3d/scene.json', import.meta.url), 'utf8'));
   const startup = new Set(startupModules);
-  assert(modulePreloads.includes('vendor/runtime/dist/input/PointerRouter.js'));
+  // Native title input already loads the pointer router. It must be present in
+  // the combined startup closure, without a duplicate Home hint.
+  assert(startup.has('vendor/runtime/dist/input/PointerRouter.js') || modulePreloads.includes('vendor/runtime/dist/input/PointerRouter.js'));
   assert(!modulePreloads.includes('play/jyx2/scene/native-home-view.mjs'));
   assert(modulePreloads.every(path => !startup.has(path)));
   await checkShippedModules(modulePreloads);

@@ -385,15 +385,17 @@ async function start() {
   const preview = previewName === 'home' && baseline.location.id === homeScene
     ? baseline.location : previewLocations.get(previewName);
   const autoSave = createSaveSlot(preview ? `${initial.saveIdentity}:${previewName}-preview` : initial.saveIdentity);
-  let save = await autoSave.read();
+  let save, saveError;
+  try { save = await autoSave.read(); }
+  catch (error) { saveError = error; }
   let catalogRequest;
   const loadCatalog = () => catalogRequest ??= json('/api/catalog').catch(error => {
     catalogRequest = undefined;
     throw error;
   });
   if (preview) baseline.location = { ...preview };
-  if (!preview && (settings.get('title') === '1' || !save && settings.get('play') !== '1')) {
-    save = await showTitle({ initial, baseline, autoSave, save, preferences, search: settings, loadCatalog });
+  if (!preview && (saveError || settings.get('title') === '1' || !save && settings.get('play') !== '1')) {
+    save = await showTitle({ initial, baseline, autoSave, save, saveError, preferences, search: settings, loadCatalog });
   }
   const requestedStyle = settings.get('visual');
   const visualStyle = ['jyx2', 'classic', 'enhanced'].includes(requestedStyle) ? requestedStyle : preferences.visual;
