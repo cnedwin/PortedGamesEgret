@@ -9,6 +9,7 @@ import {
   Object3D,
   Texture3D,
   createBoxGeometry3D,
+  createGeometry3D,
   createCubeTextureFromEquirect3D,
   createDirectionalLight3D,
   createHemisphereLight3D,
@@ -19,6 +20,7 @@ import {
 } from '@egret/engine/world3d';
 
 import { createScratchCanvas } from './scratch-canvas.mjs';
+import { groundDetail, roadTints } from './environment-detail.mjs';
 
 const ASSETS = new URL('../../assets/', import.meta.url);
 
@@ -58,7 +60,7 @@ export const PLACE_LOOK = {
     sun: { dir: [-0.45, 0.82, -0.35], color: 0xfff1dc, intensity: 3.1 },
     hemi: { sky: 0xbcd2ee, ground: 0x8a7458, intensity: 0.55 },
     env: 0.9,
-    fog: { color: [0.72, 0.78, 0.86], density: 0.008 },
+    fog: { color: [0.58, 0.64, 0.72], density: 0.009 },
     ground: { material: 'raked_dirt', repeat: 0.22 },
     exposure: 1.0,
     grade: { saturation: 1.05, contrast: 1.06, brightness: 1.0, vignette: 0.32 },
@@ -70,7 +72,7 @@ export const PLACE_LOOK = {
     sun: { dir: [0.55, 0.42, -0.6], color: 0xffd6a8, intensity: 3.0 },
     hemi: { sky: 0xd4def0, ground: 0x6a7a48, intensity: 0.5 },
     env: 0.85,
-    fog: { color: [0.86, 0.8, 0.78], density: 0.012 },
+    fog: { color: [0.70, 0.64, 0.60], density: 0.011 },
     ground: { material: 'leafy_grass', repeat: 0.3 },
     exposure: 1.0,
     grade: { saturation: 1.1, contrast: 1.04, brightness: 1.02, vignette: 0.34 },
@@ -79,25 +81,25 @@ export const PLACE_LOOK = {
   },
   bamboo: {
     sky: 'kloofendal_misty_morning_puresky',
-    sun: { dir: [0.3, 0.75, 0.45], color: 0xf2f4ea, intensity: 1.8 },
-    hemi: { sky: 0xdfe8e2, ground: 0x4a5a3a, intensity: 0.7 },
-    env: 0.8,
-    fog: { color: [0.8, 0.84, 0.82], density: 0.035 },
+    sun: { dir: [0.3, 0.75, 0.45], color: 0xf2f4ea, intensity: 2.05 },
+    hemi: { sky: 0xd1e0d4, ground: 0x43543b, intensity: 0.53 },
+    env: 0.72,
+    fog: { color: [0.49, 0.58, 0.54], density: 0.020 },
     ground: { material: 'forest_floor', repeat: 0.3 },
-    exposure: 1.05,
-    grade: { saturation: 0.92, contrast: 1.02, brightness: 1.02, vignette: 0.36 },
+    exposure: 1.0,
+    grade: { saturation: 0.98, contrast: 1.10, brightness: 1.0, vignette: 0.36 },
     weather: 'motes',
     radius: 17.5
   },
   snow: {
     sky: 'snow_field_2_puresky',
-    sun: { dir: [-0.3, 0.6, 0.55], color: 0xe8eef8, intensity: 1.9 },
-    hemi: { sky: 0xdde6f2, ground: 0xb8c0cc, intensity: 0.85 },
+    sun: { dir: [-0.3, 0.6, 0.55], color: 0xe8eef8, intensity: 2.10 },
+    hemi: { sky: 0xd6e2ef, ground: 0xa6b5c7, intensity: 0.65 },
     env: 0.9,
-    fog: { color: [0.83, 0.86, 0.9], density: 0.022 },
+    fog: { color: [0.62, 0.71, 0.80], density: 0.016 },
     ground: { material: 'snow_02', repeat: 0.25 },
     exposure: 0.95,
-    grade: { saturation: 0.9, contrast: 1.05, brightness: 1.0, vignette: 0.38 },
+    grade: { saturation: 0.94, contrast: 1.08, brightness: 1.0, vignette: 0.38 },
     weather: 'snow',
     radius: 18
   },
@@ -118,7 +120,7 @@ export const PLACE_LOOK = {
     sun: { dir: [-0.43, 0.64, -0.64], color: 0xeedbc0, intensity: 2.45 },
     hemi: { sky: 0xbacdd1, ground: 0x66745e, intensity: 0.72 },
     env: 0.84,
-    fog: { color: [0.58, 0.65, 0.64], density: 0.0155 },
+    fog: { color: [0.49, 0.57, 0.54], density: 0.012 },
     ground: { material: 'forest_floor', repeat: 0.25 },
     exposure: 0.96,
     grade: { saturation: 0.91, contrast: 1.07, brightness: 1.02, vignette: 0.35 },
@@ -404,17 +406,16 @@ async function scanned(name, repeat, extra = {}) {
   return material;
 }
 
-/** A plane whose UVs run in metres, so a material's repeat is per metre. */
-function groundPlane(size, material, y = 0) {
-  const geometry = createPlaneGeometry3D({ width: size, height: size, widthSegments: 1, heightSegments: 1 });
-  const uv = geometry.getAttribute('uv');
-  for (let i = 0; i < uv.data.length; i++) uv.data[i] *= size;
-  uv.touch();
-  const mesh = new Mesh3D(geometry, material);
-  mesh.setRotation(-Math.PI / 2, 0, 0);
-  mesh.setPosition(0, y, 0);
-  mesh.receiveShadow = true;
-  return mesh;
+/** One flat, weathered ground mesh, with no new collision. */
+function environmentGround(root, name, radius, quality, scannedGround, owned) {
+  const groundGeometry = createGeometry3D(groundDetail(name, radius, quality));
+  const groundMaterial = scannedGround.clone(); // The material and texture residency aren't changed for other props.
+  groundMaterial.vertexColors = true;
+  const ground = new Mesh3D(groundGeometry, groundMaterial);
+  ground.name = 'environment-ground';
+  ground.receiveShadow = true;
+  root.addChild(ground);
+  owned.push(groundGeometry, groundMaterial);
 }
 
 /** Load generated props on demand, normalised so that each stands on y = 0 at its middle. */
@@ -533,10 +534,14 @@ export function describePlace(name) {
   return { look, layout, place, route };
 }
 
-function groundStrip(root, material, { width, length, x = 0, y = .016, z = 0, angle = 0 }) {
-  const geometry = createPlaneGeometry3D({ width, height: length });
+function groundStrip(root, material, { name, width, length, x = 0, y = .016, z = 0, angle = 0 }, owned) {
+  const geometry = createPlaneGeometry3D({ width, height: length, widthSegments: 4, heightSegments: 16 });
+  geometry.setAttribute('color', new Attribute3D(roadTints(name, 4, 16), 3));
   scaleUv(geometry, width, length);
-  const mesh = new Mesh3D(geometry, material);
+  const surface = material.clone();
+  surface.vertexColors = true;
+  const mesh = new Mesh3D(geometry, surface);
+  owned.push(geometry, surface);
   mesh.setRotation(-Math.PI / 2, 0, angle);
   mesh.setPosition(x, y, z);
   mesh.receiveShadow = true;
@@ -661,6 +666,7 @@ export async function buildPlace(scene, name, { quality = 'high', renderer } = {
   scene.addChild(root);
   scene.background = cube;
   scene.environment = cube;
+  scene.environmentIntensity = look.env;
   scene.fog = { kind: 'exponential', color: look.fog.color, density: look.fog.density };
 
   const hemi = createHemisphereLight3D({ color: look.hemi.sky, groundColor: look.hemi.ground, intensity: look.hemi.intensity });
@@ -672,7 +678,8 @@ export async function buildPlace(scene, name, { quality = 'high', renderer } = {
   Object.assign(sun.shadow, { mapSize: quality === 'high' ? 2048 : 1024, extent: 18, near: 1, far: 120, cascades: quality === 'high' ? 2 : 1, cascadeDistance: 45, bias: 0.0006, normalBias: 0.02 });
   root.addChild(sun);
 
-  root.addChild(groundPlane(1600, ground));
+  const ownedSurfaces = [];
+  environmentGround(root, name, place.radius, quality, ground, ownedSurfaces);
 
   const fires = [];
   for (const item of layout) {
@@ -735,8 +742,8 @@ export async function buildPlace(scene, name, { quality = 'high', renderer } = {
   }
   // In the expedition a raised pigment strip of stone or clay identifies the shared northbound route.
   if (stone) {
-    if (route) groundStrip(root, stone, { width: route.pathWidth, length: 43.8, z: -3.5 });
-    else groundStrip(root, stone, { width: 4.2, length: 70, y: .012, angle: .35 });
+    if (route) groundStrip(root, stone, { name, width: route.pathWidth, length: 43.8, z: -3.5 }, ownedSurfaces);
+    else groundStrip(root, stone, { name, width: 4.2, length: 70, y: .012, angle: .35 }, ownedSurfaces);
   }
   if (platforms) {
     for (const platform of place.platforms) buildLookout(root, platform, route, platforms);
@@ -757,6 +764,7 @@ export async function buildPlace(scene, name, { quality = 'high', renderer } = {
     },
     dispose() {
       root.removeFromParent();
+      for (const resource of ownedSurfaces.splice(0)) resource.dispose();
     }
   };
 }

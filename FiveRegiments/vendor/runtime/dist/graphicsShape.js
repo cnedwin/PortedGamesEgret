@@ -2,7 +2,7 @@
 // The shapes of a Graphics, as triangles. A node whose drawing is more than filled rectangles keeps one list of
 // coloured triangles, in drawing order, and a path still being drawn. Capture reads them as one shared geometry.
 import { createImageData2D, createSharedGeometry2D } from '@egret/contracts';
-import { decodeSRGBByte } from './srgbBytes.js';
+import { decodeSRGBByte } from '@egret/contracts';
 import { fillNonZero, gradientColor, outlineCrosses, refineForGradient } from './graphicsFill.js';
 /** The most one node's shapes may hold: what one shared geometry takes. */
 export const GRAPHICS_SHAPE_LIMITS = Object.freeze({

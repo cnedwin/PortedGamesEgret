@@ -10,12 +10,31 @@ const within = (value, least, most) => typeof value === 'number' && value >= lea
 export function createBrowserGamepadInput(options = {}) {
     if (options === null || typeof options !== 'object' || Array.isArray(options))
         throw new EgretError('GAMEPAD_OPTIONS_INVALID');
-    const { onError, ...configuration } = options;
-    if (onError !== undefined && typeof onError !== 'function')
+    const { onError, optional = false, ...configuration } = options;
+    if ((onError !== undefined && typeof onError !== 'function') || typeof optional !== 'boolean')
         throw new EgretError('GAMEPAD_OPTIONS_INVALID');
     const host = globalThis.navigator, page = globalThis.document, win = globalThis.window;
-    if (host === undefined || typeof host.getGamepads !== 'function')
+    if ((host === undefined || typeof host.getGamepads !== 'function') && !optional)
         throw new EgretError('GAMEPAD_HOST_UNAVAILABLE');
+    const readPads = () => {
+        if (typeof host?.getGamepads !== 'function') {
+            if (!optional)
+                throw new EgretError('GAMEPAD_HOST_UNAVAILABLE');
+            return [];
+        }
+        try {
+            return host.getGamepads();
+        }
+        catch (cause) {
+            // A Permissions Policy can deliberately make this otherwise present optional input unavailable.
+            if (optional &&
+                typeof DOMException === 'function' &&
+                cause instanceof DOMException &&
+                cause.name === 'SecurityError')
+                return [];
+            throw cause;
+        }
+    };
     const input = createGamepadInput(configuration);
     const pairs = [];
     let closed = false, last = 0;
@@ -74,7 +93,7 @@ export function createBrowserGamepadInput(options = {}) {
             if (closed || input.state === 'closed' || page?.visibilityState === 'hidden')
                 return;
             const samples = [];
-            for (const pad of host.getGamepads()) {
+            for (const pad of readPads()) {
                 // A browser keeps a place for a pad that was taken away.
                 if (pad === null || pad === undefined || pad.connected === false)
                     continue;
@@ -105,7 +124,7 @@ export function createBrowserGamepadInput(options = {}) {
                 throw new EgretError('GAMEPAD_OPTIONS_INVALID');
             if (closed || page?.visibilityState === 'hidden')
                 return false;
-            const pad = [...host.getGamepads()].find(candidate => candidate !== null && candidate !== undefined && candidate.index === index && candidate.connected !== false);
+            const pad = [...readPads()].find(candidate => candidate !== null && candidate !== undefined && candidate.index === index && candidate.connected !== false);
             const actuator = pad?.vibrationActuator;
             if (actuator === null || actuator === undefined || typeof actuator.playEffect !== 'function')
                 return false;

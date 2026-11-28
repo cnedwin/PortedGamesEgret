@@ -1,605 +1,447 @@
-// What is drawn over the fight, laid out as a sandbox-war PC game lays it out: a compass along the top with the foes
-// marked on it; a nameplate over each foe with his health (and his horse's); his own health and stamina with their
-// numbers at the bottom left, with his horse's when he rides; the bar along the bottom (1 to 0: weapons, wound
-// dressings) with the R and T skills and the X weapon art beside it; at the bottom right the attack mode and the view, and the key hints
-// (Ctrl+H); the cross in the middle that shows the line of his blow and of the blow coming; the words of the moment,
-// and numbers where blows land. Tab hides it all but the cross.
+// Native 2D battle layer. It reads the existing deterministic fight without changing any combat rules.
+import { Sprite } from '@egret/engine';
+import { createActionControl, createMovementControl } from '@egret/engine/ui';
 import { ARTS, REGIMENTS, SKILLS } from './sim/regiments.mjs';
 import { recoveryGuardWindow } from './sim/fight.mjs';
-import { t, say, getLanguage } from './i18n.mjs';
+import { t, say } from './i18n.mjs';
 
-const el = (tag, cls, parent, html) => {
-  const e = document.createElement(tag);
-  if (cls) e.className = cls;
-  if (html !== undefined) e.innerHTML = html;
-  parent?.appendChild(e);
-  return e;
-};
-const wrap = (a) => Math.atan2(Math.sin(a), Math.cos(a));
-const GUARD_ARROW = { R: '→', L: '←', O: '↑', T: '↓' };
+const C={ink:0x1e1812,edge:0xa98b51,gold:0xf4dca3,paper:0xf7eddb,muted:0xd5c5ae,hp:0xad3b31,st:0xceac59,horse:0x79a882,danger:0xff604a,good:0x87dfa5};
+const clamp=(v,a,b)=>Math.min(b,Math.max(a,v)),wrap=a=>Math.atan2(Math.sin(a),Math.cos(a));
+const add=(parent,name)=>{const n=new Sprite();n.name=name;parent.addChild(n);return n;};
+const put=(n,x,y)=>{n.x=x;n.y=y;};
+const visible=(n,on)=>{n.visible=!!on;};
+function box(n,w,h,fill=C.ink,edge=C.edge,alpha=.84){
+  const key=[w,h,fill,edge,alpha].join(':');if(n._paint===key)return;n._paint=key;
+  const g=n.graphics;g.clear();
+  if(edge!==null){g.beginFill(edge,.95).drawRect(0,0,w,h).endFill();g.beginFill(fill,alpha).drawRect(1,1,w-2,h-2).endFill();}
+  else g.beginFill(fill,alpha).drawRect(0,0,w,h).endFill();
+}
+function disk(n,r,fill,alpha=1,edge=null){
+  const key=[r,fill,alpha,edge].join(':');if(n._paint===key)return;n._paint=key;
+  const g=n.graphics;g.clear();if(edge!==null){g.beginFill(edge,.95).drawCircle(0,0,r).endFill();r-=2;}
+  g.beginFill(fill,alpha).drawCircle(0,0,r).endFill();
+}
+// Play's text raster is prepared in its own stage units. A CSS-sized HUD layer
+// expands on short screens, so compensate on the label rather than upscaling
+// the texture. Only scale changes or actual text/style changes request a raster.
+const labelLayout=new WeakMap();
+const textFactor=scale=>clamp(1/scale,1,3);
+function setFont(label,cssSize){
+  const info=labelLayout.get(label);
+  if(!info){label.size=cssSize;return;}
+  info.cssSize=cssSize;
+  const actual=cssSize*info.factor;
+  if(label.size!==actual)label.size=actual;
+  const inverse=1/info.factor;
+  if(label.scaleX!==inverse)label.scaleX=label.scaleY=inverse;
+}
+function word(game,parent,value='',opt={}){
+  const cssSize=opt.size??15,factor=textFactor(game.browser.screen.scale);
+  const label=game.text(value,{color:C.paper,layer:parent,fontFamily:'Arial',...opt,size:cssSize*factor});
+  labelLayout.set(label,{cssSize,factor});setFont(label,cssSize);return label;
+}
+function rescaleLabels(node,factor){
+  const info=labelLayout.get(node);
+  if(info){if(info.factor!==factor){info.factor=factor;setFont(node,info.cssSize);}return;}
+  for(let i=0;i<(node.numChildren??0);i++)rescaleLabels(node.getChildAt(i),factor);
+}
+function txt(label,value){const next=String(value??'');if(label.text!==next)label.text=next;}
+function fit(label,w,max,min=10){setFont(label,Math.min(max,Math.max(min,(w-8)/Math.max(4,[...label.text].length*.75))));}
+function tag(game,parent,name,w,h,value='',options={}){
+  const root=add(parent,name),bg=add(root,'frame'),label=word(game,root,value,{x:w/2,y:h/2,align:'center',baseline:'middle',bold:true,...options});
+  box(bg,w,h);return {root,bg,label,w,h,resize(w,h){this.w=w;this.h=h;box(bg,w,h);put(label,w/2,h/2);}};
+}
+function gauge(game,parent,name,w,h,color,{number=false,trail=false}={}){
+  const root=add(parent,name),base=add(root,'background'),lag=add(root,'trail'),fill=add(root,'fill');
+  box(base,w,h,C.ink,C.edge,.9);box(lag,w-4,h-4,0x654b3e,null,.95);box(fill,w-4,h-4,color,null,1);fill.graphics.beginFill(0xffffff,.22).drawRect(0,0,w-4,Math.min(2,(h-4)/2)).endFill();put(lag,2,2);put(fill,2,2);visible(lag,trail);
+  const label=number?word(game,root,'',{x:w/2,y:h/2,size:12,bold:true,align:'center',baseline:'middle'}):null;
+  return {root,label,set(v,total,shown=v,low=false){const k=clamp(total?v/total:0,0,1);fill.scaleX=Math.max(.0001,k);visible(fill,k>0);if(trail)lag.scaleX=Math.max(.0001,clamp(total?shown/total:0,0,1));
+    if(label){txt(label,Math.max(0,Math.round(v))+'/'+Math.round(total));label.color=low?C.danger:C.paper;}}};
+}
+// The native layer's unit is a CSS pixel. All sizing comes from the current engine plan.
+export function hudMetrics(game){
+  const s=game.screen,a=game.safe,scale=game.browser.screen.scale,L=(a.x-s.x)*scale,T=(a.y-s.y)*scale;
+  const w=s.width*scale,h=s.height*scale,aw=a.width*scale,ah=a.height*scale;
+  return {scale,screen:{left:0,top:0,right:w,bottom:h,width:w,height:h},safe:{left:L,top:T,right:L+aw,bottom:T+ah,width:aw,height:ah},
+    project:(x,y)=>[s.x+x/scale,s.y+y/scale]};
+}
+function cssLayer(game,root){const m=hudMetrics(game);put(root,game.screen.x,game.screen.y);root.scaleX=root.scaleY=1/m.scale;const f=textFactor(m.scale);if(root._textFactor!==f){root._textFactor=f;rescaleLabels(root,f);}return m;}
+const hitBox=(x,y,width,height)=>({x,y,width,height});
+export function touchLayout(safe,ids){
+  const {left,top,right,bottom,width,height}=safe,short=height<470;
+  const cols=width>=650?4:3,gap=5,size=short?48:clamp(Math.floor(width*.15),48,62);
+  const rows=Math.ceil(ids.length/cols),bx=right-8-cols*size-(cols-1)*gap,by=bottom-8-rows*size-(rows-1)*gap;
+  const stickSize=short?104:120,result={stick:hitBox(left+9,bottom-stickSize-9,stickSize,stickSize),pause:hitBox(right-56,top+6,48,48)};
+  const lookTop=top+60,lookX=left+width*.45;result.look=hitBox(lookX,lookTop,right-8-lookX,Math.max(44,by-7-lookTop));
+  ids.forEach((id,i)=>{result[id]=hitBox(bx+i%cols*(size+gap),by+Math.floor(i/cols)*(size+gap),size,size);});
+  return result;
+}
+function targetBox(node,b){put(node,b.x,b.y);node.hitArea={x:0,y:0,width:b.width,height:b.height};}
+function polygon(g,points,color,alpha=1){g.beginFill(color,alpha).moveTo(...points[0]);for(let i=1;i<points.length;i++)g.lineTo(...points[i]);g.lineTo(...points[0]).endFill();}
+function line(g,points,color,width=2,alpha=1){g.lineStyle(width,color,alpha).moveTo(...points[0]);for(let i=1;i<points.length;i++)g.lineTo(...points[i]);g.lineStyle(0);}
+const CROSS={R:[[18,-8],[43,0],[18,8]],L:[[-18,-8],[-43,0],[-18,8]],O:[[-8,-18],[0,-43],[8,-18]],T:[[-8,18],[0,43],[8,18]]};
+const PREP={R:[[56,-8],[47,0],[56,8]],L:[[-56,-8],[-47,0],[-56,8]],O:[[-8,-56],[0,-47],[8,-56]],T:[[-8,56],[0,47],[8,56]]};
+function itemIcon(node,name){
+  if(!name)return;const g=node.graphics,c=C.gold;
+  if(name==='shield'){g.lineStyle(2,c,.9).drawCircle(0,0,11).drawCircle(0,0,3).lineStyle(0);return;}
+  if(name==='dressing'){line(g,[[-5,-9],[5,-9],[5,-6],[7,-6],[7,10],[-7,10],[-7,-6],[-5,-6],[-5,-9]],c);line(g,[[-4,3],[4,3]],c);line(g,[[0,-1],[0,7]],c);return;}
+  if(name==='bow'){line(g,[[-6,-12],[3,-8],[7,0],[3,8],[-6,12],[-6,-12]],c,1.5);line(g,[[-9,0],[11,0]],c);return;}
+  line(g,[[-10,12],[8,-8]],c,2);polygon(g,[[4,-5],[13,-14],[11,-3]],c);
+  if(name==='axe')polygon(g,[[4,-7],[12,-8],[14,0],[6,3]],c);
+  else if(name==='ji')line(g,[[4,-7],[0,-2],[3,4],[10,2]],c);
+  else line(g,[[-7,5],[0,12]],c);
+}
+function nativeBounds(node){
+  const b=node.hitArea??node.getBounds(),ps=[[b.x,b.y],[b.x+b.width,b.y],[b.x,b.y+b.height],[b.x+b.width,b.y+b.height]].map(([x,y])=>node.localToGlobal(x,y));
+  const x=Math.min(...ps.map(p=>p.x)),y=Math.min(...ps.map(p=>p.y));
+  return {x,y,width:Math.max(...ps.map(p=>p.x))-x,height:Math.max(...ps.map(p=>p.y))-y};
+}
 
-// The cross: four blades round a point, one per line as seen on screen (right, left, top for overhead, bottom for a
-// thrust).
-const CROSS = `<svg viewBox="-60 -60 120 120" aria-hidden="true">
-  <path data-l="R" d="M18 -9 L44 0 L18 9 Z"/>
-  <path data-l="L" d="M-18 -9 L-44 0 L-18 9 Z"/>
-  <path data-l="O" d="M-9 -18 L0 -44 L9 -18 Z"/>
-  <path data-l="T" d="M-9 18 L0 44 L9 18 Z"/>
-  <polyline data-prep="R" points="56,-8 47,0 56,8"/>
-  <polyline data-prep="L" points="-56,-8 -47,0 -56,8"/>
-  <polyline data-prep="O" points="-8,-56 0,-47 8,-56"/>
-  <polyline data-prep="T" points="-8,56 0,47 8,56"/>
-  <circle r="2.2"/>
-  <circle class="ring" r="30"/>
-</svg>`;
 
-// Small line drawings for the bar, in a 40 × 40 box.
-const ICON = {
-  sabre: '<path d="M8 33 L11 30 M11 30 Q22 22 33 7 Q30 18 13 32 Z" /><circle cx="7" cy="34" r="2.4" fill="none"/>',
-  jian: '<path d="M9 31 L31 9 L33 7 L31 11 L11 33 Z"/><path d="M7 27 L13 33" /><path d="M5 35 L9 31"/>',
-  zhanma: '<path d="M6 36 L20 22"/><path d="M18 24 Q27 13 34 5 Q31 16 22 26 Z"/><path d="M16 20 L24 28"/>',
-  axe: '<path d="M8 36 L30 8"/><path d="M24 10 Q34 8 36 18 Q30 20 26 16 Z"/><path d="M24 14 L18 12"/>',
-  ji: '<path d="M6 36 L28 12"/><path d="M28 12 L34 6 L31 13 Z"/><path d="M24 10 Q20 13 25 18 Q30 21 32 17"/><path d="M26 8 Q31 4 34 9"/>',
-  spear: '<path d="M6 36 L29 11"/><path d="M29 11 L34 5 L31 13 Z"/>',
-  bow: '<path d="M12 5 Q34 20 12 35" fill="none"/><path d="M12 5 L12 35" stroke-width="1"/><path d="M8 20 L33 20"/>',
-  knife: '<path d="M12 28 L27 13 L30 11 L28 15 L15 31 Z"/><path d="M9 31 L13 27"/>',
-  shield: '<circle cx="20" cy="20" r="13" fill="none"/><circle cx="20" cy="20" r="3"/>',
-  dressing: '<path d="M14 8 h12 v6 h-12 z" fill="none"/><path d="M12 14 h16 v18 a3 3 0 0 1 -3 3 h-10 a3 3 0 0 1 -3 -3 z" fill="none"/><path d="M20 19 v10 M15 24 h10"/>'
-};
-const icon = (name) => `<svg viewBox="0 0 40 40" aria-hidden="true">${ICON[name] ?? ''}</svg>`;
-
-export function createHud(root, { touch = false } = {}) {
-  const hud = el('div', 'hud', root);
-  hud.hidden = true;
-  const compass = el('div', 'hud-compass', hud, '<div class="strip"></div><i class="needle"></i>');
-  const strip = compass.querySelector('.strip');
-  const plates = el('div', 'hud-plates', hud);
-  const cross = el('div', 'hud-cross', hud, CROSS);
-  const tell = el('div', 'hud-tell', cross);
-  const cover = el('div', 'hud-cover', cross);
-  tell.hidden = cover.hidden = true;
-  const me = el('div', 'hud-me', hud);
-  const meName = el('div', 'hud-name', me);
-  const meHp = el('div', 'bar hp', me, '<i></i><b></b><em></em>');
-  const meSt = el('div', 'bar st', me, '<i></i><em></em>');
-  const horseBox = el('div', 'hud-horse', me, `<span>${t('horse')}</span><div class="bar hhp"><i></i><em></em></div><div class="bar hst"><i></i></div>`);
-  const horsePace = el('small', 'horse-pace', horseBox);
-  horsePace.hidden = true;
-  const bar = el('div', 'hud-bar', hud);
-  const slots = el('div', 'slots', bar);
-  const skills = el('div', 'hud-skills', bar);
-  const modes = el('div', 'hud-modes', hud);
-  const keys = el('div', 'hud-keys', hud);
-  const banner = el('div', 'hud-banner', hud);
-  const toast = el('div', 'hud-toast', hud);
-  const numbers = el('div', 'hud-numbers', hud);
-  const hint = el('div', 'hud-hint', hud);
-  const objective = el('div', 'hud-objective', hud);
-  objective.hidden = true;
-  let plateViews = [],
-    slotViews = [],
-    skillViews = [];
-  let bannerTimer = 0,
-    toastTimer = 0;
-  let modeKey = '';
-  const lines = Object.fromEntries([...cross.querySelectorAll('[data-l]')].map((p) => [p.dataset.l, p]));
-  const preparations = cross.querySelectorAll('[data-prep]');
-
-  // The compass: a strip of marks every fifteen degrees, the four quarters named, slid under a fixed needle.
-  const names = t('compass').split(',');
-  const marks = [];
-  for (let d = -360; d <= 720; d += 15) {
-    const q = ((d % 360) + 360) % 360;
-    const quarter = q % 90 === 0 ? names[q / 90] : null;
-    marks.push(`<b style="left:${(d + 360) * 2}px" class="${quarter ? 'q' : q % 45 === 0 ? 'h' : ''}"></b>`);
-    if (quarter) marks.push(`<span style="left:${(d + 360) * 2}px">${quarter}</span>`);
+export function createHud(game,{touch=false,semantics}={}){
+  const root=add(game.ui,'battle-hud'),panels=add(root,'battle-panels'),plates=add(panels,'foes'),
+    compass=add(panels,'compass'),me=add(panels,'fighter-status'),equipment=add(panels,'equipment'),
+    keys=add(panels,'key-hints'),cross=add(root,'direction-cue'),shape=add(cross,'cross'),numbers=add(panels,'floating-values');
+  visible(root,false);
+  const compassBg=add(compass,'frame'),needle=add(compass,'needle');box(needle,2,24,C.gold,null,1);
+  let cw=300;
+  const ticks=Array.from({length:25},(_,i)=>({mark:add(compass,'tick-'+i),label:word(game,compass,'',{size:11,align:'center',color:C.muted})}));
+  const exit=add(compass,'route-gate');disk(exit,4,C.good,.95);visible(exit,false);
+  const meBg=add(me,'frame'),name=word(game,me,'',{x:8,y:4,bold:true,size:16}),arms=word(game,me,'',{x:8,y:23,size:11,color:C.muted});
+  const hp=gauge(game,me,'health',194,17,C.hp,{number:true,trail:true}),st=gauge(game,me,'stamina',194,13,C.st,{number:true});
+  put(hp.root,8,40);put(st.root,8,61);
+  const horse=add(me,'horse'),horseTitle=word(game,horse,'',{x:8,y:0,size:12,color:C.muted}),pace=word(game,horse,'',{x:200,y:0,size:12,align:'right',color:C.gold});
+  const horseHp=gauge(game,horse,'horse-hp',194,12,C.horse,{number:true}),horseSt=gauge(game,horse,'horse-st',194,6,C.st);
+  put(horse,0,79);put(horseHp.root,8,16);put(horseSt.root,8,31);
+  const skills=add(equipment,'skills'),slots=add(equipment,'slots');
+  const keyFrame=add(keys,'hint-frame'),mode=add(panels,'modes'),modeFrame=add(mode,'mode-frame'),modeLine=word(game,mode,'',{size:12,bold:true,align:'right',baseline:'middle',color:C.gold});
+  let keyWidth=220,modeWidth=220,keySignature='',modeSignature='';
+  const keyLabels=Array.from({length:15},(_,i)=>word(game,keys,'',{x:-8,y:6+i*17,size:12,align:'right'}));
+  const tell=tag(game,cross,'incoming',280,28,'',{size:14}),cover=tag(game,cross,'recovery',300,26,'',{size:13,color:C.gold});
+  const banner=add(root,'banner'),bannerBg=add(banner,'frame'),bannerTitle=word(game,banner,'',{size:42,bold:true,align:'center'}),bannerSub=word(game,banner,'',{size:16,align:'center',color:C.muted});
+  const toast=tag(game,root,'feedback',300,26,'',{size:14}),hint=tag(game,root,'click-hint',300,35,'',{size:15}),objective=tag(game,panels,'objective',320,28,'',{size:13,color:C.gold});
+  const pool=Array.from({length:24},()=>{
+    const root=add(numbers,'floating-number'),back=add(root,'backdrop'),label=word(game,root,'',{size:19,bold:true,align:'center',color:C.gold});
+    visible(root,false);return {root,back,label,life:0,x:0,y:0};
+  });
+  for(const n of [tell.root,cover.root,banner,toast.root,hint.root,objective.root])visible(n,false);
+  let currentHero=null,meShown=0,plateViews=[],slotViews=[],skillViews=[],bannerTimer=0,toastTimer=0,kind='',layoutKey='';
+  function place(force=false){
+    const m=cssLayer(game,root),a=m.safe,mid=a.left+a.width/2,k=[a.left,a.top,a.width,a.height,touch,currentHero?.horse?1:0].join(':');
+    if(!force&&layoutKey===k)return m;layoutKey=k;
+    const short=a.height<440,portrait=a.height>a.width;
+    const meHeight=currentHero?.horse?122:79;
+    // The compass occupies only the safe lane left of Pause; in landscape its
+    // lane also excludes the status card, so neither can hide the health or bearing.
+    const compassLeft=touch?(portrait?a.left+8:a.left+226):a.left+8;
+    const compassRight=a.right-(touch?64:8),laneWidth=Math.max(90,compassRight-compassLeft);
+    cw=Math.min(portrait&&touch?420:300,laneWidth);
+    const compassX=clamp(mid-cw/2,compassLeft,Math.max(compassLeft,compassRight-cw));
+    box(compassBg,cw,34,C.ink,C.edge,.70);put(compass,compassX,a.top+5);put(needle,cw/2-1,1);
+    box(meBg,210,meHeight,C.ink,C.edge,.86);
+    put(me,a.left+8,touch?(portrait?a.top+46:a.top+7):a.bottom-(meHeight+12));
+    const sw=Math.max(1,slotViews.length*38-4),aw=Math.max(1,skillViews.length*92-4),w=Math.max(sw,aw);
+    visible(equipment,!touch);const scale=touch?1:clamp((a.width-260)/w,.6,1);equipment.scaleX=equipment.scaleY=scale;
+    put(equipment,mid-w*scale/2,a.bottom-90*scale);put(slots,(w-sw)/2,42);put(skills,(w-aw)/2,0);
+    keyWidth=Math.min(248,Math.max(170,a.width*.24));modeWidth=Math.min(275,Math.max(170,a.width*.27));
+    put(keys,a.right-14,a.top+Math.max(39,(a.height-245)/2));
+    put(mode,a.right-12,a.bottom-34);put(modeLine,-8,14);
+    visible(mode,!touch);
+    const cx=m.screen.width/2,cy=m.screen.height/2;put(cross,cx,cy);cross.scaleX=cross.scaleY=short?.78:1;
+    const msgW=Math.min(310,a.width-20);tell.resize(msgW,28);cover.resize(msgW,26);
+    put(tell.root,-msgW/2,-91);put(cover.root,-msgW/2,62);toast.resize(msgW,26);hint.resize(msgW,35);
+    put(toast.root,mid-msgW/2,Math.min(a.bottom-40,cy+82));put(hint.root,mid-msgW/2,cy+46);
+    const bannerLaneLeft=touch&&!portrait?a.left+226:a.left+8;
+    const bannerLaneRight=touch&&!portrait?a.right-64:a.right-8;
+    const bannerLaneWidth=Math.max(90,bannerLaneRight-bannerLaneLeft);
+    const objW=Math.min(320,bannerLaneWidth);
+    const objMid=clamp(mid,bannerLaneLeft+objW/2,Math.max(bannerLaneLeft+objW/2,bannerLaneRight-objW/2));
+    const objY=touch&&portrait?me.y+meHeight+8:a.top+43;
+    objective.resize(objW,28);put(objective.root,objMid-objW/2,objY);
+    const start=kind==='start';
+    // Opening banners are deliberately short-lived but never dim the persistent
+    // self status. Portrait stacks beneath it; landscape uses the free center lane.
+    const bw=start&&touch?Math.min(bannerLaneWidth,Math.max(220,a.width*.36)):Math.min(a.width-16,Math.max(270,a.width*.52));
+    const bx=start&&touch?clamp(mid,bannerLaneLeft+bw/2,Math.max(bannerLaneLeft+bw/2,bannerLaneRight-bw/2)):mid;
+    const by=start?(touch&&portrait?objY+(objective.root.visible?34:0)+5:a.top+(objective.root.visible?77:43)):a.top+a.height*.25;
+    put(banner,bx,by);
+    const size=Math.min(start?38:64,Math.max(24,a.width*.075));setFont(bannerTitle,size);put(bannerTitle,0,0);put(bannerSub,0,size+7);
+    fit(bannerSub,bw,16,11);box(bannerBg,bw,size+30,C.ink,null,.55);put(bannerBg,-bw/2,-3);
+    return m;
   }
-  strip.innerHTML = marks.join('') + '<div class="foes"></div>';
-  const foeMarks = strip.querySelector('.foes');
-  const exitMark = el('i', 'route-gate', strip);
-  exitMark.hidden = true;
-
-  function setup(game) {
-    exitMark.hidden = true;
-    objective.hidden = true;
-    objective.textContent = '';
-    const hero = game.hero;
-    const r = REGIMENTS[hero.regiment];
-    meName.innerHTML = `<b>${say(r.name)}</b><span>${say(r.arms)}</span>`;
-    horseBox.hidden = !hero.horse;
-    // Nameplates.
-    plates.innerHTML = '';
-    plateViews = game.men
-      .filter((m) => m.side === 'foe')
-      .map((m) => {
-        const name = m.titleKey ? t(m.titleKey) : say(REGIMENTS[m.regiment].name);
-        const box = el('div', m.rank === 'boss' ? 'plate boss' : 'plate', plates, `<b>${m.rank === 'troop' ? t('expeditionTroop', { name }) : name}</b>`);
-        const hp = el('div', 'bar hp', box, '<i></i><b></b>');
-        const hhp = m.horse ? el('div', 'bar hhp', box, '<i></i>') : null;
-        return { man: m, box, hp, hhp, shown: m.hp };
-      });
-    foeMarks.innerHTML = plateViews.map(() => '<i></i>').join('');
-    // The bar: 1 and 2 his weapons, 3 the dressings, the rest empty.
-    slots.innerHTML = '';
-    const arms = { yulin: ['sabre', 'shield'], tiger: ['jian', null], vanguard: ['axe', null], plume: ['ji', null], archer: ['bow', 'knife'] }[hero.regiment];
-    slotViews = SLOT_LABELS.map((label, i) => {
-      const item = i === 0 ? arms[0] : i === 1 ? arms[1] : i === 2 ? 'dressing' : null;
-      const s = el('div', 'slot' + (item ? '' : ' empty'), slots, `<kbd>${label}</kbd>${item ? icon(item) : ''}<em></em>`);
-      if (item) s.title = item === 'dressing' ? t('dressing') : '';
-      return s;
+  const stopResize=game.browser.onScreenChange(()=>place(true));
+  function setup(fight){
+    currentHero=fight.hero;meShown=currentHero.hp;
+    for(const p of plateViews){p.root.dispose();p.mark.dispose();}
+    for(const p of [...slotViews,...skillViews])p.root.dispose();
+    const h=fight.hero,r=REGIMENTS[h.regiment];txt(name,say(r.name));txt(arms,say(r.arms));fit(arms,194,11,9);txt(horseTitle,t('horse'));visible(horse,!!h.horse);
+    plateViews=fight.men.filter(m=>m.side==='foe').map((man,i)=>{
+      const node=add(plates,'foe-'+i),bg=add(node,'frame'),label=word(game,node,'',{x:66,y:3,align:'center',size:12,bold:man.rank==='boss'});
+      box(bg,132,man.horse?37:29,C.ink,man.rank==='boss'?C.gold:C.edge,.72);
+      const n=man.titleKey?t(man.titleKey):say(REGIMENTS[man.regiment].name);txt(label,man.rank==='troop'?t('expeditionTroop',{name:n}):n);fit(label,130,12,9);
+      const hp=gauge(game,node,'hp',126,7,C.hp,{trail:true});put(hp.root,3,19);
+      const hhp=man.horse?gauge(game,node,'horse-hp',126,5,C.horse):null;if(hhp)put(hhp.root,3,29);
+      const mark=add(compass,'mark-'+i);disk(mark,man.rank==='boss'?4:3,C.danger,.9);
+      visible(node,false);return {root:node,man,mark,hp,hhp,shown:man.hp};
     });
-    // R and T the profession skills; X the main hand's weapon art (from the saddle, the mounted one) and Z the shield's,
-    // each with his rage under it against what the art costs.
-    skills.innerHTML = '';
-    const slotsShown = [0, 1, 'art', ...(ARTS[hero.r.offArt] ? ['off'] : [])];
-    skillViews = slotsShown.map((slot) => {
-      const art = slot === 'art' || slot === 'off';
-      const key = slot === 'art' ? 'X' : slot === 'off' ? 'Z' : slot === 0 ? 'R' : 'T';
-      const v = el('div', 'hud-skill' + (art ? ' art' : ''), skills, `<kbd>${key}</kbd><span></span><small></small><i></i>${art ? '<b class="rage"><u></u></b>' : ''}`);
-      return { slot, art, v, name: v.querySelector('span'), note: v.querySelector('small'), shade: v.querySelector('i'), rage: v.querySelector('.rage u'), shown: null };
+    const itemNames={yulin:['sabre','shield'],tiger:['jian',null],vanguard:['axe',null],plume:['ji',null],archer:['bow','knife']}[h.regiment];
+    slotViews=Array.from({length:10},(_,i)=>{
+      const node=add(slots,'slot-'+i),bg=add(node,'frame'),symbol=add(node,'icon'),item=i===0?itemNames[0]:i===1?itemNames[1]:i===2?'dressing':null;
+      itemIcon(symbol,item);put(symbol,17,18);word(game,node,String((i+1)%10),{x:3,y:1,size:10,color:C.muted});
+      const count=word(game,node,'',{x:31,y:24,size:11,bold:true,align:'right'});
+      put(node,i*38,0);box(bg,34,36,C.ink,item?C.edge:0x554837,item ? .85 : .42);
+      return {root:node,bg,item,count};
     });
-    hud.dataset.regiment = hero.regiment;
-  }
-
-  function fill(view, value, whole, shown = value) {
-    const k = Math.max(0, value / whole);
-    view.querySelector('i').style.width = (k * 100).toFixed(1) + '%';
-    const b = view.querySelector('b');
-    if (b) b.style.width = (Math.max(0, shown / whole) * 100).toFixed(1) + '%';
-    const em = view.querySelector('em');
-    if (em) em.textContent = `${Math.max(0, Math.round(value))}/${Math.round(whole)}`;
-  }
-
-  let meShown = 0;
-  /**
-   * `preparedLine` is the PC player's committed direction while the mouse is held. `incoming` is the enemy wind-up
-   * that can reach him soon. `project(point)` gives a point's place on the screen, or null behind the camera.
-   */
-  function update(dt, game, { line, preparedLine, incoming, guard, locked, project, yaw = 0, input = {} }) {
-    const hero = game.hero;
-    hud.classList.toggle('bare', !!input.hidePanels);
-    meShown = meShown ? meShown + (hero.hp - meShown) * (1 - Math.exp(-dt * 3)) : hero.hp;
-    fill(meHp, hero.hp, hero.maxHp, meShown);
-    fill(meSt, hero.st, hero.maxSt);
-    meSt.classList.toggle('low', hero.st < 25);
-    if (hero.horse) {
-      fill(horseBox.querySelector('.hhp'), hero.horse.hp, hero.horse.maxHp);
-      horseBox.querySelector('.hst i').style.width = hero.horse.st.toFixed(1) + '%';
-      horseBox.classList.toggle('off', !hero.mounted);
-      horseBox.classList.toggle('dead', !hero.horse.alive);
-      const pace = !hero.mounted || !hero.horse.alive ? ''
-        : hero.horse.speed < -0.12 ? 'horseReverse' : hero.horse.galloping ? 'horseGallop' : '';
-      if (horsePace.dataset.pace !== pace) {
-        horsePace.dataset.pace = pace;
-        horsePace.textContent = pace ? t(pace) : '';
-        horsePace.hidden = !pace;
-      }
-    }
-    // The compass turns with the camera: north is heading 0 (+Z), east to its right; a heading in degrees sits at
-    // (heading + 360) × 2 pixels along the strip, whose left end is under the middle of the compass.
-    const camHeading = ((((-yaw * 180) / Math.PI) % 360) + 360) % 360;
-    strip.style.transform = `translateX(${(-(camHeading + 360) * 2).toFixed(1)}px)`;
-    exitMark.hidden = !game.exit || plateViews.some(view => view.man.alive);
-    if (!exitMark.hidden) {
-      const bearing = Math.atan2(game.exit.x - hero.x, game.exit.z - hero.z);
-      exitMark.style.left = ((camHeading + 360 - wrap(bearing - yaw) * 180 / Math.PI) * 2).toFixed(1) + 'px';
-    }
-    // Nameplates over the foes, and their marks on the compass.
-    const fm = foeMarks.children;
-    plateViews.forEach((v, i) => {
-      v.shown += (v.man.hp - v.shown) * (1 - Math.exp(-dt * 3));
-      fill(v.hp, v.man.hp, v.man.maxHp, v.shown);
-      if (v.hhp) {
-        fill(v.hhp, v.man.horse.hp, v.man.horse.maxHp);
-        v.hhp.hidden = !v.man.mounted;
-      }
-      const at = project?.([v.man.x, (v.man.floor ?? 0) + (v.man.mounted ? 3.05 : 2.15), v.man.z]);
-      v.box.hidden = !at || !v.man.alive || v.man.waiting;
-      if (at) v.box.style.transform = `translate(${at[0].toFixed(1)}px, ${at[1].toFixed(1)}px) translate(-50%, -100%)`;
-      const bearing = Math.atan2(v.man.x - hero.x, v.man.z - hero.z);
-      const off = wrap(bearing - yaw);
-      if (fm[i]) {
-        // The mark at his heading, on the copy of the strip nearest the camera's.
-        fm[i].style.left = ((camHeading + 360 - (off * 180) / Math.PI) * 2).toFixed(1) + 'px';
-        fm[i].hidden = !v.man.alive || v.man.waiting;
-        fm[i].classList.toggle('behind', Math.abs(off) > Math.PI / 2);
-      }
+    skillViews=[0,1,'art',...(ARTS[h.r.offArt]?['off']:[])].map((slot,i)=>{
+      const node=add(skills,'ability-'+slot),bg=add(node,'frame'),isArt=slot==='art'||slot==='off';
+      word(game,node,slot==='art'?'X':slot==='off'?'Z':slot===0?'R':'T',{x:4,y:2,size:11,bold:true,color:C.gold});
+      const title=word(game,node,'',{x:44,y:4,size:12,align:'center',bold:true}),note=word(game,node,'',{x:44,y:18,size:10,align:'center',color:C.muted});
+      const meter=gauge(game,node,'progress',80,6,C.st);put(meter.root,4,32);put(node,i*92,0);box(bg,88,40);
+      return {root:node,bg,title,note,meter,slot,art:isArt};
     });
-    // The bar: the weapon in hand lit; dressings counted.
-    const inHand = hero.regiment === 'archer' ? (hero.knife ? 1 : 0) : 0;
-    slotViews.forEach((s, i) => s.classList.toggle('on', i === inHand));
-    if (slotViews[2]) {
-      slotViews[2].querySelector('em').textContent = hero.dressings;
-      slotViews[2].classList.toggle('spent', hero.dressings <= 0);
-      slotViews[2].classList.toggle('busy', hero.act?.kind === 'mend');
+    visible(objective.root,false);visible(exit,false);for(const n of pool){n.life=0;visible(n.root,false);}place(true);
+  }
+  function paintCross(selected,prepared,threat,guard,locked,bow,draw,window){
+    const steps=Math.round(clamp(draw||0,0,1)*18),k=[selected,prepared,threat,guard,locked,bow,steps,window].join(':');
+    if(shape._paint===k)return;shape._paint=k;const g=shape.graphics;g.clear();
+    for(const [l,points] of Object.entries(CROSS)){
+      const active=l===(prepared??selected),danger=l===threat;
+      polygon(g,points.map(([x,y])=>[x*1.055,y*1.16]),0x0c0806,.74);
+      polygon(g,points,danger?C.danger:active?C.paper:0xcbbba3,bow ? .25 : active||danger ? .98 : .36);
+      if(l===prepared)line(g,PREP[l],C.gold,2.3);
     }
-    // Skills: R and T wait for his feet when he rides; an art wants its rage (the couched ji, a running horse).
-    for (const s of skillViews) {
-      const id = s.slot === 'art' ? (hero.mounted ? hero.r.mountedArt : hero.r.art) : s.slot === 'off' ? hero.r.offArt : hero.skills[s.slot];
-      const table = s.art ? ARTS : SKILLS;
-      const item = table[id];
-      if (s.shown !== id) {
-        s.shown = id;
-        s.name.textContent = item ? say(item.name) : t('noArt');
-        s.v.title = item ? say(item.text) : t('noArtHint');
-        s.v.classList.toggle('none', !item);
-      }
-      if (!item) continue;
-      const wait = s.art ? hero.artCool[id] ?? 0 : hero.cool[s.slot];
-      let note = '';
-      if (s.art) {
-        const k = item.rage > 0 ? Math.min(1, hero.rage / item.rage) : 1;
-        s.rage.style.width = (k * 100).toFixed(1) + '%';
-        s.v.classList.toggle('full', k >= 1 && wait <= 0);
-        if (item.mounted && (hero.horse?.speed ?? 0) < item.run) note = t('needRun');
-      } else if (hero.mounted) note = t('needFoot');
-      s.note.textContent = note;
-      s.v.classList.toggle('wait', wait > 0);
-      s.v.classList.toggle('locked', !!note);
-      s.shade.style.setProperty('--k', String(Math.max(0, wait / item.cool)));
-      s.shade.textContent = wait > 0 ? Math.ceil(wait) : '';
-    }
-    // Modes and key hints.
-    if (!touch) {
-      const nextMode = `${input.combo}:${input.view}:${locked}:${getLanguage()}`;
-      if (modeKey !== nextMode) {
-        modeKey = nextMode;
-        modes.innerHTML = `<span><kbd>B</kbd>${input.combo ? t('combo') : t('single')}</span><span><kbd>V</kbd>${input.view === 'first' ? t('viewFirst') : t('viewThird')}</span>${locked ? `<span class="lock">${t('lock')}</span>` : ''}`;
-      }
-    }
-    keys.hidden = !input.keyHints;
-    if (!keys.hidden) {
-      const movement = hero.mounted
-        ? [['W S', t('horseRein')], ['A D', t('horseSteer')], ['Shift', t('horseGallop')]]
-        : [['F', t('kick')], ['␣', t('jump')], ['Shift', t('sprint')]];
-      const rows = [['X', t('art')], ...(ARTS[hero.r.offArt] ? [['Z', t('artShield')]] : []), ['R T', t('skills')], ...movement, ['1 2', t('weapons')], ['3', t('dressing')]];
-      if (hero.horse) rows.unshift(['E', hero.mounted ? t('getDown') : t('mountUp')], ['U', t('callHorse')]);
-      rows.push(['Tab', t('hidePanels')], ['Esc', t('menu')]);
-      const html = `<b>${t('keysTitle')} <small>Ctrl+H</small></b>` + rows.map(([k, w]) => `<span><kbd>${k}</kbd>${w}</span>`).join('');
-      if (keys.dataset.html !== html) {
-        keys.innerHTML = html;
-        keys.dataset.html = html;
-      }
-    }
-    const bowOut = hero.regiment === 'archer' && !hero.knife;
-    const guardLine = bowOut ? null : incoming?.line;
-    const guardWindow = recoveryGuardWindow(hero);
-    for (const [l, p] of Object.entries(lines)) {
-      p.classList.toggle('on', l === (preparedLine ?? line));
-      p.classList.toggle('threat', l === guardLine);
-    }
-    tell.hidden = !incoming;
-    if (incoming) {
-      // The opening card yields to a live attack cue on short mobile viewports.
-      if (bannerTimer > 0 && banner.classList.contains('start')) {
-        banner.hidden = true;
-        bannerTimer = 0;
-      }
-      const skill = SKILLS[incoming.id] ?? ARTS[incoming.id];
-      const action = guardLine ? t('guard') + ' ' + GUARD_ARROW[guardLine] : t('evade');
-      const name = skill ? say(skill.name) : incoming.kind === 'kick' ? t('kick') : '';
-      const message = name ? action + ' · ' + name : action;
-      if (tell.textContent !== message) tell.textContent = message;
-      tell.classList.toggle('urgent', incoming.progress >= 0.68);
-    }
-    cover.hidden = !guardWindow;
-    if (guardWindow) {
-      const message = t(hero.prev?.guard ? 'guardRecoveryRetry' : 'guardRecovery');
-      if (cover.textContent !== message) cover.textContent = message;
-    }
-    for (const p of preparations) p.classList.toggle('show', p.dataset.prep === preparedLine);
-    cross.classList.toggle('guard', !!guard);
-    cross.classList.toggle('guard-window', guardWindow);
-    cross.classList.toggle('locked', !!locked);
-    cross.classList.toggle('bow', bowOut);
-    cross.style.setProperty('--draw', hero.draw ? Math.min(1, hero.draw.t / hero.r.bow.draw).toFixed(2) : '0');
-    if (bannerTimer > 0 && (bannerTimer -= dt) <= 0) banner.classList.remove('show');
-    if (toastTimer > 0 && (toastTimer -= dt) <= 0) toast.classList.remove('show');
-    for (const n of [...numbers.children]) {
-      n.life -= dt;
-      if (n.life <= 0) n.remove();
-    }
+    g.beginFill(locked?C.danger:C.paper,.95).drawCircle(0,0,2.5).endFill();
+    if(guard||window||bow)g.lineStyle(window?2.8:2,window?C.gold:C.muted,.8).drawCircle(0,0,30).lineStyle(0);
+    if(bow&&steps>0)line(g,Array.from({length:steps+1},(_,i)=>[Math.sin(i/18*Math.PI*2)*30,-Math.cos(i/18*Math.PI*2)*30]),C.gold,3);
   }
 
+
+  const arrows={R:'→',L:'←',O:'↑',T:'↓'};
+  // Use the measured native label width once glyph preparation completes. An initial
+  // estimate avoids a backdrop flashing too wide while the atlas is still preparing.
+  function compactFrame(frame,labels,cap,height,minimum,measured=false){
+    const widthOf=label=>{
+      if(measured&&Number.isFinite(label.width)&&label.width>0)return label.width;
+      const size=labelLayout.get(label)?.cssSize??12;
+      return [...label.text].reduce((n,c)=>n+size*(c.codePointAt(0)>255?1:.58),0);
+    };
+    const w=Math.ceil(clamp(Math.max(0,...labels.map(widthOf))+20,minimum,cap));
+    box(frame,w,height,C.ink,C.edge,.76);put(frame,-w,0);
+  }
+  function refreshHintFrame(frame,labels,cap,height,min,signature,isCurrent){
+    compactFrame(frame,labels,cap,height,min);
+    // The promise is tied to this text revision, not refreshed every battle tick.
+    Promise.allSettled(labels.map(label=>label.ready)).then(()=>{
+      if(!root.isDisposed&&isCurrent(signature))compactFrame(frame,labels,cap,height,min,true);
+    });
+  }
+  function update(dt,fight,{line:selected,preparedLine,incoming,guard,locked,project,yaw=0,input={}}){
+    const h=fight.hero,m=place(),a=m.safe;
+    visible(panels,!input.hidePanels);
+    meShown=meShown?meShown+(h.hp-meShown)*(1-Math.exp(-dt*3)):h.hp;
+    hp.set(h.hp,h.maxHp,meShown);st.set(h.st,h.maxSt,h.st,h.st<25);
+    if(h.horse){
+      horseHp.set(h.horse.hp,h.horse.maxHp);horseSt.set(h.horse.st,100);horse.alpha=h.horse.alive?(h.mounted?1:.68):.35;
+      const key=!h.mounted||!h.horse.alive?'':h.horse.speed<-.12?'horseReverse':h.horse.galloping?'horseGallop':'';
+      txt(pace,key?t(key):'');
+    }
+    const heading=(((-yaw*180/Math.PI)%360)+360)%360,quarters=t('compass').split(','),center=cw/2;
+    ticks.forEach((tick,i)=>{
+      const deg=(Math.floor(heading/15)-12+i)*15,x=center+(deg-heading)*2,q=((deg%360)+360)%360,major=q%90===0;
+      visible(tick.mark,x>=5&&x<=cw-5);visible(tick.label,major&&x>=12&&x<=cw-12);
+      box(tick.mark,major?2:1,major?9:q%45===0?6:4,C.muted,null,.85);put(tick.mark,x,20);
+      if(major){txt(tick.label,quarters[q/90]??'');put(tick.label,x,5);}
+    });
+    function bearing(node,x,z,on){
+      const off=wrap(Math.atan2(x-h.x,z-h.z)-yaw),p=center-off*180/Math.PI*2;
+      visible(node,on&&p>6&&p<cw-6);put(node,p,30);node.alpha=Math.abs(off)>Math.PI/2 ? .5 : 1;
+    }
+    visible(exit,false);if(fight.exit)bearing(exit,fight.exit.x,fight.exit.z,!plateViews.some(p=>p.man.alive));
+    for(const p of plateViews){
+      const man=p.man;p.shown+=(man.hp-p.shown)*(1-Math.exp(-dt*3));p.hp.set(man.hp,man.maxHp,p.shown);
+      if(p.hhp){p.hhp.set(man.horse.hp,man.horse.maxHp);visible(p.hhp.root,man.mounted);}
+      const at=project?.([man.x,(man.floor??0)+(man.mounted?3.05:2.15),man.z]);
+      const on=!!at&&man.alive&&!man.waiting&&at[0]>=a.left+66&&at[0]<=a.right-66&&at[1]>=a.top+39&&at[1]<=a.bottom;
+      visible(p.root,on);if(on)put(p.root,at[0]-66,at[1]-(man.horse?37:29));
+      bearing(p.mark,man.x,man.z,man.alive&&!man.waiting);
+    }
+    const inHand=h.regiment==='archer'?(h.knife?1:0):0;
+    slotViews.forEach((s,i)=>{box(s.bg,34,36,i===inHand?0x65513a:C.ink,i===inHand?C.gold:s.item?C.edge:0x554837,s.item?.length ? .85 : .42);if(i===2){txt(s.count,h.dressings);s.root.alpha=h.dressings>0?1:.42;}});
+    for(const s of skillViews){
+      const id=s.slot==='art'?(h.mounted?h.r.mountedArt:h.r.art):s.slot==='off'?h.r.offArt:h.skills[s.slot],item=(s.art?ARTS:SKILLS)[id];
+      txt(s.title,item?say(item.name):t('noArt'));fit(s.title,80,12,8);
+      if(!item){s.root.alpha=.42;txt(s.note,'');s.meter.set(0,1);continue;}
+      const wait=(s.art?h.artCool[id]:h.cool[s.slot])??0,note=s.art&&item.mounted&&(h.horse?.speed??0)<item.run?t('needRun'):!s.art&&h.mounted?t('needFoot'):'';
+      txt(s.note,note||(wait>0?String(Math.ceil(wait)):''));fit(s.note,80,10,8);
+      const value=s.art?(item.rage?Math.min(1,h.rage/item.rage):1):1-clamp(wait/item.cool,0,1);
+      s.meter.set(value,1);const ready=s.art&&value>=1&&wait<=0;
+      box(s.bg,88,40,note?0x302923:ready?0x735132:C.ink,ready?C.gold:C.edge,.86);s.root.alpha=note ? .75 : 1;
+    }
+    visible(keys,!touch&&!!input.keyHints);visible(mode,!touch);
+    if(!touch){
+      const modeText='B '+(input.combo?t('combo'):t('single'))+'  V '+(input.view==='first'?t('viewFirst'):t('viewThird'))+(locked?'  '+t('lock'):'');
+      const nextMode=[m.scale,modeWidth,modeText].join(':');
+      if(nextMode!==modeSignature){
+        modeSignature=nextMode;txt(modeLine,modeText);fit(modeLine,modeWidth-6,12,10);
+        refreshHintFrame(modeFrame,[modeLine],modeWidth,28,92,nextMode,s=>s===modeSignature);
+      }
+      const motion=h.mounted?[['W S',t('horseRein')],['A D',t('horseSteer')],['Shift',t('horseGallop')]]:[['F',t('kick')],['Space',t('jump')],['Shift',t('sprint')]];
+      const rows=[['X',t('art')],...(ARTS[h.r.offArt]?[['Z',t('artShield')]]:[]),['R T',t('skills')],...motion,['1 2',t('weapons')],['3',t('dressing')]];
+      if(h.horse)rows.unshift(['E',h.mounted?t('getDown'):t('mountUp')],['U',t('callHorse')]);rows.push(['Tab',t('hidePanels')],['Esc',t('menu')]);
+      const labels=[t('keysTitle')+' · Ctrl+H',...rows.map(r=>r.join('  '))],nextKeys=[m.scale,keyWidth,input.keyHints,...labels].join(':');
+      if(nextKeys!==keySignature){
+        keySignature=nextKeys;keyLabels[0].color=C.gold;
+        keyLabels.forEach((l,i)=>{txt(l,labels[i]??'');fit(l,keyWidth-8,12,10);visible(l,i<labels.length);});
+        refreshHintFrame(keyFrame,keyLabels.slice(0,labels.length),keyWidth,labels.length*17+12,110,nextKeys,s=>s===keySignature);
+      }
+    }
+    const bow=h.regiment==='archer'&&!h.knife,guardLine=bow?null:incoming?.line,window=recoveryGuardWindow(h);
+    paintCross(selected,preparedLine,guardLine,guard,locked,bow,h.draw?Math.min(1,h.draw.t/h.r.bow.draw):0,window);
+    visible(tell.root,!!incoming);
+    if(incoming){
+      if(bannerTimer>0&&kind==='start'){visible(banner,false);bannerTimer=0;}
+      const skill=SKILLS[incoming.id]??ARTS[incoming.id],action=guardLine?t('guard')+' '+arrows[guardLine]:t('evade'),label=skill?say(skill.name):incoming.kind==='kick'?t('kick'):'';
+      txt(tell.label,label?action+' · '+label:action);fit(tell.label,tell.w,14,10);
+      box(tell.bg,tell.w,tell.h,incoming.progress>=.68?0x6c241b:0x3d1713,C.danger,.94);
+    }
+    visible(cover.root,window);
+    if(window){txt(cover.label,t(h.prev?.guard?'guardRecoveryRetry':'guardRecovery'));fit(cover.label,cover.w,13,10);}
+    if(bannerTimer>0){bannerTimer-=dt;visible(banner,bannerTimer>0);}
+    if(toastTimer>0){toastTimer-=dt;visible(toast.root,toastTimer>0);}
+    for(const n of pool)if(n.life>0){n.life-=dt;visible(n.root,n.life>0);if(n.life>0){put(n.root,n.x,n.y-(.9-n.life)*32);n.root.alpha=Math.min(1,n.life*4);}}
+  }
+  const handles=[];
+  if(semantics)for(const [id,node,label,value] of [['hp',hp.root,()=>t('health'),()=>currentHero?.hp],['st',st.root,()=>t('stamina'),()=>currentHero?.st]]){
+    handles.push(semantics.add({id:'battle-'+id,role:'text',describe:()=>({name:label()+' '+Math.round(value()??0),hidden:!root.visible||!panels.visible,bounds:nativeBounds(node)})}));
+  }
   return {
-    root: hud,
-    setup,
-    update,
-    objective(text) {
-      if (objective.textContent !== text) objective.textContent = text;
-      objective.hidden = !text;
-    },
-    show(on) {
-      hud.hidden = !on;
-    },
-    banner(text, sub = '', seconds = 2.2, kind = '') {
-      banner.innerHTML = `<b>${text}</b>${sub ? `<span>${sub}</span>` : ''}`;
-      banner.className = 'hud-banner show ' + kind;
-      banner.hidden = false;
-      bannerTimer = seconds;
-    },
-    toast(text, kind = '') {
-      toast.textContent = text;
-      toast.className = 'hud-toast show ' + kind;
-      toastTimer = 0.9;
-    },
-    /** A number where a blow landed: `at` is a screen point [x, y] in CSS pixels. */
-    number(at, value, kind = '') {
-      if (!at) return;
-      const n = el('div', 'num ' + kind, numbers, String(value));
-      n.style.left = at[0] + 'px';
-      n.style.top = at[1] + 'px';
-      n.life = 0.9;
-    },
-    hint(text) {
-      if (hint.textContent !== (text ?? '')) hint.textContent = text ?? '';
-      if (hint.hidden !== !text) hint.hidden = !text;
-    },
-    touch
+    root,setup,update,show(on){visible(root,on);if(on)place(true);},
+    objective(value){txt(objective.label,value);fit(objective.label,objective.w,13,10);const shown=objective.root.visible;visible(objective.root,!!value);if(shown!==!!value)place(true);},
+    banner(value,sub='',seconds=2.2,type=''){kind=type;bannerTimer=seconds;txt(bannerTitle,value);txt(bannerSub,sub);bannerTitle.color=kind==='lose'?C.danger:C.gold;visible(banner,true);place(true);},
+    hideBanner(){visible(banner,false);bannerTimer=0;},
+    toast(value,type=''){txt(toast.label,value);fit(toast.label,toast.w,14,10);toast.label.color=type==='bad'?C.danger:type==='good'?C.good:C.paper;toastTimer=.9;visible(toast.root,true);},
+    number(at,value,type=''){if(!at)return;const n=pool.find(x=>x.life<=0)??pool.reduce((a,b)=>a.life<b.life?a:b);n.x=at[0];n.y=at[1];n.life=.9;visible(n.root,true);txt(n.label,value);n.label.color=type.includes('bad')?C.danger:type==='horse'?C.horse:type.includes('crit')?C.gold:C.paper;
+      const w=Math.min(92,Math.max(28,String(value).length*11+10));box(n.back,w,23,0x0c0907,null,.61);put(n.back,-w/2,-1);put(n.root,n.x,n.y);n.root.alpha=1;},
+    hint(value){txt(hint.label,value);fit(hint.label,hint.w,15,10);visible(hint.root,!!value);},
+    snapshot(){return {visible:root.visible,skillCount:skillViews.length,slotCount:slotViews.length,compass:compass.visible,plates:plateViews.length};},
+    touch,dispose(){stopResize();for(const h of handles)h.remove();root.dispose();}
   };
 }
 
-const SLOT_LABELS = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '0'];
+// Retain exact routed session ownership. A terminal that cannot reach its retired target cancels.
+function own(pointer,target,{begin,move,end,cancel}){
+  let owner=null,enabled=true;
+  const stop=()=>{if(owner!==null){owner=null;cancel?.();}};
+  const terminal=(contact,commit)=>{if(owner!==contact.session)return;owner=null;(commit?end:cancel)?.(contact);};
+  const removers=[target.on(pointer.events.begin,({payload:p})=>{if(!enabled||owner!==null)return;owner=p.session;begin?.(p);}),
+    target.on(pointer.events.move,({payload:p})=>{if(owner===p.session)move?.(p);}),
+    target.on(pointer.events.end,({payload:p})=>terminal(p,true)),
+    target.on(pointer.events.cancel,({payload:p})=>terminal(p,false)),
+    pointer.observe(n=>{if(owner===n.contact.session&&(n.kind==='end'||n.kind==='cancel')){owner=null;cancel?.(n.contact);}})];
+  return {cancel:stop,setEnabled(on){enabled=!!on;if(!on)stop();},dispose(){stop();for(const f of removers)f();}};
+}
 
-/**
- * Touch controls: a stick on the left, looking on the right, and buttons. A swipe on Strike chooses the line.
- * They write into `input.state.touch` and the input's presses.
- */
-export function createTouchControls(root, input, { onPause = () => {} } = {}) {
-  const pad = el('div', 'touch', root);
-  pad.hidden = true;
-  const stick = el('div', 'stick', pad, '<i></i>');
-  const look = el('div', 'look', pad);
-  const buttons = el('div', 'buttons', pad);
-  const make = (name, word) => {
-    const b = el('button', 'tb ' + name, buttons, t(word));
-    b.type = 'button';
-    return b;
-  };
-  const attack = make('attack', 'attack'),
-    guard = make('guard', 'guard'),
-    kick = make('kick', 'kick'),
-    step = make('step', 'jump'),
-    s0 = make('s0', 'skills'),
-    s1 = make('s1', 'skills'),
-    artBtn = make('s1 art', 'art'),
-    offBtn = make('s1 art off', 'artShield'),
-    swap = make('swap', 'swap'),
-    mount = make('mount', 'mountUp'),
-    heal = make('heal', 'dressing');
-  const pause = el('button', 'tb halt', pad, t('paused'));
-  let shownArt = null;
-  let mountAction = 'mount';
-  pause.type = 'button';
-  pause.setAttribute('aria-label', t('paused'));
-  const st = input.state;
-  const release = (target, id) => {
-    if (id !== null && target.hasPointerCapture(id)) target.releasePointerCapture(id);
-  };
-  // Keep a finger's moves on the control it pressed; a pointer the browser no longer counts as down cannot be held.
-  const capture = (target, e) => {
-    try {
-      target.setPointerCapture(e.pointerId);
-    } catch {
-      /* the press goes on without the capture */
-    }
-  };
-  let stickId = null,
-    stickAt = [0, 0],
-    lookId = null,
-    lookAt = [0, 0],
-    attackId = null,
-    guardId = null,
-    attackAt = [0, 0],
-    strikeLine = null;
-  function resetStick() {
-    const id = stickId;
-    stickId = null;
-    st.touch.move = [0, 0];
-    stick.querySelector('i').style.transform = '';
-    release(stick, id);
+
+// Each control uses the native routed input. Bespoke move/hold behavior is game logic, not a second host input path.
+export function createTouchControls(game,input,{onPause=()=>{},semantics}={}){
+  const root=add(game.ui,'touch-controls'),pointer=game.browser.pointer,st=input.state,targets={},handles=[],owners=[],controls=[],display={};
+  let shown=false,hero=null,layout='',mountAction='mount';
+  const look=targets.look=add(root,'touch-look');look.touchEnabled=true;
+  const stick=targets.stick=add(root,'touch-stick'),stickBase=add(stick,'base'),thumb=add(stick,'thumb');stick.touchEnabled=true;
+  const spec=[['attack','attack'],['guard','guard'],['kick','kick'],['step','jump'],['skill0','skills'],['skill1','skills'],['art','art'],['offArt','artShield'],['swap','swap'],['mount','mountUp'],['heal','dressing'],['pause','paused']];
+  for(const [id,key] of spec){
+    const node=targets[id]=add(root,'touch-'+id),bg=add(node,'frame'),label=word(game,node,t(key),{align:'center',baseline:'middle',size:14,bold:true}),sub=word(game,node,'',{align:'center',baseline:'middle',size:10,color:C.gold});
+    display[id]={node,bg,label,sub,key,enabled:true,w:48,h:48};node.touchEnabled=true;
   }
-  function resetLook() {
-    const id = lookId;
-    lookId = null;
-    release(look, id);
+  function style(id,{active=false,ready=false,waiting=false,disabled=false,highlight=false}={}){
+    const d=display[id],base=id==='attack'?0x61291e:id==='guard'?0x294e45:id==='pause'?0x4e4030:0x34281e;
+    const color=disabled?0x393530:active?0xa47b42:ready?0x655137:waiting?0x3c342c:base;
+    box(d.bg,d.w,d.h,color,highlight||active||ready?C.gold:C.edge,.9);d.node.alpha=disabled ? .48 : 1;
+    d.enabled=!disabled;d.node.touchEnabled=!disabled;d.label.color=disabled?C.muted:C.paper;
   }
-  stick.addEventListener('pointerdown', (e) => {
-    if (stickId !== null) return;
-    stickId = e.pointerId;
-    stickAt = [e.clientX, e.clientY];
-    capture(stick, e);
-    st.lastDevice = 'touch';
-  });
-  stick.addEventListener('pointermove', (e) => {
-    if (e.pointerId !== stickId) return;
-    const dx = (e.clientX - stickAt[0]) / 50,
-      dy = (e.clientY - stickAt[1]) / 50;
-    const l = Math.hypot(dx, dy);
-    st.touch.move = l > 1 ? [dx / l, dy / l] : [dx, dy];
-    stick.querySelector('i').style.transform = `translate(${st.touch.move[0] * 36}px, ${st.touch.move[1] * 36}px)`;
-  });
-  const endStick = (e) => {
-    if (e.pointerId !== stickId) return;
-    resetStick();
-  };
-  stick.addEventListener('pointerup', endStick);
-  stick.addEventListener('pointercancel', endStick);
-  stick.addEventListener('lostpointercapture', endStick);
-  look.addEventListener('pointerdown', (e) => {
-    if (lookId !== null) return;
-    lookId = e.pointerId;
-    lookAt = [e.clientX, e.clientY];
-    capture(look, e);
-    st.lastDevice = 'touch';
-  });
-  look.addEventListener('pointermove', (e) => {
-    if (e.pointerId !== lookId) return;
-    st.yaw -= (e.clientX - lookAt[0]) * 0.006;
-    st.pitch = Math.max(-0.35, Math.min(0.75, st.pitch + (e.clientY - lookAt[1]) * 0.004));
-    lookAt = [e.clientX, e.clientY];
-  });
-  const endLook = (e) => {
-    if (e.pointerId === lookId) resetLook();
-  };
-  look.addEventListener('pointerup', endLook);
-  look.addEventListener('pointercancel', endLook);
-  look.addEventListener('lostpointercapture', endLook);
-  // Strike: a swipe on the button sets the line and the lift strikes; a press held still is a held blow (a heavy
-  // cut, or the draw of the bow) let go on the lift. A rider can swipe and hold
-  // a direction, keeping the blade chambered until the same finger lifts.
-  let holdTimer = 0,
-    holding = false;
-  function resetAttack(commit = false) {
-    const id = attackId;
-    attackId = null;
-    strikeLine = null;
-    clearTimeout(holdTimer);
-    holding = st.touch.attack = false;
-    input.endHeldTouchAttack(commit);
-    release(attack, id);
+  const markDevice=()=>{st.lastDevice='touch';};
+  let lastLook=null,attackAt=null,strikeLine=null,holding=false,holdTimer=0;
+  const cssPoint=p=>[p.globalX*game.browser.screen.scale,p.globalY*game.browser.screen.scale];
+  const movement=createMovementControl({input:pointer,target:stick,radius:50/game.browser.screen.scale,deadZone:0,onMovement:({x,y})=>{
+    st.touch.move=[x,y];if(shown)markDevice();const half=(stick.hitArea?.width??104)/2;put(thumb,half+x*36,half+y*36);
+  }});
+  controls.push(movement);owners.push(own(pointer,stick,{begin:markDevice}));
+  owners.push(own(pointer,look,{begin(p){lastLook=cssPoint(p);markDevice();},move(p){
+    if(!lastLook)return;const at=cssPoint(p);st.yaw-=(at[0]-lastLook[0])*.006;st.pitch=clamp(st.pitch+(at[1]-lastLook[1])*.004,-.35,.75);lastLook=at;
+  },end(){lastLook=null;},cancel(){lastLook=null;}}));
+  function finishAttack(commit=false){
+    clearTimeout(holdTimer);holdTimer=0;
+    if(commit&&!holding){st.touch.tapAttack=true;st.touch.strikeLine=strikeLine;}
+    input.endHeldTouchAttack(commit);attackAt=null;strikeLine=null;holding=st.touch.attack=false;style('attack');
   }
-  attack.addEventListener('pointerdown', (e) => {
-    if (attackId !== null) return;
-    attackId = e.pointerId;
-    attackAt = [e.clientX, e.clientY];
-    capture(attack, e);
-    st.lastDevice = 'touch';
-    holdTimer = setTimeout(() => {
-      holding = true;
-      st.touch.attack = true;
-      input.beginHeldTouchAttack(strikeLine);
-    }, 200);
-  });
-  attack.addEventListener('pointermove', (e) => {
-    // A deliberate swipe can choose a line after the default preparation starts.
-    if (e.pointerId !== attackId || (holding && strikeLine !== null)) return;
-    const dx = e.clientX - attackAt[0],
-      dy = e.clientY - attackAt[1];
-    if (Math.hypot(dx, dy) > 22) {
-      if (st.touch.bow && !holding) clearTimeout(holdTimer);
-      strikeLine = Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? 'R' : 'L') : dy < 0 ? 'O' : 'T';
-      if (holding) input.aimHeldTouchAttack(strikeLine);
-    }
-  });
-  const endAttack = (e) => {
-    if (e.pointerId !== attackId) return;
-    if (e.type === 'pointerup' && !holding) {
-      st.touch.tapAttack = true;
-      st.touch.strikeLine = strikeLine;
-    }
-    resetAttack(e.type === 'pointerup');
-  };
-  attack.addEventListener('pointerup', endAttack);
-  attack.addEventListener('pointercancel', endAttack);
-  attack.addEventListener('lostpointercapture', endAttack);
-  function resetGuard() {
-    const id = guardId;
-    guardId = null;
-    st.touch.guard = false;
-    release(guard, id);
+  owners.push(own(pointer,targets.attack,{begin(p){
+    attackAt=cssPoint(p);markDevice();style('attack',{active:true});
+    holdTimer=setTimeout(()=>{if(!shown||!attackAt)return;holding=st.touch.attack=true;input.beginHeldTouchAttack(strikeLine);},200);
+  },move(p){
+    if(!attackAt||holding&&strikeLine!==null)return;const at=cssPoint(p),dx=at[0]-attackAt[0],dy=at[1]-attackAt[1];
+    if(Math.hypot(dx,dy)>22){if(st.touch.bow&&!holding)clearTimeout(holdTimer);strikeLine=Math.abs(dx)>Math.abs(dy)?dx>0?'R':'L':dy<0?'O':'T';if(holding)input.aimHeldTouchAttack(strikeLine);}
+  },end(){finishAttack(true);},cancel(){finishAttack(false);}}));
+  owners.push(own(pointer,targets.guard,{begin(){markDevice();st.touch.guard=st.touch.tapGuard=true;style('guard',{active:true});},
+    end(){st.touch.guard=false;style('guard');},cancel(){st.touch.guard=st.touch.tapGuard=false;style('guard');}}));
+  // Original action buttons fire on down; the engine owns pressed state and cancellation.
+  for(const id of ['kick','step','skill0','skill1','art','offArt','swap','mount','heal','pause']){
+    const control=createActionControl({input:pointer,target:targets[id],activation:id==='pause'?'releaseInside':'capturedRelease',
+      onPressChange(down){if(!shown)return;if(!down){style(id);return;}markDevice();style(id,{active:true});if(id!=='pause')st.once[id==='mount'?mountAction:id]=true;},
+      onActivate(){if(id==='pause'&&shown){markDevice();onPause('touch');}}});
+    controls.push(control);display[id].control=control;
   }
-  const endGuard = (e) => {
-    if (e.pointerId !== guardId) return;
-    if (e.type !== 'pointerup') st.touch.tapGuard = false;
-    resetGuard();
-  };
-  guard.addEventListener('pointerdown', (e) => {
-    if (guardId !== null) return;
-    guardId = e.pointerId;
-    capture(guard, e);
-    st.lastDevice = 'touch';
-    st.touch.guard = st.touch.tapGuard = true;
-  });
-  guard.addEventListener('pointerup', endGuard);
-  guard.addEventListener('pointercancel', endGuard);
-  guard.addEventListener('lostpointercapture', endGuard);
-  kick.addEventListener('pointerdown', () => (st.once.kick = true));
-  step.addEventListener('pointerdown', () => (st.once.step = true));
-  s0.addEventListener('pointerdown', () => (st.once.skill0 = true));
-  s1.addEventListener('pointerdown', () => (st.once.skill1 = true));
-  artBtn.addEventListener('pointerdown', () => (st.once.art = true));
-  offBtn.addEventListener('pointerdown', () => (st.once.offArt = true));
-  swap.addEventListener('pointerdown', () => (st.once.swap = true));
-  mount.addEventListener('pointerdown', () => (st.once[mountAction] = true));
-  heal.addEventListener('pointerdown', () => (st.once.heal = true));
-  pause.addEventListener('click', () => onPause('touch'));
-  return {
-    show(on, hero) {
-      if (!on) {
-        resetStick();
-        resetLook();
-        resetAttack();
-        resetGuard();
-        st.touch.tapAttack = st.touch.tapGuard = false;
-        st.touch.strikeLine = null;
-      }
-      pad.hidden = !on;
-      // The keyboard's key row gives way to the buttons on a touch screen.
-      root.classList.toggle('touching', on);
-      if (hero) {
-        swap.hidden = hero.regiment !== 'archer';
-        mount.hidden = !hero.horse;
-        artBtn.hidden = !ARTS[hero.r.art];
-        offBtn.hidden = !ARTS[hero.r.offArt];
-        [s0, s1].forEach((b, i) => {
-          const name = el('span');
-          name.textContent = say(SKILLS[hero.skills[i]].name);
-          b.replaceChildren(b.querySelector('i') ?? el('i'), name, el('small', 'foot-only', null, t('footOnly')));
-        });
-        shownArt = null;
-      }
-    },
-    /** The skills' waits, shown as a shade going round each skill button. */
-    cool(hero) {
-      if (pad.hidden) return;
-      guard.classList.toggle('guard-window', recoveryGuardWindow(hero));
-      if (hero.horse) {
-        const dead = !hero.horse.alive;
-        const mounting = hero.act?.kind === 'mount';
-        const queued = hero.mountOnRecovery;
-        const distant = !hero.mounted && Math.hypot(hero.x - hero.horse.x, hero.z - hero.horse.z) > hero.r.horse.near;
-        const calling = distant && hero.horse.called;
-        mountAction = distant && !queued && !mounting ? 'call' : 'mount';
-        const label = t(dead ? 'mountLost' : mounting ? 'mounting' : queued ? 'mountQueued'
-          : hero.mounted ? 'getDown' : calling ? 'horseComing' : distant ? 'callHorseTouch' : 'mountUp');
-        if (mount.textContent !== label) mount.textContent = label;
-        const disabled = dead || mounting || queued || calling;
-        if (mount.disabled !== disabled) mount.disabled = disabled;
-        mount.classList.toggle('queued', queued);
-      }
-      heal.classList.toggle('wait', hero.dressings <= 0);
-      [s0, s1].forEach((b, i) => {
-        const wait = hero.cool[i] ?? 0;
-        b.style.setProperty('--k', String(Math.max(0, wait / SKILLS[hero.skills[i]].cool)));
-        b.classList.toggle('wait', wait > 0);
-        if (b.classList.contains('needs-foot') !== hero.mounted) {
-          b.classList.toggle('needs-foot', hero.mounted);
-          b.setAttribute('aria-disabled', String(hero.mounted));
-        }
-      });
-      // X is the mounted art in the saddle; each art button lit when its rage is there and it is ready.
-      const artId = hero.mounted ? hero.r.mountedArt : hero.r.art;
-      if (shownArt !== artId) {
-        shownArt = artId;
-        const name = el('span');
-        name.textContent = ARTS[artId] ? say(ARTS[artId].name) : t('noArt');
-        artBtn.replaceChildren(artBtn.querySelector('i') ?? el('i'), name);
-        if (ARTS[hero.r.offArt]) {
-          const off = el('span');
-          off.textContent = say(ARTS[hero.r.offArt].name);
-          offBtn.replaceChildren(offBtn.querySelector('i') ?? el('i'), off);
-        }
-      }
-      for (const [b, id] of [[artBtn, artId], [offBtn, hero.r.offArt]]) {
-        const a = ARTS[id];
-        if (!a) continue;
-        const wait = hero.artCool[id] ?? 0;
-        b.style.setProperty('--k', String(Math.max(0, wait / a.cool)));
-        const ready = wait <= 0 && hero.rage >= a.rage;
-        b.classList.toggle('wait', !ready);
-        b.classList.toggle('full', ready);
-      }
+  function shownIds(){
+    return spec.map(([id])=>id).filter(id=>id!=='pause'&&(!hero||id!=='swap'||hero.regiment==='archer')&&(!hero||id!=='mount'||hero.horse)
+      &&(!hero||id!=='art'||ARTS[hero.r.art]||ARTS[hero.r.mountedArt])&&(!hero||id!=='offArt'||ARTS[hero.r.offArt]));
+  }
+  function place(force=false){
+    const m=cssLayer(game,root),a=m.safe,ids=shownIds(),key=[a.left,a.top,a.width,a.height,m.scale,...ids].join(':');
+    if(!force&&key===layout)return;layout=key;
+    const b=touchLayout(a,ids);targetBox(look,b.look);targetBox(stick,b.stick);
+    const r=b.stick.width/2;disk(stickBase,r-2,0x352b24,.54,C.edge);put(stickBase,r,r);disk(thumb,r*.39,0xa68c61,.8,C.gold);put(thumb,r+st.touch.move[0]*36,r+st.touch.move[1]*36);
+    movement.setGeometry({radius:50/m.scale,deadZone:0});
+    for(const [id] of spec){
+      const d=display[id],v=b[id];visible(d.node,!!v);if(!v){d.control?.setEnabled(false);continue;}
+      targetBox(d.node,v);d.w=v.width;d.h=v.height;put(d.label,v.width/2,v.height/2);put(d.sub,v.width/2,v.height-11);setFont(d.label,14);style(id);
+      d.control?.setEnabled(shown);
     }
-  };
+  }
+  function reset(){
+    for(const o of owners)o.cancel();
+    movement.setEnabled(false);st.touch.move=[0,0];st.touch.tapAttack=st.touch.tapGuard=false;st.touch.strikeLine=null;
+    if(shown)movement.setEnabled(true);
+    for(const c of controls)if(c!==movement){c.setEnabled(false);if(shown)c.setEnabled(true);}
+    const b=stick.hitArea;if(b)put(thumb,b.width/2,b.height/2);
+  }
+  const stopClear=input.onClear(reset),stopResize=game.browser.onScreenChange(()=>{reset();place(true);});
+  if(semantics){
+    for(const [id,key] of spec){
+      const d=display[id];handles.push(semantics.add({id:'battle-touch-'+id,role:'button',describe:()=>({name:d.label.text||t(key),hidden:!shown||!d.node.visible,disabled:!d.enabled,bounds:nativeBounds(d.node)}),
+        onActivate(){if(!shown||!d.enabled)return;markDevice();if(id==='pause')onPause('touch');else if(id==='attack')st.touch.tapAttack=true;else if(id==='guard')st.touch.tapGuard=true;else st.once[id==='mount'?mountAction:id]=true;}}));
+    }
+    for(const [id,label] of [['stick','moveStick'],['look','lookDrag']])handles.push(semantics.add({id:'battle-touch-'+id,role:'text',describe:()=>({name:t(label),hidden:!shown,bounds:nativeBounds(targets[id])})}));
+  }
+  function cool(h){
+    if(!shown)return;hero=h;place();
+    style('guard',{active:st.touch.guard,highlight:recoveryGuardWindow(h)});
+    if(h.horse){
+      const dead=!h.horse.alive,mounting=h.act?.kind==='mount',queued=h.mountOnRecovery,distant=!h.mounted&&Math.hypot(h.x-h.horse.x,h.z-h.horse.z)>h.r.horse.near,calling=distant&&h.horse.called;
+      mountAction=distant&&!queued&&!mounting?'call':'mount';const key=dead?'mountLost':mounting?'mounting':queued?'mountQueued':h.mounted?'getDown':calling?'horseComing':distant?'callHorseTouch':'mountUp';
+      txt(display.mount.label,t(key));const disabled=dead||mounting||queued||calling;display.mount.control.setEnabled(!disabled);style('mount',{disabled,highlight:queued});
+    }
+    style('heal',{active:display.heal.control.pressed,waiting:h.dressings<=0});txt(display.heal.sub,h.dressings);
+    for(const [i,id] of [[0,'skill0'],[1,'skill1']]){
+      const item=SKILLS[h.skills[i]],wait=h.cool[i]??0;txt(display[id].label,item?say(item.name):t('skills'));
+      txt(display[id].sub,h.mounted?t('footOnly'):wait>0?String(Math.ceil(wait)):'');style(id,{active:display[id].control.pressed,waiting:wait>0||h.mounted});
+    }
+    for(const [id,artId] of [['art',h.mounted?h.r.mountedArt:h.r.art],['offArt',h.r.offArt]]){
+      const item=ARTS[artId],wait=h.artCool[artId]??0;txt(display[id].label,item?say(item.name):t('noArt'));
+      txt(display[id].sub,item?(wait>0?String(Math.ceil(wait)):Math.floor(h.rage)+'/'+item.rage):'');
+      style(id,{active:display[id].control.pressed,waiting:!item||wait>0||h.rage<item.rage,ready:!!item&&wait<=0&&h.rage>=item.rage});
+    }
+    for(const d of Object.values(display)){fit(d.label,d.w,14,9);d.label.y=d.sub.text?d.h*.37:d.h/2;}
+  }
+  visible(root,false);place(true);reset();
+  return {root,targets,show(on,h){if(h)hero=h;shown=!!on;visible(root,shown);reset();for(const o of owners)o.setEnabled(shown);for(const c of controls)c.setEnabled(shown);place(true);if(hero&&shown)cool(hero);},
+    cool,dispose(){shown=false;reset();stopClear();stopResize();for(const o of owners)o.dispose();for(const c of controls)c.dispose();for(const h of handles)h.remove();root.dispose();}};
 }

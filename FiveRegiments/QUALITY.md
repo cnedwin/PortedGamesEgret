@@ -1,26 +1,5 @@
 # 品质验收 · Quality — 五营争锋 · Five Regiments
 
-## iPhone 配置的 World3D 首场景追加验收 · WebKit first-world-scene check
-
-- Windows Playwright WebKit 26.6，iPhone 15 Pro 竖屏配置，393 × 659 CSS px；公开 Pages d1bcff69 与候选本地 HTTP，均全新上下文与实际浏览器触摸。 / Windows WebKit in an iPhone 15 Pro portrait profile, fresh contexts and actual touch events; public baseline d1bcff69 and local candidate, not a physical iPhone.
-- 路线：标题→征途→选角色及默认配置→进入首个场景，仅检查可见画面，未执行战斗动作。 / Route: title → journey → default character and settings → first world scene; visual startup only, no player combat actions.
-- 改前：标题背景及首场景均全黑，只剩 DOM / HUD；第 702 帧、24 draw calls、87,538 triangles，另一次第 803 帧、27 draw calls、108,385 triangles；3D backing buffer 为 235 × 395。 / Before: the title background and first scene are absent despite the renderer's frame/draw receipts; 235 × 395 backing buffer.
-- 改后：标题、选择页及第一场景可见角色、城墙、旗帜、地面与天空；第 714 帧、29 draw calls、109,851 triangles，另一次第 817 帧、27 draw calls、130,220 triangles；backing buffer 为 393 × 659。 / After: the title, selection and world scene visibly contain the original models, walls, flags, ground and sky. Stable 393 × 659 backing buffer; two independently captured frames show the world.
-- src/main.mjs 只在移动 Apple WebKit 指定引擎正式 `dynamicResolution:false`，其他平台和画质选择不变，不修改玩法及资源。Node 173/173 通过；页面异常、控制台错误、HTTP 错误、失败请求均为 0；仅本 Windows WebKit 无 AudioContext 的诊断。 / Official dynamicResolution:false only on mobile Apple WebKit; other hosts, quality choices, assets and gameplay unchanged. 173/173 Node checks, zero page exceptions, console errors, HTTP errors or failed requests; only the no-AudioContext diagnostic in this host.
-- 固定尺寸将该 CSS 视口的实际像素数由 92,825 增至 258,987（2.79 倍），可能增加渲染成本。未测实体 iPhone 性能，不能把此处的 frame 计数当 FPS，也未确认故障根因在引擎还是浏览器。 / Pixel area rises by 2.79×, with a potential GPU cost. Real iPhone performance and ultimate engine/browser root cause remain unverified; frame counts are not FPS.
-
-## iPhone 配置 WebKit 启动回归（2026-11-28） · WebKit startup compatibility
-
-Windows 上的 Playwright WebKit 26.6，iPhone 15 Pro 设备配置，竖屏 393 × 659 CSS px，独立的新浏览器上下文；不是 iPhone 真机或 iOS Safari 本体。改造前测试公开 Pages，改造后测试候选工作树的本地 HTTP 服务。
-
-Windows Playwright WebKit 26.6 with an iPhone 15 Pro profile (portrait, 393 × 659 CSS px, isolated fresh browser context); not a physical iPhone or iOS Safari itself. Baseline: public Pages; retest: candidate worktree over local HTTP.
-
-- 引擎副本 · Engine: `82561d6338a805f0e0459a2d5d42a284f9385b30`.
-- 改造前：公开页显示 “Can't find variable: OffscreenCanvas”。src/view/scratch-canvas.mjs 按能力选择 OffscreenCanvas 或尺寸一致、不插入页面的 HTML canvas。 / Before: the page failed with “Can't find variable: OffscreenCanvas”. src/view/scratch-canvas.mjs selects OffscreenCanvas when present or an equivalently sized detached HTML canvas otherwise.
-- 改造后 / After：标题可见，实际触摸设置按钮打开设置。仅有 AUDIO_HOST_UNAVAILABLE 诊断：该 Windows WebKit 配置没有两个 AudioContext 构造器，不代表 iPhone 扬声器表现。 / The title is visible and touching Settings opens its panel. AUDIO_HOST_UNAVAILABLE remains a diagnostic: neither audio context constructor exists in this host; not an iPhone speaker result.
-- 复测无页面异常、控制台错误、HTTP 4xx/5xx 或失败请求（四项均 0）；`node --test test/*.test.mjs`：172/172 通过。 / No page exceptions, console errors, HTTP 4xx/5xx or failed requests on the local retest (zero in each category); 172/172 Node tests pass.
-- 仅验收启动、首屏截图及一次浏览器触摸操作；未覆盖整局、设备横竖屏切换、物理 iPhone、真实 iOS 音频、Safari 版本差异或性能。 / Startup, title screenshot and one browser touch event only; full playthrough, rotation, physical iPhone, real iOS audio, Safari version variation and performance were not covered.
-
 按 [QUALITY-CHECKLIST.md](../docs/QUALITY-CHECKLIST.md) 验收。自动项由 `node tools/quality.mjs FiveRegiments` 测量并写入本文件；人工和真机项没有跑过的写「未运行」。
 
 Checked against QUALITY-CHECKLIST.md. The automatic items were measured by `node tools/quality.mjs FiveRegiments`, which writes
@@ -28,9 +7,9 @@ this file; items by hand or on a device are marked not run until someone runs th
 
 ## 测量环境 · Where it was measured
 
-- 日期 · Date: 2026-11-23
-- 浏览器 · Browser: 无头 Chromium 153.0.8010.12，SwiftShader 软件渲染（没有显卡） · headless, software rendering, no GPU
-- 机器 · Machine: Linux 容器 · a Linux container, linux x64, Node v22.23.4
+- 日期 · Date: 2026-11-28
+- 浏览器 · Browser: 无头 Chromium 157.0.8103.6，SwiftShader 软件渲染（没有显卡） · headless, software rendering, no GPU
+- 机器 · Machine: Linux 容器 · a Linux container, win32 x64, Node v26.7.0
 - 首屏一项的限速 · Start-up throttling: 下行 10 Mbps、上行 5 Mbps、往返 40 ms，CPU 降速 ×4 · down 10 Mbps, up 5 Mbps, 40 ms round trip, CPU slowed ×4
 - 帧时间是软件渲染下的数字，只说明无头环境里的情况，不代表真机 · Frame times are from software rendering and say nothing of real devices.
 
@@ -39,25 +18,25 @@ this file; items by hand or on a device are marked not run until someone runs th
 | 编号 · Item | 标准 · Standard | 方式 · How | 结果 · Result | 测量 · Measured |
 |---|---|---|---|---|
 | T1 | 触屏走完主流程 · The whole game by touch | 真机 · device | 未运行 · not run |  |
-| T2 | 触控区 ≥ 44×44 CSS px · Touch targets ≥ 44 × 44 CSS px | 自动 · automatic | 达标 · pass | 4 controls, all at least 44×44 |
-| T3 | 不误触下拉刷新和双击缩放 · No pull-to-refresh or double-tap zoom | 自动 · automatic | 达标 · pass | overscroll held, touch-action auto, double-tap zoom off |
-| F1 | 桌面帧时间 p95 ≤ 16.7 ms · Desktop frame time p95 ≤ 16.7 ms | 自动 · automatic | 不达标 · fail | p95 383.4 ms over 23 frames |
+| T2 | 触控区 ≥ 44×44 CSS px · Touch targets ≥ 44 × 44 CSS px | 自动 · automatic | 达标 · pass | 7 controls, all at least 44×44 |
+| T3 | 不误触下拉刷新和双击缩放 · No pull-to-refresh or double-tap zoom | 自动 · automatic | 达标 · pass | overscroll held, touch-action none, double-tap zoom off |
+| F1 | 桌面帧时间 p95 ≤ 16.7 ms · Desktop frame time p95 ≤ 16.7 ms | 自动 · automatic | 不达标 · fail | p95 129.2 ms over 51 frames |
 | F2 | 中端手机帧时间 p95 ≤ 33 ms · Mid-range phone frame time p95 ≤ 33 ms | 真机 · device | 未运行 · not run |  |
-| L1 | 首屏 ≤ 3 s（10/5 Mbps、40 ms、CPU ×4） · Start-up ≤ 3 s (10/5 Mbps, 40 ms, CPU ×4) | 自动 · automatic | 达标 · pass | 1.6 s to the first playable screen, 3.6 MB |
+| L1 | 首屏 ≤ 3 s（10/5 Mbps、40 ms、CPU ×4） · Start-up ≤ 3 s (10/5 Mbps, 40 ms, CPU ×4) | 自动 · automatic | 达标 · pass | 1.5 s to the first playable screen, 3.4 MB |
 | O1 | 横竖屏与窗口尺寸 · Orientation and window sizes | 自动 · automatic | 达标 · pass | 1280×800, 390×844, 844×390, 768×1024 and live resizing: fits, no errors |
 | I1 | 中英文全可切换，英文下无中文 · Both languages; no Chinese left in English | 自动 · automatic | 达标 · pass | html lang "en", no Chinese in page text or names |
 | I2 | 画布上的字也随语言切换 · Words drawn on the canvas follow the language | 人工 · by hand | 未运行 · not run |  |
 | I3 | 长英文不溢出 · Long English does not overflow | 自动 · automatic | 达标 · pass | no page text cut off at 390 px in English |
-| A1 | 键盘可到达控件，焦点可见 · The keyboard reaches controls; focus shows | 自动 · automatic | 达标 · pass | Tab → "The road" (focus drawn by the game) |
+| A1 | 键盘可到达控件，焦点可见 · The keyboard reaches controls; focus shows | 自动 · automatic | 达标 · pass | Tab → "破关行" (owned active descendant) |
 | A1m | 只用键盘走完主流程 · The whole game by keyboard alone | 人工 · by hand | 未运行 · not run |  |
-| A2 | 读屏读出主要按钮 · A screen reader names the main buttons | 自动 · automatic | 达标 · pass | 4 named controls, e.g. button "The road", button "Free duel", button "Settings" |
+| A2 | 读屏读出主要按钮 · A screen reader names the main buttons | 自动 · automatic | 达标 · pass | 7 named controls, e.g. button "征途", button "破关行", button "自由对决" |
 | A3 | 尊重 prefers-reduced-motion · prefers-reduced-motion is honoured | 自动 · automatic | 达标 · pass | the code reads prefers-reduced-motion or offers a setting |
 | S1 | 存档损坏不崩溃 · A broken save does not crash | 自动 · automatic | 达标 · pass | unreadable text; started without an uncaught error (keys: five-regiments) |
 | S2 | 存档版本不匹配不崩溃 · A save of another version does not crash | 自动 · automatic | 达标 · pass | a save from a newer version; started without an uncaught error (keys: five-regiments) |
 | S3 | 存储不可用不崩溃 · Refused storage does not crash | 自动 · automatic | 达标 · pass | storage refused: started without an uncaught error |
 | S4 | 存档出问题时提示并可重开 · A save problem is told and a fresh start offered | 人工 · by hand | 未运行 · not run |  |
 | E1 | 无控制台错误 · No console errors | 自动 · automatic | 达标 · pass | 0 errors |
-| E2 | 资源失败有错误界面和重试 · A failed file shows an error and a retry | 自动 · automatic | 达标 · pass | 1 files refused; no uncaught error; offers to try again |
+| E2 | 资源失败有错误界面和重试 · A failed file shows an error and a retry | 自动 · automatic | 达标 · pass | 34 files refused; no uncaught error; offers to try again |
 | E3 | 切到后台再回来不出错 · Hidden and shown again without errors | 自动 · automatic | 达标 · pass | no errors; the game or the engine loop watches visibility |
 | E4 | 切回后声音和计时正常 · Sound and timers right after coming back | 真机 · device | 未运行 · not run |  |
 
@@ -88,3 +67,22 @@ Preparation elapsed includes asynchronous completion during loading. Each first-
 For visual comparison, hold the game clock and camera at the wide-field and gate-turn views. Across versions all 921,600 RGBA pixels per view matched with directional shadows enabled and with them disabled. Disabling shadows changed 38,392 pixels in the wide view and 437,238 in the gate view on each version. Re-enabling shadows restored both original images exactly.
 
 画面对照固定游戏时钟，分别拍摄全景和转向关门两个机位。每个机位的 921,600 个 RGBA 像素在新旧版本间完全相同，开、关定向光阴影均通过。两版关闭阴影后，全景均有 38,392 个像素变化，关门机位均有 437,238 个；重新开启阴影后逐像素复原。
+
+## 2026-11-28 V1–V5 真机验收 · Physical-device validation
+
+引擎快照 / Engine: 7fb371acb8bab254cf1c49b9da0ac0eed0c06fb4, official vendor. The newer #575 merge appeared during acceptance; this release retains the measured pin rather than changing the runtime after device qualification. / 验收期间主干新增 #575，发布保留已完成设备验收的固定版本，避免在最后更换未经复测的运行时。
+
+| 环境 / Environment | 采样 / Intervals | p95 | Max | >50 ms | 实际流程 / Route |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| Windows, RTX 5090 Laptop GPU, Edge, 1280×800, high | 860 | 4.3 ms | 8.3 ms | 0 | Natural duel, pause and relock, settlement 18.9 s |
+| Samsung Galaxy Z Fold7 SM-F966U1, Android 17, Chrome 158, Adreno 830, 873×325, medium | 845 | 16.7 ms | 33.2 ms | 0 | Touch duel, outside-drag, 3-contact release, pause/resume, settlement 16.1 s |
+
+两条实机路线使用正常游戏操作；均为自然战败，未修改生命值、能量或模拟器。计时段没有截图，设备控制恢复；浏览器注入输入不等同人工手指。 / Both routes use normal gameplay input and end in natural losses without gameplay-state edits; timing excludes screenshot capture. Browser-generated input on the actual devices is not human input. Device state restored.
+
+九种浏览器屏幕规格（含 Fold7 外屏 873×325）63 个流程检查点、9 个最终状态无报告错误或警告；目检后修复窄屏 HUD 覆盖，额外实拍三种竖屏确认标题四模式与三个底部按钮均可见，实际高度 48 CSS px。 / Nine simulated screen profiles: 63 route checkpoints and nine final states, zero reported findings. Visual HUD overlap corrected; three additional portrait title checks confirm all seven controls with 48 CSS px height.
+
+独立 error-accept.mjs 实际阻断进场资源，验证原生错误/重试及画质低、高往返。原生触控与鼠标锁定专项通过。 / The failure/retry and quality-tier round trip, native touch and pointer tests passed. The initial Edge capture exception was addressed via an explicit click-release lock request; engine internals remain unproven (ENGINE-NOTES #7).
+
+自动质量工具的 SwiftShader F1 不达标（p95 129.2ms, 51 intervals），旧历史软件结果为 383.4ms。不要把软件与真实设备直接混为同一性能指标。本次其他自动项通过，包括 L1 1.5s、3.4MB。 / Automatic SwiftShader F1 remains below target; hardware results above are separate. Other automatic items pass, including L1 1.5s and 3.4MB. Hardware data are short route samples, not exhaustive campaign or GPU-completion measurements.
+
+未测 / Not run: complete campaign on hardware, physical gamepad, screen reader output, Safari/Firefox/WeChat, physical phone portrait or all quality tiers. No unverified engine cause is claimed.

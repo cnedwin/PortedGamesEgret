@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 // Filling for Graphics beyond one simple outline: the non-zero rule over any number of outlines, so that holes and
 // outlines that cross themselves are filled as a canvas fills them, and gradients, which are given as vertex colours.
-import { decodeSRGBByte } from './srgbBytes.js';
+import { decodeSRGBByte } from '@egret/contracts';
 /**
  * The linear-light value of an sRGB value from 0 to 255 that need not be whole: between the two bytes it lies between,
  * read from the written table. A power here would differ in its last bit from one engine of JavaScript to another.

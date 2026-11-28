@@ -42,6 +42,10 @@ export const MATRIX = {
      "file": "FivePhases/src/main.mjs"
     },
     {
+     "game": "FiveRegiments",
+     "file": "FiveRegiments/src/hud.mjs"
+    },
+    {
      "game": "InquestScrolls",
      "file": "InquestScrolls/src/view/pictures.mjs"
     },
@@ -367,6 +371,10 @@ export const MATRIX = {
    "label": "@egret/engine/ui",
    "games": [
     {
+     "game": "FiveRegiments",
+     "file": "FiveRegiments/src/hud.mjs"
+    },
+    {
      "game": "FPS",
      "file": "FPS/src/ui/hud.mjs"
     },
@@ -453,6 +461,10 @@ export const MATRIX = {
      "file": "FivePhases/src/ui/hud.mjs"
     },
     {
+     "game": "FiveRegiments",
+     "file": "FiveRegiments/src/screens.mjs"
+    },
+    {
      "game": "InquestScrolls",
      "file": "InquestScrolls/src/view/type.mjs"
     },
@@ -482,6 +494,10 @@ export const MATRIX = {
     {
      "game": "FivePhases",
      "file": "FivePhases/src/ui/hud.mjs"
+    },
+    {
+     "game": "FiveRegiments",
+     "file": "FiveRegiments/src/screens.mjs"
     },
     {
      "game": "InquestScrolls",
@@ -1106,6 +1122,10 @@ export const MATRIX = {
      "file": "FivePhases/src/main.mjs"
     },
     {
+     "game": "FiveRegiments",
+     "file": "FiveRegiments/src/main.mjs"
+    },
+    {
      "game": "FPS",
      "file": "FPS/src/main.mjs"
     },
@@ -1193,6 +1213,10 @@ export const MATRIX = {
      "file": "FivePhases/src/main.mjs"
     },
     {
+     "game": "FiveRegiments",
+     "file": "FiveRegiments/src/main.mjs"
+    },
+    {
      "game": "FPS",
      "file": "FPS/src/main.mjs"
     },
@@ -1250,6 +1274,10 @@ export const MATRIX = {
     {
      "game": "FivePhases",
      "file": "FivePhases/src/main.mjs"
+    },
+    {
+     "game": "FiveRegiments",
+     "file": "FiveRegiments/src/main.mjs"
     },
     {
      "game": "FPS",
