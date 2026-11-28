@@ -141,6 +141,7 @@ The game uses Egret World3D and draws with WebGL2 by default; add `?backend=webg
 Characters, weapon visuals and station props use Tripo GLB assets simplified, texture-compressed and fitted to the game's attachment points. Egret loads the embedded materials and draws repeated props as instances. The game drives character joints, reloads, terminal interactions and extraction. Gunfire uses different real-time reverbs in the valley and powerhouse, while a step sequencer brings in bass and drums as enemies close in.
 
 ## 已验证 · Verified
+- 公网冷启动和实体 Fold7 长帧专项：保留原始几何、画质和玩法，使用扁平索引顶点缓存及原生 HUD 同状态保留绘制。实际PC同路线场景构建长任务约2.9→1.9秒；同引擎Fold7局部A/B界面实际提交比例81.2%→51.9%，平均回调36.03→39.86Hz，P95未改善。98项Node测试通过，结果和限制见 [QUALITY.md](QUALITY.md)。 · Public startup and physical Fold7 pacing: exact geometry and retained native HUD, unchanged quality and rules. Matched PC scene task ~2.9→1.9 s; handset A/B native UI submission share 81.2%→51.9%, callback cadence 36.03→39.86 Hz, unchanged p95. 98 Node tests pass; see QUALITY.md for evidence and limits.
 
 - 本次从 `4f08d2bcd25de3aafa7295f3b349970f8003ed71` 更新到 `d2e28f46182a563fd594cc51847240429ab0a5b5`：官方构建及引擎复制成功；引擎替换前后均通过原有 91 项 Node 测试，新增三项静态模型裁切等价检查后共 94 项通过，原有导入映射无需改动。实际设备复测与限制见 [QUALITY.md](QUALITY.md)。 · The official build and vendor refresh from `4f08d2bcd25de3aafa7295f3b349970f8003ed71` to `d2e28f46182a563fd594cc51847240429ab0a5b5` pass the same 91 Node tests before and after; three new static geometry equivalence checks bring the total to 94, with no import-map change required. Device retests and limits are recorded in QUALITY.md.
 
@@ -154,6 +155,7 @@ Characters, weapon visuals and station props use Tripo GLB assets simplified, te
 - 据 [STATUS.md](STATUS.md) 记录的真机检查：PC（RTX 5090 Laptop、Edge 157）与三星 SM-F966U1（Android 17、Chrome）上检查了三类角色的持枪、步行和蹲姿，第一人称枪械的瞄准、后坐、换弹和近裁切；公开版本的整局与性能复跑见 [PR #82 的验收记录](https://github.com/cnedwin/PortedGamesEgret/pull/82)。STATUS.md 里的两段整局帧率是美术修复前的历史基线。 · Device checks recorded in STATUS.md, on a PC and a Samsung phone; the public-run results are in PR #82. The whole-run frame rates there predate the art repair.
 
 ## 已知问题 · Known issues
+- 高负载移动端仍有偶发长帧，公网模块发现、模型传输及正式宿主着色程序准备仍波动；详见 [QUALITY.md](QUALITY.md)。 · Mobile heavy-load hitches and public startup variability remain; see QUALITY.md. The Fold7 lacks a supported GPU timer query; CPU and callback metrics are not GPU or presentation times.
 
 - 软件渲染下复杂 3D 场景可能低于验收器的动画回调门槛；真实标题已显示时仍可能报告等待帧循环超时，这不是首屏黑图误判或真实硬件性能结论。 · Complex 3D under software rendering can fall below the verifier's animation-callback threshold even after the real title is visible; this is neither a premature black screenshot nor a hardware performance measurement.
 

@@ -77,6 +77,33 @@ test('wholly inside faces do not copy read-only vertex arrays for every clipping
   assert.equal(copies, 0, 'fully inside vertices need no defensive clone');
 });
 
+test('shared indexed vertices keep exact transformed attributes and are transformed once per part', () => {
+  const root = new Object3D();
+  const material = createStandardMaterial3D({ color:0xffffff, normalMap:new Texture3D({width:1,height:1,data:new Uint8Array([127,127,255,255])}) });
+  const geometry = createGeometry3D({
+    positions:[-1,-1,-0.4, 1,-1,0, 1,1,0.2, -1,1,0.1],
+    normals:[0.2,0,1, 0,0.3,1, 0.2,0.2,0.9, 0.1,0.5,0.9],
+    uvs:[0,0, 1,0, 1,1, 0,1], indices:[0,1,2,0,2,3]
+  });
+  const mesh = new Mesh3D(geometry, material);
+  mesh.setPosition(0.37,-0.21,0.51).setScale(1.3,0.8,1.1).setRotation(0.12,0.39,-0.2);
+  root.addChild(mesh);
+  const model=describeModel(root), part=model.meshes[0];
+  const sourcePositions=part.geometry.getAttribute('position').data;
+  const original=Float32Array.prototype.set;
+  let transforms=0;
+  Float32Array.prototype.set=function(values,...rest){
+    // Count source-position conversion into the reusable three-component Float32 point only.
+    if(this.length===3&&values?.length===3&&values.buffer===sourcePositions.buffer)transforms++;
+    return original.call(this,values,...rest);
+  };
+  let result;
+  try { result=cropSceneModel(model,[-0.7,-0.65,-1.1,1.3,0.45,1.5]); }
+  finally { Float32Array.prototype.set=original; }
+  assert.equal(digest(result,model),'9651d19c940cd44fb8b904c7bf9864b6e1490e89032f796963a5579514609aa6');
+  assert.equal(transforms,new Set(part.geometry.index.data).size,'a repeated index reuses its converted position, normal and UV');
+});
+
 test('authored scene module crops retain exact geometry and original PBR materials', async () => {
   const actual = {};
   for (const name of ['container','plant']) {
