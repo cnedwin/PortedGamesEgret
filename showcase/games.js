@@ -35,9 +35,9 @@ export const GAMES = [
     id: 'snow', folder: 'SnowTemple', kind: '3d',
     imageFocus: '75% center',
     scenes: [
-        { zh: "雪夜 · 踏雪上路", en: "Snowy night · The road ahead" },
-        { zh: "草料场 · 格挡反击", en: "Fodder yard · Guard and counter" },
-        { zh: "山神庙 · 陆谦第二阶段", en: "Mountain temple · Lu Qian's second phase" },
+      { zh: "雪夜 · 踏雪上路", en: "Snowy night · The road ahead" },
+      { zh: "草料场 · 格挡反击", en: "Fodder yard · Guard and counter" },
+      { zh: "山神庙 · 陆谦第二阶段", en: "Mountain temple · Lu Qian's second phase" },
     ],
     zh: "风雪山神庙", en: "Snow at the Mountain Temple",
     genre: { zh: "武侠动作", en: "Wuxia action" },
