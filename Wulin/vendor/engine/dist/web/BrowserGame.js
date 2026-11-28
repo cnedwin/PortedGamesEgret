@@ -174,6 +174,7 @@ export async function createBrowserGame(options) {
         (update !== undefined && typeof update !== 'function') ||
         (onError !== undefined && typeof onError !== 'function') ||
         (options.beforeRender !== undefined && typeof options.beforeRender !== 'function') ||
+        (options.afterFrame !== undefined && typeof options.afterFrame !== 'function') ||
         (onFrameTiming !== undefined && typeof onFrameTiming !== 'function') ||
         (options.measureSharedFrames !== undefined && typeof options.measureSharedFrames !== 'boolean') ||
         (options.renderRetry !== undefined &&
@@ -428,6 +429,7 @@ export async function createBrowserGame(options) {
                     }
                 }),
             ...(options.beforeRender === undefined ? {} : { beforeRender: options.beforeRender }),
+            ...(options.afterFrame === undefined ? {} : { afterFrame: options.afterFrame }),
             ...(options.renderRetry === undefined ? {} : { renderRetry: options.renderRetry }),
             ...(onError === undefined ? {} : { onError }),
             update(seconds) {

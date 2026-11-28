@@ -1,7 +1,7 @@
 # 引擎笔记 · Engine notes
 
-引擎副本：正式 main `8a88cf84e171bc753e0b9491aaf8216834f57ba9`（含 #557、#563；见 [vendor/SOURCE.md](vendor/SOURCE.md)）。使用官方工具生成，不修改引擎副本。以下保留 #557 候选 `3748b332b5fafd2cb4530ca3df88ddd9d2939d46` 的历史验证证据，正式版本的设备和性能复测另见 QUALITY。
-Engine copy: official main `8a88cf84e171bc753e0b9491aaf8216834f57ba9` (including #557 and #563; see [vendor/SOURCE.md](vendor/SOURCE.md)). Official vendoring only, no local patch. The historical #557 candidate evidence from 3748b332 is retained below; official-pin device and performance results are recorded separately in QUALITY.
+引擎副本：正式 main `a0fb4e6c40a93156acd49f78ebf622375193a92c`（含 #557、#563、#567；见 [vendor/SOURCE.md](vendor/SOURCE.md)）。使用官方工具生成，不修改引擎副本。以下保留 #557 候选 `3748b332b5fafd2cb4530ca3df88ddd9d2939d46` 的历史验证证据，正式版本的设备和性能复测另见 QUALITY。
+Engine copy: official main `a0fb4e6c40a93156acd49f78ebf622375193a92c` (including #557, #563 and #567; see [vendor/SOURCE.md](vendor/SOURCE.md)). Official vendoring only, no local patch. The historical #557 candidate evidence from 3748b332 is retained below; official-pin device and performance results are recorded separately in QUALITY.
 
 ### 1. 长名册与弹窗的段落缓存上限 · Paragraph capacity in rosters and dialogs — 已解决 / resolved
 <!-- engine-note: {"id":"Wulin#1","status":"resolved","topic":"paragraph-cache-budget"} -->
@@ -89,3 +89,12 @@ Engine copy: official main `8a88cf84e171bc753e0b9491aaf8216834f57ba9` (including
 - 游戏里的处理 · Game use：[`src/main.mjs`](src/main.mjs) 用 `play({textWorkBudgetMs: 4, textWorkBudgetWhen})`，仅无弹窗的3D江湖对新任务启用分帧；[`src/ui/native-shell.mjs`](src/ui/native-shell.mjs) 让原生富文本提供者共用 `game.browser.scheduleTextWork`。保留文字缓存、资源、取消及原生焦点。 · Opt-in 4ms shared budgeting applies to new work in the modal-free 3D realm; other screens retain immediate work, with normal cache, cancellation and focus semantics.
 - 状态 · Status：引擎 #563 已合入 main，提供可选且可限定范围的 CPU 文字准备接口，无 vendor 补丁。全局开启曾引起手札短暂缺字，作对照记录而非改黄金图。 · Engine #563 on main exposes scoped opt-in budgeting; the global opt-in transient guide regression is documented, not hidden by modifying goldens.
 - 边界 · Limit：单次 Canvas 作业不可抢占，逐帧预算不是保证帧耗时；只有在实际场景验证可接受时采用。 · A single Canvas job remains atomic. A cooperative budget is not a frame time guarantee.
+
+### 11. 独立 3D/2D 画布的同帧 GPU 同步等待 · Same-frame GPU synchronization between independent 3D and 2D canvases — 部分解决 / partly
+<!-- engine-note: {"id":"Wulin#11","status":"partly","topic":"mixed-world3d-2d-submit-order"} -->
+
+- 现象 · Observation：PC 冷江湖首次真实 3D 提交 CPU 约5.6–5.9ms，紧随 2D `workingAttachment → getError` 等待共享 GPU 服务约35–38ms；最新版 #560 仍可复现。 · The required synchronous 2D check waits on preceding independent 3D GPU commands, not the scene's CPU assembly or a confirmed standalone compositor defect.
+- 游戏里的处理 · Game use：[`src/main.mjs`](src/main.mjs) 使用正式 `play({afterFrame})`，[`src/view/stage.mjs`](src/view/stage.mjs) 仅实测桌面（非触摸、细指针）高档 WebGL2 江湖设置 `World3DView.deferRender`，时钟更新正常、同一帧在2D后调用 `drawPending()`；真实接受才发布首图就绪。保留所有错误、完成及资源生命周期检查。 · The optional phase orders independent submission after native UI on the measured route without changing logic or default order elsewhere.
+- 证据 · Evidence：同引擎四轮完整窗口峰54.1/50.0/50.0/58.3ms→33.3/37.5/29.2/29.2ms，LoAF四轮→0，后续 `SharedGLHost.poll` 的实际等待仍11.7–17.2ms；完整路线、鼠标及真实接受计数正常。 · Compare full-window and tail rather than merely leaving the cost beyond the first frame. [追踪与限制 / Detailed evidence](docs/realm-frame-pacing.md).
+- 状态 · Status：引擎 #567 已正式合入 main，新增可选提交阶段；等待未完全消失，仍需按设备验证启用。 · Engine #567 merged; the optional phase is official, while GPU completion wait still requires device-specific validation.
+- 建议 · Proposal：保留显式同帧提交阶段与精确时序诊断；继续观察平台GPU命令等待，不去掉必要的 `getError` 或将未接受 draw 标成已呈现。 · Keep the explicit phase and lifecycle validation; measure the remaining completion wait per device.

@@ -6,7 +6,7 @@ import { createEngine } from '@egret/engine';
 import { InstancedMesh3D, Mesh3D, Scene3D, createAmbientLight3D, createDirectionalLight3D, createHemisphereLight3D, createPerspectiveCamera3D, createUnlitMaterial3D } from '@egret/engine/world3d';
 import { createOrbit } from './orbit.mjs';
 import { makeSceneMarkers } from './scene-markers.mjs';
-import { createScenePreparation, canPrepareRealmGeometry } from './scene-preparation.mjs';
+import { createScenePreparation, canPrepareRealmGeometry, canDeferRealmDraw } from './scene-preparation.mjs';
 import { BALL, ORB, linear, skyOf } from './shapes.mjs';
 
 /**
@@ -26,6 +26,8 @@ export function pickQuality(params = new URLSearchParams(globalThis.location?.se
  */
 export async function createStage(canvas, { onError = () => {}, onPresented = () => {}, quality = pickQuality(), webgpu = false, game, pointerSurface } = {}) {
   let backend, engine, renderer;
+  // Touch hardware keeps its measured original order even if high quality is requested.
+  const desktopDraw = globalThis.matchMedia?.('(hover: hover) and (pointer: fine)')?.matches === true && (globalThis.navigator?.maxTouchPoints ?? 0) === 0;
   let lost = () => {}, restored = () => {};
   try {
     backend = await (webgpu ? import('@egret/engine/webgpu/world3d') : import('@egret/engine/webgl2/world3d'));
@@ -102,6 +104,11 @@ export async function createStage(canvas, { onError = () => {}, onPresented = ()
     ready: Promise.resolve(),
     get preparing() { return warming; },
     get presented() { return presented; },
+    drawPending() {
+      if (!view.deferRender || view.paused) return false;
+      stats?.lap('ui');
+      return view.drawPending();
+    },
     translate: (text) => text,
     setTranslator(translate) { stage.translate = typeof translate === 'function' ? translate : text => text; },
     markers(camera, layer) { return makeSceneMarkers(stage, camera, layer, backend); },
@@ -122,6 +129,7 @@ export async function createStage(canvas, { onError = () => {}, onPresented = ()
         stage.orbit.onTap = null;
         current.enter?.();
         geometryWanted = prepareGeometry && canPrepareRealmGeometry(quality, renderer);
+        view.deferRender = canDeferRealmDraw(quality, webgpu, !!game, prepareGeometry, desktopDraw);
       }
       resumePreparation = false;
       const ticket = ++generation;

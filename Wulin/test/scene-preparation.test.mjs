@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { createScenePreparation, canPrepareRealmGeometry } from '../src/view/scene-preparation.mjs';
+import { createScenePreparation, canPrepareRealmGeometry, canDeferRealmDraw } from '../src/view/scene-preparation.mjs';
 
 const pending=()=>{let resolve,reject;const promise=new Promise((yes,no)=>{resolve=yes;reject=no});return {promise,resolve,reject};};
 const turn=()=>Promise.resolve();
@@ -53,4 +53,9 @@ test('only proven high-quality WebGL geometry prewarming is enabled by the realm
  assert.equal(canPrepareRealmGeometry('medium',capable),false);
  assert.equal(canPrepareRealmGeometry('low',capable),false);
  assert.equal(canPrepareRealmGeometry('high',{}),false);
+});
+test('after-UI drawing is scoped to the measured high-quality WebGL2 realm in Play',()=>{
+  for(const quality of ['low','medium','high'])for(const webgpu of [false,true])for(const hasPlay of [false,true])for(const realm of [false,true])for(const desktop of [false,true]){
+    assert.equal(canDeferRealmDraw(quality,webgpu,hasPlay,realm,desktop),quality==='high'&&!webgpu&&hasPlay&&realm&&desktop);
+  }
 });
