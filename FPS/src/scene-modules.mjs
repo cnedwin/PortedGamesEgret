@@ -1,12 +1,20 @@
 import { createGeometry3D, mat4Identity, vec3TransformMat4 } from '@egret/engine/world3d';
 
 function clip(vertices, axis, boundary, keepGreater) {
+  // Section vertices stay read-only. Most faces are wholly on one side of a plane:
+  // skip allocation/interpolation in those cases, and keep the original order.
+  let inside = 0;
+  for (const vertex of vertices) {
+    if (keepGreater ? vertex[axis] >= boundary : vertex[axis] <= boundary) inside++;
+  }
+  if (inside === vertices.length) return vertices;
+  if (inside === 0) return [];
   const output = [];
   for (let index = 0; index < vertices.length; index++) {
     const a = vertices[index], b = vertices[(index + 1) % vertices.length];
     const insideA = keepGreater ? a[axis] >= boundary : a[axis] <= boundary;
     const insideB = keepGreater ? b[axis] >= boundary : b[axis] <= boundary;
-    if (insideA) output.push(a.slice());
+    if (insideA) output.push(a);
     if (insideA !== insideB) {
       const t = (boundary - a[axis]) / (b[axis] - a[axis]);
       output.push(a.map((value, component) => value + (b[component] - value) * t));
@@ -16,6 +24,10 @@ function clip(vertices, axis, boundary, keepGreater) {
 }
 
 function buildSections(model, sections) {
+  // The original clipping contract ignores every nonfinite plane, including
+  // opposite infinities and NaN. Normalize once for the broad rejection path.
+  const clippedSections = sections.map(section => ({ ...section,
+    range: section.range.map((value, axis) => Number.isFinite(value) ? value : axis < 3 ? -Infinity : Infinity) }));
   const bounds = [Infinity, Infinity, Infinity, -Infinity, -Infinity, -Infinity];
   const point = new Float32Array(3);
   const meshes = model.meshes.map(part => {
@@ -38,7 +50,14 @@ function buildSections(model, sections) {
         ];
         triangle.push([...point, ...transformedNormal, uv?.[vertex * 2] ?? 0, uv?.[vertex * 2 + 1] ?? 0]);
       }
-      for (const { range, offset, scale } of sections) {
+      const [a, b, c] = triangle;
+      const minX = Math.min(a[0], b[0], c[0]), maxX = Math.max(a[0], b[0], c[0]);
+      const minY = Math.min(a[1], b[1], c[1]), maxY = Math.max(a[1], b[1], c[1]);
+      const minZ = Math.min(a[2], b[2], c[2]), maxZ = Math.max(a[2], b[2], c[2]);
+      for (const { range, offset, scale } of clippedSections) {
+        // A disjoint triangle cannot survive the six clipping planes. Equality
+        // remains inside, so boundary vertices and the original triangulation stay exact.
+        if (maxX < range[0] || minX > range[3] || maxY < range[1] || minY > range[4] || maxZ < range[2] || minZ > range[5]) continue;
         let polygon = triangle;
         for (let axis = 0; axis < 3 && polygon.length; axis++) {
           if (Number.isFinite(range[axis])) polygon = clip(polygon, axis, range[axis], true);

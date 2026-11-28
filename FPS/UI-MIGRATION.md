@@ -1,8 +1,8 @@
 # 界面迁移 · Native UI migration
 
-《断流行动》将原来的页面控件、样式与界面画布改为新白鹭引擎的原生界面。游戏规则、地图、美术资源和关卡内容仍独立于界面。首次原生 UI 迁移引擎副本从 `b5628eb9997b67cf6163a388f5aa06f321f3833a` 升到 `33897768c4f7933d289f083e4f34b3209b0aef31`；正式接口适配使用 `4f08d2bcd25de3aafa7295f3b349970f8003ed71`（[引擎 PR #549](https://github.com/cnedwin/Egret_rebuild/pull/549)）。来源及入口见 [vendor/SOURCE.md](vendor/SOURCE.md)。
+《断流行动》将原来的页面控件、样式与界面画布改为新白鹭引擎的原生界面。游戏规则、地图、美术资源和关卡内容仍独立于界面。首次原生 UI 迁移引擎副本从 `b5628eb9997b67cf6163a388f5aa06f321f3833a` 升到 `33897768c4f7933d289f083e4f34b3209b0aef31`；正式接口适配使用 `4f08d2bcd25de3aafa7295f3b349970f8003ed71`（[引擎 PR #549](https://github.com/cnedwin/Egret_rebuild/pull/549)）。后续正式副本更新至 `d2e28f46182a563fd594cc51847240429ab0a5b5`，无需改写原生界面入口，通用验收器现在支持有界启动就绪判断。来源及入口见 [vendor/SOURCE.md](vendor/SOURCE.md)。
 
-Operation Cutoff replaces its former page controls, CSS and interface canvases with Egret's native interface. Game rules, the map, art and mission content remain independent of the interface. The initial migration upgraded the engine from `b5628eb9997b67cf6163a388f5aa06f321f3833a` to `33897768c4f7933d289f083e4f34b3209b0aef31`; formal API adoption uses `4f08d2bcd25de3aafa7295f3b349970f8003ed71` (engine PR #549). See [vendor/SOURCE.md](vendor/SOURCE.md) for provenance and entries.
+Operation Cutoff replaces its former page controls, CSS and interface canvases with Egret's native interface. Game rules, the map, art and mission content remain independent of the interface. The initial migration upgraded the engine from `b5628eb9997b67cf6163a388f5aa06f321f3833a` to `33897768c4f7933d289f083e4f34b3209b0aef31`; formal API adoption uses `4f08d2bcd25de3aafa7295f3b349970f8003ed71` (engine PR #549). The later runtime refresh to `d2e28f46182a563fd594cc51847240429ab0a5b5` keeps the native UI entry and includes bounded startup readiness in the ordinary verifier. See [vendor/SOURCE.md](vendor/SOURCE.md) for provenance and entries.
 
 ## 架构 · Architecture
 
