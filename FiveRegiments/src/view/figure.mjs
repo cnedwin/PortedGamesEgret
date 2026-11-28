@@ -10,6 +10,7 @@ import { createAnimator, heavyFootwork, impactWeight, interpolateDirection, retu
 import { createFooting } from './footing.mjs';
 import { createPreviewPosture } from './preview-posture.mjs';
 import { createLocomotionBlend, createGaitCadence, createClosedLocomotionSampler, GAIT_NAMES } from './locomotion-blend.mjs';
+import { createDecorativePoseTransition } from './decorative-pose-transition.mjs';
 import { bowLoosePose, bowReleasePose } from './bow-release.mjs';
 import { ordinaryCuts } from './ordinary-poses.mjs';
 import { ARTS, SKILLS } from '../sim/regiments.mjs';
@@ -378,6 +379,7 @@ export function createFigure({ regiment, body, motion, world, height = 1.8 }) {
     layer = motion.pose();
   const locomotion = createLocomotionBlend();
   const neutralCadence = createGaitCadence(motion), sampleLocomotion = createClosedLocomotionSampler(motion);
+  const decorativeHead = createDecorativePoseTransition();
   const state = {
     phase: 0,
     primaryGrip: { axis: null, edge: null },
@@ -890,6 +892,16 @@ export function createFigure({ regiment, body, motion, world, height = 1.8 }) {
       active: man.guard || act?.kind === 'swing' || act?.kind === 'skill',
       grounded: grounded && man.stun <= 0 && act?.kind !== 'kick' && act?.kind !== 'step'
     });
+    // The head is a separate decorative branch. Smooth its final orientation only AFTER
+    // every authored body/hand/prop transform and position is complete; the head origin
+    // (including the eye camera's reference) and all other bones stay as authored. Keep
+    // preview and head-anchored or seated displays exact; other expressive poses get a
+    // tighter angular bound than ordinary locomotion, without advancing any event time.
+    if (!preview && man.alive && !man.mounted && !state.ride && !state.thrown && !man.draw && state.drawBlend < .01 && rig.bone('head')) {
+      const authored = rig.world('head').r;
+      const eased = decorativeHead.update(authored, dt, smoothNeutral ? undefined : .105);
+      if (eased !== authored) rig.setWorld('head', eased);
+    } else decorativeHead.reset();
     return { spin, floorLift };
   }
 

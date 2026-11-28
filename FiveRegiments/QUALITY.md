@@ -20,7 +20,7 @@ this file; items by hand or on a device are marked not run until someone runs th
 | T1 | 触屏走完主流程 · The whole game by touch | 真机 · device | 未运行 · not run |  |
 | T2 | 触控区 ≥ 44×44 CSS px · Touch targets ≥ 44 × 44 CSS px | 自动 · automatic | 达标 · pass | 7 controls, all at least 44×44 |
 | T3 | 不误触下拉刷新和双击缩放 · No pull-to-refresh or double-tap zoom | 自动 · automatic | 达标 · pass | overscroll held, touch-action none, double-tap zoom off |
-| F1 | 桌面帧时间 p95 ≤ 16.7 ms · Desktop frame time p95 ≤ 16.7 ms | 自动 · automatic | 不达标 · fail | p95 112.4 ms over 55 frames |
+| F1 | 桌面帧时间 p95 ≤ 16.7 ms · Desktop frame time p95 ≤ 16.7 ms | 自动 · automatic | 不达标 · fail | p95 158.3 ms over 41 frames |
 | F2 | 中端手机帧时间 p95 ≤ 33 ms · Mid-range phone frame time p95 ≤ 33 ms | 真机 · device | 未运行 · not run |  |
 | L1 | 首屏 ≤ 3 s（10/5 Mbps、40 ms、CPU ×4） · Start-up ≤ 3 s (10/5 Mbps, 40 ms, CPU ×4) | 自动 · automatic | 达标 · pass | 1.6 s to the first playable screen, 2.7 MB |
 | O1 | 横竖屏与窗口尺寸 · Orientation and window sizes | 自动 · automatic | 达标 · pass | 1280×800, 390×844, 844×390, 768×1024 and live resizing: fits, no errors |
@@ -147,3 +147,25 @@ Normal browser inputs, no simulation-state change. PC final narrowed-ribbon rout
 Normal rested sample: 31 intervals while the decorative pool was active, p95/max 33.2 ms; 351 inactive, p95 33.2 ms and max 49.7 ms. In first matched run, all 11 ≥40 ms frames occurred while decoration was inactive. Disabling the added decorative motion (verified 0 emissions) did not reliably remove the intermittent longer frames. The phone reports thermal status 0 at both ends of the rested normal route and 0→1 in the subsequent reduced-motion route. This is a confound, not proof of identical conditions or a thermal root cause. Early four-second route peaks were 82.8 ms (old), 99.5 ms (first new), 66.3 ms (rested normal), and 66.4 ms (reduced). The evidence does not establish a causal engine or demo subsystem defect. Keep quality and the bounded decoration pool; further browser/render-stage profiling needed if long frames recur. / 间歇抖动仍存在，不宣称性能完全无回退或根因已修复。所有租约已恢复并释放。
 
 Final regression: 233/233 Node tests, 21 browser acceptance checks including all original goldens (no replacement or threshold changes), pointer/keyboard, routed touch and error/retry/quality switch passed. Reviewed candidate screenshot differences: title 0.01%, choose 0%, fight 1.43%. Automatic SwiftShader F1: 112.4 ms p95 over 55 intervals, remains failing (prior 95.7 ms), separate from hardware. Other measured automatic items pass including 4 viewport sizes, language, storage and recovery. Full campaign, physical gamepad, actual reader audio, real speaker listening, physical iPhone and other browsers not covered. / 此轮没有重跑九屏完整路线，使用现有截图与自动四屏/转屏检查。
+
+## 2026-11-29 动作连续性与移动长帧 · Pose continuity and mobile frame investigation
+
+五套现有真实 GLB 角色与动作数据：最终独立头部显示旋转在普通移动起停、转向的最大相邻帧角差 15.84°→8.20°；既有其它表现状态切换 5.52°→4.17°。其它被测骨骼位置、旋转及头部原点完全相同，原动作事件、虚拟 0.90 时间、数值与规则未改变；标题、骑乘及已有近脸锚定路径保留原样。测试不代表所有技能完整新动作或正面近景。菜单固定目标60Hz首帧位移 3.278%→0.192%，90%落位 1.167→1.033s，减少动效直接固定构图。非交互入场/结束提示牌维持原安全区、时长、文字和即时可读性。 / These scoped animation-presentation changes reduce measured orientation discontinuities without retiming the original authored events. They are not a new full motion-capture library or a commercial-quality equivalence claim.
+
+| 实际设备与路线 / Actual device, local static game | 虚拟时间÷真实时间 / Clock ratio | Samples | p95 | Max | >50 ms |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| RTX 5090 Laptop/Edge, 1280×800 high, final normal | 0.8999 | 876 | 4.3 ms | 8.4 ms | 0 |
+| Fold7, old exact published bundle, Chrome trace | 0.8996 | 499 | 16.7 ms | 33.2 ms | 0 |
+| Fold7, new, bounded trace + official timing | 0.9018 | 452 | 33.2 ms | 49.8 ms | 0 |
+| Fold7, new, no engine timing or Chrome trace | 0.8986 | 392 | 33.2 ms | 49.6 ms | 0 |
+
+Fold7 is the same actual SM-F966U1 (Android 17, Chrome 158, Adreno 830, 873×325/high); timings above are the uninterrupted later play intervals, separate from entry and early four-second samples. Both old and new reach natural settlement through actual browser-generated touch; normal joystick-outside capture, three contacts, pause/resume, PC pointer lock/relock pass. No simulation-state edit. Diagnostic and uninstrumented routes are distinct, variable phone scheduling prevents an assertion of full performance equivalence. / 真机不是尺寸模拟，也不是人工操作主观评分。
+
+**Fold7 分项实测 · Separate performance evidence.**
+
+- Same entry rAF interval 165.8 ms reproduced on the previous and candidate builds. New aligned LoAF 155.2 ms, blocking 0; Play callback 13.8 ms (update 6.7, 2D rendering 7.0); attached World3D update 3.2 ms, render submission 1.1 ms (overlaps Play update). Trace renderer main-task union 29.82 ms; graphics service CrGpuMain nested WebGL CPU work 43.37 ms (old 43.77). These lanes overlap; none is GPU completion or present latency.
+- Early play: previous peak 99.4 ms, candidate traced peak 66.3 ms; the latter has LoAF 68.3 ms, Play callback 5.2 ms, World3D update 1.5 / render 0.8 ms; main-task union 5.87 ms, graphics service WebGL 28.87 ms. The separate uninstrumented final run still records 99.5 ms in the early window. Do not claim the occasional long frame is fixed or caused by the new animation. In later steady samples no >50 ms. / 偶发早期帧仍存在，未证实 GPU 硬件执行或合成呈现根因。
+- Independent entry listener: 97.8 ms LoAF, pointerup 93.7 ms, 289/523 CPU samples in glTF `copyElements` with accessor/geometry stack, not elapsed-time attribution. This is separate from the rAF/graphics-service windows. A proposed validated fast copy remains open in ENGINE-NOTES #9.
+- Opt-in only: `?frame-profile=1` exposes `egretGame.frameProfile()` with two bounded (2048 each) official CPU timing streams. Compare the callback timestamps, do not sum overlapping phases; never treat CPU submit as GPU completion. The short private Chrome trace (27,979,393 B, no loss reported) is scoped before entry through the early play window; no full trace committed. Old trace was truncated but recoverable complete prefix events and marks were aligned. Device leases restored.
+
+Final regression: 243/243 Node, 21 strict browser acceptance checks; pointer, touch, resource error/retry and quality switching passed. Original screenshot references retained. Independent PC visual sequence confirms five actual sampled views of menu/selection/ordinary movement-to-stop; no newly observed head/body clipping at those views, not a complete skill-animation or front-face test. Automatic SwiftShader F1 is 158.3 ms p95 (41 intervals, fails; previous 112.4 ms); other measured automatic items pass, including the four viewport/live resize, language, storage and error checks. Physical hardware, software emulation and human judgments remain distinct. / 未测全征途、物理手柄、完整动作及正面近景、真实扬声器及其它手机浏览器。
