@@ -7,52 +7,50 @@
   <title>武林天下 / Wulin</title>
   <meta name="description" content="武林天下：为新白鹭引擎开发的武侠门派经营游戏 Demo。 / Wulin, a wuxia sect management demo for Egret Rebuild.">
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Crect width='16' height='16' rx='3' fill='%23a8322e'/%3E%3Cpath d='M3 5h10M8 3v10M4 9h8M5 13h6' stroke='%23f4e4bc' stroke-width='1.4' fill='none'/%3E%3C/svg%3E">
-  <!-- The interface's colours, type and components come from the art hand-off; style.css adds what the game needs on top. -->
-  <link rel="stylesheet" href="./art-handoff/ui/tokens.css">
-  <link rel="stylesheet" href="./art-handoff/ui/style.css">
   <link rel="stylesheet" href="./style.css">
-  <link rel="stylesheet" href="./opening.css">
-  <link rel="stylesheet" href="./game-ui.css">
-  <link rel="stylesheet" href="./game-panels.css">
   <script type="importmap">
-    {
-      "imports": {
-        "@egret/contracts": "./vendor/contracts/dist/index.js",
-        "@egret/runtime": "./vendor/runtime/dist/index.js",
-        "@egret/contracts/resources": "./vendor/contracts/dist/resources/index.js",
-        "@egret/engine": "./vendor/engine/dist/index.js",
-        "@egret/engine/world3d": "./vendor/engine/dist/rendering/world3d/index.js",
-        "@egret/runtime/text": "./vendor/runtime/dist/text/index.js",
-        "@egret/engine/text": "./vendor/engine/dist/text.js",
-        "@egret/runtime/input": "./vendor/runtime/dist/input/index.js",
-        "#egret-pointer-input": "./vendor/engine/dist/pointerInput.js",
-        "#egret-keyboard-input": "./vendor/engine/dist/keyboardInput.js",
-        "robust-predicates": "./vendor/robust-predicates/index.js",
-        "#egret-textured-frame-state": "./vendor/engine/dist/internal/texturedFrameState.js",
-        "@egret/engine/input/hover": "./vendor/engine/dist/hover.js",
-        "@egret/engine/kit": "./vendor/engine/dist/kit.js",
-        "@egret/engine/audio": "./vendor/engine/dist/audio.js",
-        "@egret/engine/input/gamepad": "./vendor/engine/dist/gamepad.js",
-        "@egret/engine/webgl2/world3d": "./vendor/engine/dist/web/world3d/index.js",
-        "@egret/engine/webgpu/world3d": "./vendor/engine/dist/web/world3d/webgpu.js",
-        "@egret/engine/web/kit": "./vendor/engine/dist/web/kit.js"
-      }
-    }
+{
+  "imports": {
+    "@egret/contracts": "./vendor/contracts/dist/index.js",
+    "@egret/runtime": "./vendor/runtime/dist/index.js",
+    "@egret/contracts/resources": "./vendor/contracts/dist/resources/index.js",
+    "@egret/engine": "./vendor/engine/dist/index.js",
+    "@egret/engine/world3d": "./vendor/engine/dist/rendering/world3d/index.js",
+    "@egret/runtime/text": "./vendor/runtime/dist/text/index.js",
+    "@egret/engine/text": "./vendor/engine/dist/text.js",
+    "@egret/runtime/input": "./vendor/runtime/dist/input/index.js",
+    "#egret-pointer-input": "./vendor/engine/dist/pointerInput.js",
+    "#egret-keyboard-input": "./vendor/engine/dist/keyboardInput.js",
+    "robust-predicates": "./vendor/robust-predicates/index.js",
+    "#egret-textured-frame-state": "./vendor/engine/dist/internal/texturedFrameState.js",
+    "@egret/engine/input/hover": "./vendor/engine/dist/hover.js",
+    "@egret/runtime/paragraph": "./vendor/runtime/dist/paragraph/index.js",
+    "@egret/engine/paragraph": "./vendor/engine/dist/paragraph.js",
+    "@egret/engine/bitmapfont": "./vendor/engine/dist/bitmapfont.js",
+    "@egret/engine/kit": "./vendor/engine/dist/kit.js",
+    "@egret/engine/audio": "./vendor/engine/dist/audio.js",
+    "@egret/engine/input/gamepad": "./vendor/engine/dist/gamepad.js",
+    "@egret/runtime/ui": "./vendor/runtime/dist/ui/index.js",
+    "@egret/engine/ui": "./vendor/engine/dist/ui/index.js",
+    "@egret/engine/webgl2/world3d": "./vendor/engine/dist/web/world3d/index.js",
+    "@egret/engine/webgpu/world3d": "./vendor/engine/dist/web/world3d/webgpu.js",
+    "@egret/engine/web/kit": "./vendor/engine/dist/web/kit.js",
+    "@egret/engine/play": "./vendor/engine/dist/web/play.js",
+    "@egret/engine/ui/semantics": "./vendor/engine/dist/semantics.js",
+    "@egret/engine/web/semantics": "./vendor/engine/dist/web/semantics.js",
+    "@egret/engine/ui/testing": "./vendor/engine/dist/ui/testing.js",
+    "@egret/engine/web/text-input": "./vendor/engine/dist/web/textInput.js",
+    "@egret/engine/web/paragraph": "./vendor/engine/dist/web/paragraph.js"
+  }
+}
   </script>
 </head>
 <body>
-  <div id="app"></div>
-  <!-- The 3D picture waits here while no screen is showing it; a screen that shows it moves it into its own frame. -->
-  <div id="park" hidden>
-    <div id="view">
-      <canvas id="stage"></canvas>
-      <div id="layer"></div>
-    </div>
-  </div>
-  <dialog id="dialog" class="sheet"></dialog>
-  <div id="announcement" class="toast" role="status" aria-live="polite" hidden></div>
-  <div id="error" role="alert" hidden></div>
-  <noscript>请启用 JavaScript 以运行《武林天下》。</noscript>
+  <script>window.egretGame={ready:false};</script>
+  <canvas id="stage" aria-hidden="true"></canvas>
+  <div id="overlay"></div>
+  <p id="loading" role="status">画卷展开中 · Opening the scroll…</p>
+  <noscript>请启用 JavaScript。 / Please enable JavaScript.</noscript>
   <script type="module" src="./src/main.mjs"></script>
 </body>
 </html>

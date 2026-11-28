@@ -405,6 +405,10 @@ export const MATRIX = {
     {
      "game": "TeaHorseRoad",
      "file": "TeaHorseRoad/src/ui/card.mjs"
+    },
+    {
+     "game": "Wulin",
+     "file": "Wulin/src/ui/native-shell.mjs"
     }
    ]
   },
@@ -439,6 +443,10 @@ export const MATRIX = {
     {
      "game": "LanternShadows",
      "file": "LanternShadows/src/native-ui.mjs"
+    },
+    {
+     "game": "Wulin",
+     "file": "Wulin/src/ui/native-shell.mjs"
     }
    ]
   },
@@ -462,6 +470,10 @@ export const MATRIX = {
     {
      "game": "LanternShadows",
      "file": "LanternShadows/src/native-ui.mjs"
+    },
+    {
+     "game": "Wulin",
+     "file": "Wulin/src/ui/native-shell.mjs"
     }
    ]
   },
@@ -484,6 +496,10 @@ export const MATRIX = {
     {
      "game": "InquestScrolls",
      "file": "InquestScrolls/src/view/verdict.mjs"
+    },
+    {
+     "game": "Wulin",
+     "file": "Wulin/src/ui/native-shell.mjs"
     }
    ]
   },
@@ -685,6 +701,10 @@ export const MATRIX = {
     {
      "game": "TeaHorseRoad",
      "file": "TeaHorseRoad/src/main.mjs"
+    },
+    {
+     "game": "Wulin",
+     "file": "Wulin/src/view/scene-markers.mjs"
     }
    ]
   },
@@ -806,6 +826,10 @@ export const MATRIX = {
     {
      "game": "TeaHorseRoad",
      "file": "TeaHorseRoad/src/play/input.mjs"
+    },
+    {
+     "game": "Wulin",
+     "file": "Wulin/src/ui/locale.mjs"
     }
    ]
   },
@@ -963,6 +987,10 @@ export const MATRIX = {
     {
      "game": "TaiwanMahjong",
      "file": "TaiwanMahjong/src/sound.mjs"
+    },
+    {
+     "game": "Wulin",
+     "file": "Wulin/src/main.mjs"
     }
    ]
   },
@@ -1124,6 +1152,10 @@ export const MATRIX = {
     {
      "game": "TeaHorseRoad",
      "file": "TeaHorseRoad/src/main.mjs"
+    },
+    {
+     "game": "Wulin",
+     "file": "Wulin/src/main.mjs"
     }
    ]
   },
@@ -1167,6 +1199,10 @@ export const MATRIX = {
     {
      "game": "StarBanner",
      "file": "StarBanner/src/ui/host.mjs"
+    },
+    {
+     "game": "Wulin",
+     "file": "Wulin/src/main.mjs"
     }
    ]
   },
@@ -1254,6 +1290,10 @@ export const MATRIX = {
     {
      "game": "TeaHorseRoad",
      "file": "TeaHorseRoad/src/main.mjs"
+    },
+    {
+     "game": "Wulin",
+     "file": "Wulin/src/main.mjs"
     }
    ]
   },
@@ -1381,6 +1421,10 @@ export const MATRIX = {
     {
      "game": "InquestScrolls",
      "file": "InquestScrolls/src/view/notes.mjs"
+    },
+    {
+     "game": "Wulin",
+     "file": "Wulin/src/ui/native-shell.mjs"
     }
    ]
   },

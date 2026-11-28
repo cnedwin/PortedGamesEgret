@@ -366,7 +366,7 @@ const weaponSlotOf = (person) => person.gear?.weapon?.slot ?? null;
  * @param stage  the stage from stage.mjs
  * @param world  the world; read, never changed
  * @param placeId which stronghold to show
- * @param options.layer   an element over the canvas for the buildings' name tags
+ * @param options.layer   optional standalone model tool label host (not used by the game)
  * @param options.nameOf  gives a building kind its name
  * @param options.canBuild whether the current view should show available plots
  * @param options.onSelect receives a building index or plot ID when the canvas is tapped
@@ -429,7 +429,7 @@ export function createSeat(stage, world, placeId, { layer = null, nameOf = (kind
   /** Where each kind of building ended up, for sending people to work. */
   let sites = {};
   let drillActivity = 0, forgeActivity = 0;
-  let tags = [], emptyPlots = [], highlightedPlot = null;
+  let tags = [], marks = null, emptyPlots = [], highlightedPlot = null;
   const buildingIndices = new WeakMap();
   const ray = new Raycaster3D();
   const plotFrames = new InstancedMesh3D(PLOT_FRAME, PLOT_INK, SEAT_PLOTS.length);
@@ -441,39 +441,8 @@ export function createSeat(stage, world, placeId, { layer = null, nameOf = (kind
   const cast = new Map();
 
   function addTag(type, id, at, y, text) {
-    if (!layer) return;
-    const element = document.createElement('button');
-    element.type = 'button';
-    element.className = `scene-pin seat-${type === 'building' ? 'tag' : 'plot'}`;
-    element.dataset.act = type === 'building' ? 'building' : 'build-plot';
-    element.dataset[type === 'building' ? 'index' : 'plot'] = id;
-    element.textContent = text;
-    if (type === 'plot') element.setAttribute('aria-label', `在第 ${id + 1} 块空地建造`);
-    // A finger that slides over a name tag has not pressed it. Keyboard activation stays native.
-    let down, dragged = false;
-    element.addEventListener('pointerdown', (event) => {
-      down = event;
-      dragged = !event.isPrimary || event.button !== 0;
-    });
-    element.addEventListener('pointermove', (event) => {
-      if (down?.pointerId === event.pointerId && Math.hypot(event.clientX - down.clientX, event.clientY - down.clientY) >= 8) dragged = true;
-    });
-    element.addEventListener('pointerleave', (event) => {
-      if (event.pointerType !== 'touch' && down?.pointerId === event.pointerId) dragged = true;
-    });
-    element.addEventListener('pointerup', () => (down = null));
-    element.addEventListener('pointercancel', () => (dragged = true));
-    element.addEventListener('click', (event) => {
-      if (event.detail && dragged) {
-        event.preventDefault();
-        event.stopPropagation();
-      }
-      down = null;
-      dragged = false;
-    });
-    tags.push({ element, type, id, x: at.x, y, z: at.z });
+    tags.push({ type, id, text, target: [at.x, y, at.z], marker: null });
   }
-
   function paintPlotFrames(selectedPlot) {
     highlightedPlot = selectedPlot;
     emptyPlots.forEach((plot, i) => {
@@ -487,7 +456,7 @@ export function createSeat(stage, world, placeId, { layer = null, nameOf = (kind
     built = new Object3D();
     scene.addChild(built);
     sites = {};
-    tags.forEach(({ element }) => element.remove());
+    tags.forEach(tag => tag.marker?.dispose());
     tags = [];
     const layout = seatLayout(place.buildings);
     emptyPlots = layout.emptyPlots;
@@ -520,11 +489,27 @@ export function createSeat(stage, world, placeId, { layer = null, nameOf = (kind
 
   function pick(x, y) {
     const width = stage.canvas?.clientWidth, height = stage.canvas?.clientHeight;
-    if (!(width && height)) return;
+    if (!(width && height) || !onSelect) return;
+    // The labels do not own pointer contacts. A tap on their displayed
+    // bounds selects the labelled object; a tap elsewhere is a real ray.
+    const marked = tags.find(tag => tag.marker?.hit(x, y));
+    if (marked) {
+      if (marked.type === 'building') onSelect({ kind: 'building', index: marked.id });
+      else if (canBuild()) onSelect({ kind: 'plot', plot: marked.id });
+      return;
+    }
     ray.setFromCamera(2 * x / width - 1, 1 - 2 * y / height, camera);
     const [rx, ry, rz] = ray.origin, [dx, dy, dz] = ray.direction;
     const groundDistance = dy < 0 ? (PLOT_HEIGHT - ry) / dy : Infinity;
     const hit = ray.intersect(built, { firstHitOnly: true, far: groundDistance + PLOT_HEIGHT })[0];
+    if (stage.game) {
+      let best = hit?.distance ?? groundDistance, personId;
+      for (const [id, actor] of cast) {
+        const found = ray.intersect(actor.figure.node, {firstHitOnly: true, far: best})[0];
+        if (found && found.distance < best) best = found.distance, personId = id;
+      }
+      if (personId !== undefined) { onSelect({kind: 'person', id: personId}); return; }
+    }
     if (hit) {
       let node = hit.object;
       while (node.parent && node.parent !== built) node = node.parent;
@@ -653,6 +638,7 @@ export function createSeat(stage, world, placeId, { layer = null, nameOf = (kind
       return sources;
     },
     enter() {
+      marks ??= stage.markers?.(camera, layer) ?? null;
       stage.orbit.set({ target: [0, 1, -2], yaw: 0.45, pitch: 0.55, distance: 50, minDistance: 14, maxDistance: 120, minPitch: 0.2, maxPitch: 1.3, reach: 38, drift: 0.02, dragPans: false });
       if (onSelect) stage.orbit.onTap = pick;
     },
@@ -705,29 +691,23 @@ export function createSeat(stage, world, placeId, { layer = null, nameOf = (kind
       const showPlots = canBuild();
       plotFrames.visible = showPlots && emptyPlots.length > 0;
       if (highlightedPlot !== scene3.selectedPlot) paintPlotFrames(scene3.selectedPlot);
-      // The DOM controls follow their world anchors and use the game's regular keyboard actions.
-      const width = stage.canvas?.clientWidth ?? layer?.clientWidth, height = stage.canvas?.clientHeight ?? layer?.clientHeight;
-      for (const tag of tags) {
-        const plot = tag.type === 'plot';
-        const at = (plot ? showPlots : scene3.showTags) ? stage.orbit.project(tag.x, tag.y, tag.z) : null;
-        if (!at || at.x < 8 || at.y < 8 || at.x > width - 8 || at.y > height - 8) {
-          tag.element.remove();
-          continue;
+      // Native marker placement follows the updated 3D camera and safe
+      // screen. Every label stays behind the command panels.
+      if (marks) {
+        for (const tag of tags) {
+          const plot = tag.type === 'plot', selected = tag.id === (plot ? scene3.selectedPlot : scene3.selectedBuilding);
+          tag.marker ??= marks.add(tag.text, tag.target, {kind: plot ? 'plot' : 'tag', selected});
+          tag.marker.set(tag.text, {selected});
+          tag.marker.setVisible(plot ? showPlots : scene3.showTags);
         }
-        const selected = tag.id === (plot ? scene3.selectedPlot : scene3.selectedBuilding);
-        if (tag.selected !== selected) {
-          tag.selected = selected;
-          tag.element.classList.toggle('is-selected', selected);
-          tag.element.setAttribute('aria-pressed', String(selected));
-        }
-        if (!tag.element.isConnected) layer.append(tag.element);
-        tag.element.style.left = at.x.toFixed(1) + 'px';
-        tag.element.style.top = at.y.toFixed(1) + 'px';
+        marks.update();
       }
     },
     leave() {
       if (stage.orbit.onTap === pick) stage.orbit.onTap = null;
-      tags.forEach(({ element }) => element.remove());
+      marks?.dispose();
+      marks = null;
+      for (const tag of tags) tag.marker = null;
     },
   };
   return scene3;
