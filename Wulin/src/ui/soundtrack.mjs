@@ -7,42 +7,6 @@ const TRACKS = {
 
 export const clampVolume = (value) => Math.max(0, Math.min(1, value));
 
-/** Decoded clips share one browser audio clock, unlocked by the player's first action. */
-export function createClipAudio(Audio = globalThis.AudioContext ?? globalThis.webkitAudioContext) {
-  let context;
-  let resuming;
-  const buffers = new Map();
-  return {
-    get context() { return context; },
-    get ready() { return context?.state === 'running' || !!resuming; },
-    unlock(event) {
-      if (!event?.isTrusted || !Audio) return false;
-      try {
-        context ??= new Audio();
-        if (context.state !== 'running' && !resuming) {
-          resuming = context.resume().catch(() => {}).finally(() => { resuming = null; });
-        }
-        return this.ready;
-      } catch {
-        return false;
-      }
-    },
-    load(url) {
-      const key = String(url);
-      if (!buffers.has(key)) {
-        buffers.set(key, fetch(url).then(response => {
-          if (!response.ok) throw new Error('Audio file unavailable');
-          return response.arrayBuffer();
-        }).then(bytes => context.decodeAudioData(bytes)).catch(error => {
-          buffers.delete(key);
-          throw error;
-        }));
-      }
-      return buffers.get(key);
-    },
-  };
-}
-
 export function createSoundtrack(storage, clips) {
   let on = true;
   let volume = .42;
@@ -57,10 +21,12 @@ export function createSoundtrack(storage, clips) {
   let ducked = false;
   let hidden = globalThis.document?.hidden ?? false;
   let current, bus, pending;
+  const active = new Set();
   let revision = 0;
 
   function fadeOut(old, seconds) {
     const now = clips.context.currentTime;
+    if (seconds === 0) { old.source.stop(now); return; }
     old.gain.gain.cancelScheduledValues(now);
     old.gain.gain.setTargetAtTime(0, now, seconds / 4);
     old.source.stop(now + seconds);
@@ -68,21 +34,19 @@ export function createSoundtrack(storage, clips) {
 
   function applyVolume() {
     if (!bus) return;
-    const gain = bus.gain;
-    const now = clips.context.currentTime;
-    gain.cancelScheduledValues(now);
-    gain.setTargetAtTime(on && !hidden ? volume * (ducked ? .38 : 1) : 0, now, .12);
+    bus.setVolume(on && !hidden ? volume : 0, { timeConstant: .12 });
+    bus.setDuck(ducked ? .38 : 1, { timeConstant: .12 });
   }
 
   async function sync() {
-    if (!clips.ready) return;
     if (!on || hidden || volume === 0) {
       revision++;
       pending = null;
-      if (current) fadeOut(current, .24);
+      if (current) fadeOut(current, hidden ? 0 : .24);
       current = null;
       return;
     }
+    if (!clips.ready) return;
     if (current?.track === track) {
       if (pending) revision++;
       pending = null;
@@ -96,9 +60,7 @@ export function createSoundtrack(storage, clips) {
       if (request !== revision) return;
       const context = clips.context;
       if (!bus) {
-        bus = context.createGain();
-        bus.gain.value = 0;
-        bus.connect(context.destination);
+        bus = clips.createInput('music', { volume: 0, duck: ducked ? .38 : 1 });
         applyVolume();
       }
       const source = context.createBufferSource();
@@ -108,8 +70,9 @@ export function createSoundtrack(storage, clips) {
       source.loop = true;
       gain.gain.setValueAtTime(0, now);
       gain.gain.linearRampToValueAtTime(1, now + .85);
-      source.connect(gain).connect(bus);
-      source.onended = () => { source.disconnect(); gain.disconnect(); };
+      source.connect(gain).connect(bus.input);
+      active.add(source);
+      source.onended = () => { active.delete(source); source.disconnect(); gain.disconnect(); };
       source.start();
       if (current) fadeOut(current, .85);
       current = { source, gain, track };
@@ -139,12 +102,17 @@ export function createSoundtrack(storage, clips) {
     unlock(event) {
       if (clips.unlock(event)) void sync();
     },
+    refresh() { void sync(); },
     duck(active) {
       ducked = active;
       applyVolume();
     },
     setHidden(value) {
       hidden = value;
+      if (hidden && clips.context) {
+        for (const source of active) try { source.stop(clips.context.currentTime); } catch {}
+        current = null;
+      }
       applyVolume();
       sync();
     },

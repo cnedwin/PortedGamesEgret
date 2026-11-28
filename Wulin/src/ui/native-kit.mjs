@@ -1,21 +1,33 @@
 // Declarative controls shared by all Wulin screens; no browser layout or widget tree.
-export const COLORS = Object.freeze({paper:0xf3edde,ink:0x202a26,gold:0x88612f,vermillion:0x8e3d30,dark:0x23302b,cream:0xe9d9b1,muted:0x637466,edge:0xa59373});
-export const SKIN = Object.freeze({text:COLORS.ink,panel:COLORS.paper,panelAlpha:.96,button:COLORS.dark,buttonText:COLORS.paper,disabled:0x989b91,accent:COLORS.gold,track:0xd4cbb8,radius:5,size:16,dim:.66});
+export const COLORS = Object.freeze({
+  paper:0xf7ecd6,panel:0xf9f0dc,wash:0xeadfc3,ink:0x182922,muted:0x46534b,
+  dark:0x26392f,deep:0x14251f,jade:0x3e6652,gold:0x895d2b,goldLight:0xd9b575,
+  vermillion:0x8a352d,cream:0xfff1d4,edge:0xb59b70,bronzeLine:0xc19b5b,
+});
+export const BODY_FONT = 'Microsoft YaHei';
+export const TITLE_FONT = 'SimSun';
+export const SKIN = Object.freeze({
+  text:COLORS.ink,panel:COLORS.paper,panelAlpha:1,button:COLORS.dark,buttonText:COLORS.cream,
+  disabled:0x586254,accent:COLORS.gold,track:0xd6c8aa,radius:8,size:16,dim:.72,
+});
+const paragraphFonts=family=>[...new Set([family??BODY_FONT,'Noto Sans SC','Noto Sans CJK SC','sans-serif'])];
 const childrenOf = values => values.flat(Infinity).filter(value=>value && typeof value==='object');
 const heightOf = item => typeof item.height==='number' ? item.height : 48;
 export function text(value,props={}) {
   const {lines,kind,...rest}=props;
   const size=rest.size??16, words=String(value??'');
   const count=lines??(words.length>42 ? Math.min(8,Math.ceil(words.length/25)) : 1);
-  return {type:'text',text:words,width:'fill',height:rest.height??Math.ceil(size*1.5)*count,size,
-    ...(kind==='title'?{bold:true,fontFamily:'serif',color:COLORS.gold}:{}),
+  return {type:'text',text:words,width:'fill',height:rest.height??Math.ceil(size*1.5)*count,size,fontFamily:BODY_FONT,fontWeight:rest.bold?700:500,
+    ...(kind==='title'?{bold:true,fontFamily:TITLE_FONT,fontWeight:700,color:COLORS.ink}:{}),
     ...rest,_lines:count};
 }
 export function button(label,act,data={},props={}) {
   const {kind,selected,disabled,detail,lines,badge,bold,...rest}=props;
-  return {type:'button',text:String(label??''),width:'fill',height:detail?88:48,size:16,
-    color:kind==='danger'?COLORS.vermillion:kind==='primary'||kind==='gold-button'?COLORS.gold:selected?COLORS.gold:COLORS.dark,
-    textColor:COLORS.paper,border:{color:selected||kind==='primary'?0xc4a16c:0x687569,width:1},...rest,
+  const primary=kind==='primary'||kind==='gold-button'||selected,light=kind==='outline'||kind==='paper';
+  return {type:'button',text:String(label??''),width:'fill',height:detail?88:48,size:16,fontFamily:BODY_FONT,fontWeight:700,
+    color:kind==='danger'?COLORS.vermillion:primary?COLORS.gold:light?COLORS.wash:COLORS.dark,
+    textColor:disabled||primary||!light||kind==='danger'?COLORS.cream:COLORS.ink,
+    border:{color:primary?COLORS.goldLight:light?COLORS.edge:0x7c8b65,width:primary?2:1},...rest,
     ...(rest.role==='tab'?{selected:!!selected}:{}),
     _action:act,_data:data,_disabled:!!disabled,_badge:badge,_detail:detail,_lines:lines??3};
 }
@@ -30,15 +42,18 @@ export const row=(children,props={})=>panel('row',children,props);
 export const col=(children,props={})=>panel('column',children,props);
 export const scroll=(children,props={})=>panel('column',children,{height:'fill',scroll:'vertical',...props});
 export const image=(src,props={})=>({type:'image',width:'fill',height:96,...(src?{src:String(src)}:{}),...props});
+// The seal is decorative: it never becomes a semantic or actionable control.
+export const COMMAND_SEAL_URL='./assets/ui/command-seal.png';
+export const commandSeal=(props={})=>image(COMMAND_SEAL_URL,{width:32,height:32,semantic:false,...props});
 export const bar=(value,props={})=>({type:'bar',width:'fill',height:12,value:Math.max(0,Math.min(1,Number(value)||0)),...props});
 export function field(label,id,value,props={}) {
   const {change,data,type,max,min,step,maxLength,placeholder,...rest}=props;
-  return button(String(label)+' · '+(value??'—'),'@field',{id,label,value,change,data,type,max,min,step,maxLength,placeholder},rest);
+  return button(String(label)+' · '+(value??'—'),'@field',{id,label,value,change,data,type,max,min,step,maxLength,placeholder},{kind:'paper',...rest});
 }
 export function choice(label,change,data,value,options,props={}) {
   const rows=(options??[]).map(option=>Array.isArray(option)?option:[option.value,option.label]);
   const current=rows.find(([v])=>String(v)===String(value));
-  return button(String(label)+(current?' · '+current[1]:''),'@choice',{label,change,data,value,options:rows},props);
+  return button(String(label)+(current?' · '+current[1]:''),'@choice',{label,change,data,value,options:rows},{kind:'paper',...props});
 }
 const perType={
   panel:new Set(['type','name','semantic','anchor','x','y','width','height','visible','border','role','layout','gap','padding','align','justify','card','color','alpha','label','scroll','children']),
@@ -51,8 +66,8 @@ const perType={
 };
 const normalizeName=s=>String(s).replace(/[^a-zA-Z0-9_.-]/g,'_');
 function hash(s){let h=0;for(const char of s)h=Math.imul(h,31)+char.charCodeAt(0)|0;return (h>>>0).toString(36);}
-export function compile(root,{translate=String,dispatch=()=>{},badge=()=>false,fieldValue=(id,fallback)=>fallback,live,wrap,paragraphBudget=14}={}) {
-  const bind={}, used=new Set();let paragraphs=0;
+export function compile(root,{translate=String,dispatch=()=>{},badge=()=>false,fieldValue=(id,fallback)=>fallback,live}={}) {
+  const bind={}, used=new Set();
   function visit(node,path,parentRole) {
     if(!node||!perType[node.type]) throw new Error('Unknown screen part: '+node?.type);
     const out={}; for(const key of perType[node.type]) if(node[key]!==undefined)out[key]=node[key];
@@ -67,28 +82,12 @@ export function compile(root,{translate=String,dispatch=()=>{},badge=()=>false,f
     if(out.role==='tab'&&parentRole!=='tablist'){delete out.role;delete out.selected;}
     if('text' in out)out.text=translate(out.text);
     if('label' in out)out.label=translate(out.label);
-    if(node.type==='text'&&node._lines>1&&(!wrap||paragraphs<paragraphBudget)){
-      paragraphs++;
-      out.paragraph={fontFamilies:[out.fontFamily??'sans-serif'],lineHeight:Math.ceil((out.size??16)*1.5),maxLines:node._lines,density:2,locale:'zh-CN'};
+    if(node.type==='text'&&node._lines>1){
+      out.paragraph={fontFamilies:paragraphFonts(out.fontFamily),lineHeight:Math.ceil((out.size??16)*1.5),maxLines:node._lines,density:2,locale:'zh-CN'};
     }
-    if(node.type==='button'&&node._detail&&(!wrap||paragraphs<paragraphBudget)){
-      paragraphs++;
+    if(node.type==='button'&&node._detail){
       out.description=translate(node._detail);
-      out.paragraph={fontFamilies:['sans-serif'],lineHeight:20,maxLines:node._lines??3,density:2,locale:'zh-CN'};
-    }
-    // The engine paragraph cache admits at most 32 simultaneous paragraphs.
-    // Reserve room for the page and a modal; overflow uses native line labels
-    // or a single actionable card, not an extra renderer or DOM text.
-    if(wrap&&((node.type==='text'&&node._lines>1&&!out.paragraph)||(node.type==='button'&&node._detail&&!out.paragraph))){
-      const isButton=node.type==='button',height=typeof out.height==='number'?out.height:48,size=out.size??16,full=translate(isButton?node._detail:node.text);
-      const count=Math.max(1,Math.floor((height-(isButton?32:0))/Math.ceil(size*1.4)));
-      const lines=wrap(full,Math.max(18,Math.min(42,Math.ceil([...full].length*1.5/count))));
-      const visible=lines.slice(0,count);
-      const keep={};for(const k of ['name','width','height','anchor','x','y','visible','border'])if(out[k]!==undefined)keep[k]=out[k];
-      const title=isButton?[{type:'text',text:out.text,size, color:out.textColor??COLORS.paper,height:30,width:'fill',align:'center'}]:[];
-      const color=isButton?out.textColor??COLORS.paper:out.color??COLORS.ink;
-      const children=[...title,...visible.map(line=>({type:'text',text:line,size:Math.max(12,size-1),color,width:'fill',height:Math.ceil(size*1.4),align:isButton?'center':out.align??'left'}))];
-      for(const k of Object.keys(out))delete out[k];Object.assign(out,{...keep,type:'panel',layout:'column',gap:0,...(isButton?{role:'button',card:true,color:node.color??COLORS.dark,label:translate(node.text+' · '+node._detail)}:{label:full}),children});
+      out.paragraph={fontFamilies:paragraphFonts(BODY_FONT),lineHeight:20,maxLines:node._lines??3,density:2,locale:'zh-CN'};
     }
     if(live && node.type!=='space'){
       let rec=live.next[name]={};

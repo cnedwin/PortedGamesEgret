@@ -13,6 +13,7 @@ test('switching scenes discards late audio and keeps the marching layer tied to 
   const requests = new Map();
   const sources = [];
   const gains = [];
+  const inputs = [];
   const context = {
     currentTime: 10, destination: {},
     createBufferSource() {
@@ -27,6 +28,11 @@ test('switching scenes discards late audio and keeps the marching layer tied to 
   };
   const clips = {
     context, ready: true,
+    createInput(bus, options) {
+      const input = { bus, duck: options.duck, input: {}, setDuck(value, glide) { this.duck = value; this.glide = glide; } };
+      inputs.push(input);
+      return input;
+    },
     load(url) {
       const name = url.pathname.split('/').at(-1);
       if (!requests.has(name)) {
@@ -46,8 +52,10 @@ test('switching scenes discards late audio and keeps the marching layer tied to 
   await Promise.resolve();
   assert.deepEqual(sources.map(source => source.buffer), ['realm.mp3', 'march.mp3']);
   audio.duck(true);
-  assert.ok(Math.abs(gains[0].target - .36 * .94 * .38) < 1e-8);
-  assert.ok(Math.abs(gains[1].target - .36 * .25) < 1e-8);
+  assert.deepEqual(inputs.map(input => input.bus), ['ambience', 'ambience']);
+  assert.ok(Math.abs(gains[0].target * inputs[0].duck - .36 * .94 * .38) < 1e-8);
+  assert.ok(Math.abs(gains[1].target * inputs[1].duck - .36 * .25) < 1e-8);
+  assert.deepEqual(inputs.map(input => input.glide.timeConstant), [.075, .075]);
   audio.select('realm', false);
   assert.equal(sources[0].stops, undefined);
   assert.equal(sources[1].stops, 10.23);

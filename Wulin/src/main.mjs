@@ -21,9 +21,10 @@ import { createUiSemantics } from '@egret/engine/ui/semantics';
 import { createBrowserSemantics } from '@egret/engine/web/semantics';
 import { createUiTester } from '@egret/engine/ui/testing';
 import { createNativeUi } from './ui/native-shell.mjs';
+import { COMMAND_SEAL_URL } from './ui/native-kit.mjs';
 import { nativeSlots } from './ui/native-save.mjs';
 import { createLocale } from './ui/locale.mjs';
-import { browserSaveStorage } from '@egret/engine/web/kit';
+import { browserSaveStorage, pickBrowserTextFile, downloadBrowserTextFile } from '@egret/engine/web/kit';
 import { artUrl, loadArt, portraitUrl } from '../art-handoff/assets.mjs';
 import { ART_BY_ID, ARTS, CLASSES, CLASS_KEYS, levelOf, unmetNeeds } from './data/arts.mjs';
 import { DIFFICULTIES, FOCUSES, MERIDIANS, RELIC_BY_ID, RELICS, SCENARIOS } from './data/extras.mjs';
@@ -54,7 +55,10 @@ import {
 const num = value => Math.round(value).toLocaleString('en-US');
 import { createVoice } from './ui/voice.mjs';
 import { createFeedbackAudio } from './ui/feedback-audio.mjs';
-import { createClipAudio, createSoundtrack } from './ui/soundtrack.mjs';
+import { createBrowserAudio } from '@egret/engine/web/audio';
+import { createAudioGraph } from './ui/audio-graph.mjs';
+import { createPictureLoading, pictureStatus } from './view/loading-picture.mjs';
+import { createSoundtrack } from './ui/soundtrack.mjs';
 import { courtyardTrack, createCombatAudio, createWorldAmbience } from './ui/world-audio.mjs';
 import { createSpatialAudio } from './ui/spatial-audio.mjs';
 import { prologue } from './ui/opening.mjs';
@@ -66,10 +70,10 @@ const slots = nativeSlots(storage, problem => { pendingSaveProblem=problem.kind;
 const requestedLanguage=new URLSearchParams(location.search).get('lang');
 const initialLanguage=requestedLanguage==='en'||requestedLanguage==='zh'?requestedLanguage:storage.getItem('wulin-language')==='en'?'en':'zh';
 const locale = createLocale(initialLanguage);
-let game, nativeUi, projection, pointerSurface, hints, lastHints='', confirming = false, fatal = false;
-const clips = createClipAudio();
+let game, nativeUi, projection, pointerSurface, pictureLoading, hints, lastHints='', confirming = false, fatal = false, launchReady = false;
+const clips = createAudioGraph({ create: createBrowserAudio });
 const music = createSoundtrack(storage, clips);
-const feedbackAudio = createFeedbackAudio(storage);
+const feedbackAudio = createFeedbackAudio(storage, clips);
 const worldAmbience = createWorldAmbience(storage, clips);
 const spatialAudio = createSpatialAudio(clips, worldAmbience);
 const combatAudio = createCombatAudio(clips, feedbackAudio);
@@ -79,6 +83,7 @@ const voice = createVoice(storage, undefined, { clips, onSpeaking(active) {
   spatialAudio.duck(active);
   combatAudio.duck(active);
 } });
+clips.onRunning(() => { music.refresh(); worldAmbience.refresh(); spatialAudio.refresh(); combatAudio.settingsChanged(); });
 const recordedArts = new Map(ARTS.filter(art => CLASSES[art.klass]?.combat).map(art => [art.name, art.id]));
 const recordedArtIds = new Set(recordedArts.values());
 const prologueVoice = ['prologue-decree', 'prologue-gate', 'prologue-seal'];
@@ -150,11 +155,33 @@ let world = null;
 let art = null;
 const editor = createEditor(() => world, (next) => (world = next));
 /** State for the browser console and for automated checks; the game never reads it. */
-globalThis.__wulin = { get world() { return world; }, ui, get picture() { return picture; } };
+globalThis.__wulin = { get world() { return world; }, ui, get picture() { return picture; }, get audio() { return clips.mixer?.snapshot(); } };
 
+function failureReady(){globalThis.egretGame.ready=true;globalThis.egretGame.failed=true;}
+function liveUi(){return nativeUi&&game?.browser.loop.state==='running';}
+function failureWords(){return ui.language==='en'?'The game could not load. Check your connection and try again.':'游戏未能载入，请检查连接后重试。';}
+// If the host itself has terminated, it cannot draw a native retry control.
+// Keep just the existing bootstrap status line and one real reload link.
+function fatalReload(){
+  const status=document.querySelector('#loading');
+  if(status.getAttribute('role')==='alert')return;
+  projection?.dispose();document.querySelector('#overlay').inert=true;
+  const retry=document.createElement('a');retry.href=location.href;retry.textContent=ui.language==='en'?'Retry':'重试';
+  status.setAttribute('role','alert');status.replaceChildren(document.createTextNode(failureWords()),retry);
+  status.hidden=false;retry.focus();failureReady();
+}
 function fail(cause) {
-  console.error(cause?.message??cause, cause?.cause??""); if(fatal)return; fatal=true;
-  if(nativeUi){nativeUi.error(cause?.message??cause);requestAnimationFrame(()=>{globalThis.egretGame.ready=true;globalThis.egretGame.failed=true;document.querySelector('#loading').hidden=true;});} else {document.querySelector('#loading').textContent='载入失败，请重新载入网页 / Loading failed. Reload the page. '+String(cause?.message??cause);globalThis.egretGame.ready=true;globalThis.egretGame.failed=true;}
+  console.error(cause?.message??cause, cause?.cause??"");
+  if(fatal){if(!liveUi())fatalReload();return;}
+  fatal=true;picture.stage?.setInputEnabled?.(false);
+  if(!liveUi()){fatalReload();return;}
+  try{
+    nativeUi.error(failureWords());
+    requestAnimationFrame(()=>{
+      if(!liveUi())fatalReload();
+      else{document.querySelector('#loading').hidden=true;failureReady();}
+    });
+  }catch(error){console.error(error);fatalReload();}
 }
 window.addEventListener('error', event=>fail(event.error??event.message));
 window.addEventListener('unhandledrejection', event=>fail(event.reason));
@@ -185,7 +212,7 @@ const leaderOf = (sectId) => world.persons[world.sects[sectId].leaderId];
 // ---- the 3D picture ----------------------------------------------------------------------------------
 
 /** `stage` is null until a game starts, and stays null where 3D cannot be drawn. */
-const picture = { stage: null, seat: null, realm: null, tried: false, modules: null };
+const picture = { stage: null, seat: null, realm: null, realmRequest: null, tried: false, loading: false, modules: null };
 const storedQuality = () => {
   try {
     return storage.getItem('wulin-quality');
@@ -197,34 +224,67 @@ const storedQuality = () => {
 async function startPicture() {
   if (picture.tried) return;
   picture.tried = true;
+  picture.loading = true;
+  picture.timing={ started: performance.now() };
   try {
     const [stageModule, seatModule, arenaModule, realmModule] = await Promise.all([import('./view/stage.mjs'), import('./view/seat.mjs'), import('./view/arena.mjs'), import('./view/realm.mjs')]);
     picture.modules = { ...stageModule, ...seatModule, ...arenaModule, ...realmModule };
+    picture.timing.modules = performance.now();
     // Trees and plants come from model files; scenes are planted from them when they arrive.
     import('./view/flora.mjs').then((flora) => flora.loadFlora(new URL('./assets/flora/', location.href)));
     const quality = picture.modules.pickQuality(undefined, storedQuality());
-    picture.stage = await picture.modules.createStage(document.querySelector('#stage'), { game, pointerSurface, quality, webgpu: new URLSearchParams(location.search).get('backend')==='webgpu', onError: (cause) => console.warn('3D:', cause) });
+    picture.stage = await picture.modules.createStage(document.querySelector('#stage'), { game, pointerSurface, quality, webgpu: new URLSearchParams(location.search).get('backend')==='webgpu', onError: (cause) => console.warn('3D:', cause), onPresented: () => queueMicrotask(render) });
     picture.stage?.setTranslator?.(value=>locale.translate(value));
+    picture.timing.stage = performance.now();
   } catch (cause) {
     console.warn('3D unavailable:', cause);
   }
+  picture.loading = false;
   render();
+}
+
+/** Build only the realm of the current world. An abandoned request never enters the view. */
+function prepareRealm(stage) {
+  const snapshot=world;
+  if(picture.realmRequest?.world===snapshot) return;
+  const request={world:snapshot,stage,started:performance.now()};
+  picture.realmRequest=request;
+  const isCurrent=()=>picture.realmRequest===request&&world===snapshot&&picture.stage===stage&&ui.page==='world'&&ui.map3d;
+  let builtRealm;
+  void picture.modules.createRealmAsync(stage,()=>snapshot,{isCurrent,onAudio:updateSpatialAudio,onSelect(place){
+    if(ui.sheet||confirming||ui.page!=='world'||picture.realm!==builtRealm||builtRealm?.world!==world||stage.current!==builtRealm)return;
+    actions.place({place});feedbackAudio.play('pick');render();
+  }}).then(realm=>{
+    if(!realm||!isCurrent())return;
+    builtRealm=realm;realm.world=snapshot;realm.select(ui.mapPlace,false);
+    picture.realm=realm;picture.realmRequest=null;
+    picture.realmTiming={started:request.started,built:performance.now()};
+    render();
+  }).catch(cause=>{
+    if(!isCurrent())return;
+    console.warn('3D map unavailable:',cause);
+    picture.realmRequest=null;ui.map3d=false;
+    toast(ui.language==='en'?'3D map unavailable. The painted map remains usable.':'三维江湖暂不可用，仍可使用画卷。','warning');
+    render();
+  });
 }
 
 /** Moves the 3D picture into the frame the screen left for it, and shows the right scene there. */
 function syncPicture() {
   const { stage } = picture;
+  if(picture.realmRequest&&(picture.realmRequest.world!==world||picture.realmRequest.stage!==stage||ui.page!=='world'||!ui.map3d))picture.realmRequest=null;
+  if(picture.realm&&picture.realm.world!==world)picture.realm=null;
   if (!stage || !world) { stage?.setInputEnabled?.(false);stage?.sleep(true); return; }
   if(ui.page==='world'&&!ui.map3d){stage.setInputEnabled?.(false);stage.sleep(true);return;}
   stage.sleep(false);
-  stage.setInputEnabled?.(!ui.sheet && !confirming && isStaged());
+  stage.setInputEnabled?.(stage.presented && !ui.sheet && !confirming && isStaged());
   if (ui.page==='battle' && ui.fight) return void (stage.current!==ui.fight.arena && stage.show(ui.fight.arena));
   if (stagedScene()==='realm') {
     // The model of the realm is built once for a world and repainted as strongholds change hands.
     if (picture.realm?.world !== world) {
-      picture.realm = picture.modules.createRealm(stage, () => world, {onAudio:updateSpatialAudio,onSelect(place){ if(ui.sheet||confirming)return;actions.place({place});feedbackAudio.play('pick');render(); }});
-      picture.realm.world = world;
-      picture.realm.select(ui.mapPlace, false);
+      stage.sleep(true);stage.setInputEnabled?.(false);
+      prepareRealm(stage);
+      return;
     }
     if (stage.current !== picture.realm) stage.show(picture.realm);
     picture.realm.refresh();
@@ -273,7 +333,7 @@ function updateSpatialAudio(scene, dt) {
 
 function syncSpatialAudio() {
   const current = picture.stage?.current;
-  const next = world && !ui.fight && (ui.page === 'seat' && current === picture.seat || ui.page === 'world' && ui.map3d && current === picture.realm)
+  const next = world && !ui.fight && (ui.page === 'seat' && current === picture.seat || ui.page === 'world' && ui.map3d && !picture.realmRequest && picture.realm?.world===world && current === picture.realm)
     ? current : undefined;
   if (spatialScene === next) return;
   spatialScene = next;
@@ -588,7 +648,7 @@ let spokenPrologue=null;
 function context(){return {world,ui,picture,art,slots,storage,music,voice,worldAmbience,feedbackAudio,editor,
   helpers:{me,books,open,dayText,founder,leaderOf,b_status,jobText,jobName,bestArt,bestArtText,jobChoices,weaponText,roster,picked,waiting,placeDeal,marchParty,artSource,stagedScene,isStaged,canFoldCommand,sceneUrl,faceUrl,edited,modNote,storedQuality,hourText}};}
 function render(){
-  if(!game||fatal)return;
+  if(!game||fatal||!launchReady)return;
   if(world){
     if(ui.fight)ui.page='battle';
     const mine=placesOf(world,me());if(!mine.includes(ui.place))ui.place=mine.includes(SECT_BY_ID[me()].seat)?SECT_BY_ID[me()].seat:mine[0];
@@ -598,6 +658,7 @@ function render(){
     locale.registerNames?.(Object.values(world.persons??{}).map(p=>p.name).concat(Object.values(world.places??{}).flatMap(p=>(p.applicants??[]).map(a=>a.name)),ui.ownName,ui.ownLeader));
   }
   syncPicture();syncSpatialAudio();
+  pictureLoading?.show(pictureStatus(picture, ui.page==='battle'&&!ui.fight?'other':ui.page, !!world, ui.map3d, !!ui.sheet), ui.language);
   music.select(ui.fight?'battle':world?'explore':'title');syncAmbience();combatAudio.setEngaged(!!ui.fight);
   const beat=!world&&ui.page==='prologue'?ui.prologue:null;
   if(beat!==spokenPrologue){if(spokenPrologue!==null)voice.stop();spokenPrologue=beat;if(beat!==null)voice.say(prologue[beat].line,{clip:prologueVoice[beat]});}
@@ -609,11 +670,11 @@ function render(){
 }
 
 function download(name, text) {
-  const link = document.createElement('a');
-  link.href = URL.createObjectURL(new Blob([text], { type: 'application/json' }));
-  link.download = name;
-  link.click();
-  setTimeout(() => URL.revokeObjectURL(link.href), 2000);
+  try {
+    downloadBrowserTextFile(name.replace(/[\\/\u0000-\u001f\u007f]/gu, '_'), text, { mimeType: 'application/json' });
+  } catch {
+    toast('无法导出存档文件。', 'warning');
+  }
 }
 
 /** Takes a world as the one being played. */
@@ -650,37 +711,33 @@ try {
 } catch (cause) {
   console.warn('mod:', cause);
 }
+const fileOptions = { accept: '.json,application/json', maxBytes: 64 * 1024 * 1024 };
 function loadMod() {
-  const input = document.createElement('input');
-  input.type = 'file';
-  input.accept = '.json,application/json';
-  input.onchange = async () => {
+  void pickBrowserTextFile(fileOptions).then(file => {
+    if (!file) return;
     try {
-      const text = await input.files[0].text();
+      const text = file.text;
       if (!applyMod(JSON.parse(text)).ok) throw new Error('bad pack');
       storage.setItem('wulin-mod', text);
       if (world) slots.write('auto', world, autoLabel());
       location.reload();
     } catch {
-      toast('这个文件不是可用的数据包。');
+      toast('这个文件不是可用的数据包。', 'warning');
+      render();
     }
-  };
-  input.click();
+  }, () => { toast('文件过大或无法读取。', 'warning'); render(); });
 }
 
 function importFile() {
-  const input = document.createElement('input');
-  input.type = 'file';
-  input.accept = '.json,application/json';
-  input.onchange = async () => {
-    const file = input.files?.[0];
+  void pickBrowserTextFile(fileOptions).then(file => {
     if (!file) return;
-    const loaded = deserialize(await file.text());
+    let loaded;
+    try { loaded = deserialize(file.text); }
+    catch { loaded = { ok: false, why: '存档已损坏' }; }
     if (loaded.ok) enter(loaded.state, '已读入存档。');
     else toast(loaded.why, 'warning');
     render();
-  };
-  input.click();
+  }, () => { toast('文件过大或无法读取。', 'warning'); render(); });
 }
 
 function openEditor() {
@@ -700,8 +757,15 @@ const actions = {
   'sheet-list-page':({list,page})=>{(ui.sheet.listPages??={})[list]=Number(page);},
   page(data) {
     if (ui.fight && data.page !== 'battle') return toast('战事未了。', 'warning');
-    if (world && !open(data.page)) return toast('此处尚未开放。', 'warning');
     if (world && !membersOf(world, me()).length && !['chronicle', 'saves'].includes(data.page)) return toast('本门已不复存在。', 'warning');
+    // The realm can be browsed before its commands are unlocked. Battle still
+    // follows the original progression, with an explanation instead of a hidden tab.
+    if (world && !open(data.page) && data.page !== 'world') {
+      const feature = stillToCome(world).find(f => f.id === data.page);
+      if (feature) ui.sheet = { kind: 'unlock', locked: true, features: [feature] };
+      else toast('此处尚未开放。', 'warning');
+      return;
+    }
     if (!world && data.page === 'prologue' && ui.page === 'title') {
       applyIdentity(null);
       Object.assign(ui, { chosen: 'shaolin', founding: false, prologue: 0, succession: false, scenario: 'many', difficulty: 1, ownName: '', ownLeader: '' });
@@ -710,6 +774,24 @@ const actions = {
     ui.page = data.page;
     ui.sheet = null;
     ui.notice = '';
+    if (world && data.nav === '1') {
+      if (data.page === 'seat') {
+        const callers = placesOf(world,me()).filter(place => world.places[place].applicants.length);
+        if (callers.length) {
+          actions.look({place:callers.includes(ui.place)?ui.place:callers[0]});
+          ui.seatTab = 'recruit';
+          ui.commandCollapsed = false;
+        }
+      } else if (data.page === 'disciples') {
+        const watch = attention(world,me());
+        if (watch.promotable.length || watch.idle.length) {
+          Object.assign(ui, { only:watch.promotable.length?'promotable':'idle', rank:'全部', search:'', commandCollapsed:false });
+          (ui.listPages??={}).roster=0;
+        }
+      } else if (data.page === 'world' && world.pending) {
+        ui.sheet = { kind: world.pending.kind === 'siege' ? 'siege' : 'event' };
+      }
+    }
   },
   sheet(data) {
     if (data.kind === 'build') ui.buildPlot = null;
@@ -783,6 +865,7 @@ const actions = {
   'command-toggle': () => (ui.commandCollapsed = !ui.commandCollapsed),
   mapmode: () => ((ui.map3d = !ui.map3d), (ui.commandCollapsed = false)),
   zoom(data) {
+    if(ui.page==='world'&&picture.realmRequest)return;
     const orbit = picture.stage?.orbit;
     if (!orbit) return;
     orbit.distance = data.dir === 'reset' ? (ui.page === 'world' ? 150 : 50) : Math.max(orbit.minDistance, Math.min(orbit.maxDistance, orbit.distance * (data.dir === 'in' ? 0.78 : 1.28)));
@@ -863,6 +946,7 @@ const actions = {
   settle: (data) => say(settle(world, me(), data.place), '分舵已立。') && (ui.sheet = null),
   gift: (data) => say(gift(world, me(), data.sect, 500), `已向${SECT_BY_ID[data.sect].name}馈赠。`),
   march(data) {
+    if(ui.page==='world'&&picture.realmRequest){toast(ui.language==='en'?'Preparing the map, please wait.':'正在绘制江湖，请稍候。');return;}
     books().formation = pick('#formation') || books().formation;
     // On the 3D map the column is seen marching up the road before the fight begins.
     const from = PLACE_BY_ID[data.place].roads.find((id) => world.places[id].owner === me());
@@ -1100,15 +1184,15 @@ const changes = {
 };
 
 // Browser listeners are limited to the trusted audio unlock and visibility lifecycle.
-document.addEventListener('visibilitychange',()=>{music.setHidden(document.hidden);worldAmbience.setHidden(document.hidden);spatialAudio.setHidden(document.hidden);combatAudio.setHidden(document.hidden);if(document.hidden)voice.stop();});
+document.addEventListener('visibilitychange',()=>{music.setHidden(document.hidden);feedbackAudio.setHidden(document.hidden);worldAmbience.setHidden(document.hidden);spatialAudio.setHidden(document.hidden);combatAudio.setHidden(document.hidden);if(document.hidden)voice.stop();});
 function setLanguage(language){
   ui.language=language==='en'?'en':'zh';locale.setLanguage(ui.language);document.documentElement.lang=ui.language==='en'?'en':'zh-CN';
   try{storage.setItem('wulin-language',ui.language);}catch{}
 }
 const confirmActions=new Set(['new','quit','fight-retreat','ed-revert','mod-clear']);
 async function dispatch(act,data={},activation){
-  if(confirming)return;
   if(act==='retry'){location.reload();return;}
+  if(confirming||fatal)return;
   // Irreversible decisions get the engine's safe-area native confirmation.
   const overwrite=act==='save'&&slots.list().some(s=>s.slot===String(data.slot));
   if(confirmActions.has(act)||overwrite){
@@ -1238,8 +1322,10 @@ try{
  startup=await play({parent:host,width:1280,height:720,portrait:{width:720,height:1280},fit:'expand',pixelRatio:Math.min(2,Math.max(1.5,devicePixelRatio||1)),uiScale:{min:1,max:1.2},transparent:true,backend:'webgl2',audio:false,renderMode:'on-demand',semantics,
   setup(g){
     game=g;
+    g.scope.use(clips);
     hints=g.hints([]);
     pointerSurface=g.sprite(undefined,g.world);
+    pictureLoading=createPictureLoading(g);
     const arrangeSurface=()=>{const bounds=g.screen;pointerSurface.hitArea={x:bounds.x,y:bounds.y,width:bounds.width,height:bounds.height};};
     arrangeSurface();
     // The optional painted map also takes gestures from Play, never raw DOM pointers.
@@ -1252,21 +1338,30 @@ try{
     nativeUi=createNativeUi(g,{context,locale,dispatch,change,onClose:()=>{actions.close();render();},onError:fail});
     projection=createBrowserSemantics({semantics,canvas:g.canvas,width:g.screen.width,height:g.screen.height,onError:fail});
     // Audio's native browser hardware unlock stays in a trusted input event.
-    const unlock=e=>{music.unlock(e);feedbackAudio.unlock(e);};
+    const unlock=e=>{music.unlock(e);};
     g.canvas.addEventListener('pointerdown',unlock,{passive:true});
     g.canvas.addEventListener('keydown',unlock);
     g.canvas.addEventListener('contextmenu',event=>event.preventDefault());
     globalThis.__wulin.native={game:g,semantics,tester,ui:nativeUi};
     globalThis.egretGame={game:g,semantics,ready:false};
-    setLanguage(ui.language);render();
+    setLanguage(ui.language);
   },
-  arrange(g){if(pointerSurface){const b=g.screen;pointerSurface.hitArea={x:b.x,y:b.y,width:b.width,height:b.height};}projection?.sync({width:g.screen.width,height:g.screen.height});nativeUi?.resize();},
+  arrange(g){if(pointerSurface){const b=g.screen;pointerSurface.hitArea={x:b.x,y:b.y,width:b.width,height:b.height};}projection?.sync({width:g.screen.width,height:g.screen.height});pictureLoading?.resize();if(launchReady&&!fatal)nativeUi?.resize();},
   update(){updateInput();},
   onError:fail,
  });
- // Required manifest is loaded on the native loading layer; failure can be retried.
- const loaded=await game.loading([()=>loadArt()],{label:locale.translate('正在展开画卷')});art=loaded[0];
- if(fatal)throw Error('The startup screen could not be constructed.');document.querySelector('#loading').hidden=true;render();
+ // Resolve essential title assets before mounting any image-bearing view.
+ // Direct texture leases are scope-owned; the title reuses the same cached
+ // images. A rejected request reaches the native retry view, not Play's fatal
+ // asynchronous image-binding failure path.
+ const loaded=await game.loading([async()=>{
+   const manifest=await loadArt(),title=artUrl(manifest.assets?.title);
+   if(!title)throw Error('Wulin title artwork missing from its manifest.');
+   await Promise.all([game.browser.loadTexture(COMMAND_SEAL_URL),game.browser.loadTexture(title)]);
+   return manifest;
+ }],{label:locale.translate('正在展开画卷')});art=loaded[0];
+ if(fatal)throw Error('The startup screen could not be constructed.');
+ launchReady=true;document.querySelector('#loading').hidden=true;render();
  if(!slots.persistent)nativeUi.toast('当前浏览器无法永久保存，请导出存档。','warning');
  await new Promise(resolve=>requestAnimationFrame(resolve));globalThis.egretGame.ready=!fatal;
 }catch(error){fail(error);}

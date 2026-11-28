@@ -34,7 +34,7 @@ used or not; only each game's own code is read, not `vendor/`, tests or tools. T
 | `@egret/engine/paragraph` | 5 |  | [✔](FengshenChronicle/src/native-rpg-ui.mjs) | [✔](FivePhases/src/ui/hud.mjs) |  |  | [✔](InquestScrolls/src/view/type.mjs) |  |  | [✔](LanternShadows/src/native-ui.mjs) |  |  |  |  |  |  |  |  |  |  |  |  |  |  | [✔](Wulin/src/ui/native-shell.mjs) |
 | `@egret/engine/web/paragraph` | 5 |  | [✔](FengshenChronicle/src/native-rpg-ui.mjs) | [✔](FivePhases/src/ui/hud.mjs) |  |  | [✔](InquestScrolls/src/view/type.mjs) |  |  | [✔](LanternShadows/src/native-ui.mjs) |  |  |  |  |  |  |  |  |  |  |  |  |  |  | [✔](Wulin/src/ui/native-shell.mjs) |
 | `@egret/engine/web/keyboard` | 1 |  |  |  |  |  |  |  | [✔](JY/web/main.mjs) |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |
-| `@egret/engine/web/text-input` | 2 |  |  |  |  |  | [✔](InquestScrolls/src/view/verdict.mjs) |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | [✔](Wulin/src/ui/native-shell.mjs) |
+| `@egret/engine/web/text-input` | 1 |  |  |  |  |  | [✔](InquestScrolls/src/view/verdict.mjs) |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |
 | `@egret/engine/web/wechat-text-input` | 0 |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |
 | `@egret/engine/ui/editing` | 0 |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |
 | `@egret/engine/web/editing` | 1 |  |  |  |  |  | [✔](InquestScrolls/src/view/type.mjs) |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |
@@ -56,7 +56,7 @@ used or not; only each game's own code is read, not `vendor/`, tests or tools. T
 | `@egret/engine/web/game` | 4 |  | [✔](FengshenChronicle/src/main.mjs) |  |  |  |  |  |  |  |  |  | [✔](MechanismCity/src/main.mjs) |  | [✔](NightWardens/src/main.mjs) |  |  |  |  | [✔](SandScroll/src/main.mjs) |  |  |  |  |  |
 | `@egret/engine/play` | 12 | [✔](CanalWatch/src/main.mjs) | [✔](FengshenChronicle/src/native-rpg-ui.mjs) | [✔](FivePhases/src/main.mjs) |  |  | [✔](InquestScrolls/src/main.mjs) |  |  | [✔](LanternShadows/src/main.mjs) | [✔](LoveElective/src/engine/stage.mjs) | [✔](LubanBridge/src/main.mjs) |  | [✔](NezhaSea/src/main.mjs) |  |  | [✔](OperaDrums/src/main.mjs) | [✔](PeachCreek/src/main.mjs) |  |  |  |  | [✔](TaiwanMahjong/src/sound.mjs) |  | [✔](Wulin/src/main.mjs) |
 | `@egret/engine/audio` | 2 |  |  |  |  |  |  |  |  |  |  | [✔](LubanBridge/src/audio/sound.mjs) |  |  | [✔](NightWardens/src/audio/sound.mjs) |  |  |  |  |  |  |  |  |  |  |
-| `@egret/engine/web/audio` | 13 |  |  |  | [✔](FiveRegiments/src/audio.mjs) | [✔](FPS/src/audio.mjs) | [✔](InquestScrolls/src/audio/sound.mjs) |  | [✔](JY/web/wav-effects.mjs) | [✔](LanternShadows/src/sound.mjs) | [✔](LoveElective/src/audio.mjs) | [✔](LubanBridge/src/audio/sound.mjs) | [✔](MechanismCity/src/audio/sound.mjs) |  | [✔](NightWardens/src/audio/sound.mjs) | [✔](NineProvinces/src/audio/sound.mjs) | [✔](OperaDrums/src/audio/sound.mjs) |  |  | [✔](SandScroll/src/audio/sound.mjs) |  | [✔](StarBanner/src/audio/sound.mjs) |  |  |  |
+| `@egret/engine/web/audio` | 14 |  |  |  | [✔](FiveRegiments/src/audio.mjs) | [✔](FPS/src/audio.mjs) | [✔](InquestScrolls/src/audio/sound.mjs) |  | [✔](JY/web/wav-effects.mjs) | [✔](LanternShadows/src/sound.mjs) | [✔](LoveElective/src/audio.mjs) | [✔](LubanBridge/src/audio/sound.mjs) | [✔](MechanismCity/src/audio/sound.mjs) |  | [✔](NightWardens/src/audio/sound.mjs) | [✔](NineProvinces/src/audio/sound.mjs) | [✔](OperaDrums/src/audio/sound.mjs) |  |  | [✔](SandScroll/src/audio/sound.mjs) |  | [✔](StarBanner/src/audio/sound.mjs) |  |  | [✔](Wulin/src/main.mjs) |
 | `@egret/engine/ui/semantics` | 21 | [✔](CanalWatch/src/main.mjs) | [✔](FengshenChronicle/src/native-rpg-ui.mjs) | [✔](FivePhases/src/main.mjs) |  | [✔](FPS/src/main.mjs) | [✔](InquestScrolls/src/main.mjs) | [✔](jelly-pandas/src/hud.mjs) |  | [✔](LanternShadows/src/main.mjs) | [✔](LoveElective/src/engine/stage.mjs) | [✔](LubanBridge/src/view/kit.mjs) | [✔](MechanismCity/src/main.mjs) | [✔](NezhaSea/src/ui-input.mjs) | [✔](NightWardens/src/main.mjs) |  | [✔](OperaDrums/src/main.mjs) | [✔](PeachCreek/src/main.mjs) | [✔](Rally/src/ui/host.mjs) | [✔](SandScroll/src/main.mjs) | [✔](SnowTemple/src/ui/combat-hud.mjs) | [✔](StarBanner/src/hud.mjs) | [✔](TaiwanMahjong/src/main.mjs) | [✔](TeaHorseRoad/src/main.mjs) | [✔](Wulin/src/main.mjs) |
 | `@egret/engine/ui/testing` | 10 |  |  | [✔](FivePhases/src/main.mjs) |  | [✔](FPS/src/main.mjs) |  | [✔](jelly-pandas/src/hud.mjs) |  | [✔](LanternShadows/src/main.mjs) |  | [✔](LubanBridge/src/check.mjs) |  | [✔](NezhaSea/src/main.mjs) |  |  |  |  | [✔](Rally/src/ui/host.mjs) |  | [✔](SnowTemple/src/ui/host.mjs) | [✔](StarBanner/src/ui/host.mjs) |  |  | [✔](Wulin/src/main.mjs) |
 | `@egret/engine/web/semantics` | 21 | [✔](CanalWatch/src/main.mjs) | [✔](FengshenChronicle/src/native-rpg-ui.mjs) | [✔](FivePhases/src/main.mjs) |  | [✔](FPS/src/main.mjs) | [✔](InquestScrolls/src/main.mjs) | [✔](jelly-pandas/src/hud.mjs) |  | [✔](LanternShadows/src/main.mjs) | [✔](LoveElective/src/engine/ui.mjs) | [✔](LubanBridge/src/view/kit.mjs) | [✔](MechanismCity/src/main.mjs) | [✔](NezhaSea/src/ui-input.mjs) | [✔](NightWardens/src/main.mjs) |  | [✔](OperaDrums/src/main.mjs) | [✔](PeachCreek/src/main.mjs) | [✔](Rally/src/ui/host.mjs) | [✔](SandScroll/src/main.mjs) | [✔](SnowTemple/src/ui/host.mjs) | [✔](StarBanner/src/ui/host.mjs) | [✔](TaiwanMahjong/src/main.mjs) | [✔](TeaHorseRoad/src/main.mjs) | [✔](Wulin/src/main.mjs) |
@@ -72,7 +72,7 @@ used or not; only each game's own code is read, not `vendor/`, tests or tools. T
 | 2D 物理关节 · 2D physics joints (`addJoint`) | 2 |  |  |  |  |  |  |  |  |  |  | [✔](LubanBridge/src/sim/run.mjs) | [✔](MechanismCity/src/sim/sim.mjs) |  |  |  |  |  |  |  |  |  |  |  |  |
 | 托管界面根节点 · Managed UI root (`createUiRoot`) | 6 |  |  |  |  |  |  | [✔](jelly-pandas/src/ui/menus.mjs) |  |  |  |  | [✔](MechanismCity/src/ui/settings.mjs) |  |  |  |  |  | [✔](Rally/src/ui/menus.mjs) |  | [✔](SnowTemple/src/ui/menus.mjs) | [✔](StarBanner/src/screens.mjs) |  | [✔](TeaHorseRoad/src/ui/card.mjs) |  |
 | 网页视频 · Browser video (`createBrowserVideo`) | 2 |  |  |  |  |  |  |  |  |  |  |  | [✔](MechanismCity/src/screens.mjs) |  |  |  |  |  |  |  |  |  |  | [✔](TeaHorseRoad/src/ui/screens.mjs) |  |
-| 文字输入框 · Text input (`createTextInput`) | 2 |  |  |  |  |  | [✔](InquestScrolls/src/view/notes.mjs) |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  | [✔](Wulin/src/ui/native-shell.mjs) |
+| 文字输入框 · Text input (`createTextInput`) | 1 |  |  |  |  |  | [✔](InquestScrolls/src/view/notes.mjs) |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |
 | Spine 骨骼动画 · Spine skeletons (`Spine`) | 1 |  |  |  |  |  |  |  |  | [✔](LanternShadows/src/puppets.mjs) |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |
 | 多点触控 · Multi-touch (`multi-touch`) | 0 |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |
 
@@ -97,6 +97,7 @@ Capabilities fewer than two games use: one example at most. A new game is a good
 | `@egret/engine/web/pointer` | 无 · none |
 | `@egret/engine/animation` | [NightWardens](NightWardens/src/view/field.mjs) |
 | `@egret/engine/web/keyboard` | [JY](JY/web/main.mjs) |
+| `@egret/engine/web/text-input` | [InquestScrolls](InquestScrolls/src/view/verdict.mjs) |
 | `@egret/engine/web/wechat-text-input` | 无 · none |
 | `@egret/engine/ui/editing` | 无 · none |
 | `@egret/engine/web/editing` | [InquestScrolls](InquestScrolls/src/view/type.mjs) |
@@ -105,5 +106,6 @@ Capabilities fewer than two games use: one example at most. A new game is a good
 | `@egret/engine/web/loop` | 无 · none |
 | `@egret/spine` | [LanternShadows](LanternShadows/src/puppets.mjs) |
 | `@egret/spine/web` | 无 · none |
+| 文字输入框 · Text input (`createTextInput`) | [InquestScrolls](InquestScrolls/src/view/notes.mjs) |
 | Spine 骨骼动画 · Spine skeletons (`Spine`) | [LanternShadows](LanternShadows/src/puppets.mjs) |
 | 多点触控 · Multi-touch (`multi-touch`) | 无 · none |

@@ -1,4 +1,5 @@
 import { clampVolume } from './soundtrack.mjs';
+import { createInputGroup } from './audio-graph.mjs';
 
 const AMBIENCE_KEY = 'wulin-ambience';
 const WORLD_AUDIO = new URL('../../assets/audio/world/', import.meta.url);
@@ -22,11 +23,17 @@ export function courtyardTrack(hour) {
   return 'courtyard';
 }
 
-function createLoopLayer(clips, fadeSeconds, getLevel) {
-  let wanted, pending, playing, retiring;
+function createLoopLayer(clips, fadeSeconds, getLevel, getDuck) {
+  let wanted, pending, playing, retiring, input;
   let retryAfter = 0;
 
-  function retire() {
+  function retire(immediate = false) {
+    if (immediate) {
+      const now = clips.context?.currentTime ?? 0;
+      for (const entry of [retiring, playing]) if (entry) try { entry.source.stop(now); } catch {}
+      retiring = playing = undefined;
+      return;
+    }
     if (!playing) return;
     const now = clips.context.currentTime;
     if (retiring) retiring.source.stop(now);
@@ -38,12 +45,12 @@ function createLoopLayer(clips, fadeSeconds, getLevel) {
     playing = undefined;
   }
 
-  function select(track) {
+  function select(track, immediate = false) {
     if (wanted !== track) retryAfter = 0;
     wanted = track;
     if (!track) {
       pending = undefined;
-      retire();
+      retire(immediate);
       return;
     }
     if (playing?.track === track || pending?.track === track || clips.context.currentTime < retryAfter) return;
@@ -59,7 +66,8 @@ function createLoopLayer(clips, fadeSeconds, getLevel) {
       source.loop = true;
       gain.gain.setValueAtTime(0, now);
       gain.gain.setTargetAtTime(getLevel(track), now, fadeSeconds / 4);
-      source.connect(gain).connect(context.destination);
+      input ??= clips.createInput('ambience', { duck: getDuck() });
+      source.connect(gain).connect(input.input);
       retire();
       const entry = { source, gain, track };
       playing = entry;
@@ -77,6 +85,7 @@ function createLoopLayer(clips, fadeSeconds, getLevel) {
   }
 
   function mix() {
+    input?.setDuck(getDuck(), { timeConstant: .075 });
     const now = clips.context.currentTime;
     if (playing) {
       playing.gain.gain.cancelScheduledValues(now);
@@ -105,13 +114,13 @@ export function createWorldAmbience(storage, clips) {
   } catch {
     // Play with the defaults when settings storage is unavailable.
   }
-  const sceneLayer = createLoopLayer(clips, .85, track => volume * LOOP_LEVELS[track] * (ducked ? .38 : 1));
-  const marchLayer = createLoopLayer(clips, .23, track => volume * LOOP_LEVELS[track] * (ducked ? .25 : 1));
+  const sceneLayer = createLoopLayer(clips, .85, track => volume * LOOP_LEVELS[track], () => ducked ? .38 : 1);
+  const marchLayer = createLoopLayer(clips, .23, track => volume * LOOP_LEVELS[track], () => ducked ? .25 : 1);
 
   function sync() {
     const enabled = clips.ready && on && volume > 0 && !hidden;
-    sceneLayer.select(enabled ? sceneTrack : undefined);
-    marchLayer.select(enabled && sceneTrack === 'realm' && marching ? 'march' : undefined);
+    sceneLayer.select(enabled ? sceneTrack : undefined, hidden);
+    marchLayer.select(enabled && sceneTrack === 'realm' && marching ? 'march' : undefined, hidden);
     if (enabled && sceneTrack === 'realm' && !marchWarm) {
       marchWarm = clips.load(new URL('march.mp3', WORLD_AUDIO)).catch(() => { marchWarm = undefined; });
     }
@@ -135,6 +144,7 @@ export function createWorldAmbience(storage, clips) {
     },
     select(track, march = false) { sceneTrack = track; marching = march; sync(); },
     setHidden(value) { hidden = value; sync(); },
+    refresh() { sync(); mix(); },
     duck(value) { ducked = value; mix(); },
   };
 }
@@ -144,7 +154,6 @@ export function createCombatAudio(clips, settings) {
   let engaged = false;
   let hidden = globalThis.document?.hidden ?? false;
   let ducked = false;
-  let bus;
   const buffers = new Map();
   const active = new Set();
   const lastCue = new Map();
@@ -152,14 +161,10 @@ export function createCombatAudio(clips, settings) {
   let detailActive = false;
   let loaded = false;
 
-  function mix() {
-    if (!bus) return;
-    const now = clips.context.currentTime;
-    const gain = bus.gain;
-    gain.cancelScheduledValues(now);
-    const level = settings.on && !hidden ? settings.volume * .54 : 0;
-    gain.setTargetAtTime(level * (ducked ? .22 : 1), now, ducked ? .015 : .10);
-  }
+  const group = createInputGroup(clips, 'effects',
+    () => (settings.on && !hidden ? settings.volume * .54 : 0) * (ducked ? .22 : 1),
+    () => ducked ? .015 : .10);
+  const mix = () => group.refresh();
 
   function prepare() {
     if (!clips.ready || loaded || !settings.on) return;
@@ -169,16 +174,18 @@ export function createCombatAudio(clips, settings) {
     }
   }
 
-  function silence() {
+  function silence(immediate = false) {
     if (!active.size) return;
     const now = clips.context.currentTime;
     for (const voice of active) {
-      if (voice.stopping) continue;
+      if (voice.stopping && !immediate) continue;
       voice.stopping = true;
       const { source, gain } = voice;
-      gain.gain.cancelScheduledValues(now);
-      gain.gain.setTargetAtTime(0, now, .008);
-      source.stop(now + .04);
+      if (!immediate) {
+        gain.gain.cancelScheduledValues(now);
+        gain.gain.setTargetAtTime(0, now, .008);
+      }
+      try { source.stop(now + (immediate ? 0 : .04)); } catch {}
     }
   }
 
@@ -193,15 +200,9 @@ export function createCombatAudio(clips, settings) {
     const detail = cue === 'miss' || cue === 'heal';
     const strikes = active.size - Number(hitActive);
     if (hit ? hitActive : strikes >= STRIKE_LIMIT || (detail && (detailActive || strikes >= STRIKE_LIMIT - 1))) return;
-    if (!bus) {
-      bus = context.createGain();
-      bus.gain.value = 0;
-      bus.connect(context.destination);
-      mix();
-    }
     const source = context.createBufferSource();
     const gain = context.createGain();
-    const spatial = context.createStereoPanner?.();
+    const input = group.add({ pan });
     source.buffer = buffer;
     // A short ramp avoids a click when starting from a nonzero sample.
     gain.gain.setValueAtTime(0, now);
@@ -210,11 +211,7 @@ export function createCombatAudio(clips, settings) {
       gain.gain.setValueAtTime(level, now + HIT_TAIL - .04);
       gain.gain.linearRampToValueAtTime(0, now + HIT_TAIL);
     }
-    source.connect(gain);
-    if (spatial) {
-      spatial.pan.value = pan;
-      gain.connect(spatial).connect(bus);
-    } else gain.connect(bus);
+    source.connect(gain).connect(input.input);
     const voice = { source, gain, stopping: false };
     if (hit) hitActive = true;
     if (detail) detailActive = true;
@@ -225,7 +222,7 @@ export function createCombatAudio(clips, settings) {
       if (detail) detailActive = false;
       source.disconnect();
       gain.disconnect();
-      spatial?.disconnect();
+      group.remove(input);
     };
     const offset = Math.min(ATTACK_OFFSET[cue], Math.max(0, buffer.duration - .01));
     if (hit) source.start(now, offset, HIT_TAIL);
@@ -244,12 +241,12 @@ export function createCombatAudio(clips, settings) {
         lastCue.clear();
       }
     },
-    setHidden(value) { hidden = value; mix(); if (hidden) silence(); },
+    setHidden(value) { hidden = value; mix(); if (hidden) silence(true); },
     settingsChanged() { mix(); if (!settings.on || !settings.volume) silence(); else if (engaged) prepare(); },
     duck(value) { ducked = value; mix(); },
     silence,
     contact({ type, klass, x, critical }) {
-      if (!engaged || hidden || !settings.on || !settings.volume || clips.context?.state !== 'running') return;
+      if (!engaged || hidden || !settings.on || !settings.volume || !clips.ready || clips.context?.state !== 'running') return;
       const pan = Math.max(-.46, Math.min(.46, x / 29));
       if (type === 'miss' || type === 'heal') {
         emit(type, pan, type === 'miss' ? .38 : .58);

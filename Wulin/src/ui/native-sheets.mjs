@@ -18,27 +18,27 @@ import { TEACHING, teachingOffers } from '../core/library.mjs';
 import { SEAT_PLOTS, availablePlots } from '../core/seat-layout.mjs';
 import { beds, buildAvailability, canFallBackAtHome, ledger, membersOf, openingProtection, placesOf, recruitAvailability, residents, strength, usedCells } from '../core/world.mjs';
 import { portraitUrl } from '../../art-handoff/assets.mjs';
-import { text, button, row, col, image, bar, field, choice } from './native-kit.mjs';
+import { text, button, row, col, image, bar, field, choice, COLORS, TITLE_FONT } from './native-kit.mjs';
 
-const INK = 0x23302b, GOLD = 0x88612f, CINNABAR = 0x8e3d30, GREEN = 0x466956;
+const INK=COLORS.ink, GOLD=COLORS.gold, CINNABAR=COLORS.vermillion, GREEN=COLORS.jade;
 const fmt = new Intl.NumberFormat('zh-CN');
 const num = (value) => fmt.format(Math.round(value));
 const flat = (...nodes) => nodes.flat(Infinity).filter(Boolean);
 const para = (value, props = {}) => text(value, { size: 16, lines: 2, ...props });
 const lead = (value, props = {}) => para(value, { bold: true, size: 18, ...props });
-const note = (value, props = {}) => para(value, { size: 14, color: GOLD, ...props });
+const note = (value, props = {}) => para(value, { size: 15, color: COLORS.muted, fontWeight: 500, ...props });
 const warn = (value, props = {}) => para(value, { color: CINNABAR, ...props });
-const heading = (value) => text(value, { bold: true, size: 20, color: GOLD, height: 34 });
+const heading = value => row([col([],{width:4,height:23,color:CINNABAR,semantic:false}),text(value,{bold:true,size:20,fontFamily:TITLE_FONT,color:INK,height:32,width:'fill'}),col([],{width:24,height:1,color:GOLD,semantic:false})],{height:36,gap:6,padding:2,color:COLORS.wash,card:true,border:{color:COLORS.edge,width:1}});
 const close = (label = '取消') => button(label, 'close', {}, { kind: 'outline' });
 const primary = (label, act, data = {}, props = {}) => button(label, act, data, { kind: 'primary', ...props });
 const secondary = (label, act, data = {}, props = {}) => button(label, act, data, { kind: 'outline', ...props });
 const form = (label, id, options, current = options[0]?.[0] ?? '') => choice(label, null, { id }, current, options);
 const opt = (label, change, current, options, data = {}) => choice(label, change, data, current, options);
 const fact = (label, value) => row([
-  text(label, { color: GOLD, width: '34%', size: 14, height: 'fill' }),
-  text(String(value), { width: 'fill', height: 'fill', size: 15, lines: 1 }),
-], { height: 48, gap: 6 });
-const card = (title, content, action) => col(flat(lead(title, { lines: 1, height: 28 }), content, action), { padding: 10, gap: 5, card: true });
+  text(label, { color: COLORS.muted, width: '32%', size: 15, height: 'fill' }),
+  text(String(value), { width: 'fill', height: 'fill', size: 16, fontWeight: 600, lines: 1 }),
+], { height: 42, gap: 8, padding:5, color:COLORS.panel, card:true, border:{color:0xdbc9a7,width:1} });
+const card = (title, content, action) => col(flat(lead(title, { lines: 1, height: 30, color:INK }), content, action), { padding: 9, gap: 5, card: true, color:COLORS.wash,border:{color:COLORS.edge,width:1} });
 const pair = (title, content) => card(title, para(content));
 const sheet = (title, children, footer = []) => ({ title: String(title), children: flat(children), footer: flat(footer) });
 const plotLabel = (plot) => `第 ${plot + 1} 块地 · ${SEAT_PLOTS[plot].x < 0 ? '西侧' : '东侧'}`;
@@ -89,11 +89,11 @@ export function createSheet(ctx) {
       detail: `${RANKS[person.rank].name} · ${person.level} 级 · 战力 ${num(prowess(person))} · ${bestArtText(person)}`,
       name: `${act}-${person.id}`, height: 84,
     }),
-  ], { height: 90, gap: 7, padding: 3, card: true });
+  ], { height: 90, gap: 7, padding: 3, card: true, color:COLORS.panel,border:{color:COLORS.edge,width:1} });
   const portraitBlock = (p, copy, view = 'bust') => row([
     face(p, view, view === 'full' ? 120 : 88, view === 'full' ? 166 : 126),
     col(flat(lead(`${p.name} · ${gradeName(p)}`, { lines:2 }), para(copy, { lines: 4 })), { width: 'fill', gap: 4 }),
-  ], { height: view === 'full' ? 180 : 166, gap: 12, card: true, padding: 6 });
+  ], { height: view === 'full' ? 180 : 166, gap: 12, card: true, color:COLORS.panel,border:{color:COLORS.goldLight,width:1},padding: 6 });
   const formation = (party) => form('阵法', 'formation', formationsFor(me(), party).map((id) => [id, `${FORMATIONS[id].name}：${FORMATIONS[id].does}`]), books().formation ?? 'line');
   const movesOf = (person) => Object.keys(person.arts).filter((id) => CLASSES[ART_BY_ID[id].klass].combat)
     .flatMap((id) => ART_BY_ID[id].moves.map((move, slot) => ({ id, slot, move })))
@@ -276,6 +276,11 @@ export function createSheet(ctx) {
       return sheet('弟子长进',[p&&portraitBlock(p,wordsOf(p)),para(data.text,{lines:4})],[p&&secondary('看看此人','person',{id:p.id}),primary('甚好','close')]);
     }
     case 'unlock':
+      if(data.locked)return sheet(ui.language==='en'?'Battle · Not yet open':'战阵·尚待开启',[
+        lead(ui.language==='en'?'The seal opens as your sect grows.':'山门根基渐稳，方可遣人出战。'),
+        para(ui.language==='en'?'Complete five objectives or reach the first season (90 days).':'开派满一季（九十日）或完成前五项要务后开放。',{lines:4}),
+        ...data.features.map(f=>pair(f.name,f.about)),
+      ],primary('知道了','close'));
       return sheet('山门日盛',[note('门派有了些根基，新的事务交到你手上：'),data.features.map(f=>pair(f.name,f.about))],primary('知道了','close'));
     case 'tourney': {
       const meet=world.tourney;

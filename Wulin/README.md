@@ -18,28 +18,28 @@ An art can be learned only where it can be had: a sect's own arts, those one of 
 
 ## 序章与美术 · Prologue and art
 
-新局从禁武令传抵山门开始。读过三幕序章后，可接掌现有门派或自立门户，再选择传承规则。序章可跳过，存档可从标题画面直接载入。松墨、矿蓝、淡铜和朱砂贯穿人物立绘、场景画、江湖沙盘和战场。战场用同一套门派名牌标识队伍，按武学区分招式形状和颜色。
+新局从禁武令传抵山门开始。读过三幕序章后，可接掌现有门派或自立门户，再选择传承规则。序章可跳过，存档可从标题画面直接载入。松墨、暖宣纸、淡铜、矿蓝和朱砂贯穿人物立绘、场景画、江湖沙盘和战场。原生指令框使用统一的纸面、深墨标题、铜色边线与本作自制章纹；正文使用清晰的无衬线字，标题保持宋体书卷气。主要操作用金色标明，待办用朱色标明，一般选择用浅纸色区分。战场用同一套门派名牌标识队伍，按武学区分招式形状和颜色。
 
-A new game opens as the edict reaches the mountain gates. The three skippable scenes lead into founding or taking over a sect and choosing a succession rule. Saves load directly from the title screen. Ink, mineral blue, brass and cinnabar carry through the character art, painted scenes, world map and arena. Team markers identify fighters, while attack shapes and colors distinguish martial techniques.
+A new game opens as the edict reaches the mountain gates. The three skippable scenes lead into founding or taking over a sect and choosing a succession rule. Saves load directly from the title screen. Ink, warm paper, brass, mineral blue and cinnabar carry through the character art, painted scenes, world map and arena. Native command frames share paper surfaces, ink headers, brass borders and an original decorative seal; body text is clean sans-serif and headings retain a Song-style serif. Gold marks primary decisions, cinnabar marks pending matters, and paper-colored alternatives are distinct. Team markers identify fighters, while attack shapes and colors distinguish martial techniques.
 
 [美术体系 · Art direction](art-handoff/ART-DIRECTION.md)
 
 ## 玩法 · How to play
 
-- **山门 · Seat**：拖动转视角，滚轮或双指缩放。点建筑可扩建，点空地可在该处兴建。开局玩家就是总舵掌门，招贤榜已有两名求见者，有空铺便可收录。掌门手札可随时打开，会指向厢房、招贤榜与店铺。
+- **山门 · Seat**：拖动转视角，滚轮或双指缩放。点建筑可扩建，点空地可在该处兴建。开局玩家就是总舵掌门，招贤榜已有两名求见者，有空铺便可收录。底部朱色「山门 2」这样的数字表示本派求见者人数，点整块按钮可前往招贤；弟子待办数也可直达待处理名册。掌门手札可随时打开，会指向厢房、招贤榜与店铺。
 - **立足期**：新局按难度获得 6、5、4、3 年立足期。主动出兵会解除与目标门派的保护。抓紧扩建厢房、延揽门徒并安排一旬收支。
 - **首战守备**：掌门手札可查看守军、山门和薪俸。易与寻常新局在立足期后首次无故受袭、且只剩原山门时，战败可退守内院一次，损失两成银粮。
 - **弟子 · Disciples**：给每个人派差事：修练一门武学、采集、制造、行侠仗义或欺压良民。练得够了可以晋升，身份从杂役、外门、内门到亲传。
-- **江湖 · The world**：与本派据点相邻的无主之地可以开设分舵，相邻的他派据点可以出兵。出兵后双方自动交手，可随时暂停（空格）、调速、点选敌人下令集火、撤退或速决。馈赠能改善关系。
+- **江湖 · The world**：新局即可观览沙盘、查看各地与道路；过完头一旬或完成首项要务后，方可开设相邻无主地的分舵、对相邻门派出兵和馈赠。战阵在开派满一季或完成前五项要务后开放。出兵后双方自动交手，可随时暂停（空格）、调速、点选敌人下令集火、撤退或速决。馈赠能改善关系。
 - **时间 · Time**：暂停、行、快、疾四档。每十日一旬，发薪、耗粮、结算忠诚，各派也在这时行动。
 - **存档 · Saves**：三个存档位和一个自动存档保存在浏览器里；可以导出为文件，也可以导入文件。
 - **修改器 · Editor**：连按两下 F8 打开（没有键盘时，连点五下顶栏的日期）。可改门派、角色和物品数据，并可一键还原到打开之前。
 
-- **Seat**: drag to turn the view, use the wheel or two fingers to zoom. Select a building to upgrade it or an empty plot to build there. You start as the sect's leader at its seat with two candidates already at the board. A free bed is required to take one in. The leader's handbook points you to quarters, recruitment and shops.
+- **Seat**: drag to turn the view, use the wheel or two fingers to zoom. Select a building to upgrade it or an empty plot to build there. You start as the sect's leader at its seat with two candidates already at the board. A free bed is required to take one in. A cinnabar navigation button such as “Seat 2” counts all visiting applicants; press the entire button to go to recruitment. The disciples' pending count likewise opens the relevant roster. The leader's handbook points you to quarters, recruitment and shops.
 - **Opening truce**: new campaigns get 6, 5, 4 or 3 years of protection according to difficulty. Launching an attack lifts it with that opponent. Use this time to make room for new disciples and establish an income.
 - **First defense**: the leader's handbook shows the garrison, gate and payroll. On Easy or Normal, a new campaign that loses its first unprovoked defense of its only original seat after the truce can fall back into the inner court once, losing 20% of its silver and grain.
 - **Disciples**: give each one work: practise an art, gather, craft, do good deeds or lean on the locals. Enough practice earns a promotion, from servant to outer, inner and personal disciple.
-- **The world**: open ground next to one of your strongholds can be settled, and a neighbour's stronghold can be attacked. The two sides then fight on their own while you pause (space), change speed, tap an enemy to set your whole side on them, break off, or settle it at once. Gifts mend relations.
+- **The world**: browse the realm, its strongholds and roads immediately. Settling neighbouring open ground, launching campaigns and sending gifts become available after the first ten days or first objective. Battle opens after the first season or the first five objectives. The two sides then fight on their own while you pause (space), change speed, tap an enemy to set your whole side on them, break off, or settle it at once. Gifts mend relations.
 - **Time**: paused or one of three speeds. Every ten days wages are paid, grain is eaten, loyalty is reckoned and the other sects make their moves.
 - **Saves**: three slots and an automatic one are kept in the browser; a save can be exported as a file and imported again.
 - **Editor**: press F8 twice (without a keyboard, tap the date in the top bar five times). It changes sect, character and item data, and one button puts everything back as it was.
@@ -63,7 +63,7 @@ A new game opens as the edict reaches the mountain gates. The three skippable sc
 - **性情与生平 · Tempers and records**：性情不只是数值：弟子会按各自的性情来找掌门说事，怎么答复各有得失。入门、晋升、拜师、武学练到三重、六重、十重、登擂、出征、论剑，都记在各人的生平里；头一回登擂得胜、头一门武学圆满这样的日子，会单独告知。
 - **论剑大会 · The Sword Meet**：每三年九月初一开擂，各派遣一名弟子出战，掌门、长老与江湖奇人不得下场。可亲自上场指挥，也可交由弟子应战。夺魁者门派威望大增、得银千两，另赠一部本派所缺的秘笈，本人留名「论剑魁首」。
 - **一键安排 · One-step work**：「一键安排差事」按资质给全派（或只给闲着的人）排差事：资质好的修练最合适的武学，资质平平的杂役与外门里抽三成去采集、制造。确认前可逐条过目。弟子页顶上列着待你定夺的事：闲着的、可晋升的、想走的、带伤的。
-- **逐步开放 · Affairs open in turn**：新局先只有山门、弟子、纪事与存档；江湖、拜师、店铺、事务、战阵、装备、往来、经脉、卧底随门派立稳依次开放，每开一项有一句说明，掌门手札里列着尚未开放的各项。老手可在设置里一次全开；旧存档不受影响。
+- **逐步开放 · Affairs open in turn**：新局始终展示山门、弟子、江湖、战阵、纪事、存档与设置七个入口；江湖前期仅观览，锁定的战阵可点开说明。江湖事务、拜师、店铺、事务、战阵、装备、往来、经脉、卧底仍按原条件依次开放，每开一项有说明，掌门手札里也列着尚未开放的各项。老手可在设置里一次全开；旧存档不受影响。
 - **图鉴 · Collection books**：纪事页另有武学谱、奇人录、神兵谱，记着已得与未得。
 
 - **Grades**: every disciple has one of five grades by aptitude: ordinary, fair, fine, rare and peerless. The score leans on the best aptitude, then the second and the run of all five; aptitude sets how fast an art is learned, so the grade says how far a person can be brought on. It is shown on name plates, at the recruiting board and in the ranking table.
@@ -71,7 +71,7 @@ A new game opens as the edict reaches the mountain gates. The three skippable sc
 - **Tempers and records**: a temper is more than a number. Disciples bring matters to the leader by their temper, and each answer has its price. Joining, promotion, taking a master, an art reaching its third, sixth and tenth level, the duelling stage, campaigns and the Sword Meet are written into each person's record, and the days worth remembering (a first win on the stage, a first art completed) are told as they happen.
 - **The Sword Meet**: on the first of the ninth month every third year each sect sends one disciple; leaders, elders and wanderers stay home. Fight each bout in person or leave it to the disciple. The winner's sect gains renown, a thousand silver and a manual it lacks, and the winner keeps the title.
 - **One-step work**: one button sets work for the whole sect, or only for those idle, by aptitude: the gifted practise the art that suits them best, and about a third of the plainer junior disciples gather and craft. Every line can be read before it is applied. The top of the disciples page lists what is waiting on the leader: the idle, those ready for promotion, those thinking of leaving, the wounded.
-- **Affairs open in turn**: a new game starts with the seat, the disciples, the chronicle and the saves. The map, masters, shops, sect affairs, the field, gear, diplomacy, meridians and spies open as the sect finds its feet, each with a line on what it is for, and the handbook lists what is still to come. The settings can open everything at once, and saves from before are unaffected.
+- **Affairs open in turn**: all seven destinations—seat, disciples, realm, battle, chronicle, saves and settings—are discoverable from the start. The realm is initially browse-only, and selecting the locked battle tab opens its explanation. Realm commands, masters, shops, sect affairs, the field, gear, diplomacy, meridians and spies still follow their original unlock conditions; the handbook lists what is still to come. The settings can open everything at once, and saves from before are unaffected.
 - **Collection books**: the chronicle keeps books of arts, wanderers and named weapons, held and not yet held.
 
 ### 门派 · Sects
@@ -125,11 +125,16 @@ Serve this folder with any static file server to run it, for example `npx serve 
 | `@egret/engine` `createEngine`；`createWorld3DHost` | 引擎、时钟和 3D 宿主 · the engine, its clock and the 3D host | `src/view/stage.mjs` |
 | `@egret/engine/webgl2/world3d` `createWebGL2Renderer3D`；`@egret/engine/webgpu/world3d` `createWebGPURenderer3D` | 默认 WebGL2，可选 WebGPU；按设备分画质，手机不开阴影和后期 · WebGL2 by default, WebGPU on request; phones get no shadows or post-processing | `src/view/stage.mjs` |
 | `@egret/engine/play`、`play`、`createWorld3DView` | 透明原生 UI 与 3D 共用引擎时钟 · native transparent UI and 3D share a clock | `src/main.mjs` |
-| `game.show`、`createUiScreenStack`、`game.confirm`、`game.badges`、`game.hints` | 具名数据界面、模态、指引与通知 · named data views, modals, guidance and feedback | `src/ui/native-shell.mjs` |
+| `game.show`、`createUiScreenStack`、`game.confirm`、`game.badges`、`game.hints` | 具名数据界面、模态、指引、可直达事务的待办数 · named data views, modals, guidance and actionable pending counts | [`src/ui/native-shell.mjs`](src/ui/native-shell.mjs) |
+| `game.toast`、`PlayToastHandle`、`placement` | 安全区内的原生通知、前景层、对比色与关闭句柄 · native safe-area notifications, foreground placement, contrast and dismissible handles | [`src/ui/native-notice.mjs`](src/ui/native-notice.mjs) |
 | `uiScale`、`portrait`、`tablet`、`fit` | 自适应安全区与触控 · safe and adaptive touch layout | `src/ui/native-pages.mjs` |
 | `createUiSemantics`、`createBrowserSemantics`、`createUiTester` | 语义树、焦点、浏览器验收 · semantics, focus and browser acceptance | `src/main.mjs` |
 | `createSaveStore`、`browserSaveStorage` | 旧档兼容及坏档保留 · legacy save compatibility and quarantine | `src/ui/native-save.mjs` |
-| `createTextTable`、`pickLanguage`、`createBrowserTextInput`、`createCanvasParagraphProvider` | 双语、系统输入和段落 · bilingual text, native entry and paragraphs | `src/ui/native-shell.mjs` |
+| `createTextTable`、`pickLanguage` | 界面中英文及动态词条 · bilingual interface and dynamic labels | [`src/ui/locale.mjs`](src/ui/locale.mjs) |
+| `createCanvasParagraphProvider`、`createParagraphCache` | 原生富文本缓存显式配置 96 条目 / 96 并发任务、64 MiB 图像预算；取消早期每页 14 段落的截断绕过 · rich text with explicit 96-entry / 96-job cache and a 64 MiB image budget; no former 14-paragraph fallback | [`src/ui/native-shell.mjs`](src/ui/native-shell.mjs)、[`src/ui/native-kit.mjs`](src/ui/native-kit.mjs) |
+| `game.select`、`view.edit` | 原生选项弹窗、文字及数值编辑，保留已有焦点和数据绑定 · native selection and text/number editing with existing focus and bindings | [`src/ui/native-shell.mjs`](src/ui/native-shell.mjs) |
+| `pickBrowserTextFile`、`downloadBrowserTextFile` | 用户主动选择存档与数据包，按原格式保存文件 · user-picked save/data pack import and existing-format file export | [`src/main.mjs`](src/main.mjs) |
+| `createBrowserAudio`、`BrowserAudio.createInput` | 单一原生浏览器混音器，`music`、`effects`、`voice`、`ambience` 四路；源的音量、压低、声像和低通由原生输入条处理 · one native browser mixer with four buses and per-source gain, ducking, pan and lowpass | [`src/ui/audio-graph.mjs`](src/ui/audio-graph.mjs)、[`src/ui/spatial-audio.mjs`](src/ui/spatial-audio.mjs)、[`src/ui/voice.mjs`](src/ui/voice.mjs) |
 | `createOverlayScreenMarkers3D`、`createGlyphFont` | 场景投影标签及伤害数字池 · projected scene labels and damage pool | `src/view/scene-markers.mjs` |
 | `game.gestures`、`preparePrograms`、`createWorld3DStats` | 原生拖动缩放、场景预热和统计 · native camera gestures, scene warmup and stats | `src/view/stage.mjs` |
 | `Scene3D`、`createDirectionalLight3D`、`createHemisphereLight3D` | 山门、天下地图和战阵三个场景，日月随时辰转动 · the seat, the realm map and the arena, light turning with the hour | `src/view/stage.mjs`、`src/view/realm.mjs` |
@@ -142,18 +147,22 @@ Serve this folder with any static file server to run it, for example `npx serve 
 ## 已验证 · Verified
 
 - 2026-11-28：原始 80 项规则测试保持通过，新增原生页面、弹出单、存档、手势和本地化测试。 · Original 80 rule tests remain green; added native view, sheet, save, gesture and localization coverage.
-- 实际 PC / Fold7 验收包括开场、山门、招募、建造、地图、战斗和旧档；参见 [QUALITY.md](QUALITY.md)。 · Actual PC and Fold7 checks include opening, seat, recruitment, construction, realm, battle and legacy-format saves.
+- 既有原生界面迁移验收包含 PC / Fold7 的开场、山门、招募、建造、地图、战斗和旧档。本轮候选引擎的验收结果按设备与版本记录在 [QUALITY.md](QUALITY.md)，不把既有真机结果或软件渲染等同于新版本真机验证。 · Earlier migration checks covered opening, seat, recruitment, construction, realm, battle and legacy saves on PC and Fold7. The current candidate's separate device and version results belong in QUALITY.md; prior hardware results and software rendering do not qualify the new version.
+- 候选预览在 Chromium 软件渲染上实测：新档七项导航、点山门待办前往招贤、提前观览江湖、战阵解锁说明；从原规则无界面推演生成的第 1440 日存档验证 24 名弟子与 96 条纪事的富文本、滚动和弹窗释放。 · On the candidate preview with Chromium software rendering, the seven new-game destinations, applicant shortcut, read-only realm and battle lock explanation were exercised. A valid day-1440 simulated save with 24 disciples and 96 chronicle entries was used to inspect rich text, scrolling and modal release.
 - 无界面十年推演及 200 场各组平衡验证仍可运行；规则和数值未改。 · Ten-year headless and 200-bout balance series still run; the rules and numbers are unchanged.
 - 迁移映射和复跑见 [UI-MIGRATION.md](UI-MIGRATION.md)。 · Migration inventory and repeat commands are in UI-MIGRATION.md.
 
 ## 已知问题 · Known issues
 
-- 大规模富文本采用分页，音频保留原有混音；详见 [ENGINE-NOTES.md](ENGINE-NOTES.md)。 · Large rich-text lists page within the engine budget; the existing mix is retained.
+- 大规模富文本保留便于阅读的分页；新缓存额度仍有限，视口外富文本目前仍会提前准备。系统动态语音由设备语音服务播放，不能作为 WebAudio 音源接入四路混音器，但仍联动压低其他声音。详见 [ENGINE-NOTES.md](ENGINE-NOTES.md)。 · Large rich-text lists retain pagination for readability; the enlarged cache is finite and offscreen rich text still prepares eagerly. Dynamic system speech remains platform audio, outside the WebAudio mixer, with coordinated ducking of the other sounds.
 - 画卷模式以原生列表选择据点；3D 模式可直接点选地标。自定义姓名保持玩家输入，不保证自动翻译。 · Painted map locations use the native list; 3D supports direct selection. Custom names retain player-authored spelling.
 
 ## 已解决 · Solved
 
 - 原生滚动裁切多屏报告与键盘语义焦点验收（引擎 #549/#552）：九屏无错误或警告，通用 A1 识别实际原生焦点；矮横屏山门工具避让右侧命令面板，提示不再被顶栏遮挡。 · Correct native clipped-bound reports and keyboard focus verification; the short-landscape seat tools no longer overlap the command panel.
+- 引擎 #557 已合入 main，提供扩大段落额度、混音器外部输入条、原生选择和编辑、浏览器文件交换及可定位 toast。游戏去除相应的临时绕过，保留原有规则、数值、存档格式、音乐音效及旁白节奏。 · Engine #557 is now on main with larger paragraph budgets, external mixer inputs, native selection and editing, browser file exchange and positioned toasts. The corresponding temporary workarounds are removed without changing simulation rules, numbers, save format, soundtrack, cues or narration timing.
+- 新档原先隐去江湖、战阵导航，现保留入口及真实开放条件；将悬空的红点变成按钮内的待办数字并直接进入相应事务。 · The previously hidden realm and battle tabs are discoverable on new saves without bypassing progression; pending counts are placed inside actionable controls.
+- 江湖沙盘采用严格等价的构造优化：精确裁剪河道影响范围、预计算只依地理的最近两个据点及距离、保留原归属判断，分批跨帧构造完整场景。着色程序准备与真实首帧提交分开，实际渲染成功后才解除场景输入等待；不以删减地形、树木或改变地图规则换取速度。 · Realm construction uses exact river-cut rejection, precomputed geography-only nearest two strongholds and distances, and ordered frame-sliced assembly of the complete scene. Shader preparation is distinct from the first rendered frame; scene input waits for actual rendering. Terrain, vegetation and rules are not reduced for speed.
 - 开局改成可以直接上手的序章（`e526ab0`）。 · The start became a playable prologue.
 - 战斗前预热阵容旁白（`761ea74`）；战斗音效和画面的打击点对齐（`f5a87bd`）。 · Lineup narration is warmed up before combat; combat sounds land with the visible blows.
 - 对话框里的操作不再冲掉提示（`3d595cd`）；论剑大会的进度得以保留（`cdc3efd`）。 · Dialog actions keep the feedback; Sword Meet progress is kept.
@@ -163,7 +172,7 @@ Serve this folder with any static file server to run it, for example `npx serve 
 ## 未完成 · Unfinished
 
 - 物理手柄、真实读屏、原生中文输入法选词、Safari、Firefox、微信及完整长期战役的验收尚未运行。 · Physical controller, real screen reader, native Chinese IME candidates, Safari, Firefox, WeChat and whole long campaigns remain untested.
-- 新 UI 仅在 WebGL2 和当前实际设备路径完成集中回归；本次未重新完成全流程 WebGPU 与扬声器混音实听。 · Full WebGPU and speaker listening are not requalified by this migration.
+- 本轮原生音频与界面升级尚不等同于完整 WebGPU 或物理扬声器实听验收；具体已测设备及未覆盖条件见 [QUALITY.md](QUALITY.md)。 · The native audio and interface follow-up does not requalify full WebGPU or physical speaker listening; see QUALITY.md for the tested devices and outstanding conditions.
 
 ## 目录结构 · Layout
 
@@ -181,6 +190,13 @@ Serve this folder with any static file server to run it, for example `npx serve 
 
 ## 引擎副本 · Engine copy
 
-引擎副本取自 [Egret_rebuild](https://github.com/cnedwin/Egret_rebuild) 提交 `39560b3ef608e4dda68c8461f435c279d1eba3d2`，由引擎仓库的 `tools/vendor-game.mjs` 复制，见 [vendor/SOURCE.md](vendor/SOURCE.md)。
+引擎副本取自 [Egret_rebuild](https://github.com/cnedwin/Egret_rebuild) 正式 main 提交 `dfd8cc6205ed61f368f4c7408cee6473e042d973`（含 #557），由引擎仓库的 `tools/vendor-game.mjs` 复制，无本地引擎补丁；确切入口与版本见 [vendor/SOURCE.md](vendor/SOURCE.md)。
 
-The engine copy is from [Egret_rebuild](https://github.com/cnedwin/Egret_rebuild) commit `39560b3ef608e4dda68c8461f435c279d1eba3d2`, copied by the engine's `tools/vendor-game.mjs`; see [vendor/SOURCE.md](vendor/SOURCE.md).
+The engine copy is from [Egret_rebuild](https://github.com/cnedwin/Egret_rebuild) main commit `dfd8cc6205ed61f368f4c7408cee6473e042d973` (including #557), copied by the engine's `tools/vendor-game.mjs` without local engine patches; see [vendor/SOURCE.md](vendor/SOURCE.md) for the exact version and entries.
+
+在上述引擎提交的仓库根目录构建并生成副本；直接编辑和选择已由 Play 正式承接，不再单独加入浏览器 text-input 入口，音频则使用明确的可选 `web/audio` 入口。 · Build and vendor from the engine checkout at this pin. Play now supplies editing and selection, so the separate browser text-input entry is omitted; browser audio uses the explicit optional `web/audio` entry.
+
+```sh
+node tools/build.mjs
+node tools/vendor-game.mjs "<PortedGamesEgret>/Wulin" @egret/engine @egret/engine/world3d @egret/engine/webgl2/world3d @egret/engine/webgpu/world3d @egret/engine/web/kit @egret/engine/play @egret/engine/ui @egret/engine/ui/semantics @egret/engine/web/semantics @egret/engine/ui/testing @egret/engine/kit @egret/engine/paragraph @egret/engine/web/paragraph @egret/engine/bitmapfont @egret/engine/web/audio
+```

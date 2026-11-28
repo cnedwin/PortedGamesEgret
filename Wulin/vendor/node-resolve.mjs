@@ -29,8 +29,8 @@ export const MAP = {
   "@egret/engine/ui/semantics": "./engine/dist/semantics.js",
   "@egret/engine/web/semantics": "./engine/dist/web/semantics.js",
   "@egret/engine/ui/testing": "./engine/dist/ui/testing.js",
-  "@egret/engine/web/text-input": "./engine/dist/web/textInput.js",
-  "@egret/engine/web/paragraph": "./engine/dist/web/paragraph.js"
+  "@egret/engine/web/paragraph": "./engine/dist/web/paragraph.js",
+  "@egret/engine/web/audio": "./engine/dist/web/audio.js"
 };
 export function resolve(specifier, context, next) {
   const file = MAP[specifier];

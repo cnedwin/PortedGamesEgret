@@ -79,7 +79,7 @@ export function createOrbit(canvas, { game, pointerSurface } = {}) {
   // The standalone 3D model tools still work without the Play host below.
   if (game && pointerSurface) {
     const input = game.browser.pointer;
-    let enabled = true, tapAllowed = false, alternate = false, pinchStart;
+    let enabled = true, tapAllowed = false, alternate = false, pinchStart, secondaryDrag;
     const cssScale = () => {
       const box = game.canvas.getBoundingClientRect();
       const screen = game.browser.screen;
@@ -90,17 +90,41 @@ export function createOrbit(canvas, { game, pointerSurface } = {}) {
       if (kind === 'begin' && target === pointerSurface && enabled) {
         pointers.set(session.id, contact);
         if (pointers.size === 1) {
-          tapAllowed = !(contact.buttons & 2) && !game.keys.down('shift');
-          alternate = !!(contact.buttons & 2) || game.keys.down('shift');
-        } else tapAllowed = false;
+          const secondary = session.pointerType === 'mouse' && !!(contact.buttons & 2) && !(contact.buttons & 1);
+          alternate = secondary || game.keys.down('shift');
+          tapAllowed = !alternate;
+          // engine-note: Play gestures intentionally route only primary drags. Keep the
+          // secondary camera gesture on the same captured pointer contact stream.
+          if (secondary) {
+            secondaryDrag = { id: session.id, x: contact.globalX, y: contact.globalY, moved: false };
+          }
+        } else {
+          tapAllowed = false;
+          secondaryDrag = null;
+        }
+        idle = 0;
+      } else if (kind === 'move' && enabled && secondaryDrag?.id === session.id) {
+        if (!(contact.buttons & 2)) { secondaryDrag = null; return; }
+        const dx = contact.globalX - secondaryDrag.x, dy = contact.globalY - secondaryDrag.y;
+        // Match the primary gesture recognizer: keep the initial movement until
+        // it exceeds its 12 stage-unit slop; then consume successive deltas.
+        if (!secondaryDrag.moved && Math.hypot(dx, dy) <= 12) return;
+        secondaryDrag.moved = true;
+        secondaryDrag.x = contact.globalX;
+        secondaryDrag.y = contact.globalY;
+        const scale = cssScale();
+        if (orbit.dragPans) turn(dx * scale.x, dy * scale.y);
+        else slide(dx * scale.x, dy * scale.y);
+        orbit.gestureVersion++;
         idle = 0;
       } else if (kind === 'end' || kind === 'cancel') {
+        if (secondaryDrag?.id === session.id) secondaryDrag = null;
         if (pointers.delete(session.id) && kind === 'cancel') tapAllowed = false;
       }
     });
     const stopGestures = game.gestures(pointerSurface, {
       drag(drag) {
-        if (!enabled) return;
+        if (!enabled || secondaryDrag) return;
         if (drag.phase === 'start' || drag.phase === 'move') {
           const scale = cssScale(), dx = drag.dx * scale.x, dy = drag.dy * scale.y;
           tapAllowed = false;
@@ -142,6 +166,7 @@ export function createOrbit(canvas, { game, pointerSurface } = {}) {
         pointers.clear();
         tapAllowed = false;
         pinchStart = null;
+        secondaryDrag = null;
       } else pointerSurface.touchEnabled = true;
     };
     // Play's wheel value is consumed/reset on its own update, alongside
