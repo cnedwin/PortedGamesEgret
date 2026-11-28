@@ -30,7 +30,7 @@ for (const game of GAMES) {
   assert.ok(['2d', '3d'].includes(game.kind));
   for (const value of [game, game.genre, game.summary]) bilingual(value, game.id);
   assert.equal(game.scenes.length, media.length, `Add a caption for each picture in ${game.id}`);
-  assert.ok(game.features.length >= 3, `Add at least three engine capabilities for ${game.id}`);
+  assert.ok(game.features.length >= 3 && game.features.length <= 5, `Show three to five engine capabilities for ${game.id}`);
   for (const feature of game.features) {
     bilingual(feature.title, game.id);
     bilingual(feature.description, game.id);
