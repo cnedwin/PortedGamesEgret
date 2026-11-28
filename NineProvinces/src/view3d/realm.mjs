@@ -42,11 +42,12 @@ export function factionColour(state, id) {
  * The 3D realm with native map and battle nameplates. getState() gives the campaign or title realm, on
  * hears taps/hovering, and `tick(seconds)` is the one campaign frame.
  */
-export async function createRealmView({ canvas, uiParent, getState, getPlayer=()=>getState()?.player, showMapMarkers=()=>true, on, tick, quality, onError }) {
+export async function createRealmView({ canvas, uiParent, getState, getPlayer=()=>getState()?.player, showMapMarkers=()=>true, on, tick, quality, onError, performanceOptions }) {
   const stage = await createStage(canvas, { quality, onError });
   const { app, scene, camera, rig } = stage;
   const flora = createFlora(scene, { quality: app.quality });
-  const land = createLand(scene, { quality: app.quality, onTile: flora.onTile });
+  const land = createLand(scene, {quality:app.quality,onTile:flora.onTile,
+    samplerOptions:performanceOptions?.terrainWorker===false?{WorkerClass:null}:undefined});
   let territoryVisible = false, territorySource = null, territoryDirty = false;
   function refreshTerritory() {
     if (!territoryVisible || !territoryDirty || !territorySource) return;
@@ -62,7 +63,8 @@ export async function createRealmView({ canvas, uiParent, getState, getPlayer=()
     const owner = s?.nodes[id]?.owner;
     return owner ? factionColour(s, owner) : null;
   };
-  const places = createPlaces(scene, { quality: app.quality, colourOf: ownerColour });
+  const places = createPlaces(scene, {quality:app.quality,colourOf:ownerColour,renderer:app.renderer,
+    prepareGeometry:performanceOptions?.prepareGeometry!==false});
   const troops = createTroops(scene, { quality: app.quality });
   let uiHost,mapMarkers;
   const armyAnchor = new Map();
@@ -403,7 +405,7 @@ export async function createRealmView({ canvas, uiParent, getState, getPlayer=()
     stage,
     /** Decorative state, suitable for read-only acceptance probes. */
     get landscape() {
-      return { season: { ...season }, ambient: { ...ambient.counts }, lod: { places: { ...places.stats }, flora: { ...flora.stats }, water: { ...waters.stats }, roads: { ...roads.stats } } };
+      return { season: { ...season }, ambient: { ...ambient.counts }, terrain:{worker:land.usingWorker,loaded:land.stream.tiles.length,pending:land.stream.pendingCount,cancelled:land.cancelledSamples}, lod: { places: { ...places.stats }, flora: { ...flora.stats }, water: { ...waters.stats }, roads: { ...roads.stats } } };
     },
     setTerritorySource(source) {
       territorySource = source;
@@ -489,8 +491,9 @@ export async function createRealmView({ canvas, uiParent, getState, getPlayer=()
     }
   };
   try {
-    uiHost=await createRealmHost({canvas,uiParent,owner:app,scene,camera,frame,onError});
+    uiHost=await createRealmHost({canvas,uiParent,owner:app,scene,camera,frame,onError,performanceOptions});
     view.uiHost=uiHost;
+    app.scope.use(land);app.scope.use(places);
     mapMarkers=createNativeMapMarkers(uiHost,{camera,sceneCanvas:canvas,onNode:id=>on.tapNode?.(id),onArmy:id=>on.tapArmy?.(id)});
     view.mapMarkers=mapMarkers;
     for(const n of Object.values(NODES)){
@@ -503,7 +506,7 @@ export async function createRealmView({ canvas, uiParent, getState, getPlayer=()
     }
     mapInput=installMapInput(uiHost);
   } catch(error) {
-    await app.dispose();throw error;
+    try{places.dispose();land.dispose();}finally{await app.dispose();}throw error;
   }
   return view;
 }

@@ -37,7 +37,7 @@ export function createCampaignCoach(app,host){
     const words=p('起家城池：','Starting town: ')+placeName(capital)+p('。查看城中命令后，再开始推演。','. Review its orders before starting time.');
     first?.close();
     first=game.show({label:p('首月建议','First-month advice'),skin:palette,
-      root:col([row([txt(app.paused?p('开局准备 · 已暂停','Prepare your campaign · Paused'):p('首月建议','Your first month'),42,{bold:true,color:0xe9bc82}),b('coach-dismiss',p('收起','Dismiss'),{width:76})]),
+      root:col([row([txt(app.paused?p('开局准备\n已暂停','Campaign\npaused'):p('首月建议','First month'),42,{bold:true,color:0xe9bc82,size:14,paragraph:{fontFamilies:['sans-serif'],locale:app.language()==='en'?'en':'zh-CN',lineHeight:18,maxLines:2,density:2}}),b('coach-dismiss',p('收起','Dismiss'),{width:76})]),
         col([note(words,3),note(p('先看钱粮月收支，再择一扩建农田或市场。','Check monthly coin and grain income, then improve a farm or market.'),3),
           note(p('查看本城武将；寻访、调任和出征都从城中命令开始。','Review local officers. Search, transfer and muster orders begin in a town.'),3),
           note(nanpi?p('南皮军议会显示能立即出战的部队和援军到达时间。','The Nanpi council displays forces and their arrival times.'):p('留足守军和粮食，查看盟约，再决定目地。','Keep a garrison and provisions; review treaties before choosing a destination.'),4),

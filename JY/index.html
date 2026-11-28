@@ -1,38 +1,20 @@
 <!doctype html>
-<html lang="zh-CN">
+<html lang="zh-Hant">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width,initial-scale=1">
-  <meta name="theme-color" content="#17201b">
-  <title>金庸群侠传 · JY</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#17262b">
+  <title>金庸群俠傳 · JY</title>
   <link rel="icon" href="data:,">
   <link rel="stylesheet" href="./trial.css">
+  <script src="./vendor/importmap.js"></script>
 </head>
 <body>
-  <img class="boot-landscape" src="./web/title-art/wuxia-dawn.webp" alt="" width="1536" height="1024" fetchpriority="high">
-  <main class="boot" aria-labelledby="jy-boot-heading">
-    <h1 id="jy-boot-heading">金庸群俠傳</h1>
-    <section class="boot-status" aria-labelledby="jy-import-status">
-      <p id="jy-import-status" role="status" aria-live="polite">正在检查游戏数据…</p>
-      <progress id="jy-import-progress" aria-label="游戏数据准备进度"></progress>
-      <div class="boot-actions">
-        <button id="jy-retry" type="button" hidden>重试</button>
-        <button id="jy-cancel-import" type="button" class="quiet" hidden>取消</button>
-      </div>
-      <details id="jy-local-import" hidden>
-        <summary>从本机导入游戏数据</summary>
-        <p>请选择自备的 4in1 压缩包或解压后的 <code>game</code> 文件夹。</p>
-        <div class="boot-actions">
-          <button id="jy-choose-archive" type="button">选择 4in1 压缩包</button>
-          <button id="jy-choose-folder" type="button">选择文件夹</button>
-          <input id="jy-archive" type="file" accept=".7z" hidden>
-          <input id="jy-folder" type="file" webkitdirectory multiple hidden>
-        </div>
-        <p><a href="./ASSETS.md">素材与版权</a></p>
-      </details>
-    </section>
-    <noscript>请启用 JavaScript 后重新打开游戏。</noscript>
-  </main>
+  <div id="native-title-holder"></div>
+  <p id="native-starting" role="status">正在啟動遊戲…</p>
+  <input id="jy-archive" type="file" accept=".7z" hidden>
+  <input id="jy-folder" type="file" webkitdirectory multiple hidden>
+  <noscript>請啟用 JavaScript 後重新開啟遊戲。</noscript>
   <script type="module" src="./browser/import-ui.mjs"></script>
 </body>
 </html>

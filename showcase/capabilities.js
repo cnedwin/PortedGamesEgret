@@ -383,6 +383,10 @@ export const MATRIX = {
      "file": "jelly-pandas/src/ui/menus.mjs"
     },
     {
+     "game": "JY",
+     "file": "JY/web/jyx2/ui/native/front-end.mjs"
+    },
+    {
      "game": "LoveElective",
      "file": "LoveElective/src/engine/ui.mjs"
     },
@@ -812,6 +816,10 @@ export const MATRIX = {
      "file": "jelly-pandas/src/hud.mjs"
     },
     {
+     "game": "JY",
+     "file": "JY/web/jyx2/ui/native/preferences.mjs"
+    },
+    {
      "game": "LubanBridge",
      "file": "LubanBridge/src/saves.mjs"
     },
@@ -889,6 +897,10 @@ export const MATRIX = {
     {
      "game": "InquestScrolls",
      "file": "InquestScrolls/src/view/pictures.mjs"
+    },
+    {
+     "game": "JY",
+     "file": "JY/web/jyx2/ui/native/preferences.mjs"
     },
     {
      "game": "LubanBridge",
@@ -991,6 +1003,10 @@ export const MATRIX = {
     {
      "game": "InquestScrolls",
      "file": "InquestScrolls/src/main.mjs"
+    },
+    {
+     "game": "JY",
+     "file": "JY/browser/import-ui.mjs"
     },
     {
      "game": "LanternShadows",
@@ -1136,6 +1152,10 @@ export const MATRIX = {
     {
      "game": "jelly-pandas",
      "file": "jelly-pandas/src/hud.mjs"
+    },
+    {
+     "game": "JY",
+     "file": "JY/browser/import-ui.mjs"
     },
     {
      "game": "LanternShadows",
@@ -1290,6 +1310,10 @@ export const MATRIX = {
     {
      "game": "jelly-pandas",
      "file": "jelly-pandas/src/hud.mjs"
+    },
+    {
+     "game": "JY",
+     "file": "JY/browser/import-ui.mjs"
     },
     {
      "game": "LanternShadows",

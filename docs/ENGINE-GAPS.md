@@ -4,9 +4,9 @@
 
 Made by `node tools/engine-notes.mjs --write` from the ENGINE-NOTES of the games; do not edit by hand, and `--check` says whether it is out of date. What the engine resolved is copied from the engine's `guide/resolved.json` into [engine-resolved.json](engine-resolved.json) (15 entries). The form of a note is in part 3 of [GAME-STANDARD.md](GAME-STANDARD.md).
 
-24 个游戏、286 条笔记：未解决 81，部分解决 24，游戏侧绕过 18，已写入文档 42，已解决 121。
+24 个游戏、287 条笔记：未解决 81，部分解决 24，游戏侧绕过 18，已写入文档 42，已解决 122。
 
-286 notes from 24 games: 81 open, 24 partly resolved, 18 worked around in the game, 42 documented, 121 resolved.
+287 notes from 24 games: 81 open, 24 partly resolved, 18 worked around in the game, 42 documented, 122 resolved.
 
 ## 1. 引擎已经解决、游戏还标着未解决 · Resolved by the engine, still open in a game
 
@@ -25,12 +25,13 @@ The same workaround in two or more games means the fault is in the engine's inte
 | Topic | 游戏数 · Games | 笔记 · Notes |
 |---|:-:|---|
 | `static-webkit-presentation` | 5 | InquestScrolls#13 静止界面首绘仍保留旧帧 · Static screen retains prior presentation (worked-around)<br>LubanBridge#6 首屏只出现空面板 · First presentation shows empty panels (worked-around)<br>OperaDrums#24 静止模态框呈现延迟 · Static modal presentation delay (worked-around)<br>PeachCreek#10 静止页面第一次呈现不完整 · Incomplete first static presentation (worked-around)<br>TaiwanMahjong#13 静態畫面首幀未顯示 · Static screen retains an old frame (worked-around) |
-| `world3d-webkit-dynamic-resize-presentation` | 4 | FiveRegiments#6 移动 Apple WebKit 动态分辨率后画面不可见 · Mobile Apple WebKit loses the composited World3D surface after dynamic resizing (open)<br>NineProvinces#9 移动 Apple WebKit 动态分辨率后画面不可见 · Mobile Apple WebKit loses the composited World3D surface after dynamic resizing (open)<br>SnowTemple#10 移动 Apple WebKit 动态分辨率后画面不可见 · Mobile Apple WebKit loses the composited World3D surface after dynamic resizing (open)<br>StarBanner#13 移动 Apple WebKit 动态分辨率后画面不可见 · Mobile Apple WebKit loses the composited World3D surface after dynamic resizing (open) |
+| `world3d-webkit-dynamic-resize-presentation` | 4 | FiveRegiments#6 移动 Apple WebKit 动态分辨率后画面不可见 · Mobile Apple WebKit loses the composited World3D surface after dynamic resizing (open)<br>NineProvinces#9 移动 Apple WebKit 动态分辨率后画面不可见 · Mobile Apple WebKit loses the composited World3D surface after dynamic resizing (partly)<br>SnowTemple#10 移动 Apple WebKit 动态分辨率后画面不可见 · Mobile Apple WebKit loses the composited World3D surface after dynamic resizing (open)<br>StarBanner#13 移动 Apple WebKit 动态分辨率后画面不可见 · Mobile Apple WebKit loses the composited World3D surface after dynamic resizing (open) |
 | `webkit-on-demand-first-presentation` | 3 | jelly-pandas#10 WebKit 按需绘制的首屏可见性 · WebKit on-demand first-frame presentation (open)<br>Rally#7 WebKit 按需绘制的首屏可见性 · WebKit on-demand first-frame presentation (open)<br>Wulin#13 WebKit 按需绘制的首屏可见性 · WebKit on-demand first-frame presentation (open) |
 | `webkit-retained-screen-presentation` | 3 | FPS#17 WebKit 按需画面晚一屏 · WebKit retains earlier on-demand frame (open)<br>SnowTemple#9 WebKit 按需画面晚一屏 · WebKit retains earlier on-demand frame (open)<br>StarBanner#12 WebKit 的按需画面提交晚一屏 · WebKit retains earlier on-demand frame (open) |
 | `first-draw-program-link` | 2 | FPS#4 材质变体第一次绘制时链接着色器造成停顿 · The first draw of a material variant stalls while its program links (partly)<br>jelly-pandas#2 倒影通道和第一次出现的特效在第一次绘制时编译 · The mirror pass and first-use effects compile on first draw (partly) |
 | `geometry-budget-reuse` | 2 | FivePhases#1 每帧的几何预算连复用的几何也一起算 · The per-frame geometry budget also counts reused geometry (partly)<br>NineProvinces#13 大型静态战场图形耗尽二维几何准备预算 · A large static board exhausts the 2D geometry-preparation budget (open) |
 | `optional-web-audio-host` | 2 | CanalWatch#7 Play 可选音频宿主 · Optional Play audio host (worked-around)<br>NezhaSea#18 无 Web Audio 宿主时的游戏启动 · Startup without a Web Audio host (worked-around) |
+| `stack-modal-focus-return` | 2 | JY#4 屏幕栈关闭模态后焦点恢复 · Screen-stack modal focus return (open)<br>OperaDrums#15 屏幕栈关掉对话框后焦点落空 · The focus is lost when a dialog of the screen stack closes (open) |
 | `ui-typography-styling` | 2 | OperaDrums#7 界面文字不能选字体 · View text has no typeface (open)<br>PeachCreek#3 文字和按钮样式需要显示对象补充 · Typography and button styling need display-object extensions (partly) |
 | `vertex-layout-program` | 2 | jelly-pandas#1 顶点布局不同就要另编一条管线 · A different vertex layout needs a pipeline of its own (open)<br>Rally#2 少一个顶点色属性就是另一个着色器 · A missing vertex-colour attribute makes another program (open) |
 
@@ -72,7 +73,6 @@ Write the lesson as a card of the engine's guide (`guide/cards` in the engine re
 | `nav-agent-forward-axis` | TeaHorseRoad#27 导航体转身以 -Z 为前方 · A navigation agent turns with -Z as its front | 未解决 · open |
 | `navmesh-heightfield-holes` | TeaHorseRoad#28 从高度场铺导航网格：只能是一块高度场，洞只按顶点挖 · A navigation mesh from a height field takes one field, and holes go by vertices | 未解决 · open |
 | `notes-parser-crlf` | FPS#10 引擎笔记工具不能识别 CRLF 标题 · Engine notes CLI misses CRLF headings | 未解决 · open |
-| `on-demand-rendering` | NineProvinces#5 画面不变时帧循环也每帧整屏合成 · The frame loop composites the whole stage every frame even when nothing changes | 部分解决 · partly |
 | `optional-audio-gamepad-host` | NightWardens#5 可选声卡与手柄 · Optional audio and gamepad hosts | 已在游戏侧绕过 · worked around |
 | `optional-media-host` | MechanismCity#22 可选声音宿主与开场视频 · Optional audio and opening video | 已在游戏侧绕过 · worked around |
 | `overlay-scroll-content-pan` | SnowTemple#7 3D 原生叠加层滚动控件缺少手指拖动内容 · Native 3D overlay scroll control lacks direct content panning | 未解决 · open |
@@ -107,7 +107,6 @@ Write the lesson as a card of the engine's guide (`guide/cards` in the engine re
 | `skybox-black-software` | TeaHorseRoad#4 软件渲染下天空盒是黑的 · The skybox is black under software rendering | 未解决 · open |
 | `spine-deferred-display` | LanternShadows#10 背压时 Spine 语义推进与绘制网格不能独立调度 · Spine semantic advance and display mesh publication are coupled under backpressure | 未解决 · open |
 | `spine-instance-limit` | LanternShadows#3 同一份骨骼数据最多 128 个 Spine 实例 · At most 128 Spine instances of one skeleton | 未解决 · open |
-| `stack-modal-focus-return` | OperaDrums#15 屏幕栈关掉对话框后焦点落空 · The focus is lost when a dialog of the screen stack closes | 未解决 · open |
 | `still-layer-cache` | CanalWatch#3 静止的大图每帧重画，软件渲染下帧时间翻倍 · A still map drawn again each frame doubles the frame time under software rendering | 部分解决 · partly |
 | `terrain-color-tile` | NineProvinces#6 地形流的 `colorAt` 只给地块内的坐标，不知道是哪一块 · The terrain stream's `colorAt` is given coordinates within a tile, and no way to tell which tile | 未解决 · open |
 | `terrain-view-distance-budget` | NineProvinces#8 地形流视距稍大就抛 `WORLD3D_BUDGET` · The terrain stream throws `WORLD3D_BUDGET` for a view distance a little too large | 未解决 · open |
@@ -152,14 +151,14 @@ Write the lesson as a card of the engine's guide (`guide/cards` in the engine re
 | [FPS](../FPS/ENGINE-NOTES.md) | 17 | 3 | 3 | 0 | 2 | 9 | 0 | `82561d6` |
 | [InquestScrolls](../InquestScrolls/ENGINE-NOTES.md) | 13 | 0 | 1 | 3 | 1 | 8 | 0 | `82561d6` |
 | [jelly-pandas](../jelly-pandas/ENGINE-NOTES.md) | 10 | 3 | 2 | 0 | 0 | 5 | 0 | `82561d6` |
-| [JY](../JY/ENGINE-NOTES.md) | 3 | 1 | 1 | 0 | 0 | 1 | 0 | `2129726` |
+| [JY](../JY/ENGINE-NOTES.md) | 4 | 2 | 1 | 0 | 0 | 1 | 0 | `2129726` |
 | [LanternShadows](../LanternShadows/ENGINE-NOTES.md) | 13 | 2 | 1 | 3 | 2 | 5 | 0 | `82561d6` |
 | [LoveElective](../LoveElective/ENGINE-NOTES.md) | 8 | 2 | 1 | 0 | 0 | 5 | 0 | `82561d6` |
 | [LubanBridge](../LubanBridge/ENGINE-NOTES.md) | 6 | 4 | 0 | 1 | 1 | 0 | 0 | `82561d6` |
 | [MechanismCity](../MechanismCity/ENGINE-NOTES.md) | 22 | 1 | 2 | 1 | 5 | 13 | 0 | `82561d6` |
 | [NezhaSea](../NezhaSea/ENGINE-NOTES.md) | 19 | 2 | 1 | 3 | 1 | 12 | 0 | `82561d6` |
 | [NightWardens](../NightWardens/ENGINE-NOTES.md) | 5 | 0 | 0 | 1 | 3 | 1 | 0 | `82561d6` |
-| [NineProvinces](../NineProvinces/ENGINE-NOTES.md) | 13 | 9 | 1 | 0 | 1 | 2 | 0 | `7fb371a` |
+| [NineProvinces](../NineProvinces/ENGINE-NOTES.md) | 13 | 8 | 1 | 0 | 1 | 3 | 0 | `7fb371a` |
 | [OperaDrums](../OperaDrums/ENGINE-NOTES.md) | 24 | 15 | 1 | 1 | 3 | 4 | 0 | `82561d6` |
 | [PeachCreek](../PeachCreek/ENGINE-NOTES.md) | 10 | 0 | 4 | 1 | 0 | 5 | 0 | `82561d6` |
 | [Rally](../Rally/ENGINE-NOTES.md) | 7 | 4 | 0 | 0 | 2 | 1 | 0 | `82561d6` |

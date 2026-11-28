@@ -169,12 +169,12 @@ export const GAMES = [
     features: [
       {
         title: { zh: "流式六角地形", en: "Streamed hex terrain" },
-        description: { zh: "3600×2600 的天下按镜头远近流式加载高度块，地貌颜色、六角格线和选中高亮在一个自定义着色器里画。", en: "A realm 3,600 by 2,600 streams in height tiles around the camera, with ground colours, hex lines and highlights in one custom shader." },
+        description: { zh: "3600×2600 的天下按镜头远近流式加载高度块，Worker 计算采样，原生地形流和自定义着色器绘制地貌；快速移动时退休过期请求。", en: "A realm 3,600 by 2,600 streams terrain around the camera. A Worker computes samples, while the native terrain stream and custom shader draw the land; stale requests retire during rapid travel." },
         source: 'src/view3d/terrain.mjs',
       },
       {
         title: { zh: "代码搭出的城池", en: "Cities built in code" },
-        description: { zh: "七十六座城的城墙、角楼、城门和里坊由几何构建器拼成，镜头走近才搭建；全城旗帜共用一个实例化网格。", en: "Seventy-six cities of walls, towers, gates and wards are assembled by the geometry builder as the camera nears, their banners sharing one instanced mesh." },
+        description: { zh: "七十六座城由几何构建器拼成，原生 prepareGeometries 分批准备细节，期间保留低精度模型；城旗共用实例化网格。", en: "Seventy-six cities are assembled by the geometry builder; native prepareGeometries stages detailed meshes while retaining visible proxies, and banners share an instanced mesh." },
         source: 'src/view3d/cities.mjs',
       },
       {
@@ -206,9 +206,9 @@ export const GAMES = [
     summary: { zh: "走江湖、访客栈、招募同伴，体验经典回合制战斗。向《金庸群侠传》、智冠公司与金庸先生致敬。", en: "Explore inns, recruit companions and fight classic turn-based battles. A tribute to Heroes of Jin Yong, Soft-World and Jin Yong." },
     features: [
       {
-        title: { zh: "2D 与 3D 共用上下文", en: "One WebGL2 context for 2D and 3D" },
-        description: { zh: "立绘、对白框和战斗界面的 2D 层，与大地图、场景和战场的 3D 画面共用一个 WebGL2 上下文。", en: "Portraits, the dialogue frame and the battle interface share one WebGL2 context with the 3D world map, places and battlefields." },
-        source: 'web/main.mjs',
+        title: { zh: "原生数据界面与屏幕栈", en: "Native data views and screen stack" },
+        description: { zh: "标题、设置与存档使用原生数据界面、自适应安全区、模态屏幕栈及具名语义控件；资料在后台验证。", en: "Title, settings and saves use native data views, safe-area layouts, modal screen stacks and named semantics while data is prepared in the background." },
+        source: 'web/jyx2/ui/native/front-end.mjs',
       },
       {
         title: { zh: "三维场景与模型加载", en: "3D scenes and model loading" },

@@ -1,8 +1,9 @@
 import assert from 'node:assert/strict';
 import {test} from 'node:test';
-import {layoutBattlePlates} from '../src/view3d/battle-plate-layout.mjs';
-import {battlePlateModel,battlePlateWidth,floatStyle,floatFrame,createFloatSlots,oldestOrdinaryFloat} from '../src/ui/native-battle-marker-model.mjs';
-import {setLanguage} from '../src/i18n.mjs';
+import '../vendor/node-register.mjs';
+const {layoutBattlePlates} = await import('../src/view3d/battle-plate-layout.mjs');
+const {battlePlateModel,battlePlateWidth,floatStyle,floatFrame,createFloatSlots,oldestOrdinaryFloat} = await import('../src/ui/native-battle-marker-model.mjs');
+const {setLanguage} = await import('../src/i18n.mjs');
 test('native plate preserves exact troop count, selected, targetable, routed and rage values without mutating units',()=>{
  const u={id:1,side:0,general:'caocao',kind:'spear',troops:2345.4,start:4000,rage:99,routed:true,pos:12};
  const initial=JSON.stringify(u);setLanguage('en');const data=battlePlateModel(u,{side:0,colours:[0x123456,0x654321],selected:1,targetable:new Set([1])});

@@ -8,9 +8,9 @@ JY is an independently developed wuxia browser game demo built with [Egret Rebui
 
 ## 浏览器完整版 · Full browser game
 
-打开试玩页，游戏会自动启动。首次启动会下载并检查约 37.4 MB 的原版运行数据，回访时直接使用浏览器里的数据和存档。如果在线数据不可用，可以导入自备的 4in1 `.7z` 压缩包或其中的 `game` 文件夹。[在线试玩](https://cnedwin.github.io/PortedGamesEgret/JY/)
+打开试玩页，先呈现可操作的原生标题与设置，后台下载并检查约 37.4 MB 的原版运行数据；数据就绪后可进入游戏。回访时直接使用浏览器里的数据和存档。如果在线数据不可用，可以导入自备的 4in1 `.7z` 压缩包或其中的 `game` 文件夹。[在线试玩](https://cnedwin.github.io/PortedGamesEgret/JY/)
 
-Open the play page to launch the game automatically. The first launch downloads and validates about 37.4 MB of original runtime data. Returning players use the game data and saves stored in their browser. If hosted data is unavailable, import your own 4in1 `.7z` archive or its `game` folder. [Play online](https://cnedwin.github.io/PortedGamesEgret/JY/)
+Open the play page for the responsive native title and settings while approximately 37.4 MB of runtime data is downloaded and validated in the background. Play becomes available once the data is ready. Returning players use the game data and saves stored in their browser. If hosted data is unavailable, import your own 4in1 `.7z` archive or its `game` folder. [Play online](https://cnedwin.github.io/PortedGamesEgret/JY/)
 
 [原项目的 4in1 资源说明 · Original 4in1 resource information](https://github.com/scarsty/kys-cpp#readme)
 
@@ -97,7 +97,7 @@ PC 上悬停可预览移动路线，单击执行；武学和暗器选好目标�
 | 引擎入口 / API · Entry / API | 在本游戏中的用途 · Use in this game | 文件 · File |
 |---|---|---|
 | `@egret/engine` `createEngineForProfile` | 创建引擎、时钟和 2D 舞台 · the engine, its clock and the 2D stage | `web/main.mjs` |
-| `@egret/engine/webgl2` `createSharedWebGL2Host` | 2D 界面层和 3D 场景共用一个 WebGL2 上下文 · one WebGL2 context for the 2D layers and the 3D scenes | `web/main.mjs` |
+| `@egret/engine/webgl2` `createSharedWebGL2Host` | 旧 2D 底层帧宿主；现有 World3D 场景另有自身画布 · existing low-level 2D frame host; native World3D views have their own canvases | `web/main.mjs` |
 | `@egret/engine/webgl2/world3d` `createWebGL2Renderer3D` | 大地图、场景和战场的 3D 绘制 · drawing the world map, places and battlefields | `web/jyx2/scene/world3d-renderer.mjs` |
 | `loadGltfFromUrl3D`、`loadTexture3D` | 载入场景、战场和人物模型与贴图 · loading scenes, battlefields, figures and textures | `web/jyx2/scene/native-battle-view.mjs` |
 | `createAtmosphere3D` | 大地图远景随高度变化的雾 · the world map's height haze | `web/jyx2/scene/native-world-view.mjs` |
@@ -113,7 +113,14 @@ PC 上悬停可预览移动路线，单击执行；武学和暗器选好目标�
 | `@egret/engine/web/audio` `createBrowserAudio` | 剧情、出招和受击 WAV 共用一个音效总线 · one effects bus for story, attack and impact WAV cues | `web/wav-effects.mjs` |
 | `Bitmap`、`NineSliceBitmap`、`createSharedMaterial2D` | 立绘、对白框和战斗界面 · portraits, the dialogue frame and the battle interface | `web/opening-dialogue.mjs`、`web/battle-view.mjs` |
 
+| `@egret/engine/play` `play`、`game.show`、`fit: expand` | 原生标题、载入状态、设置、存档及帮助 · responsive native title, preparation, settings, saves and help | [browser/import-ui.mjs](browser/import-ui.mjs)、[web/jyx2/ui/native/front-end.mjs](web/jyx2/ui/native/front-end.mjs) |
+| `createUiScreenStack`、`createUiSemantics`、`createBrowserSemantics` | 页面栈、模态、焦点、具名控件 · screen stack, modal focus and named controls | [web/jyx2/ui/native/front-end.mjs](web/jyx2/ui/native/front-end.mjs)、[web/jyx2/ui/game-shell.mjs](web/jyx2/ui/game-shell.mjs) |
+| `createSaveStore`、`browserSaveStorage`、`createTextTable`、`pickLanguage` | 设置版本和界面语言 · versioned preferences and shell language | [web/jyx2/ui/native/preferences.mjs](web/jyx2/ui/native/preferences.mjs)、[web/jyx2/ui/native/words.mjs](web/jyx2/ui/native/words.mjs) |
+| `createUiTester` | 具名浏览器验收、尺寸及焦点检测 · named browser acceptance and geometry/focus checks | [test/accept.mjs](test/accept.mjs) |
+
 ## 已验证 · Verified
+
+- 2026-11-29：原生标题、数据准备、设置、帮助及存档槽已迁移，独立取消／重试，具名语义与中英文标题。自动首屏检测 37.9 → 2.0 s（只代表标题可操作）；86/86 Node，严格接口检查 0 错误／0 警告。完整数据就绪单独计时，真机未覆盖。 · Native title and preparation, preferences, guide, saves, named semantics and bilingual title; automatic early-title L1 37.9 → 2.0 s, 86/86 Node and strict API check clean. This is not full-game readiness or a physical device measurement.
 
 - 2026-11-29：引擎从 `ca9ff2a0` 升级到 `21297267`，原有 UI、玩法、存档和素材保持不变。旧、新 SDK 各 76/76 Node；同一 Windows Edge 158 / RTX 5090 Laptop（ANGLE D3D11）实际跑完 691、692（48）和奖励保存；刷新后读回 revision 2、勝場 1。WebKit 手机配置冷启动与开场复测无错误；三秒静止画面 rAF p95 均为 4.3 ms，战斗仍约 60 次原生绘制/秒。详见 QUALITY。 · Engine-only refresh; 76/76 Node on both copies, hardware Edge opening and training/reward save, and WebKit first-scene regression. Same 3 s frame samples: p95 4.3 ms and ~60 native battle draws/s; not a phone GPU measurement.
 
@@ -127,9 +134,9 @@ PC 上悬停可预览移动路线，单击执行；武学和暗器选好目标�
 
 ## 已知问题 · Known issues
 
-- 首次启动必须等约 37.5 MB 原版数据下载并检查完；在线数据不可用时只能导入自备的数据包。 · The first launch waits for about 37.5 MB of data; without hosted data a pack must be imported.
-- 没有英文界面。 · No English interface.
-- 品质验收未达标 · Quality items failing（[QUALITY.md](QUALITY.md)，2026-11-20，无头 Chromium + SwiftShader · headless, software rendering）：T3 不误触下拉刷新和双击缩放（overscroll free, touch-action auto, double-tap zoom on）；L1 首屏 ≤ 3 s（10/5 Mbps、40 ms、CPU ×4）（37.9 s to the first playable screen, 37.5 MB）；I1 中英文全可切换，英文下无中文（no way to choose English found）。
+- 完整数据仍为单一压缩包，进入实际游戏前必须验证完成；标题及设置可先使用。 · The existing pack is monolithic; validation is required before play, while title and preferences are usable earlier.
+- 标题、帮助、设置及准备界面支持中英文，地图与战斗操作及原版文本尚未迁移。 · Native shell is bilingual; in-game controls still await migration. Source narrative and data text remain unchanged.
+- 品质验收及限制见 [QUALITY.md](QUALITY.md)。2026-11-29 首屏与禁止误触检测通过，页面到真实可玩的耗时另计。 · See QUALITY for current measurements. Early title readiness and full data readiness are reported separately.
 
 ## 已解决 · Solved
 
@@ -139,8 +146,8 @@ PC 上悬停可预览移动路线，单击执行；武学和暗器选好目标�
 
 ## 未完成 · Unfinished
 
-- 界面只有中文（繁体为主），没有英文切换。 · The interface is in Chinese only.
-- 首次启动要下载约 37.5 MB 原版数据，还没有分段加载或先开始后补下载。 · The first launch downloads about 37.5 MB before play; there is no staged loading yet.
+- 地图和战斗界面的原生 UI 与英文界面迁移。 · Native UI and English shell text for exploration and battle.
+- 已将标题和资料准备解耦；现有归档尚未按场景拆分。 · Title and data preparation are decoupled; the existing archive is not split by scene.
 - 真机上的整局验收和帧时间测量。 · A whole-game run and frame-time measurement on real devices.
 
 ## 目录结构 · Layout
@@ -153,7 +160,8 @@ PC 上悬停可预览移动路线，单击执行；武学和暗器选好目标�
 | `browser/` | 在浏览器里导入、解压和检查 4in1 数据包 · importing and checking a 4in1 pack in the browser |
 | `play/`、`server.mjs`、`tools/` | 本地启动和数据检查工具 · local launch and data tools |
 | `data/` | 在线数据清单 `full-game.json` · the hosted-data manifest |
-| `test/` | Node 测试 · Node tests |
+| `test/` | Node 测试、具名浏览器验收和截图基线 · Node tests, named browser acceptance and screenshot baselines |
+| `web/jyx2/ui/native/` | 原生界面样式、标题、设置、词表与屏幕栈 · native theme, title, preferences, words and screen stack |
 | `ASSETS.md`、`licenses/`、`third-party/` | 素材来源和许可 · asset sources and licences |
 | `vendor/` | 引擎副本 · the engine copy |
 
@@ -169,4 +177,4 @@ The engine copy was built from [Egret_rebuild](https://github.com/cnedwin/Egret_
 node --experimental-vm-modules tools/generate-startup-preloads.mjs
 ```
 
-本次副本使用的正式入口 · Actual vendor entries: `@egret/engine`, `@egret/engine/text`, `@egret/engine/web/audio`, `@egret/engine/web/gamepad`, `@egret/engine/web/keyboard`, `@egret/engine/web/text`, `@egret/engine/webgl2`, `@egret/engine/webgl2/world3d`, `@egret/engine/world3d`.
+本次副本使用的正式入口 · Actual vendor entries: `@egret/engine`, `@egret/engine/text`, `@egret/engine/web/audio`, `@egret/engine/web/gamepad`, `@egret/engine/web/keyboard`, `@egret/engine/web/text`, `@egret/engine/webgl2`, `@egret/engine/webgl2/world3d`, `@egret/engine/world3d`, `@egret/engine/play`, `@egret/engine/kit`, `@egret/engine/web/kit`, `@egret/engine/ui`, `@egret/engine/ui/semantics`, `@egret/engine/ui/testing`, `@egret/engine/web/semantics`.

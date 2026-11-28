@@ -1,6 +1,133 @@
 # 品质验收 · Quality — 九州烽烟 · Nine Provinces Ablaze
 
+## 第五批引擎适配与性能 · Batch-five engine adaptation and performance (2026-11-29, candidate)
+
+这批沿用正式引擎 `7fb371acb8bab254cf1c49b9da0ac0eed0c06fb4`，在已发布第四批上逐项适配原生接口、输入易用性与实际性能。不是新引擎版本的差分，不改变数值/存档/现有玩法。以下独立实验和最终组合路线须分开。 / The pinned engine remains unchanged from published batch four. This batch adopts additional native interfaces, accessibility and measured performance improvements without altering game rules, balance or saves. Independent experiments and final combined acceptance are separate.
+
+### 纯软件绘制预算 · Automatic software-renderer pixel budget
+
+Windows Chromium / ANGLE SwiftShader Vulkan，1280×800 CSS px，自动质量选择（两版均 low），相同标题固定场景，四秒浏览器 RAF 短窗口，各一次；零报错，71 次 World3D draw calls 保持。 / One matched four-second software-browser title sample per variant, automatic quality remains low, identical scene and 71 World3D draws, no errors.
+
+| 测项 · Measurement | 第四批对照 · Before | 自动软件预算候选 · After |
+|---|---:|---:|
+| 标题实际就绪 · Cold title ready | 2,281.0 ms | 2,004.0 ms |
+| 3D 绘制比例/尺寸 · World render ratio/size | 0.70 · 896×560 | 0.34 · 435×272 |
+| RAF 间隔数 · Intervals | 43 | 112 |
+| p95 / max | 120.9 / 237.5 ms | 41.6 / 87.5 ms |
+
+自动软件专用预算由 `createDynamicResolution3D` 管理，低档 3D 的范围 0.34…0.50，原生输入及 UI 纹理仍保持 2 倍密度；实际硬件或明确手动选择质量继续使用既有动态范围。截图显示纯软件专用 3D 地形/城池细节确实更柔、更低分辨率，不是等视觉质量的性能优化，不降低正常硬件效果。候选试验的同预算可选地面 shader guard 为 p95 41.7 ms、112 个间隔，未见可确认收益，因此保留原着色程序。**F1 桌面软件 p95≤16.7 ms 仍未通过**；不能把软件数字当真机 GPU 数据或用早期不同条件基线宣称消除卡顿。 / Only automatically selected software rendering receives a tighter native dynamic-resolution range; native UI remains density 2. The screenshots show intentionally softer 3D scenery on software, not an equal-visual-quality optimization. Hardware and explicit quality selections retain their ordinary range. The small guarded shader variant yielded 41.7 ms p95 with 112 intervals, no proven benefit, so the original shader remains. **The 16.7 ms software F1 requirement still fails.** This is neither hardware GPU performance nor a universal elimination of stutter.
+
+对照图：[软件标题改前 · Before](test/native-performance-evidence/software-title-before.jpg) · [自动软件预算 · Automatic budget](test/native-performance-evidence/software-title-automatic.jpg)，均保留 1280×800 原始截图尺寸。 / Original-size visual review copies.
+
+### 同一 Play 时钟与原生文字调度 · Same-clock host and native text pacing
+
+六次独立本地冷启动实际 Windows Edge / ANGLE D3D11 NVIDIA RTX 5090 Laptop GPU，高画质 1280×720，固定 reduced-motion、关闭网络/磁盘着色器缓存及 Service Worker；每次相同源文件指纹、同引擎。独立排除地形 Worker/首城准备以隔离宿主。A 立即提交、无文字预算；B 原生 `afterFrame + deferRender`、无文字预算；C **立即提交**、仅实际上下文 4 ms 文字预算。并非 C 同时启用两项。 / Six fresh real-hardware browser processes; identical measured source and explicit high quality. Terrain worker and city preparation are disabled for isolation. A immediate/none, B native deferred/none, C **immediate with text pacing only**. Final combined defaults are a separate candidate.
+
+| Trial | 标题文字/操作就绪 · Title ready (ms) | 首次接受 World3D CPU draw (ms) | 首次实际操作→开局文字 · First action (ms) | 原生 2D 程序准备 · 2D program prep (ms) | 地图文字→安装 · Marker text (ms) |
+|---|---:|---:|---:|---:|---:|
+| A1 | 7283.2 | 4677.5 | 63.5 | 2180.2 | 20.5 |
+| B2 | 6981.7 | 4257.6 | 65.7 | 1857.2 | 22.7 |
+| C3 | 6840.1 | 4232.4 | 49.1 | 1831.4 | 21.1 |
+| A4 | 6904.0 | 4183.6 | 61.9 | 1840.7 | 22.5 |
+| B5 | 6826.5 | 4179.6 | 62.2 | 1850.7 | 22.5 |
+| C6 | 6928.6 | 4255.6 | 50.0 | 1854.0 | 19.8 |
+
+平原、洛阳、稳态标题和南皮布阵各约三秒，共 24 窗口：p95 均 4.2–4.3 ms、最大 25.0 ms、0 个 >50 ms；每窗口约 650–724 次已接受 World3D 帧。实际 RTX 路线每回调最多一次 3D 绘制，未自然出现可合并的追帧；B 的 updateMs 降低体现渲染 CPU 工作转入 afterFrameMs，不是 GPU 加速。每次 A/B/C 只抓到两个地图文字（城名/印章），2/2 均安装、无中止，无高密度标牌提速证据。冷启动数字含清除缓存/着色程序准备且只有两次各模式，不宣称显著的标题优化或和公开 CDN 数据直接比较。 / Across 24 ~3 s windows, p95 remained 4.2–4.3 ms, max25.0, no >50 ms. This hardware did not naturally need multiple catch-up World3D draws in one browser turn. Render work moving from update into afterFrame is not GPU speedup. Only two captured marker text revisions per trial reached 2/2; no dense-label workload proof. Cold times with disabled disk/cache and two trials per mode are not directly comparable to public-network or warm measurements. Actual GPU execution/presentation were not measured.
+
+原生 `onFrameTiming` 两个观察者记录 CPU 阶段，共用 performance time origin，不能相加重叠的 Play/World3D 开销。独立受控时钟试验确认多次更新合并一次提交并保留首个/暂停/取消语义。候选最后选择启用同一时钟的 2D-first 与仅空闲天下图 4 ms 原生文字预算；标题/开局/模态/选中城池/战场及演武均禁用该文字预算，保留独立关闭开关。组合默认值另作完整设备回归。 / Independent native timing callbacks observe overlapping CPU phases; do not sum their totals. A controlled-clock fixture verified coalescing and first-frame/pause/cancellation. Candidate combined policy uses 2D-first and contextual native text pacing only on idle realm, with title/setup/modal/selection/battle/trial excluded; both have independent opt-outs. Final combined device route is separate.
+
+实际显卡截图：[A 即时标题 · Immediate](test/native-performance-evidence/pc-host-immediate-title.jpg) · [B 延迟同钟 · Deferred](test/native-performance-evidence/pc-host-defer-title.jpg)；[A 平原字牌 · Baseline label](test/native-performance-evidence/pc-label-before.jpg) · [C 仅文字调度 · Text pacing](test/native-performance-evidence/pc-label-budget.jpg)。动态水面可有差异，未声称逐像素相同。 / Matched hardware review screenshots, not pixel identity evidence.
+
+### 原生文字与键盘 · Native text and keyboard
+
+- B5 最终候选 Node R4 **291/291**，包含原生文字/列表专项 **33/33**：全部 502 个原中英文条目、7,028 次占位符/缺值等价对照、8 个旧语言归一化行为与具名目的地列表入口。独立草案还逐条验证 1,848 次日期、28 次数字和 12 次名称输出，完全相同；没有改动保存/查询优先级。 / Final Node R4 **291/291** includes 33 focused text/list checks, 502 original entries, 7,028 exact substitution pairs, eight language normalization cases and named list entry. Separate adapter evaluation also matches 1,848 dates, 28 numbers and 12 name outputs; no saved/query locale priority changes.
+- 目的地列表使用正式 `game.select` 的分页滚动/具名操作与取消，保留原地图点击，选择最终 ID 仍走相同业务入口；过期战役/选择/模式或取消不得发出操作。5/5 纯生命周期测试通过。实际 Windows Edge/RTX 键盘 **14/14**：Tab/Enter 从标题、刘备开局、剧情、首月、城务、出征到按列表选择冀州/南皮，原游戏订单的军团 `target` 为 `nanpi`、原路径 `[nanpi]`；模拟标准手柄由实际 Play 轮询检测后 B 关闭设置，零浏览器错误。未用真手柄、未声称纯键盘完整战役。 / Five picker lifecycle checks pass, preserving existing map input and callback and rejecting cancelled/stale contexts. Actual keyboard on PC Edge/RTX **14/14** runs from title through the native campaign/guide/city sheet to the original destination order, with exact original target and path. Simulated standard controller polling and B cancellation of Settings pass, no browser errors. Not physical controller input or a full keyboard-only campaign.
+- [实际键盘出征后的地图 · Actual keyboard destination receipt](test/native-performance-evidence/pc-native-keyboard-destination.jpg)；原地图点击同时保留。第五批 I1 初轮发现浏览器原生 canvas label 是固定双语，改为应用自己的真实 canvas 前后切换中英名称；没有重建语义树。Windows 软件浏览器实际 en→zh→en 复测通过，英文可访问名称除切换语言「中文」按钮外无 CJK，零错误。 / Actual keyboard screenshot; original pointer path remains. The first quality check found a fixed bilingual canvas accessibility name; the real canvas now follows the selected locale without rebuilding browser semantics. Separate actual software-browser en→zh→en succeeds with no leftover CJK in English labels except the language toggle, zero errors.
+- 百年种子 7、曹操演义：与此前基准 184–280 年全部统计行及最终 tally 完全一致（仅运行用时标题不同）；`src/sim`、`src/data`、存档和战役恢复规则没有差分。 / All seed-7 century-run era rows and final tally exactly match the existing baseline, excluding only the time header; no simulation/data/save/recovery-rule changes.
+
+- 最终独立可复跑 `node test/native-input-accept.mjs` 在无头 Chromium 软件浏览器 **12/12**：原生键盘开局/城务/订单、Escape 取消列表并保留军团/模式/日期、精确目的地回调、模拟标准手柄 B 取消无命令，零浏览器错误。正式旧主流程 `node test/accept.mjs` 最终 **56/56**，含新增两个语言/真实 canvas 名称断言；标题/设置/战场固定参考差异仅 0.25% / 0.16% / 0.55%，未换参考图。 / Reproducible native keyboard/input acceptance passes all 12 checks in a software browser, including Escape and simulated controller B cancellation without state/command changes. The final original functional/screenshot route passes 56/56 including both new locale/canvas assertions; reference differences 0.25%/0.16%/0.55%, no rebaseline.
+
+### 故障恢复 · Asset failure recovery
+
+品质工具最初的拒绝加载路径中只拒绝了 `assets/audio/title-score.mp3`，原版仍可玩但没有重试提示（E2）。候选加入原生模态 `配乐暂未载入 / Music unavailable`、`重试配乐 / Retry music`（默认焦点）及 `继续游戏 / Continue playing`，无需伪造成功加载。实际中英画面可见。独立浏览器首个请求被拒后手动重试，实际共两次文件请求且第二次音频解码进入标题缓存；持续拒绝时继续游戏只保留第一次请求，正常标题上的 New campaign 可进入开局。故意拒绝网络时有一次预期资源失败控制台信息，无未捕获 pageerror；相关 Node **4/4**。未实测真实扬声器听感。最终品质工具 R2 已通过 E2：只拒绝一件资源、无未捕获异常且提供重试。 / The initial quality refusal route rejected only the title score and exposed the absent retry affordance (E2). The native bilingual modal now offers focused Retry and Continue. The actual temporary-failure retry uses two requests and decodes the second title score; the persistent-failure Continue uses one request and still permits normal New campaign entry. One expected failure console message under injected network refusal is not an uncaught page error. Four focused recovery/compatibility tests passed. This is not human speaker acceptance; the final quality-tool R2 passes E2 after the single refusal, with a retry and no uncaught error.
+
+[实际原生重试提示 · Actual retry prompt](test/native-performance-evidence/pc-music-retry.jpg) · 软件浏览器故障注入后的英文原生模态 / English native modal after the deliberate software-browser refusal.
+
+### 地形流与首城 · Terrain streaming and first detailed city
+
+- 正式 `createTerrainStream3D.load` 接受异步实际 HeightField3D。单个原生 Worker 只迁移确定性高度/颜色采样，用 transferable arrays；原公式主线程兜底。按正式 1.25×视距+四分之一块的保留范围及时结束过期队列，不让迟到数据进入当前地块。真实 Node worker/native tile 16/16 专项（含城市上传和取景）；改前/改后/终版四块高度/色彩与两块原生顶点位置、法线、UV、颜色、drawCount、原 GLSL/key/uniforms 的指纹完全一致 `78116fe77f328d435304a1176ecd20042171611176416ebd2aa25bb224d68062`。 / The public async terrain-loader contract permits a real module worker and transferred deterministic arrays. Retired requests are settled without publishing stale geometry, retaining the old synchronous formula. Sixteen focused tests (including city/viewport) pass. Pre/post/final deterministic tile data, native mesh attributes and original shader/uniform fingerprints are identical.
+- 原生 WebGL2 `prepareGeometries` 以 4 ms/切片、最多 4 个几何的协作预算，将原实际详细城池和共享旗帜几何准备进正式缓存；不提交隐藏画面，不等待 GPU 完成；旧代理在准备期间保持实际可见，不支持/失败保留原普通路径。 / Public native geometry preparation cooperatively yields with a 4 ms/four-geometry slice budget. The existing proxy stays visible until actual detail geometry is admitted, without a hidden draw or GPU completion wait; unsupported or failed preparation retains ordinary rendering.
+
+Windows 实际 Edge / RTX 5090 Laptop / ANGLE D3D11，显式 low、1280×800、禁用缓存、固定 reduced-motion、明确相同 defer/text 默认。每模式一次，原曹操暂停战役同一天，受控镜头 洛阳→襄阳→洛阳（距离 52）；并非玩家完整战役性能。三次真实地形与详细城池最终可见，零报错。 / Real hardware with explicit low quality, fixed paused campaign/camera route, one trial per mode, cache disabled. All real terrain and detailed cities become visible, no errors. A controlled camera benchmark, not a played campaign.
+
+| 模式 · Variant | 首帧 / 初始地形 · First play/initial field ms | 洛阳地形就绪 / RAF p95 · Luoyang ms | 襄阳 · Xiangyang ms | 返回洛阳 · Return ms | 过期 Worker 任务 · Retired jobs |
+|---|---:|---:|---:|---:|---:|
+| A 主线程 / 无准备 · Sync | 4706.3 / 4817.8 | 36.5 / 27.6 | 77.4 / 66.0 | 12.2 / 12.3 | 0 |
+| B Worker / 无准备 · Worker | 4292.2 / 4707.5 | 65.7 / 22.7 | 32.7 / 13.8 | 73.2 / 63.1 | 12 |
+| C Worker + 正式准备 · Worker + preparation | 3903.9 / 4836.9 | 68.7 / 23.5 | 32.8 / 13.7 | 13.7 / 9.3 | 14 |
+
+Worker 并非所有地点都更快：首个详细地区地形就绪反而延后，襄阳短窗由 66.0→13.8/13.7 ms，初始完整地形仍约 4.7–4.8 秒。与 B 相比 C 首次详细城池出现延后洛阳 20.0 ms、襄阳 8.8 ms（原代理始终可见）；样本没有证明缓存准备带来额外 p95 收益，保留其作为可独立关闭的引擎能力演示。早期不同宿主默认的过期队列曾为 114.5–159.4 ms，终版短至 65.7–68.7 ms，不能把非同条件数字写成因果加速。着色程序 `preparePrograms` 仅做过草案验证，没有在生产启用或把等待移到点开始之后。 / Worker improves some synchronous spikes, not every location; initial complete terrain stays near 4.7–4.8 s. Native city preparation keeps the existing proxy but adds ~20.0/8.8 ms before detail at the two targets. One sample does not establish an additional p95 gain, so it remains an independently disableable demonstration of the supported API. Preliminary backlog runs used different host defaults and are not a causal comparison. No production program prewarm or wait shifted to game entry.
+
+同机位实际画面：洛阳 [A 同步采样 · Sync](test/native-performance-evidence/pc-terrain-sync.jpg) · [C Worker/几何准备 · Worker/preparation](test/native-performance-evidence/pc-terrain-worker-prepared.jpg)，襄阳 [A 同步 · Sync](test/native-performance-evidence/pc-xiangyang-sync.jpg) · [C Worker/准备 · Worker/preparation](test/native-performance-evidence/pc-xiangyang-worker-prepared.jpg)。地形采样/原生几何指纹一致，不把动态整帧画面声称为像素一致。 / Matched-camera actual PC images; deterministic sampled/mesh fingerprints are equal, not a whole-frame equality claim.
+
+### 最短横屏定位与实体手机 · Short-landscape Locate and physical Fold7 (interim)
+
+- 实际 PC RTX 873×325 窗口专项 **6/6**，定位后原选中单位可见，暂停时间、单位、选择及 HUD 触控范围不变；无错误。不是实体旋转。 / Actual PC viewport regression **6/6** confirms the selected unit remains visible after Locate, preserving paused time and original selection. Not a handset rotation test.
+- 三星 Galaxy Z Fold7 实体外屏，Android 17 / Chrome158 / Adreno830，中画质，实际 873×325／411×813 CSS px，中画质，36 个候选文件指纹、8 项恢复、零错误。第四批公开同路线是 5→3→定位 0→俯视 3 个名牌；第五批本地此候选 5→3→定位 3（选中完整名牌、仍原镜头距离 45）→俯视 3。实际野战回放拖到 6.061/7.9 并读战报，短横屏绘制棋盘仍约 200 CSS px，缩放行需滚动。 / Physical Fold7 cover-screen candidate passes all 36 tested hashes/eight restoration receipts and no errors. Published B4 yielded 5→3→Locate0→Overview3 plates; B5 local yields 5→3→Locate3 including the selected full plate at the same original camera distance 45→Overview3. Touch replay seek/report still work, while short-landscape replay board sizing remains a limitation.
+- 此候选为最后地形过期队列修改前的真机快照，约 5 秒三窗（标题/进行中南皮/暂停野战）n=302/302/303，p95/max 均 16.7 ms、无 >50；本地单次就绪 1.924 s 不与旧公开 11.651 s 归为同网络对照。最终原始软件功能路线后来单独通过；没有重跑完整 390 秒南皮或完成整场野战。 / This handset route predates the final terrain-retirement changes. Three ~5 s browser RAF samples have n=302/302/303 and p95/max 16.7 ms, none >50. Its local 1.924 s title is not directly comparable with the published 11.651 s network run. Final software functional acceptance followed separately; neither full Nanpi nor a full field battle was repeated here.
+- 手机对照（实际外屏）：[B4 公开定位 · Before](test/native-performance-evidence/fold7-public-b4-locate.jpg) · [B5 定位可见 · After](test/native-performance-evidence/fold7-b5-locate.jpg) · [野战回放 · Replay](test/native-performance-evidence/fold7-b5-replay.jpg)。 / Physical screenshots, contrasting real public B4 and local B5 Locate; the replay viewport remains compact.
+- 最后地形版本后另一次 Fold7 英文重点路径：39 个实际文件指纹、8 项环境恢复、零报错；实际横竖切换保留同一宿主。英文标题真实 canvas `aria-label` 本地化，极短横屏 `Campaign paused` 两行清楚、Dismiss 69.67×44 CSS px；归城/关闭城务后原平原名牌由不可见恢复 138×44 CSS px（安全区顶栏下），实际点名牌和单独点 3D 城池均选择原地点。先前设备地形路线的过期 Worker 任务 0→8→15、真实 ready/pending=0 与本次最后名牌修正是两次独立记录，不合称同一个成功路径；最后资源失败处理在软件浏览器独立通过，未在该设备重新实测。 / A separate physical English follow-up after terrain changes matched 39 loaded fingerprints, eight restoration checks and zero errors, retaining the live host on rotation. The canvas name is localized, two-line coach fits and its actual Dismiss measures 69.67×44 CSS px. Returning home restores the previously absent Pingyuan plate (138×44 CSS px below the top bar); actual native plate and separate 3D city taps select the same place. Earlier worker-retirement and later marker-fix receipts remain separate, not one fabricated complete route. Final asset-failure recovery passes separately in the software browser, not again on the handset.
+
+[实体 Fold7 英文提示 · English coach](test/native-performance-evidence/fold7-english-coach.jpg) · [实体 Fold7 平原名牌 · Home nameplate](test/native-performance-evidence/fold7-home-nameplate.jpg)。两张来自后期 39 指纹的同一重点路线，不是早期 36 指纹路线。 / Both are from the later 39-fingerprint focused route, not the earlier 36-fingerprint run.
+
+### 官方多屏 · Official screen profiles
+
+最终原生天下图矩阵为九种配置 ×14 检查点 **126/126**，所有 findings/engine warnings 为 0；126 张原始截图经独立适配缩放、不裁剪接触表复核。各安全区没有新增操作控制遮挡，873×325 城务名牌重新可见、英文双行引导清楚。仍有既有超短横屏滚动要求：中英切换后标题首入口可能被自身滚动视口部分裁切（滚动可见），英文尾注在首屏下方，短剧情/记录面板空间较多。纯软件自动预算的背景更柔，不代表硬件画质回退。 / All 126 final realm checkpoints passed, with zero findings or engine warnings, and every capture was visually reviewed in uncropped fit-only contact sheets. No new unsafe hit regions were found, the city plate is visible at 873×325 and the English coach wraps clearly. Existing short-title scroll behavior, attribution below the fold, and sparse short-story/chronicle sheets remain UX caveats. Softer background detail in automatic software captures is not evidence of hardware visual regression.
+
+独立战场九种配置的首次报告 **54/54**，但 360 CSS px 窄竖屏暂停工具栏有 5 个实际热区警告（继续、1×/2×/4×、离开演武均 42×44 CSS px）。随后仅调整多按钮竖屏工具栏分配，保留间距和 2 px 余量；最终 Node R4 291/291（新增规划回归）。五种受影响竖屏配置重新验收 **30/30**，无 findings 或 engine warnings，30 张真实暂停/其他画面逐张复看，未见新增遮挡；四种未发生改动的横屏配置沿用此前 **24/24**，合计最终 **54/54**、零 findings/engine warnings。短横屏棋盘和竖屏滚动仍有限制。 / The initial nine-profile battle run passed 54/54 but showed five 42×44 CSS pixel touch-target warnings on the 360-pixel portrait paused toolbar. Reallocation fixes the portrait multi-control row while preserving gaps and two pixels of slack. All five affected portrait profiles reran 30/30 with no findings or engine warnings; their captures were visually checked, including actual pause. Four unchanged landscape profiles retain 24/24, for 54/54 final clear checkpoints. Compact replay and portrait scrolling remain limitations.
+
+官方普通验收（最终 Windows 软件浏览器）**8/8**：声明式 ready 实测 4,071 ms（60 s 上限、0 待完成请求、29 回调观察）、实际画布非空、持续运行、输入反馈、音频启动及无错误/外部请求；1 条 Chromium Canvas2D readback 通知，0 engine warnings。此 4.071 s 属不同验收路径，不等于上述限速品质 L1 或设备冷启动，也不证明 GPU 提交 60 FPS。 / The final ordinary verifier passes all eight checks; declared readiness takes 4,071 ms (60 s timeout, zero pending requests, 29 observed RAF callbacks). No errors/external requests, visible canvas, ongoing frames, input response and sound start. One generic Chromium Canvas2D readback advisory, zero engine warnings. This is neither the throttled L1 measurement, a device cold-start nor GPU FPS.
+
+### WebKit 配置回归 · WebKit compatibility profile
+
+本地 Windows Playwright WebKit 26.6 iPhone 15 Pro 配置，最终独立 **6 个界面状态**（标题、开局竖屏/横屏/返回、天下图竖屏/横屏）零错误；实际 renderSize 从 393×659 ↔ 852×393，稳定呈现 backing 保持 393×659、测试 3D 比例固定 1。开局和两方向天下图可见，英文引导无重叠，竖屏正文可滚动；初始标题在仅两个 3D 帧时截到未完全就绪的地形而菜单已可操作（不是黑图），此前等待约十帧的独立样本地形已可见。未重复量化真实加载/长帧，未证明物理 iPhone、iOS Safari、正常 iOS 音频或动态缩放效果。 / Final local Windows Playwright WebKit 26.6 iPhone 15 Pro profile: six title/setup/rotation/realm states without errors. Real renderSize follows 393×659 ↔ 852×393 while the stable presentation backing stays 393×659; the tested 3D ratio stays 1. Setup and both realm orientations are visible, English coach no overlap and body scrolls in portrait. The initial title capture after only two 3D frames contains partially streamed terrain but a usable menu, not a black frame; the earlier distinct ten-frame sample displayed settled terrain. Not actual iOS Safari hardware, iOS audio, dynamic scaling or performance validation.
+
+[WebKit 开局竖屏 · Setup portrait](test/native-performance-evidence/webkit-setup-portrait.jpg) · [天下图竖屏 · Realm portrait](test/native-performance-evidence/webkit-realm-portrait.jpg) · [天下图横屏 · Realm landscape](test/native-performance-evidence/webkit-realm-landscape.jpg)。浏览器设备配置，不是手机实机。 / Browser profile only, not a physical handset.
+
+### 最终自动品质检查 · Final automatic quality checklist (R2)
+
+按本仓库 [QUALITY-CHECKLIST](../docs/QUALITY-CHECKLIST.md)，2026-11-29 Windows 无头软件 Chromium/SwiftShader，采用工具自动测试，**15 个自动项通过、1 个未达标、6 个人工/设备项本工具未运行**。不能用前文的物理 Fold7 部分路线替代完整清单；独立真机、键盘和人工画面详见上方。 / The final Windows software-browser quality-tool run passes 15 automatic items, fails one and does not run six device/manual items. The partial hardware routes are separate evidence, not full checklist credit.
+
+| 编号 · ID | 标准 · Standard | R2 结果 · Result | 实际记录 · Measured |
+|---|---|---|---|
+| T1 | 触屏走完主流程 · The whole game by touch | 未运行 · not run |  |
+| T2 | 触控区 ≥ 44×44 CSS px · Touch targets ≥ 44 × 44 CSS px | 通过 · pass | 7 controls, all at least 44×44 |
+| T3 | 不误触下拉刷新和双击缩放 · No pull-to-refresh or double-tap zoom | 通过 · pass | overscroll held, touch-action none, double-tap zoom off |
+| F1 | 桌面帧时间 p95 ≤ 16.7 ms · Desktop frame time p95 ≤ 16.7 ms | **未达标 · fail** | p95 41.6 ms over 109 frames |
+| F2 | 中端手机帧时间 p95 ≤ 33 ms · Mid-range phone frame time p95 ≤ 33 ms | 未运行 · not run |  |
+| L1 | 首屏 ≤ 3 s（10/5 Mbps、40 ms、CPU ×4） · Start-up ≤ 3 s (10/5 Mbps, 40 ms, CPU ×4) | 通过 · pass | 1.6 s to the first playable screen, 3.0 MB |
+| O1 | 横竖屏与窗口尺寸 · Orientation and window sizes | 通过 · pass | 1280×800, 390×844, 844×390, 768×1024 and live resizing: fits, no errors |
+| I1 | 中英文全可切换，英文下无中文 · Both languages; no Chinese left in English | 通过 · pass | html lang "en", no Chinese in page text or names |
+| I2 | 画布上的字也随语言切换 · Words drawn on the canvas follow the language | 未运行 · not run |  |
+| I3 | 长英文不溢出 · Long English does not overflow | 通过 · pass | no page text cut off at 390 px in English |
+| A1 | 键盘可到达控件，焦点可见 · The keyboard reaches controls; focus shows | 通过 · pass | Tab → "新的征程" (owned active descendant) |
+| A1m | 只用键盘走完主流程 · The whole game by keyboard alone | 未运行 · not run |  |
+| A2 | 读屏读出主要按钮 · A screen reader names the main buttons | 通过 · pass | 7 named controls, e.g. button "新的征程", button "读取", button "登录新武将" |
+| A3 | 尊重 prefers-reduced-motion · prefers-reduced-motion is honoured | 通过 · pass | the code reads prefers-reduced-motion or offers a setting |
+| S1 | 存档损坏不崩溃 · A broken save does not crash | 通过 · pass | unreadable text; started without an uncaught error (keys: nine-provinces) |
+| S2 | 存档版本不匹配不崩溃 · A save of another version does not crash | 通过 · pass | a save from a newer version; started without an uncaught error (keys: nine-provinces) |
+| S3 | 存储不可用不崩溃 · Refused storage does not crash | 通过 · pass | storage refused: started without an uncaught error |
+| S4 | 存档出问题时提示并可重开 · A save problem is told and a fresh start offered | 未运行 · not run |  |
+| E1 | 无控制台错误 · No console errors | 通过 · pass | 0 errors |
+| E2 | 资源失败有错误界面和重试 · A failed file shows an error and a retry | 通过 · pass | 1 files refused; no uncaught error; offers to try again |
+| E3 | 切到后台再回来不出错 · Hidden and shown again without errors | 通过 · pass | no errors; the game or the engine loop watches visibility |
+| E4 | 切回后声音和计时正常 · Sound and timers right after coming back | 未运行 · not run |  |
+
+[第五批实际画面与每张出处 · Evidence index](test/native-performance-evidence/README.md)。
+
 ## 原生界面第四批 · Native interface batch four (2026-11-29)
+
+公开追加验收 · Public follow-up: [PR #310](https://github.com/cnedwin/PortedGamesEgret/pull/310)，合并 `0133b0b48299295b783badf7b634f6aef2735936`，[Pages 运行 46166418090](https://github.com/cnedwin/PortedGamesEgret/actions/runs/46166418090)。实际 PC Edge/RTX 1280×720 中画质公开版 13/13（5 个浏览器实际响应 SHA、437 响应、0 错误），从标题、布阵到暂停保持约 1.1 秒并回标题；一次公开冷标题 10.818s。实际 Fold7 外屏 Android17/Chrome158/Adreno830，中画质 873×325/411×813，25 个指纹、全部 7 项环境恢复、零错误，实际演武/旋转/暂停及野战实时录制回放 6.061/7.9。约 5 秒标题/进行中南皮/暂停野战的 p95 都是 16.7、max 33.2/33.2/24.9 ms，均无 >50 ms；公开冷标题 11.651s。公开网络条件没有控制，未重复旧本地的完整 390 秒南皮结束，也没有完成野战整场或真实手柄。 / Public deployment passes actual PC 13/13 with five served-response hashes/437 responses, title/deployment/pause and return; physical Fold7 has all 25 source fingerprints, seven restoration checks and zero errors, with rotation, pause and partial live field replay. The short three device windows have 16.7 ms p95 and no >50 ms. Public title readiness 10.818 s PC and 11.651 s phone are uncontrolled network timings, not local A/B. The original complete 390-second local Nanpi trial was not repeated publicly.
 
 范围 · Scope: 引擎 `7fb371acb8bab254cf1c49b9da0ac0eed0c06fb4`，原生战场布阵、速度/暂停、指挥面板、军团标牌与战场反馈、演武配置及棋盘、战报和回放。沿用已有战役、规则、数值、存档和 World3D 资源。网页只保留宿主嵌入、两张引擎可见画布（World3D 和 Play）及浏览器语义投影；离屏绘制棋盘/小地图静态纹理不是独立游戏界面或时钟。 / Native deployment, speed and pause, battle command panel, unit plates and feedback, trials/board, reports and replay share the existing engine host. Campaign simulation, balance, saves and World3D assets remain unchanged. Only host integration, the two engine presentation surfaces and browser semantics remain on the web layer. Offscreen static art preparation does not create another visible UI or clock.
 

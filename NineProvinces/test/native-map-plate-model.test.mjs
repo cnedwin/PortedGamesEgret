@@ -1,11 +1,12 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {createGame} from '../src/sim/world.mjs';
-import {getLanguage,setLanguage} from '../src/i18n.mjs';
-import {NODES} from '../src/data/map.mjs';
-import {generalName,placeName} from '../src/view/names.mjs';
-import {troopCap} from '../src/sim/military.mjs';
-import {armyPlate,placePlate,plateExtent} from '../src/ui/native-map-plate-model.mjs';
+import '../vendor/node-register.mjs';
+const {createGame} = await import('../src/sim/world.mjs');
+const {getLanguage,setLanguage} = await import('../src/i18n.mjs');
+const {NODES} = await import('../src/data/map.mjs');
+const {generalName,placeName} = await import('../src/view/names.mjs');
+const {troopCap} = await import('../src/sim/military.mjs');
+const {armyPlate,placePlate,plateExtent} = await import('../src/ui/native-map-plate-model.mjs');
 
 test('native plate presentation preserves the actual localized city owner and garrison model',()=>{
   const lang=getLanguage();try{

@@ -99,7 +99,8 @@ function makeVisual(host,parent,type,portraits,activate){
       if(data.share>0)g.beginFill(0x6aa7ee).drawRect(cardX+6,14,Math.max(2,cardW-12)*data.share,3).endFill();
     }
   }
-  return {root,get record(){return current;},get stageBounds(){return rect();},extent(next){return plateExtent(next,current?.entity===next.id?measured():{});},
+  return {root,get record(){return current;},get stageBounds(){return rect();},
+    async textReady(){const labels=[name,seal,troops].filter(x=>x&&x.visible&&String(x.text).length>0);const values=await Promise.allSettled(labels.map(x=>x.ready));return {count:labels.length,ready:values.filter(v=>v.status==='fulfilled').length,aborted:values.filter(v=>v.status==='rejected'&&v.reason?.name==='AbortError').length,failed:values.filter(v=>v.status==='rejected'&&v.reason?.name!=='AbortError').map(v=>String(v.reason))};},extent(next){return plateExtent(next,current?.entity===next.id?measured():{});},
     bind(record,next,wanted){
       if(current!==record){
         this.release();current=record;data=next;

@@ -124,6 +124,7 @@ function armyRows(app,c,id){
     a.deputies.length?title(t('deputies')):null,...c.wrap(a.deputies.map(d=>c.chip('deputy-'+d,d,()=>app.open('general',{id:d}))))];
   if(mine)body.push(...c.wrap([
     c.action('army-march',app.mode?.kind==='march'?t('pickTarget'):t('orderMarch'),()=>app.setMode(app.mode?.kind==='march'?null:{kind:'march',army:id}),{main:true}),
+    c.action('army-destination-list',word('按列表选目的地','List destinations'),()=>app.destinationPicker?.open(id)),
     c.action('army-return',t('orderBack'),()=>app.act('return',id),{why:a.at===a.home&&!a.link?t('why_here'):''}),
     c.action('army-disband',t('disband'),()=>app.confirmAction(word('确认解散这个军团？','Disband this army?'),()=>app.act('disband',id)),{why:homeOk?'':t('why_cannot')})]),
     app.mode?.kind==='march'?note(t('pickTargetHelp'),3):null);

@@ -120,10 +120,12 @@ try {
   // English and back.
   await native(page, 'button:English', {part:'title-language'});
   await page.waitForTimeout(200);
-  const english = await state(page, () => [document.documentElement.lang, window.egretGame.ui.outline()]);
+  const english = await state(page, () => [document.documentElement.lang, window.egretGame.ui.outline(),window.egretGame.app.game.canvas.getAttribute('aria-label'),Array.from(document.querySelectorAll('[aria-label]'),el=>el.getAttribute('aria-label')).join(' ')]);
   check(english[0] === 'en' && /New campaign/.test(english[1]) && !/[\u3400-\u9fff]/.test(english[1].replace('中文', '')), `the title reads in English: ${english[1]}`);
+  check(english[2]==='Nine Provinces Ablaze'&&!/[\u3400-\u9fff]/.test(english[3].replaceAll('中文','')), 'the English projected browser labels and native canvas name contain no remaining Chinese');
   await native(page, 'button:中文', {part:'title-language'});
   await page.waitForTimeout(200);
+  check(await state(page,()=>document.documentElement.lang==='zh-CN'&&window.egretGame.app.game.canvas.getAttribute('aria-label')==='九州烽烟'),'the restored Chinese native canvas accessibility name follows the selected language');
 
   // A new campaign as Liu Bei; the peach garden unrolls.
   await native(page, 'button:新的征程', {part:'title-new'});
