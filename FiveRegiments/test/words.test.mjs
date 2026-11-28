@@ -31,3 +31,13 @@ test('no Chinese is written into the interface code outside the tables', async (
     for (const literal of code.match(/'[^'\n]*'|"[^"\n]*"|`[^`]*`/g) ?? []) if (CJK.test(literal)) assert.ok(allowed.has(literal), `${file}: ${literal}`);
   }
 });
+
+test('Imperial Arena uses its new localized public brand consistently', () => {
+  for (const [lang,name] of [['zh','帝国竞技场'],['en','Imperial Arena']]) {
+    setLanguage(lang);
+    assert.equal(t('title'),name);
+    assert.ok(t('canvasLabel').startsWith(name));
+    assert.ok(t('runDone').startsWith(name));
+  }
+  setLanguage('zh');
+});

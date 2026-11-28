@@ -6,6 +6,7 @@
 // blended, laid over one another for some bones only, and finally written to the skeleton.
 
 import { add, cross, dot, len, lerp3, mul, sub, unit } from './rig.mjs';
+import { assetDownloads } from './asset-downloads.mjs';
 import { SKILLS } from '../sim/regiments.mjs';
 import { CHARGED_RELEASE } from '../sim/combat-tells.mjs';
 
@@ -169,13 +170,13 @@ export function impactWeight(age, heavy, kind = 'hit') {
 export async function loadMotion(prefix) {
   const base = String(prefix);
   const [index, bin] = await Promise.all([
-    fetch(base + '.json').then((r) => {
+    assetDownloads.read(base + '.json').then((r) => {
       if (!r.ok) throw Error('Motion index HTTP ' + r.status);
-      return r.json();
+      return JSON.parse(new TextDecoder().decode(r.bytes));
     }),
-    fetch(base + '.bin').then((r) => {
+    assetDownloads.read(base + '.bin').then((r) => {
       if (!r.ok) throw Error('Motion data HTTP ' + r.status);
-      return r.arrayBuffer();
+      return r.bytes;
     })
   ]);
   return createMotion(index, bin);

@@ -87,7 +87,7 @@ export const GAMES = [
       { zh: "竹林古道 · 雾、竹影与原生战斗 HUD", en: "Bamboo path · Layered fog, bamboo shadows and the native combat HUD" },
       { zh: "县城校场 · PC 实机战斗画面", en: "County drill ground · Live PC combat view" },
     ],
-    zh: "五营争锋", en: "Five Regiments",
+    zh: "帝国竞技场", en: "Imperial Arena",
     genre: { zh: "第三人称冷兵器对决", en: "Third-person cold-steel duels" },
     summary: { zh: "从羽林卫、虎步、陷阵营、银翎卫、武射史里选一营，技能、天赋、战技和生命值按原作的公告与物品面板，伤害公式按武器和护甲面板推算，一刀一成血、打得有来有回。在校场、桃林、竹林、雪原单挑另外四营，最后在王城宫前以一敌二；银翎卫骑马作战、马上架枪。", en: "Choose one of five regiments; skills, talents, weapon arts and health follow the original's notes and item cards, and a damage formula worked out from the weapon and armour cards makes each blow take about a tenth of a man's health, so fights go back and forth. Beat the other four, then two at once before the palace; the Silver Wing Guard fights from the saddle and couches his ji." },
     features: [

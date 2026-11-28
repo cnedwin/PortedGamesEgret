@@ -1,11 +1,11 @@
 # 引擎笔记 · Engine notes
 
-做这款游戏时发现的新白鹭引擎（提交 `450bb9e`）的缺陷与建议，格式见 [docs/GAME-STANDARD.md](../docs/GAME-STANDARD.md) 第 3 节。
+开发《帝国竞技场》时发现的新白鹭引擎（提交 `450bb9e`）的缺陷与建议，格式见 [docs/GAME-STANDARD.md](../docs/GAME-STANDARD.md) 第 3 节。
 
-The faults found in the new Egret engine (commit `450bb9e`) while making this game, and suggestions, written as in
+The faults found in the new Egret engine (commit `450bb9e`) while making Imperial Arena, and suggestions, written as in
 part 3 of [docs/GAME-STANDARD.md](../docs/GAME-STANDARD.md).
 
-当前引擎副本 / Current vendored engine: 7fb371acb8bab254cf1c49b9da0ac0eed0c06fb4. 下列历史事项保留原有证据；未复测的不能宣称解决。 / Historical evidence remains below; items not retested are not claimed resolved.
+当前引擎副本 / Current vendored engine: 212972678e633b1f3667f345d0646b0fba907ee1. 下列历史事项保留原有证据；未复测的不能宣称解决。 / Historical evidence remains below; items not retested are not claimed resolved.
 
 ### 1. `loadGltf3D` 不认 `EXT_texture_webp` · `loadGltf3D` does not take `EXT_texture_webp` — 未解决 / open
 <!-- engine-note: {"id": "FiveRegiments#1", "status": "open", "topic": "gltf-webp-texture"} -->
@@ -63,3 +63,12 @@ part 3 of [docs/GAME-STANDARD.md](../docs/GAME-STANDARD.md).
 - 游戏里的处理：进入及继续只准备锁定，明确的战场鼠标点击释放后用 `game.pointer.lock()` 请求，保留原有提示、拒绝时回退与失焦清理。修复后真实 Edge 进入、退出、继续均通过，原生 Chromium touch/pointer 回归通过。 / Arm the lock on entry or resume, request it only after an explicit canvas click completes. The existing hint, refusal path and input cleanup are preserved. The subsequent physical Edge route and browser input checks pass.
 - 建议：为正在申请与实际锁定的生命周期加原生捕获协调测试，避免在锁定状态切换期间争用捕获；不要仅吞掉异常。 / Consider native capture arbitration coverage for pending and actual pointer-lock state; do not merely swallow exceptions.
 - 状态：游戏侧已处理；引擎侧仍需独立稳定复现。 / Demo addressed; an engine-level independent reproduction remains open.
+
+### 8. World3D 预热入口尚不覆盖内置场景与后处理通道 · World3D preparation does not yet expose built-in scene and post passes — API 建议 / open
+<!-- engine-note: {"id":"FiveRegiments#8","status":"open","topic":"world3d-prepare-internal-passes","workaround":["src/view/title-programs.mjs","src/main.mjs"]} -->
+
+- **现象 · What happens**：冷启动高画质时，实测 World3D 的同步 `getProgramParameter(program, gl.LINK_STATUS)` 查询开销明显。Windows 实机 Chrome for Testing 157、RTX 5090 Laptop GPU（ANGLE D3D11）、WebGL2、高画质，使用同一台机器和同一校场卷首，两轮本地冷启动对照中，优化前累计 **1640.0 / 1654.2 ms**，现有正式预热 API 接入后累计 **181.8 / 142.8 ms**；单次最大值从 **255.0 / 252.9 ms** 降至 **69.0 / 49.0 ms**。这些是经过记录调用的主线程耗时而非 GPU 执行时长，不能把剩余时间全部归因于某一内置通道。 / On the same Windows hardware and title scene, two cold local runs using Chrome for Testing 157, RTX 5090 Laptop GPU (ANGLE D3D11), WebGL2 and high quality recorded aggregate synchronous LINK_STATUS query CPU time of 1640.0 and 1654.2 ms before preparation, versus 181.8 and 142.8 ms after it. Largest queries fell from 255.0 and 252.9 ms to 69.0 and 49.0 ms. These instrumented CPU call times are not GPU execution times; they do not establish that all residual costs come from a particular built-in pass.
+- **最小复现 · Reproduce**：分别用优化前的版本与当前版本，从新浏览器配置、空缓存进入同一静态服务的 `FiveRegiments/?quality=high&seed=3&lang=zh&startup-profile=1`。对照时均使用约 40 ms 延迟、100 Mbps 下载规格；在首次导航前开启追踪，单独累计首屏就绪前 World3D WebGL2 的 `getProgramParameter`（只统计 LINK_STATUS），再记录标题首次可操作与点入对决的时间。当前版的 `window.egretGame.startupTrace` 另记录资源下载、场景构建与预热各段。 / Use fresh browser contexts and empty caches, serve both revisions, open the same URL at the matched network profile, instrument the World3D context's LINK_STATUS queries before navigation, and record title readiness plus entry into a duel. The opt-in startupTrace records the separate asset, stage-build and preparation phases in this version.
+- **游戏里的处理 · Demo handling**：`src/view/title-programs.mjs` 枚举真实可见场景对象的 mesh/material 及实际通道，`src/main.mjs` 使用相同正式 `renderer.preparePrograms`（含自动实例化参数）异步预热，保留原有场景和画质。该入口当前以 mesh/material 为请求对象，skybox 和引擎内部后处理着色程序不由游戏的请求同样覆盖，可能仍在首次使用时准备。 / The game prepares actual visible mesh/material variants through the public renderer API, including automatic instancing, without changing the scene or quality. The current request interface is mesh/material based; the skybox and engine-internal post-processing programs are not addressed by the same requests and may still prepare on first use.
+- **建议 · Proposal**：提供针对实际 scene、画质档位和启用通道的可选准备入口（尤其 skybox 与内置 post），沿用受控异步链接和完成诊断，便于游戏在已有依赖加载阶段预热，且不强制所有项目启用。 / Provide optional preparation for the actual scene, active quality preset and internal passes, particularly skybox and built-in post-processing, with the same asynchronous linking and completion diagnostics. Keep the feature opt-in.
+- **状态 · Status**：公开预热入口已改善 PC 首屏同步等待，内置通道 API 建议仍未解决；本条的上述同条件性能对照尚未在 Fold7、Safari 或其他设备重做，不将桌面结果外推。 / The public preparation path improved PC synchronization costs. The built-in-pass API request remains open; these matched measurements have not yet been repeated on Fold7, Safari or other devices.

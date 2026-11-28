@@ -1,4 +1,6 @@
-# 原生界面与版本升级 · Native interface and quality upgrade
+# 原生界面与版本升级 · Native interface and quality upgrade — 帝国竞技场 · Imperial Arena
+
+当前游戏随后的正式引擎副本 / Current follow-up engine snapshot: `212972678e633b1f3667f345d0646b0fba907ee1`（见 `vendor/SOURCE.md`）。下文 V1–V5 保留各阶段的历史验收。 / The V1–V5 observations remain tied to their historical revisions.
 
 ## V1 — 引擎副本 · Engine snapshot
 
@@ -45,3 +47,9 @@ PC 实际键鼠进入、选营、指针锁定、移动起停通过（RTX 5090 La
 使用 `node --test test/*.test.mjs`、`node test/accept.mjs`、`node test/error-accept.mjs`、`node test/pointer-accept.mjs`、`node test/touch-accept.mjs` 和 `node vendor/egret.mjs verify --screens --play test/screen-route.mjs` 复跑。 / Reproduce with the same commands. The device test additionally requires an authorized physical device and real browser input.
 
 截图 / Visual references: the original title/selection/bamboo references were retained throughout V1 and V2; final native UI/lighting candidates differed intentionally (39.12%, 36.91%, 57.58%). The two menu reference captures now use a fixed camera only in the existing ?fixed verification mode so variable load time does not change the reference. Normal menu camera animation remains unchanged. The replacement images were visually reviewed before copying; no comparison threshold was relaxed.
+
+## 2026-11-29 帝国竞技场 · Imperial Arena follow-up
+
+The game keeps the FiveRegiments folder and its existing save key. All displayed Chinese and English names, the page metadata, menu text and showcase cover use the new title. The generated ESM launch entry under `assets/` is checked against the pinned tool, source files and official vendor; regular play remains a static web page. The startup asset downloads and actual renderer preparation overlap, without replacing the full title scene with an early placeholder. Decorative light, toast fade and camera shake are refined independently of the unchanged game clock and simulation.
+
+截图候选在原固定验收流程比较：中文标题 1.92%（戏名更新及初帧姿态差异），选择 0.00%，战斗 1.02%。人工并排核查后只更新标题图；保留选择与战斗基线，未放宽阈值。 / The candidates were visually reviewed alongside the original title, selection and battle references. Only the intentional new title image replaces its reference; the original selection and battle references and thresholds remain intact. Real device timing and limitations are in QUALITY.md.
