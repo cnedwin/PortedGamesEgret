@@ -143,8 +143,12 @@ function zoomLine(act='zoom') {
   return row([action('＋',''+act,{dir:'in'},{label:'拉近',width:48}),action('−',act,{dir:'out'},{label:'拉远',width:48}),action('全景',act,{dir:'reset'},{width:60})],{height:48,gap:5});
 }
 function sceneTools(ctx,mode,label,children=[]) {
-  return col([row([action(ctx.ui.commandCollapsed?label:'观景','command-toggle',{}, {width:112}),...children],{height:48,gap:4})],
-    {width:upright(mode)?'96%':large(mode)?'55%':400,height:48,anchor:'top-left',x:8,y:upright(mode)?148:112});
+  // The safe width shrinks on a notched landscape display; command cards
+  // occupy its right side. Keep all left controls inside that remaining strip.
+  const beside = !upright(mode) && !ctx.ui.commandCollapsed;
+  const buttons = beside ? children.map(child=>({...child,width:'fill'})) : children;
+  return col([row([action(ctx.ui.commandCollapsed?label:'观景','command-toggle',{}, {width:112}),...buttons],{height:48,gap:4})],
+    {width:upright(mode)?'96%':beside?'46%':large(mode)?'55%':400,height:48,anchor:'top-left',x:8,y:upright(mode)?148:112});
 }
 function seatScreen(ctx,mode) {
   const {world,ui,picture,helpers:h}=ctx, me=h.me(), b=h.books();

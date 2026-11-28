@@ -163,3 +163,26 @@ test('dynamic English summaries preserve actual date, requirement and rewards',a
   const meet=locale.translate('第 4 届定于承和9年1月1日，还有 960 日。各派遣一名弟子出战（亲传及以下，掌门、长老与江湖奇人不得下场），夺魁者门派威望 +30、得银 1,000 两，另赠一部本派所缺的秘笈。');
   assert.match(meet,/\b960\b/); assert.match(meet,/\b30\b/); assert.match(meet,/\b1,000\b/);
 });
+
+// A clipped list can report an authored rectangle outside the viewport, but
+// the fixed scene tools must never be covered by the right command card.
+test('notched landscape leaves scene tools clear of the command card', async () => {
+  const {compile,SKIN}=await import('../src/ui/native-kit.mjs');
+  const {planView}=await import('../vendor/engine/dist/web/view.js');
+  for(const [width,height,inset,form] of [[852,393,59,'phone'],[873,325,0,'phone'],[1024,768,0,'tablet']]){
+    for(const partial of [{page:'seat',seatTab:'recruit'},{page:'world',map3d:true},{page:'world',map3d:false}]){
+      const ctx=context(partial.page); Object.assign(ctx.ui,partial);
+      const raw=createPage(ctx),desc=Object.fromEntries(Object.entries(raw).map(([key,node])=>[key,compile(node).root]));
+      const screen={x:0,y:0,width,height},safe={x:inset,y:0,width:width-2*inset,height:height-(inset?21:0)};
+      const planned=planView({...desc,skin:SKIN},{screen,safe,orientation:'landscape',form});
+      const parts=planned.parts;
+      const tools=parts.find(({part})=>part.type==='panel'&&part.children?.some(row=>row.children?.some(child=>child.name?.startsWith('act_command-toggle_'))));
+      const commands=parts.find(({part})=>part.type==='panel'&&part.children?.some(child=>child.name==='page-rows'));
+      assert.ok(tools&&commands,'scene tools and command card');
+      assert.ok(tools.rect.x+tools.rect.width+4<=commands.rect.x,
+        partial.page+' '+width+'×'+height+' tools '+JSON.stringify(tools.rect)+' overlap commands '+JSON.stringify(commands.rect));
+      for(const {part,rect} of parts)if(tools.part.children[0].children.some(child=>child.name===part.name))
+        assert.ok(rect.width>=44&&rect.height>=44,part.name+' must remain a real touch target');
+    }
+  }
+});

@@ -10,6 +10,7 @@
 import { existsSync, readFileSync, readdirSync, writeFileSync } from 'node:fs';
 import { join, relative, resolve } from 'node:path';
 import { ROOT, launch, openPage, serve } from './lib/browser.mjs';
+import { focusedNamedControl } from './lib/quality-focus.mjs';
 import { noteQualityInReadme } from './lib/quality-readme.mjs';
 
 const args = process.argv.slice(2);
@@ -158,19 +159,9 @@ try {
     let reached = null;
     for (let i = 0; i < 8 && !reached; i++) {
       await page.keyboard.press('Tab');
-      reached = await page.evaluate(() => {
-        const el = document.activeElement;
-        if (!el || el === document.body) return null;
-        const name = el.getAttribute('aria-label') || el.textContent?.trim() || el.getAttribute('title');
-        if (!name) return null;
-        const style = getComputedStyle(el),
-          rect = el.getBoundingClientRect();
-        // Shown by the element itself, or drawn by the game on its canvas around the semantic node's place.
-        const outline = (style.outlineStyle !== 'none' && parseFloat(style.outlineWidth) > 0) || style.boxShadow !== 'none';
-        return { name: name.slice(0, 30), outline, size: rect.width * rect.height };
-      });
+      reached = await page.evaluate(focusedNamedControl);
     }
-    record('A1', reached ? PASS : FAIL, reached ? `Tab → "${reached.name}"${reached.outline ? ' (outline)' : ' (focus drawn by the game)'}` : 'Tab reached no named control');
+    record('A1', reached ? PASS : FAIL, reached ? `Tab → "${reached.name}"${reached.activeDescendant ? ' (owned active descendant)' : reached.outline ? ' (outline)' : ' (focus drawn by the game)'}` : 'Tab reached no named control');
 
     // E3 · hidden and shown again: nothing breaks.
     const before = page.problems.length;
