@@ -1014,6 +1014,65 @@ export function createView(scene, camera, options = {}) {
     orient(tailRotor, 0, time * 34);
   };
 
+  /**
+   * Link ordinary, automatic-batch, shadow and reflection variants without a
+   * draw. The existing warm pass remains responsible for first GPU uploads.
+   * No rule update or temporary scene attachment is needed for this step.
+   */
+  view.prepare = async (renderer) => {
+    if (typeof renderer?.preparePrograms !== 'function') return { supported: false, requests: 0 };
+    const startedAt = performance.now();
+    const meshes = [];
+    scene.traverse(node => { if (node instanceof Mesh3D && !node.geometry.isDisposed) meshes.push(node); });
+    // The ordinary asset variant that historically first linked in both
+    // views is represented separately, even when the title uses instances.
+    const source = authoredCrate?.parts.body?.meshes[0];
+    const fixture = source ? new Mesh3D(source.geometry, source.material).setMatrix(source.matrix) : null;
+    if (fixture) {
+      fixture.name = 'boot-supply-program';
+      fixture.frustumCulled = false;
+      fixture.castShadow = false;
+      fixture.receiveShadow = true;
+      fixture.renderOrder = 1000001;
+      meshes.push(fixture);
+    }
+    const pairs = [];
+    for (const mesh of meshes) {
+      const materials = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
+      for (const material of materials) if (material && !material.isDisposed) pairs.push({ mesh, material });
+    }
+    const fog = Boolean(scene.fog), environment = Boolean(scene.environment);
+    const shadows = renderer.shadowsEnabled === true;
+    const reflection = mirrorOn ? mirror.createPass(camera, wet.meshes) : undefined;
+    const needsDepth = pairs.some(({material}) => material.softness > 0);
+    const requests = [];
+    for (const { mesh, material } of pairs) {
+      const color = {
+        mesh, material, fog, environment,
+        receiveShadows: shadows && mesh.receiveShadow,
+        softDepth: material.softness > 0,
+        transmission: material.transmission > 0,
+      };
+      requests.push(color);
+      if (reflection) requests.push({
+        ...color, reflection, receiveShadows: color.receiveShadows && reflection.shadows,
+      });
+      if (shadows && mesh.castShadow) requests.push({ mesh, material, pass: 'shadow' });
+      // A scene with a soft particle requests its opaque depth prepass as
+      // well. The renderer applies the reflection layer/exclusion rules.
+      if (needsDepth && material.depthWrite && material.alphaMode !== 'blend') {
+        requests.push({ mesh, material, pass: 'depth-prepass' });
+        if (reflection) requests.push({ mesh, material, pass: 'depth-prepass', reflection });
+      }
+    }
+    await renderer.preparePrograms(requests, { includeAutoInstancing: true });
+    return {
+      supported: true, requests: requests.length, meshes: meshes.length,
+      reflection: Boolean(reflection), ordinarySupplyMeshes: fixture ? 1 : 0,
+      elapsedMs: performance.now() - startedAt,
+    };
+  };
+
   /** Prepare the measured ordinary supply-body variants beneath the loading screen. */
   view.warm = (renderer, game) => {
     const emitters = [dust, chips, sparks, blood, flashes, fire, smoke];

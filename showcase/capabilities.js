@@ -42,10 +42,6 @@ export const MATRIX = {
      "file": "FivePhases/src/main.mjs"
     },
     {
-     "game": "FPS",
-     "file": "FPS/src/main.mjs"
-    },
-    {
      "game": "InquestScrolls",
      "file": "InquestScrolls/src/view/pictures.mjs"
     },
@@ -358,6 +354,10 @@ export const MATRIX = {
    "kind": "entry",
    "label": "@egret/engine/ui",
    "games": [
+    {
+     "game": "FPS",
+     "file": "FPS/src/ui/menus.mjs"
+    },
     {
      "game": "jelly-pandas",
      "file": "jelly-pandas/src/ui/menus.mjs"
@@ -744,6 +744,10 @@ export const MATRIX = {
      "file": "FiveRegiments/src/audio.mjs"
     },
     {
+     "game": "FPS",
+     "file": "FPS/src/native-settings.mjs"
+    },
+    {
      "game": "InquestScrolls",
      "file": "InquestScrolls/src/saves.mjs"
     },
@@ -925,6 +929,10 @@ export const MATRIX = {
      "file": "FivePhases/src/main.mjs"
     },
     {
+     "game": "FPS",
+     "file": "FPS/src/main.mjs"
+    },
+    {
      "game": "InquestScrolls",
      "file": "InquestScrolls/src/main.mjs"
     },
@@ -981,6 +989,10 @@ export const MATRIX = {
     {
      "game": "FiveRegiments",
      "file": "FiveRegiments/src/audio.mjs"
+    },
+    {
+     "game": "FPS",
+     "file": "FPS/src/audio.mjs"
     },
     {
      "game": "InquestScrolls",
@@ -1044,6 +1056,10 @@ export const MATRIX = {
     {
      "game": "FivePhases",
      "file": "FivePhases/src/main.mjs"
+    },
+    {
+     "game": "FPS",
+     "file": "FPS/src/main.mjs"
     },
     {
      "game": "InquestScrolls",
@@ -1121,6 +1137,10 @@ export const MATRIX = {
      "file": "FivePhases/src/main.mjs"
     },
     {
+     "game": "FPS",
+     "file": "FPS/src/main.mjs"
+    },
+    {
      "game": "jelly-pandas",
      "file": "jelly-pandas/src/hud.mjs"
     },
@@ -1166,6 +1186,10 @@ export const MATRIX = {
     {
      "game": "FivePhases",
      "file": "FivePhases/src/main.mjs"
+    },
+    {
+     "game": "FPS",
+     "file": "FPS/src/main.mjs"
     },
     {
      "game": "InquestScrolls",
