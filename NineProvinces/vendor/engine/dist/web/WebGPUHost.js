@@ -1,3 +1,4 @@
+import { addResourceTotal, createImagesHighWater, createPageCopyDiagnostics, createPendingHighWater, createResourceTotals, createReuseDiagnostics, createUnknownNativeDiagnostics, raiseImagesHighWater, raisePendingHighWater, sharedResourceStatus } from './sharedResourceDiagnostics.js';
 import { SHARED_FRAME_PROFILE_2D } from '@egret/contracts';
 import { admitSharedWebGPUOptions } from './sharedWebGPUOptions.js';
 import { prepareSharedDrawsForSubmission2D, SharedPreparationError } from '../rendering/prepareSharedDraws2D.js';
@@ -86,65 +87,12 @@ class WebGPUHostImplementation {
     /** The prepared draws of the last frame. A Host that is not active keeps none. */
     retention = new SharedPreparationRetention2D();
     // Fixed-size observations only; original records/native owners still authorize every transition.
-    resourceCpu = {
-        canonicalBytes: 0,
-        scratchBytes: 0,
-        highCanonicalBytes: 0,
-        highScratchBytes: 0,
-        highTemporaryBytes: 0,
-        saturated: false
-    };
-    resourceUnknown = {
-        knownLogicalBytes: 0,
-        objects: 0,
-        highKnownLogicalBytes: 0,
-        highObjects: 0,
-        saturated: false
-    };
-    resourceReuse = {
-        current: {
-            idleBytes: 0,
-            idleEntries: 0,
-            leasedBytes: 0,
-            leasedEntries: 0,
-            reservedBytes: 0,
-            reservedEntries: 0,
-            detachedBytes: 0,
-            detachedEntries: 0,
-            unknownBytes: 0,
-            unknownEntries: 0
-        },
-        highWater: {
-            idleBytes: 0,
-            idleEntries: 0,
-            leasedBytes: 0,
-            leasedEntries: 0,
-            reservedBytes: 0,
-            reservedEntries: 0,
-            detachedBytes: 0,
-            detachedEntries: 0,
-            unknownBytes: 0,
-            unknownEntries: 0
-        },
-        saturated: false
-    };
-    resourceHighPending = {
-        frames: 0,
-        uploadCreditBytes: 0,
-        pageCreditBytes: 0,
-        readbackCreditBytes: 0,
-        geometryCreditBytes: 0,
-        colorCreditBytes: 0
-    };
-    resourceHighImages = {
-        readyBytes: 0,
-        readyEntries: 0,
-        pinnedReadyBytes: 0,
-        pinnedReadyEntries: 0,
-        allocatedLogicalBytes: 0,
-        reservedCreditBytes: 0
-    };
-    resourceTotals = { pageWriteCalls: 0, pageWriteBytes: 0, readyCapacityEvictions: 0 };
+    resourceCpu = createPageCopyDiagnostics();
+    resourceUnknown = createUnknownNativeDiagnostics();
+    resourceReuse = createReuseDiagnostics();
+    resourceHighPending = createPendingHighWater();
+    resourceHighImages = createImagesHighWater();
+    resourceTotals = createResourceTotals();
     resourceSaturated = false;
     resourceReadyBytes = 0;
     resourcePinnedBytes = 0;
@@ -279,29 +227,36 @@ class WebGPUHostImplementation {
         });
     }
     sampleResourcePending() {
-        this.resourceHighPending.frames = Math.max(this.resourceHighPending.frames, this.ledger.size);
-        this.resourceHighPending.uploadCreditBytes = Math.max(this.resourceHighPending.uploadCreditBytes, this.pendingUploadBytes);
-        this.resourceHighPending.pageCreditBytes = Math.max(this.resourceHighPending.pageCreditBytes, this.pendingTextureBytes);
-        this.resourceHighPending.readbackCreditBytes = Math.max(this.resourceHighPending.readbackCreditBytes, this.pendingReadbackBytes);
-        this.resourceHighPending.geometryCreditBytes = Math.max(this.resourceHighPending.geometryCreditBytes, this.pendingGeometryBytes);
-        this.resourceHighPending.colorCreditBytes = Math.max(this.resourceHighPending.colorCreditBytes, this.pendingColorBytes);
+        raisePendingHighWater(this.resourceHighPending, this.resourcePending());
+    }
+    /** What is promised and not yet settled, as the submission ledger counts it. */
+    resourcePending() {
+        return {
+            frames: this.ledger.size,
+            uploadCreditBytes: this.pendingUploadBytes,
+            pageCreditBytes: this.pendingTextureBytes,
+            readbackCreditBytes: this.pendingReadbackBytes,
+            geometryCreditBytes: this.pendingGeometryBytes,
+            colorCreditBytes: this.pendingColorBytes
+        };
     }
     sampleResourceImages() {
-        this.resourceHighImages.readyBytes = Math.max(this.resourceHighImages.readyBytes, this.resourceReadyBytes);
-        this.resourceHighImages.readyEntries = Math.max(this.resourceHighImages.readyEntries, this.readyCount);
-        this.resourceHighImages.pinnedReadyBytes = Math.max(this.resourceHighImages.pinnedReadyBytes, this.resourcePinnedBytes);
-        this.resourceHighImages.pinnedReadyEntries = Math.max(this.resourceHighImages.pinnedReadyEntries, this.resourcePinnedEntries);
-        this.resourceHighImages.allocatedLogicalBytes = Math.max(this.resourceHighImages.allocatedLogicalBytes, this.allocatedImageBytes);
-        this.resourceHighImages.reservedCreditBytes = Math.max(this.resourceHighImages.reservedCreditBytes, this.reservedImageBytes);
+        raiseImagesHighWater(this.resourceHighImages, this.resourceImages());
+    }
+    /** The page images kept ready and pinned now, with their allocation accounting. */
+    resourceImages() {
+        return {
+            readyBytes: this.resourceReadyBytes,
+            readyEntries: this.readyCount,
+            pinnedReadyBytes: this.resourcePinnedBytes,
+            pinnedReadyEntries: this.resourcePinnedEntries,
+            allocatedLogicalBytes: this.allocatedImageBytes,
+            reservedCreditBytes: this.reservedImageBytes
+        };
     }
     resourceTotal(key, amount) {
-        const old = this.resourceTotals[key];
-        if (amount > Number.MAX_SAFE_INTEGER - old) {
-            this.resourceTotals[key] = Number.MAX_SAFE_INTEGER;
+        if (addResourceTotal(this.resourceTotals, key, amount))
             this.resourceSaturated = true;
-        }
-        else
-            this.resourceTotals[key] = old + amount;
     }
     resourcePageWrite(bytes) {
         this.resourceTotal('pageWriteCalls', 1);
@@ -309,54 +264,16 @@ class WebGPUHostImplementation {
     }
     /** Read-only logical observations; no native call, callback or state transition. */
     resourceStatus() {
-        return Object.freeze({
-            current: Object.freeze({
-                pending: Object.freeze({
-                    frames: this.ledger.size,
-                    uploadCreditBytes: this.pendingUploadBytes,
-                    pageCreditBytes: this.pendingTextureBytes,
-                    readbackCreditBytes: this.pendingReadbackBytes,
-                    geometryCreditBytes: this.pendingGeometryBytes,
-                    colorCreditBytes: this.pendingColorBytes
-                }),
-                cpu: Object.freeze({
-                    canonicalBytes: this.resourceCpu.canonicalBytes,
-                    scratchBytes: this.resourceCpu.scratchBytes,
-                    temporaryBytes: this.resourceCpu.canonicalBytes + this.resourceCpu.scratchBytes
-                }),
-                images: Object.freeze({
-                    readyBytes: this.resourceReadyBytes,
-                    readyEntries: this.readyCount,
-                    pinnedReadyBytes: this.resourcePinnedBytes,
-                    pinnedReadyEntries: this.resourcePinnedEntries,
-                    allocatedLogicalBytes: this.allocatedImageBytes,
-                    reservedCreditBytes: this.reservedImageBytes
-                }),
-                reusable: Object.freeze({ ...this.resourceReuse.current }),
-                unknownNative: Object.freeze({
-                    knownLogicalBytes: this.resourceUnknown.knownLogicalBytes,
-                    objects: this.resourceUnknown.objects
-                })
-            }),
-            highWater: Object.freeze({
-                pending: Object.freeze({ ...this.resourceHighPending }),
-                cpu: Object.freeze({
-                    canonicalBytes: this.resourceCpu.highCanonicalBytes,
-                    scratchBytes: this.resourceCpu.highScratchBytes,
-                    temporaryBytes: this.resourceCpu.highTemporaryBytes
-                }),
-                images: Object.freeze({ ...this.resourceHighImages }),
-                reusable: Object.freeze({ ...this.resourceReuse.highWater }),
-                unknownNative: Object.freeze({
-                    knownLogicalBytes: this.resourceUnknown.highKnownLogicalBytes,
-                    objects: this.resourceUnknown.highObjects
-                })
-            }),
-            totals: Object.freeze({ ...this.resourceTotals }),
-            saturated: this.resourceSaturated ||
-                this.resourceCpu.saturated ||
-                this.resourceReuse.saturated ||
-                this.resourceUnknown.saturated
+        return sharedResourceStatus({
+            pending: this.resourcePending(),
+            images: this.resourceImages(),
+            cpu: this.resourceCpu,
+            reuse: this.resourceReuse,
+            unknown: this.resourceUnknown,
+            highPending: this.resourceHighPending,
+            highImages: this.resourceHighImages,
+            totals: this.resourceTotals,
+            saturated: this.resourceSaturated
         });
     }
     noteUnknownResource(resource) {

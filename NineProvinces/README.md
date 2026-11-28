@@ -119,6 +119,8 @@ tally {"siegeWon":580,"ratio":12790.834146808944,"taken":692,"takenNeutral":55,"
 
 ## 已验证 · Verified
 
+- 引擎独立升级（2026-11-28）：`82561d6` → `7fb371ac`，未改变界面、规则、存档和游戏资源；196/196 Node 测试、50/50 软件渲染浏览器验收、官方通用验收 8/8。Windows Edge / RTX 5090 Laptop 同路线城池与战场 p95 分别维持 8.4 / 4.3 ms；截图及限制见 [QUALITY.md](QUALITY.md)。 · Engine-only refresh (2026-11-28): `82561d6` → `7fb371ac`, with no interface, rules, saves or game asset changes. All 196 Node tests, 50 software-rendered browser assertions and eight generic verifier checks pass. Windows Edge / RTX 5090 Laptop city and battle p95 remain 8.4 / 4.3 ms on the measured route; see QUALITY.md for images and limitations.
+
 - WebKit 首场景追加检查：新的征程→开局→城池大地图后的真实 3D 场景可见；移动 Apple WebKit 固定背缓冲，保留画质档及玩法；196/196 Node。详见 QUALITY，未测 iPhone 真机性能。 / Actual first-world-scene screenshots pass after the mobile Apple WebKit fixed-back-buffer fallback, preserving quality and rules; 196/196 Node tests. See QUALITY; physical iPhone performance untested.
 
 - 2026-11-28：Windows Playwright WebKit iPhone 15 Pro 配置下修复启动兼容问题，标题截图及触摸设置通过，195/195 Node 测试通过；不是 iPhone 真机验收。见 [QUALITY.md](QUALITY.md)。 · Startup, title screenshot and touch Settings pass on Windows Playwright WebKit in an iPhone 15 Pro profile; 195/195 Node tests pass. Not a physical iPhone test. See QUALITY.md.
@@ -181,10 +183,10 @@ tally {"siegeWon":580,"ratio":12790.834146808944,"taken":692,"takenNeutral":55,"
 
 ## 引擎副本 · Engine copy
 
-引擎副本取自 [Egret_rebuild](https://github.com/cnedwin/Egret_rebuild) 提交 `82561d6338a805f0e0459a2d5d42a284f9385b30`，由引擎仓库的 `tools/vendor-game.mjs` 复制，见 [vendor/SOURCE.md](vendor/SOURCE.md)。用到的入口：`@egret/engine`、`@egret/engine/world3d`、`@egret/engine/webgl2/world3d`、`@egret/engine/kit`、`@egret/engine/web/kit`、`@egret/engine/audio`、`@egret/engine/web/audio`。
+引擎副本取自 [Egret_rebuild](https://github.com/cnedwin/Egret_rebuild) 提交 `7fb371acb8bab254cf1c49b9da0ac0eed0c06fb4`，由引擎仓库的 `tools/vendor-game.mjs` 复制，见 [vendor/SOURCE.md](vendor/SOURCE.md)。用到的入口：`@egret/engine`、`@egret/engine/world3d`、`@egret/engine/webgl2/world3d`、`@egret/engine/kit`、`@egret/engine/web/kit`、`@egret/engine/audio`、`@egret/engine/web/audio`。
 
 The engine copy is from [Egret_rebuild](https://github.com/cnedwin/Egret_rebuild) commit
-`82561d6338a805f0e0459a2d5d42a284f9385b30`, copied by the engine's `tools/vendor-game.mjs`; see
+`7fb371acb8bab254cf1c49b9da0ac0eed0c06fb4`, copied by the engine's `tools/vendor-game.mjs`; see
 [vendor/SOURCE.md](vendor/SOURCE.md). Entries used are listed above.
 
 ```sh
