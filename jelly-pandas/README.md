@@ -56,6 +56,7 @@ npx serve .
 | `?post=0` / `?ssao=0` / `?shadows=0` / `?reflect=0` | 关闭后处理、环境遮蔽、阴影、水面倒影 · turn off post-processing, ambient occlusion, shadows, water reflection |
 | `?ratio=1` | 限制像素比以提高帧率 · cap the pixel ratio for a higher frame rate |
 | `?seed=123` | 固定随机种子 · fix the random seed |
+| `?diag=1` | 开启独立的 2D/3D 帧 CPU 与 Host 时序观测，只用于诊断 · opt in to 2D/3D CPU and Host timing diagnostics |
 | `?stats=1` | 显示帧率、各阶段耗时、绘制次数与三角形数 · show the frame rate, the time each part of a frame takes, draw calls and triangles |
 
 ### 测试 · Tests
@@ -112,13 +113,13 @@ The game uses Egret World3D and draws with WebGL2 by default. Each part maps to 
 | `createWorld3DOverlay` + `renderMode: 'on-demand'` | 持久透明原生 HUD 和菜单，静止界面保留帧 · Persistent transparent HUD and retained static menus | `src/main.mjs`, `src/hud.mjs` |
 | `createUiRoot`, `createUiScreenStack` | 标题、设置、说明、选卡、暂停、结算和加载失败页面与模态 · Managed menu pages and modals | `src/ui/menus.mjs` |
 | `createSelectionGroup`, `createActionControl`, `createControlKeys`, `createHoverControl` | 选角、人数、卡片、按键焦点及悬停 · Roster, party, cards, keyboard focus and hover | `src/ui/menus.mjs` |
-| `createMovementControl`, `createActionControl` | 多指摇杆、按住跳跃与翻滚、下砸及暂停 · Multi-contact stick, held jump/roll, slam and pause | `src/ui/touch.mjs`, `src/input.mjs` |
+| `createMovementControl`, `createActionControl` | 固定中心多指摇杆、按住跳跃和翻滚、下砸、原生轻触暂停 · Fixed-centre multi-contact stick, held jump/roll, slam and native tap pause | `src/ui/touch.mjs`, `src/input.mjs` |
 | `game.screen.safe`, `game.onScreenChange`, `uiScale` | 九屏安全区和原地转屏排版 · Nine-screen safe layout and in-place orientation changes | `src/hud.mjs`, `src/ui/menus.mjs`, `src/ui/touch.mjs` |
 | `createUiSemantics`, `createBrowserSemantics`, `createUiTester` | 非指针辅助语义、原生命中边界和按名称验收 · Accessible semantic projection and named acceptance | `src/hud.mjs`, `test/screen-route.mjs` |
-| `createScreenMarkers3D` | 固定池的伤害数字与倒地标记 · Pooled damage and downed-panda markers | `src/ui/markers.mjs` |
-| `createBitmapText`, `createAtlasLabel`, `Bitmap.sourceRect` | 共享数字字形、文字图集及原生角色头像 · Fixed counter glyphs, atlas text and native portraits | `src/ui/play-hud.mjs`, `src/ui/menus.mjs` |
+| `createOverlayScreenMarkers3D` | 原生固定池的伤害数字与救援标记，安全区避让 · Pooled native damage and rescue markers with safe-area handling | `src/ui/markers.mjs` |
+| `createGlyphFont`, `createBitmapText`, `createParagraphLabel`, `createAtlasLabel`, `Bitmap.sourceRect` | 引擎固定字形、自动换行、文字图集及原生角色头像 · Engine glyph pages, measured paragraphs, atlas text and native portraits | `src/ui/play-hud.mjs`, `src/ui/menus.mjs` |
 | `createTextTable` | 画布 UI 与语义同步切换语言 · Shared language table for canvas UI and semantics | `src/hud.mjs` |
-| Engine 时钟 · Engine clock，`createWorld3DView`，`startWorld3DLoop` | 帧循环 · Frame loop | `src/main.mjs` |
+| Engine 时钟 · Engine clock，`createWorld3DView`，`startWorld3DLoop` | 帧循环与可选时序观测 · Frame loop and opt-in timing observers | `src/main.mjs` |
 | 级联阴影、天空环境光、环境遮蔽、泛光、FXAA · cascaded shadows, sky lighting, ambient occlusion, bloom, FXAA | 画面 · Look | `src/view.mjs` |
 
 模型、3D 纹理和音效由代码生成，选角与队伍头像共用一张角色概念图。
@@ -126,6 +127,8 @@ The game uses Egret World3D and draws with WebGL2 by default. Each part maps to 
 3D models, 3D textures and sounds are generated in code. The picker and party portraits share one concept art atlas.
 
 ## 已验证 · Verified
+
+- 2026-11-28：同步引擎 [#545](https://github.com/cnedwin/Egret_rebuild/pull/545) 正式主干 `8424ff2a`。49/49 Node、168/168 浏览器验收、7/7 引擎 verify；旧标题/结算基线仍通过（0.55% / 0.40% 差异），无需更新。原生标记、多指控件、文字和字形替换均保留旧规则/存档。九规格 108 检查点预验收全通过；真实 RTX 5090 PC 与 Fold7 对照数据及最终手机连接限制见 [QUALITY.md](QUALITY.md)。 · The merged engine runtime passed all game unit, functional-browser and basic verify checks. The reviewed existing screenshot baselines still pass. Nine-device-profile prequalification and physical hardware A/B evidence are recorded separately.
 - 2026-11-27 独立画质版：44/44 Node、163/163 浏览器及 40/40 视觉专项；同场景 RTX 5090 中/高画质 p95 6.1 ms；Fold7 新版流程 48/48 与标题修正 20/20、密集采样 p95 28.0 ms、RAF p95 16.7 ms；硬件 WebGPU 启动、移动、暂停 smoke 通过，未跑整局。见 [QUALITY.md](QUALITY.md)。 · Separate visual pass: 44 Node, 163 browser and 40 visual assertions, hardware RTX p95 6.1 ms, 48+20 Fold7 physical assertions, dense p95 28.0 ms and RAF p95 16.7 ms; hardware WebGPU startup/movement/pause smoke only.
 - 2026-11-27：原生 UI 迁移 34/34 Node 测试、161/161 浏览器验收、引擎 verify 7/7、九屏 108/108 检查点（0 错误/警告），包括横竖屏保留、原生多点、最后一次重抽、完整胜败及旧存档恢复。通用 T2/T3/I1/E2 和 S1–S3 已通过；软件 F1 帧尾问题仍见 QUALITY/ENGINE-NOTES。 · Native migration passed 34 Node, 161 browser assertions, seven basic verify checks and 108 screen checkpoints. Generic targets, English, retry and settings checks pass; software F1 remains an open performance issue.
 
@@ -139,9 +142,11 @@ The game uses Egret World3D and draws with WebGL2 by default. Each part maps to 
 ## 已知问题 · Known issues
 
 - 海面倒影里不画阴影和小物件（植物、敌群、弹丸、拾取物、粒子），这是为了省绘制而有意去掉的。 · The sea's mirror leaves out shadows and small things on purpose, to save drawing.
-- 品质验收未达标 · Quality items failing（[QUALITY.md](QUALITY.md)，2026-11-27，无头 Chromium + SwiftShader · headless, software rendering）：F1 桌面帧时间 p95 ≤ 16.7 ms（p95 370.8 ms over 25 frames）。
+- 品质验收未达标 · Quality items failing（[QUALITY.md](QUALITY.md)，2026-11-28，无头 Chromium + SwiftShader · headless, software rendering）：F1 桌面帧时间 p95 ≤ 16.7 ms（p95 320.8 ms over 27 frames）；L1 首屏 ≤ 3 s（10/5 Mbps、40 ms、CPU ×4）（10.4 s to the first playable screen, 3.2 MB）。
 
 ## 已解决 · Solved
+
+- 引擎 #545 的固定圆心、Tap、悬停、相对位移、原生世界标记及段落/字形接口已接入；移除额外 DOM 浮字和旧输入、文字适配器。字形模块加载失败也显示原生重试。 · Adopted the native APIs and removed the legacy adapters; native Retry also covers a refused glyph resource.
 - 原 DOM/CSS 标题、HUD、升级、暂停、结算及触控已迁移到引擎原生 UI；伙伴选择触控尺寸、英文残留、加载重试修复，原 3D 画布保持全屏。 · Replaced DOM/CSS screens, HUD and controls with native UI; fixed target sizes, untranslated English-mode text and retry.
 
 - 每帧三角形太多：眼睛、花瓣、草叶、茎和弹丸用更粗的形状，海面倒影不画阴影和小物件，阴影从三级减到两级（`ddd18ce`）。 · Too many triangles; coarser small shapes, a leaner sea mirror and two shadow cascades.
@@ -157,7 +162,7 @@ The game uses Egret World3D and draws with WebGL2 by default. Each part maps to 
 
 | 路径 · Path | 内容 · Contents |
 |---|---|
-| `index.html`, `style.css` | 全屏画布、屏幕标记与启动失败纯文本 · Full-screen canvas, scene markers and bootstrap error |
+| `index.html`, `style.css` | 全屏画布与启动失败纯文本；浮字也由引擎绘制 · Full-screen canvas and bootstrap error; the engine also renders floating markers |
 | `src/main.mjs` | 启动与每帧流程 · start-up and the frame |
 | `src/sim.mjs`, `src/toys.mjs` | 游戏规则，不依赖页面 · the rules, no page needed |
 | `src/data.mjs` | 熊猫、玩具、护符、敌人、Boss 和双语文字 · pandas, toys, charms, enemies, bosses and text in both languages |
@@ -171,12 +176,12 @@ The game uses Egret World3D and draws with WebGL2 by default. Each part maps to 
 
 ## 引擎副本 · Engine copy
 
-`vendor/` 中是新白鹭引擎的运行时副本，采用 Apache-2.0 许可，引擎提交 `2fbe55630b1f67c6b1584d73290c19cb0aa0ae24`，来源和版本见 [vendor/SOURCE.md](vendor/SOURCE.md)。
+`vendor/` 中是新白鹭引擎的运行时副本，采用 Apache-2.0 许可，引擎提交 `8424ff2afb0afdc103b06d51e3fd749f7a8fc379`，来源和版本见 [vendor/SOURCE.md](vendor/SOURCE.md)。
 
-`vendor/` holds a copy of the Egret Rebuild runtime under Apache-2.0; engine commit `2fbe55630b1f67c6b1584d73290c19cb0aa0ae24`; see [vendor/SOURCE.md](vendor/SOURCE.md) for its source and version.
+`vendor/` holds a copy of the Egret Rebuild runtime under Apache-2.0; engine commit `8424ff2afb0afdc103b06d51e3fd749f7a8fc379`; see [vendor/SOURCE.md](vendor/SOURCE.md) for its source and version.
 
 由引擎工具生成，不手改副本。 · Generated without local patches:
 
 ~~~sh
-node tools/vendor-game.mjs <PortedGamesEgret>/jelly-pandas @egret/engine @egret/engine/world3d @egret/engine/webgl2/world3d @egret/engine/webgpu/world3d @egret/engine/ui @egret/engine/ui/semantics @egret/engine/web/semantics @egret/engine/ui/testing @egret/engine/web/hover @egret/engine/input @egret/engine/bitmapfont @egret/engine/kit
+node tools/vendor-game.mjs <PortedGamesEgret>/jelly-pandas @egret/engine @egret/engine/world3d @egret/engine/webgl2/world3d @egret/engine/webgpu/world3d @egret/engine/ui @egret/engine/ui/semantics @egret/engine/web/semantics @egret/engine/ui/testing @egret/engine/input @egret/engine/bitmapfont @egret/engine/kit
 ~~~

@@ -7,52 +7,56 @@ import { RUN } from '../data.mjs';
 
 const ACTIONS = ['jump', 'slam', 'roll', 'pause'];
 const clamp = (n, min, max) => Math.max(min, Math.min(max, n));
-const point = (target, contact) => target.globalToLocal(contact.globalX, contact.globalY);
-const within = (box, p) => p.x >= box.x && p.x < box.x + box.width && p.y >= box.y && p.y < box.y + box.height;
+/** Fixed-circle geometry is local to its display; its visual radius is also the input radius. */
+function stickGeometry(box) {
+  const radius = box ? Math.min(box.width, box.height) * 0.31 : 32;
+  return {
+    radius, deadZone: radius * 0.12,
+    center: box ? { x: box.x + box.width / 2, y: box.y + box.height / 2 } : { x: 0, y: 0 },
+  };
+}
 
 /**
- * Bind the real engine controls to the game's per-frame input, independently
- * of their artwork. The engine owns routed contacts, cancellation and outside
- * delivery. The centered stick and tap-only pause policies are those of this game.
+ * Bind native fixed-centre movement and pointer activation policies to game input.
+ * Only the gameplay-specific cancel-vs-release of a charged action needs its own terminal bookkeeping.
  */
-export function bindNativeTouchControls({ pointer, stick, actions, onMovement, onAction }, input) {
-  const disposables = [], held = new Map();
-  let active = false, stickOwner, pauseStart, pauseSwiped = false, pauseAllowed = false;
+export function bindNativeTouchControls({ pointer, stick, actions, onMovement, onAction, scale = 1 }, input) {
+  const disposables = [], held = new Map(), controls = new Map();
+  let active = false, tapScale = scale, paintedValue, paintedPressed;
   const own = cleanup => (disposables.push(cleanup), cleanup);
   function movePaint(value, pressed) {
     input.touchMovement(value.x, value.y);
+    if (value.x === paintedValue?.x && value.y === paintedValue?.y && pressed === paintedPressed) return;
+    paintedValue = value; paintedPressed = pressed;
     onMovement?.(value, pressed);
   }
-  // Native movement takes the down point as origin. Use its setDirection
-  // to keep the original fixed-circle behavior (even an off-center first
-  // down steers), while native capture and terminal release remain authoritative.
   const movement = createMovementControl({
-    input: pointer, target: stick, radius: 32,
-    onMovement(value) { if (!movement.active) movePaint(value, false); },
+    input: pointer, target: stick, ...stickGeometry(stick.hitArea),
+    onMovement(value) { movePaint(value, movement.active); },
   });
   own(() => movement.dispose());
-  function center(contact) {
-    const box = stick.hitArea, p = point(stick, contact);
-    const radius = Math.min(box.width, box.height) * 0.31;
-    const dx = p.x - box.x - box.width / 2, dy = p.y - box.y - box.height / 2;
-    const distance = Math.hypot(dx, dy), scale = Math.max(distance, radius);
-    movement.setDirection(distance > radius * 0.12 ? dx / scale : 0, distance > radius * 0.12 ? dy / scale : 0);
-    movePaint(movement.value, movement.active);
-  }
-  own(stick.on(pointer.events.begin, event => {
-    if (!active || !movement.active || stickOwner !== undefined) return;
-    stickOwner = event.payload.session;
-    center(event.payload);
-  }));
-  own(stick.on(pointer.events.move, event => {
-    if (active && event.payload.session === stickOwner) center(event.payload);
-  }));
+  // A down exactly at the centre and its release do not change the direction;
+  // repaint the held ring from the engine's active state, without a second contact owner.
+  const syncStick = () => movePaint(movement.value, movement.active);
+  own(stick.on(pointer.events.begin, syncStick));
 
-  const controls = new Map();
+  function makeAction(key) {
+    return createActionControl({
+      input: pointer, target: actions[key],
+      ...(key === 'pause' ? { activation: 'tap', tapTolerance: 12 / tapScale } : {}),
+      onPressChange(pressed) {
+        if (key !== 'pause') input.touchAction(key, pressed);
+        onAction?.(key, pressed);
+      },
+      onActivate() {
+        if (key === 'pause' && active) input.onCommand?.('menu');
+      },
+    });
+  }
   for (const key of ACTIONS) {
     const target = actions[key];
-    // Register the game's tap policy before the native action, so its activation
-    // can read this result in the same synchronous pointer dispatch.
+    // Preserve the game's primary-mouse policy. Only held gameplay actions
+    // need a session to distinguish a cancelled jump charge from a release.
     own(target.on(pointer.events.begin, event => {
       if (!active || held.has(key)) return;
       const contact = event.payload;
@@ -60,52 +64,19 @@ export function bindNativeTouchControls({ pointer, stick, actions, onMovement, o
         event.stopImmediatePropagation();
         return;
       }
-      held.set(key, contact.session);
-      if (key === 'pause') {
-        pauseStart = point(target, contact); pauseSwiped = false; pauseAllowed = false;
-      }
+      if (key !== 'pause') held.set(key, contact.session);
     }));
-    if (key === 'pause') {
-      const swiped = contact => {
-        const p = point(target, contact);
-        return !pauseStart || Math.hypot(p.x - pauseStart.x, p.y - pauseStart.y) > 12;
-      };
-      own(target.on(pointer.events.move, event => {
-        if (event.payload.session === held.get(key)) pauseSwiped ||= swiped(event.payload);
-      }));
-      own(target.on(pointer.events.end, event => {
-        if (event.payload.session === held.get(key))
-          pauseAllowed = !pauseSwiped && !swiped(event.payload) && within(target.hitArea, point(target,event.payload));
-      }));
-    }
-    const action = createActionControl({
-      input: pointer, target,
-      onPressChange(pressed) {
-        if (key !== 'pause') input.touchAction(key, pressed);
-        onAction?.(key, pressed);
-      },
-      onActivate() {
-        if (key === 'pause' && active && pauseAllowed) input.onCommand?.('menu');
-      },
-    });
-    controls.set(key, action);
-    own(() => action.dispose());
+    controls.set(key, makeAction(key));
+    own(() => controls.get(key).dispose());
   }
   own(pointer.observe(notification => {
     if (notification.kind !== 'cancel' && notification.kind !== 'end') return;
+    syncStick();
     const session = notification.contact.session;
-    if (stickOwner === session) {
-      stickOwner = undefined;
-      movePaint({ x: 0, y: 0 }, false);
-    }
     for (const [key, owner] of held) {
       if (owner !== session) continue;
       held.delete(key);
-      if (key === 'pause') {
-        pauseStart = undefined; pauseSwiped = pauseAllowed = false;
-      } else if (notification.kind === 'cancel' || notification.delivered === false) {
-        input.cancelTouchAction(key);
-      }
+      if (notification.kind === 'cancel' || notification.delivered === false) input.cancelTouchAction(key);
     }
   }));
   function enable(next) {
@@ -117,8 +88,8 @@ export function bindNativeTouchControls({ pointer, stick, actions, onMovement, o
       actions[key].touchEnabled = next;
     }
     if (!next) {
-      held.clear(); stickOwner = undefined; pauseStart = undefined; pauseSwiped = pauseAllowed = false;
-      movePaint({ x: 0, y: 0 }, false);
+      held.clear();
+      syncStick();
     }
   }
   const reset = () => {
@@ -129,13 +100,24 @@ export function bindNativeTouchControls({ pointer, stick, actions, onMovement, o
   enable(false);
   return {
     setActive(next) { next = !!next; if (active !== next) enable(next); },
-    // A semantic button action uses the same native pressed/activation state.
+    layout(nextScale = tapScale) {
+      movement.setGeometry(stickGeometry(stick.hitArea));
+      syncStick();
+      // This engine's tap tolerance uses stage units. The circle art uses CSS
+      // equivalents, so recreate only the stateless Pause action if the scale
+      // changes; its old held contact is retired, and 12 CSS pixels stay 12.
+      if (nextScale !== tapScale) {
+        controls.get('pause').dispose();
+        tapScale = nextScale;
+        const pause = makeAction('pause'); pause.setEnabled(active);
+        controls.set('pause', pause);
+      }
+    },
+    // A semantic button action uses the same native scripted activation state.
     activate(key) {
       const control = controls.get(key);
       if (!active || !control || control.pressed) return;
-      if (key === 'pause') pauseAllowed = true;
       control.press(); control.release();
-      if (key === 'pause') pauseAllowed = false;
     },
     dispose() {
       enable(false);
@@ -191,7 +173,7 @@ export async function createTouchUi({ game, root, semantics, t, onChanged = () =
     label.x = (box.width - label.width)/2; label.y = (box.height - label.height)/2;
   }
   const native = bindNativeTouchControls({
-    pointer, stick, actions,
+    pointer, stick, actions, scale: game.screen.scale,
     onMovement(value, held) { current = value; stickPressed = held; paintStick(); },
     onAction(key, held) { pressed[key] = held; paintAction(key); },
   }, input);
@@ -232,6 +214,7 @@ export async function createTouchUi({ game, root, semantics, t, onChanged = () =
     }
     holders.pause.x=12; holders.pause.y=42;
     actions.pause.hitArea={x:0,y:0,width:54,height:45};
+    native.layout(scale);
     paintStick(); for (const key of ACTIONS) paintAction(key); onChanged();
   }
   async function refreshLanguage() {

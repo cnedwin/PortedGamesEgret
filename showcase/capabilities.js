@@ -395,6 +395,10 @@ export const MATRIX = {
      "file": "SandScroll/src/ui/kit.mjs"
     },
     {
+     "game": "SnowTemple",
+     "file": "SnowTemple/src/ui/combat-hud.mjs"
+    },
+    {
      "game": "StarBanner",
      "file": "StarBanner/src/ui/kit.mjs"
     },
@@ -522,10 +526,6 @@ export const MATRIX = {
      "file": "InquestScrolls/src/view/casebook.mjs"
     },
     {
-     "game": "jelly-pandas",
-     "file": "jelly-pandas/src/hud.mjs"
-    },
-    {
      "game": "LoveElective",
      "file": "LoveElective/src/engine/ui.mjs"
     },
@@ -536,6 +536,10 @@ export const MATRIX = {
     {
      "game": "Rally",
      "file": "Rally/src/ui/host.mjs"
+    },
+    {
+     "game": "SnowTemple",
+     "file": "SnowTemple/src/ui/host.mjs"
     },
     {
      "game": "StarBanner",
@@ -664,7 +668,7 @@ export const MATRIX = {
    "games": [
     {
      "game": "jelly-pandas",
-     "file": "jelly-pandas/src/ui/play-hud.mjs"
+     "file": "jelly-pandas/src/ui/markers.mjs"
     },
     {
      "game": "MechanismCity",
@@ -673,6 +677,10 @@ export const MATRIX = {
     {
      "game": "Rally",
      "file": "Rally/src/ui/race-font.mjs"
+    },
+    {
+     "game": "SnowTemple",
+     "file": "SnowTemple/src/ui/combat-font.mjs"
     },
     {
      "game": "TeaHorseRoad",
@@ -853,6 +861,10 @@ export const MATRIX = {
     {
      "game": "SandScroll",
      "file": "SandScroll/src/main.mjs"
+    },
+    {
+     "game": "SnowTemple",
+     "file": "SnowTemple/src/ui/combat-hud.mjs"
     },
     {
      "game": "StarBanner",
@@ -1082,6 +1094,10 @@ export const MATRIX = {
      "file": "SandScroll/src/main.mjs"
     },
     {
+     "game": "SnowTemple",
+     "file": "SnowTemple/src/ui/combat-hud.mjs"
+    },
+    {
      "game": "StarBanner",
      "file": "StarBanner/src/hud.mjs"
     },
@@ -1123,6 +1139,10 @@ export const MATRIX = {
     {
      "game": "Rally",
      "file": "Rally/src/ui/host.mjs"
+    },
+    {
+     "game": "SnowTemple",
+     "file": "SnowTemple/src/ui/host.mjs"
     },
     {
      "game": "StarBanner",
@@ -1194,6 +1214,10 @@ export const MATRIX = {
     {
      "game": "SandScroll",
      "file": "SandScroll/src/main.mjs"
+    },
+    {
+     "game": "SnowTemple",
+     "file": "SnowTemple/src/ui/host.mjs"
     },
     {
      "game": "StarBanner",
@@ -1295,6 +1319,10 @@ export const MATRIX = {
     {
      "game": "Rally",
      "file": "Rally/src/ui/menus.mjs"
+    },
+    {
+     "game": "SnowTemple",
+     "file": "SnowTemple/src/ui/menus.mjs"
     },
     {
      "game": "StarBanner",

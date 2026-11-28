@@ -35,36 +35,14 @@ const column = (id, children, gap = 6) => ({
 });
 const evenly = (width, count, gap = 6) => Math.floor((width-(count-1)*gap)/count);
 
-// Split text before using the engine's single-line raster labels. CJK can
-// wrap between characters, Latin wraps at spaces. The actual shaped width is
-// still measured by Egret after rasterization and never overflows a card.
-function splitLines(text, width, size) {
-  const estimate = ch => /^[\x00-\x7F]$/.test(ch) ? (ch===' '?0.3:0.55)*size : size;
-  const lines = [];
-  for (const part of String(text).split('\n')) {
-    let line='', used=0;
-    const tokens = part.match(/[A-Za-z0-9+.,%'()\-]+|\s|[^\x00-\x7F]|./gu) ?? [];
-    for (const token of tokens) {
-      const tw = [...token].reduce((s,ch)=>s+estimate(ch),0);
-      if (used+tw>width && line.trim()) { lines.push(line.trim()); line=''; used=0; }
-      if (/^\s+$/.test(token) && !line) continue;
-      line+=token; used+=tw;
-    }
-    if (line.trim()) lines.push(line.trim());
-  }
-  return lines.length ? lines : [''];
-}
+// Paragraph wrapping and font fallback are owned by the engine. The card retains
+// its authored rectangle and scales the committed paragraph to keep every line.
 function textLine(text,x,y,w,h,size=16,color=C.cream,options={}) {
   return {text,x,y,w,h,size,color,...options};
 }
 function paragraph(text,x,y,w,h,size=14,color=C.hint,options={}) {
-  const lines=splitLines(text,w,size);
-  // Keep all content, rather than silently discarding a card description.
-  const lineH=Math.min(size*1.25,h/lines.length), font=Math.min(size,lineH/1.05);
-  const start=y+(options.vcenter?(h-lines.length*lineH)/2:0);
-  return lines.map((line,i)=>textLine(line,x,start+i*lineH,w,lineH,font,color,options));
+  return [{...textLine(text,x,y,w,h,size,color,options),paragraph:true}];
 }
-
 export function createMenus(game, { semantics, atlas, locale, hover=game.hover, onError, onTitleLayout,
   getTouchMode=()=>false, getGamepadMode=()=>false, onChanged=()=>{}, focusCanvas=()=>{} } = {}) {
   const t=key=>locale.t(key),name=def=>locale.name(def),describe=def=>locale.describe(def),zh=()=>locale.zh();
@@ -134,6 +112,19 @@ export function createMenus(game, { semantics, atlas, locale, hover=game.hover, 
     if(selected)rect(g,w-14,5,9,9,C.gold,9);
   }
   async function addText(scope,surface,line) {
+    if(line.paragraph){
+      const label=await game.createParagraphLabel({scope,text:String(line.text),width:Math.max(1,line.w),
+        fontFamilies:zh()?['Microsoft YaHei','Noto Sans CJK SC','sans-serif']:['Arial','sans-serif'],
+        fontSize:Math.max(8,line.size),lineHeight:Math.max(10,line.size*1.25),
+        color:line.color,locale:locale.lang,textAlign:line.align==='left'?'left':'center'});
+      await label.ready;
+      const bounds=label.bounds,scale=Math.min(1,line.w/Math.max(1,bounds.width),Math.max(1,line.h)/Math.max(1,bounds.height));
+      label.display.scaleX=label.display.scaleY=scale;
+      label.display.x=line.x+(line.align==='left'?0:(line.w-bounds.width*scale)/2)-bounds.x*scale;
+      label.display.y=line.y+(line.vcenter?(line.h-bounds.height*scale)/2:0)-bounds.y*scale;
+      surface.addChild(label.display);
+      return label;
+    }
     const label=await game.createAtlasLabel({scope,text:String(line.text),fontFamily:zh()?'Microsoft YaHei':'Arial',
       // A regular CJK body avoids the synthetic-heavy 1x raster observed
       // with small 600-weight Chinese descriptions; headings remain bold.
