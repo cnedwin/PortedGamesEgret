@@ -5,6 +5,7 @@
 import { createEngine } from '@egret/engine';
 import { InstancedMesh3D, Mesh3D, Scene3D, createAmbientLight3D, createDirectionalLight3D, createHemisphereLight3D, createPerspectiveCamera3D, createUnlitMaterial3D } from '@egret/engine/world3d';
 import { createOrbit } from './orbit.mjs';
+import { makeSceneMarkers } from './scene-markers.mjs';
 import { BALL, ORB, linear, skyOf } from './shapes.mjs';
 
 /**
@@ -22,11 +23,11 @@ export function pickQuality(params = new URLSearchParams(globalThis.location?.se
  * Starts the renderer on a canvas.
  * @returns the stage, or `null` when the device cannot draw 3D (the game then stays with its panels)
  */
-export async function createStage(canvas, { onError = () => {}, quality = pickQuality(), webgpu = false } = {}) {
+export async function createStage(canvas, { onError = () => {}, quality = pickQuality(), webgpu = false, game, pointerSurface } = {}) {
   let backend, engine, renderer;
   try {
     backend = await (webgpu ? import('@egret/engine/webgpu/world3d') : import('@egret/engine/webgl2/world3d'));
-    engine = await createEngine({ host: backend.createWorld3DHost(canvas) });
+    engine = game?.engine ?? await createEngine({ host: backend.createWorld3DHost(canvas) });
     renderer = webgpu
       ? await backend.createWebGPURenderer3D({ canvas, antialias: quality !== 'low', toneMapping: 'aces', onDeviceLost: (message) => onError(message || 'device lost') })
       : backend.createWebGL2Renderer3D({ canvas, antialias: quality !== 'low', toneMapping: 'aces' });
@@ -36,6 +37,9 @@ export async function createStage(canvas, { onError = () => {}, quality = pickQu
   }
   const scope = engine.createScope();
   scope.use(renderer);
+  const markerFont = game?.browser.createGlyphFont
+    ? await game.browser.createGlyphFont({characters: '0123456789+-?闪Mis', fontFamilies: ['Arial', 'Microsoft YaHei', 'sans-serif'], fontWeight: 800, fontSize: 36, strokeWidth: 2, strokeColor: 0x171510, scope}).catch(() => null)
+    : null;
   renderer.shadowsEnabled = quality !== 'low';
   Object.assign(renderer.postProcess, {
     enabled: quality !== 'low',
@@ -59,16 +63,49 @@ export async function createStage(canvas, { onError = () => {}, quality = pickQu
   const blank = { scene: new Scene3D(), camera: createPerspectiveCamera3D({ fov: 45, near: 0.3, far: 600 }), update() {} };
   blank.scene.addChild(blank.camera);
   let current = blank;
+  let asleep = !!game, warming = false, generation = 0;
+  const prepared = new WeakSet();
+  const collectVariants = (scene) => {
+    const requests = [];
+    let soft = false;
+    scene.traverse(node => {
+      if (!(node instanceof Mesh3D)) return;
+      const materials = Array.isArray(node.material) ? node.material : [node.material];
+      for (const material of materials) {
+        if (!material || material.isDisposed || node.geometry.isDisposed) continue;
+        soft ||= material.softness > 0;
+        const variant = { mesh: node, material, fog: !!scene.fog, environment: !!scene.environment, receiveShadows: renderer.shadowsEnabled && node.receiveShadow, softDepth: material.softness > 0, transmission: material.transmission > 0 };
+        requests.push(variant);
+        if (renderer.shadowsEnabled && node.castShadow) requests.push({ mesh: node, material, pass: 'shadow' });
+      }
+    });
+    if (soft) for (const request of requests.slice()) if (!request.pass && request.material.depthWrite) requests.push({ mesh: request.mesh, material: request.material, pass: 'depth-prepass' });
+    return requests;
+  };
+  // Native stats have no DOM target. A diagnostic client can inspect stage.stats.
+  const stats = new URLSearchParams(globalThis.location?.search ?? '').has('stats') ? backend.createWorld3DStats(renderer) : null;
+  if (stats) scope.use(stats);
   const stage = {
     quality,
     renderer,
     /** Frames drawn, for automated checks. */
     frames: 0,
     paused: false,
+
     canvas,
+    game,
+    markerFont,
+    stats,
+    ready: Promise.resolve(),
+    get preparing() { return warming; },
+    translate: (text) => text,
+    setTranslator(translate) { stage.translate = typeof translate === 'function' ? translate : text => text; },
+    markers(camera, layer) { return makeSceneMarkers(stage, camera, layer, backend); },
+    setInputEnabled(enabled) { stage.orbit.setInputEnabled(enabled); },
     /** The camera rig the scenes share; each sets its own view of things when shown. */
-    orbit: createOrbit(canvas),
+    orbit: createOrbit(canvas, { game, pointerSurface }),
     show(next) {
+      if (current === next) return stage.ready;
       current.leave?.();
       current = next ?? blank;
       viewOptions.maxPixelRatio = quality === 'high' ? 1.5 : quality === 'low' ? current.lowPixelRatio ?? 1 : 1;
@@ -76,10 +113,29 @@ export async function createStage(canvas, { onError = () => {}, quality = pickQu
       view.camera = current.camera;
       stage.orbit.onTap = null;
       current.enter?.();
+      const ticket = ++generation;
+      // Program preparation selects the same shader variants as the renderer.
+      // Geometry/texture upload remains part of the first actual draw.
+      if (renderer.preparePrograms && !prepared.has(current.scene)) {
+        const scene = current.scene;
+        warming = true;
+        view.paused = true;
+        stage.ready = renderer.preparePrograms(collectVariants(scene), { includeAutoInstancing: true }).then(() => prepared.add(scene)).catch(onError).finally(() => {
+          if (ticket !== generation) return;
+          warming = false;
+          view.paused = asleep;
+        });
+      } else {
+        warming = false;
+        view.paused = asleep;
+        stage.ready = Promise.resolve();
+      }
+      return stage.ready;
     },
     /** Stops drawing while the canvas is out of sight, to spare the battery. */
-    sleep(asleep) {
-      view.paused = asleep;
+    sleep(next) {
+      asleep = !!next;
+      view.paused = asleep || warming;
     },
     get current() {
       return current;
@@ -91,6 +147,7 @@ export async function createStage(canvas, { onError = () => {}, quality = pickQu
     camera: blank.camera,
     maxPixelRatio: quality === 'high' ? 1.5 : 1,
     onUpdate(dt, time) {
+      stats?.begin();
       stage.frames++;
       if (!stage.paused) current.update(Math.min(dt, 0.1), time);
       const light = current.light;
@@ -101,11 +158,15 @@ export async function createStage(canvas, { onError = () => {}, quality = pickQu
         air.shaftIntensity = light.night ? 0 : 0.12 + light.low * 0.5;
         air.update(current.camera, light.travels);
       } else if (air) (air.fogDensity = 0), (air.shaftIntensity = 0), air.update(current.camera);
+      stats?.lap('scene');
     },
     onError,
+    ...(stats ? { onFrameTiming: () => { stats.lap('render'); stats.end(); } } : {}),
   };
   const view = backend.createWorld3DView(engine, scope, viewOptions);
-  backend.startWorld3DLoop(engine, onError);
+  view.paused = asleep;
+  if (!game) backend.startWorld3DLoop(engine, onError);
+  if (stage.orbit.dispose) scope.use({ dispose: stage.orbit.dispose });
   return stage;
 }
 

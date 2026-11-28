@@ -5,34 +5,53 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>武林天下 · 沙盘查看 / Wulin realm viewer</title>
   <link rel="stylesheet" href="../art-handoff/ui/tokens.css">
-  <link rel="stylesheet" href="../style.css">
-  <style>html, body { margin: 0; height: 100%; background: #222; } #view { position: fixed; inset: 0; }</style>
+
+    <style>
+    html,body{margin:0;height:100%;overflow:hidden;background:#222}
+    #view,#stage,#layer{position:absolute;inset:0;width:100%;height:100%}
+    #stage{touch-action:none;display:block}
+    #layer{pointer-events:none}
+    .realm-tag{position:absolute;left:0;top:0;padding:4px 7px;white-space:nowrap;border:1px solid #bea374;border-radius:3px;background:#22372eea;color:#f9edcf;font:600 13px sans-serif}
+    .realm-tag.is-active{background:#315856;border-color:#e4bd7b}
+    .realm-tag.is-small{font-size:12px}
+  </style>
   <!-- A developer's page: the model of the realm on its own. Add ?quality=low, ?yaw=, ?pitch=, ?distance= and ?at=<place id> to the address. -->
   <script type="importmap">
-    {
-      "imports": {
-        "@egret/contracts": "../vendor/contracts/dist/index.js",
-        "@egret/runtime": "../vendor/runtime/dist/index.js",
-        "@egret/contracts/resources": "../vendor/contracts/dist/resources/index.js",
-        "@egret/engine": "../vendor/engine/dist/index.js",
-        "@egret/engine/world3d": "../vendor/engine/dist/rendering/world3d/index.js",
-        "@egret/runtime/text": "../vendor/runtime/dist/text/index.js",
-        "@egret/engine/text": "../vendor/engine/dist/text.js",
-        "@egret/runtime/input": "../vendor/runtime/dist/input/index.js",
-        "#egret-pointer-input": "../vendor/engine/dist/pointerInput.js",
-        "#egret-keyboard-input": "../vendor/engine/dist/keyboardInput.js",
-        "robust-predicates": "../vendor/robust-predicates/index.js",
-        "#egret-textured-frame-state": "../vendor/engine/dist/internal/texturedFrameState.js",
-        "@egret/engine/input/hover": "../vendor/engine/dist/hover.js",
-        "@egret/engine/kit": "../vendor/engine/dist/kit.js",
-        "@egret/engine/audio": "../vendor/engine/dist/audio.js",
-        "@egret/engine/input/gamepad": "../vendor/engine/dist/gamepad.js",
-        "@egret/engine/webgl2/world3d": "../vendor/engine/dist/web/world3d/index.js",
-        "@egret/engine/webgpu/world3d": "../vendor/engine/dist/web/world3d/webgpu.js",
-        "@egret/engine/web/kit": "../vendor/engine/dist/web/kit.js"
-      }
-    }
-  </script>
+{
+  "imports": {
+    "@egret/contracts": "../vendor/contracts/dist/index.js",
+    "@egret/runtime": "../vendor/runtime/dist/index.js",
+    "@egret/contracts/resources": "../vendor/contracts/dist/resources/index.js",
+    "@egret/engine": "../vendor/engine/dist/index.js",
+    "@egret/engine/world3d": "../vendor/engine/dist/rendering/world3d/index.js",
+    "@egret/runtime/text": "../vendor/runtime/dist/text/index.js",
+    "@egret/engine/text": "../vendor/engine/dist/text.js",
+    "@egret/runtime/input": "../vendor/runtime/dist/input/index.js",
+    "#egret-pointer-input": "../vendor/engine/dist/pointerInput.js",
+    "#egret-keyboard-input": "../vendor/engine/dist/keyboardInput.js",
+    "robust-predicates": "../vendor/robust-predicates/index.js",
+    "#egret-textured-frame-state": "../vendor/engine/dist/internal/texturedFrameState.js",
+    "@egret/engine/input/hover": "../vendor/engine/dist/hover.js",
+    "@egret/runtime/paragraph": "../vendor/runtime/dist/paragraph/index.js",
+    "@egret/engine/paragraph": "../vendor/engine/dist/paragraph.js",
+    "@egret/engine/bitmapfont": "../vendor/engine/dist/bitmapfont.js",
+    "@egret/engine/kit": "../vendor/engine/dist/kit.js",
+    "@egret/engine/audio": "../vendor/engine/dist/audio.js",
+    "@egret/engine/input/gamepad": "../vendor/engine/dist/gamepad.js",
+    "@egret/runtime/ui": "../vendor/runtime/dist/ui/index.js",
+    "@egret/engine/ui": "../vendor/engine/dist/ui/index.js",
+    "@egret/engine/webgl2/world3d": "../vendor/engine/dist/web/world3d/index.js",
+    "@egret/engine/webgpu/world3d": "../vendor/engine/dist/web/world3d/webgpu.js",
+    "@egret/engine/web/kit": "../vendor/engine/dist/web/kit.js",
+    "@egret/engine/play": "../vendor/engine/dist/web/play.js",
+    "@egret/engine/ui/semantics": "../vendor/engine/dist/semantics.js",
+    "@egret/engine/web/semantics": "../vendor/engine/dist/web/semantics.js",
+    "@egret/engine/ui/testing": "../vendor/engine/dist/ui/testing.js",
+    "@egret/engine/web/text-input": "../vendor/engine/dist/web/textInput.js",
+    "@egret/engine/web/paragraph": "../vendor/engine/dist/web/paragraph.js"
+  }
+}
+</script>
 </head>
 <body>
   <div id="view"><canvas id="stage"></canvas><div id="layer"></div></div>

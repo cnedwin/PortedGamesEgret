@@ -176,7 +176,7 @@ function landColour(u, v, y) {
  * @param world  gives the world; read, never changed
  * @param options.layer  an element over the canvas for the strongholds' name tags
  */
-export function createRealm(stage, world, { layer = null, onAudio } = {}) {
+export function createRealm(stage, world, { layer = null, onAudio, onSelect } = {}) {
   const detail = DETAIL[stage.quality] ?? DETAIL.medium;
   const scene = new Scene3D();
   const camera = createPerspectiveCamera3D({ fov: 38, near: 4, far: 1400 });
@@ -759,6 +759,7 @@ export function createRealm(stage, world, { layer = null, onAudio } = {}) {
   scene.addChild(banners);
   /** Name tags over the strongholds. */
   const tags = {};
+  let marks = null;
   function refresh() {
     const now = PLACES.map((place) => world().places[place.id].owner ?? '-').join();
     if (now === signature) return;
@@ -774,15 +775,12 @@ export function createRealm(stage, world, { layer = null, onAudio } = {}) {
       // A tall banner in the owner's colour, and smaller flags round a place that is held.
       parts.push([ROD, [site.x - 3.4, site.y + 2.6, site.z + 2.6], [0.07, 5.2, 0.07], 0x4a3a2a], [BOX, [site.x - 2.75, site.y + 4.2, site.z + 2.6], [1.2, 1.9, 0.05], colour], [BOX, [site.x - 2.75, site.y + 5.2, site.z + 2.6], [1.4, 0.12, 0.09], shade(colour, 0.6)]);
       if (owner) for (const [dx, dz] of [[3.6, 3], [-3.6, -3], [3.6, -3]]) parts.push([ROD, [site.x + dx, site.y + 1.2, site.z + dz], [0.04, 2.4, 0.04], 0x4a3a2a], [BOX, [site.x + dx + 0.3, site.y + 2, site.z + dz], [0.6, 0.7, 0.04], colour]);
-      if (layer) {
-        const tag = (tags[place.id] ??= Object.assign(document.createElement('button'), { className: 'realm-tag' }));
-        tag.dataset.act = 'place';
-        tag.dataset.place = place.id;
-        tag.style.setProperty('--marker', owner ? SECT_BY_ID[owner].color : '#b9a77d');
-        tag.innerHTML = `<i></i><span></span><small></small>`;
-        tag.children[1].textContent = place.name;
-        tag.children[2].textContent = owner ? SECT_BY_ID[owner].name : '无主';
-      }
+      const spot = sites[place.id];
+      const tag = tags[place.id] ??= {marker:null, id:place.id};
+      tag.target = [spot.x, spot.y + (spot.kind === 'city' ? 4.5 : 7), spot.z];
+      tag.title = place.name;
+      tag.detail = owner ? SECT_BY_ID[owner].name : '无主';
+      tag.accent = colour;
     }
     banners = model(parts);
     scene.addChild(banners);
@@ -861,12 +859,28 @@ export function createRealm(stage, world, { layer = null, onAudio } = {}) {
       if (move && sites[placeId]) glide = sites[placeId];
     },
     enter() {
+      marks ??= stage.markers?.(camera, layer) ?? null;
+      stage.orbit.onTap = onSelect ? (x, y) => {
+        const visible = Object.values(tags).find(tag => tag.marker?.hit(x, y));
+        if (visible) { onSelect(visible.id); return; }
+        let closest, distance = 26;
+        for (const tag of Object.values(tags)) {
+          const at = stage.orbit.project(...tag.target);
+          if (!at?.onScreen) continue;
+          const near = Math.hypot(at.x-x, at.y-y);
+          if (near < distance) { distance = near; closest = tag.id; }
+        }
+        if (closest) onSelect(closest);
+      } : null;
       const site = sites[chosen] ?? { x: 20, z: 0 };
       stage.orbit.set({ target: [site.x, 0, site.z], yaw: 0, pitch: 0.82, distance: 150, minDistance: 26, maxDistance: 330, minPitch: 0.3, maxPitch: 1.5, reach: 170, drift: 0, dragPans: true });
     },
     leave() {
       stage.orbit.dragPans = false;
-      for (const tag of Object.values(tags)) tag.remove();
+      stage.orbit.onTap = null;
+      marks?.dispose();
+      marks = null;
+      for (const tag of Object.values(tags)) tag.marker = null;
     },
     update(dt) {
       clock += dt;
@@ -958,21 +972,16 @@ export function createRealm(stage, world, { layer = null, onAudio } = {}) {
       const site = sites[chosen];
       ring.visible = !!site;
       if (site) ring.setPosition(site.x, site.y + 0.9, site.z), ring.setScale(1 + 0.05 * Math.sin(clock * 3));
-      // Name tags follow their strongholds and shrink away when the camera is far above.
-      for (const place of PLACES) {
-        const tag = tags[place.id];
-        if (!tag) continue;
-        const spot = sites[place.id],
-          at = orbit.project(spot.x, spot.y + (spot.kind === 'city' ? 4.5 : 7), spot.z);
-        if (!at || at.x < -60 || at.y < -30 || at.x > layer.clientWidth + 60 || at.y > layer.clientHeight + 30) {
-          tag.remove();
-          continue;
+      // Stronghold seals retain their colours and use the native scene
+      // projection, clipping at the safe area on every screen shape.
+      if (marks) {
+        const compact = orbit.distance > 210 || (stage.canvas?.clientWidth ?? Infinity) < 575;
+        for (const tag of Object.values(tags)) {
+          const options = { detail: tag.detail, accent: tag.accent, selected: tag.id === chosen, compact };
+          tag.marker ??= marks.add(tag.title, tag.target, options);
+          tag.marker.set(tag.title, options);
         }
-        if (!tag.isConnected) layer.append(tag);
-        tag.style.left = at.x.toFixed(1) + 'px';
-        tag.style.top = at.y.toFixed(1) + 'px';
-        tag.classList.toggle('is-active', place.id === chosen);
-        tag.classList.toggle('is-small', orbit.distance > 210);
+        marks.update();
       }
     },
   };

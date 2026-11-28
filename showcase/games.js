@@ -367,6 +367,11 @@ export const GAMES = [
         description: { zh: "山门、天下地图和战阵三个场景的日光与天光随时辰转动；手机上不开阴影和后期。", en: "Sun and sky light turn with the hour across the seat, the realm map and the arena; phones skip shadows and post-processing." },
         source: 'src/view/stage.mjs',
       },
+      {
+        title: { zh: "原生经营界面与三维同钟", en: "Native management UI and shared 3D clock" },
+        description: { zh: "页面、弹出单、名册、屏幕适配和语义焦点由白鹭原生数据视图驱动，战斗与山门共用引擎时钟。", en: "Native data views drive screens, dialogs, scrollable lists, adaptive layout and semantic focus on the same engine clock as the 3D world." },
+        source: 'src/ui/native-shell.mjs',
+      },
     ],
   },
   {

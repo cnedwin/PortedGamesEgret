@@ -23,7 +23,7 @@ const HALF_W = RULES.width / 2,
  * @param stage   the stage from stage.mjs
  * @param battle  a battle from core/battle.mjs, not yet run
  * @param options.colors  the two sides' colours, 0xRRGGBB
- * @param options.layer   an element over the canvas for numbers and names
+ * @param options.layer   optional standalone inspection layer (not used by the game)
  * @param options.onEvent called with every event of the battle as it is played
  * @param options.onContact called when a move reaches its visible contact frame
  * @param options.onClearSounds called when contact sounds should stop
@@ -87,19 +87,25 @@ export function createArena(stage, battle, {
   const effects = createArenaEffects(scene, stage.quality);
   const shadows = stage.quality === 'low' ? createContactShadows(scene, cast.length) : null;
 
-  /** Numbers that rise from a fighter and fade. */
+  /** A bounded, native glyph pool; hits never allocate new display objects. */
   const floaters = [];
+  let marks = null;
   function float(actor, text, kind) {
-    if (!layer || floaters.length >= 20) return;
-    const compact = cast.length > 8 && layer.clientWidth < 720;
-    const lifeSpan = compact && kind !== 'crit' && kind !== 'heal' ? .64 : .9;
-    const element = document.createElement('span');
-    element.className = 'float ' + kind;
-    element.textContent = text;
-    layer.append(element);
-    floaters.push({ element, x: actor.x + (random() - 0.5) * (compact ? 1.1 : .6), y: 2, z: actor.z, life: 0, lifeSpan });
+    const floater = floaters.find(entry => !entry.active);
+    if (!floater) return;
+    const compact = cast.length > 8 && Math.min(stage.canvas?.clientWidth ?? Infinity, stage.canvas?.clientHeight ?? Infinity) < 600;
+    floater.lifeSpan = compact && kind !== 'crit' && kind !== 'heal' ? .64 : .9;
+    floater.life = 0;
+    floater.x = actor.x + (random() - 0.5) * (compact ? 1.1 : .6);
+    floater.z = actor.z;
+    const at = floater.point;
+    at[0] = floater.x; at[1] = 2; at[2] = actor.z;
+    floater.marker.retarget(at);
+    floater.marker.set(text, {variant:kind});
+    floater.marker.setAlpha(1);
+    floater.marker.setVisible(true);
+    floater.active = true;
   }
-
   // These cues follow the animation, while reports, HP, orders and outcome follow the original simulation clock.
   let visualTime = 0;
   const contacts = [];
@@ -186,6 +192,13 @@ export function createArena(stage, battle, {
       }
     },
     enter() {
+      marks ??= stage.markers?.(camera, layer) ?? null;
+      if (marks && !floaters.length) for (let i = 0; i < 20; i++) {
+        const point = [0, -2000, 0];
+        const marker = marks.add('0', point, {kind:'float'});
+        marker.setVisible(false);
+        floaters.push({marker, point, active:false});
+      }
       fit = fitDistance();
       scene.fog = { ...scene.fog, near: fit + 9, far: fit + 108 };
       stage.orbit.set({ target: [0, 3.9, -2.6], yaw: -.09, pitch: .42, distance: fit, minDistance: 7, maxDistance: Math.max(70, fit + 12), minPitch: 0.15, maxPitch: 1.35, reach: 24, drift: 0, dragPans: false });
@@ -199,7 +212,7 @@ export function createArena(stage, battle, {
           const body = stage.orbit.project(actor.x, 1.35, actor.z);
           const head = stage.orbit.project(actor.x, 2.9, actor.z);
           const distanceTo = (at) => at ? Math.hypot(at.x - x, at.y - y) : Infinity;
-          const gap = Math.min(distanceTo(body), arena.paused ? distanceTo(head) : Infinity);
+          const gap = arena.paused && actor.tag?.hit(x,y) ? 0 : Math.min(distanceTo(body), arena.paused ? distanceTo(head) : Infinity);
           if (gap < nearest) {
             nearest = gap;
             best = actor;
@@ -213,8 +226,9 @@ export function createArena(stage, battle, {
     },
     leave() {
       onClearSounds();
-      for (const floater of floaters) floater.element.remove();
-      for (const actor of cast) actor.tag?.remove();
+      marks?.dispose();
+      marks = null;
+      for (const actor of cast) actor.tag = null;
       floaters.length = 0;
       effects.clear();
     },
@@ -299,47 +313,39 @@ export function createArena(stage, battle, {
       }
       stage.orbit.apply(camera, dt);
 
-      // Numbers and names are laid over the canvas where their fighters are.
-      for (let i = floaters.length - 1; i >= 0; i--) {
-        const floater = floaters[i];
-        floater.life += dt;
-        const at = stage.orbit.project(floater.x, floater.y + floater.life * 1.6, floater.z);
-        if (floater.life > floater.lifeSpan || !at) {
-          floater.element.remove();
-          floaters.splice(i, 1);
-          continue;
+      // Native marker placement follows the updated camera. The damage
+      // numbers share one glyph texture and are reused throughout the fight.
+      if (marks) {
+        for (const floater of floaters) {
+          if (!floater.active) continue;
+          floater.life += dt;
+          if (floater.life > floater.lifeSpan) {
+            floater.marker.setVisible(false);
+            floater.active = false;
+            continue;
+          }
+          floater.point[1] = 2 + floater.life * 1.6;
+          floater.marker.setAlpha(Math.min(1, (floater.lifeSpan - floater.life) * 3));
         }
-        floater.element.style.transform = `translate(${at.x.toFixed(1)}px, ${at.y.toFixed(1)}px) translate(-50%, -50%)`;
-        floater.element.style.opacity = String(Math.min(1, (floater.lifeSpan - floater.life) * 3));
+        const compactTags = cast.length > 8 && Math.min(stage.canvas?.clientWidth ?? Infinity, stage.canvas?.clientHeight ?? Infinity) < 600;
+        const selectedTag = inspected && !inspected.unit.down && !inspected.unit.fled ? inspected : undefined;
+        for (const actor of cast) {
+          if (!arena.paused || actor.unit.down || actor.unit.fled) {
+            actor.tag?.setVisible(false);
+            continue;
+          }
+          const emphasized = actor === selectedTag || actor === marked;
+          const compact = compactTags && !emphasized && actor.rank !== 1;
+          const label = compact ? String(actor.rank) : actor.unit.name;
+          const options = {variant: actor.unit.side === playerSide ? 'friend' : 'enemy', selected: emphasized, compact};
+          const target = [actor.x, 3.0, actor.z];
+          actor.tag ??= marks.add(label, target, options);
+          actor.tag.set(label, options);
+          actor.tag.retarget(target);
+          actor.tag.setVisible(true);
+        }
+        marks.update();
       }
-      // Number close formations on narrow screens and show the captain or inspected name in full.
-      const compactTags = cast.length > 8 && (layer?.clientWidth ?? Infinity) < 720;
-      const selectedTag = inspected && !inspected.unit.down && !inspected.unit.fled ? inspected : undefined;
-      for (const actor of cast) {
-        const show = layer && arena.paused && !actor.unit.down && !actor.unit.fled;
-        if (!show) {
-          if (actor.tag) actor.tag.remove(), (actor.tag = null);
-          continue;
-        }
-        if (!actor.tag) {
-          actor.tag = document.createElement('span');
-          actor.tag.className = 'nametag side' + (actor.unit.side === playerSide ? 0 : 1);
-          actor.tag.title = actor.unit.name;
-          actor.tag.setAttribute('aria-label', actor.unit.name);
-          layer.append(actor.tag);
-        }
-        const emphasized = actor === selectedTag || actor === marked;
-        const compact = compactTags && !emphasized && actor.rank !== 1;
-        const label = compact ? String(actor.rank) : actor.unit.name;
-        if (actor.tag.textContent !== label) {
-          actor.tag.textContent = label;
-          actor.tag.classList.toggle('is-compact', compact);
-        }
-        actor.tag.classList.toggle('is-inspected', emphasized);
-        const at = stage.orbit.project(actor.x, 3.0, actor.z);
-        actor.tag.style.transform = at ? `translate(${at.x.toFixed(1)}px, ${at.y.toFixed(1)}px) translate(-50%, -100%)` : 'translate(-999px, 0)';
-      }
-
       if (battle.done && !told) {
         ended += dt;
         for (const actor of cast) if (!actor.unit.down && !actor.figure.busy && actor.figure.action !== 'idle') actor.figure.play('idle');

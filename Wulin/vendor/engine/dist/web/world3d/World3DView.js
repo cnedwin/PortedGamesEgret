@@ -12,10 +12,14 @@ export class World3DView {
     #subscription;
     #options;
     #disposed = false;
+    #timingId = 0;
     constructor(engine, scope, options) {
         if (!engine || typeof engine.clock?.onTick !== 'function')
             throw new World3DError('WORLD3D_INPUT_INVALID', 'engine');
-        if (!options?.renderer || !options.scene || !options.camera)
+        if (!options?.renderer ||
+            !options.scene ||
+            !options.camera ||
+            (options.onFrameTiming !== undefined && typeof options.onFrameTiming !== 'function'))
             throw new World3DError('WORLD3D_INPUT_INVALID', 'view options');
         this.#options = options;
         this.renderer = options.renderer;
@@ -38,6 +42,12 @@ export class World3DView {
         if (this.#disposed || this.paused)
             return;
         const options = this.#options;
+        const observer = options.onFrameTiming;
+        const started = observer === undefined ? 0 : performance.now();
+        let renderStart;
+        let renderEnd;
+        let updateFailureEnd;
+        let outcome = 'failed';
         try {
             if (options.autoResize ?? true) {
                 const ratio = Math.min(typeof devicePixelRatio === 'number' ? devicePixelRatio : 1, options.maxPixelRatio ?? 2);
@@ -56,12 +66,44 @@ export class World3DView {
                         object.update(deltaSeconds);
                 });
             }
-            this.renderer.render(this.scene, this.camera);
+            if (observer !== undefined)
+                renderStart = performance.now();
+            const accepted = this.renderer.render(this.scene, this.camera);
+            if (observer !== undefined)
+                renderEnd = performance.now();
+            outcome = accepted ? 'rendered' : 'refused';
         }
         catch (cause) {
+            if (observer !== undefined) {
+                if (renderStart !== undefined)
+                    renderEnd = performance.now();
+                else
+                    updateFailureEnd = performance.now();
+            }
             if (!options.onError)
                 throw cause;
             options.onError(cause);
+        }
+        finally {
+            if (observer !== undefined) {
+                const ended = performance.now();
+                const sample = Object.freeze({
+                    id: ++this.#timingId,
+                    elapsedSeconds,
+                    deltaSeconds,
+                    callbackStartMs: started,
+                    callbackEndMs: ended,
+                    updateMs: (renderStart ?? updateFailureEnd ?? ended) - started,
+                    renderMs: renderStart === undefined ? 0 : (renderEnd ?? ended) - renderStart,
+                    outcome
+                });
+                try {
+                    observer(sample);
+                }
+                catch {
+                    /* Independent diagnostics must not stop the view. */
+                }
+            }
         }
     }
     /** Stop ticking. The renderer, scene and controls stay owned by their creator. */

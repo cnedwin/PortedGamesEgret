@@ -27,25 +27,25 @@ Made by `node tools/check-standard.mjs --write`; the standard is [GAME-STANDARD.
 | ENGINE-NOTES: an engine-note header under every item | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ |
 | QUALITY.md | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ |
 | test/*.test.mjs | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ |
-| tests cover the save | ✔ | ✔ | ✘ | ✔ | ✘ | ✔ | ✘ | ✔ | ✘ | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ | ✘ | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ |
+| tests cover the save | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ |
 | tests cover the rules | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ |
-| test/accept.mjs (browser acceptance) | ✔ | ✔ | ✘ | ✔ | ✘ | ✔ | ✘ | ✘ | ✘ | ✘ | ✔ | ✘ | ✔ | ✔ | ✔ | ✔ | ✔ | ✘ | ✔ | ✘ | ✔ | ✔ | ✘ | ✘ | ✔ | ✔ |
-| test/baseline/*.png | ✔ | ✔ | ✘ | ✔ | ✘ | ✔ | ✘ | ✘ | ✘ | ✘ | ✔ | ✘ | ✔ | ✔ | ✔ | ✔ | ✔ | ✘ | ✔ | ✘ | ✔ | ✔ | ✘ | ✘ | ✔ | ✔ |
+| test/accept.mjs (browser acceptance) | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ | ✘ | ✔ | ✔ | ✔ | ✘ | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ | ✘ | ✔ | ✔ | ✔ |
+| test/baseline/*.png | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ | ✘ | ✔ | ✔ | ✔ | ✘ | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ | ✘ | ✔ | ✔ | ✔ |
 | vendor/SOURCE.md with the engine commit | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ |
-| index.html import map = vendor/importmap.json | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ | – | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ |
+| index.html import map = vendor/importmap.json | – | – | – | – | – | – | – | – | – | – | – | – | – | – | – | – | – | – | – | – | – | – | – | ✔ | ✔ | – |
 
 ## 每个游戏缺的项 · What each game lacks
 
 - **CanalWatch**: 全部达标 · all met
 - **FengshenChronicle**: 全部达标 · all met
-- **FivePhases**: tests cover the save; test/accept.mjs (browser acceptance); test/baseline/*.png (0 pictures)
+- **FivePhases**: 全部达标 · all met
 - **FiveRegiments**: 全部达标 · all met
-- **FPS**: tests cover the save; test/accept.mjs (browser acceptance); test/baseline/*.png (0 pictures)
+- **FPS**: 全部达标 · all met
 - **InquestScrolls**: 全部达标 · all met
-- **jelly-pandas**: tests cover the save; test/accept.mjs (browser acceptance); test/baseline/*.png (0 pictures)
+- **jelly-pandas**: 全部达标 · all met
 - **JY**: test/accept.mjs (browser acceptance); test/baseline/*.png (0 pictures)
-- **LanternShadows**: tests cover the save; test/accept.mjs (browser acceptance); test/baseline/*.png (0 pictures)
-- **LoveElective**: test/accept.mjs (browser acceptance); test/baseline/*.png (0 pictures)
+- **LanternShadows**: 全部达标 · all met
+- **LoveElective**: 全部达标 · all met
 - **LubanBridge**: 全部达标 · all met
 - **MechanismCity**: test/accept.mjs (browser acceptance); test/baseline/*.png (0 pictures)
 - **NezhaSea**: 全部达标 · all met
@@ -53,12 +53,12 @@ Made by `node tools/check-standard.mjs --write`; the standard is [GAME-STANDARD.
 - **NineProvinces**: 全部达标 · all met
 - **OperaDrums**: 全部达标 · all met
 - **PeachCreek**: 全部达标 · all met
-- **Rally**: tests cover the save; test/accept.mjs (browser acceptance); test/baseline/*.png (0 pictures)
+- **Rally**: 全部达标 · all met
 - **SandScroll**: 全部达标 · all met
-- **SnowTemple**: test/accept.mjs (browser acceptance); test/baseline/*.png (0 pictures)
+- **SnowTemple**: 全部达标 · all met
 - **StarBanner**: 全部达标 · all met
 - **TaiwanMahjong**: 全部达标 · all met
 - **TeaHorseRoad**: test/accept.mjs (browser acceptance); test/baseline/*.png (0 pictures)
-- **Wulin**: test/accept.mjs (browser acceptance); test/baseline/*.png (0 pictures)
+- **Wulin**: 全部达标 · all met
 - **templates/egret-game**: 全部达标 · all met
 - **templates/management-game**: 全部达标 · all met
