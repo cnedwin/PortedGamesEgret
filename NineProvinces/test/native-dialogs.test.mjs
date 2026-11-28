@@ -19,7 +19,7 @@ const build=(name,app,args={},size=samples[0])=>buildDialog(name,app,args,()=>{}
 const nodes=(tree)=>{const result=[];function walk(part){result.push(part);for(const c of part.children??[])walk(c);}walk(tree);return result;};
 
 test('three B2 native modal descriptions validate and remain in the safe area in both languages and short screens',()=>{
- const {app}=setup();assert.deepEqual(Object.keys(nativeBuilders).sort(),['confirmProgress','saves','settings']);
+ const {app}=setup();assert(['confirmProgress','saves','settings'].every(name=>Object.hasOwn(nativeBuilders,name)));
  for(const lang of ['zh','en']){setLanguage(lang);for(const size of samples){for(const [name,args] of [['settings',{}],['saves',{}],['confirmProgress',{reason:'leave',proceed(){}}]]){
    const spec=build(name,app,args,size),parts=nodes(spec.description.root),names=new Set(parts.map(n=>n.name).filter(Boolean));
    assert(spec.description.modal&&spec.description.uiScale);assert(names.has(spec.initialFocus));assert(names.has('dialog-body'));
@@ -74,7 +74,7 @@ test('controller opens a single native modal, replaces it and retires old handle
  const game={safe:samples[0],uiScale:1,show(description,opts){
    const v={description,opts,visible:true,focused:opts.initialFocus,offset:0,disposed:false,scroll(){return {offset:v.offset,scrollTo(n){v.offset=n;}};},focus(n){v.focused=n;return true;},show(){v.visible=true;},hide(){v.visible=false;},cover(){v.hide();},reveal(){v.show();},activate(){active=v;},deactivate(){if(active===v)active=null;},dispose(){assert(!v.disposed,'disposed once');v.disposed=true;}};views.push(v);return v;
  }};const errors=[];const d=createNativeDialogs(app,{game,onError:e=>errors.push(e)});app.dialogs=d;
- assert.equal(d.open('battle'),false);assert.equal(d.open('saves'),true);await new Promise(r=>setTimeout(r,0));assert.equal(d.name,'saves');assert.equal(active,views[0]);
+ assert.equal(d.open('not-a-dialog'),false);assert.equal(d.open('saves'),true);await new Promise(r=>setTimeout(r,0));assert.equal(d.name,'saves');assert.equal(active,views[0]);
  views[0].offset=42;d.render();assert(views[0].disposed);assert.equal(d.view.offset,42);
  d.open('confirmProgress',{reason:'overwrite',proceed(){}});await new Promise(r=>setTimeout(r,0));assert.equal(d.name,'confirmProgress');assert(d.view&&!d.view.disposed);
  d.close();await new Promise(r=>setTimeout(r,0));assert.equal(d.name,null);assert.equal(app.dialogOpen,false);assert(views.every(v=>v.disposed));assert.equal(errors.length,0);d.dispose();

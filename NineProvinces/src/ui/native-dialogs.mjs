@@ -7,7 +7,7 @@ export function createNativeDialogs(app,{game,stack,paragraphCache,semantics=app
   if(!game?.show)throw TypeError('A native Play host is required');
   const ownStack=!stack,layer=stack??createUiScreenStack({onError});
   const supported=name=>Object.hasOwn(nativeBuilders,name);let current=null,serial=0,disposed=false;
-  const host={importSave(){
+  const host={edit(name,options){return current?.view?.edit(name,{inputMode:"search",enterKeyHint:"search",backgroundColor:0x354747,color:0xf2e4c6,fontSize:18,select:"all",...options})??false;},importSave(){
     if(typeof app.pickImportFile!=='function'){onError(new Error('Native save file picker is not connected'));return;}
     try{const result=app.pickImportFile();if(result?.then)void result.catch(onError);}catch(error){onError(error);}
   }};
@@ -15,13 +15,22 @@ export function createNativeDialogs(app,{game,stack,paragraphCache,semantics=app
     for(const item of entry?.ranges??[])item.control.dispose();
     if(entry){entry.ranges=[];entry.repeat=null;}
   };
+  const clearDecorations=entry=>{for(const sprite of entry?.decorations??[])game.remove(sprite);if(entry)entry.decorations=[];};
   const destroy=entry=>{
     if(!entry)return;
-    clearRanges(entry);
+    clearRanges(entry);clearDecorations(entry);
     const view=entry.view;entry.view=null;view?.dispose();
     for(const name of entry.rangeNames??[])sliderSemanticMeta?.delete(name);
     entry.rangeNames=[];
   };
+  function mountDecorations(entry,view,decorations=[]){
+    clearDecorations(entry);entry.decorations=decorations.map(({name,paths})=>{
+      const target=view.get(name),sprite=game.sprite(g=>{for(const p of paths){if(p.points.length<2)continue;
+        g.lineStyle(p.width??2,p.color??0x8b7451,p.alpha??1,{caps:'round',joints:'round'}).moveTo(...p.points[0]);
+        for(const point of p.points.slice(1))g.lineTo(...point);
+      }},target);sprite.touchEnabled=false;sprite.touchChildren=false;target.setChildIndex(sprite,0);return sprite;
+    });
+  }
   function mountRanges(entry,view,ranges){
     clearRanges(entry);if(!ranges.length)return;
     const input=game.browser?.pointer;if(!input)throw Error('Native range controls require the Play host pointer input');
@@ -69,9 +78,9 @@ export function createNativeDialogs(app,{game,stack,paragraphCache,semantics=app
     const initial=built.initialFocus;
     entry.view=game.show(built.description,{state:app,bind:built.bind,paragraphCache,
       ...(initial?{initialFocus:initial}:{}),
-      built:view=>{if(entry.view===view)mountRanges(entry,view,built.ranges);},
+      built:view=>{if(entry.view===view){mountRanges(entry,view,built.ranges);mountDecorations(entry,view,built.decorations);}},
       ...(entry.blocking?{}:{dismiss:()=>{if(current===entry)(built.dismiss??close)();}})});
-    mountRanges(entry,entry.view,built.ranges);
+    mountRanges(entry,entry.view,built.ranges);mountDecorations(entry,entry.view,built.decorations);
     if(priorOffset>0)entry.view.scroll('dialog-body').scrollTo(priorOffset);
     if(priorFocus&&built.bind[priorFocus]?.tap)entry.view.focus(priorFocus);
   }
@@ -82,7 +91,7 @@ export function createNativeDialogs(app,{game,stack,paragraphCache,semantics=app
     if(!fresh){current.args=args;render();return true;}
     const previous=current;
     const opener=previous?.opener??semantics?.publish().focused;
-    const entry={name,args,opener,blocking:false,view:null,definition:null};
+    const entry={name,args,opener,blocking:["story","envoy","captive","battle","battleResult","ending"].includes(name),view:null,definition:null};
     current=entry;app.dialogOpen=true;
     void retire(previous).catch(onError);
     entry.definition={id:'nine-campaign-dialog-'+(++serial),layer:'modal',back:'none',open(){

@@ -9,6 +9,7 @@ import {createCanvasParagraphProvider} from '@egret/engine/web/paragraph';
 import {createParagraphCache} from '@egret/engine/paragraph';
 import {createFrameGate,sceneMapper} from './screen-math.mjs';
 import {createNativeRangeSemantics} from '../ui/native-range-semantics.mjs';
+import {createMapOcclusionRegistry} from './map-occlusion.mjs';
 
 export async function createRealmHost({canvas,owner,scene,camera,frame,onError,uiParent=canvas.parentElement}) {
   const parent=canvas.ownerDocument.createElement('div');
@@ -21,6 +22,7 @@ export async function createRealmHost({canvas,owner,scene,camera,frame,onError,u
   // semantic tree. Leave room for both without removing its native limit.
   const {semantics,sliderSemanticMeta}=createNativeRangeSemantics(createUiSemantics({maxNodes:1024}));
   const stack=createUiScreenStack({onError}),layouts=new Set();
+  const mapOcclusion=createMapOcclusionRegistry();
   const tester=createUiTester({semantics,screens:stack});
   const gate=createFrameGate(frame);
   let game,session,background,paragraphCache,projection,topReserve=0,closed;
@@ -60,6 +62,7 @@ export async function createRealmHost({canvas,owner,scene,camera,frame,onError,u
   }
   const host={
     game,semantics,sliderSemanticMeta,tester,stack,paragraphCache,background,parent,metrics,clientToDesign,designToClient,mapper,
+    ...mapOcclusion,
     get view(){return session.view;},get topInset(){return Math.max(0,topReserve)*metrics().scale;},
     reserveTop(n){topReserve=Number.isFinite(n)?Math.max(0,n):0;},
     setInputEnabled(on){background.touchEnabled=Boolean(on);parent.inert=!on;if(!on&&game.canvas.ownerDocument.activeElement===game.canvas)game.canvas.blur();},
@@ -67,7 +70,7 @@ export async function createRealmHost({canvas,owner,scene,camera,frame,onError,u
     start(){gate.start();if(session.view)session.view.paused=false;},
     stop(){gate.stop();if(session.view)session.view.paused=true;},
     dispose(){return closed??=Promise.resolve().then(async()=>{
-      gate.stop();layouts.clear();
+      gate.stop();layouts.clear();mapOcclusion.clearMapOcclusion();
       try{await stack.dispose();}finally{try{await game.dispose();}finally{semantics.dispose();parent.remove();}}
     });}
   };

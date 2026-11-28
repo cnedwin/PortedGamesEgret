@@ -9,7 +9,6 @@ import { createScreenMarkers3D } from '@egret/engine/webgl2/world3d';
 import { createGestures } from '@egret/engine/web/gestures';
 import { FACTIONS, LATER } from '../data/factions.mjs';
 import { NODES, project } from '../data/map.mjs';
-import { nm } from '../i18n.mjs';
 import { hexAt, hexCenter } from '../sim/hexgrid.mjs';
 import { FOOTPRINTS } from '../sim/land.mjs';
 import { speedOf } from '../sim/military.mjs';
@@ -18,6 +17,7 @@ import { createFlora } from './flora.mjs';
 import { createRoads, along, routeLine } from './routes.mjs';
 import { createStage } from './stage.mjs';
 import { createRealmHost } from './native-host.mjs';
+import { createNativeMapMarkers } from './native-map-markers.mjs';
 import { wheelFactor, pinchStep } from './screen-math.mjs';
 import { createLand } from './terrain.mjs';
 import { createTroops, figureOf, isSiegeFigure } from './troops.mjs';
@@ -40,11 +40,12 @@ export function factionColour(state, id) {
 }
 
 /**
- * The 3D realm on `canvas`, with name plates in `plates`. `getState()` gives the game (or the realm of the title),
- * `plateFor` makes and refreshes the page elements of the plates, `on` hears taps and hovering, `tick(seconds)` runs
- * the game's own frame before the picture is drawn.
+ * The 3D realm on `canvas`, with native Play map nameplates. `plates` is the
+ * remaining legacy battle presentation layer until the battle UI moves to
+ * native nodes as well. `getState()` gives the campaign (or title realm), `on`
+ * hears taps/hovering, and `tick(seconds)` is the one campaign frame.
  */
-export async function createRealmView({ canvas, plates, uiParent, getState, plateFor, on, tick, quality, onError }) {
+export async function createRealmView({ canvas, plates, uiParent, getState, getPlayer=()=>getState()?.player, showMapMarkers=()=>true, on, tick, quality, onError }) {
   const stage = await createStage(canvas, { quality, onError });
   const { app, scene, camera, rig } = stage;
   const flora = createFlora(scene, { quality: app.quality });
@@ -66,33 +67,10 @@ export async function createRealmView({ canvas, plates, uiParent, getState, plat
   };
   const places = createPlaces(scene, { quality: app.quality, colourOf: ownerColour });
   const troops = createTroops(scene, { quality: app.quality });
+  // This adapter only serves the old battle layout during this batch. All
+  // campaign map plates are native retained display objects underneath HUD.
   const markers = createScreenMarkers3D({ container: plates, camera });
-  let hudHeight = 0, topObserver, uiHost;
-  const topbar = document.querySelector('#topbar');
-  if (topbar) {
-    topObserver = new ResizeObserver(([entry]) => {
-      hudHeight = entry.borderBoxSize?.[0]?.blockSize ?? entry.contentRect.height;
-    });
-    topObserver.observe(topbar);
-  }
-  const relief = RELIEF_LABELS.map(label => {
-    const at = project(label.lon, label.lat);
-    const element = document.createElement('span');
-    element.className = 'reliefPlate';
-    element.textContent = nm(label);
-    const marker = markers.add(element, { target: [at.x, land.heightAt(at.x, at.y) + 2, at.y], maxDistance: 560 });
-    return { label, element, marker };
-  });
-
-  // ——— Name plates ———
-  const nodePlates = new Map(),
-    armyPlates = new Map();
-  for (const n of Object.values(NODES)) {
-    const f = FOOTPRINTS[n.id];
-    const element = plateFor.node(n.id);
-    const marker = markers.add(element, { target: [f.x, (f.level ?? 0.5) + (n.kind === 'city' ? 2.6 : 2.2), f.z - f.halfZ * 0.4], maxDistance: 900 });
-    nodePlates.set(n.id, { element, marker, kind: n.kind, size: n.size });
-  }
+  let uiHost,mapMarkers;
   const armyAnchor = new Map();
 
   // ——— The choice, the march line ———
@@ -156,7 +134,7 @@ export async function createRealmView({ canvas, plates, uiParent, getState, plat
       seen.add(a.id);
       if (mode?.hides(a)) {
         const anchor = armyAnchor.get(a.id);
-        if (anchor) anchor.element.hidden = true;
+        if (anchor) anchor.marker.setVisible(false);
         continue;
       }
       const key = a.link ? null : a.besieging ?? a.at;
@@ -177,24 +155,21 @@ export async function createRealmView({ canvas, plates, uiParent, getState, plat
       // The plate rides above the standard.
       let anchor = armyAnchor.get(a.id);
       if (!anchor) {
-        const element = plateFor.army(a.id);
-        anchor = { element, target: [v.x, y + 2.3, v.z] };
-        anchor.marker = markers.add(element, { target: anchor.target, maxDistance: 700 });
+        anchor = { target: [v.x, y + 2.3, v.z] };
+        anchor.marker = mapMarkers.addArmy(a.id,anchor.target,{maxDistance:700});
         armyAnchor.set(a.id, anchor);
       }
-      anchor.element.hidden = false;
+      anchor.marker.setVisible(true);
       anchor.target[0] = v.x;
       anchor.target[1] = y + 3.1;
       anchor.target[2] = v.z;
       anchor.marker.retarget(anchor.target);
-      plateFor.army(a.id, anchor.element);
       if (Math.abs(v.x - vx) > reach || Math.abs(v.z - vz) > reach) continue;
       drawArmy(a, v, s, time);
     }
     for (const [id, anchor] of armyAnchor)
       if (!seen.has(id)) {
         anchor.marker.dispose();
-        anchor.element.remove();
         armyAnchor.delete(id);
         shown.delete(id);
       }
@@ -386,22 +361,11 @@ export async function createRealmView({ canvas, plates, uiParent, getState, plat
     const d = rig.view.d;
     const tint = 0.58 + Math.min(1, Math.max(0, (d - 48) / 120)) * 0.55;
     land.setTerritoryOpacity(territoryVisible && !mode ? tint : 0);
-    const showRelief = visible && !mode && d >= 145;
-    plates.classList.toggle('relief-labels', showRelief);
-    for (const [id, p] of nodePlates) {
-      const hide = !visible || (p.kind !== 'city' && d > 150) || (p.kind === 'city' && p.size <= 2 && d > 230);
-      if (p.element.hidden !== hide) p.element.hidden = hide;
-      if (!hide) plateFor.node(id, p.element);
-    }
-    plates.classList.toggle('far', d > 170);
+    const show=visible&&showMapMarkers();
+    mapMarkers.update({state:s,selection,player:getPlayer(),visible:show,distance:d,showRelief:show&&!mode&&d>=145});
+    // Battle-only legacy nameplates will be replaced by the native projected
+    // counterpart in the next presentation batch.
     markers.update();
-    if (showRelief) for (const { element, marker } of relief) {
-      if (element.hidden) continue;
-      // Reserve the full label height and a gap below the HUD. Only shift nearby labels.
-      const drop = Math.max(0, Math.ceil(Math.max(hudHeight,uiHost?.topInset??0) + 36 - marker.point.y));
-      if (drop > 56) element.hidden = true;
-      else element.style.setProperty('--relief-drop', drop + 'px');
-    }
     if (mode) {
       const m = mode.hexes();
       land.setHexes(m.hover, m.chosen, m.grid);
@@ -485,9 +449,9 @@ export async function createRealmView({ canvas, plates, uiParent, getState, plat
       places.recolour();
     },
     redraw() {
-      for (const { label, element } of relief) element.textContent = nm(label);
-      for (const [id, p] of nodePlates) plateFor.node(id, p.element, true);
-      for (const [id, a] of armyAnchor) plateFor.army(id, a.element, true);
+      // Native plate models include language and ownership in their keys.
+      // The next attached tick updates only the affected retained content.
+      uiHost?.game.invalidate();
     },
     zoomBy(factor) {
       rig.zoomBy(factor);
@@ -537,10 +501,19 @@ export async function createRealmView({ canvas, plates, uiParent, getState, plat
   try {
     uiHost=await createRealmHost({canvas,uiParent,owner:app,scene,camera,frame,onError});
     view.uiHost=uiHost;
+    mapMarkers=createNativeMapMarkers(uiHost,{camera,sceneCanvas:canvas,onNode:id=>on.tapNode?.(id),onArmy:id=>on.tapArmy?.(id)});
+    view.mapMarkers=mapMarkers;
+    for(const n of Object.values(NODES)){
+      const f=FOOTPRINTS[n.id];
+      mapMarkers.addPlace(n.id,[f.x,(f.level??.5)+(n.kind==='city'?2.6:2.2),f.z-f.halfZ*.4],{maxDistance:900});
+    }
+    for(const [index,label] of RELIEF_LABELS.entries()){
+      const at=project(label.lon,label.lat);
+      mapMarkers.addRelief(index,[at.x,land.heightAt(at.x,at.y)+2,at.y],label,{maxDistance:560});
+    }
     mapInput=installMapInput(uiHost);
-    if(topObserver)app.scope.use({dispose:()=>topObserver.disconnect()});
   } catch(error) {
-    topObserver?.disconnect();await app.dispose();throw error;
+    await app.dispose();throw error;
   }
   return view;
 }
