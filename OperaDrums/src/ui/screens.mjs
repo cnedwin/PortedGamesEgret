@@ -37,12 +37,19 @@ export function createScreens(game, { words, app, act, semantics }) {
     return kept ? t('bestOf', { rank: t(kept.rank), score: kept.score }) : t('bestNone');
   };
   // Words too wide for their part are made smaller before the engine sees them (wrap.mjs).
-  const view = (description, options) => game.show({
-    skin: SKIN,
-    ...description,
-    root: fitWords(description.root, WIDE, SKIN),
-    ...(description.portrait ? { portrait: fitWords(description.portrait, TALL, SKIN) } : {})
-  }, options);
+  let menuRefresh;
+  const view = (description, options) => {
+    const page = game.show({
+      skin: SKIN,
+      ...description,
+      root: fitWords(description.root, WIDE, SKIN),
+      ...(description.portrait ? { portrait: fitWords(description.portrait, TALL, SKIN) } : {})
+    }, options);
+    // A single delayed present keeps static WebKit menus visible without a continuous loop.
+    clearTimeout(menuRefresh);
+    menuRefresh = setTimeout(() => game.invalidate(), 250);
+    return page;
+  };
   const modal = (context, description, options = {}) =>
     view({ modal: true, ...description }, { dismiss: () => context.close(), ...options });
 

@@ -38,6 +38,13 @@ async function renderAudio(signal, song) {
 }
 
 export function createSound(scope, { on = true, music = 0.8 } = {}) {
+  // The rhythm clock requires actual audio output. Keep the title/settings available,
+  // but never simulate a successful score or create a fake audio clock on an unsupported host.
+  if (typeof globalThis.AudioContext !== 'function') {
+    const unavailable = async () => { throw new Error('Web Audio is unavailable'); };
+    return { unavailable: true, start: unavailable, clicks: unavailable, stop() {}, strike() {}, cue() {},
+      pause() {}, resume() {}, setOn() {}, setMusic() {}, heardAt: () => 0 };
+  }
   const audio = scope.use(createBrowserAudio({
     buses: [{ name: 'music', volume: music }, 'effects', { name: 'calibration', volume: 0.86 }],
     limiter: true,

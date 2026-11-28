@@ -4,6 +4,7 @@
 import { EgretError, Scope as RuntimeScope } from '@egret/runtime';
 import { Bitmap, copyImageData2DPixels, createAssetRef, createAssetType, createEngineForProfile, createImageData2D, createTexture, isTexture, SHARED_FRAME_PROFILE_2D, Sprite } from '@egret/engine';
 import { createBrowserTextureProvider } from './image.js';
+import { createBrowserTextWork } from './browserTextWork.js';
 import { createBrowserStaticLayers } from './browserStaticLayers.js';
 import { decodeBrowserImage, sniffBrowserImageFormat } from './BrowserImageTextures.js';
 import { createGameImageAdmission } from './GameImageAdmission.js';
@@ -162,6 +163,10 @@ export async function createBrowserGame(options) {
         (blendSpace !== 'linear' && blendSpace !== 'srgb') ||
         typeof enableEffects !== 'boolean' ||
         (renderMode !== 'continuous' && renderMode !== 'on-demand') ||
+        (options.textWorkBudgetMs !== undefined &&
+            (!Number.isFinite(options.textWorkBudgetMs) || options.textWorkBudgetMs <= 0 || options.textWorkBudgetMs > 16)) ||
+        (options.textWorkBudgetWhen !== undefined &&
+            (options.textWorkBudgetMs === undefined || typeof options.textWorkBudgetWhen !== 'function')) ||
         (options.webgl2PageBatching !== undefined &&
             options.webgl2PageBatching !== 'single-page' &&
             options.webgl2PageBatching !== 'multi-page') ||
@@ -169,6 +174,7 @@ export async function createBrowserGame(options) {
         (update !== undefined && typeof update !== 'function') ||
         (onError !== undefined && typeof onError !== 'function') ||
         (options.beforeRender !== undefined && typeof options.beforeRender !== 'function') ||
+        (options.afterFrame !== undefined && typeof options.afterFrame !== 'function') ||
         (onFrameTiming !== undefined && typeof onFrameTiming !== 'function') ||
         (options.measureSharedFrames !== undefined && typeof options.measureSharedFrames !== 'boolean') ||
         (options.renderRetry !== undefined &&
@@ -242,6 +248,10 @@ export async function createBrowserGame(options) {
     let loop, stats, disposal;
     try {
         const scope = engine.createScope(), initialFrame = Object.freeze({ width, height, clearColor, clearAlpha });
+        const textWork = options.textWorkBudgetMs === undefined
+            ? undefined
+            : scope.use(createBrowserTextWork(options.textWorkBudgetMs, options.textWorkBudgetWhen));
+        const scheduleTextWork = textWork?.schedule;
         let frame = initialFrame;
         const revision = renderMode === 'on-demand' ? engine.watchDisplayRevision(scope) : undefined;
         let lastFrame, lastScreen, lastRevision = -1, lastLayerRevision = -1, lastGeneration = -1, redraw = 0, shownRedraw = -1;
@@ -419,6 +429,7 @@ export async function createBrowserGame(options) {
                     }
                 }),
             ...(options.beforeRender === undefined ? {} : { beforeRender: options.beforeRender }),
+            ...(options.afterFrame === undefined ? {} : { afterFrame: options.afterFrame }),
             ...(options.renderRetry === undefined ? {} : { renderRetry: options.renderRetry }),
             ...(onError === undefined ? {} : { onError }),
             update(seconds) {
@@ -731,7 +742,9 @@ export async function createBrowserGame(options) {
             const { scope: owner = scope, ...given } = options;
             if (owner === null || typeof owner !== 'object')
                 throw invalid();
-            textCache ??= import('./text.js').then(text => (currentTextCache = createTextRasterCache(engine.assets, { provider: text.createCanvasTextRasterProvider() })));
+            textCache ??= import('./text.js').then(text => (currentTextCache = createTextRasterCache(engine.assets, {
+                provider: text.createCanvasTextRasterProvider({ compatibility: 'game-labels', ...(scheduleTextWork === undefined ? {} : { schedule: scheduleTextWork }) })
+            })));
             const cache = await textCache;
             const field = createTextField(engine, owner, cache);
             let now = {
@@ -1059,7 +1072,9 @@ export async function createBrowserGame(options) {
             const { scope: owner = scope, ...given } = options;
             if (owner === null || typeof owner !== 'object')
                 throw invalid();
-            textCache ??= import('./text.js').then(text => (currentTextCache = createTextRasterCache(engine.assets, { provider: text.createCanvasTextRasterProvider() })));
+            textCache ??= import('./text.js').then(text => (currentTextCache = createTextRasterCache(engine.assets, {
+                provider: text.createCanvasTextRasterProvider({ compatibility: 'game-labels', ...(scheduleTextWork === undefined ? {} : { schedule: scheduleTextWork }) })
+            })));
             const cache = await textCache;
             const display = owner.use(new Sprite());
             let now = {
@@ -1314,7 +1329,7 @@ export async function createBrowserGame(options) {
             paragraphLabels ??= import('./browserGameParagraph.js').then(({ createGameParagraphs }) => {
                 if (scope.state !== 'open')
                     throw new EgretError('SCOPE_CLOSED');
-                return createGameParagraphs(engine);
+                return createGameParagraphs(engine, scheduleTextWork);
             });
             const labels = await paragraphLabels;
             const label = labels.create(owner, captured, Math.max(0.25, Math.min(4, pixelRatio)), notDrawn);
@@ -1399,6 +1414,7 @@ export async function createBrowserGame(options) {
             hover,
             stats: panel,
             createLabel,
+            ...(scheduleTextWork === undefined ? {} : { scheduleTextWork }),
             getLabelStatus() {
                 sweepLabels();
                 return Object.freeze({

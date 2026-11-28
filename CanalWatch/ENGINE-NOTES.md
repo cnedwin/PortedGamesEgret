@@ -57,3 +57,11 @@ and two page buttons) in headless Chromium.
 - 绕过办法：使用已裁剪的语义边界和独立地图精灵。滚动复现：偏移 0→210 时 row-5 的 layout rect 未变但实际语义 y420→210，完全裁离视图时不公布，部分裁剪高度从 60 变为 54。此行为符合文档，不是引擎缺陷；建议测试指南同时给出屏幕扩展、滚动和语义坐标示例。· The scroll geometry behaves as documented: authored rect does not move; the clipped semantic bounds do. A testing guide example combining expanding screens and scrolling would help.
 - 建议：测试指南包含上述坐标例子；目前无需更改引擎行为。· Include the coordinate example in the testing guide.
 - 状态：已记录，原生 API 按文档工作。· Documented; the native API works as specified.
+
+### 7. Play 可选音频宿主 · Optional Play audio host — 已在游戏侧绕过 / worked around
+<!-- engine-note: {"id":"CanalWatch#7","status":"worked-around","topic":"optional-web-audio-host","workaround":["src/main.mjs","src/sound.mjs"]} -->
+
+- **现象 · What happens**：Windows Playwright WebKit 未提供 AudioContext，Play 启动内置音频时抛 AUDIO_HOST_UNAVAILABLE 并阻断标题。 · This Windows Playwright WebKit host does not expose AudioContext; Play's built-in audio startup threw AUDIO_HOST_UNAVAILABLE before the title.
+- **绕过办法 · Workaround**：依据实际宿主能力启用 Play 音效；缺少宿主时不合成无从播放的音乐，正常宿主保留原混音路径。 · Enable Play audio on a capable host and avoid synthesizing unusable sound otherwise. Retain the normal mixer when available.
+- **建议 · Suggestion**：在标准播放入口说明音频为可选能力时的宿主探测方式。 · Document host detection when audio is optional to gameplay.
+- **状态 · Status**：Windows WebKit 通过标题到寻常首关的触屏路线；未测真 iPhone 声音。 · The title-to-Normal route works in Windows WebKit; physical iPhone audio is untested.

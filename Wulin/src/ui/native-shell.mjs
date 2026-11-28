@@ -148,6 +148,8 @@ export function createNativeUi(game,{context,locale,dispatch,change,onClose,onEr
     for(const [key,offset] of Object.entries(offsets))try{slot.view.scroll(key).scrollTo(offset);}catch{}
     if(focus)try{slot.view.focus(focus)}catch{}
     notices.sync(true);
+    // Give a newly opened on-demand page one further presentation after mounting.
+    if(!old)setTimeout(()=>{if(!failed&&(pageSlot===slot||modalSlot===slot))game.invalidate();},250);
   }
   function modal(ctx,content,mode){
     const upright=mode.includes('portrait'),tablet=mode.startsWith('tablet'),short=mode==='phone';

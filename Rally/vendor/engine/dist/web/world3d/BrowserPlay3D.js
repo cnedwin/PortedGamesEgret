@@ -18,6 +18,7 @@ import { linearColor3D } from '../../rendering/world3d/GeometryBuilder3D.js';
 import { Raycaster3D } from '../../rendering/world3d/Raycast3D.js';
 import { mat4Identity, mat4Multiply, quatToEuler, vec3TransformMat4 } from '../../rendering/world3d/math3D.js';
 import { createWorld3DApp } from './app3D.js';
+import { createWorld3DView } from './World3DView.js';
 const invalid = (why) => new EgretError('PLAY_OPTIONS_INVALID', { cause: new TypeError(why) });
 const finite = (value) => typeof value === 'number' && Number.isFinite(value);
 const above = (value) => finite(value) && value > 0;
@@ -387,6 +388,100 @@ export const PLAY_LOOKS_3D = Object.freeze({
         fog: 0.025
     }
 });
+// This companion owns the view subscription only. A renderer may be reused after its old view retires, but
+// one cannot be attached to two live companion sessions; the caller must also stop any independently run loop.
+const attachedRenderers = new WeakMap();
+/**
+ * Starts transparent Play above an existing 3D canvas. The caller chooses canvas placement and all renderer,
+ * scene and camera settings. No second Engine or animation-frame loop is created.
+ */
+export async function play3dAttached(options) {
+    if (options === null || typeof options !== 'object')
+        throw invalid('play3dAttached takes an object of options');
+    const { world, setup, arrange, ...flatOptions } = options;
+    if (typeof world !== 'function')
+        throw invalid('world is a function');
+    if (setup !== undefined && typeof setup !== 'function')
+        throw invalid('setup is a function');
+    if (arrange !== undefined && typeof arrange !== 'function')
+        throw invalid('arrange is a function');
+    let view;
+    let viewScope;
+    let parentRegistered = false;
+    const retire = () => {
+        const previous = view, scope = viewScope;
+        view = undefined;
+        viewScope = undefined;
+        if (previous !== undefined && attachedRenderers.get(previous.renderer) === previous)
+            attachedRenderers.delete(previous.renderer);
+        // Closing this generation removes its registrations immediately, instead of retaining each retired view in
+        // the lifetime Scope until the whole game closes. A borrowed renderer is never registered here.
+        scope?.dispose();
+    };
+    const open = (given) => {
+        if (given.scope.state !== 'open')
+            throw new EgretError('SCOPE_CLOSED');
+    };
+    const game = await play({
+        ...flatOptions,
+        transparent: true,
+        async setup(given) {
+            retire();
+            open(given);
+            if (!parentRegistered) {
+                given.scope.use({ dispose: retire });
+                parentRegistered = true;
+            }
+            await setup?.(given);
+            open(given);
+            const candidate = await world(given);
+            open(given);
+            if (candidate === undefined)
+                return;
+            if (candidate === null ||
+                typeof candidate !== 'object' ||
+                !candidate.renderer?.canvas ||
+                typeof candidate.renderer.render !== 'function' ||
+                !candidate.scene ||
+                !candidate.camera)
+                throw invalid('world returns a renderer, scene and camera, or undefined');
+            const { renderer } = candidate;
+            if (renderer.canvas === given.canvas)
+                throw invalid('world and Play use separate canvases');
+            const existing = attachedRenderers.get(renderer);
+            if (existing !== undefined && !existing.isDisposed)
+                throw invalid('world renderer is already attached');
+            viewScope = given.engine.createScope();
+            try {
+                view = createWorld3DView(given.engine, viewScope, candidate);
+                attachedRenderers.set(renderer, view);
+            }
+            catch (cause) {
+                retire();
+                throw cause;
+            }
+        },
+        ...(arrange === undefined
+            ? {}
+            : {
+                arrange(given) {
+                    try {
+                        arrange(given);
+                    }
+                    catch (cause) {
+                        retire();
+                        throw cause;
+                    }
+                }
+            })
+    });
+    return {
+        game,
+        get view() {
+            return view?.isDisposed ? undefined : view;
+        }
+    };
+}
 const PIECES = 96;
 /** How deep a ground is under its top. */
 const GROUND_DEPTH = 8;

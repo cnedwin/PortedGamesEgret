@@ -10,6 +10,7 @@ import {
   createPointLight3D,
   createUnlitMaterial3D
 } from '@egret/engine/world3d';
+import { createScratchCanvas } from './scratch-canvas.mjs';
 import { createWeapon } from './weapons.mjs';
 import { SKILL_CONTACT, SKILL_EFFECTS, SKILL_PREPARATION, SKILL_RELEASE } from './effect-profiles.mjs';
 import { mountedContactBody, mountedContactPoint } from './mounted-contact.mjs';
@@ -17,7 +18,7 @@ import { mountedContactBody, mountedContactPoint } from './mounted-contact.mjs';
 /** A soft round dot (and a petal) for particles, drawn once on a small canvas. */
 function spriteTexture(kind = 'dot') {
   const size = 64;
-  const canvas = new OffscreenCanvas(size, size);
+  const canvas = createScratchCanvas(size, size);
   const g = canvas.getContext('2d');
   if (kind === 'petal') {
     g.fillStyle = '#ffffff';

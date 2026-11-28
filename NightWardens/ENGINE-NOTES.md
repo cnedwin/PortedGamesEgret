@@ -28,3 +28,19 @@ part 3 of [docs/GAME-STANDARD.md](../docs/GAME-STANDARD.md).
 - **绕过办法 · Workaround**：画布留在游戏自己的 `app.canvas` 上（`src/main.mjs` 的 `boot`）。 · The game keeps the canvas as its own `app.canvas` (`boot` in `src/main.mjs`).
 - **建议 · Suggestion**：给 `BrowserGame` 加一个只读的 `canvas`（和 `stage`、`loop` 一样），或在文档里写明冻结和「自己留着画布」。 · Give `BrowserGame` a read-only `canvas`, as it has `stage` and `loop`, or say in the docs that it is frozen and the game keeps its canvas.
 - **状态 · Status**：已写入文档（引擎 #485，`8637ace`）：引擎把这条写成 guide 卡片 camera-page-layer：`createBrowserGame` 的结果没有画布，游戏自己留着；`toStage` 只做页面到舞台。 · Documented (engine #485, `8637ace`): the engine wrote this up as its camera-page-layer guide card: the browser game has no canvas, which the game keeps; `toStage` goes page to stage only.
+
+### 4. WebKit 的文字测量 · WebKit text measurement — 已解决 / resolved
+<!-- engine-note: {"id":"NightWardens#4","status":"resolved","topic":"webkit-canvas-text-state"} -->
+
+- **现象 · What happens**：Windows WebKit 的 Canvas2D 可以绘制中文，但文字测量因不支持可选默认状态而抛 TEXT_MEASURE_FAILED（cause: WEB_TEXT_STATE_UNSUPPORTED）。 · Canvas2D on Windows WebKit could draw Chinese, but text measurement threw TEXT_MEASURE_FAILED (cause WEB_TEXT_STATE_UNSUPPORTED) for optional default state.
+- **绕过办法 · Workaround**：刷新正式引擎副本，保留引擎原生文字。 · Refresh the official engine copy and retain native labels.
+- **建议 · Suggestion**：区分未实现的可选默认状态与不受支持的真实配置。 · Distinguish absent optional defaults from unsupported actual configuration.
+- **状态 · Status**：82561d63，Windows WebKit 标题和选夜文字恢复。未测试物理 iPhone。 · Title and night selection labels restored in Windows WebKit; physical iPhone remains untested.
+
+### 5. 可选声卡与手柄 · Optional audio and gamepad hosts — 已在游戏侧绕过 / worked around
+<!-- engine-note: {"id":"NightWardens#5","status":"worked-around","topic":"optional-audio-gamepad-host","workaround":["src/audio/sound.mjs","src/main.mjs"]} -->
+
+- **现象 · What happens**：缺少 Web Audio 或受限宿主没有 navigator.getGamepads，分别在 Windows WebKit 触发 AUDIO_HOST_UNAVAILABLE、GAMEPAD_HOST_UNAVAILABLE 并阻止开局。 · Missing Web Audio or navigator.getGamepads triggered their respective unavailable-host failures and prevented startup.
+- **绕过办法 · Workaround**：仅对缺少音频宿主提供静音接口；有手柄枚举 API 时才安装手柄适配器，键鼠与触屏照常工作。 · Supply silent audio only for that specific host error and install the gamepad adapter only when enumeration exists, retaining keyboard and touch.
+- **建议 · Suggestion**：在浏览器入口明示可选硬件需要能力检查，不应成为无关输入方式的启动前提。 · Document optional hardware detection so other input modes do not depend on it.
+- **状态 · Status**：Windows WebKit 实测标题到选夜，声音的两项回退/其他异常测试通过；未测试物理手柄或 iPhone 音频。 · WebKit title-to-night-selector route passed, as did the two audio fallback/error unit tests; physical controller and iPhone audio are untested.

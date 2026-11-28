@@ -247,8 +247,13 @@ export function createSnowMenus(host,input,settings,handlers){
   let closed=false,fatal=false,work=Promise.resolve(),startReady=false,titleWanted=true,settingsWanted=false,choiceWanted=false,resultWanted=false,
     asking=null,pageSince=Infinity,entryProgress={tier:1,open:1,marks:{},wave:0},choiceOptions=[],resultData=null,cornerScope;
   const entries=new Map(),corner=scope.use(new DisplayObjectContainer());host.menuLayer.addChild(corner);
+  let settledPaint;
   function syncLayers(){
     const r=manager.sync();if(r.postCommitErrors?.length)throw r.postCommitErrors[0];
+    // Finish the visible screen handoff on WebKit even if only its earlier retained frame was presented.
+    game.invalidate();
+    clearTimeout(settledPaint);
+    settledPaint=setTimeout(()=>{if(!closed)game.invalidate();},250);
     host.requestPublish();
   }
   function schedule(fn){const task=work.catch(()=>{}).then(()=>{if(!closed)return fn();});work=task;host.track(task);return task;}
@@ -439,7 +444,7 @@ export function createSnowMenus(host,input,settings,handlers){
     storySnapshot:()=>story.snapshot(),
     snapshot(){return menus.menuSnapshot();},
     async dispose(){
-      if(closed)return;closed=true;host.retireScreensForFailure=undefined;stopLayout();document.removeEventListener('fullscreenchange',fullscreenChanged);
+      if(closed)return;closed=true;clearTimeout(settledPaint);host.retireScreensForFailure=undefined;stopLayout();document.removeEventListener('fullscreenchange',fullscreenChanged);
       input.ask();cornerScope?.dispose();story.dispose();await stack.dispose();manager.dispose();corner.dispose();
     }
   };

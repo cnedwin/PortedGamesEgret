@@ -95,6 +95,7 @@ Every 20,000 points earn a firecracker, which blows away a circle of sand when s
 | `game.createLabel` | 全部文字，中英两套 · every word, in two languages | `src/ui/kit.mjs` |
 
 ## 已验证 · Verified
+- 2026-11-28: Windows WebKit iPhone 15 Pro 配置的本机候选首屏、触屏代表路径；非物理 iPhone；见 [QUALITY](QUALITY.md)。 · Candidate launch and representative touch route on Windows WebKit with the iPhone 15 Pro profile; not a physical iPhone. See [QUALITY](QUALITY.md).
 
 - `node --test test/*.test.mjs`：35 项通过，覆盖原有规则、存档、双语和引擎副本检查，以及每日题目和独立纪录。 · 35 tests pass, covering the original rules, saves, localization, engine files and the daily seed and record.
 - `node test/accept.mjs`：28 项通过，覆盖原有玩法、存档、五张截图基线，另测窄横屏触控区和边缘点按。 · 28 Edge/Chromium checks with SwiftShader, covering gameplay, saves, five visual baselines and the bounds and edges of touch controls in compact landscape.
@@ -150,7 +151,7 @@ Every 20,000 points earn a firecracker, which blows away a circle of sand when s
 
 ## 引擎副本 · Engine copy
 
-- 引擎提交 `450bb9eb62fec9d3032b35766817844adc6eba33`（见 `vendor/SOURCE.md`）。 · Engine commit `450bb9e` (see `vendor/SOURCE.md`).
+- 引擎提交 `82561d6338a805f0e0459a2d5d42a284f9385b30`（见 `vendor/SOURCE.md`）。 · Engine commit `450bb9e` (see `vendor/SOURCE.md`).
 - 生成命令（在引擎仓库里）· Made with, in the engine repository:
 
 ```sh

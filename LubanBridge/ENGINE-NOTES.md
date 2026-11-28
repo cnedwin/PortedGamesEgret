@@ -43,3 +43,11 @@ The faults found in the new Egret engine (commit `a7be833`) while making this ga
 - **绕过办法 · Workaround**：`src/view/build.mjs` 里直接听画布的 `pointerdown` 和 `contextmenu`；右键按下的那一下也会被手势当成一次点按，所以 0.4 秒内的点按不算。 · `src/view/build.mjs` listens to the canvas's `pointerdown` and `contextmenu` itself; the right press is also seen by the gestures as a tap, so taps within 0.4 s of it are ignored.
 - **建议 · Suggestion**：鼠标输入派发 `button`（0/1/2）和 `buttons`，`createGestures` 的点按带上按键，右键默认不算点按。 · Dispatch `button` (0/1/2) and `buttons` from mouse input, carry the button on `createGestures` taps, and do not count a right press as a tap by default.
 - **状态 · Status**：未解决 · Open.
+
+### 6. 首屏只出现空面板 · First presentation shows empty panels — 已在游戏侧绕过 / worked around
+<!-- engine-note: {"id":"LubanBridge#6","status":"worked-around","topic":"static-webkit-presentation","files":["src/main.mjs"]} -->
+
+- 现象：Windows WebKit 里标题已经有语义按钮，但截图只显示未绘制文字的空面板。 · Windows WebKit exposed title buttons semantically but the canvas showed blank panels.
+- 绕过办法：切屏时在原有立即 invalidate 外再合并一次 250 ms 延迟刷新，浏览器路线中标题正常可见。 · Add one coalesced deferred invalidation to the immediate redraw on transitions; the browser route shows the title.
+- 建议：复现并解决按需模式中首帧呈现，避免游戏各自延时。 · Reproduce and fix first presentation in on-demand mode without per-game timers.
+- 状态：候选版本 WebKit 触屏路线实测通过；未在物理 iPhone 上验证。 · Candidate WebKit touch route tested; no physical iPhone verification.

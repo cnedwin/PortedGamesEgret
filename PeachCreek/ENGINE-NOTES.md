@@ -82,3 +82,11 @@ This integration vendors official main `94bd70fb26b1f81794c9c6fbbb258c655fcd19df
 - 绕过办法：原先捕获前手动将离屏行设为透明。本轮使用已修复的原生裁剪捕获，移除该透明化与恢复逻辑，保留滚动指示和焦点。 · The previous workaround set offscreen rows transparent before capture. This integration removes the workaround and relies on native clip culling, retaining the scrollbar and focus.
 - 建议：在纹理计入预算前剔除与裁剪交集为空的显示项，覆盖长列表和滚入视区的首帧。 · Cull empty clipped intersections before charging texture pages, with tests for long lists and the first frame after a row scrolls into view.
 - 状态：已在 `a7be833` 解决（引擎 #480）：完全在裁剪区外的位图和文字不计入帧图片预算。 · Resolved in `a7be833` (engine #480): bitmaps and text wholly outside the clip no longer count toward the frame image budget.
+
+### 10. 静止页面第一次呈现不完整 · Incomplete first static presentation — 已在游戏侧绕过 / worked around
+<!-- engine-note: {"id":"PeachCreek#10","status":"worked-around","topic":"static-webkit-presentation","files":["src/screens.mjs"]} -->
+
+- 现象：Windows WebKit 里标题插图已呈现而文字没有呈现，语义节点已经可点；实际触屏存档槽也可能保留标题。 · In Windows WebKit the title artwork presented before its text despite actionable semantics, and the save-slot interaction could retain the title.
+- 绕过办法：打开标题和模态窗口时合并一次有界延迟刷新，关闭后同理。 · Coalesce one bounded deferred redraw whenever a title or modal is shown or closed.
+- 建议：在引擎按需模式验收中核实异步标签、最后画布提交与真实画面。 · Check asynchronous labels, final canvas submission and actual display in on-demand engine acceptance.
+- 状态：候选版本 WebKit 触屏路线实测通过；未在物理 iPhone 上验证。 · Candidate WebKit touch route tested; no physical iPhone verification.

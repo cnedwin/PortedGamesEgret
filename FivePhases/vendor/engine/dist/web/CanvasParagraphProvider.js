@@ -98,6 +98,9 @@ function graphemes(text) {
 export function createCanvasParagraphProvider(options = {}) {
     if (options === null || typeof options !== 'object')
         throw new EgretError('PARAGRAPH_REQUEST_INVALID');
+    const schedule = options.schedule;
+    if (schedule !== undefined && typeof schedule !== 'function')
+        throw new EgretError('PARAGRAPH_REQUEST_INVALID');
     const families = options.families === undefined ? undefined : new Set(options.families.map(name => token(name, 256)));
     if (families !== undefined && (families.size < 1 || families.size > 64))
         throw new EgretError('PARAGRAPH_REQUEST_INVALID');
@@ -243,12 +246,35 @@ export function createCanvasParagraphProvider(options = {}) {
                 throw new EgretError('PARAGRAPH_PROVIDER_DISPOSED');
             if (context?.signal?.aborted)
                 throw new EgretError('PARAGRAPH_PREPARE_CANCELLED', { cause: context.signal.reason });
-            busy = true;
+            const work = () => {
+                if (closed)
+                    throw new EgretError('PARAGRAPH_PROVIDER_DISPOSED');
+                if (context?.signal?.aborted)
+                    throw new EgretError('PARAGRAPH_PREPARE_CANCELLED', { cause: context.signal.reason });
+                if (busy)
+                    throw new EgretError('PARAGRAPH_PROVIDER_BUSY');
+                busy = true;
+                try {
+                    return layout(request);
+                }
+                finally {
+                    busy = false;
+                }
+            };
+            if (schedule === undefined)
+                return work();
             try {
-                return layout(request);
+                const result = await schedule(work, context.signal);
+                if (context.signal.aborted)
+                    throw new EgretError('PARAGRAPH_PREPARE_CANCELLED', { cause: context.signal.reason });
+                if (closed)
+                    throw new EgretError('PARAGRAPH_PROVIDER_DISPOSED');
+                return result;
             }
-            finally {
-                busy = false;
+            catch (cause) {
+                if (context.signal.aborted)
+                    throw new EgretError('PARAGRAPH_PREPARE_CANCELLED', { cause: context.signal.reason });
+                throw cause;
             }
         },
         dispose() {

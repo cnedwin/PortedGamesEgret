@@ -1,3 +1,4 @@
+import { createScratchCanvas } from './ui/scratch-canvas.mjs';
 // The battle HUD: native Egret controls, atlas labels, portraits and pooled world markers.
 // The rules and action order live in play.mjs; this layer only draws them and forwards orders.
 import { Sprite } from '@egret/engine';
@@ -18,7 +19,7 @@ const stars = (n) => (n >= 0 ? '★'.repeat(n) + '☆'.repeat(Math.max(0, 4 - n)
 const rect = (x, y, width, height) => ({ x, y, width, height });
 const clamp = (n, min, max) => Math.max(min, Math.min(max, n));
 const now = () => performance.now();
-const hintMeasure = typeof OffscreenCanvas === 'function' ? new OffscreenCanvas(1, 1).getContext('2d') : null;
+const hintMeasure = typeof document !== 'undefined' || typeof OffscreenCanvas === 'function' ? createScratchCanvas(1, 1).getContext('2d') : null;
 function hintGeometry(text, available, unit) {
   if (!text) return { width: 0, height: 0 };
   const size = 12 * unit;

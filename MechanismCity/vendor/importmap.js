@@ -27,6 +27,8 @@ const imports = {
   "robust-predicates": "./robust-predicates/index.js",
   "#egret-textured-frame-state": "./engine/dist/internal/texturedFrameState.js",
   "@egret/engine/input/hover": "./engine/dist/hover.js",
+  "@egret/runtime/paragraph": "./runtime/dist/paragraph/index.js",
+  "@egret/engine/paragraph": "./engine/dist/paragraph.js",
   "@egret/engine/web/game": "./engine/dist/web/game.js",
   "@egret/engine/web/hover": "./engine/dist/web/hover.js",
   "@egret/engine/web/text": "./engine/dist/web/text.js"

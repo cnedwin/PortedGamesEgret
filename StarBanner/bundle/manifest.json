@@ -1,6 +1,6 @@
 {
   "schema": 1,
-  "engine": "0e7b29321a07ec956f66efb293c79798270512bd",
+  "engine": "82561d6338a805f0e0459a2d5d42a284f9385b30",
   "esbuild": "0.28.2",
   "buildOptions": {
     "format": "esm",
@@ -10,36 +10,36 @@
     "minify": true,
     "keepNames": true
   },
-  "entry": "main-BIJBCRBO.mjs",
+  "entry": "main-ZEJSGW36.mjs",
   "startupPreloads": [
-    "main-BIJBCRBO.mjs",
+    "main-ZEJSGW36.mjs",
+    "chunk-2LVHNTHP.mjs",
     "chunk-2PKRZAXY.mjs",
-    "chunk-5FZ5JJBA.mjs",
-    "chunk-663QOIXH.mjs",
-    "chunk-CMEPA7RE.mjs",
-    "chunk-EAWXZWZT.mjs",
-    "chunk-F576OYKD.mjs",
+    "chunk-AOUSCME6.mjs",
+    "chunk-DIDI7F7Y.mjs",
+    "chunk-EA2J7W45.mjs",
     "chunk-HSD5GAD7.mjs",
-    "chunk-ODATJFOB.mjs",
+    "chunk-IF44YPPX.mjs",
+    "chunk-MYJ5UJD6.mjs",
     "chunk-Q3A2T4L2.mjs",
-    "chunk-VVGZFVG3.mjs",
-    "chunk-WD45GUHK.mjs"
+    "chunk-UXPV6Y2Q.mjs",
+    "chunk-XWIQF4ME.mjs"
   ],
   "webgpuPreloads": [
     "chunk-ALUQKS75.mjs"
   ],
   "inputs": {
-    "index.html": "65246b05de333db6b75ce4f34a2932887e392747b199fb0cc805b74686fda00d",
+    "index.html": "d447a8e9d31bd6b7125ad1b38cd50ae1326912820bf4713c33e66effb2369075",
     "src/asset-url.mjs": "6507b8239b7c243f95b36211159057a359c93e12d4036cc44cd94ce054beaff2",
     "src/audio/sound.mjs": "656f3c26b9167a182838ad83ed0af1fdef82b5c3c1397fbe0e310b93b806d10b",
     "src/audio/synth.mjs": "ad70799fdda71bff8fac676f670334c7ba20699a0dc3fd91878b821aedb17914",
-    "src/hud.mjs": "c2af2d977830fc797d2bfcf94f9991e1821779a2076ec2fdf2cd8b0067fe5b20",
+    "src/hud.mjs": "f15b686cf7ff6436b018a4f4bcb6bae9f8e470584decf8f3b8255564a64e2edc",
     "src/i18n.mjs": "302fc22f320ecb022098063fdeb8cc07087fcbbb101954456dff57fc7b73b2c9",
     "src/input.mjs": "0a186ee01ab10ddbf71f989302042f56ebc428f7e65973559313ae506cc42c08",
     "src/main.mjs": "8e28de6c3527a5667f4e6b23460798f6542486867c603662016fdeade3f1686a",
     "src/play.mjs": "454bae7202001228595417f5ae442a3eae0d30272f1949cc66d4a5aa67bb36f7",
     "src/saves.mjs": "69a24839095aab0eb6e4002e2a3585c6b0d94e9c764f23ef29bfc2f219304e6a",
-    "src/screens.mjs": "d1746a926c016b0555a490e2468aef2d79b7cf0a7f6f96cd887a61b34ec6c2fc",
+    "src/screens.mjs": "0044c6033138c00eb0147fad4c07a3d42bd2597552f3bf3137e6a902b9cca022",
     "src/sim/ai.mjs": "6136008153b85b843319140c7d49d31d17b49f97433bafab7c8b7492ddb746a5",
     "src/sim/campaign.mjs": "f649727304de2e1e6e39f5330bc471302915987d06971f1cbac139b08ad12fd8",
     "src/sim/commanders.mjs": "b58ece5415557a135e9fa572c681bc74154ff07a6a54cfff0f7bf2794835e9bd",
@@ -49,8 +49,10 @@
     "src/sim/terrain.mjs": "2ea39db0e25dfbe3c467f59166cf86803cae870e4ff93e99880a92ed39eba04d",
     "src/sim/units.mjs": "8ab90149338a0a481c9029838cc6cb30a78823e6009d520a59425432b92771c4",
     "src/startup-models.mjs": "6832ae0a0bf01dd50c9aaa928a8ecbedacd4d984081990d411e727d1eb1077b5",
-    "src/ui/host.mjs": "c2aab4b51e5ee75f1a35b6eef93a23d1021c955d6ae4f6b721eafea96322c5ea",
-    "src/ui/kit.mjs": "d4629354dd6eba143a650d2d47b9330a5693aa3f6dc751070beca50e80984133",
+    "src/ui/host.mjs": "8b0d1e3ca38f46a2b75f128cda6e6ad3d35144a8d20e400d21ff991a4cf117b5",
+    "src/ui/kit.mjs": "793d3d8ef12e941e3ab18244a8a5779e5da1e53467c66b95770796a16e0c8197",
+    "src/ui/scratch-canvas.mjs": "c8b25572e698c4cd633305852b32b29deeba8e588d51c97240290a92ba5dba39",
+    "src/ui/screen-present.mjs": "8a0526efc1c05cf1f95d5262edde01e443faf3c306a9f718349dc58a49588390",
     "src/view/assets.mjs": "51b246270b8fa9df92c79b66f97d7e6c32209789d8f6047dcb897ac3ec228d00",
     "src/view/board.mjs": "251721c958e46daef72a6472e355feb1296b9ee0e55d20a494120a59ccc9d6b4",
     "src/view/effects.mjs": "dec1efe9e9efa6198f9a1f693018f8197b189568ca334aaef6578e88afb43497",
@@ -64,12 +66,13 @@
     "tools/launch-bundle/build.mjs": "d1dcd03843c960236dc23904cc40ee812b6131e9b431112063a97c41ab732438",
     "tools/launch-bundle/package-lock.json": "ad2c23787771efa993555f001f7432fce2555880f195e1c54080d2cbedd91ddb",
     "tools/launch-bundle/package.json": "a1bab7a9f48e2a3bf333dc0da4c0ee4c8e8d841e40094302d50aedd43a8d8f65",
-    "vendor/SOURCE.md": "5d86656432c2dbb8d9ca0aadc5994aa7bb51dc407f2da4792505874da3341d3d",
+    "vendor/SOURCE.md": "2a550540704256c4b1fd47c6f3e95bbb44d799ee3a819f812f8160c1cf6cc961",
     "vendor/contracts/dist/ImageData2D.js": "55a68c8aa6201fda1d20d5fc80542d149002552e46fe4a9dcc4db24e94f9f787",
-    "vendor/contracts/dist/SharedGeometry2D.js": "cd88b05927bce85b6ce5908c4588baa0ae1db5ca32aea1e31fd83f865dcb1bed",
+    "vendor/contracts/dist/SharedGeometry2D.js": "af59e364a3320b8e9ed94fedd6ada638dc87a64bba89e6ca86bfbb5adc8562fb",
     "vendor/contracts/dist/SharedMaterial2D.js": "86eb4f5f38336cf95753c635f3e1a32d902be390e42f84d248437923101cea00",
     "vendor/contracts/dist/SharedRenderFrame2D.js": "b8058784e511c4f2f27e41f42df494d1225f6b464f7242923f5bf3ccaf6d4acc",
-    "vendor/contracts/dist/TexturedGeometry2D.js": "02c8434a83534271ac6acc81e31e50df2f0565ad109647adf54813be85222f96",
+    "vendor/contracts/dist/TexturedGeometry2D.js": "8a61af46ecd78ca6268eb049c19b9433d3a8c65e35fd7abbbecd7095a50da1fa",
+    "vendor/contracts/dist/geometryAdmission2D.js": "0b329ab65e35ddde5962689027c2ff66182c0075f29dbec3180cb6b69be93761",
     "vendor/contracts/dist/index.js": "8d207d5d7868774957f4dea8a791c79022b567a0fde5784c9565733275a4ad30",
     "vendor/contracts/dist/resources/fontArtifact.js": "7cd0272c370d145367b245d27b3faf7816286008571cf2a3772aaee8bd88d2c8",
     "vendor/contracts/dist/resources/index.js": "f6bc2e2de3d57ea53ad5752444f35a5884f5474562b1aeaabe16881beff07d1a",
@@ -80,10 +83,13 @@
     "vendor/engine/dist/assetGroup.js": "06ccff229b8d5c8e510aab00af36ae2ac005aa437199106b23e06c0c51e91124",
     "vendor/engine/dist/audio.js": "9aa5aef6de76f67c50925fa7b931599b854e317a6e1ce675f4ab120e7dbabb03",
     "vendor/engine/dist/audioCues.js": "641b89f02f417be74896e558d6c6173ebf2765f8eed2735a7c762fd4e9492f79",
-    "vendor/engine/dist/audioMixer.js": "4713cbea34f3a909a7ab72ab7203837328ab4d1a29574432fcd7eea2578002c7",
+    "vendor/engine/dist/audioMixer.js": "fbbced1afb34c5dd2a4ee2f893599f8fb43fd600f463e9910aad73c4022bc862",
     "vendor/engine/dist/bitmapBindingTicket.js": "756cf0ed6222102fcbc50f15530f1ebd2121ee5de9817d01705cdf0f95c4e23c",
-    "vendor/engine/dist/bitmapButton.js": "c9e63bc751afb3f1768d05774f08d6a976ec7ce6e9e1b32b261ceef8ebaa44d3",
+    "vendor/engine/dist/bitmapButton.js": "12c9873a43f488fbb0e550cc79c87899e4a940abe93704589ddb01a9f722f42b",
+    "vendor/engine/dist/bitmapFontParse.js": "bcd5730c5b0689cd389c800f02c2e478c76da5d1fb03dcf84585ee94c3e8f232",
     "vendor/engine/dist/bitmapResourceSlot.js": "81716fabee40a6ddd18cf7e051cd0018359355c43d3cc1a37e4e9ec01eea5a8b",
+    "vendor/engine/dist/bitmapText.js": "dfc3df29c692f88b8214b68d2e7b8d0f0ab416bc13f9c8abcda11b303741062f",
+    "vendor/engine/dist/bitmapfont.js": "14cb918e9965cbc8f8346d248f88757ddef635c5a60be69c71e42f7f7c153070",
     "vendor/engine/dist/closeHost.js": "0805c972e4818ff9ecafe2971fd16f94c70d46cbc4733241b1e9fd1b007fc5a4",
     "vendor/engine/dist/createEngine.js": "bad5790d3b50435da0bfc44b5295e14e43c8bca1ea58e2dec46c3557ed67515e",
     "vendor/engine/dist/createEngineForProfile.js": "1261ead4afbcf60667a7df9033cfc739158e17e7fb96f59b2ee5dc46165d85e1",
@@ -94,14 +100,16 @@
     "vendor/engine/dist/gamepadInput.js": "2369d062ce17396ccb6b557ee13121f906b7c9e61be9138ce82f25e645da537f",
     "vendor/engine/dist/gamepadKeys.js": "c693dfe6c16fda0bc0dbc95629d3be716e177c322786ebf7b84ce054d8030ff7",
     "vendor/engine/dist/hover.js": "b35fe0b87a580c623e8e6791de5d9ace18aad2f6f67ead37001c39cda8d589c1",
-    "vendor/engine/dist/hoverInput.js": "96a3045e8b3f27de6d428bff8c66ad6c5ac92ab2f9ace60677624d51b269fddc",
+    "vendor/engine/dist/hoverInput.js": "d557f4722db77491534701a23c4ac795bd096bb1693aebb67f3a65e058023f9c",
     "vendor/engine/dist/index.js": "78f2e471ec8cf78b8ad0385e962cecb891ee9de95809cdf507a82dc3f238384d",
     "vendor/engine/dist/inputActions.js": "563c396eca927244bc00b6dba9f99a6e0d0a099a4406a0d5d080f04d7b9fee0e",
     "vendor/engine/dist/internal/contentFactoryState.js": "3c76e1dac4de23c0e343c690d704427a518eda95b44e96fed92e6c3fd1ca1fcc",
     "vendor/engine/dist/internal/mouseInputFactoryState.js": "cc43880feb056852ef95e83e3ebbe33bf9ca3faad55e998b9046cabcd9005ae1",
+    "vendor/engine/dist/internal/routedInput.js": "e671ba88c0d9c04bfa72c5a285413ec741114bc77e150f103f688f0e4348f8d4",
     "vendor/engine/dist/internal/sequenceControllerFactoryState.js": "70ca4f4b74b77e06c73ff352588b5aae8aac0d3a8d7d52e9928e5fad15cf1705",
     "vendor/engine/dist/internal/textFieldFactoryState.js": "ea310edaa8a34588d1b8d56d14075413ebb035459e8f94438e2c42a4776fdd7d",
     "vendor/engine/dist/internal/texturedFrameState.js": "2c45e4423e1add2b0d98a7d06c6ea206fb6da0abe521f86f9cd752d7ddf4a2d8",
+    "vendor/engine/dist/internal/uiControlReportState.js": "47af6eca0a047f0b0179f361f149a47c218d54436f7bac73376c885fdd86a2f3",
     "vendor/engine/dist/internal/uiFactoryState.js": "c1b1e21756509515704d912c7815611b3c5b16285218cc1a0d29836b63f8de7c",
     "vendor/engine/dist/internal/uiRootState.js": "aaffc3e1bb6c17ce292ad470a5b6cccd39d7bc1a6cd1689f557ce9e7519f19b0",
     "vendor/engine/dist/keyboardInput.js": "acb76eceb96a094b8f1a78e5ab07849e4bfb29b69dd799c53761772f956a9a46",
@@ -111,18 +119,19 @@
     "vendor/engine/dist/motion.js": "8d3f5c8c549d7e6fe88caa4e07561b5f7fa6dc8e9a5a703b7d7fbd40f1052e68",
     "vendor/engine/dist/mouseInput.js": "03b0d69c0cf7b4a97841318a0c28cec2d317287a5be610ae9718087f81755878",
     "vendor/engine/dist/paragraph.js": "b9e5d682e247df0ab2648f37ac33226edc19f29447228cb67956e5f526a9107d",
-    "vendor/engine/dist/pointerInput.js": "21e41f2f3caba4eff7327f3ab15e4d3f933c0a792b3f5f5b32448a291a4b3884",
+    "vendor/engine/dist/pointerInput.js": "979e88833fdebb89b7628fb3eda60678aaf68a3d2310976c9e6d4c2a1b5be0b9",
     "vendor/engine/dist/random.js": "310b4b7d27fd6b6afc2cfc073282cbafb148cbac44637c00bf54ff855f4184be",
     "vendor/engine/dist/rendering/ownedPreparationFailure2D.js": "c2be3bda2f3fdb6a58d5d5b82a4c6ddb777524eb31d278fd9072d24c84273272",
-    "vendor/engine/dist/rendering/packSharedDraws2D.js": "1918e1f69626b0a167b0c39784558c739cd646079f0d30c5eb7b4d9c5e3b4419",
+    "vendor/engine/dist/rendering/packSharedDraws2D.js": "2090d3b14a414935f117f75e3305857e089325292038391f6dcb040a54ccce68",
     "vendor/engine/dist/rendering/packedOrientation.js": "1c5014530cdac50a53a24e2ebf7317f1377a959089d57183daa8e49c12ce34c4",
-    "vendor/engine/dist/rendering/prepareRectangles2D.js": "842c8e20271340d35d55eaafc29294ff7c7998f3be3e88c081ec3f87d84df45b",
-    "vendor/engine/dist/rendering/prepareSharedDraws2D.js": "5b4fe8e010ec4ea25537c34364da92f132a9b5fb53232325987a78f063b3064f",
+    "vendor/engine/dist/rendering/prepareRectangles2D.js": "c68cad90548737abb7fc6878714332afce8759ccd782ef31f07eea20a2691259",
+    "vendor/engine/dist/rendering/prepareSharedDraws2D.js": "aee458fcce709837c0ce7b69c84e3d533eb7f35ae7ea97ed0ef21bbb3ad64b35",
     "vendor/engine/dist/rendering/preparedBatches2D.js": "ba485f529e2593a976d2935f6aad6478fd79613eb33c13939cc804cffefea12c",
     "vendor/engine/dist/rendering/preparedSharedBatches2D.js": "39bb95b38fb9a48576a590e6d1c38bc7cf4f3151226b43220a1e72fd1971bcf9",
     "vendor/engine/dist/rendering/sharedColor2D.js": "cc49208432504f2a602decb6fb6c97a6df4f016abd06a44aa2324779c17fd228",
+    "vendor/engine/dist/rendering/sharedContainedQuad2D.js": "4f01b5d6775d7359052418bdb27835ca5f989af4aa34e92a87cac06c8497c6c5",
     "vendor/engine/dist/rendering/sharedEffects2D.js": "88e286f9830967dcd52fa4eeb5de51629f3a84e0fbac64adc08db8ec6e5745a5",
-    "vendor/engine/dist/rendering/sharedPreparationRetention2D.js": "315bc3d3caed67f83ccff73feb0762159c68b3406b7258a73ce0358194527c5a",
+    "vendor/engine/dist/rendering/sharedPreparationRetention2D.js": "246f6b84ed2bab432e9e608c751ccd39b9fae3d8e160b0013fb6aa43f0b18043",
     "vendor/engine/dist/rendering/srgbBytes.js": "67fa3f4867b8d5d22b6b8b5a326ad5b93f4a5772adb9e4dbf7eb7dec4f477f6c",
     "vendor/engine/dist/rendering/texturedPreparationBudget2D.js": "d9cbe2f68a5388ea16bcd479b71b84c890fc4a02f2e9d297847deb371c3b1baa",
     "vendor/engine/dist/rendering/world3d/Animation3D.js": "609b88e8cce353edc5038792e82c1e571c6c8d588ef032ac964610690788d4a1",
@@ -188,6 +197,7 @@
     "vendor/engine/dist/semantics.js": "0d38d5afeb1e7eb897f42e80b74601c9128ffa0ecdfc971daaf2b5218c3175c5",
     "vendor/engine/dist/sequencePlayback.js": "eb8d41d35244069855b7224b9e5e28ed814957bb618c29ec5d3bad853f94a6e3",
     "vendor/engine/dist/sequenceTargetClaims.js": "f71a08f4e39143c67dd5b5ee1b1b41ba90c010d5cf290e282f020aa9ea30808c",
+    "vendor/engine/dist/srgbBytes.js": "c2de981aa723fb5d0fec44091e1a7dbefadf217d4c05c5437d6894991531b92c",
     "vendor/engine/dist/startEngine.js": "f08c71e1cd5719badd490d5b93842884bf0ee585d040bf0d1a3898a37bc001c4",
     "vendor/engine/dist/surfaceOwnership.js": "8491afdedc0086ba369b3e2864ad96a1bf3a230455dbdf62041e8f473ce810f1",
     "vendor/engine/dist/text.js": "995fede13b4d81b1e27ee3a2eabfd1c85d11a0ba527e16f7dcf690bcfd2fec41",
@@ -196,15 +206,15 @@
     "vendor/engine/dist/timer.js": "af95ddbc8dcb72ad3c6e69eae0a3617944db9222410678b412ac9b15f26070f1",
     "vendor/engine/dist/tween.js": "667940c87a313fb0cc2297f0dad82023cf367343a164ce02177dce67b4abfa4a",
     "vendor/engine/dist/ui/controlKeys.js": "06cb12b6153a052cb11cf7601c97a4a77b2d2305a95fc81459946be3f51b6d7a",
-    "vendor/engine/dist/ui/controls.js": "5cb80ca0faf5a37f2d39366bd90f715a7ea49937ff775a8add961376cda775d4",
-    "vendor/engine/dist/ui/index.js": "16981028fb2b21ffe65981b4f18cf55a8957bc2c14d4ef5ae56ddb7359ed4a3d",
+    "vendor/engine/dist/ui/controls.js": "01a7a4fd829ad640d833687c5feeea72615a69f661bd7966fa5b9b294820fd1b",
+    "vendor/engine/dist/ui/index.js": "118701000220ff0b5fd43c02616fb2202f513ba470b0b087944ea676172dbbe6",
     "vendor/engine/dist/ui/keyboardFocus.js": "306f88a0112c9692617fc74b9703964d8ea53d743f910a6ddef6ab23093b31a8",
     "vendor/engine/dist/ui/layers.js": "142e75bd42860a68e00b60995ad20a0fc156cfb95efff2597112250aef3f5379",
     "vendor/engine/dist/ui/leafContent.js": "c6dbe7593dc06ee0c07554ece4a25a3d093f8c4239a3b34c6252454752582ebb",
-    "vendor/engine/dist/ui/rangeControl.js": "4ef93e8023540952064d7e06427f9db15c86af24eb40ac16544a3054749b9b37",
+    "vendor/engine/dist/ui/rangeControl.js": "92f0823d1d815bb0f5b830f2705ad94ff11c50a3a330d531239df7ada5a0021f",
     "vendor/engine/dist/ui/screenStack.js": "0bda3fdff6dfeaf585e250cdb80b211767901dad4a2434e911ccc5c2553ed0d6",
-    "vendor/engine/dist/ui/scrollControl.js": "4c4fa05caf55efd95222230863afafc2030568819f4acd6ab388707118e03bc9",
-    "vendor/engine/dist/ui/stateControls.js": "6a6210ff0370101e4b2cc48e8f3e4611d3396fb30b3368ed3a0abb7945ceff65",
+    "vendor/engine/dist/ui/scrollControl.js": "dace2d08818128ffaec08cc9d6c69d34b29b49e5d577a1a4fe74e4599ec04ece",
+    "vendor/engine/dist/ui/stateControls.js": "d08d9cdcbbc6813f06b59d8e6764af9b7eba9b2cf308d9a0a5df22476a02fe61",
     "vendor/engine/dist/ui/testing.js": "276b03618446565afd2ea08ed838921a03d04fe95086458b6015ca4b13693ca2",
     "vendor/engine/dist/ui/textFieldControl.js": "f32dcfc08339bf39984362452cbfc43edf7807458ffce5978cfa30cf2c4bf29a",
     "vendor/engine/dist/ui/theme.js": "75f0f012e246510f452b658dbd9ff675ac0b8b2210f1987be0897d21272c8223",
@@ -213,34 +223,41 @@
     "vendor/engine/dist/ui/uiRootModel.js": "ffd9a68ca9b5c3550e4f945685d040262ea97e7043af74a590331311da91c8fa",
     "vendor/engine/dist/ui/virtualList.js": "d2ef8ca781bb68cd5ac4e449dd4395c59368917f1d53772e6bfde452f503fb95",
     "vendor/engine/dist/web/BrowserAssetBundle.js": "8cfa3d2b6c2f02be6472ba6b7824cf3bcc765f35c2bb4838a93ccaf39a832128",
-    "vendor/engine/dist/web/BrowserAudio.js": "c8b82c3bf4f758c35ca9f98fde072748c271aa182c2f7a23bc0b936f7ef0f0b2",
-    "vendor/engine/dist/web/BrowserFrameLoop.js": "876fa7664c99042c2e15d4a78faf4242ca0cd03b4b4d9a420e2c034173e87cf2",
-    "vendor/engine/dist/web/BrowserGame.js": "d4fba166f9057051ed6fcde8151f880ecfaf708e6aadd06b32152e1b7552fbc0",
+    "vendor/engine/dist/web/BrowserAudio.js": "3e91d6c672f0620331f3bad796fd1976764bae7f78bcbdafa3addf0677780e10",
+    "vendor/engine/dist/web/BrowserFileExchange.js": "a94fa51d684505bd2868a5d3c60ceb14d5d199320e22de580566291a6a7fb76b",
+    "vendor/engine/dist/web/BrowserFrameLoop.js": "716cb09e435df98201acd930b2b31d7c50af98165e554229565d74a9cc7f1507",
+    "vendor/engine/dist/web/BrowserGame.js": "b55cade7e16dae8121273ba3fa45fcd314e846c2cfb190a08d18136645c9fb5a",
     "vendor/engine/dist/web/BrowserGamepadInput.js": "0b5500e797cb595ba9abdc31f0a010c7baf4bec7ff8f6c1f33666fc30d5e30d3",
     "vendor/engine/dist/web/BrowserHoverInput.js": "fd65badc36f1a1445419fbc7f74de3771cda57c0666401d8e935840e47de17f7",
     "vendor/engine/dist/web/BrowserImageTextures.js": "7f6541e549503de030d9f05f57dd85bdda8171dddd1974be4516e03114b98763",
     "vendor/engine/dist/web/BrowserInputActions.js": "0f4cff1a1a701b6633e651c1e73b072d5be2d6371506a0f9b61972d90c7cfa03",
     "vendor/engine/dist/web/BrowserKeyboardInput.js": "a2287625e91bc5fccde1957cf5441d22c501a509cc90cc9ef259b409ec3e8ffc",
-    "vendor/engine/dist/web/BrowserPlay.js": "06dbaf71e96464e93f9a428e045f84f710742210b3f1637f1fc294442a032a42",
-    "vendor/engine/dist/web/BrowserPointerInput.js": "2c54a427b9367f1b8df8a248d70c116d19d35313fa9b6c1f2d12fe2c5ef4c22b",
+    "vendor/engine/dist/web/BrowserPlay.js": "82676dfdfa717b014922fd9bac393f46007c67eca2e353acf2e7adcb7644dc25",
+    "vendor/engine/dist/web/BrowserPointerInput.js": "262b3de8c89051d1cfbf9eba4d0f1683b3f936c29d56e48f8cc397e0c0ddd4bd",
     "vendor/engine/dist/web/BrowserPreferences.js": "05e8e7860e4e53f0894563e752291fca842a639f5e17a613ca603e04378b14df",
     "vendor/engine/dist/web/BrowserSemantics.js": "0eb253d1c230a8232cffe51a57e39751aeeae5f71ded00b46bae6d8a5fc28487",
     "vendor/engine/dist/web/BrowserStatsPanel.js": "4675ee42db6b5dfb4a85968b6b8173eb460bab59cddfc65dc1efbddb5fc00c08",
     "vendor/engine/dist/web/BrowserStorage.js": "ae475ee2989fbfdda5c3109443ba0600afad4310d9d6315807908ca11fc47bc3",
+    "vendor/engine/dist/web/BrowserTextInput.js": "3c5c40bb2e301cf7e622d404784a9d3fb1b550c9c443f7a974c5dbdca8fa749d",
     "vendor/engine/dist/web/BrowserTextureProvider.js": "d395851eed3c1c2ea053a637ab4e1561ad8655747a03496ecb95fbf5c0e5e228",
-    "vendor/engine/dist/web/CanvasTextRasterProvider.js": "e5f7445896f8b8582f9311d588c943d14b50e916958ec0b24042f61cdee4e35a",
+    "vendor/engine/dist/web/CanvasParagraphProvider.js": "a527ea4afd6357d97b1ad6865131463aba8c9aeac0c91d0e5a232883446eba12",
+    "vendor/engine/dist/web/CanvasTextRasterProvider.js": "05f39a6e824711a948cfbf7c5784edcb8b1266e20ccbc1b16b5d52309ad8aac2",
     "vendor/engine/dist/web/GameImageAdmission.js": "66f58dcac4bb51e44bf4d1862974dbfb62e8acb793b4ea952fbb866f4dfadf62",
-    "vendor/engine/dist/web/WebGL2Host.js": "6bd2d84f9030b7b3262e8e7fd7d4e7666c601a3116c1f9cc7589401453b60a79",
-    "vendor/engine/dist/web/WebGPUHost.js": "785ca61019943640bf66a2504189b2204c349fe3278a0822b0d5cbac8943be20",
+    "vendor/engine/dist/web/WebGL2Host.js": "689077279841d03fb9c260fdf083bcfd51639887b6ee1e0ceb2b1242872e1f70",
+    "vendor/engine/dist/web/WebGPUHost.js": "9694b5b5ee1945a5c5d6e64b909e87585b2183a3eeeaecf2e407d15549434daf",
     "vendor/engine/dist/web/audio.js": "c41840867c2bccf66839854a3e09c329bb321f69cc1135a4a7c66123918eef06",
+    "vendor/engine/dist/web/browserGameFamilies.js": "96b467b452017300c70ff7b981d80616dc36c7785020b73cdcac13e6208925e1",
+    "vendor/engine/dist/web/browserGameGlyphFont.js": "64a39860c057262d90a760254caf1b766c8ce3364bf1d9ed30ad231262ea4b97",
+    "vendor/engine/dist/web/browserGameParagraph.js": "57b4d2c8067adb9427e6fdd99959618ceb6d4a4447c00d3726ef7f8fa06d5465",
     "vendor/engine/dist/web/browserStaticLayers.js": "9f2c4d1f8cd25acbdb2435cb2589f99b70685a5673c2e58e0db498bb3472daab",
+    "vendor/engine/dist/web/browserTextWork.js": "4a91b701e4339ca27372ce704b6666d9a745a97c00712eecd90ca6715f8d76db",
     "vendor/engine/dist/web/game.js": "f5f534c515428816e055cd7b07ea74060b553467f0f7c803dd0331df8369a6d3",
     "vendor/engine/dist/web/gamepad.js": "332bcdbcfac4fb860ae1e7e1f714aab2ac53042b02f4c19d655e95b450c4f3af",
-    "vendor/engine/dist/web/gestures.js": "af05e0394204b9a2e127b2beed1f8746c9c6b8ad67f5e833cc7e3882ad81c056",
+    "vendor/engine/dist/web/gestures.js": "8b12182234c867a7ec5dcd3c1435efe277a1d0735f4c484a87a515c3c62a96d4",
     "vendor/engine/dist/web/hover.js": "15e66ea4845eb6ebf8f1e624792f2e5f92ab17f8f2777cd95b4bbd039da066fb",
     "vendor/engine/dist/web/image.js": "715081d77046f11650224c8048767aae95d11e93bd51a300e0f50b2905ce3186",
     "vendor/engine/dist/web/keyboard.js": "cd1cb77b8d4723e827820017cc21e35d749d81e84a1d1a55fc668ea5736262e0",
-    "vendor/engine/dist/web/kit.js": "49f07e9e69ec379aa9ea601696f0ec0da432c5b1a6336eaa6c604b37da1d376f",
+    "vendor/engine/dist/web/kit.js": "b725818905d43c76e9a589a5cf11defa18ba5e883bfa44ba6093618bf1178e58",
     "vendor/engine/dist/web/loop.js": "60f94a68cbd6839ed332974908b6a79094cf03ca8be308b8bd4f80f15ae5ce2e",
     "vendor/engine/dist/web/play.js": "97ff4656bf4425db65a5b95c6a1d230714876df95c50839241d3767d84df33bb",
     "vendor/engine/dist/web/playActivation.js": "fdcab3f3012c40e2b84c3365263a9620ca2cf2f63a9b43ae6ac9551291f3fa3d",
@@ -248,13 +265,15 @@
     "vendor/engine/dist/web/playMusic.js": "ec705b1a71847c310fce3270a2a8bd23acbb964818d067aedcf64c7ffd0a4895",
     "vendor/engine/dist/web/playSfx.js": "933e55868a349dc489525e13ce7b09bc5fbd40ad46dca97a045a33a639c69782",
     "vendor/engine/dist/web/playTouch.js": "38576133bd013062136bc77486abbf279822aec94656b08120d8916310f34b35",
-    "vendor/engine/dist/web/playView.js": "382dc7047c6ab1ea5f047c77498c9ae31621a8d767aa3ee34ff9eead8347cc89",
+    "vendor/engine/dist/web/playView.js": "17a4c402aa871722db00b90893af329406eae5ff588a361b1210c07d388320aa",
     "vendor/engine/dist/web/playViewParagraph.js": "7dc9fdb66baaa2a565bcf9157cec99f76becdaf24eeafd0096ec5d3ea4ea0a38",
     "vendor/engine/dist/web/playViewScroll.js": "bf63b4215be43e32874d6db228bf03dcfa1f1d5e539d565c8e85703ea03ab3e5",
-    "vendor/engine/dist/web/playWidgets.js": "567623331e5ccdcd6951d4511f78ce647dd0c762c41c8a33e43137d1b28fa038",
+    "vendor/engine/dist/web/playWidgets.js": "57d63552e56f1de865405c54c003e9c844b6d92e2bf3ab6c44b57dd2a7c94b3a",
     "vendor/engine/dist/web/pointer.js": "a20adc6481f0a074ab9bbf8c89514e6ba50b7fbaa97787817af6cab774a16a1c",
     "vendor/engine/dist/web/prepareSharedSubmission2D.js": "cc226e7f06d68a792d38a42329e7b6b79a89940218d0780231548f89f85aa926",
     "vendor/engine/dist/web/screen.js": "0eb1816b0585225eb6de42ea898300492292aaf7ba95cc6f830064be0d807f9e",
+    "vendor/engine/dist/web/screenClipGeometry.js": "0f858be7af31a77b026eedee8db20a26c6a4c93278c9e02fa21d05eba99fc124",
+    "vendor/engine/dist/web/screenControlGeometry.js": "a6fb5360a5b18681a9a16fbec1e601f22aacc62a613d4f15c79b26f8e38237bf",
     "vendor/engine/dist/web/screenControlReportState.js": "54bc9d94f54169d88801d67bbe845d2176d5ab33efe37f7b0e01caea500940db",
     "vendor/engine/dist/web/semantics.js": "0d5a6507df638e0d35120512f6c1ec6ca06342ef2f5fccd0a738715e45290223",
     "vendor/engine/dist/web/sharedEffectShaders.js": "df2c28674b339494a4648eec0cf1df15c873d0c691e69b1ec8ae64aeadff7736",
@@ -279,27 +298,27 @@
     "vendor/engine/dist/web/webgpuSharedPass.js": "0ec5c6777319501fab0d20a0c15e894c6fa02c21adfaad7909d4f4bcacf624ab",
     "vendor/engine/dist/web/webgpuSharedResolvePass.js": "a508b385228644e301e412e9bc2f4bfdca1768d8bbcc36cf11ee5760673d8d18",
     "vendor/engine/dist/web/world3d/Audio3D.js": "88d43263be08888dff837c436b5e1208024be6025d76cec49376f27fb45e4ab4",
-    "vendor/engine/dist/web/world3d/BrowserPlay3D.js": "718d3dca7d7be7dd78643a49bf0bed906725fe0300f9e4f26a108aa1b81e1a99",
+    "vendor/engine/dist/web/world3d/BrowserPlay3D.js": "6885e899229c17b236db6fb2187f6cc927446a4884e4ddd48d56f06cbae5d88b",
     "vendor/engine/dist/web/world3d/FlyControls3D.js": "3ff76332553183332d818c0a73d260fdb811ebe14dd2e1bec3f60953573edd9a",
     "vendor/engine/dist/web/world3d/FollowControls3D.js": "cfaf9e9856b74d3ca689b579ea1e3154563a6ad92df80f6523156c3375a8efc7",
     "vendor/engine/dist/web/world3d/OrbitControls3D.js": "3f9aecbe4d55ea4b7a0870d6bd69f2c360d27adb4319fbaa15f7700023427e53",
     "vendor/engine/dist/web/world3d/TransformControls3D.js": "4ec9eb69370fbcb03896a5234184ce197dbe21c1705fb4cf459bd130bb89196c",
-    "vendor/engine/dist/web/world3d/WebGL2Renderer3D.js": "52fdcdc85d8b1d6e47fbebc2df71e8d8635b3da82754ce33912c67e8ba737340",
+    "vendor/engine/dist/web/world3d/WebGL2Renderer3D.js": "9f1ff80ce04c4f23481890a85ac0be0b5d9ebd39bc97224bf1e752b98ca19c69",
     "vendor/engine/dist/web/world3d/WebGPURenderer3D.js": "683cd6765b3eea3e184b27550f4bdfd60e33a889afdb98701c5e5e279bff1d67",
-    "vendor/engine/dist/web/world3d/World3DView.js": "ff9d93bfeab21bdfaf4146e0d0262d414df49f043331626e686f4f6c6eeb3804",
-    "vendor/engine/dist/web/world3d/app3D.js": "6dd2837ac0889b4cad83b227c8f3c70660890c41e16e1bc58f2c35605a78b589",
+    "vendor/engine/dist/web/world3d/World3DView.js": "df6ee278a7f2875261581635d35213e9eca8da9df00c191ae6c5c541bdeb4824",
+    "vendor/engine/dist/web/world3d/app3D.js": "e1d3ed4eb6f47c4e036997ec294014c7044cb163d256baf93b656c52f7afbb36",
     "vendor/engine/dist/web/world3d/assets3D.js": "69466869e7ce602da48076cea7f7d18b47b01e49fd3c7b5dc7c146d15c274de2",
     "vendor/engine/dist/web/world3d/atmosphere3D.js": "a55383d33c4a1bb48f2cf997539e07ea5f7e1bea9a1d9775bf0652c491ee4d64",
     "vendor/engine/dist/web/world3d/canvasFont3D.js": "cbe0c8f43902d34eb9b32384d72fac6f5552974c1d1f3b8e99f8c128ae369ae6",
     "vendor/engine/dist/web/world3d/frame3D.js": "a65777b3839705dae09a80a7dbc9454ec9e5aa5a3a13e1a1e59a65dadffc24c3",
     "vendor/engine/dist/web/world3d/gpuResources3D.js": "9c805dbf129ff4aff7b8533fdbcbcb32663c2c7f94e6308a42268f09f7a1b04d",
-    "vendor/engine/dist/web/world3d/host3D.js": "53f7cc883574a1e0ed39460c05ab20b490a088ad8e1b3aefef2a62a9410a77e9",
-    "vendor/engine/dist/web/world3d/index.js": "26a8a3cabeaa7f69ec6af7d6507bd91c9164aede6288e6bffe8a6c2b0f50050b",
+    "vendor/engine/dist/web/world3d/host3D.js": "cc1da77f54effa5b1e0b4bf064bf53c971c0683f965239c63cae2c671c2dbd25",
+    "vendor/engine/dist/web/world3d/index.js": "01b03f9791079a589003e7ea857586285eeeb439f75a1602331821fb1048765d",
     "vendor/engine/dist/web/world3d/loaders3D.js": "e4269921fdce86cbad1270093eed613fdf694aba3c8619043d3c3e5947924e54",
-    "vendor/engine/dist/web/world3d/markers3D.js": "677a4bcd19fdbe62be055d843705f434ee3f5f7628699de9ac8a98a39be57418",
+    "vendor/engine/dist/web/world3d/markers3D.js": "d3cabcba6cd1d5fc6afa6b7dc5e8f6c7b05e995b379fff624803305440f3ab91",
     "vendor/engine/dist/web/world3d/materialWebGL23D.js": "b40174616e748c57979596ea98c929b97f17f2a718946bdcdb59105c215cd126",
-    "vendor/engine/dist/web/world3d/overlay3D.js": "8cc1ebbe795554531a18cb600da28ceeaa09d53c0b7438a73d5b60f2332ac187",
-    "vendor/engine/dist/web/world3d/overlayScreenReport.js": "77c9cf6f84ed4a911eb7459ab7f6e4fd0d021f3a29c04ad6f83ee76337ab304a",
+    "vendor/engine/dist/web/world3d/overlay3D.js": "b81ca1484103ec98663c4b147408e09b02a969a29561da2cf27e1eb48c3c98ec",
+    "vendor/engine/dist/web/world3d/overlayScreenReport.js": "a5c2b18a380ecc5b07e08f116d9e3808b470f00173fd24015e8a4ba1041d4441",
     "vendor/engine/dist/web/world3d/post3D.js": "c945f8d7ff2f56c72910620ea7958b0fa8747faad6815a2ac898582f647e2c71",
     "vendor/engine/dist/web/world3d/postWebGL23D.js": "20e61d84600a1206e63961ffb46364a9a902bbd4b4c9f88e982fc56abb7d99fb",
     "vendor/engine/dist/web/world3d/postWebGPU3D.js": "1e6e22603e2d957e21e8add25408a1e9c695a13dd92ada0f1807a43f4e154f61",
@@ -309,7 +328,7 @@
     "vendor/engine/dist/web/world3d/webGL2FrameMetrics3D.js": "b9c42c4ae330cc8a3f81a3897abc87c6268c275546089c6e578cfcd90d5f6817",
     "vendor/engine/dist/web/world3d/webgpuPacking3D.js": "8d5873c697568f00d1b77fe6487a8010fc1e46f1adcfbedeb54c2661d5a83c64",
     "vendor/engine/dist/web/world3d/wgsl3D.js": "07f7bba0588810dbe08051f809dab4ab15b282dd1161497d48cfb70889bfce0c",
-    "vendor/importmap.json": "fd964fdc2fd98526db6a67128d80f05198486d68fb4c2c992dc6a3cc876c4c04",
+    "vendor/importmap.json": "332168ed41608d8d6d5e05e62340fbbb278e24707b8503426821f655d0666893",
     "vendor/robust-predicates/esm/incircle.js": "784e4c897b00289869c9a9e51e0281ac550853e399a8df664afaf29494fe85b5",
     "vendor/robust-predicates/esm/insphere.js": "6782ad663d713b0da8d0710d88123a89ad388a6359c4bc81ed89ac5f682a12ea",
     "vendor/robust-predicates/esm/orient2d.js": "ba1af2b1ea71924fa2e0a3e50b8972d3a83ab9a9f406dd73e851c9763a8eb741",
@@ -319,7 +338,7 @@
     "vendor/runtime/dist/AssetLease.js": "e1cc678406f6b6f18aa20340ebaea35e0763446e0d4d876d66e79f1711341e13",
     "vendor/runtime/dist/AssetManager.js": "552329abee915b5386ccaf837629123372e5e62d9ef3d51cda39f49b75319a5a",
     "vendor/runtime/dist/AssetRef.js": "aa4a4699a8977c9019ccee009bb6d2240e070859be4e9211c97bac745a972d6e",
-    "vendor/runtime/dist/Bitmap.js": "24c87ccc1bb4c0fca3a9499ed81f33b76039cdd17904d47140d669428c0c3537",
+    "vendor/runtime/dist/Bitmap.js": "36028eb6fcf31ddaab31a5cdd4e85bae89c867f146544d1dfbf39aad79a35c7c",
     "vendor/runtime/dist/ByteReader.js": "eb37f9f8cfbea97a3cfffb22c4ab838ad4ccb4d127656d7bf6b97a0ffe2ab4aa",
     "vendor/runtime/dist/ByteWriter.js": "4398c7d11136d0b3b5cea285781446773972a553d0de2155c76eb3ff7addb75a",
     "vendor/runtime/dist/CancellationController.js": "81be3a4aa2b478aa896776c4c202370a2f3b8e3eaae0b2e7e6b312b2be608984",
@@ -340,18 +359,21 @@
     "vendor/runtime/dist/assetManagerOwnerState.js": "7f4b6fbb3c54458f9d7ff432697559fcfa50cae41ca9e3ab89233e82629a597e",
     "vendor/runtime/dist/atlasFrameLayout.js": "1c812ba51f87fa6885a34b49b7c6731050b8bbb2dd1be820ca43684b26a00ce6",
     "vendor/runtime/dist/bitmapDisplayState.js": "6d1f58bb80a98860545a0f481a33128f3bfe3aefdea872cd3dc02744a0927fc8",
+    "vendor/runtime/dist/bitmapImage.js": "b9b6682f4aa1a92bd206dfe99454648776ba82188e0ca95b20c422b7d368f9a6",
     "vendor/runtime/dist/coordinateInverse.js": "bdf8a94153299d1ffcc9fed5d8ce6e2dc1d544d9042ccd2153327799e09db667",
     "vendor/runtime/dist/diagnostics.js": "bc0f9fa0d1a63e3691861c09b250a965e8638bd3fb4e32cc12994b38dcd9ba11",
     "vendor/runtime/dist/displayBounds.js": "4f46f12fa4d7029098c27f355cd89fdf44a5a0494b150408c01acbd4f6822478",
     "vendor/runtime/dist/displayCoordinates.js": "b26e6b293e0235855e13c55036804023134133e0b6bddd2fbfe8213ae22343b5",
     "vendor/runtime/dist/displayHitState.js": "82840e1b130e18a40abfcfcd9a3a7ff9a41467f9e3881952aa86ad1f1ee90370",
-    "vendor/runtime/dist/displayHitTest.js": "99d203acb0f03aed2edb309836f39279f5d9bef4018b508d6facbb5c79a5b830",
+    "vendor/runtime/dist/displayHitTest.js": "31e72e2b1eca2d21faaf1d2bdb15ee78d68fbf63671ec83daf5b1ed2ff307b74",
     "vendor/runtime/dist/displayInputOperations.js": "b017623a5ebd7daf0f357048be1419e011034926e60c4e69cf3bfdf4a9b89aa1",
+    "vendor/runtime/dist/displayNodeState.js": "96385f91411cd2f83fb7ffa07a3ef0731cbca21a438f8150f72536c4ba71b05d",
     "vendor/runtime/dist/displayTransform.js": "f82b63ab3add55f780a878d55cfb2b469455dbf7e7bda522efe571ec9b2b93b1",
-    "vendor/runtime/dist/displayTreeState.js": "65b38c00342a1bb7eff2668231ea211d6324a6bf8ffd7ff982dd277326e9eb24",
-    "vendor/runtime/dist/displayVisualState.js": "66668d11b23cadd7434805465b25fb70e31603791bd26ac5c7d1767f92b70aab",
-    "vendor/runtime/dist/errorHelp.js": "e0d60d5b3581cd9b7f9c9853de825d4b9f7ed3f2d3b89522505b8849bcb09453",
-    "vendor/runtime/dist/errorHelpZh.js": "35dade6c43c56a4434ee0d0951e1729b7ca9e64d20abc816ff7fe4146ae9b67d",
+    "vendor/runtime/dist/displayTreeState.js": "4a27a67c9bc5a7cc5f122bc57f8d7462ce69a98ea134c1683c7ea7ec543e9033",
+    "vendor/runtime/dist/displayVisualState.js": "08b299595370639370da87bc704752516da494a0b835856363156d2c3234b2fe",
+    "vendor/runtime/dist/engineAffinity.js": "0347377b6b026d614b5fd4c0f6782b07f75b3e926b9d3a3934789ec3df9b6586",
+    "vendor/runtime/dist/errorHelp.js": "db38e809a987ef82f72e98c1ae34302b08ca086fd58c63da3c6602494dc827c1",
+    "vendor/runtime/dist/errorHelpZh.js": "f23cbac2bd41daf84650b2ac191c344c956a9435e5943ba02335be15f8d2ea41",
     "vendor/runtime/dist/geometry.js": "aa2631b0018c36f8e4f2353b526903f7a76ec3dc97d92e40c5ba6c8317a5f608",
     "vendor/runtime/dist/graphicsFill.js": "4bcfcd56d9bbfc11388b30601be332b6715b04ffd45574d77c14884053df95c4",
     "vendor/runtime/dist/graphicsShape.js": "00bb74ea97a7b8b34ce206a73070c468d798b52a8ff93e1d35c4013f55db080e",
@@ -360,16 +382,16 @@
     "vendor/runtime/dist/input/index.js": "0095ac2350651100434932adb6aa8aaebe6d87678ebc3155cb7df34ce059e9d3",
     "vendor/runtime/dist/meshCaptureSnapshot.js": "ec1c528bb64dff50f3bef63edadcb3779f8cf07f27acb5c16ac58abbf70ea67f",
     "vendor/runtime/dist/meshDisplayState.js": "c8a18ad6bd307946c8e19e9daa6cd35b25296d5e46f8bb4deee5bfa6b634667a",
-    "vendor/runtime/dist/ownership.js": "12ea54d357b3e324e1cfc151af6cfc36b538132ab02dcb798eef6dd6f7233bae",
+    "vendor/runtime/dist/ownership.js": "bb74a1c56a8fe817119fa64289e51ef6972431894c1eeb218bf04c734931ed5f",
     "vendor/runtime/dist/paragraph/Paragraph.js": "404400b69f0211c8ce4c93b511dc661986ab09c118ec033303b5c49341b012f3",
-    "vendor/runtime/dist/paragraph/ParagraphCache.js": "144a4983ce1e054677bcdf7fcf292bf9e7397f431958e6c4d3f15dd8f96fdbc8",
+    "vendor/runtime/dist/paragraph/ParagraphCache.js": "d46522d2f50674f6c5079db80ef1b010058fb234281ec8fb009ce7cc61be24bb",
     "vendor/runtime/dist/paragraph/geometry.js": "8f1104413416ddf960e99e788d5d6c85e653b09b5f59fe9d2636cdaaaa7aa381",
     "vendor/runtime/dist/paragraph/index.js": "cc24b6c630b82cd1336c31b6533b131301605630472e56158530473341c285e8",
     "vendor/runtime/dist/paragraph/request.js": "fca71d81570b67c8f475a58b2663846f48125331e00d2dda88003dd06c46d123",
     "vendor/runtime/dist/preparedDisplaySubtree.js": "e4639861020499ed27b790378d49323e921091663979eaf6a1e3b8c4573f79ab",
     "vendor/runtime/dist/renderEffect.js": "99694e54fbf37100a677802e2b369802e0d3fb764733efe9cdd469b833cf2436",
     "vendor/runtime/dist/sequenceClip.js": "fac3b25669afa30b6cb9b1276ce93e39449802eaec0aa85841de708d3ae47784",
-    "vendor/runtime/dist/sharedFrameCapture.js": "1a49d7b74e6e2e2648573f37d0011f7cbb82bdd436e6b804ffc7cc42bb48bd57",
+    "vendor/runtime/dist/sharedFrameCapture.js": "ab8e509369e0139b0acac1c0db134876d76f627793c0589c97587a33c3a6d000",
     "vendor/runtime/dist/spriteSheet.js": "af911371771983943a434351dffe44ccaaa2141b77791c6fb042f8cdfb39167f",
     "vendor/runtime/dist/srgbBytes.js": "6c1622819a13775e7756a242437e8a6961c6148a5410bad4803858a57d881937",
     "vendor/runtime/dist/text/TextField.js": "7b2078f5d19050802862563e63d530c6636a84807ee2621e258e79e59f993c01",
@@ -383,32 +405,74 @@
     "vendor/runtime/dist/ui/heightIndex.js": "822a8559b28fa30ac646c2a9f7f5a16c567afe2612b7b928289a9f452367445e",
     "vendor/runtime/dist/ui/index.js": "76737d1de0ff358cd0c9be73f4081b9046c7c9a3efee408233f5939d9ea34537",
     "vendor/runtime/dist/ui/layout.js": "7c2f97b10fef3cb70c9903044f3213989fc0c78a80c5ef58414a5207f5d9d24b",
-    "vendor/runtime/dist/ui/managedState.js": "4cd38917c0f5f46ec5b45d3f0a9df46c685cfd6c2617cb2d0c5ce3623a6f4ba2"
+    "vendor/runtime/dist/ui/managedState.js": "abbb3d00535a6cf491a972cabae6f241528918f05b652a1589140ea476a658c2"
   },
   "outputs": {
+    "chunk-2LVHNTHP.mjs": "e7d4e693eca090b2f8e25b07fa12d15df1b090b570d358e5d5b3bbf52aade71c",
     "chunk-2PKRZAXY.mjs": "ad3a30cc1c12489998d5bd5cdaf40962a6bde75fdb383a6ac489ad431cbf1219",
-    "chunk-5FZ5JJBA.mjs": "e39e7f1c5e37a9b53d7f34f3564de6e00a21f707b8e9eb0865860bd132bc7dc9",
-    "chunk-663QOIXH.mjs": "35ed49d3690ca2fa61bf457384ee439dc3e510395419fe54e22a4d1e3cbb3ee7",
+    "chunk-7HVLVUOM.mjs": "486d5e8b2904c4e6ae207b8d0bd99517b8d7b20edd437b34a8f6e578e08ccbda",
     "chunk-ALUQKS75.mjs": "e085f4969088f83bcae99891d74133ad5f40dbb84525c6265ecec6bdafefaa6a",
-    "chunk-CMEPA7RE.mjs": "b21f25976117c1825e7b76453c7de44f050fee267192c072caa6414f128f8c87",
-    "chunk-EAWXZWZT.mjs": "c7354d35d4aa0bf16c6bc6381ef7e8d1407972c23fa60c7b88fb7a7f30a508e6",
-    "chunk-F576OYKD.mjs": "c1547c99a7bf88c95e5b68aedb28ea8921d95273d760b9c50d3427faa54473ed",
-    "chunk-GDSP2ESL.mjs": "6ccc8a16d7f1075b5a73bd29fa7dea88bdb05fc5a0e95a5dcddb924209b2cbc1",
+    "chunk-AOUSCME6.mjs": "6c2d2f43ce0f444c986710278b39017f7507429e1a6b1cf9040780711a9a96cc",
+    "chunk-DAVXDZSC.mjs": "81f328248d779a168840c0f08c0c7e2f6789c40552fed8d7826a2ad92e709ee4",
+    "chunk-DIDI7F7Y.mjs": "e3f3088929e6f47cca6234f57e584e4e3187d25e21ae33affcc0efe923170728",
+    "chunk-EA2J7W45.mjs": "42f5e53d8682a780dffdbb2efa9d5ffae94670b91bffdc3e404c4dba534f6a5c",
     "chunk-HSD5GAD7.mjs": "1eb7c99d61f653dcb4e71264c1ac0ca196d4105fb1fc24d5a7b7ecd6101ba99d",
-    "chunk-MW6TSJQF.mjs": "12e4f77b4b3deabe44d3f4ffc549d0bb97749aeed52b9fb2b4afdc4dc0cc40a0",
-    "chunk-ODATJFOB.mjs": "30c55393c469af192371795e771dbe17b85a7797cf3ed901793ed177cb9eff05",
+    "chunk-IF44YPPX.mjs": "02df4470db7a1619406ba5afc4e7f73a38202fa1d0d9d9359641f80ea755299d",
+    "chunk-LC2JA2OF.mjs": "45e78dde95493a5d2149e1e5b5df3ed01b8a9178d9690efa38d2efef6f09a044",
+    "chunk-MYJ5UJD6.mjs": "343b552abf236e26dcf8fa8ff9567171fe292f5e8b24e19283356685a37b2ad2",
+    "chunk-NILHVS66.mjs": "c96ca8cea47468c21b21d86c11e339742fa5c88334d736a7d7e2cc63dda0203f",
     "chunk-Q3A2T4L2.mjs": "6d825c6fe1367e0b512d355768d9c67ba8eef24adf5cd8c15aafa788a589f806",
-    "chunk-RC6QIM2N.mjs": "30dc45a02b5c8804f9cc24f7fe09ce4a4c80b20fae6c429a8b69b65242384e65",
-    "chunk-VVGZFVG3.mjs": "4e1e9eba927b33e7131f26b994e3653d51533abbf4246131c2ccf980217478a2",
-    "chunk-WD45GUHK.mjs": "72c275483f8e10215ac2cf6199400c9c562155631d568fb3f3b5fba174938222",
-    "main-BIJBCRBO.mjs": "b88719172ad560fc3c78a771a4990237de2443c89b02d1eb4b240f4c3cf03790"
+    "chunk-SREGYTXB.mjs": "3584e3e53b14c09568e3c9a76ce3ed9183f749dd1984de91a163c7d7bb985616",
+    "chunk-UKCNSJJQ.mjs": "6597628d37c5287a24dc31e1c3f45349841fff3cc2bfaf03d11025ceb5b7bb95",
+    "chunk-UXPV6Y2Q.mjs": "6afe6a0907d8aa871ed961a9097521ee2d4ee34d932be12859b96b4efb022a2d",
+    "chunk-XWIQF4ME.mjs": "01b35cf968c62366a786bb5ed112ba9f5083c5804f6f8182399d5114a4a0265c",
+    "chunk-Z7E6SBRV.mjs": "3e675df33869ea6aa68784045ea35595ed0c4a2bf138d20641d1961814073664",
+    "main-ZEJSGW36.mjs": "6893a0c3b5b51fc01cde9a778fcee95971ed5e9d9f5b7eb2834ed01d84ea9f55"
   },
   "graph": {
-    "main-BIJBCRBO.mjs": {
+    "chunk-SREGYTXB.mjs": {
+      "entryPoint": "vendor/engine/dist/web/browserGameGlyphFont.js",
+      "imports": [
+        {
+          "path": "chunk-7HVLVUOM.mjs",
+          "kind": "import-statement"
+        },
+        {
+          "path": "chunk-EA2J7W45.mjs",
+          "kind": "import-statement"
+        },
+        {
+          "path": "chunk-2PKRZAXY.mjs",
+          "kind": "import-statement"
+        }
+      ]
+    },
+    "chunk-LC2JA2OF.mjs": {
+      "entryPoint": "vendor/engine/dist/web/playViewParagraph.js",
+      "imports": [
+        {
+          "path": "chunk-Z7E6SBRV.mjs",
+          "kind": "import-statement"
+        },
+        {
+          "path": "chunk-AOUSCME6.mjs",
+          "kind": "import-statement"
+        },
+        {
+          "path": "chunk-EA2J7W45.mjs",
+          "kind": "import-statement"
+        },
+        {
+          "path": "chunk-2PKRZAXY.mjs",
+          "kind": "import-statement"
+        }
+      ]
+    },
+    "main-ZEJSGW36.mjs": {
       "entryPoint": "src/main.mjs",
       "imports": [
         {
-          "path": "chunk-663QOIXH.mjs",
+          "path": "chunk-UXPV6Y2Q.mjs",
           "kind": "import-statement"
         },
         {
@@ -420,15 +484,15 @@
           "kind": "import-statement"
         },
         {
-          "path": "chunk-EAWXZWZT.mjs",
+          "path": "chunk-IF44YPPX.mjs",
           "kind": "import-statement"
         },
         {
-          "path": "chunk-WD45GUHK.mjs",
+          "path": "chunk-AOUSCME6.mjs",
           "kind": "import-statement"
         },
         {
-          "path": "chunk-F576OYKD.mjs",
+          "path": "chunk-EA2J7W45.mjs",
           "kind": "import-statement"
         },
         {
@@ -440,36 +504,44 @@
           "kind": "dynamic-import"
         },
         {
-          "path": "chunk-CMEPA7RE.mjs",
+          "path": "chunk-XWIQF4ME.mjs",
           "kind": "dynamic-import"
         },
         {
-          "path": "chunk-GDSP2ESL.mjs",
+          "path": "chunk-UKCNSJJQ.mjs",
           "kind": "dynamic-import"
         },
         {
-          "path": "chunk-5FZ5JJBA.mjs",
+          "path": "chunk-MYJ5UJD6.mjs",
           "kind": "dynamic-import"
         },
         {
-          "path": "chunk-RC6QIM2N.mjs",
+          "path": "chunk-NILHVS66.mjs",
           "kind": "dynamic-import"
         },
         {
-          "path": "chunk-VVGZFVG3.mjs",
+          "path": "chunk-2LVHNTHP.mjs",
           "kind": "dynamic-import"
         },
         {
-          "path": "chunk-VVGZFVG3.mjs",
+          "path": "chunk-2LVHNTHP.mjs",
+          "kind": "dynamic-import"
+        },
+        {
+          "path": "chunk-DAVXDZSC.mjs",
+          "kind": "dynamic-import"
+        },
+        {
+          "path": "chunk-SREGYTXB.mjs",
           "kind": "dynamic-import"
         }
       ]
     },
-    "chunk-CMEPA7RE.mjs": {
+    "chunk-XWIQF4ME.mjs": {
       "entryPoint": "vendor/engine/dist/web/world3d/WebGL2Renderer3D.js",
       "imports": [
         {
-          "path": "chunk-663QOIXH.mjs",
+          "path": "chunk-UXPV6Y2Q.mjs",
           "kind": "import-statement"
         },
         {
@@ -482,7 +554,7 @@
         }
       ]
     },
-    "chunk-663QOIXH.mjs": {
+    "chunk-UXPV6Y2Q.mjs": {
       "entryPoint": null,
       "imports": [
         {
@@ -517,11 +589,11 @@
         }
       ]
     },
-    "chunk-GDSP2ESL.mjs": {
+    "chunk-UKCNSJJQ.mjs": {
       "entryPoint": "vendor/engine/dist/web/webgpu.js",
       "imports": [
         {
-          "path": "chunk-ODATJFOB.mjs",
+          "path": "chunk-DIDI7F7Y.mjs",
           "kind": "import-statement"
         },
         {
@@ -529,7 +601,7 @@
           "kind": "import-statement"
         },
         {
-          "path": "chunk-F576OYKD.mjs",
+          "path": "chunk-EA2J7W45.mjs",
           "kind": "import-statement"
         },
         {
@@ -538,11 +610,11 @@
         }
       ]
     },
-    "chunk-5FZ5JJBA.mjs": {
+    "chunk-MYJ5UJD6.mjs": {
       "entryPoint": "vendor/engine/dist/web/webgl2.js",
       "imports": [
         {
-          "path": "chunk-ODATJFOB.mjs",
+          "path": "chunk-DIDI7F7Y.mjs",
           "kind": "import-statement"
         },
         {
@@ -550,7 +622,7 @@
           "kind": "import-statement"
         },
         {
-          "path": "chunk-F576OYKD.mjs",
+          "path": "chunk-EA2J7W45.mjs",
           "kind": "import-statement"
         },
         {
@@ -559,11 +631,11 @@
         }
       ]
     },
-    "chunk-ODATJFOB.mjs": {
+    "chunk-DIDI7F7Y.mjs": {
       "entryPoint": null,
       "imports": [
         {
-          "path": "chunk-F576OYKD.mjs",
+          "path": "chunk-EA2J7W45.mjs",
           "kind": "import-statement"
         },
         {
@@ -581,15 +653,15 @@
         }
       ]
     },
-    "chunk-RC6QIM2N.mjs": {
+    "chunk-NILHVS66.mjs": {
       "entryPoint": "vendor/engine/dist/web/hover.js",
       "imports": [
         {
-          "path": "chunk-EAWXZWZT.mjs",
+          "path": "chunk-IF44YPPX.mjs",
           "kind": "import-statement"
         },
         {
-          "path": "chunk-F576OYKD.mjs",
+          "path": "chunk-EA2J7W45.mjs",
           "kind": "import-statement"
         },
         {
@@ -598,11 +670,11 @@
         }
       ]
     },
-    "chunk-EAWXZWZT.mjs": {
+    "chunk-IF44YPPX.mjs": {
       "entryPoint": null,
       "imports": [
         {
-          "path": "chunk-F576OYKD.mjs",
+          "path": "chunk-EA2J7W45.mjs",
           "kind": "import-statement"
         },
         {
@@ -611,11 +683,11 @@
         }
       ]
     },
-    "chunk-VVGZFVG3.mjs": {
+    "chunk-2LVHNTHP.mjs": {
       "entryPoint": "vendor/engine/dist/web/text.js",
       "imports": [
         {
-          "path": "chunk-F576OYKD.mjs",
+          "path": "chunk-EA2J7W45.mjs",
           "kind": "import-statement"
         },
         {
@@ -624,15 +696,23 @@
         }
       ]
     },
-    "chunk-MW6TSJQF.mjs": {
-      "entryPoint": "vendor/engine/dist/web/playViewParagraph.js",
+    "chunk-DAVXDZSC.mjs": {
+      "entryPoint": "vendor/engine/dist/web/browserGameParagraph.js",
       "imports": [
         {
-          "path": "chunk-WD45GUHK.mjs",
+          "path": "chunk-7HVLVUOM.mjs",
           "kind": "import-statement"
         },
         {
-          "path": "chunk-F576OYKD.mjs",
+          "path": "chunk-Z7E6SBRV.mjs",
+          "kind": "import-statement"
+        },
+        {
+          "path": "chunk-AOUSCME6.mjs",
+          "kind": "import-statement"
+        },
+        {
+          "path": "chunk-EA2J7W45.mjs",
           "kind": "import-statement"
         },
         {
@@ -641,11 +721,11 @@
         }
       ]
     },
-    "chunk-WD45GUHK.mjs": {
+    "chunk-7HVLVUOM.mjs": {
       "entryPoint": null,
       "imports": [
         {
-          "path": "chunk-F576OYKD.mjs",
+          "path": "chunk-EA2J7W45.mjs",
           "kind": "import-statement"
         },
         {
@@ -654,7 +734,37 @@
         }
       ]
     },
-    "chunk-F576OYKD.mjs": {
+    "chunk-Z7E6SBRV.mjs": {
+      "entryPoint": null,
+      "imports": [
+        {
+          "path": "chunk-AOUSCME6.mjs",
+          "kind": "import-statement"
+        },
+        {
+          "path": "chunk-EA2J7W45.mjs",
+          "kind": "import-statement"
+        },
+        {
+          "path": "chunk-2PKRZAXY.mjs",
+          "kind": "import-statement"
+        }
+      ]
+    },
+    "chunk-AOUSCME6.mjs": {
+      "entryPoint": null,
+      "imports": [
+        {
+          "path": "chunk-EA2J7W45.mjs",
+          "kind": "import-statement"
+        },
+        {
+          "path": "chunk-2PKRZAXY.mjs",
+          "kind": "import-statement"
+        }
+      ]
+    },
+    "chunk-EA2J7W45.mjs": {
       "entryPoint": null,
       "imports": [
         {

@@ -7,6 +7,16 @@
 // it as it is.
 import { DisplayObject, EgretError, Stage } from '@egret/runtime';
 import { after } from '@egret/engine';
+/**
+ * Which button a contact was begun with. Touches and pens, and a mouse press that holds the primary button, are the
+ * primary kind; a mouse press of the secondary button alone is secondary; one of any other button is neither.
+ */
+function pressButton(contact) {
+    const buttons = contact.buttons;
+    if (contact.session.pointerType !== 'mouse' || buttons === 0 || (buttons & 1) !== 0)
+        return 'primary';
+    return (buttons & 2) !== 0 ? 'secondary' : 'other';
+}
 const invalid = (what) => new EgretError('GESTURE_OPTIONS_INVALID', { cause: what });
 const positive = (value) => typeof value === 'number' && Number.isFinite(value) && value > 0;
 /**
@@ -25,7 +35,7 @@ export function createGestures(options) {
         throw invalid('target');
     if (scope === null || typeof scope !== 'object' || engine === null || typeof engine !== 'object')
         throw invalid('engine and scope');
-    for (const name of ['onTap', 'onDoubleTap', 'onHold', 'onDrag', 'onSwipe', 'onPinch'])
+    for (const name of ['onTap', 'onDoubleTap', 'onHold', 'onDrag', 'onSwipe', 'onPinch', 'onSecondaryTap'])
         if (options[name] !== undefined && typeof options[name] !== 'function')
             throw invalid(name);
     const slop = options.slop ?? 12, holdSeconds = options.holdSeconds ?? 0.5, doubleTapSeconds = options.doubleTapSeconds ?? 0.3, swipeSpeed = options.swipeSpeed ?? 600;
@@ -38,6 +48,8 @@ export function createGestures(options) {
         if (!positive(value))
             throw invalid(name);
     const tracks = new Map();
+    // Secondary mouse presses, by session: where each began and whether it has moved past the slop.
+    const secondary = new Map();
     let pinch, lastTap, closed = false;
     const point = (x, y) => {
         let localX = x, localY = y;
@@ -92,7 +104,14 @@ export function createGestures(options) {
             options.onPinch?.(last);
     };
     const begin = (contact) => {
-        if (closed || tracks.size >= 2)
+        if (closed)
+            return;
+        const button = pressButton(contact);
+        if (button === 'secondary') {
+            secondary.set(contact.session.id, { startX: contact.globalX, startY: contact.globalY, moved: false });
+            return;
+        }
+        if (button === 'other' || tracks.size >= 2)
             return;
         const track = {
             id: contact.session.id,
@@ -144,6 +163,12 @@ export function createGestures(options) {
         });
     };
     const move = (contact) => {
+        const press = secondary.get(contact.session.id);
+        if (press !== undefined) {
+            if (Math.hypot(contact.globalX - press.startX, contact.globalY - press.startY) > slop)
+                press.moved = true;
+            return;
+        }
         const track = tracks.get(contact.session.id);
         if (closed || track === undefined || track.spent)
             return;
@@ -169,6 +194,14 @@ export function createGestures(options) {
             options.onDrag?.(dragOf(track, 'move', dx, dy));
     };
     const finish = (contact, cancelled) => {
+        const press = secondary.get(contact.session.id);
+        if (press !== undefined) {
+            secondary.delete(contact.session.id);
+            const still = Math.hypot(contact.globalX - press.startX, contact.globalY - press.startY) <= slop;
+            if (!closed && !cancelled && !press.moved && still)
+                options.onSecondaryTap?.(point(contact.globalX, contact.globalY));
+            return;
+        }
         const track = tracks.get(contact.session.id);
         if (track === undefined)
             return;
@@ -233,6 +266,7 @@ export function createGestures(options) {
             for (const track of tracks.values())
                 stopHold(track);
             tracks.clear();
+            secondary.clear();
             pinch = undefined;
         }
     };

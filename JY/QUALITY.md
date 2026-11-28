@@ -1,5 +1,17 @@
 # 品质验收 · Quality — JY · 金庸群侠传致敬 Demo
 
+## iPhone 配置 WebKit 启动回归（2026-11-28） · WebKit startup compatibility
+
+Windows 上的 Playwright WebKit 26.6，iPhone 15 Pro 设备配置，竖屏 393 × 659 CSS px，独立的新浏览器上下文；不是 iPhone 真机或 iOS Safari 本体。改造前测试公开 Pages，改造后测试候选工作树的本地 HTTP 服务。
+
+Windows Playwright WebKit 26.6 with an iPhone 15 Pro profile (portrait, 393 × 659 CSS px, isolated fresh browser context); not a physical iPhone or iOS Safari itself. Baseline: public Pages; retest: candidate worktree over local HTTP.
+
+- 引擎副本 · Engine: `c1570b0878d1be8716d06320206f51a62f9e3f32`.
+- 改造前：自动下载原作包后提示资源写入失败。独立探测中 IndexedDB 写入 1 MiB Blob 报 UnknownError，ArrayBuffer 可正常写入。browser/pack-storage.mjs 在 Blob 写入发生 UnknownError / DataCloneError 时等待事务中止，然后仅重试一次为 ArrayBuffer，后续批次采用该类型并保持旧 Blob 记录可读；不重试配额或约束错误。引擎副本不变。 / Before: original-data pack writes failed. An isolated 1 MiB IndexedDB probe reproduced UnknownError on Blob but saved ArrayBuffer. browser/pack-storage.mjs waits for the failed transaction to abort, retries only UnknownError / DataCloneError once with bytes, preserves old Blob reads, and does not retry quota/constraint errors. The engine copy is unchanged.
+- 改造后 / After：从全新上下文自动导入 37,440,245 字节的包，进入原版标题，实际触摸「設定」打开画面及音乐音效设置。 / A fresh context automatically imports the 37,440,245-byte pack, reaches the title and opens graphics/audio settings with a touch.
+- 复测无页面异常、控制台错误、HTTP 4xx/5xx 或失败请求（四项均 0）；`node --test test/*.test.mjs`：75/75 通过。 / No page exceptions, console errors, HTTP 4xx/5xx or failed requests on the local retest (zero in each category); 75/75 Node tests pass.
+- 仅验收启动、首屏截图及一次浏览器触摸操作；未覆盖整局、设备横竖屏切换、物理 iPhone、真实 iOS 音频、Safari 版本差异或性能。 / Startup, title screenshot and one browser touch event only; full playthrough, rotation, physical iPhone, real iOS audio, Safari version variation and performance were not covered.
+
 按 [QUALITY-CHECKLIST.md](../docs/QUALITY-CHECKLIST.md) 验收。自动项由 `node tools/quality.mjs JY` 测量并写入本文件；人工和真机项没有跑过的写「未运行」。
 
 Checked against QUALITY-CHECKLIST.md. The automatic items were measured by `node tools/quality.mjs JY`, which writes

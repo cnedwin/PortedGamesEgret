@@ -1,18 +1,16 @@
 import { EgretError } from './EgretError.js';
 import { recordVisualChange, watchDisplayRevision, VISUAL_BINDING } from './displayVisualState.js';
+import { engineOf, engines } from './engineAffinity.js';
+export { engineOf } from './engineAffinity.js';
 import { assertLive, captureChildInsertion, childrenOf, isDisplayNode, prepareCapturedInsertionTree, publishCapturedInsertionTree, validateCapturedInsertionNode, validateCapturedInsertionRoots, validateCapturedInsertionSource } from './displayTreeState.js';
 export const OWNERSHIP_CHILDREN = Symbol('egret.ownershipChildren');
 export const ASSERT_BINDABLE = Symbol('egret.assertBindable');
 export const ASSERT_ATTACHABLE = Symbol('egret.assertAttachable');
 // Cleanup ownership and engine affinity are separate lifetime identities.
 const owners = new WeakMap();
-const engines = new WeakMap();
 const readInsertionEngine = engines.get.bind(engines);
 export function ownerOf(value) {
     return owners.get(value);
-}
-export function engineOf(value) {
-    return readInsertionEngine(value);
 }
 export function claimOwner(value, owner) {
     owners.set(value, owner);

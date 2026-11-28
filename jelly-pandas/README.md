@@ -176,9 +176,9 @@ The game uses Egret World3D and draws with WebGL2 by default. Each part maps to 
 
 ## 引擎副本 · Engine copy
 
-`vendor/` 中是新白鹭引擎的运行时副本，采用 Apache-2.0 许可，引擎提交 `8424ff2afb0afdc103b06d51e3fd749f7a8fc379`，来源和版本见 [vendor/SOURCE.md](vendor/SOURCE.md)。
+`vendor/` 中是新白鹭引擎的运行时副本，采用 Apache-2.0 许可，引擎提交 `82561d6338a805f0e0459a2d5d42a284f9385b30`，来源和版本见 [vendor/SOURCE.md](vendor/SOURCE.md)。
 
-`vendor/` holds a copy of the Egret Rebuild runtime under Apache-2.0; engine commit `8424ff2afb0afdc103b06d51e3fd749f7a8fc379`; see [vendor/SOURCE.md](vendor/SOURCE.md) for its source and version.
+`vendor/` holds a copy of the Egret Rebuild runtime under Apache-2.0; engine commit `82561d6338a805f0e0459a2d5d42a284f9385b30`; see [vendor/SOURCE.md](vendor/SOURCE.md) for its source and version.
 
 由引擎工具生成，不手改副本。 · Generated without local patches:
 

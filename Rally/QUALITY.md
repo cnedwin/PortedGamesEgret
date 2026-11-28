@@ -117,3 +117,9 @@ node vendor/egret.mjs verify --screens --play test/screen-route.mjs --out <new-d
 完整版软件渲染很慢，本次全八屏明确选择已安装硬件浏览器适配器（`--playwright <adapter>`，并记录实际 GPU），用相同几何规则分组：`--screens=phone-small,phone-notch,phone-notch-wide,phone-tall` 与 `--screens=tablet,tablet-wide,foldable,desktop`。默认软件渲染的普通 `verify` 则独立通过七项检查，没有控制台或引擎警告。
 
 Full track software rendering is slow; the eight-screen runs explicitly used an installed hardware-browser adapter and reported the GPU, in the two named groups above. Separately the default software-rendered ordinary verifier passed all seven checks without console or engine warnings.
+
+## WebKit 手机兼容回归 · Mobile WebKit compatibility (2026-11-28)
+
+- 公开版在 Windows Playwright WebKit 26.6（iPhone 15 Pro 配置，393×659 CSS px）出现 `TEXT_MEASURE_FAILED / WEB_TEXT_STATE_UNSUPPORTED`，不是资源 404。使用正式工具更新引擎后，异步菜单字形准备结束时安排一次额外的 250 ms 原生重绘；不增加静止菜单常驻绘制循环。 · The previous public build failed text preparation; the officially vendored engine and a single bounded repaint after menu work settles address stale initial UI.
+- 本地候选标题实拍可读，实际点「开始」进入完整选车画面（车模、八个车手、三档级别与圈数）；JS、控制台、HTTP 错误均 0。原 Node 测试 42/42 通过。 · Captured both screens and activated the engine control by actual emulated touch; existing Node suite passes.
+- 这是 Windows 上的 WebKit+iPhone 配置，不是实体 iPhone 或 iOS Safari 排他认证。未跑完比赛、未测声音实听或测移动 GPU 性能。 · Physical iPhone audio, full race and performance remain unverified.

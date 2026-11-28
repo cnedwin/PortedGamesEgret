@@ -146,3 +146,11 @@ SwiftShader. Sections 4 and 5 use Chrome with hardware acceleration.
 - 最小复现：不隐藏下层模态，它带 portrait 变体；在其上打开原生 game.confirm，再改变屏幕方向。对照组去掉变体或禁用下层语义时正常。 · Open native confirm above an active modal with a portrait variant and rotate; either removing the variant or deactivating the lower view avoids the former defect.
 - 本作解决：[引擎 #519](https://github.com/cnedwin/Egret_rebuild/pull/519) 保留变体重建时的语义根与模态优先级，引擎回归仍保持下层活跃，证明无需停用来修语义问题。游戏另在确认未决且屏幕尺寸变化时暂收起过时尺寸的集市和 HUD，答复后恢复最新布局，避免视觉裁切与重建覆盖。 · Native variant rebuilding preserves root identity and modal precedence with the lower view active. Separately, the game temporarily hides stale-size market/HUD artwork during a pending confirmation resize, then restores the current layout on reply; this is visual lifecycle management, not a semantic workaround.
 - 状态：引擎浏览器回归以及集市旋转、取消、点确认的验收见 QUALITY。 · See QUALITY for engine/browser and market rotation, cancel and confirm acceptance.
+
+### 18. 无 Web Audio 宿主时的游戏启动 · Startup without a Web Audio host — 已在游戏侧绕过 / worked around
+<!-- engine-note: {"id":"NezhaSea#18","status":"worked-around","topic":"optional-web-audio-host","workaround":["src/sound.mjs"]} -->
+
+- **现象 · What happens**：Windows WebKit 未提供 AudioContext，建立自定义白鹭 mixer 抛 AUDIO_HOST_UNAVAILABLE，之前会阻住全部加载。 · A host without AudioContext throws AUDIO_HOST_UNAVAILABLE when the custom Egret mixer starts, previously blocking the entire load.
+- **绕过办法 · Workaround**：只捕获该确切错误码并返回无声接口；其他声音初始化失败仍然报告，真实音频宿主保留原有声音。生产启动包同步生成。 · Catch that precise error and use silent methods; preserve other failures and the normal mixer on capable hosts. Regenerate the production bundle.
+- **建议 · Suggestion**：把可选声音的后端能力探测作为标准集成说明；不要把所有音频初始化失败等同于宿主不支持。 · Document detection of optional audio support; distinguish unsupported host from other audio failures.
+- **状态 · Status**：Windows WebKit 实测出海进入首波，两个针对性 fallback/拒绝测试通过；没有测试物理 iPhone 音频。 · WebKit reached wave one; focused fallback and rejection tests passed. Physical iPhone sound is untested.

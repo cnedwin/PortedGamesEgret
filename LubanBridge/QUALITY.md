@@ -48,3 +48,11 @@
 - PC 和 Fold7 只完整实玩 1-1；另外五章名桥用于画面预览，全部 25 关参考解与失败解均是 Node 验证，未模拟称为真机全关。 · All 25 references/failures tested by Node, not manual completion of all levels.
 - 微信：Windows 原始引擎导出器在旧版、候选均因盘符绝对入口路径误判为裸模块失败。临时验收 loader 仅放行 `args.kind === 'entry-point'` 后可导出主包约 2.59 MB；最终候选导出无 refused / warnings，844×390 微信替身 8/8（原创封面和场景树木 ready、第一关搭建试通、微信存储、DOM 隔离）；引擎仓库未修改。替身 on-demand 空闲截图会黑，旧、新均复现；连续 invalidate 时可见，不能据此认定真实微信设备黑屏。 · Original Windows exporter fails equally on old and new source. A scratch entry-point bypass yields a single ~2.59 MB package, with no refused entries/warnings. The current tracked 844×390 stand-in test passed 8/8 (images, drag, crossing, save and DOM isolation). The stand-in has a pre-existing idle on-demand screenshot limitation; native WeChat remains untested.
 - I2、A1m、S4 只部分覆盖或未进行独立人工检查；早期软件渲染试通性能数字见 ENGINE-NOTES 第 4 条，不与本次真机样本混作对比。 · Manual full keyboard, all canvas-language review and save notice review are not claimed as complete.
+
+## 2026-11-28 WebKit 兼容性 · WebKit compatibility
+
+- 旧公开版标题文字不可见；候选版恢复清晰标题和控件，真实触屏开工进入小河关。 · The public baseline had invisible title labels. Candidate title and controls are visible; a real touchscreen tap enters the first bridge.
+- Node: 44/44. 候选引擎 · candidate engine: `82561d6338a805f0e0459a2d5d42a284f9385b30`.
+- 本机 Windows Playwright WebKit 26.6，iPhone 15 Pro 设备配置（393×659 CSS px，DPR 3），真实浏览器触屏事件，无物理 iPhone；仅首屏和代表性操作，不是整局或实机性能、声学验收。 · Windows Playwright WebKit 26.6, iPhone 15 Pro device profile (393×659 CSS px, DPR 3), actual browser touchscreen events, not a physical iPhone; launch and representative interaction only, not full-session performance or acoustic certification.
+- 本轮候选烟测页面异常、控制台错误、HTTP 4xx/5xx 均为 0。 · Candidate smoke: no page exceptions, console errors or HTTP 4xx/5xx.
+- [全站记录 · Showcase compatibility record](../docs/SAFARI-WEBKIT-20261128.md)

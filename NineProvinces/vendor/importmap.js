@@ -17,7 +17,12 @@ const imports = {
   "robust-predicates": "./robust-predicates/index.js",
   "#egret-textured-frame-state": "./engine/dist/internal/texturedFrameState.js",
   "@egret/engine/input/hover": "./engine/dist/hover.js",
+  "@egret/runtime/paragraph": "./runtime/dist/paragraph/index.js",
+  "@egret/engine/paragraph": "./engine/dist/paragraph.js",
+  "@egret/engine/bitmapfont": "./engine/dist/bitmapfont.js",
   "@egret/engine/input/gamepad": "./engine/dist/gamepad.js",
+  "@egret/runtime/ui": "./runtime/dist/ui/index.js",
+  "@egret/engine/ui": "./engine/dist/ui/index.js",
   "@egret/engine/webgl2/world3d": "./engine/dist/web/world3d/index.js"
 };
 const base = document.currentScript.src;

@@ -1,0 +1,2 @@
+// Generated from NezhaSea and vendored Egret sources. See vendor/LICENSE, vendor/NOTICE and third-party licences.
+import{c as f}from"./chunk-WMMCVLEX.mjs";function d(s,a=["sans-serif"]){let{fontFamily:t,fontFamilies:r}=s,o=()=>new f("BROWSER_GAME_OPTIONS_INVALID");if(t!==void 0&&r!==void 0)throw o();let n=t===void 0?r??a:[t];if(!Array.isArray(n)||n.length<1||n.length>16)throw o();let i=[];for(let e of n){if(typeof e!="string"||!e.length||e.length>256||/[\x00-\x1f\x7f]/.test(e))throw o();i.push(e)}return Object.freeze(i)}export{d as a};

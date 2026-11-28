@@ -77,7 +77,7 @@ let changed = new Uint32Array(64);
  * So the rows of a batch given with `kept` are only good until the next call with the same `kept`. A caller
  * that reads them later than that must not pass `kept`.
  */
-export function prepareSharedBatches2D(input, maxBufferSize, scratch, kept) {
+export function prepareSharedBatches2D(input, maxBufferSize, scratch, kept, pageLimit = SHARED_BATCH_PAGES_2D) {
     const plan = {
         draws: [],
         logicalDraws: input,
@@ -132,7 +132,7 @@ export function prepareSharedBatches2D(input, maxBufferSize, scratch, kept) {
                         compatible(first, next, input[start + count - 1]) &&
                         next.data.byteLength <= ceiling - total) {
                         const page = next.prepared.pageIndex;
-                        same = page !== undefined && !old.pages.includes(page) && old.pages.length === SHARED_BATCH_PAGES_2D;
+                        same = page !== undefined && !old.pages.includes(page) && old.pages.length === pageLimit;
                     }
                 }
                 if (same && scratch.reserve(plan, total)) {
@@ -170,7 +170,7 @@ export function prepareSharedBatches2D(input, maxBufferSize, scratch, kept) {
                     break;
                 const page = next.prepared.pageIndex;
                 if (page !== undefined && !pages.includes(page)) {
-                    if (pages.length === SHARED_BATCH_PAGES_2D)
+                    if (pages.length === pageLimit)
                         break;
                     pages = [...pages, page];
                 }

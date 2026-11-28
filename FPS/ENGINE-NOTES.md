@@ -127,3 +127,12 @@ written as in part 3 of [docs/GAME-STANDARD.md](../docs/GAME-STANDARD.md).
 - **游戏里 · In the game**：用公开 World3D 时序和独立真机浏览器追踪归因，原有 `createWorld3DStats` 保留；诊断在隔离测试副本进行，不在游戏中复制引擎循环或额外渲染。 · Use the public World3D timing and separate physical-browser traces with existing engine stats; local diagnostics use an isolated test copy, without a second loop or extra draw in the game.
 - **建议与验收 · Suggestion and acceptance**：正式 `PlayOptions.onFrameTiming` 连接 Play 真正运行的唯一循环，保留 BrowserGame 的提交、拒绝、保留、背压等语义，与 World3D 视图时序区分；无观察器时不采样、观察器错误不改变游戏。实际WebGL2/WebGPU验证每次更新一个样本、图像预算拒绝后恢复。 · Forward `PlayOptions.onFrameTiming` to the actual single Play loop with BrowserGame outcomes, separate from overlapping World3D timing; do not measure when absent or let the observer affect the game. On real WebGL2 and WebGPU, verify one sample per active update and recovery from image-budget refusal.
 - **状态 · Status**：引擎独立 [PR #562](https://github.com/cnedwin/Egret_rebuild/pull/562) 已提交；正式本机双后端浏览器和42项测试通过，合并及门禁结果记录于PR；本作当前性能A/B固定的引擎副本仍不包含该新增接口。 · Separate engine PR #562 is submitted, with 42 focused tests and both hardware browser backends passing; the PR records its CI and merge status. The game's fixed matched-A/B engine does not yet contain this API.
+
+### 17. WebKit 按需画面晚一屏 · WebKit retains earlier on-demand frame — 未解决 / open
+<!-- engine-note: {"id": "FPS#17", "status": "open", "topic": "webkit-retained-screen-presentation", "workaround": ["src/ui/menus.mjs"]} -->
+
+- **现象 · What happens**：Windows Playwright WebKit 26.6（iPhone 15 Pro 设备配置），触摸设置后语义树已经切换，3、5 秒实际截图仍是上一界面。 · The settings semantics are current but actual screenshots after 3 and 5 seconds still show the title.
+- **最小复现 · Reproduce**：使用游戏原生 on-demand 菜单栈打开设置；比较已更新的语义名称与页面截图。 · Open Settings on a native on-demand menu stack, then compare actual pixels with updated semantics.
+- **绕过 · Workaround**：仅在菜单呈现提交时调用 `play.invalidate()`，合并 250 ms 后一次补绘；销毁时取消。 · On menu publication request one native invalidation plus a coalesced follow-up after 250 ms; cancel on disposal.
+- **建议 · Proposal**：提供可观测的提交与呈现确认，检查 WebKit 对按需模式和异步图集内容的呈现。 · Expose observable submission/presentation confirmation and investigate the on-demand compositing path.
+- **状态 · Status**：两张复测截图均成功；尚未在物理 iPhone 验证，未断言根因在引擎还是浏览器。 · Both screenshots pass; physical iPhone and ultimate engine/browser root cause remain unverified.

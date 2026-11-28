@@ -203,3 +203,11 @@ This integration vendors official main `94bd70fb26b1f81794c9c6fbbb258c655fcd19df
 - 建议：文字和按钮部件加 `fit: 'shrink'`（缩到放得下，有最小字号）和 `maxLines`；多行字按 `align` 逐行对齐；开发时字超出部件给警告。 · Suggestion: `fit: 'shrink'` (down to a least size) and `maxLines` on text and button parts, lines aligned one by one by `align`, and a warning while developing when words run past their part.
 - 状态：未解决 · Open.
 
+
+### 24. 静止模态框呈现延迟 · Static modal presentation delay — 已在游戏侧绕过 / worked around
+<!-- engine-note: {"id":"OperaDrums#24","status":"worked-around","topic":"static-webkit-presentation","files":["src/ui/screens.mjs"]} -->
+
+- 现象：Windows WebKit 上实际点击设置后语义控件已切换，截图仍停留标题。 · In Windows WebKit a real settings tap changed semantics while screenshot retained the title.
+- 绕过办法：创建静态界面时合并一次 250 ms 刷新，保持按需绘制。 · Coalesce one delayed invalidation per static view while retaining on-demand drawing.
+- 建议：用真实截图验证静止模态框的首帧呈现。 · Verify first presentation of static modals using screenshot pixels.
+- 状态：候选版本 WebKit 触屏路线实测通过；未在物理 iPhone 上验证。 · Candidate WebKit touch route tested; no physical iPhone verification.

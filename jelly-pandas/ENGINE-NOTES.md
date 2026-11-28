@@ -79,3 +79,11 @@ written as in part 3 of [docs/GAME-STANDARD.md](../docs/GAME-STANDARD.md).
 - **现象 · What happens**：同一 RTX 5090 硬件、844×390、种子 7、t285 的 120 接受帧样本，从旧 DOM 浮字到原生浮字后，2D GL drawArrays 190 → 2926，虽然固定字形页不为每次伤害重新光栅化。Fold7 预验收样本中原生 2D render CPU p95 为 9.5 ms，实际 RAF p95 仍为 16.7 ms；此为可优化的开销，不是已证实的手机掉帧。 · Native floating animation wakes the ordinary overlay painter more often; this increases draw calls even though glyph pages are reused. The mobile hardware cadence remained stable in this run.
 - **游戏里 · In the game**：40+4 固定池、共享字形页、无活动标记时跳过更新、只在 UI 或可见标记状态变化时 invalidate。 · Retain a bounded pool, shared glyph page and change-driven invalidation. No downgrade to visual quality or game rules.
 - **建议 · Suggestion**：提供原生标记的跨对象批处理、或支持独立保留 HUD 层与动态浮字层按需合成；用同一真实负载比较主线程准备、提交、错误查询及实际 RAF。 · Consider cross-object marker batching or independently retained HUD composition with animated markers; validate against the same physical workload.
+
+### 10. WebKit 按需绘制的首屏可见性 · WebKit on-demand first-frame presentation — 未解决 / open
+<!-- engine-note: {"id":"jelly-pandas#10","status":"open","topic":"webkit-on-demand-first-presentation","workaround":["src/ui/menus.mjs"]} -->
+
+- **现象 / Observation**：Windows Playwright WebKit 26.6、iPhone 15 Pro 配置，标题逻辑就绪时整个角色选择面板为空；触屏开始后正常出现游戏 HUD。 · The portrait roster is blank even when title semantics are ready; play HUD appears after touching Start.
+- **游戏里的处理 / Workaround**：[src/ui/menus.mjs](src/ui/menus.mjs)：每次静态菜单布局提交后合并为一笔 250 ms invalidate，关闭页面取消。 · Coalesce a single 250 ms invalidate after each committed static menu, cancelled at screen close. 实拍首屏与触屏后画面正常，不强制连续重绘。 · Inspected title and subsequent touch screen both render correctly, without a continuous redraw loop.
+- **建议 / Proposal**：引擎异步资源就绪后保证最后接收帧正常交给合成器；测试静止首屏不点击即呈现，且呈现后不再连续提交。 · Ensure the last accepted asynchronously populated frame is presented; verify an untouched static page becomes visible and then stays on demand.
+- **状态 / Status**：对 Windows WebKit 已验证有限补帧绕过，未验证实体 iPhone。 · Bounded workaround verified on Windows WebKit; physical iOS remains unverified.

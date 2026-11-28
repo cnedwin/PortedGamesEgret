@@ -1,5 +1,18 @@
 # 品质验收 · Quality — Operation Cutoff · 断流行动
 
+## iPhone 配置 WebKit 启动回归（2026-11-28） · WebKit startup compatibility
+
+Windows 上的 Playwright WebKit 26.6，iPhone 15 Pro 设备配置，竖屏 393 × 659 CSS px，独立的新浏览器上下文；不是 iPhone 真机或 iOS Safari 本体。改造前测试公开 Pages，改造后测试候选工作树的本地 HTTP 服务。
+
+Windows Playwright WebKit 26.6 with an iPhone 15 Pro profile (portrait, 393 × 659 CSS px, isolated fresh browser context); not a physical iPhone or iOS Safari itself. Baseline: public Pages; retest: candidate worktree over local HTTP.
+
+- 引擎副本 · Engine: `82561d6338a805f0e0459a2d5d42a284f9385b30`.
+- 改造前：标题场景正常绘制，语义名称可读，但画布文本全部为空白。WebKit 的 Canvas 2D 缺少若干可选文本属性及完整的 context attributes；高层默认文字样式现在使用引擎正式的可移植路径。 / Before: the title scene rendered and buttons had semantic names, but canvas text was blank. The WebKit host lacks optional text properties and complete context attributes. The refreshed engine uses its portable high-level default text path.
+- 按需绘制追加复测：触摸设置后语义树已更新，3/5 秒两张实际截图仍是标题。只在菜单栈呈现提交时调用引擎正式 `play.invalidate()`，并合并 250 ms 后一次补绘，销毁时取消；不启用永久绘制。复测 3/5 秒两张均为可读的真实设置面板，首屏保持正常。 / A separate visual recheck reproduced stale title pixels 3/5 s after tapping Settings even though semantics were updated. Invalidate on menu publication and coalesce a single follow-up 250 ms later; cancel on disposal. Both retest captures now show actual settings, and title pixels remain correct. No continuous drawing.
+- 改造后 / After：标题文字、介绍和按钮清晰，实际触摸「设置」后语义树出现画面、输入、通用、画质和视野控件。 / The title, description and button labels are visible; touching Settings exposes display, input, general, quality and FOV controls in the semantic tree.
+- 复测无页面异常、控制台错误、HTTP 4xx/5xx 或失败请求（四项均 0）；`node --test test/*.test.mjs`：107/107 通过。 / No page exceptions, console errors, HTTP 4xx/5xx or failed requests on the local retest (zero in each category); 107/107 Node tests pass.
+- 仅验收启动、首屏截图及一次浏览器触摸操作；未覆盖整局、设备横竖屏切换、物理 iPhone、真实 iOS 音频、Safari 版本差异或性能。 / Startup, title screenshot and one browser touch event only; full playthrough, rotation, physical iPhone, real iOS audio, Safari version variation and performance were not covered.
+
 ## Scene art repair / 场景美术缺陷修复
 
 Baseline / 基线：`3ca60f0edb0898f4b3222f7a93c67bafab099b61`；引擎固定为 `d2e28f46182a563fd594cc51847240429ab0a5b5`。仅替换场景表现，地图坐标、碰撞、玩法、存档、画质选项和音频不变。 / Same engine and rules, collision, placements, settings and audio; only scene presentation changed.

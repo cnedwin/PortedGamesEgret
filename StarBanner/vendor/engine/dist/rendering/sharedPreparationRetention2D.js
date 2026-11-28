@@ -1,3 +1,4 @@
+import { isPreparedContainedQuad } from './prepareSharedDraws2D.js';
 /**
  * What one Host keeps of the last frame it prepared, so that a draw which is the same in the next frame is
  * not clipped and packed again, and a batch that takes the same draws is not joined again: only the rows of
@@ -207,7 +208,7 @@ export class SharedPreparationRetention2D {
      * geometry that stood at its place is written over, so a draw that changes in every frame allocates nothing here.
      */
     keep(ordinal, found, command, material, region, page, geometry, prepared, preparedVertices, predicates, tupleComparisons) {
-        const polygons = prepared.polygons, vertexReservation = prepared.vertexReservation, room = this.#limit - this.#nextBytes - this.#batchBytes;
+        const vertexReservation = prepared.vertexReservation, room = this.#limit - this.#nextBytes - this.#batchBytes;
         if (this.#nextCount >= SHARED_RETAINED_DRAWS_2D)
             return undefined;
         const stood = found === undefined ? this.#kept[ordinal + this.#shift] : undefined, before = stood !== undefined && stood.frame !== this.#frame ? stood : undefined;
@@ -250,6 +251,11 @@ export class SharedPreparationRetention2D {
             this.#nextCount++;
             return undefined;
         }
+        const compact = isPreparedContainedQuad(prepared);
+        const quadBytes = 24 + 8 + (24 + 4 * 8) + 4 * POINT_BYTES;
+        if (compact && ENTRY_BYTES + quadBytes > room)
+            return undefined;
+        const polygons = prepared.polygons;
         const bytes = ENTRY_BYTES + polygonBytes(polygons);
         if (bytes > room)
             return undefined;
@@ -265,7 +271,10 @@ export class SharedPreparationRetention2D {
             rows: undefined,
             vertexCount: 0,
             rowsCost: undefined,
-            prepared,
+            // A retained result owns its ordinary polygon data under the original logical size limit.
+            prepared: compact
+                ? { kind: 'draw', command, material, region, pageIndex: prepared.pageIndex, polygons, vertexReservation }
+                : prepared,
             rested: false,
             packed: undefined,
             changes,

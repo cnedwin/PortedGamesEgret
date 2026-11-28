@@ -28,7 +28,15 @@ export const BUSES = [
 
 /** The page's sound: a mixer on Web Audio from `createBrowserAudio`, with the game's sounds on it. */
 export async function createSound(scope, settings = {}) {
-  const audio = scope.use(createBrowserAudio({ buses: BUSES, limiter: true }));
+  let audio;
+  try {
+    audio = scope.use(createBrowserAudio({ buses: BUSES, limiter: true }));
+  } catch (cause) {
+    if (cause?.code !== 'AUDIO_HOST_UNAVAILABLE') throw cause;
+    // A browser may omit Web Audio altogether; sound must not gate the game's title.
+    console.warn('Web Audio is unavailable; Mechanism City continues without sound.');
+    return { play() {}, event() {}, async music() {}, setEffects() {}, setMusic() {} };
+  }
   return soundBoard(audio.mixer, scope, settings);
 }
 

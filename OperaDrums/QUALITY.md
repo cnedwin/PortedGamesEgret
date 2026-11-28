@@ -60,3 +60,11 @@ this file; items by hand or on a device are marked not run until someone runs th
 - Fold7: 121/121 rAF: p95/max 16.7/16.7 → 16.7/16.7 ms.
 - 手机短路线记录触点两次，不是完整曲目的人工命中成绩；自动验收保留结算和校准。 / Two actual handset contacts, not a human-played full-chart hit score; browser acceptance also covers settlement and calibration.
 - 限制 · Limits: 短前台 rAF 不是独立 GPU 时间，也不是整局、所有设备或中端手机验收。未跑真实读屏、物理手柄、Safari 或整局声学测试。 · Short foreground rAF samples are not isolated GPU time or a whole-game/device matrix. No physical screen reader, controller, Safari or speaker/acoustic certification.
+
+## 2026-11-28 WebKit 兼容性 · WebKit compatibility
+
+- 旧公开版因 Web Audio 缺失中断；候选版标题和设置可正常操作；缺少真实音频时说明不可演奏，不伪造节奏时钟或结算。 · The public baseline stopped without Web Audio. Title and settings now work; unsupported hosts explain the limitation and never fabricate a rhythm clock or result.
+- Node: 39/39. 候选引擎 · candidate engine: `82561d6338a805f0e0459a2d5d42a284f9385b30`.
+- 本机 Windows Playwright WebKit 26.6，iPhone 15 Pro 设备配置（393×659 CSS px，DPR 3），真实浏览器触屏事件，无物理 iPhone；仅首屏和代表性操作，不是整局或实机性能、声学验收。 · Windows Playwright WebKit 26.6, iPhone 15 Pro device profile (393×659 CSS px, DPR 3), actual browser touchscreen events, not a physical iPhone; launch and representative interaction only, not full-session performance or acoustic certification.
+- 本轮候选烟测页面异常、控制台错误、HTTP 4xx/5xx 均为 0。 · Candidate smoke: no page exceptions, console errors or HTTP 4xx/5xx.
+- [全站记录 · Showcase compatibility record](../docs/SAFARI-WEBKIT-20261128.md)

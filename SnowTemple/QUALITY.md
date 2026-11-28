@@ -1,5 +1,18 @@
 # 品质验收 · Quality — Snow at the Mountain Temple · 风雪山神庙
 
+## iPhone 配置 WebKit 启动回归（2026-11-28） · WebKit startup compatibility
+
+Windows 上的 Playwright WebKit 26.6，iPhone 15 Pro 设备配置，竖屏 393 × 659 CSS px，独立的新浏览器上下文；不是 iPhone 真机或 iOS Safari 本体。改造前测试公开 Pages，改造后测试候选工作树的本地 HTTP 服务。
+
+Windows Playwright WebKit 26.6 with an iPhone 15 Pro profile (portrait, 393 × 659 CSS px, isolated fresh browser context); not a physical iPhone or iOS Safari itself. Baseline: public Pages; retest: candidate worktree over local HTTP.
+
+- 引擎副本 · Engine: `82561d6338a805f0e0459a2d5d42a284f9385b30`.
+- 改造前：公开页连续报告 TEXT_MEASURE_FAILED / WEB_TEXT_STATE_UNSUPPORTED（采样 55,690 条错误），页面求值超过 12 秒时限。已更新正式引擎文字路径。 / Before: repeated TEXT_MEASURE_FAILED / WEB_TEXT_STATE_UNSUPPORTED (55,690 sampled errors), then a 12 s evaluation watchdog. The official engine text path was updated.
+- 按需绘制追加复测：触摸设置后语义树已更新，3/5 秒两张实际截图仍是标题。只在菜单栈呈现提交时调用引擎正式 `game.invalidate()`，并合并 250 ms 后一次补绘，销毁时取消；不启用永久绘制。复测 3/5 秒两张均为可读的真实设置面板，首屏保持正常。 / A separate visual recheck reproduced stale title pixels 3/5 s after tapping Settings even though semantics were updated. Invalidate on menu publication and coalesce a single follow-up 250 ms later; cancel on disposal. Both retest captures now show actual settings, and title pixels remain correct. No continuous drawing.
+- 改造后 / After：标题清晰，实际触摸「设置」后出现画质、模型、粒子、声音等控件名称。仅有原启动图片预加载未及时使用的浏览器提示。 / The title is legible; tapping Settings exposes quality, model, particle and audio controls. The only browser warning is that the original boot image preload was not promptly used.
+- 复测无页面异常、控制台错误、HTTP 4xx/5xx 或失败请求（四项均 0）；`node --test test/*.test.mjs`：112/112 通过。 / No page exceptions, console errors, HTTP 4xx/5xx or failed requests on the local retest (zero in each category); 112/112 Node tests pass.
+- 仅验收启动、首屏截图及一次浏览器触摸操作；未覆盖整局、设备横竖屏切换、物理 iPhone、真实 iOS 音频、Safari 版本差异或性能。 / Startup, title screenshot and one browser touch event only; full playthrough, rotation, physical iPhone, real iOS audio, Safari version variation and performance were not covered.
+
 按 [QUALITY-CHECKLIST.md](../docs/QUALITY-CHECKLIST.md) 验收。自动项由 `node tools/quality.mjs SnowTemple` 测量并写入本文件；人工和真机项没有跑过的写「未运行」。
 
 Checked against QUALITY-CHECKLIST.md. The automatic items were measured by `node tools/quality.mjs SnowTemple`, which writes

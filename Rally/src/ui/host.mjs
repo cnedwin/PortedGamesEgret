@@ -11,7 +11,7 @@ export const UI_PORTRAIT={width:420,height:760};
 const keyFor={left:'ArrowLeft',right:'ArrowRight',up:'ArrowUp',down:'ArrowDown',confirm:'Enter'};
 
 export async function createRallyUiHost(canvas,{lang,label,onError=console.error}={}){
-  let host,closed=false,dirty=true,focusStamp='';
+  let host,closed=false,dirty=true,focusStamp='',presentTimer;
   const semantics=createUiSemantics();
   const overlay=await createWorld3DOverlay(canvas,{
     ...UI_LANDSCAPE,portrait:UI_PORTRAIT,fit:'expand',uiScale:{min:44/48,max:1.25},
@@ -29,10 +29,15 @@ export async function createRallyUiHost(canvas,{lang,label,onError=console.error
   const layouts=new Set(),painters=new Set(),pending=new Set();
   const requestPublish=()=>{dirty=true;};
   function publish(){if(!closed){semantics.publish();dirty=false;}}
+  // Repaint the static overlay once after asynchronously prepared labels settle.
+  function settlePresentation(){
+    clearTimeout(presentTimer);
+    presentTimer=setTimeout(()=>{if(!closed&&!pending.size)game.invalidate();},250);
+  }
   function track(work){
     const promise=Promise.resolve(work);
     pending.add(promise);
-    promise.then(()=>{pending.delete(promise);requestPublish();},cause=>{pending.delete(promise);if(!closed)onError(cause);});
+    promise.then(()=>{pending.delete(promise);requestPublish();if(!pending.size)settlePresentation();},cause=>{pending.delete(promise);if(!closed)onError(cause);});
     return promise;
   }
   function addSemantic(definition,owner=scope){
@@ -83,7 +88,7 @@ export async function createRallyUiHost(canvas,{lang,label,onError=console.error
       if(dirty)publish();
     },
     async dispose(){
-      if(closed)return;closed=true;stopScreen();layouts.clear();painters.clear();
+      if(closed)return;closed=true;clearTimeout(presentTimer);stopScreen();layouts.clear();painters.clear();
       projection.dispose();semantics.dispose();await overlay.dispose();
     }
   };

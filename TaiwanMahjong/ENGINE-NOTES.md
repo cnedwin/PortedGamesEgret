@@ -114,3 +114,11 @@ This integration vendors official main `13d70b73904266c11b23de4c09c239240a7162db
 - 绕过办法：原生 CLI 檢查標題；額外瀏覽器測試以實際按鍵／觸控進入各狀態，匯入原生 SCREENS 和 controlFindings、讀取 native agent 控件資料。 · Use the CLI for the initial screen and the same native profiles/checker and controls for browser-driven state tests.
 - 建议：提供可重播、以具名語意控件操作的狀態腳本，在每個 screen profile 執行至檢查點，再輸出畫面和錯誤統計。 · Support named-control replay/checkpoints across each screen profile, with screenshots and findings for each checkpoint.
 - 状态：未解决，截至 13d70b73；本 Demo 以額外自動驗收補足，不改 CLI 或引擎。 · Open at 13d70b73; supplemented by test automation without modifying the engine.
+
+### 13. 静態畫面首幀未顯示 · Static screen retains an old frame — 已在游戏侧绕过 / worked around
+<!-- engine-note: {"id":"TaiwanMahjong#13","status":"worked-around","topic":"static-webkit-presentation","files":["src/main.mjs"]} -->
+
+- 现象：在 Windows WebKit 26.6 iPhone 15 Pro 設定下，語意控制已就緒，標題等待五秒仍為純色；點擊後才顯示牌桌。 · In Windows WebKit the semantic title controls were ready, but the canvas stayed solid after five seconds; touch input displayed the table.
+- 绕过办法：切換至標題時排程一次 250 ms 的 game.invalidate()，保留按需繪製。 · Schedule one 250 ms game.invalidate() on entering the title; retain on-demand drawing.
+- 建议：引擎應以實際像素測試異步標籤與靜止畫面的首幀呈現。 · Verify actual pixels for asynchronously prepared labels and the first static-frame presentation.
+- 状态：候选版本 WebKit 触屏路线实测通过；未在物理 iPhone 上验证。 · Candidate WebKit touch route tested; no physical iPhone verification.

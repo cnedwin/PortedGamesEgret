@@ -1,2 +1,0 @@
-// Generated from StarBanner and vendored Egret sources. See vendor/LICENSE, vendor/NOTICE and third-party licences.
-import{b as i}from"./chunk-WD45GUHK.mjs";import{M as n,T as r}from"./chunk-F576OYKD.mjs";import{a as e}from"./chunk-2PKRZAXY.mjs";var j=n.prototype.use,V=r.prototype.dispose;function c(o,s,f){return i(o).construct(s,f,"paragraph")}e(c,"createParagraph");export{c as createParagraph};

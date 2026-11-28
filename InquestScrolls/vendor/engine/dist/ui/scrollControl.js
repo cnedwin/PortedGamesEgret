@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 import { EgretError } from '@egret/runtime';
+import { trackScreenControl } from '../internal/uiControlReportState.js';
 function length(value) {
     return typeof value === 'number' && Number.isFinite(value) && value >= 0;
 }
@@ -133,6 +134,7 @@ export function createScrollControl(options) {
                 setDragging(undefined);
         }));
     }
+    const untrack = thumb === undefined ? undefined : trackScreenControl(thumb.input, thumb.target, 'scroll', () => enabled && !closed);
     return Object.freeze({
         axis,
         get offset() {
@@ -200,6 +202,7 @@ export function createScrollControl(options) {
             if (closed)
                 return;
             closed = true;
+            untrack?.();
             let failure;
             try {
                 setDragging(undefined);

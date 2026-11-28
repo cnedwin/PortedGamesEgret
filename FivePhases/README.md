@@ -131,6 +131,8 @@ core/battle.mjs  ──事件表──▶  main.mjs  ──▶  sequence / fx / 
 
 The playable UI is drawn through a single native Egret canvas. The original cover, battlefield, portraits, board, combat rules and sound preference remain. The five card emblems are cropped from the existing tile atlas via tools/extract-ui-icons.mjs; no new artwork provenance is introduced.
 ## 已验证 · Verified
+
+- 2026-11-28：WebKit 的标题及开阵战斗文字已回归，53 项目录 Node 测试通过。 · WebKit title and battle labels recovered; 53 directory Node tests passed. 使用 Windows Playwright WebKit 的 iPhone 15 Pro 配置，不是 iPhone 真机；详见 [QUALITY.md](QUALITY.md)。 · iPhone 15 Pro device profile on Windows Playwright WebKit, not a physical iPhone; see QUALITY.md.
 - 2026-11-26：官方 8e70dcb3 副本，单 Canvas 原生界面，保持原三关和美术、音频、静音偏好。80 项 Node 测试覆盖规则、原生指针会话、静音存储。
 - PC Edge 158 与 Galaxy Z Fold7/Chrome 157 真机完整自然通过三关；两次奖励承接和重开正常，零控制台错误。操作 rAF p95 4.3/16.7 ms，最大 20.9/34.6 ms。首领死亡语义树故障已修复；加高奖励卡在 Fold7 额外自然通过首关后验证。
 - Official engine copy 8e70dcb3, one native canvas; 80 Node checks, all three acts completed on physical PC and Fold7 with real input. Details and limits in QUALITY.md.
@@ -180,6 +182,6 @@ The playable UI is drawn through a single native Egret canvas. The original cove
 
 ## 引擎副本 · Engine copy
 
-引擎副本取自 [Egret_rebuild](https://github.com/cnedwin/Egret_rebuild) 提交 `94bd70fb26b1f81794c9c6fbbb258c655fcd19df`，由引擎仓库的 `tools/vendor-game.mjs` 复制（入口为 Play、原生 UI、语义树、段落及相关浏览器模块），见 [vendor/SOURCE.md](vendor/SOURCE.md)。2026-11-21 之前的副本没有记录提交号，早于引擎 `66f7c59`。
+引擎副本取自 [Egret_rebuild](https://github.com/cnedwin/Egret_rebuild) 提交 `82561d6338a805f0e0459a2d5d42a284f9385b30`，由引擎仓库的 `tools/vendor-game.mjs` 复制（入口为 Play、原生 UI、语义树、段落及相关浏览器模块），见 [vendor/SOURCE.md](vendor/SOURCE.md)。2026-11-21 之前的副本没有记录提交号，早于引擎 `66f7c59`。
 
-The engine copy is from [Egret_rebuild](https://github.com/cnedwin/Egret_rebuild) commit `94bd70fb26b1f81794c9c6fbbb258c655fcd19df`, copied by the engine's `tools/vendor-game.mjs` (Play, UI, semantics, paragraph and related browser entries); see [vendor/SOURCE.md](vendor/SOURCE.md). The copy before 2026-11-21 had no recorded commit and predated engine `66f7c59`.
+The engine copy is from [Egret_rebuild](https://github.com/cnedwin/Egret_rebuild) commit `82561d6338a805f0e0459a2d5d42a284f9385b30`, copied by the engine's `tools/vendor-game.mjs` (Play, UI, semantics, paragraph and related browser entries); see [vendor/SOURCE.md](vendor/SOURCE.md). The copy before 2026-11-21 had no recorded commit and predated engine `66f7c59`.

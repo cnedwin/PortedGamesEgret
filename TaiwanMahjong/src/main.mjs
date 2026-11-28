@@ -104,7 +104,7 @@ async function startEngine(atlas) {
   const game = await play({
     ...STAGE, portrait: PORTRAIT, fit: 'expand',
     pixelRatio: displayPixelRatio(initial.scale, window.devicePixelRatio, Math.min(box.width, box.height) < TABLET_SHORT_SIDE),
-    parent: host, transparent: true, seed: app.seed, semantics: bridge,
+    parent: host, transparent: true, seed: app.seed, semantics: bridge, audio: typeof globalThis.AudioContext === 'function',
     renderMode: 'on-demand', arrange, onError: console.error
   });
   const lease = await game.browser.textureFromCanvas(atlas);
@@ -494,6 +494,8 @@ function show(name) {
     app.view?.clear();
     app.felt?.paint({});
     app.screens?.showTitle();
+    // A newly presented static screen can stay stale in WebKit; redraw once, not continuously.
+    setTimeout(() => { if (app.screen === 'title') app.game?.invalidate(); }, 250);
   } else app.screens?.hideTitle();
   if (name !== 'final') app.ui?.hide('final');
   paintTools();

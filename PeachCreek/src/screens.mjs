@@ -74,6 +74,12 @@ async function loadIllustration(game, layer) {
 /** Title, save slots, settings and offline harvest, using the engine's screen stack. */
 export function createScreens(game, ui, { slots, problems, preferences, uiDensity, isPlaying, isCompact, onEnter, onSetting, onReturnTitle, onAwayClose }) {
   const screens = createUiScreenStack({ onError: console.error });
+  // One extra presentation for static views whose first WebKit composition remains stale.
+  let screenRefresh;
+  function present() {
+    clearTimeout(screenRefresh);
+    screenRefresh = setTimeout(() => game.invalidate(), 250);
+  }
   const measure = document.createElement('canvas').getContext('2d');
   const art = game.sprite(undefined, game.ui);
   const artwork = game.sprite(undefined, art);
@@ -334,16 +340,16 @@ export function createScreens(game, ui, { slots, problems, preferences, uiDensit
   function defineModal(id, render, firstFocus) {
     return { id, layer: 'modal', open(context) {
       return {
-        show() { current = { id, context, render }; render(context); },
+        show() { current = { id, context, render }; render(context); present(); },
         activate() { ui.focus(firstFocus()); },
-        close() { ui.hide(id); current = null; }
+        close() { ui.hide(id); current = null; present(); }
       };
     } };
   }
 
   const titlePage = { id: 'title', layer: 'page', back: 'none', open() {
     return {
-      show() { titleVisible = true; art.visible = true; renderTitle(); ui.focus('startButton'); },
+      show() { titleVisible = true; art.visible = true; renderTitle(); ui.focus('startButton'); present(); },
       close() { titleVisible = false; art.visible = false; ui.hide('title'); }
     };
   } };

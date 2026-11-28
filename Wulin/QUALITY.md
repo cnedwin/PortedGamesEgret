@@ -183,3 +183,9 @@ PC 实际鼠标点击建筑、空地、拖视角、滚轮缩放、右拖平移 5
 - 正式引擎 · Official merged pin: `a0fb4e6c40a93156acd49f78ebf622375193a92c` ([#567](https://github.com/cnedwin/Egret_rebuild/pull/567)), complete protected CI passed. Exact tested candidate code/critical runtime hashes match. Final desktop 2/2 cold full max29.2/33.3ms, ready690.5/741.6ms, p95 8.4, warm max12.5/16.6, no LoAF/≥50ms or errors. Final physical Fold7 low cold12/12, max33.3ms, ready508.4ms, stable p95/max16.7, no LoAF; 233 realm pending checks accepted0, original immediate rendering retained. Device restored, actual screenshots and gestures passed. Full gameplay acceptance is from the identical scoped candidate above.
 
 - 正式自动回归 · Final official: Node128/128; original browser accept17/17 (title golden0.13828125%, legacy0 unchanged), asset refusal/retry5/5 incl native and existing documented late-image recovery. Candidate nine-screen/quality data above come from the same official engine source tree; exact runtime hashes and scope-specific actual device checks cover the final pin. No screenshot baseline updated.
+
+## WebKit 手机兼容回归 · Mobile WebKit compatibility (2026-11-28)
+
+- Windows Playwright WebKit 26.6、iPhone 15 Pro 配置（393×659 CSS px）。公开旧版标题/序章部分绘制文字缺失；更新正式引擎副本后标题逻辑已经就绪，但可见画面仍停留在加载 0/1。实测引擎帧已接收（4 页、11 区域、6,887,856 B、拒绝帧 0；文字任务待处理 0）。独立调用一次 `game.invalidate()` 后完整标题立即出现。 · The accepted scene update did not reach the visible initial frame; no texture-budget refusal or pending text job was present.
+- 新打开的页面/弹层挂载后 250 ms 仅安排一次原生重绘。候选首屏和点击「开创新局」后的完整序章画面均实拍正确，JS、控制台、HTTP 错误均 0；Node 128/128 通过；无持续强制绘制。 · One bounded presentation retry fixes both static screens without a continuous render loop.
+- 未测试实体 iPhone、完整经营流程或真实手机 GPU 性能。 · This is a Windows WebKit compatibility sample, not physical iOS acceptance.

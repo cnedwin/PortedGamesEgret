@@ -17,7 +17,12 @@
     "robust-predicates": "./vendor/robust-predicates/index.js",
     "#egret-textured-frame-state": "./vendor/engine/dist/internal/texturedFrameState.js",
     "@egret/engine/input/hover": "./vendor/engine/dist/hover.js",
+    "@egret/runtime/paragraph": "./vendor/runtime/dist/paragraph/index.js",
+    "@egret/engine/paragraph": "./vendor/engine/dist/paragraph.js",
+    "@egret/engine/bitmapfont": "./vendor/engine/dist/bitmapfont.js",
     "@egret/engine/input/gamepad": "./vendor/engine/dist/gamepad.js",
+    "@egret/runtime/ui": "./vendor/runtime/dist/ui/index.js",
+    "@egret/engine/ui": "./vendor/engine/dist/ui/index.js",
     "@egret/engine/webgl2/world3d": "./vendor/engine/dist/web/world3d/index.js"
   }
 }

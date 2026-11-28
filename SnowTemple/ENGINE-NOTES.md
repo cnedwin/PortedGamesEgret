@@ -68,3 +68,12 @@ written as in part 3 of [docs/GAME-STANDARD.md](../docs/GAME-STANDARD.md).
 - 游戏里 · In the game：在已经串行排队的模态创建流程中，等待浏览器原生恢复 suspended 输入，再调用 `pointer.cancelAll('suspended')` 终止仍存的会话，然后创建原生 root。原生专项测试：contact 数 2→0，root commit 正常，旧松手不能激活新控件，新的触点可正常选择；键盘上保留旧玩法的按住状态。 · The queued modal creation awaits native resume if suspended, cancels old sessions with the engine's own API and creates the root. The native regression shows two contacts reduced to zero, successful commit, stale releases unable to activate the new control, and a fresh contact activating normally.
 - 建议 · Suggestion：公开明确说明 root 的 contact-free admission 与层管理器取消现有触点的先后要求，或提供一个原子 modal creation/replace API，先由引擎安全取消被遮盖层的接触，再创建、提交并接管输入；不能把接触转交到新按钮。 · Document the ordering between contact-free root admission and modal cancellation, or offer an atomic modal creation/replace helper which terminates the covered input before constructing and committing the new layer; an old contact must never be transferred to a new button.
 - 状态 · Status：引擎 `e15aabcf` 的准入约束保留，Demo 原生接口绕过；真机复跑见 QUALITY.md。 · The admission constraint is unchanged in e15aabcf; the game uses the native cancellation API. See QUALITY.md for physical regression.
+
+### 9. WebKit 按需画面晚一屏 · WebKit retains earlier on-demand frame — 未解决 / open
+<!-- engine-note: {"id": "SnowTemple#9", "status": "open", "topic": "webkit-retained-screen-presentation", "workaround": ["src/ui/menus.mjs"]} -->
+
+- **现象 · What happens**：Windows Playwright WebKit 26.6（iPhone 15 Pro 设备配置），触摸设置后语义树已经切换，3、5 秒实际截图仍是上一界面。 · The settings semantics are current but actual screenshots after 3 and 5 seconds still show the title.
+- **最小复现 · Reproduce**：使用游戏原生 on-demand 菜单栈打开设置；比较已更新的语义名称与页面截图。 · Open Settings on a native on-demand menu stack, then compare actual pixels with updated semantics.
+- **绕过 · Workaround**：仅在菜单呈现提交时调用 `game.invalidate()`，合并 250 ms 后一次补绘；销毁时取消。 · On menu publication request one native invalidation plus a coalesced follow-up after 250 ms; cancel on disposal.
+- **建议 · Proposal**：提供可观测的提交与呈现确认，检查 WebKit 对按需模式和异步图集内容的呈现。 · Expose observable submission/presentation confirmation and investigate the on-demand compositing path.
+- **状态 · Status**：两张复测截图均成功；尚未在物理 iPhone 验证，未断言根因在引擎还是浏览器。 · Both screenshots pass; physical iPhone and ultimate engine/browser root cause remain unverified.

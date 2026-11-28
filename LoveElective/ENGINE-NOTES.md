@@ -64,3 +64,11 @@ This integration vendors official main `94bd70fb26b1f81794c9c6fbbb258c655fcd19df
 - 绕过办法：既有 `?ratio=2`（同 CSS 尺寸 2 倍 backing）在该独立复现与实际游戏中均清晰；软件截图基线使用 ratio=2。PC RTX 5090 与 Fold7 Adreno 830 的实际默认模式清晰，未全局提高真机像素密度。· Ratio 2 removes the artifact in both isolated and game software captures. Real default hardware shots are clear; no device-wide density change.
 - 建议：检查原生文本文字基线和 display transform 的半像素对齐。最小验收为同一 screen 的 16px、height 23/24 两条 text 在 ratio 1 均完整，ratio 2 无回归，原有绑定和布局保持。当前未定位具体 shader/atlas 原因。· Investigate alignment; require both odd/even layout heights to be clear at ratio 1 without affecting ratio 2 or layout.
 - 状态：#499 修正单行文字基线。相同 640×360 SwiftShader 最小例，ratio=1 的奇数高度 23、偶数 24 标签均清晰，ratio=2 无回归；14 标签就绪、零拒绝、零报错。历史 ratio=2 图像基线保留用于前后比较，不需要为真机提高 DPR。· The original minimal software WebGL2 fixture now renders odd and even heights clearly at ratio 1 and 2, 14 ready labels with no refusals or errors. The historical ratio-2 screenshot baseline remains solely for comparability.
+
+### 8. WebKit 的原生控件文字 · Native control labels on WebKit — 已解决 / resolved
+<!-- engine-note: {"id":"LoveElective#8","status":"resolved","topic":"webkit-canvas-text-state"} -->
+
+- **现象 · What happens**：Windows WebKit 的标题美术出现但原生按钮没有字；最小 Canvas2D 中文绘制能成功。此宿主欠缺若干可选的排版状态（如 fontStretch、textRendering），引擎文字提供器原先拒绝。 · Title art rendered without native button captions even though a plain Canvas2D Chinese drawing succeeded. The previous text provider rejected some optional typography states absent on this host.
+- **绕过办法 · Workaround**：保持单一白鹭 UI 宿主，直接更新生成的副本；不新增 DOM 文本。 · Retain a single Egret UI host and refresh the generated engine copy rather than adding DOM labels.
+- **建议 · Suggestion**：把宿主未实现的可选默认文字状态和真实配置错误区分开。 · Distinguish unsupported optional default text state from actual invalid settings.
+- **状态 · Status**：引擎 82561d63；Windows WebKit 复测标题文字及进入序章对白可读。未测物理 iPhone。 · Title captions and the prologue are readable on Windows WebKit; physical iPhone is untested.

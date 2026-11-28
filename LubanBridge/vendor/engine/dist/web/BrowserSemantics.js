@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 import { EgretError } from '@egret/runtime';
+import { registerScreenSemantics } from './screenControlReportState.js';
 /** Roles a native button carries well: it is activated by a click from any assistive technology. */
 const pressable = [
     'button',
@@ -59,7 +60,8 @@ let containers = 0;
 export function createBrowserSemantics(options) {
     if (options === null || typeof options !== 'object')
         throw new EgretError('UI_SEMANTICS_OPTIONS');
-    const { semantics, canvas: surface, width, height, label, onError } = options;
+    const { semantics, canvas: surface, label, onError } = options;
+    let { width, height } = options;
     if (semantics === null ||
         typeof semantics !== 'object' ||
         typeof semantics.observe !== 'function' ||
@@ -362,6 +364,7 @@ export function createBrowserSemantics(options) {
             throw new EgretError('UI_SEMANTICS_SURFACE_BUSY');
         ownedSurfaces.add(surface);
         owned = surface;
+        restores.push(registerScreenSemantics(surface, semantics));
         const holder = page.createElement('div');
         do
             holder.id = 'egret-semantics-' + ++containers;
@@ -428,19 +431,31 @@ export function createBrowserSemantics(options) {
             },
             container: holder,
             elementOf: (id) => (closed ? undefined : projected.get(id)?.element),
-            sync() {
-                if (!closed)
-                    try {
-                        const wasTransformed = transformed;
-                        profile(true);
-                        if (placed !== 'display:none' && (wasTransformed || transformed))
-                            placed = '';
-                        place();
-                    }
-                    catch (cause) {
-                        fail(cause);
-                        throw cause;
-                    }
+            sync(size) {
+                if (closed)
+                    return;
+                // Refuse bad caller input before changing the active mapping. CSS resize alone does not tell
+                // us the logical stage size, and only the mapping changes: the container and its focus stay.
+                if (size !== undefined) {
+                    if (size === null || typeof size !== 'object')
+                        throw new EgretError('UI_SEMANTICS_OPTIONS');
+                    const next = { width: size.width, height: size.height };
+                    if (!finite(next.width) || next.width <= 0 || !finite(next.height) || next.height <= 0)
+                        throw new EgretError('UI_SEMANTICS_OPTIONS');
+                    width = next.width;
+                    height = next.height;
+                }
+                try {
+                    const wasTransformed = transformed;
+                    profile(true);
+                    if (placed !== 'display:none' && (wasTransformed || transformed))
+                        placed = '';
+                    place();
+                }
+                catch (cause) {
+                    fail(cause);
+                    throw cause;
+                }
             },
             dispose: cleanup
         });

@@ -21,7 +21,8 @@ const DEFAULTS = Object.freeze({
     maxFrameRegions: 4096,
     maxFramePageBytes: 67108864,
     maxReadyPageBytes: 134217728,
-    blendSpace: 'linear'
+    blendSpace: 'linear',
+    pageBatching: 'multi-page'
 });
 const KEYS = [
     'canvas',
@@ -48,7 +49,8 @@ const KEYS = [
     'maxFrameRegions',
     'maxFramePageBytes',
     'maxReadyPageBytes',
-    'blendSpace'
+    'blendSpace',
+    'pageBatching'
 ];
 function object(value) {
     return typeof value === 'object' && value !== null;
@@ -79,6 +81,10 @@ export function admitSharedWebGL2Options(input) {
         }
         else if (key === 'blendSpace') {
             if (value !== 'linear' && value !== 'srgb')
+                throw new TypeError(key);
+        }
+        else if (key === 'pageBatching') {
+            if (value !== 'multi-page' && value !== 'single-page')
                 throw new TypeError(key);
         }
         else {

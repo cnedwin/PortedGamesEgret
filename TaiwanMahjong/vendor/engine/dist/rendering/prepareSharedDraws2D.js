@@ -4,6 +4,7 @@ import { Preparation, coordinate, clipPolygon2D, finishPolygonWinding2D } from '
 import { TexturedPreparationBudget2D } from './texturedPreparationBudget2D.js';
 import { noteOwnedPreparationFailure } from './ownedPreparationFailure2D.js';
 import { decodeSharedSRGBByte, sharedBlendSpace2D, sharedPageChainBytes2D, sharedPageLevels2D } from './sharedColor2D.js';
+import { expandSharedContainedQuad2D, writeSharedContainedQuad2D } from './sharedContainedQuad2D.js';
 export class SharedPreparationError extends Error {
     reason;
     constructor(reason) {
@@ -14,9 +15,45 @@ export class SharedPreparationError extends Error {
 export function sharedFailure(reason) {
     throw noteOwnedPreparationFailure(new SharedPreparationError(reason));
 }
+// Only the immediate internal Host submission uses this compact draw. The ordinary
+// geometry entry point always returns plain records with fully materialized own polygon fields.
+const placedQuadIssuer = Symbol();
+class PreparedContainedQuad2D {
+    command;
+    material;
+    region;
+    pageIndex;
+    kind = 'draw';
+    vertexReservation = 6;
+    #quad;
+    #expanded;
+    constructor(issuer, command, material, region, pageIndex, quad) {
+        this.command = command;
+        this.material = material;
+        this.region = region;
+        this.pageIndex = pageIndex;
+        if (issuer !== placedQuadIssuer)
+            sharedFailure('frame');
+        this.#quad = quad;
+    }
+    get polygons() {
+        if (this.#expanded === undefined) {
+            this.#expanded = expandSharedContainedQuad2D(this.#quad);
+            this.#quad = undefined;
+        }
+        return this.#expanded;
+    }
+    static has(draw) {
+        return #quad in draw && draw.#quad !== undefined;
+    }
+    static write(draw, rows, offset, slot, opacity) {
+        writeSharedContainedQuad2D(draw.#quad, rows, offset, slot, opacity);
+    }
+}
+export const isPreparedContainedQuad = PreparedContainedQuad2D.has;
+export const writePreparedContainedQuad = PreparedContainedQuad2D.write;
 /** What one shared frame may hold at most, whatever a Host is configured to admit. */
 export const SHARED_FRAME_REGIONS_2D = 4096, SHARED_FRAME_PAGE_BYTES_2D = 67108864;
-const ATTRS = ['u', 'v', 'r', 'g', 'b', 'a', 'dr', 'dg', 'db'];
 function unit(value) {
     if (!Number.isFinite(value) || value < 0 || value > 1)
         sharedFailure('precision');
@@ -163,20 +200,11 @@ function policyFor(budget) {
                 q.db = unit(q.db);
                 value = q;
             }
-            else
-                value = {
-                    x: coordinate(p.x),
-                    y: coordinate(p.y),
-                    u: uv(p.u),
-                    v: uv(p.v),
-                    r: unit(p.r),
-                    g: unit(p.g),
-                    b: unit(p.b),
-                    a: unit(p.a),
-                    dr: unit(p.dr),
-                    dg: unit(p.dg),
-                    db: unit(p.db)
-                };
+            else {
+                // Every surviving input and every interpolated crossing has already been
+                // qualified. Only the result array is reordered or shortened by this stage.
+                value = p;
+            }
             const previous = result[result.length - 1];
             if (previous && sameXY(previous, value)) {
                 // The comparison is made, and charged, as it always was; only its refusal is spared a clip's own corners.
@@ -242,27 +270,26 @@ function policyFor(budget) {
         return result.length < 3 ? [] : finishPolygonWinding2D(preparation, result);
     };
     // The clip's own normalization: its input is what the clip made.
-    const normalize = (preparation, input) => finish(preparation, input, false, true);
+    const normalize = (preparation, input) => preparation.tryFinishClippedMesh(input) ?? finish(preparation, input, false, true);
     const normalizeOwned = (preparation, input) => finish(preparation, input, true);
     return { policy, normalize, normalizeOwned };
 }
 const attach = (p, q, weight, complementary, x, y) => {
-    const value = (key) => {
-        const n = complementary ? q[key] + weight * (p[key] - q[key]) : p[key] + weight * (q[key] - p[key]);
-        return key === 'u' || key === 'v' ? uv(n) : unit(n);
-    };
+    // Use the smaller complementary weight directly, exactly as for the XY crossing.
+    // Static property reads keep the UV and color channels on their ordinary numeric path.
+    const start = complementary ? q : p, end = complementary ? p : q;
     return {
         x: coordinate(x),
         y: coordinate(y),
-        u: value('u'),
-        v: value('v'),
-        r: value('r'),
-        g: value('g'),
-        b: value('b'),
-        a: value('a'),
-        dr: value('dr'),
-        dg: value('dg'),
-        db: value('db')
+        u: uv(start.u + weight * (end.u - start.u)),
+        v: uv(start.v + weight * (end.v - start.v)),
+        r: unit(start.r + weight * (end.r - start.r)),
+        g: unit(start.g + weight * (end.g - start.g)),
+        b: unit(start.b + weight * (end.b - start.b)),
+        a: unit(start.a + weight * (end.a - start.a)),
+        dr: unit(start.dr + weight * (end.dr - start.dr)),
+        dg: unit(start.dg + weight * (end.dg - start.dg)),
+        db: unit(start.db + weight * (end.db - start.db))
     };
 };
 /** Moves an authored corner this preparation owns to backing space; both coordinates are read before either is written. */
@@ -281,7 +308,14 @@ const NO_CLIPS = [];
  * recorded with that geometry fit what is left of the budget; any other draw is prepared here and kept.
  * The frame's tables, every command's own numbers and every frame-wide charge are checked for every frame.
  */
-export function prepareSharedDraws2D(frame, width, height, options, retention) {
+export function prepareSharedDraws2D(frame, width, height, options, retention, engineOwned = false) {
+    return prepareSharedGeometry(frame, width, height, options, retention, engineOwned, false);
+}
+/** The browser Host consumes these private representations synchronously during submission. */
+export function prepareSharedDrawsForSubmission2D(frame, width, height, options, retention) {
+    return prepareSharedGeometry(frame, width, height, options, retention, true, true);
+}
+function prepareSharedGeometry(frame, width, height, options, retention, engineOwned, forSubmission) {
     if (frame.profile !== 'egret.shared-frame2d/1' || sharedBlendSpace2D(frame) === undefined)
         sharedFailure('profile');
     if (frame.commands.length > options.maxCommands ||
@@ -387,7 +421,7 @@ export function prepareSharedDraws2D(frame, width, height, options, retention) {
     retention?.begin(frame.commands.length, width, height, options.pixelRatio, options);
     // One clip policy and one predicate ledger serve every command; the ledger's per-command count restarts at each draw.
     // The inactive context only states that every polygon handed to clipping is owned by this call, so a
-    // step that leaves a polygon unchanged returns it instead of a copy. No clip rectangle is cached.
+    // step that leaves a polygon unchanged returns it instead of a copy.
     const owned = { options, budget, active: false, entries: undefined };
     const { policy, normalize, normalizeOwned } = policyFor(budget), preparation = new Preparation(options, budget, true, owned);
     const axisX = { x: 0, y: 0 }, axisY = { x: 0, y: 0 };
@@ -395,12 +429,63 @@ export function prepareSharedDraws2D(frame, width, height, options, retention) {
     let viewport, ratio = 0;
     // The state of the command being prepared, read by `accept` below.
     let command, m, clips = NO_CLIPS, polygons = [], vertexReservation = 0;
+    // The capture shares one immutable clip list among siblings. Keep only the most recent
+    // qualified list in this call. Authored motion changes its numbers in the next frame.
+    let previousClipList, previousClips = NO_CLIPS, clipBounds, quadBounds;
+    const clipCost = { preparedVertices: 0, predicates: 0, tupleComparisons: 0 };
     // What the corners of the command's texture coordinates are qualified against; undefined for a draw without a page.
     let uvDomain;
     // Both SHARED Hosts authenticate the frame before this private helper owns its budget.
     // Shared polygons retain attributed corners and charge the same XY comparisons as TEXTURED meshes.
     const intersect = (polygon, clip) => preparation.tryContainedClip(polygon, clip, 'mesh') ??
         clipPolygon2D(preparation, polygon, clip, normalize, attach, policy, 'mesh');
+    // Only an authenticated stack of canonical rectangular clips reaches here. A
+    // real cut keeps its original classified edge, ordered crossings, and attributes.
+    // A run of inactive planes gets one exact debit against the current corner count.
+    const intersectPartialStack = (input) => {
+        const last = (clips.length + 1) * 4;
+        let polygon = input, span = 0, left = Infinity, right = -Infinity, top = Infinity, bottom = -Infinity;
+        // A retained vertex comes from the input; every new crossing is checked to
+        // lie between both segment endpoints. The original bounds therefore contain
+        // every later polygon, including rounded crossings. They are only a proof
+        // of containment: all other edges retain their ordinary classification.
+        for (const point of polygon) {
+            if (point.x < left)
+                left = point.x;
+            if (point.x > right)
+                right = point.x;
+            if (point.y < top)
+                top = point.y;
+            if (point.y > bottom)
+                bottom = point.y;
+        }
+        const clipAt = (plane) => plane < last - 4 ? clips[Math.floor(plane / 4)] : viewport;
+        const applyEdge = (plane) => {
+            polygon = clipPolygon2D(preparation, polygon, clipAt(plane), normalize, attach, policy, 'mesh', plane % 4);
+        };
+        // Unpaid atomic spans have no side effects. Finish from the first unpaid
+        // edge so an exhausted budget reports the original charge and first failure.
+        const finishOrdinary = (from) => {
+            for (let p = from; p < last && polygon.length; p++)
+                applyEdge(p);
+            return polygon;
+        };
+        for (let i = 0; i < last; i++) {
+            const c = clipAt(i), edge = i % 4;
+            const inside = edge === 0 ? top >= c[0].y : edge === 1 ? right <= c[1].x : edge === 2 ? bottom <= c[2].y : left >= c[0].x;
+            if (inside) {
+                span++;
+                continue;
+            }
+            if (!preparation.tryReplayContainedMeshEdges(polygon.length, span))
+                return finishOrdinary(i - span);
+            span = 0;
+            applyEdge(i);
+            if (polygon.length === 0)
+                return polygon;
+        }
+        return preparation.tryReplayContainedMeshEdges(polygon.length, span) ? polygon : finishOrdinary(last - span);
+    };
     // A quad of a matrix without rotation or shear, whose corners stay apart once placed, needs none of the general
     // path's tests to be known: its three signs agree and its four corners are distinct, so normalizing keeps them in
     // order, reversed when the placed winding is negative. The general path's charges for those tests (seven predicates
@@ -461,6 +546,44 @@ export function prepareSharedDraws2D(frame, width, height, options, retention) {
     // The same steps as `transform` for a matrix without rotation or shear: the cross terms are zero.
     const placeX = (x) => coordinate(coordinate(coordinate(coordinate(m.a * x) + coordinate(m.c * 0)) + m.tx) * ratio);
     const placeY = (y) => coordinate(coordinate(coordinate(coordinate(m.b * 0) + coordinate(m.d * y)) + m.ty) * ratio);
+    // A completely contained, axis-aligned solid or unit-UV image has four independent placed coordinates.
+    // Its fan can be encoded directly. A miss pays nothing; the ordinary route retains its exact failure order.
+    const containedQuad = (x, y, right, bottom, alpha) => {
+        if (command.opacity === 0 || m.b !== 0 || m.c !== 0 || m.a === 0 || m.d === 0 || !(x < right && y < bottom))
+            return undefined;
+        const bounds = quadBounds;
+        if (bounds === undefined)
+            return undefined;
+        if (uvDomain !== undefined && (uvDomain.width > uvDomain.limit || uvDomain.height > uvDomain.limit))
+            return undefined;
+        let x0, x1, y0, y1;
+        try {
+            x0 = placeX(x);
+            x1 = placeX(right);
+            y0 = placeY(y);
+            y1 = placeY(bottom);
+        }
+        catch {
+            return undefined;
+        }
+        if (Math.min(x0, x1) < bounds.left ||
+            Math.max(x0, x1) > bounds.right ||
+            Math.min(y0, y1) < bounds.top ||
+            Math.max(y0, y1) > bounds.bottom ||
+            Math.fround(x0) === Math.fround(x1) ||
+            Math.fround(y0) === Math.fround(y1))
+            return undefined;
+        const reversed = x1 > x0 !== y1 > y0;
+        if (reversed !== (m.a > 0 !== m.d > 0))
+            return undefined;
+        // Four distinct placed corners and four containing planes per rectangle. Packed orientation is charged later.
+        const predicates = 7 + 32 * bounds.count;
+        if (predicates > options.maxClipEdgeTests - preparation.edgeTests ||
+            !budget.tryReplayStageCost({ preparedVertices: 6, predicates, tupleComparisons: 10 + 40 * bounds.count }))
+            return undefined;
+        preparation.edgeTests += predicates;
+        return { x0, x1, y0, y1, reversed, red, green, blue, alpha };
+    };
     // `points` are fresh authored corners; they become the backing-space corners in place.
     const accept = (points) => {
         if (uvDomain !== undefined)
@@ -505,9 +628,14 @@ export function prepareSharedDraws2D(frame, width, height, options, retention) {
             else
                 polygon = normalizeOwned(preparation, points);
         }
-        for (const clip of clips)
-            polygon = intersect(polygon, clip);
-        polygon = intersect(polygon, viewport);
+        if (clipBounds === undefined) {
+            for (const clip of clips)
+                polygon = intersect(polygon, clip);
+            polygon = intersect(polygon, viewport);
+        }
+        else if (polygon.length !== 0 && !preparation.tryContainedClipStack(polygon, clipBounds, 'mesh')) {
+            polygon = intersectPartialStack(polygon);
+        }
         if (uvDomain !== undefined)
             for (const p of polygon)
                 qualifySharedUVIn(p.u, p.v, uvDomain);
@@ -562,7 +690,19 @@ export function prepareSharedDraws2D(frame, width, height, options, retention) {
                 continue;
             }
             const verticesBefore = budget.preparedVerticesCharged, predicatesBefore = budget.predicatesCharged, tuplesBefore = budget.tupleComparisonsCharged;
-            clips = command.clips.length === 0 ? NO_CLIPS : command.clips.map(clip => preparation.rectangle(clip));
+            const reuseClips = engineOwned &&
+                command.clips === previousClipList &&
+                clipCost.predicates <= options.maxClipEdgeTests - preparation.edgeTests &&
+                budget.tryReplayStageCost(clipCost);
+            if (reuseClips) {
+                clips = previousClips;
+                preparation.edgeTests += clipCost.predicates;
+            }
+            else {
+                const edgeStart = preparation.edgeTests;
+                clips = command.clips.length === 0 ? NO_CLIPS : command.clips.map(clip => preparation.rectangle(clip));
+                clipCost.predicates = preparation.edgeTests - edgeStart;
+            }
             // The viewport corners are the same for every command; they are checked when the first draw reaches them.
             viewport ??= [
                 { x: 0, y: 0 },
@@ -570,8 +710,17 @@ export function prepareSharedDraws2D(frame, width, height, options, retention) {
                 { x: coordinate(width), y: coordinate(height) },
                 { x: 0, y: coordinate(height) }
             ];
+            if (!reuseClips) {
+                previousClipList = engineOwned ? command.clips : undefined;
+                previousClips = clips;
+                clipBounds = engineOwned ? preparation.containedClipStackBounds(clips, viewport) : undefined;
+                quadBounds =
+                    clipBounds ??
+                        (forSubmission && clips.length < 2 ? preparation.containedClipStackBounds(clips, viewport, 0) : undefined);
+            }
             polygons = [];
             vertexReservation = 0;
+            let compact;
             uvDomain = sharedUVDomain({ region, material, pageIndex }, frame);
             if (command.kind === 'mesh') {
                 const g = frame.geometries[command.geometryIndex], shared = isSharedGeometry2D(g);
@@ -610,46 +759,63 @@ export function prepareSharedDraws2D(frame, width, height, options, retention) {
                     blue = decodeSharedSRGBByte(color);
                     lastColor = color;
                 }
-                const points = [];
-                for (let corner = 0; corner < 4; corner++) {
-                    // Corner order: top-left, top-right, bottom-right, bottom-left.
-                    let u = corner === 1 || corner === 2 ? 1 : 0, v = corner >= 2 ? 1 : 0;
-                    if (region && material.samplingDomain === 'page') {
-                        const p = region.packed, odd = region.quarterTurn === 1 || region.quarterTurn === 3, w = odd ? p.height : p.width, h = odd ? p.width : p.height, s = u * w, t = v * h;
-                        const x = region.quarterTurn === 1 ? h - t : region.quarterTurn === 2 ? w - s : region.quarterTurn === 3 ? t : s;
-                        const y = region.quarterTurn === 1 ? s : region.quarterTurn === 2 ? h - t : region.quarterTurn === 3 ? w - s : t;
-                        const page = frame.pages[pageIndex].source;
-                        u = (p.x + x) / page.width;
-                        v = (p.y + y) / page.height;
+                // A rotated or cropped page-domain atlas retains its authored UV conversion.
+                if (forSubmission &&
+                    (!region ||
+                        material.samplingDomain !== 'page' ||
+                        (region.quarterTurn === 0 &&
+                            region.packed.x === 0 &&
+                            region.packed.y === 0 &&
+                            region.packed.width === page.width &&
+                            region.packed.height === page.height)))
+                    compact = containedQuad(rect.x, rect.y, right, bottom, a);
+                if (compact !== undefined)
+                    vertexReservation = 6;
+                else {
+                    const points = [];
+                    for (let corner = 0; corner < 4; corner++) {
+                        // Corner order: top-left, top-right, bottom-right, bottom-left.
+                        let u = corner === 1 || corner === 2 ? 1 : 0, v = corner >= 2 ? 1 : 0;
+                        if (region && material.samplingDomain === 'page') {
+                            const p = region.packed, odd = region.quarterTurn === 1 || region.quarterTurn === 3, w = odd ? p.height : p.width, h = odd ? p.width : p.height, s = u * w, t = v * h;
+                            const x = region.quarterTurn === 1 ? h - t : region.quarterTurn === 2 ? w - s : region.quarterTurn === 3 ? t : s;
+                            const y = region.quarterTurn === 1 ? s : region.quarterTurn === 2 ? h - t : region.quarterTurn === 3 ? w - s : t;
+                            const page = frame.pages[pageIndex].source;
+                            u = (p.x + x) / page.width;
+                            v = (p.y + y) / page.height;
+                        }
+                        points.push({
+                            x: corner === 1 || corner === 2 ? right : rect.x,
+                            y: corner >= 2 ? bottom : rect.y,
+                            u,
+                            v,
+                            r: red,
+                            g: green,
+                            b: blue,
+                            a,
+                            dr: 0,
+                            dg: 0,
+                            db: 0
+                        });
                     }
-                    points.push({
-                        x: corner === 1 || corner === 2 ? right : rect.x,
-                        y: corner >= 2 ? bottom : rect.y,
-                        u,
-                        v,
-                        r: red,
-                        g: green,
-                        b: blue,
-                        a,
-                        dr: 0,
-                        dg: 0,
-                        db: 0
-                    });
+                    accept(points);
                 }
-                accept(points);
             }
             upload = add(upload, 52 * vertexReservation + 128, Number.MAX_SAFE_INTEGER);
-            const made = {
-                kind: 'draw',
-                command,
-                material,
-                region,
-                pageIndex,
-                polygons,
-                vertexReservation
-            };
-            entries.push(made);
-            retained?.push(retention.keep(command.ordinal, found, command, material, region, page, geometry, made, budget.preparedVerticesCharged - verticesBefore, budget.predicatesCharged - predicatesBefore, budget.tupleComparisonsCharged - tuplesBefore));
+            const made = compact !== undefined
+                ? new PreparedContainedQuad2D(placedQuadIssuer, command, material, region, pageIndex, compact)
+                : {
+                    kind: 'draw',
+                    command,
+                    material,
+                    region,
+                    pageIndex,
+                    polygons,
+                    vertexReservation
+                };
+            const saved = retention?.keep(command.ordinal, found, command, material, region, page, geometry, made, budget.preparedVerticesCharged - verticesBefore, budget.predicatesCharged - predicatesBefore, budget.tupleComparisonsCharged - tuplesBefore);
+            retained?.push(saved);
+            entries.push(saved?.prepared ?? made);
         }
     }
     catch (cause) {

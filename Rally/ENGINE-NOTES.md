@@ -52,3 +52,11 @@ written as in part 3 of [docs/GAME-STANDARD.md](../docs/GAME-STANDARD.md).
 - **游戏里 · In the game**：驾驶的长按有意保留原触点归属，但菜单的一次性按钮要求释放仍在实际命中区，暂停额外检查触控滑动阈值；使用原生 pointer 路由与 ActionControl，未添加浏览器游戏按钮。 · Driving holds intentionally retain the originating contact. Discrete menu actions require a release inside the hit area; Pause also checks touch slop, using native pointer routing and ActionControl without browser game controls.
 - **建议 · Suggestion**：保持独立长按/释放，提供一次性激活的可选 release-inside / tap-slop 策略，且默认行为和文档一致。验收：滑出释放、取消和失焦不触发；内部点击、键盘、语义 activate 正常，驾驶长按仍不丢。 · Retain independent held state while offering an activation policy for release-inside/tap-slop, with documented defaults. Acceptance: outside release, cancel and blur do not activate; inside click, keyboard and semantic activate still do; driving holds are unaffected.
 - **状态 · Status**：未解决，游戏使用原生部件保留交互语义。 · Open; the game preserves behavior with native components.
+
+### 7. WebKit 按需绘制的首屏可见性 · WebKit on-demand first-frame presentation — 未解决 / open
+<!-- engine-note: {"id":"Rally#7","status":"open","topic":"webkit-on-demand-first-presentation","workaround":["src/ui/host.mjs"]} -->
+
+- **现象 / Observation**：Windows Playwright WebKit 26.6、iPhone 15 Pro 配置，静态叠加菜单完成异步文本后未自动呈现；首屏按钮形状有但字形不可见，实际触屏后显示上一页。 · Static overlay text preparation completes but the visible title remains partially blank and the next touch exposes the previous page.
+- **游戏里的处理 / Workaround**：[src/ui/host.mjs](src/ui/host.mjs)：最后一次异步菜单任务结束后仅安排一次 250 ms invalidate；关闭宿主取消。 · Schedule one native invalidation 250 ms after all menu jobs settle, and cancel it on host disposal. 实拍首屏与触屏后画面正常，不强制连续重绘。 · Inspected title and subsequent touch screen both render correctly, without a continuous redraw loop.
+- **建议 / Proposal**：引擎异步资源就绪后保证最后接收帧正常交给合成器；测试静止首屏不点击即呈现，且呈现后不再连续提交。 · Ensure the last accepted asynchronously populated frame is presented; verify an untouched static page becomes visible and then stays on demand.
+- **状态 / Status**：对 Windows WebKit 已验证有限补帧绕过，未验证实体 iPhone。 · Bounded workaround verified on Windows WebKit; physical iOS remains unverified.

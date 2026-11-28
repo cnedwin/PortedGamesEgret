@@ -27,7 +27,9 @@ export function createDriveInput({ onError } = {}) {
     ...Object.fromEntries(Object.entries(BUTTONS).map(([name, bindings]) => [name, { bindings }]))
   });
   const keys = bindBrowserInputActions(actions, { passKeys: ['Tab', 'F5', 'F11', 'F12'], skipPrevented: true });
-  const pads = createBrowserGamepadInput({ onError });
+  // Browser Gamepad is optional (including Safari configurations without getGamepads).
+  // Touch and keyboard must remain usable when the optional host is absent.
+  const pads = typeof globalThis.navigator?.getGamepads === 'function' ? createBrowserGamepadInput({ onError }) : undefined;
   const padDown = new Set(),
     padPressed = new Set();
   const touch = { steer: 0, throttle: 0, brake: 0, active: false };
@@ -42,8 +44,8 @@ export function createDriveInput({ onError } = {}) {
     /** Read every source once a frame, before the game asks what was pressed. */
     poll(seconds, time = performance.now()) {
       keys.poll();
-      pads.poll(time);
-      const pad = pads.input.pad(0);
+      pads?.poll(time);
+      const pad = pads?.input.pad(0);
       padPressed.clear();
       for (const [action, button] of Object.entries(PAD)) {
         const down = Boolean(pad?.pressed(button));
@@ -72,11 +74,11 @@ export function createDriveInput({ onError } = {}) {
       actions.endFrame();
     },
     rumble(strength = 0.5, duration = 120) {
-      if (pads.input.pad(0)) pads.rumble(0, { duration, weak: strength, strong: strength * 0.6 });
+      if (pads?.input.pad(0)) pads.rumble(0, { duration, weak: strength, strong: strength * 0.6 });
     },
     dispose() {
       keys.dispose();
-      pads.dispose();
+      pads?.dispose();
     }
   };
 }

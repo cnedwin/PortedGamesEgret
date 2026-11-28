@@ -1,5 +1,5 @@
 import { EgretError } from '../EgretError.js';
-import { childrenOf, parentOf } from '../displayTreeState.js';
+import { childrenOf, parentOf } from '../displayNodeState.js';
 const records = new WeakMap();
 const terminal = new WeakSet();
 /** Only runtime UI construction installs a captured per-wrapper terminal path. */

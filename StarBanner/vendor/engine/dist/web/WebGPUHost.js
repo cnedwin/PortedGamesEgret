@@ -1,6 +1,6 @@
 import { SHARED_FRAME_PROFILE_2D } from '@egret/contracts';
 import { admitSharedWebGPUOptions } from './sharedWebGPUOptions.js';
-import { prepareSharedDraws2D, SharedPreparationError } from '../rendering/prepareSharedDraws2D.js';
+import { prepareSharedDrawsForSubmission2D, SharedPreparationError } from '../rendering/prepareSharedDraws2D.js';
 import { SharedPreparationRetention2D } from '../rendering/sharedPreparationRetention2D.js';
 import { planSharedSubmission2D, packSharedSubmission2D, packSharedRegionWindows2D, SHARED_REGION_WINDOW_STRIDE_2D, SHARED_REGION_WINDOW_BYTES_2D, materializeSharedPages2D, checkSharedCapacity2D, SharedStorageError2D } from './prepareSharedSubmission2D.js';
 import { SHARED_BATCH_PAGES_2D } from '../rendering/packSharedDraws2D.js';
@@ -1776,7 +1776,7 @@ class WebGPUHostImplementation {
                         height > 4294967295 ||
                         width > Math.floor(options.maxBackingPixels / height))
                         refuse('WEBGPU_BACKING_LIMIT');
-                    const prepared = prepareSharedDraws2D(frame, width, height, options, this.retention), ticket = this.ticket && !this.ticket.bound ? this.ticket : undefined;
+                    const prepared = prepareSharedDrawsForSubmission2D(frame, width, height, options, this.retention), ticket = this.ticket && !this.ticket.bound ? this.ticket : undefined;
                     const storage = planSharedSubmission2D(prepared, options, this.limits, this.sharedOwnerSnapshot(), staging ? options.enableReadback : ticket !== undefined);
                     this.active();
                     const packed = packSharedSubmission2D(prepared);
@@ -2793,6 +2793,7 @@ class WebGPUHostImplementation {
             const raw = begin({ colorAttachments: [colors] });
             gate();
             return {
+                hasFullViewport: false,
                 pass: capture(raw, ['setPipeline', 'setViewport', 'setScissorRect', 'setVertexBuffer', 'setBindGroup', 'draw']),
                 end: this.method(raw, 'end', gate)
             };
@@ -2801,8 +2802,13 @@ class WebGPUHostImplementation {
         const drawOne = (draw) => {
             const role = this.sharedRole(draw);
             active.pass.setPipeline(role.pipeline);
-            active.pass.setViewport(0, 0, width, height, 0, 1);
-            active.pass.setScissorRect(0, 0, width, height);
+            // These two states belong to the pass, including across pipeline changes.
+            // Empty passes keep their old call sequence. Reopening an attachment starts fresh.
+            if (!active.hasFullViewport) {
+                active.pass.setViewport(0, 0, width, height, 0, 1);
+                active.pass.setScissorRect(0, 0, width, height);
+                active.hasFullViewport = true;
+            }
             active.pass.setVertexBuffer(0, vertices.get(draw).buffer);
             active.pass.setBindGroup(0, bindings.get(draw));
             if (draw.regionWindow >= 0)

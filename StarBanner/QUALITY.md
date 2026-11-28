@@ -1,5 +1,18 @@
 # 品质验收 · Quality — 星旗战记 · Starbanner Tactics
 
+## iPhone 配置 WebKit 启动回归（2026-11-28） · WebKit startup compatibility
+
+Windows 上的 Playwright WebKit 26.6，iPhone 15 Pro 设备配置，竖屏 393 × 659 CSS px，独立的新浏览器上下文；不是 iPhone 真机或 iOS Safari 本体。改造前测试公开 Pages，改造后测试候选工作树的本地 HTTP 服务。
+
+Windows Playwright WebKit 26.6 with an iPhone 15 Pro profile (portrait, 393 × 659 CSS px, isolated fresh browser context); not a physical iPhone or iOS Safari itself. Baseline: public Pages; retest: candidate worktree over local HTTP.
+
+- 引擎副本 · Engine: `82561d6338a805f0e0459a2d5d42a284f9385b30`.
+- 改造前：公开页显示 “Can't find variable: OffscreenCanvas”。地图缩图、字宽探测共用 src/ui/scratch-canvas.mjs，优先 OffscreenCanvas，否则用不插入页面的 HTML canvas。正式首屏 bundle 按最新副本重新生成，三个输入输出哈希及预加载图测试通过。 / Before: the page failed with “Can't find variable: OffscreenCanvas”. Map thumbnail and text probes share src/ui/scratch-canvas.mjs, preferring OffscreenCanvas with a detached HTML canvas fallback. The official startup bundle was rebuilt and passed all three input/output hash and preload graph tests.
+- 按需绘制追加复测：原版本两张首屏截图（15/17 秒）均停在「载入中」，设置触摸后 3/5 秒两张图仍为标题；语义树早已切换，排除只看语义的误判。通过 src/ui/screen-present.mjs 在原生屏幕提交时调用正式 invalidate，并合并 250 ms 后一次补绘；不开启持续绘制。正式新 bundle 再测，15/17 秒两张均为完整标题，触摸设置后 3/5 秒两张均为实际设置（四张截图逐张核对）。 / Retained presentation recheck: two initial captures at 15/17 s stayed on Loading, and two 3/5 s after tapping Settings still showed the title although semantics had changed. src/ui/screen-present.mjs invalidates on native screen publication and coalesces one follow-up 250 ms later without continuous rendering. All four retest screenshots show the appropriate title or actual settings panel.
+- 改造后 / After：标题完整可见，实际触摸设置按钮后语义树出现设置控件。仅有 AUDIO_HOST_UNAVAILABLE 诊断（本环境缺少两个 AudioContext 构造器），不代表真实 iOS 音频表现。 / The complete title is visible and touching Settings exposes controls in the semantic tree. The only diagnostic is AUDIO_HOST_UNAVAILABLE (both audio context constructors absent); not an iOS audio result.
+- 复测无页面异常、控制台错误、HTTP 4xx/5xx 或失败请求（四项均 0）；`node --test test/*.test.mjs`：64/64 通过。 / No page exceptions, console errors, HTTP 4xx/5xx or failed requests on the local retest (zero in each category); 64/64 Node tests pass.
+- 仅验收启动、首屏截图及一次浏览器触摸操作；未覆盖整局、设备横竖屏切换、物理 iPhone、真实 iOS 音频、Safari 版本差异或性能。 / Startup, title screenshot and one browser touch event only; full playthrough, rotation, physical iPhone, real iOS audio, Safari version variation and performance were not covered.
+
 按 [QUALITY-CHECKLIST.md](../docs/QUALITY-CHECKLIST.md) 验收。自动项由 `node tools/quality.mjs StarBanner` 测量并写入本文件；人工和真机项没有跑过的写「未运行」。
 
 Checked against QUALITY-CHECKLIST.md. The automatic items were measured by `node tools/quality.mjs StarBanner`, which writes

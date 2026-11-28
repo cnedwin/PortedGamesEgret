@@ -1,0 +1,57 @@
+# 展示站 WebKit 兼容性验收 · Showcase WebKit compatibility
+
+2026-11-28 · [公开展示站 · Public showcase](https://cnedwin.github.io/PortedGamesEgret/)
+
+## 范围与环境 · Scope and environment
+
+- 展示站的 24 个游戏逐一从公开入口启动，再对候选版本复跑标题及一条有意义的触屏路线；不将菜单烟测当成全流程通关。 / All 24 showcase entries were opened from their public URLs and rechecked against the candidate through the title and a representative touchscreen interaction. This is not a campaign-completion test.
+- Windows Playwright WebKit 26.6 (build 2359), iPhone 15 Pro device profile, 393 × 659 CSS px, DPR 3; selected scenes also in landscape. Actual WebKit execution and browser touchscreen events, not physical iPhone/iOS Safari. Windows WebKit did not expose Web Audio, OffscreenCanvas or Gamepad in this run; this does not imply the same absence on modern iOS.
+- 游戏仓库起点 · Game baseline: `949bf17334b6385933fff9b199765275df54ed3c`. 受影响的引擎副本通过 `tools/vendor-game.mjs` 从已提交、实测候选 `82561d6338a805f0e0459a2d5d42a284f9385b30` 生成。 / Affected vendors were generated from the tested committed engine candidate, not manually patched. [Engine PR #570](https://github.com/cnedwin/Egret_rebuild/pull/570) merged into main as `ca9ff2a0ef9ff67af7795f9600ba40668383a0a2`; all required checks passed, including the four Windows shards, Linux, macOS and the formatter. The exact tested engine commit is retained in the game vendors. / 引擎修复已合并，游戏副本保留实际验收的提交。
+
+## 候选验证矩阵 · Candidate validation matrix
+
+| 游戏 / Game | 旧公开版或候选初测问题 / Initial observation | 候选触屏路线 / Candidate touch route | Node |
+|---|---|---|---:|
+| FPS | Native labels absent | Title → settings | 107 |
+| SnowTemple | Native raster state errors | Title → settings | 112 |
+| FiveRegiments | Missing OffscreenCanvas | Title → settings | 172 |
+| StarBanner | Missing OffscreenCanvas | Title → settings | 64 |
+| NineProvinces | Missing Web Audio host | Title → settings | 195 |
+| JY | IndexedDB Blob write failed | Data pack imported → title → settings | 75 |
+| Rally | Text raster exception; stale static frame | Title → driver selection | 42 |
+| FengshenChronicle | No observed blocking error | Title → role → city, unchanged | 53 |
+| TeaHorseRoad | Missing audio/gamepad APIs; dark 3D presentation | Title → departure → full 3D drive, cargo and controls | 47 |
+| Wulin | Missing text; stale loading frame | Title → prologue | 128 |
+| jelly-pandas | Static title stale | Character selection → gameplay | 49 |
+| LanternShadows | Native labels absent | Title → gameplay | 90 |
+| FivePhases | Native labels absent | Title → battle | 53 |
+| LoveElective | Native labels absent | Title → prologue | 65 |
+| MechanismCity | Audio unavailable; intro film blocked | Title → skip / automatic fallback → first level | 67 |
+| CanalWatch | Optional audio caused launch failure | Title → game | 35 |
+| NezhaSea | Optional audio caused launch failure | Title → play | 40 |
+| NightWardens | Gamepad and audio unavailable | Title → nights | 26 |
+| TaiwanMahjong | No audio host; stale initial canvas | Title → dealing/table | 34 |
+| PeachCreek | No audio host; title needed a second presentation | Title → save slots | 46 |
+| SandScroll | No audio host | Title → painting selection | 36 |
+| OperaDrums | No audio host | Title → settings; song requires real Web Audio | 39 |
+| InquestScrolls | Still canvas did not present title | Title → prologue | 28 |
+| LubanBridge | Empty labels and stale title | Title → first bridge | 44 |
+
+候选游戏 Node 合计 1,647 项（24 个独立套件）全部通过；共享经营模板另外 4/4。 / Candidate Node total: 1,647 across 24 independent game suites, plus 4/4 for the shared management template.
+
+## 修复机制与验收边界 · Fixes and acceptance boundary
+
+- Native game labels use the browser's actual fresh Canvas text defaults if an older implementation omits optional reporting; an explicit incompatible state remains an error. Strict low-level text mode remains separate. / 原生游戏文字使用新建画布的真实默认状态，不合成假字形。
+- For optional audio and gamepad facilities, feature-detect absent APIs rather than halting game initialization; keep normal paths on capable hosts. Rhythm playback remains unavailable without a real audio clock rather than inventing a score. / 非必需音频、手柄能力有明确降级；节奏游戏不伪造声音或分数。
+- OffscreenCanvas is optional in two browser texture builders; detached HTML canvas provides the equivalent path. / 离屏画布不可用时使用未挂载的 HTML 画布。
+- JY data persistence retries a rejected Blob transaction atomically with byte buffers, while keeping existing Blob reads compatible. / 资源持久化以字节缓冲重试且兼容旧数据。
+- MechanismCity presents a skip control immediately and bounds a video with no first frame; both actual skip and no-touch automatic fallback were checked (9.129 seconds observed from the sampled film screen). / 短片无法播放时不阻塞游戏。
+- TeaHorseRoad: the dynamic-resolution path accepted 208 frames and actual nonempty RGBA readback but the WebKit page stayed dark. Disabling dynamic resolution only on mobile Apple WebKit restored the full scene (734×343 backing vs 440×205 before); all quality choices remain available. Fixed resolution may cost mobile GPU time, not measured on physical iPhone. / 仅移动 Apple WebKit 固定分辨率，保留画质档；实际场景恢复，真机性能尚未测。
+- A bounded follow-up invalidation on affected static screens repairs observed stale WebKit presentation without a perpetual render loop. Wulin accepted image usage 6,887,856 / 67,108,864 bytes, zero refusal, zero pending raster jobs; one explicit invalidation restored its title. / 静止页面补一次有界刷新，保留按需绘制。
+- No game rules, balance, save formats, music files or visual assets were deliberately changed. / 不修改游戏规则、数值、存档格式、音频文件或美术资源。
+
+## 复跑 · Reproduce
+
+Use Playwright WebKit with the iPhone 15 Pro profile and start a fresh browser context on the public URL or a local HTTP server. Inspect both before-touch and after-touch screenshots, semantic controls with bounds, exceptions, console and failed HTTP responses. Each game also has the independent `node --test test/*.test.mjs` suite. See each game's QUALITY.md for route details.
+
+使用全新浏览器上下文，观察实际图像而不是只读语义树；按游戏的 QUALITY.md 中的入口复跑。物理 iPhone、真实扬声器与节奏音频、不同 iOS 版本、VoiceOver、长局稳定性和手机 GPU 性能尚未验证。 / Physical iPhone, actual speaker/rhythm audio, iOS version matrix, VoiceOver, long sessions and mobile GPU performance are not certified by this run.

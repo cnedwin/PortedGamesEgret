@@ -57,6 +57,15 @@ const app = {
 let artIndex = {};
 if (problems.length) app.notice = say(app.lang(), 'brokenSave');
 
+// Re-present each committed static screen once. Windows WebKit can retain the prior canvas
+// despite successful on-demand submission; this never changes the ongoing frame mode.
+let presentationTimer;
+function presentScreen() {
+  if (miniGame) return;
+  clearTimeout(presentationTimer);
+  presentationTimer = setTimeout(() => app.game?.invalidate(), 250);
+}
+
 let screen = null,
   screenLayer = null,
   over = null,
@@ -126,6 +135,7 @@ app.go = async (name, arg) => {
     window.egretGame.busy = false;
     window.egretGame.screen = screen?.name;
     window.egretGame.view = screen;
+    presentScreen();
   }
 };
 
@@ -142,6 +152,7 @@ app.overlay = (kind) => {
   over.kind = kind;
   focus.set(over.focus);
   window.egretGame.overlay = kind;
+  presentScreen();
 };
 app.confirm = (question, yes) => {
   if (dismissConfirm) return;

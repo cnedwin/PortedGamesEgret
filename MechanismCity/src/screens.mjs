@@ -6,6 +6,7 @@ import { createBitmapText } from '@egret/engine/bitmapfont';
 import { createScrollControl, createSelectionGroup, createControlKeys } from '@egret/engine/ui';
 import { semanticBoundsOf } from '@egret/engine/ui/semantics';
 import { createBrowserVideo } from '@egret/engine/web/video';
+import { startOptionalIntro } from './intro-playback.mjs';
 import { placeIllustration } from './art/illustrations.mjs';
 import { GOLD, INK } from './art/shapes.mjs';
 import { CHALLENGES, createChallenge } from './challenges.mjs';
@@ -115,7 +116,7 @@ export async function filmScreen(app, { then = 'title' } = {}) {
   ui.addChild(film.display);
   let finished = false;
   const done = () => {
-    if (finished) return;
+    if (finished || scope.signal.aborted) return;
     finished = true;
     app.save.update((data) => {
       data.seenIntro = true;
@@ -125,15 +126,10 @@ export async function filmScreen(app, { then = 'title' } = {}) {
   };
   film.onEnded(done);
   app.sound.music('title');
-  try {
-    await film.play();
-  } catch {
-    // A page that will not play the film goes straight on.
-    done();
-  }
+  // Build the skip control before starting the optional video: WebKit may leave play() pending.
+  const loading = await kit.label(ui, '载入开场短片…', { x: 0, y: 256, width: 960, align: 'center', size: 20, color: 0xf0e4c8 });
   const skip = await kit.button({ x: 960 - 150, y: 540 - 66, width: 130, height: 46, text: '跳过 ›', name: '跳过开场短片', onActivate: done, container: ui, small: true });
-  skip.root.alpha = 0;
-  animate(game.engine, scope, skip.root).wait(1).to({ alpha: 1 }, 0.4).start();
+  const playback = scope.use(startOptionalIntro(film, { fallback: done }));
   // The film's words, read out as they appear: the film carries them as pictures only.
   const started = performance.now();
   kit.own(
@@ -151,7 +147,14 @@ export async function filmScreen(app, { then = 'title' } = {}) {
   return {
     kit,
     update() {
-      void film.update();
+      if (finished) return;
+      if (film.state === 'failed') { playback.failed(); return; }
+      void film.update().then(shown => {
+        if (shown && !scope.signal.aborted) {
+          loading.display.visible = false;
+          playback.shown();
+        }
+      }).catch(() => playback.failed());
       // The pictures come at the size of the film; fit them to the stage.
       if (film.width) {
         const s = Math.min(960 / film.width, 540 / film.height);

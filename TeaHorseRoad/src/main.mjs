@@ -31,6 +31,7 @@ import { createFlora } from './world/flora.mjs';
 import { createLand, LAYER } from './world/land.mjs';
 import { createLandmarks } from './world/landmarks.mjs';
 import { createProgramBatcher, prepareRoadPrograms } from './world/programs.mjs';
+import { needsStableWorldCanvas } from './world/presentation.mjs';
 import { createRiverbank } from './world/riverbank.mjs';
 import { STATIONS, biomeAt, directionAt, pointAt } from './world/route.mjs';
 import { createSky } from './world/sky.mjs';
@@ -49,7 +50,11 @@ const waitForPaint = () => new Promise((resolve) => requestAnimationFrame(() => 
 
 // ---- the 3D world -------------------------------------------------------------------------------------------------
 const askedQuality = params.get('quality') ?? (settings.quality !== 'auto' ? settings.quality : undefined);
-const app = await createWorld3DApp(canvas, { toneMapping: 'aces', exposure: 0.82, ...(askedQuality ? { quality: askedQuality } : {}), onError: (cause) => console.error(cause) });
+const app = await createWorld3DApp(canvas, { toneMapping: 'aces', exposure: 0.82,
+  ...(askedQuality ? { quality: askedQuality } : {}),
+  // Keep the chosen quality preset but avoid the blank composited frame after dynamic resizing on mobile WebKit.
+  ...(needsStableWorldCanvas(navigator) ? { dynamicResolution: false } : {}),
+  onError: (cause) => console.error(cause) });
 const scene = new Scene3D();
 const camera = createPerspectiveCamera3D({ fov: 58, near: 0.3, far: 9000 });
 scene.addChild(camera);
@@ -872,8 +877,10 @@ function wake() {
     window.removeEventListener('keydown', wake, true);
   });
 }
-window.addEventListener('pointerup', wake, true);
-window.addEventListener('keydown', wake, true);
+if (sound.available) {
+  window.addEventListener('pointerup', wake, true);
+  window.addEventListener('keydown', wake, true);
+}
 
 // ---- the closing film, recorded from the game itself (tools/make-ending.mjs) --------------------------------------
 let filming = false;

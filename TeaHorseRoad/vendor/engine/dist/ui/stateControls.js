@@ -12,6 +12,14 @@ function displayTarget(value) {
         throw new EgretError('UI_CONTROL_OPTIONS');
     return value;
 }
+/** The release policy a toggle or a selection group hands to the action control of each press; checked there. */
+function releasePolicy(options) {
+    const { activation, tapTolerance } = options;
+    return {
+        ...(activation === undefined ? {} : { activation }),
+        ...(tapTolerance === undefined ? {} : { tapTolerance })
+    };
+}
 function callback(value) {
     if (value !== undefined && typeof value !== 'function')
         throw new EgretError('UI_CONTROL_OPTIONS');
@@ -135,7 +143,8 @@ export function createToggleControl(options) {
         input,
         target,
         onActivate: () => set(!checked),
-        ...(onPressChange === undefined ? {} : { onPressChange })
+        ...(onPressChange === undefined ? {} : { onPressChange }),
+        ...releasePolicy(options)
     });
     let closed = false;
     function open() {
@@ -250,13 +259,15 @@ export function createSelectionGroup(options) {
     }
     try {
         // Each item takes its press through an action control; whether the press may select is decided in one place, above.
+        const policy = releasePolicy(options);
         for (const entry of entries)
             entry.action = createSelectionItemAction({
                 input,
                 target: entry.target,
                 onActivate: () => {
                     choose(entry);
-                }
+                },
+                ...policy
             }, () => enabled && entry.enabled && !closed);
     }
     catch (cause) {

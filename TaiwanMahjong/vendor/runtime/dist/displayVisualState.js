@@ -1,6 +1,6 @@
 import { assertManagedMutable } from "./ui/managedState.js";
-import { assertLive, isDisplayNode } from "./displayTreeState.js";
-import { engineOf } from "./ownership.js";
+import { assertLive, isDisplayNode } from "./displayNodeState.js";
+import { engineOf } from "./engineAffinity.js";
 import { EgretError } from "./EgretError.js";
 // Authoritative per-node visual state excludes overridable public accessors.
 const states = new WeakMap();

@@ -5,3 +5,4 @@ export { bindBrowserInputActions, browserSaveStorage, createTouchButton, createT
 export { openBrowserAssetBundle } from './BrowserAssetBundle.js';
 export { openBrowserBundleCache, openIndexedDBSaveStorage } from './BrowserStorage.js';
 export { browserLanguages, prefersReducedMotion, watchReducedMotion } from './BrowserPreferences.js';
+export { pickBrowserTextFile, downloadBrowserTextFile } from './BrowserFileExchange.js';

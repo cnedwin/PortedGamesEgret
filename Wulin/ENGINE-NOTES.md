@@ -98,3 +98,11 @@ Engine copy: official main `a0fb4e6c40a93156acd49f78ebf622375193a92c` (including
 - 证据 · Evidence：同引擎四轮完整窗口峰54.1/50.0/50.0/58.3ms→33.3/37.5/29.2/29.2ms，LoAF四轮→0，后续 `SharedGLHost.poll` 的实际等待仍11.7–17.2ms；完整路线、鼠标及真实接受计数正常。 · Compare full-window and tail rather than merely leaving the cost beyond the first frame. [追踪与限制 / Detailed evidence](docs/realm-frame-pacing.md).
 - 状态 · Status：引擎 #567 已正式合入 main，新增可选提交阶段；等待未完全消失，仍需按设备验证启用。 · Engine #567 merged; the optional phase is official, while GPU completion wait still requires device-specific validation.
 - 建议 · Proposal：保留显式同帧提交阶段与精确时序诊断；继续观察平台GPU命令等待，不去掉必要的 `getError` 或将未接受 draw 标成已呈现。 · Keep the explicit phase and lifecycle validation; measure the remaining completion wait per device.
+
+### 12. WebKit 按需绘制的首屏可见性 · WebKit on-demand first-frame presentation — 未解决 / open
+<!-- engine-note: {"id":"Wulin#12","status":"open","topic":"webkit-on-demand-first-presentation","workaround":["src/ui/native-shell.mjs"]} -->
+
+- **现象 / Observation**：Windows Playwright WebKit 26.6、iPhone 15 Pro 配置，标题画面一直停留加载 0/1；语义树已有标题，接收帧 4 页 / 11 区域 / 6,887,856 B，拒绝帧和文字队列各为 0。一次 invalidate 可恢复。 · The visible title stays on loading 0/1 although the title is in the semantic tree, the accepted frame has 4 pages/11 regions/6,887,856 bytes, and frame refusals and pending text are both zero. One invalidate restores it.
+- **游戏里的处理 / Workaround**：[src/ui/native-shell.mjs](src/ui/native-shell.mjs)：每个新打开的原生页面或弹层只在挂载后 250ms 额外重绘一次。 · Invalidate once 250 ms after a newly opened native page or modal mounts. 实拍首屏与触屏后画面正常，不强制连续重绘。 · Inspected title and subsequent touch screen both render correctly, without a continuous redraw loop.
+- **建议 / Proposal**：引擎异步资源就绪后保证最后接收帧正常交给合成器；测试静止首屏不点击即呈现，且呈现后不再连续提交。 · Ensure the last accepted asynchronously populated frame is presented; verify an untouched static page becomes visible and then stays on demand.
+- **状态 / Status**：对 Windows WebKit 已验证有限补帧绕过，未验证实体 iPhone。 · Bounded workaround verified on Windows WebKit; physical iOS remains unverified.

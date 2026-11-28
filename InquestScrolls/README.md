@@ -84,6 +84,7 @@ findings are "too clean", and with Old Qin, his coroner's aide, reopens them one
 | `browser.createLabel`（`game.browser`） | 标题、按钮、印文等短字；小游戏里段落也由它按行拼出 · titles, buttons and seal words; in the mini game paragraphs too, line by line | [src/view/type.mjs](src/view/type.mjs), [src/view/plainText.mjs](src/view/plainText.mjs) |
 
 ## 已验证 · Verified
+- 2026-11-28: Windows WebKit iPhone 15 Pro 配置的本机候选首屏、触屏代表路径；非物理 iPhone；见 [QUALITY](QUALITY.md)。 · Candidate launch and representative touch route on Windows WebKit with the iPhone 15 Pro profile; not a physical iPhone. See [QUALITY](QUALITY.md).
 
 - `node --test InquestScrolls/test/*.test.mjs`：28 项通过（Node 22）。案卷审计——六案在中英两套案卷里各自可解、每个空的答案唯一、词囊里没有能同时填进两个空的词，且审计能抓出改坏的案卷；规则（收词、填空、核验的三种结果、三级提示、判词按关键词判定）；存档（新档、坏档、版本）；文字表中英齐全；字体子集盖住全部用字；引擎副本与 import map 一致、规则不碰引擎和页面。 · 28 tests pass in Node 22: the case audit (each case solvable in both languages, every blank with one answer, no word fitting two blanks, a broken case caught), the rules, the save, the word table, the font subset and the engine copy.
 - `node InquestScrolls/test/accept.mjs`：无头 Chromium（SwiftShader 软件渲染）里走完标题 → 序 → 案情 → 第一案：鼠标点掉老秦、点尸身、点词收进词囊，J 打开卷宗，用鼠标把词签拖进空位，先错一处得到“尚有两处以内不实”，改对盖印，人物页对上名字后结案；第二案连要三级提示；在原生文本框里写笔录并存档；设置里关音乐、切英文；最后一案用画布文字输入写判词、呈上、看到终卷；不用 CanvasKit、用字盘的小游戏模式下证物、笔录和判词都能完成；坏档重开；竖屏 720×1280 打开案件。标题与盖印的卷宗两张截图基线一致，没有控制台错误。 · The whole walk in headless Chromium with software rendering, as listed, with two matching baselines and a clean console.
@@ -138,10 +139,10 @@ findings are "too clean", and with Old Qin, his coroner's aide, reopens them one
 
 ## 引擎副本 · Engine copy
 
-引擎副本取自 [Egret_rebuild](https://github.com/cnedwin/Egret_rebuild) 提交 `95897d78095ae8fda9e34dbc13bbbd15db8eaa12`，由引擎仓库的 `tools/vendor-game.mjs` 复制，见 [vendor/SOURCE.md](vendor/SOURCE.md)。
+引擎副本取自 [Egret_rebuild](https://github.com/cnedwin/Egret_rebuild) 提交 `82561d6338a805f0e0459a2d5d42a284f9385b30`，由引擎仓库的 `tools/vendor-game.mjs` 复制，见 [vendor/SOURCE.md](vendor/SOURCE.md)。
 
 The engine copy is from [Egret_rebuild](https://github.com/cnedwin/Egret_rebuild) commit
-`95897d78095ae8fda9e34dbc13bbbd15db8eaa12`, copied by the engine's `tools/vendor-game.mjs`; see
+`82561d6338a805f0e0459a2d5d42a284f9385b30`, copied by the engine's `tools/vendor-game.mjs`; see
 [vendor/SOURCE.md](vendor/SOURCE.md).
 
 ```sh

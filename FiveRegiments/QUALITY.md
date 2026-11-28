@@ -1,5 +1,17 @@
 # 品质验收 · Quality — 五营争锋 · Five Regiments
 
+## iPhone 配置 WebKit 启动回归（2026-11-28） · WebKit startup compatibility
+
+Windows 上的 Playwright WebKit 26.6，iPhone 15 Pro 设备配置，竖屏 393 × 659 CSS px，独立的新浏览器上下文；不是 iPhone 真机或 iOS Safari 本体。改造前测试公开 Pages，改造后测试候选工作树的本地 HTTP 服务。
+
+Windows Playwright WebKit 26.6 with an iPhone 15 Pro profile (portrait, 393 × 659 CSS px, isolated fresh browser context); not a physical iPhone or iOS Safari itself. Baseline: public Pages; retest: candidate worktree over local HTTP.
+
+- 引擎副本 · Engine: `82561d6338a805f0e0459a2d5d42a284f9385b30`.
+- 改造前：公开页显示 “Can't find variable: OffscreenCanvas”。src/view/scratch-canvas.mjs 按能力选择 OffscreenCanvas 或尺寸一致、不插入页面的 HTML canvas。 / Before: the page failed with “Can't find variable: OffscreenCanvas”. src/view/scratch-canvas.mjs selects OffscreenCanvas when present or an equivalently sized detached HTML canvas otherwise.
+- 改造后 / After：标题可见，实际触摸设置按钮打开设置。仅有 AUDIO_HOST_UNAVAILABLE 诊断：该 Windows WebKit 配置没有两个 AudioContext 构造器，不代表 iPhone 扬声器表现。 / The title is visible and touching Settings opens its panel. AUDIO_HOST_UNAVAILABLE remains a diagnostic: neither audio context constructor exists in this host; not an iPhone speaker result.
+- 复测无页面异常、控制台错误、HTTP 4xx/5xx 或失败请求（四项均 0）；`node --test test/*.test.mjs`：172/172 通过。 / No page exceptions, console errors, HTTP 4xx/5xx or failed requests on the local retest (zero in each category); 172/172 Node tests pass.
+- 仅验收启动、首屏截图及一次浏览器触摸操作；未覆盖整局、设备横竖屏切换、物理 iPhone、真实 iOS 音频、Safari 版本差异或性能。 / Startup, title screenshot and one browser touch event only; full playthrough, rotation, physical iPhone, real iOS audio, Safari version variation and performance were not covered.
+
 按 [QUALITY-CHECKLIST.md](../docs/QUALITY-CHECKLIST.md) 验收。自动项由 `node tools/quality.mjs FiveRegiments` 测量并写入本文件；人工和真机项没有跑过的写「未运行」。
 
 Checked against QUALITY-CHECKLIST.md. The automatic items were measured by `node tools/quality.mjs FiveRegiments`, which writes

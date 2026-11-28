@@ -10,6 +10,7 @@ import { keyCap } from './viewParts.js';
 import { planConfirmLayout, prepareConfirmCopy } from './playConfirm.js';
 import { createPlayViewScrolls } from './playViewScroll.js';
 import { clippedDisplayRect } from './screenClipGeometry.js';
+import { createBrowserTextInput } from './BrowserTextInput.js';
 // Keep declarative loads within BrowserGame's image budget across all views in this host.
 const MAX_VIEW_IMAGE_LOADS = 4;
 const KEYS_OF = {
@@ -63,6 +64,10 @@ export function createPlayViews(game, hooks) {
         };
     }
     let focused, modalOwner;
+    let textEditor;
+    let editing;
+    const selectionViews = new Set();
+    const cancelSelections = new Set();
     const beforeModal = new WeakMap();
     const topModal = () => {
         let modal;
@@ -86,12 +91,85 @@ export function createPlayViews(game, hooks) {
         focused = next;
         focused?.owner.focusMark(focused.name, true);
     };
+    function cancelEdit(owner) {
+        if (editing !== undefined && (owner === undefined || editing.owner === owner))
+            textEditor?.cancel();
+    }
+    function syncEditing() {
+        const current = editing;
+        if (current === undefined || textEditor === undefined)
+            return;
+        if (!eligible({ owner: current.owner, name: current.name }))
+            return cancelEdit();
+        const rect = current.owner.view.visibleRect(current.name);
+        if (rect === undefined || rect.width < 1 || rect.height < 1)
+            return cancelEdit();
+        const { width, height } = game.screen;
+        if (width !== current.width || height !== current.height) {
+            textEditor.resize(width, height);
+            current.width = width;
+            current.height = height;
+        }
+        if (rect.x !== current.rect.x ||
+            rect.y !== current.rect.y ||
+            rect.width !== current.rect.width ||
+            rect.height !== current.rect.height) {
+            textEditor.move(rect);
+            current.rect = rect;
+        }
+    }
+    function startEdit(owner, name, options) {
+        if (!eligible({ owner, name }))
+            return false;
+        const rect = owner.view.visibleRect(name);
+        if (rect === undefined || rect.width < 1 || rect.height < 1)
+            return false;
+        cancelEdit();
+        // Native editing is only created when requested, with the browser's control,
+        // selection, composition and key isolation rather than a second text editor.
+        const { width, height } = game.screen;
+        textEditor ??= createBrowserTextInput({
+            canvas: game.canvas,
+            logicalWidth: width,
+            logicalHeight: height,
+            zIndex: 30,
+            onError: hooks.failed
+        });
+        focus({ owner, name });
+        const current = { owner, name, rect, width, height };
+        editing = current;
+        try {
+            textEditor.resize(width, height);
+            textEditor.open({
+                ...options,
+                ...rect,
+                onCommit(value) {
+                    if (editing === current)
+                        editing = undefined;
+                    options.onCommit?.(value);
+                },
+                onCancel() {
+                    if (editing === current)
+                        editing = undefined;
+                    options.onCancel?.();
+                }
+            });
+        }
+        catch (cause) {
+            if (editing === current)
+                editing = undefined;
+            throw cause;
+        }
+        return true;
+    }
     const syncModalFocus = () => {
         const modal = topModal();
         if (modal === modalOwner)
             return;
         const previous = modalOwner;
         modalOwner = modal;
+        if (editing !== undefined && !inView(editing.owner, modal))
+            cancelEdit();
         if (modal !== undefined && !beforeModal.has(modal)) {
             beforeModal.set(modal, focused);
             const name = modal.initialFocus;
@@ -1241,6 +1319,15 @@ export function createPlayViews(game, hooks) {
                 focus({ owner: record, name });
                 return true;
             },
+            edit(name, request) {
+                return startEdit(record, name, request);
+            },
+            get editing() {
+                return editing?.owner === record;
+            },
+            cancelEdit() {
+                cancelEdit(record);
+            },
             replaceChildren,
             refresh,
             show() {
@@ -1253,6 +1340,7 @@ export function createPlayViews(game, hooks) {
             hide() {
                 shown = false;
                 root.visible = false;
+                cancelEdit(record);
                 syncModalFocus();
             },
             cover() {
@@ -1269,6 +1357,7 @@ export function createPlayViews(game, hooks) {
             deactivate() {
                 active = false;
                 root.touchChildren = false;
+                cancelEdit(record);
                 syncModalFocus();
             },
             close() {
@@ -1366,6 +1455,7 @@ export function createPlayViews(game, hooks) {
                 if (ended)
                     return;
                 ended = true;
+                cancelEdit(record);
                 live.delete(record);
                 syncModalFocus();
                 if (focused?.owner === record)
@@ -1449,6 +1539,116 @@ export function createPlayViews(game, hooks) {
         // Even if a queued modal cannot be built, later valid confirmations still get a turn.
         asked = turn.then(() => undefined, () => undefined);
         return turn;
+    };
+    const select = (choices, options = {}) => {
+        if (!Array.isArray(choices) || choices.length > 1000)
+            throw new EgretError('UI_VIEW_BINDING_INVALID', { cause: 'select takes at most 1000 choices' });
+        const values = new Set();
+        for (const choice of choices) {
+            if (!choice ||
+                typeof choice !== 'object' ||
+                !(typeof choice.value === 'string' || (typeof choice.value === 'number' && Number.isFinite(choice.value))) ||
+                typeof choice.text !== 'string' ||
+                !choice.text.trim() ||
+                (choice.disabled !== undefined && typeof choice.disabled !== 'boolean') ||
+                values.has(choice.value))
+                throw new EgretError('UI_VIEW_BINDING_INVALID', {
+                    cause: 'select choices need unique values, text and optional disabled'
+                });
+            values.add(choice.value);
+        }
+        if (options.signal?.aborted)
+            return Promise.resolve(undefined);
+        return new Promise((resolve, reject) => {
+            let shown, finished = false;
+            const finish = (value) => {
+                if (finished)
+                    return;
+                finished = true;
+                cancelSelections.delete(cancel);
+                options.signal?.removeEventListener('abort', cancel);
+                if (shown !== undefined) {
+                    selectionViews.delete(shown);
+                    shown.close();
+                }
+                resolve(value);
+            };
+            const cancel = () => finish();
+            const bind = {};
+            const firstEnabled = choices.findIndex(choice => !choice.disabled);
+            const selectedIndex = choices.findIndex(choice => choice.value === options.value && !choice.disabled);
+            const items = choices.map((choice, index) => {
+                const name = 'choice' + index;
+                const selected = choice.value === options.value;
+                bind[name] = {
+                    label: () => choice.text,
+                    disabled: () => choice.disabled === true,
+                    tap: () => finish(choice.value)
+                };
+                return {
+                    type: 'button',
+                    name,
+                    text: (selected ? '✓ ' : '') + choice.text,
+                    width: 'fill',
+                    height: 52,
+                    ...(selected ? { color: options.skin?.accent ?? 0x38604f } : {})
+                };
+            });
+            bind.cancel = { tap: cancel };
+            const parts = [
+                ...(options.title === undefined
+                    ? []
+                    : [
+                        {
+                            type: 'text',
+                            name: 'title',
+                            text: options.title,
+                            width: 'fill',
+                            height: 40,
+                            bold: true
+                        }
+                    ]),
+                {
+                    type: 'panel',
+                    name: 'choices',
+                    layout: 'column',
+                    width: 'fill',
+                    height: 'fill',
+                    scroll: 'vertical',
+                    gap: 5,
+                    children: items
+                },
+                { type: 'button', name: 'cancel', text: options.cancel ?? 'Cancel', width: 'fill', height: 48 }
+            ];
+            try {
+                shown = view({
+                    modal: true,
+                    ...(options.title === undefined ? {} : { label: options.title }),
+                    ...(options.skin === undefined ? {} : { skin: options.skin }),
+                    root: {
+                        type: 'panel',
+                        layout: 'column',
+                        anchor: 'center',
+                        width: '92%',
+                        height: '90%',
+                        card: true,
+                        padding: 8,
+                        gap: 6,
+                        children: parts
+                    }
+                }, {
+                    initialFocus: selectedIndex >= 0 ? 'choice' + selectedIndex : firstEnabled >= 0 ? 'choice' + firstEnabled : 'cancel',
+                    bind,
+                    dismiss: cancel
+                });
+                selectionViews.add(shown);
+                cancelSelections.add(cancel);
+                options.signal?.addEventListener('abort', cancel, { once: true });
+            }
+            catch (cause) {
+                reject(cause);
+            }
+        });
     };
     const hints = (list) => {
         let current = [], view, device = '', shown = [], ended = false;
@@ -1615,10 +1815,14 @@ export function createPlayViews(game, hooks) {
     return {
         view,
         confirm,
+        select,
+        get editing() {
+            return editing !== undefined;
+        },
         hints,
         loading,
         get asking() {
-            return open !== undefined;
+            return open !== undefined || cancelSelections.size !== 0;
         },
         get modalActive() {
             return topModal() !== undefined;
@@ -1627,6 +1831,13 @@ export function createPlayViews(game, hooks) {
         keyDown(event, embedded) {
             if (event.altKey || event.ctrlKey || event.metaKey)
                 return false;
+            if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(event.code) &&
+                modalOwner !== undefined &&
+                selectionViews.has(modalOwner.view)) {
+                if (!event.repeat)
+                    moveFocus(event.code === 'ArrowUp' || event.code === 'ArrowLeft' ? -1 : 1, true, modalOwner);
+                return true;
+            }
             if (event.code !== 'Escape' && event.code !== 'Tab' && event.code !== 'Enter' && event.code !== 'Space')
                 return false;
             syncModalFocus();
@@ -1653,6 +1864,11 @@ export function createPlayViews(game, hooks) {
         },
         padButtons(pressed, legacyAsking) {
             syncModalFocus();
+            if (editing !== undefined) {
+                if (pressed.has('b'))
+                    cancelEdit();
+                return pausedModalPadButtons;
+            }
             const modal = modalOwner;
             let owner = modal;
             if (owner === undefined && !legacyAsking)
@@ -1704,6 +1920,7 @@ export function createPlayViews(game, hooks) {
                 }
             }
             syncModalFocus();
+            syncEditing();
             if (focused !== undefined) {
                 if (!focused.owner.keeps(focused.name))
                     focus(undefined);
@@ -1727,11 +1944,17 @@ export function createPlayViews(game, hooks) {
                     hooks.failed(cause);
                 }
             }
+            syncEditing();
         },
         reset() {
             // A restart has taken the sprites away; what is left is to forget the views and their semantics. A question
             // still open is answered no, so what awaits it goes on.
             open?.answer(false);
+            for (const cancel of [...cancelSelections])
+                cancel();
+            cancelEdit();
+            textEditor?.dispose();
+            textEditor = undefined;
             for (const record of [...hintBars])
                 record.end();
             for (const record of [...live])

@@ -273,6 +273,6 @@ test/                   规则与资源的检查 · checks of the rules and the 
 
 All playable screens use native Egret Play views, with a semantic tree for keyboard focus, accessibility names and browser acceptance. Expanded screen layout keeps the portrait HUD and controls outside the shadow cloth. The original rules, three stages, record keys and audio mix remain unchanged. Horizontal analog input and held jumping use native engine pointer sessions. Only the pre-engine recoverable boot notice remains in HTML.
 
-引擎副本取自 [Egret_rebuild](https://github.com/cnedwin/Egret_rebuild) 提交 `83bec954ef253be13455af2016af956376f98b71`，由引擎仓库的 `tools/vendor-game.mjs` 复制，见 [vendor/SOURCE.md](vendor/SOURCE.md)。
+引擎副本取自 [Egret_rebuild](https://github.com/cnedwin/Egret_rebuild) 提交 `82561d6338a805f0e0459a2d5d42a284f9385b30`，由引擎仓库的 `tools/vendor-game.mjs` 复制，见 [vendor/SOURCE.md](vendor/SOURCE.md)。
 
-The engine copy is from [Egret_rebuild](https://github.com/cnedwin/Egret_rebuild) commit `83bec954ef253be13455af2016af956376f98b71`, copied by the engine's `tools/vendor-game.mjs`; see [vendor/SOURCE.md](vendor/SOURCE.md).
+The engine copy is from [Egret_rebuild](https://github.com/cnedwin/Egret_rebuild) commit `82561d6338a805f0e0459a2d5d42a284f9385b30`, copied by the engine's `tools/vendor-game.mjs`; see [vendor/SOURCE.md](vendor/SOURCE.md).

@@ -129,3 +129,11 @@ node test/screens.mjs --mode perf --out <new-output-directory>
 ```
 
 此輪為候選分支的本機驗收，尚未部署到公開頁。模擬 884×1104 折疊屏與平板已測，但沒有操作實體 Fold7 內螢幕或實體平板，亦未覆蓋真實瀏海遮蔽、Safari、Firefox、微信內建瀏覽器、真人讀屏、實體手柄、未輔助手指操作、揚聲器主觀混音。rAF 為短時瀏覽器前景採樣，不代表整局或隔離 GPU 時間；未重做四風完整一將的真機測試。存檔維持既有設定與戰績格式，不新增進行中牌局快照。 · Validation was on the candidate branch, not public deployment. Foldable and tablet profiles are emulated, not physical inner-display/tablet tests. Real cutouts, Safari, Firefox, WeChat, live screen-reader speech, controller, unaided finger input and subjective speaker mixing are untested. Short foreground rAF does not measure isolated GPU work or certify a full match; no fresh four-wind hardware run. Saved settings and records retain their original format, not a live-hand snapshot.
+
+## 2026-11-28 WebKit 兼容性 · WebKit compatibility
+
+- 旧公开版 Web Audio 缺失时启动异常；候选版允许静音启动。标题首绘曾为纯色，标题切换时单次延迟刷新后真实可见，触屏「開始打牌」进入牌桌。 · The public baseline failed without Web Audio. The candidate starts silently when needed; one deferred refresh repairs the initially solid title and a real touchscreen tap enters the table.
+- Node: 34/34. 候选引擎 · candidate engine: `82561d6338a805f0e0459a2d5d42a284f9385b30`.
+- 本机 Windows Playwright WebKit 26.6，iPhone 15 Pro 设备配置（393×659 CSS px，DPR 3），真实浏览器触屏事件，无物理 iPhone；仅首屏和代表性操作，不是整局或实机性能、声学验收。 · Windows Playwright WebKit 26.6, iPhone 15 Pro device profile (393×659 CSS px, DPR 3), actual browser touchscreen events, not a physical iPhone; launch and representative interaction only, not full-session performance or acoustic certification.
+- 本轮候选烟测页面异常、控制台错误、HTTP 4xx/5xx 均为 0。 · Candidate smoke: no page exceptions, console errors or HTTP 4xx/5xx.
+- [全站记录 · Showcase compatibility record](../docs/SAFARI-WEBKIT-20261128.md)

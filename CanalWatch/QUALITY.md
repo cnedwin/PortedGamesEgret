@@ -70,3 +70,12 @@
 - 边界 · Limits：本轮真机是回归短路线，不是新的完整十二波或双闸五波通关；胜败与分支存档仍由浏览器现有结果 fixture 及 Node 覆盖。不把真实旗舰机与中档设备、模拟尺寸或 GPU 执行时间混为一谈。#505 仅提供 WebGL2 retained layer，本作保持现有仅 resize 重画的 Canvas2D 美术，因此不声称 GPU 静态缓存速度提升。· Short physical regression, not a full campaign or GPU timer result.
 
 正式副本 · Released engine copy：94bd70fb26b1f81794c9c6fbbb258c655fcd19df。官方工具重生成后，与实测候选的所有 356 个记录文件逐项校验 SHA-256，除 vendor/SOURCE.md 的正式版本标记外 355 个文件均完全相同（运行时、导入映射、页面均一致），因此上述实际验收适用于正式运行时代码。 · Official generation from main is byte-identical to the tested candidate except the provenance pin in SOURCE.md.
+
+## 2026-11-28 WebKit 兼容回归 · WebKit compatibility regression
+
+- 引擎副本 · Engine copy: `82561d6338a805f0e0459a2d5d42a284f9385b30` (official vendor tool).
+- 环境 · Environment: Windows 上的 Playwright WebKit，iPhone 15 Pro 设备配置（393×659 页面视口、DPR 3），全新浏览器上下文及实际自动化触屏点击；改前 GitHub Pages，改后本地同一游戏目录。**不是 iPhone 或 iOS Safari 真机。** · Windows Playwright WebKit, iPhone 15 Pro device profile (393×659 page viewport, DPR 3), fresh context and actual browser touchscreen taps; public Pages baseline, local repaired build. **Not physical iPhone or iOS Safari.**
+- 改前 · Before: 无 Web Audio 宿主时，Play 内置音频初始化报 AUDIO_HOST_UNAVAILABLE，无法进入。 · The built-in Play audio initialization failed with AUDIO_HOST_UNAVAILABLE on a host without Web Audio.
+- 改后 · After: 实际触屏选择「寻常」，进入可读的首关地图和建造界面；无音频宿主仍可玩，有音频宿主的正常混音路径保留。 · Touching Normal entered the first map with readable UI. Gameplay continues on an audio-less host; the existing sound path is retained when available.
+- 验证 · Evidence: title and post-tap screenshots visually reviewed; zero uncaught page errors, console errors and HTTP error responses on the repaired route. The directory's `node --test test/*.test.mjs` suite passed 35/35. 未改写旧的截图与帧率基线。 · Existing screenshot and timing baselines are unchanged.
+- 范围 · Limits: 本轮为启动与代表性触屏路线，不是整局；没有测物理 iPhone、iOS Safari 音频、Safari GPU/帧时间、真机刘海区域或系统读屏。Windows WebKit 缺少 Web Audio 不代表实际 iPhone Safari 缺少 Web Audio。 · Startup and representative interaction, not a full session; no physical iPhone, iOS Safari audio, Safari GPU/frame time, physical notch or system screen reader was tested. Windows WebKit's absence of Web Audio does not imply the same limitation on an iPhone.

@@ -1,8 +1,9 @@
 import { World3DError } from '../../rendering/world3d/core3D.js';
+import { Geometry3D } from '../../rendering/world3d/Geometry3D.js';
 import { linearToSrgb, mat3NormalFromMat4, mat4Invert } from '../../rendering/world3d/math3D.js';
 import { SkinnedInstancedMesh3D } from '../../rendering/world3d/AnimationTexture3D.js';
 import { GpuParticles3D } from '../../rendering/world3d/GpuParticles3D.js';
-import { RenderList3D } from '../../rendering/world3d/RenderList3D.js';
+import { AutoBatchMesh3D, canAutoInstance3D, RenderList3D } from '../../rendering/world3d/RenderList3D.js';
 import { CubeTexture3D, RenderTarget3D } from '../../rendering/world3d/Texture3D.js';
 import { FRAME_BLOCK_FLOATS_3D, FRAME_OFFSETS_3D, outputToneMapping3D, planShadows3D, TILED_LIGHTS_3D, writeFrameBlock3D, writeTiledLights3D } from './frame3D.js';
 import { createPostProcessSettings3D, outlineActive3D, postViewFromCamera3D } from './post3D.js';
@@ -144,8 +145,11 @@ export class WebGL2Renderer3D {
     get isContextLost() {
         return this.#lost || this.#gl.isContextLost();
     }
-    /** Link and initialize the specified draw variants without submitting any draws. */
-    async preparePrograms(requests) {
+    /**
+     * Link the requested draws without rendering. With includeAutoInstancing, also warm the
+     * matrix-only batch program that eligible plain meshes may use once enough are visible.
+     */
+    async preparePrograms(requests, options = {}) {
         if (this.#disposed)
             throw new World3DError('WORLD3D_DISPOSED', 'renderer');
         if (this.isContextLost)
@@ -177,9 +181,114 @@ export class WebGL2Renderer3D {
                 : V.depthOnly;
             const morphs = geometry.morphTargets;
             const morphAttributes = !morphs.length ? 0 : morphs.some(morph => morph.normal) ? 2 : 1;
-            programs.push(this.programRequest(material, this.meshProgramVariant(mesh, geometry, material, flags, morphAttributes)));
+            const variant = this.meshProgramVariant(mesh, geometry, material, flags, morphAttributes);
+            programs.push(this.programRequest(material, variant));
+            if (options.includeAutoInstancing && this.autoInstancing) {
+                // Match the render list's winding test even before the scene's first frame.
+                mesh.updateWorldMatrix();
+                const shadow = pass === 'shadow';
+                if (canAutoInstance3D(mesh, material, shadow) &&
+                    (!shadow || (shadows && mesh.castShadow)) &&
+                    (pass === 'color' || geometry.topology === 'triangles') &&
+                    (pass !== 'depth-prepass' || material.depthWrite)) {
+                    programs.push(this.programRequest(material, variant | V.instancing));
+                }
+            }
         }
         await this.#resources.preparePrograms(programs);
+    }
+    /**
+     * Upload an explicit list of geometries into the normal draw cache, without a draw or
+     * shader link. Yield before and between bounded slices, restoring touched GL bindings.
+     * This is CPU submission scheduling, not a GPU completion fence.
+     */
+    async prepareGeometries(geometries, options = {}) {
+        const gl = this.#gl, resources = this.#resources;
+        const requireCurrent = () => {
+            if (this.#disposed)
+                throw new World3DError('WORLD3D_DISPOSED', 'renderer');
+            if (this.isContextLost || this.#resources !== resources)
+                throw new World3DError('WORLD3D_CONTEXT_LOST', 'geometry preparation');
+        };
+        requireCurrent();
+        if (!Array.isArray(geometries) || !options || typeof options !== 'object')
+            throw new World3DError('WORLD3D_INPUT_INVALID', 'geometry preparation');
+        if (geometries.length > 16384)
+            throw new World3DError('WORLD3D_BUDGET', 'geometry preparation list');
+        const { budgetMs = 4, maxPerSlice = 16, signal } = options;
+        if (!Number.isFinite(budgetMs) ||
+            budgetMs < 0.25 ||
+            budgetMs > 16 ||
+            !Number.isInteger(maxPerSlice) ||
+            maxPerSlice < 1 ||
+            maxPerSlice > 64 ||
+            (signal !== undefined && (!signal || typeof signal !== 'object' || typeof signal.aborted !== 'boolean')))
+            throw new World3DError('WORLD3D_INPUT_INVALID', 'geometry preparation options');
+        const check = () => {
+            requireCurrent();
+            if (signal?.aborted)
+                throw new World3DError('WORLD3D_RESOURCE_FAILED', 'geometry preparation cancelled', signal.reason);
+        };
+        check();
+        const unique = new Set();
+        for (const geometry of geometries) {
+            if (!(geometry instanceof Geometry3D))
+                throw new World3DError('WORLD3D_INPUT_INVALID', 'geometry preparation input');
+            if (geometry.isDisposed)
+                throw new World3DError('WORLD3D_DISPOSED', 'geometry preparation input');
+            unique.add(geometry);
+        }
+        const inputs = [...unique];
+        let cursor = 0;
+        while (cursor < inputs.length) {
+            await new Promise(resolve => setTimeout(resolve, 0));
+            check();
+            const started = performance.now();
+            const end = Math.min(inputs.length, cursor + maxPerSlice);
+            const vao = gl.getParameter(gl.VERTEX_ARRAY_BINDING);
+            const array = gl.getParameter(gl.ARRAY_BUFFER_BINDING);
+            // Geometry normally only changes vertex/index bindings. Morph storage is a geometry-owned
+            // data texture, and additionally touches one texture unit and unpack flip state.
+            const hasMorph = inputs.slice(cursor, end).some(geometry => geometry.morphTargets.length > 0);
+            const morphUnit = gl.TEXTURE0 + TEXTURE_UNITS_3D.morph;
+            let active, texture = null, flip = false;
+            try {
+                if (hasMorph) {
+                    active = gl.getParameter(gl.ACTIVE_TEXTURE);
+                    flip = gl.getParameter(gl.UNPACK_FLIP_Y_WEBGL);
+                    gl.activeTexture(morphUnit);
+                    texture = gl.getParameter(gl.TEXTURE_BINDING_2D);
+                    gl.activeTexture(active);
+                }
+                do {
+                    check();
+                    const geometry = inputs[cursor];
+                    if (geometry.isDisposed)
+                        throw new World3DError('WORLD3D_DISPOSED', 'geometry preparation input');
+                    resources.geometry(geometry);
+                    cursor++;
+                    check();
+                } while (cursor < end && performance.now() - started < budgetMs);
+            }
+            finally {
+                // Do not resurrect handles from a lost generation. A layout refresh may retire a
+                // previously bound buffer/texture; in that case null is the only valid restoration.
+                if (!this.#disposed && this.#resources === resources && !this.isContextLost) {
+                    gl.bindVertexArray(vao && gl.isVertexArray(vao) ? vao : null);
+                    gl.bindBuffer(gl.ARRAY_BUFFER, array && gl.isBuffer(array) ? array : null);
+                    if (active !== undefined) {
+                        gl.activeTexture(morphUnit);
+                        gl.bindTexture(gl.TEXTURE_2D, texture && gl.isTexture(texture) ? texture : null);
+                        gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, flip);
+                        gl.activeTexture(active);
+                    }
+                }
+            }
+        }
+        check();
+        for (const geometry of inputs)
+            if (geometry.isDisposed)
+                throw new World3DError('WORLD3D_DISPOSED', 'geometry preparation input');
     }
     /** The underlying context, for advanced interop. Restore any state you change. */
     get context() {
@@ -905,7 +1014,7 @@ export class WebGL2Renderer3D {
         }
         return variant;
     }
-    draw(item, frameFlags, depthPass) {
+    draw(item, frameFlags, depthPass, memberWorld) {
         const depthOnly = depthPass !== undefined, shadow = depthPass === 'shadow';
         const gl = this.#gl, { mesh, geometry, material } = item, resources = this.#resources;
         const gpu = resources.geometry(geometry);
@@ -915,7 +1024,19 @@ export class WebGL2Renderer3D {
                 (this.#sceneDepthReady ? V.softDepth : 0) |
                 (this.#shadowCount > 0 ? V.receiveShadow : 0) |
                 (this.#grabbed ? V.transmission : 0);
-        const variant = this.meshProgramVariant(mesh, geometry, material, flags, gpu.morph?.attributes ?? 0);
+        let variant = this.meshProgramVariant(mesh, geometry, material, flags, gpu.morph?.attributes ?? 0);
+        if (memberWorld)
+            variant &= ~V.instancing;
+        else if (resources.hasPendingPrograms &&
+            mesh instanceof AutoBatchMesh3D &&
+            material.shader === undefined &&
+            resources.canUsePreparedAlternative(this.programRequest(material, variant).key, this.programRequest(material, variant & ~V.instancing).key)) {
+            // A linked ordinary program can draw these same transforms while the batch program is pending.
+            // Authored instance meshes and custom shaders may rely on per-instance attributes or gl_InstanceID.
+            for (let i = 0; i < mesh.count; i++)
+                this.draw(item, frameFlags, depthPass, mesh.instanceMatrices.subarray(i * 16, i * 16 + 16));
+            return;
+        }
         const instanced = (variant & V.instancing) !== 0, skinned = (variant & V.skin) !== 0;
         const crowd = (variant & V.skinInstancing) !== 0 ? mesh : undefined;
         const program = this.selectProgram(material, variant), u = program.uniforms, frame = this.#list.frame;
@@ -935,7 +1056,7 @@ export class WebGL2Renderer3D {
         }
         if (depthOnly && u['uDepthViewProjection'])
             gl.uniformMatrix4fv(u['uDepthViewProjection'], false, this.#lightMatrix);
-        const world = mesh.matrixWorld;
+        const world = memberWorld ?? mesh.matrixWorld;
         const determinant = world[0] * (world[5] * world[10] - world[6] * world[9]) -
             world[4] * (world[1] * world[10] - world[2] * world[9]) +
             world[8] * (world[1] * world[6] - world[2] * world[5]);
@@ -958,8 +1079,17 @@ export class WebGL2Renderer3D {
             }
             if (u['uModel'])
                 gl.uniformMatrix4fv(u['uModel'], false, world);
-            if (u['uNormalMatrix'])
-                gl.uniformMatrix3fv(u['uNormalMatrix'], false, mat3NormalFromMat4(this.#scratch9, world));
+            if (u['uNormalMatrix']) {
+                if (memberWorld) {
+                    // Reproduce the instanced shader's mat3(aInstanceMatrix), including non-uniform scale.
+                    for (let column = 0; column < 3; column++)
+                        for (let row = 0; row < 3; row++)
+                            this.#scratch9[column * 3 + row] = world[column * 4 + row];
+                }
+                else
+                    mat3NormalFromMat4(this.#scratch9, world);
+                gl.uniformMatrix3fv(u['uNormalMatrix'], false, this.#scratch9);
+            }
         }
         if (gpu.morph)
             this.applyMorph(program, mesh, gpu);
