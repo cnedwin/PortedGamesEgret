@@ -52,6 +52,25 @@ const dialogPart = async (page, name) => {
   if(!query)throw Error('Missing named native dialog part '+name);
   return native(page,query,{part:name,dialog:true});
 };
+// Named native controls activated through the shared tester. A clipped row is
+// revealed by the native view's own focus/scroll contract, not a page locator.
+const battlePart = async(page,name,{focus=false,replay=false}={})=>{
+  await page.waitForFunction(({name,replay})=>{
+    const a=window.egretGame.app,v=replay?a.lab?.controller.nativeView:a.battle?.nativeView;
+    if(!v?.rect(name))return false;
+    if(!v.visibleRect(name))v.focus(name);
+    return a.uiHost.semantics.publish().nodes.some(n=>n.id.endsWith(':'+name)&&!n.hidden&&!n.inert&&!n.disabled);
+  },{name,replay},{timeout:12000});
+  return page.evaluate(({name,focus,replay})=>{
+    const {app,ui}=window.egretGame,v=replay?app.lab.controller.nativeView:app.battle.nativeView;
+    const nodes=app.uiHost.semantics.publish().nodes,n=nodes.find(x=>x.id.endsWith(':'+name)&&!x.hidden&&!x.inert&&!x.disabled);
+    if(!n)throw Error('Named battle part is absent: '+name);
+    const same=nodes.filter(x=>x.role===n.role&&x.name===n.name&&!x.hidden&&!x.inert),position=same.findIndex(x=>x.id===n.id);
+    const query=n.role+':'+n.name+(same.length>1?'#'+Math.max(0,position):'');
+    if(focus){app.game.canvas.focus({preventScroll:true});return ui.focus(query);}
+    return ui.press(query);
+  },{name,focus,replay});
+};
 const waitUi = (page,q) => page.waitForFunction(q=>window.egretGame?.ui?.exists(q),q,{timeout:12000});
 const hasNative = (page, query) => state(page, q => window.egretGame.ui.exists(q), query);
 const nativeOutline = page => state(page, () => window.egretGame.ui.outline());
@@ -178,52 +197,52 @@ try {
   await dialogPart(page, await state(page,()=>window.egretGame.app.dialogs.view.rect('campaign-command-siege')?'campaign-command-siege':'battle-command'));
   await until(page, () => window.egretGame.screen === 'battle', 10);
   await page.waitForTimeout(600);
-  check(await state(page, () => window.egretGame.battle.phase === 'deploy' && document.querySelector('.bDeploy') !== null), 'the battle opens on deployment');
+  check(await state(page, () => window.egretGame.battle.phase === 'deploy' && Boolean(window.egretGame.battle.nativeView?.rect('battle-begin'))), 'the battle opens on deployment');
   check(await state(page, () => window.egretGame.battle.battle.setup.presentation === 'nanpi-sunset'), 'the formal Nanpi campaign uses the sunset battlefield');
   check(await state(page, () => {
     const { battle, state } = window.egretGame;
     const side = battle.battle.setup.factions.indexOf(state.player);
     return battle.battle.units.filter(unit => unit.side === side).every(unit => !unit.autoTactic);
   }), 'taking command leaves allied tactics in the player’s hands');
-  await page.locator('.bSide.ours .ucard').first().press('Enter');
+  const unitPart=await state(page,()=>{const {battle,state}=window.egretGame;const side=battle.battle.setup.factions.indexOf(state.player);return 'battle-unit-'+battle.battle.units.find(u=>u.side===side).id;});
+  await battlePart(page,unitPart,{focus:true});
+  await page.keyboard.press('Enter');
+  await page.waitForTimeout(180);
   check(await state(page, () => window.egretGame.battle.phase === 'deploy'), 'Enter on a focused unit card selects the unit without starting the battle');
-  await page.click('.bDeploy .btn.main');
-  await page.click('.bSide.ours .ucard');
+  await battlePart(page,'battle-begin');
+  await battlePart(page,unitPart);
   await page.waitForTimeout(1500);
-  await page.click('.bTop .clock .spd:nth-child(4)');
+  await battlePart(page,'battle-bs2');
   await page.waitForTimeout(1500);
-  const fought = await state(page, () => ({ time: window.egretGame.battle?.battle.time ?? 0, cards: document.querySelectorAll('.ucard').length, tactics: document.querySelectorAll('.bSide.ours .tac').length }));
+  const fought=await state(page,()=>{
+    const {battle,state}=window.egretGame,v=battle.nativeView,side=battle.battle.setup.factions.indexOf(state.player),u=battle.battle.units.find(x=>x.side===side);
+    return {time:battle.battle.time,cards:battle.nativeHud.units.length,tactics:u.tactics.filter(t=>v.rect('battle-tac'+u.id+t)).length};
+  });
   check(fought.time > 3 && fought.cards >= 2 && fought.tactics >= 1, `the battle runs at four times speed with unit cards and tactics (${JSON.stringify(fought)})`);
   await capture(page,'battle');
   const field = await matchBaseline(page, GAME, 'battle', { limit: 0.35, update: process.argv.includes('--update-battle') || process.argv.includes('--update') });
   check(field.written || field.passed, `the battlefield looks much as its baseline (${(field.share * 100).toFixed(2)}% differs)`);
   await page.setViewportSize({ width: 873, height: 325 });
-  check(await state(page, () => {
-    const rail = document.querySelector('.bSide.ours');
-    const bounds = rail.getBoundingClientRect();
-    const tactics = [...rail.querySelectorAll('.ucard.on .tac')];
-    return getComputedStyle(rail).flexDirection === 'column' && tactics.length >= 4 && tactics.every((button) => {
-      const rect = button.getBoundingClientRect();
-      return rect.height >= 44 && rect.left >= bounds.left && rect.right <= bounds.right;
+  await page.waitForTimeout(250);
+  check(await state(page,()=>{
+    const {app,battle,state}=window.egretGame,v=battle.nativeView,side=battle.battle.setup.factions.indexOf(state.player),u=battle.battle.units.find(x=>x.side===side),m=app.uiHost.metrics(),scale=m.scale*m.uiScale;
+    const rail=v.rect('battle-own'),tactics=u.tactics.map(id=>v.rect('battle-tac'+u.id+id)).filter(Boolean);
+    return rail&&v.scroll('battle-own-rows')&&tactics.length>=4&&tactics.every(r=>r.height*scale>=43.99&&r.x>=rail.x&&r.x+r.width<=rail.x+rail.width+.01);
+  }),'tactic buttons fit a scrollable vertical rail in short landscape');
+  const centerFree=()=>state(page,()=>{
+    const {app,battle}=window.egretGame,v=battle.nativeView,m=app.uiHost.metrics(),center={x:m.screen.x+m.screen.width/2,y:m.screen.y+m.screen.height/2};
+    return ['battle-own','battle-command'].every(n=>{const r=v.visibleRect(n);if(!r)return true;const p=app.game.fromStage(r.x,r.y);return center.x<p.x||center.x>p.x+r.width||center.y<p.y||center.y>p.y+r.height;});
+  });
+  check(await centerFree(),'the battleground center stays available beside the command rail in short landscape');
+  for(const [width,height] of [[667,375],[640,360],[568,320]]){
+    await page.setViewportSize({width,height});await page.waitForTimeout(250);
+    const usable=await state(page,()=>{
+      const {app,battle}=window.egretGame,v=battle.nativeView,m=app.uiHost.metrics(),panel=v.visibleRect('battle-command'),control=v.visibleRect('battle-overview');
+      if(!panel||!control)return false;
+      const p=app.game.fromStage(panel.x,panel.y),safe=m.safe;
+      return panel.height*m.scale>=132&&p.x+panel.width<=safe.x+safe.width+.01&&control.height*m.scale>=43.99&&control.width*m.scale>=43.99;
     });
-  }), 'tactic buttons fit a scrollable vertical rail in short landscape');
-  check(await state(page, () => {
-    const center = document.elementFromPoint(innerWidth / 2, innerHeight / 2);
-    return Boolean(center && !center.closest('#battleHud .bCommand, #battleHud .bSide'));
-  }), 'the battleground center stays available beside the command rail in short landscape');
-  for (const [width, height] of [[667, 375], [640, 360], [568, 320]]) {
-    await page.setViewportSize({ width, height });
-    const usable = await state(page, () => {
-      const command = document.querySelector('#battleHud .bCommand');
-      const overview = command.querySelector('.bViewTools button:last-child');
-      const field = document.elementFromPoint(innerWidth / 2, innerHeight / 2);
-      const panel = command.getBoundingClientRect();
-      const control = overview.getBoundingClientRect();
-      const hit = document.elementFromPoint(control.x + control.width / 2, control.y + control.height / 2);
-      return panel.height >= 132 && panel.right <= innerWidth && control.height >= 44 && overview.contains(hit)
-        && field && !field.closest('#battleHud .bCommand, #battleHud .bSide');
-    });
-    check(usable, `the command rail and battleground remain usable at ${width}×${height}`);
+    check(usable&&await centerFree(),`the command rail and battleground remain usable at ${width}×${height}`);
   }
   await page.setViewportSize({ width: 1280, height: 720 });
   await state(page, () => window.egretGame.battle?.autoFinish());
@@ -232,9 +251,10 @@ try {
   const originalResultState = await state(page, () => JSON.stringify(window.egretGame.state));
   await native(page,'button:回放战斗',{part:'battle-replay',dialog:true});
   await until(page, () => !!window.egretGame.app.lab);
-  const timeline = page.getByRole('slider', { name: '回放时间' });
-  await timeline.press('End');
-  check(await timeline.evaluate(node => node.valueAsNumber > 0 && node.value === node.max), 'the replay timeline seeks to the recorded end');
+  await battlePart(page,'native-replay-time',{focus:true,replay:true});
+  await page.keyboard.press('End');
+  await page.waitForTimeout(250);
+  check(await state(page,()=>{const c=window.egretGame.app.lab.controller,m=c.model;return m.cursor>0&&Math.abs(m.cursor-m.total)<1e-6;}),'the replay timeline seeks to the recorded end');
   await page.keyboard.press('Escape');
   await until(page, () => !window.egretGame.app.lab);
   check(await state(page, (saved) => window.egretGame.app.dialogs.name === 'battleResult' &&
@@ -252,7 +272,7 @@ try {
   const savedBeforeTrial = await state(page, () => localStorage.getItem('nine-provinces.1'));
   await native(page, 'button:夕照南皮', {part:'title-nanpi'});
   await until(page, () => window.egretGame?.battle?.phase === 'deploy');
-  await page.getByRole('button', {name:'离开演武',exact:true}).click();
+  await battlePart(page,'battle-leave-trial');
   await until(page, () => window.egretGame.screen === 'title' && window.egretGame.app.nativeTitle.view?.focused==='title-nanpi');
   check(await state(page, saved => localStorage.getItem('nine-provinces.1') === saved &&
     !window.egretGame.battle && window.egretGame.app.nativeTitle.view?.focused==='title-nanpi', savedBeforeTrial),

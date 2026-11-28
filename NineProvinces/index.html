@@ -8,12 +8,6 @@
   <meta name="theme-color" content="#1f2b33">
   <link rel="icon" href="data:,">
   <link rel="stylesheet" href="style.css">
-  <link rel="stylesheet" href="style-interface.css">
-  <link rel="stylesheet" href="style-scenarios.css">
-  <link rel="stylesheet" href="style-custom-faction.css">
-  <link rel="stylesheet" href="src/ui/battle-polish.css">
-  <link rel="stylesheet" href="src/ui/battle-lab.css">
-  <link rel="stylesheet" href="src/ui/campaign-battle.css">
   <!-- The engine is a copy inside this folder (vendor/SOURCE.md); this map is vendor/importmap.json, pasted in. -->
   <script type="importmap">
     {
@@ -48,7 +42,8 @@
         "@egret/engine/ui/testing": "./vendor/engine/dist/ui/testing.js",
         "@egret/engine/web/semantics": "./vendor/engine/dist/web/semantics.js",
         "@egret/engine/web/gestures": "./vendor/engine/dist/web/gestures.js",
-        "@egret/engine/web/paragraph": "./vendor/engine/dist/web/paragraph.js"
+        "@egret/engine/web/paragraph": "./vendor/engine/dist/web/paragraph.js",
+        "@egret/engine/web/view": "./vendor/engine/dist/web/view.js"
       }
     }
   </script>
@@ -56,8 +51,6 @@
 <body>
   <main id="frame" data-screen="loading">
     <div id="stageHost"></div>
-    <div id="battleHud"></div>
-    <div id="battleFx" aria-hidden="true"></div>
     <p id="loading">载入中 · Loading</p>
   </main>
   <noscript>这个游戏需要 JavaScript · This game needs JavaScript.</noscript>

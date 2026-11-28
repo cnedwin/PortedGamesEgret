@@ -1,83 +1,36 @@
-// Native DOM regression for the retained formal battle HUD. No save, engine,
-// campaign shortcut or remote resource is needed; run with the repo's Playwright.
+// Actual native Play regression for retained battle HUD over a small isolated
+// fixture. Production HUD source and public Egret APIs, no DOM widgets/save.
 import assert from 'node:assert/strict';
-import {launch, openPage, serve} from '../../tools/lib/browser.mjs';
-
-const server = await serve();
-const browser = await launch();
-let page;
-const checks = [];
-const check = (value, name) => { assert(value, name); checks.push(name); };
-try {
-  const url = server.url + 'NineProvinces/__battle-hud-test__';
-  page = await openPage(browser, url, {
-    width: 667, height: 325,
-    before: page => page.route(url, route => route.fulfill({
-      contentType: 'text/html', body: '<!doctype html><main id="hud"></main>'
-    }))
-  });
-  await page.evaluate(async () => {
-    const {hudElement: h, hudButton: button, updateBattleHud} = await import('./src/ui/battle-hud.mjs');
-    const root = document.querySelector('#hud');
-    window.testHud = {root, generation: 0, selected: 0, ready: true, cue: false, calls: [], checked: true};
-    window.renderHud = () => {
-      const state = window.testHud, generation = state.generation, selected = state.selected;
-      const command = button('Order ' + selected, () => state.calls.push([generation, selected]), {why: state.ready ? null : 'Unavailable'});
-      command.dataset.k = 'order-' + selected;
-      const execute = button('Continue', () => state.calls.push('continue')); execute.dataset.k = 'execute';
-      const options = h('input', {type: 'checkbox', checked: state.checked, dataset: {k: 'options'}, onchange: e => {state.checked = e.target.checked; window.renderHud();}});
-      updateBattleHud(root,
-        h('aside.rail', {style: {height: '100px', width: '180px', overflow: 'auto'}},
-          Array.from({length: 14}, (_, i) => h('div.row', {dataset: {k: 'row-' + i}, style: {height: '38px'}}, 'Troops ' + i + ': ' + generation))),
-        h('section.command'+(state.hidden?'.concealed':''), state.cue ? h('p.cue', 'A new status') : null, command, execute, options)
-      );
-    };
-    window.renderHud();
-    window.testHud.rail = root.querySelector('.rail');
-  });
-  await page.mouse.move(70, 55);
-  await page.mouse.wheel(0, 240);
-  await page.waitForFunction(() => window.testHud.rail.scrollTop > 100);
-  await page.locator('[data-k="order-0"]').focus();
-  const retained = await page.evaluate(() => {
-    const state = window.testHud, focused = document.activeElement, scroll = state.rail.scrollTop;
-    for (let i = 1; i <= 12; i++) {state.generation = i; state.cue = i % 2 === 0; window.renderHud();}
-    return {rail: state.rail === state.root.querySelector('.rail'), scroll: state.rail.scrollTop === scroll,
-      focus: document.activeElement === focused, vitals: state.rail.firstChild.textContent.endsWith(': 12')};
-  });
-  check(retained.rail && retained.scroll && retained.focus && retained.vitals, 'scroll, focused control and rail are retained while vitals and optional status change');
-  await page.keyboard.press('Enter');
-  check(await page.evaluate(() => JSON.stringify(window.testHud.calls) === '[[12,0]]'), 'native keyboard action calls the latest handler exactly once');
-
-  await page.evaluate(() => {window.testHud.ready = false; window.renderHud();});
-  check(await page.evaluate(() => document.querySelector('[data-k="order-0"]').disabled && document.activeElement.dataset.k === 'execute'), 'a newly unavailable focused command moves focus to a valid continuation');
-  await page.evaluate(() => document.querySelector('[data-k="order-0"]').click());
-  check(await page.evaluate(() => window.testHud.calls.length === 1), 'disabled command has no retained stale action');
-  await page.evaluate(() => {window.testHud.ready = true; window.renderHud();});
-  await page.locator('[data-k="order-0"]').focus();
-  await page.evaluate(() => {window.testHud.selected = 1; window.renderHud();});
-  check(await page.evaluate(() => !document.querySelector('[data-k="order-0"]') && document.activeElement.dataset.k === 'execute'), 'a different selected unit replaces the obsolete command and preserves a valid focus target');
-  await page.locator('[data-k="order-1"]').click();
-  check(await page.evaluate(() => JSON.stringify(window.testHud.calls.at(-1)) === '[12,1]'), 'replacement command targets the current unit');
-
-  await page.locator('[data-k="options"]').uncheck();
-  await page.evaluate(() => {window.testHud.generation++; window.renderHud();});
-  check(await page.evaluate(() => !document.querySelector('[data-k="options"]').checked && !window.testHud.checked), 'native checkbox state survives the next update');
-
-  const command = page.locator('[data-k="order-1"]'), box = await command.boundingBox();
-  await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
-  await page.mouse.down();
-  await page.evaluate(() => {window.testHud.pressed = document.querySelector('[data-k="order-1"]'); window.testHud.generation++; window.renderHud();});
-  check(await page.evaluate(() => window.testHud.pressed === document.querySelector('[data-k="order-1"]')), 'a held command stays the same native button');
-  await page.mouse.up();
-  check(await page.evaluate(() => JSON.stringify(window.testHud.calls.at(-1)) === '[14,1]' && window.testHud.calls.length === 3), 'pointer release runs the current action once');
-  await page.addStyleTag({content: '.command.concealed [data-k^="order-"] {display:none}'});
-  await page.locator('[data-k="order-1"]').focus();
-  await page.evaluate(() => {window.testHud.hidden = true; window.renderHud();});
-  check(await page.evaluate(() => document.activeElement.dataset.k === 'execute'), 'an unselected unit hiding its enabled tactic moves focus to a visible command');
-  check(page.problems.length === 0, 'no browser errors');
-  console.log(JSON.stringify({passed: checks.length, checks}));
-} finally {
-  await browser.close();
-  await server.close();
-}
+import {readFile} from 'node:fs/promises';
+import {launch,openPage,serve} from '../../tools/lib/browser.mjs';
+import {nativePart,nativeGeometry,waitFrames} from './native-battle-browser.mjs';
+const server=await serve(),browser=await launch(),checks=[];let page;const check=(ok,label,detail)=>{assert(ok,`${label}${detail?': '+JSON.stringify(detail):''}`);checks.push(label)};
+try{
+ const url=server.url+'NineProvinces/__battle-hud-test__',importMap=await readFile(new URL('../vendor/importmap.json',import.meta.url),'utf8');
+ const body=`<!doctype html><html><head><meta name="viewport" content="width=device-width,initial-scale=1"><script type="importmap">${importMap}</script><style>html,body,main{margin:0;width:100%;height:100%;overflow:hidden}main{position:relative}</style></head><body><main id="fixture"></main></body></html>`;
+ page=await openPage(browser,url,{width:667,height:325,before:p=>p.route(url,r=>r.fulfill({contentType:'text/html',body}))});
+ await page.evaluate(async()=>{
+   const [{play},{createUiSemantics},{createUiTester},{createCanvasParagraphProvider},{createParagraphCache},{createNativeBattleHud,makeBattleControl:button,makeBattleText:line,makeBattleToggle:toggle}]=await Promise.all([import('@egret/engine/play'),import('@egret/engine/ui/semantics'),import('@egret/engine/ui/testing'),import('@egret/engine/web/paragraph'),import('@egret/engine/paragraph'),import('./src/ui/native-battle-hud.mjs')]);
+   const semantics=createUiSemantics(),game=await play({parent:document.querySelector('#fixture'),width:960,height:540,portrait:{width:540,height:960},fit:'expand',pixelRatio:1,uiScale:{min:44/48,max:1},renderMode:'on-demand',audio:false,semantics});
+   const paragraphCache=game.scope.use(createParagraphCache(game.engine.assets,{provider:game.scope.use(createCanvasParagraphProvider())})),tester=createUiTester({semantics}),host={game,semantics,tester,paragraphCache,metrics(){const c=game.canvas.getBoundingClientRect(),s=game.screen;return {safe:game.safe,screen:s,scale:c.width/s.width}},addLayout(fn){fn();return game.onScreenChange?.(fn)??(()=>{})}};
+   const state=window.testHud={generation:0,selected:0,ready:true,cue:false,calls:[],checked:true,hidden:false};const hud=createNativeBattleHud(host,{onError:error=>{window.fixtureError=String(error);throw error}});state.hud=hud;
+   window.egretGame={app:{game,uiHost:host,battle:{get nativeView(){return hud.view}}},ui:tester};
+   window.renderHud=()=>{const {generation,selected,ready,cue,checked,hidden}=state;const unit=i=>({id:i,name:'Troops '+i,type:'Unit',troops:String(5000-generation),morale:70,rage:30+generation,share:.8,status:[],selected:selected===i,select(){state.selected=i;window.renderHud()},actions:[]});
+      const rows=[cue?line('cue','A new status',{lines:2}):null,hidden?null:button('order-'+selected,'Order '+selected,()=>state.calls.push([generation,selected]),{disabled:!ready}),button('continue','Continue',()=>state.calls.push('continue')),toggle('options','Milestones',checked,()=>{state.checked=!state.checked;window.renderHud()})].filter(Boolean);
+      hud.render({phase:'fight',phaseTitle:'Fight',title:'Battle fixture',subtitle:'Blue · Red',clock:'0:30',wind:'East',timeShare:.5,objectives:[],controls:[button('pause','Pause',()=>{})],owned:Array.from({length:14},(_,i)=>unit(i)),enemy:[{...unit(20),selected:false}],command:{title:'Command',selection:'Unit '+selected,tools:[],rows},feed:[],footer:{text:'Help',actions:[]}});};window.renderHud();
+ });
+ await page.waitForFunction(()=>window.testHud?.hud?.view&&!window.fixtureError);await waitFrames(page);
+ const own=await nativeGeometry(page,'battle-own-rows');check(own&&own.visible.height>44,'native unit rail has a visible clip');await page.mouse.move(own.visible.x+own.visible.width/2,own.visible.y+own.visible.height/2);await page.mouse.wheel(0,360);
+ await page.waitForFunction(()=>window.testHud.hud.view.scroll('battle-own-rows').offset>40);
+ await nativePart(page,'battle-order-0',{focus:true});const before=await page.evaluate(()=>{const s=window.testHud;s.oldView=s.hud.view;s.oldScroll=s.hud.view.scroll('battle-own-rows').offset;return s.oldScroll;});
+ await page.evaluate(async()=>{for(let i=1;i<=12;i++){window.testHud.generation=i;window.testHud.cue=i%2===0;window.renderHud();await Promise.resolve();}});await waitFrames(page);
+ const retained=await page.evaluate(()=>{const s=window.testHud;return {view:s.oldView===s.hud.view,offset:s.hud.view.scroll('battle-own-rows').offset,focus:s.hud.view.focused,troops:s.hud.snapshot().units[0].troops}});check(retained.view&&Math.abs(before-retained.offset)<1e-6&&retained.focus==='battle-order-0'&&retained.troops==='4988','native view, rail scrolling, current focus and bound vitals retained',retained);
+ await page.evaluate(()=>window.egretGame.app.game.canvas.focus());await page.keyboard.press('Enter');await waitFrames(page);const keyResult=await page.evaluate(()=>({calls:window.testHud.calls,focus:window.testHud.hud.view.focused,canvas:document.activeElement===window.egretGame.app.game.canvas}));check(JSON.stringify(keyResult.calls)==='[[12,0]]','native keyboard action uses latest callback once',keyResult);
+ await page.evaluate(()=>{window.testHud.ready=false;window.renderHud()});await waitFrames(page);const unavailable=await page.evaluate(()=>{const s=window.testHud,n=window.egretGame.app.uiHost.semantics.publish().nodes.find(x=>x.id.endsWith(':battle-order-0'));return {disabled:n?.disabled,focus:s.hud.view.focused,calls:s.calls.length}});check(unavailable.disabled&&unavailable.focus!=='battle-order-0','unavailable focused action loses invalid focus',unavailable);check(unavailable.calls===1,'disabled command has no stale action');
+ await page.evaluate(()=>{const s=window.testHud;s.ready=true;s.selected=1;window.renderHud()});await waitFrames(page);check(await page.evaluate(()=>!window.egretGame.app.uiHost.semantics.publish().nodes.some(n=>n.id.endsWith(':battle-order-0'))),'obsolete selected command retired');
+ await nativePart(page,'battle-order-1');await waitFrames(page);check(await page.evaluate(()=>JSON.stringify(window.testHud.calls.at(-1))==='[12,1]'),'replacement invokes current unit');
+ await nativePart(page,'battle-options');await waitFrames(page);check(await page.evaluate(()=>window.testHud.checked===false),'native toggle changes existing state');
+ const rect=await nativePart(page,'battle-order-1',{focus:true});await page.mouse.move(rect.x,rect.y);await page.mouse.down();await page.evaluate(()=>{const s=window.testHud;s.pressed=s.hud.view.get('battle-order-1');s.generation=13;window.renderHud()});await waitFrames(page);check(await page.evaluate(()=>window.testHud.pressed===window.testHud.hud.view.get('battle-order-1')),'held native pointer keeps target while model updates');await page.mouse.up();await waitFrames(page);check(await page.evaluate(()=>JSON.stringify(window.testHud.calls.at(-1))==='[13,1]'&&window.testHud.calls.length===3),'pointer release invokes latest current action once');
+ await nativePart(page,'battle-order-1',{focus:true});await page.evaluate(()=>{window.testHud.hidden=true;window.renderHud()});await waitFrames(page);check(await page.evaluate(()=>window.testHud.hud.view.focused!=='battle-order-1'),'removed control does not leave stale focus');
+ check(!page.problems.length&&!await page.evaluate(()=>window.fixtureError),'no browser errors',page.problems);console.log(JSON.stringify({passed:checks.length,checks}));
+}finally{await browser.close();await server.close();}

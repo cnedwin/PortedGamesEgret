@@ -1,6 +1,69 @@
 # 品质验收 · Quality — 九州烽烟 · Nine Provinces Ablaze
 
+## 原生界面第四批 · Native interface batch four (2026-11-29)
+
+范围 · Scope: 引擎 `7fb371acb8bab254cf1c49b9da0ac0eed0c06fb4`，原生战场布阵、速度/暂停、指挥面板、军团标牌与战场反馈、演武配置及棋盘、战报和回放。沿用已有战役、规则、数值、存档和 World3D 资源。网页只保留宿主嵌入、两张引擎可见画布（World3D 和 Play）及浏览器语义投影；离屏绘制棋盘/小地图静态纹理不是独立游戏界面或时钟。 / Native deployment, speed and pause, battle command panel, unit plates and feedback, trials/board, reports and replay share the existing engine host. Campaign simulation, balance, saves and World3D assets remain unchanged. Only host integration, the two engine presentation surfaces and browser semantics remain on the web layer. Offscreen static art preparation does not create another visible UI or clock.
+
+### 验收明细 · Acceptance receipts
+
+| 测项 · Check | 已测结果 · Observed | 适用范围 · Qualification |
+|---|---:|---|
+| Node R1 → R2 | 255/255 → **258/258** | 原生 UI/资源池/旋转、规则回归；严格接口检查零错误。 · Native UI/pooling/rotation and rule regression; zero strict interface errors. |
+| 软件浏览器 R3 · Software route R3 | **54/54** | 原完整战役关键路线，零浏览器错误；标题/设置与原参考分别 0.00% / 0.16%，战场旧参考差异 27.58%（原生界面改造）；非真机，最后镜头/回放布局微调前。 · Original full key route and screenshot references; the 27.58% battle difference reflects the intentional interface migration. Before last camera/replay polish. |
+| 最终软件浏览器（旧参考） · Final software route against old reference | **54/54** | 标题/设置 0.00% / 0.16%，战场 31.53% 有意变化；复核无提示遮挡后只更新战场 PNG 的固定参考。 · Final title/settings differ 0.00%/0.16%; the battle differs 31.53% intentionally. Only the reviewed battle PNG is rebaselined after checking the tooltip/layout. |
+| 新固定参考重新验收 R2 · Rebaselined software rerun R2 | **54/54** | 新战场参考 0.00%，原有标题 0.00%、原有设置 0.16%，全部断言保留，无额外更新其他参考图。 · New battle reference 0.00%; the unchanged title/settings references 0.00%/0.16%. All assertions retained, no other baseline replacement. |
+| 实际 PC 原生标牌 · Hardware marker route | **23/23** | 中文、点选同一单位、名牌语义焦点委托原生列表、键盘、实战反馈、三种窗口形态及资源预算；RTX。 · Chinese, marker picks, roster focus delegation, keyboard, live feedback, three viewport forms and bounded resources; real RTX. |
+| 实际 PC 英文 · Hardware English route | **10/10** | 南皮布阵英文按钮/语义标签、短屏与画像/反馈池验证，无遗漏中文操作标签，无报错。 · English controls/marker labels, narrow viewport and bounded pools; no untranslated marked action captions or errors. |
+| 实际 PC 旋转专项 · Hardware rotation follow-up | **19/19** | 针对相机取景修正，桌面 5、竖屏 5、极短横屏 3、恢复桌面 5 个可见标记；同一布阵状态和宿主；用户主动缩放不被强制重置。 · Camera reframing across viewport changes, visible plate counts 5/5/3/5; same deployment/host and no reset of intentional zoom. PC viewport, not physical rotation. |
+| PC 键盘及模拟手柄 · Keyboard/controller preflight | **11/11** | 真 PC Edge 键盘从标题开始原生开局、剧情、首月和城务操作；标准手柄通过浏览器轮询模拟并检测 B 取消，不是真手柄。 · Actual keyboard route from title; standard controller simulated through browser input polling, not a physical controller. |
+| 原生 HUD 软件交互 · Native HUD interactions | **12/12** | 软件浏览器，对战前后的具名操作及界面反馈。 · Software-browser native controls and feedback. |
+| 演武结算/回放 · Sandbox R4 | **28/28** | 软件浏览器正常演武到结算及回放（31.9 秒模拟、34 帧记录），重开与不写战役存档通过。 · Software sandbox completed naturally to result/replay, 31.9 simulated seconds and 34 recorded tape frames; rematch and no campaign-save writes. |
+| 官方多屏 R1→最终 · Official screen matrix | 18/18 → **54/54** | 最终 9 配置 ×6 个检查点，无 findings 或 engine warnings；逐张视觉复看结论另记。非真机。 · Nine final profiles × six checkpoints with no findings or engine warnings; visual-review observations separate. Not devices. |
+| 三星实机 · Physical Fold7 | **通过 · Pass** | 实体外屏横竖屏，南皮正常完成至结算与回放，野战部分流程；为最终小幅镜头/回放调整前的一次完整南皮路径。 · Cover display, both orientations, natural Nanpi trial through result/replay and partial field route before the last camera/replay refinements. |
+| 实体 Fold7 最后专项 R2 · Focused physical retest | **通过 · Pass** | 最后镜头/回放修正后的 25 个指纹、8 项恢复，实际转屏及回放拖动；没有再次完整跑南皮。 · All 25 final-candidate hashes and eight restoration receipts, native rotation and replay scrubbing; not another full Nanpi completion. |
+
+实际 PC 环境为 Windows Edge、ANGLE D3D11 / NVIDIA GeForce RTX 5090 Laptop GPU。标牌按原始单位身份点选，与原生指挥列表共享焦点/业务回调；可见战斗事件有实际浮动反馈，图片页和文字池保持预算内，环境/窗口调整保留原有战斗状态。未用 PC 窗口尺寸模拟代替 Fold7。 / The actual hardware routes use Windows Edge and RTX 5090 Laptop GPU. Native projected controls select the original game IDs, delegate focus to the authored roster, show existing event feedback, respect image budgets, and retain state through viewport changes. PC emulation is not a handset test.
+
+官方最终多屏 54 张检查点逐张复看（9 种配置 ×6）：未见按钮进入模拟刘海区；固定开战/离开及结算按钮处于安全区。873×325 的紧凑敌方卡片占据上方部分地图，保留 3 个自方标牌，852×393 至少 4 个；窄竖屏的阵型/指挥列表需滚动，375×667 的切换按钮可能在初始滚动边缘局部裁切，固定开战仍可见。短横屏回放棋盘约 200 CSS px，缩放/选择行要滚动；野战配置的开始按钮初始在滚动区下方，返回可用。南皮战果模态在竖屏/桌面仍有较多空白。官方名为 `native-battle-paused` 的检查点实际截图是战斗运行状态（开始演武已暂停，测试又切换一次）；它验证战斗控件布局，不作为暂停视觉证明。真实暂停计时由手机和交互路线单独验证。 / All 54 final checkpoint pictures were reviewed. Actionable elements and fixed Begin/Leave/Result buttons avoid simulated notches. Compact enemy cards consume some upper-map space at 873×325 while leaving three friendly plates, and at least four at 852×393. Narrow portrait lists scroll; the toggle can be partially clipped at the 375×667 initial offset while fixed Begin remains reachable. Short-landscape replay and start configuration require scrolling; the replay board is about 200 CSS pixels wide. Nanpi result still contains excess blank space. Screens named `native-battle-paused` actually show the running state due to a fixture toggle, so they establish battle-control layout, not paused visuals. Physical/interaction pause timing is separate evidence.
+
+### 三星真机 · Physical Galaxy Z Fold7 candidate
+
+- Galaxy SM-F966U1，Android 17 / Chrome 158.0.8127.44 / Adreno 830 WebGL2；外屏横向 873×325 与纵向 411×813 CSS px，DPR 2.625，实际 CDP 触摸注入、本地服务。22 个选定候选文件指纹一致，8 项设备/临时浏览器环境恢复通过，无页面/控制台/HTTP 错误。该候选快照早于最终镜头/回放布局修正，不冒充最新字节。 / Actual physical cover screen in both orientations, touch injection on the device; tested 22 exact served-file fingerprints and eight device/browser restoration receipts, zero errors. This candidate snapshot precedes the last camera/replay layout tweaks.
+- 南皮独立演武：正常开局/点选原生单位、实际旋转、暂停/继续，4×速自然运行 390 模拟秒至日落败北，没有注入数值、下达额外指令或调用自动结束；实际里程碑暂停后继续一次。打开战果中的回放，播放时间从 0 到约 1.824 秒，手指拖动时间轴到 299.197/390 秒，再查看战报、返回标题。 / The independent Nanpi trial runs naturally at 4× to the sunset defeat, 390 simulated seconds, with one ordinary milestone pause/resume and no simulated data adjustment, additional orders or forced finish. Replay plays 0→about 1.824 s, actual timeline drag seeks 299.197/390 s, opens the report, and returns to title.
+- 野战演武：实际配置、开局、暂停（约 1.9 秒）、4×、旋转和部分实时回放（实际拖动到 6.061/7.9 秒）及退出标题均通过；**未在手机完成一场完整野战演武**。 / Field-trial configuration, opening, pause (about 1.9 s), 4×, rotation, partial live replay and return to title pass; **not a complete handset field-trial playthrough**.
+
+| 实体外屏短样本 (~5 秒 RAF) · Physical cover-screen short RAF sample | 间隔 · n | p95 / max (ms) | >50 ms |
+|---|---:|---:|---:|
+| 横屏标题 · Title | 302 | 16.7 / 16.7 | 0 |
+| 南皮演武 · Nanpi trial | 302 | 16.7 / 16.7 | 0 |
+| 野战演武（暂停） · Field trial (paused) | 302 | 16.7 / 24.9 | 0 |
+
+单次本地标题就绪约 3,451 ms；缺少同机位同条件旧版/新版重复冷启动对照。本表是短浏览器 RAF 间隔，非实际 GPU 执行/合成，不代表整场战斗负载。实体转屏发现部分地图取景问题，已作 PC 专项 19/19 后继续以下实际手持设备复测。未测内屏、实际手柄、真实长期战役、完整手机野战或主观扬声器听感。 / A single local title readiness of approximately 3,451 ms is not a matched/repeated cold-start comparison. These short browser frame intervals are not GPU/compositor or full-battle performance. The physical route exposed framing on rotation; PC focused retest passed 19/19 after correction, followed by the physical device retest below. Physical inner display, real controller, full mobile field battle, sustained full campaign and human speaker listening remain untested.
+
+最后实际 Fold7 R2 专项（同一设备、最后候选）：25 个文件哈希、8 项恢复与零错误均通过。实际竖屏 5 个可见单位标牌，旋转至 873×325 后自动重构为 3 个，保持同一宿主/战斗；实际点击「定位」镜头距离约 95.37→45，此时紧凑敌方卡片仍可能暂时遮住全部名牌；点击「俯视」恢复 3 个。最后回放时间轴实际拖至 6.061/7.9，战报可打开；但极短横屏棋盘可见宽度约 200 CSS px，仍有放大阅读的体验空间。没有重复完整 390 秒南皮路径。 / Final focused physical Fold7 R2 passed 25 source hashes, eight restoration receipts and zero errors. Five native unit plates in portrait become three after the short landscape auto-frame while retaining the same battle/host. Actual Locate reduces camera distance about 95.37→45 and can temporarily conceal all plate targets behind the compact enemy card; Overview restores three. Actual field replay seeks 6.061/7.9 and opens the report, but the short-landscape board visibly spans around 200 CSS pixels. This remains a minor UX improvement opportunity. The full 390-second Nanpi route was not repeated after polishing.
+
+| 最后实体外屏专项 (~5 秒 RAF) · Final targeted physical sample | 间隔 · n | p95 / max (ms) | >50 ms |
+|---|---:|---:|---:|
+| 横屏标题 · Title | 302 | 16.7 / 16.7 | 0 |
+| 南皮演武 · Nanpi trial | 301 | 16.7 / 33.2 | 0 |
+| 野战演武（暂停） · Field trial (paused) | 303 | 16.7 / 16.7 | 0 |
+
+### 实际画面 · Evidence captures
+
+以下 JPEG 为原始截图同尺寸审阅副本，无裁剪。各路线与候选时点分开： / All JPEG review copies retain the original capture dimensions, uncropped; each comes from its identified route and candidate revision.
+
+| 证据 · Evidence | 原图路径对应 · Capture |
+|---|---|
+| 软件固定战场参考与新版 · Software battle reference/native | [旧版 · Before](test/native-battle-evidence/software-before-battle.jpg) · [最终新版 · Final native](test/native-battle-evidence/software-native-battle.jpg) |
+| 实际 PC 标牌与反馈 · Hardware plates and feedback | [布阵 · Deployment](test/native-battle-evidence/pc-native-deploy.jpg) · [实战反馈 · Live feedback](test/native-battle-evidence/pc-live-effects.jpg) |
+| 实际 PC 英文竖屏配置（非手机） · PC English portrait emulation | [英文布阵 · English deployment](test/native-battle-evidence/pc-en-portrait-emulation.jpg) |
+| 软件正常演武 · Software sandbox R4 | [结算 · Result](test/native-battle-evidence/software-sandbox-result.jpg) · [战报 · Report](test/native-battle-evidence/software-sandbox-report.jpg) · [回放 · Replay](test/native-battle-evidence/software-sandbox-replay.jpg) |
+| 实体 Fold7 外屏 · Physical Fold7 cover display | [南皮竖屏布阵 · Nanpi portrait](test/native-battle-evidence/fold7-nanpi-deploy.jpg) · [南皮结算 · Result](test/native-battle-evidence/fold7-nanpi-result.jpg) · [南皮拖动回放 · Replay seek](test/native-battle-evidence/fold7-nanpi-replay.jpg) · [野战竖屏布阵 · Field deployment](test/native-battle-evidence/fold7-sandbox-deploy.jpg) |
+| 最后实体 Fold7 R2 专项 · Final targeted physical route | [转屏自动取景 · Auto-frame](test/native-battle-evidence/fold7-final-rotated.jpg) · [定位遮挡限制 · Locate limitation](test/native-battle-evidence/fold7-final-locate-limited.jpg) · [野战回放 · Field replay](test/native-battle-evidence/fold7-final-field-replay.jpg) |
+
 ## 原生界面第三批 · Native interface batch three (2026-11-28–29)
+
+- 公开发布 · Publication: [PR #308](https://github.com/cnedwin/PortedGamesEgret/pull/308) 合并 `41ff086f` 后，[Pages 46163054628](https://github.com/cnedwin/PortedGamesEgret/actions/runs/46163054628) 成功。下列仍为第三批各候选本地实测，不改写为第四批版本或公开真机复测。 / Batch three was deployed following merged PR #308, run 46163054628. Its recorded local candidate tests remain distinct from batch four and are not a public-device retest.
 
 本节为本地候选阶段记录，沿用引擎 `7fb371acb8bab254cf1c49b9da0ac0eed0c06fb4`。原生化城池/军团详情、首月引导、记录/提示、互动地图名牌，以及包含原设置/存档在内的 18 类业务对话框。规则、数值、游戏资源、存档格式及 World3D 画质未改变；战场专用布阵、指挥与回放表现仍待第四批。 / This local-candidate record uses the same engine pin. The city/army sheets, first-month coach, journal/feedback, interactive map plates and 18 business-dialog types (including previous settings/saves) now use native UI. Simulation, balance, assets, save format and World3D quality remain unchanged. Battle-specific deployment, commands and replay presentation remain batch four.
 
@@ -53,7 +116,7 @@
 
 实体 Fold7 外屏（原图 1080×2283 px，竖屏 411×813 CSS px）：[首月引导 · Coach](test/native-realm-evidence/fold7-first-month.jpg)、[城务政令 · City orders](test/native-realm-evidence/fold7-city-orders.jpg)、[科技树滚动 · Scrolled inventions](test/native-realm-evidence/fold7-tech-scrolled.jpg)、[手势后地图 · Map after gestures](test/native-realm-evidence/fold7-map-portrait.jpg)。 / Physical Fold7 cover-display screenshots, kept at the original physical dimensions; these four are actual device captures rather than the PC emulated portrait example above.
 
-目前没有第三批同机位性能对照、第三批公开部署、实体内屏/完整手机战役或长时间高负载结论。官方多屏 R2 和实体外屏路线早于最后一次原生确认/通知/提示微调；其后另有最终软件 R5 54/54 和 PC 隔离确认 4/4，但尚未在同一手机或全部配置重复最后变更。第二批的性能和真机数据仍单独保留，不挪用为第三批结果。 / Batch-three matched performance, public release verification, the physical inner display/full mobile campaign and sustained high-load results remain unmeasured. The official screen matrix and physical-device route precede the last confirmation/badge/hint polish. Final software R5 (54/54) and isolated PC confirmation (4/4) followed, but the last changes have not been repeated across all profiles or on the same phone. Batch-two figures below remain separate evidence.
+目前没有第三批同机位性能对照、公开端完整实机复测、实体内屏/完整手机战役或长时间高负载结论。官方多屏 R2 和实体外屏路线早于最后一次原生确认/通知/提示微调；其后另有最终软件 R5 54/54 和 PC 隔离确认 4/4，但尚未在同一手机或全部配置重复最后变更。第二批的性能和真机数据仍单独保留，不挪用为第三批结果。 / Batch-three matched performance, full public-device retest, physical inner display/full mobile campaign and sustained high-load results remain unmeasured. The official screen matrix and physical-device route precede the last confirmation/badge/hint polish. Final software R5 (54/54) and isolated PC confirmation (4/4) followed, but the last changes have not been repeated across all profiles or on the same phone. Batch-two figures below remain separate evidence.
 
 ## 原生界面第二批 · Native interface batch two (2026-11-28)
 

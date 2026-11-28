@@ -1,7 +1,7 @@
 // Play data views do not yet have a range part. Let their actual focusable
 // target publish a slider role, using the same native tree and clipping data.
 // No second semantic tree, HTML control, or keyboard transport is created.
-const sliders = new Set(['musicVolume-slider', 'effectsVolume-slider', 'muster-troops-slider', 'transfer-amount-slider']);
+const sliders = new Set(['musicVolume-slider', 'effectsVolume-slider', 'muster-troops-slider', 'transfer-amount-slider', 'native-replay-time']);
 
 export function createNativeRangeSemantics(tree) {
   const sliderSemanticMeta=new Map();
