@@ -5,6 +5,7 @@ import { autoSlot, createSaveSlot, manualSlots } from '../../save-slot.mjs';
 import { describeSaveSlot } from '../../save-info.mjs';
 import { createRpgFrontEnd } from './native/front-end.mjs';
 import { createShellWords } from './native/words.mjs';
+import { createRuntimeWords } from './native/runtime-words.mjs';
 import { palette, recommendedPlay } from './native/theme.mjs';
 import { readPreferences, writePreferences, visualStyles, visualOptions } from './native/preferences.mjs';
 import { titleBranding, titleHelpSections, titleArt } from './native/branding.mjs';
@@ -101,11 +102,9 @@ export async function showTitle({initial,baseline,autoSave,save,saveError,prefer
     return records.filter(entry=>entry.data||entry.incompatible).map(({number,data,incompatible})=>{
       const id=number===autoSlot?'auto':String(number);
       if(incompatible)return {id,auto:number===autoSlot,incompatible:true};
-      const {location,detail}=describeSaveSlot(data,places,catalog?.roles);
-      const time=typeof data.savedAt==='string'?Date.parse(data.savedAt):NaN;
-      const count=Array.isArray(data.party)?data.party.filter(id=>Number.isInteger(id)&&id>=0).length:0;
-      const english=[Number.isFinite(time)?'Saved '+new Date(time).toLocaleString('en-GB'):'',count?count+' in party':''].filter(Boolean).join(' · ');
-      return {id,auto:number===autoSlot,data,title:{zh:location,en:location},detail:{zh:detail,en:english}};
+      const zh=describeSaveSlot(data,places,catalog?.roles,createRuntimeWords({language:'zh'}));
+      const en=describeSaveSlot(data,places,catalog?.roles,createRuntimeWords({language:'en'}));
+      return {id,auto:number===autoSlot,data,title:{zh:zh.location,en:en.location},detail:{zh:zh.detail,en:en.detail}};
     });
   }
   // The existing save store owns the atomic backup and recovery. No UI action

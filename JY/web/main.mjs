@@ -11,6 +11,8 @@ import { createBattleMenu } from './battle-menu.mjs';
 import { attachNativeBattleControls } from './jyx2/ui/native/battle-ui.mjs';
 import { createBattleResultUi } from './jyx2/ui/native/battle-result-ui.mjs';
 import { mapHudWords } from './jyx2/ui/native/map-hud.mjs';
+import { createRuntimeWords } from './jyx2/ui/native/runtime-words.mjs';
+import { createTextWorkPressure } from './jyx2/ui/native/fixed-labels.mjs';
 import { createBattleMusic } from './battle-music.mjs';
 import { createWavEffects } from './wav-effects.mjs';
 import { autoSlot, createSaveSlot, manualSlots } from './save-slot.mjs';
@@ -49,9 +51,6 @@ const moves = new Map([
 const facingOffsets = [[0, -1], [1, 0], [-1, 0], [0, 1]];
 const facingKeys = ['ArrowUp', 'ArrowRight', 'ArrowLeft', 'ArrowDown'];
 const battleControls = new Set([...moves.keys(), 'KeyM', 'KeyI', 'KeyL', 'KeyQ', 'KeyF', 'KeyB', 'KeyT', 'KeyV', 'KeyR', 'Tab']);
-const battleHint = () => touchExploration.matches
-  ? '點選移動、武學或其他回合指令'
-  : '選擇移動、武學或其他指令 · 滑鼠選格，或用方向鍵與 Enter';
 const normalizeEnter = code => code === 'NumpadEnter' ? 'Enter' : code;
 const isConfirm = code => normalizeEnter(code) === 'Enter' || code === 'Space';
 const water = new Set([179, 180, 181, 261, 511, 662, 663, 664, 665, 674]);
@@ -445,11 +444,14 @@ function showSave(game, phase) {
 
 async function openMap(game, destination, takePreparedHome) {
   const { initial, catalog } = game;
+  const words=createRuntimeWords({language:game.language});
+  const tr=(key,values)=>words.text(key,values);
+  const battleHint=()=>tr(touchExploration.matches?'battle.prompt.touch':'battle.prompt.key');
   const isWorld = destination.id === 'world';
   const groupName = isWorld ? 'mmap' : 'smap';
   canvas.dataset.phase = 'loading';
   bootNotice.hidden = false;
-  bootNotice.textContent = game.language==='en'?'Loading game data…':'正在讀取遊戲資料…';
+  bootNotice.textContent = tr('loading.data');
   const sceneRequest = isWorld
     ? game.world ?? json('/api/world').then(unpackMap)
     : sceneFor(game, destination.id);
@@ -489,7 +491,7 @@ async function openMap(game, destination, takePreparedHome) {
     ...Array.from({ length: 28 }, (_, index) => 2501 + index),
     ...(opening?.pictures ?? []),
   ])].filter(id => available.has(id));
-  bootNotice.textContent = game.language==='en'?'Loading terrain, buildings and character art…':'正在載入地形、建築和人物貼圖…';
+  bootNotice.textContent = tr('loading.terrain');
   const useJyx2Scene = game.visualStyle === 'jyx2' && hasJyx2Scene(scene.id);
   const [textures, portraits, sceneArt] = await Promise.all([
     isWorld ? (game.worldTextures ??= loadArt(groupName, ids)) : loadArt(groupName, ids, false, useJyx2Scene ? 256 : 1024),
@@ -533,9 +535,10 @@ async function openMap(game, destination, takePreparedHome) {
   // Fixed gameplay coordinates remain a contained board inside the expanded UI.
   // The 3D exploration renderer uses the full Play holder.
   const { createGameHost } = await import('./game-host.mjs');
+  const textPressure=createTextWorkPressure(8);
   const outputAlpha = game.visualStyle === 'jyx2' ? 'premultiplied' : 'opaque';
   const semantics = createUiSemantics();
-  const initialHud = { sceneName:isWorld?'江湖大地图':scene.name, coordinates:'—', hint:'方向鍵或 WASD 移動', notice:bootNotice.textContent, marker:'' };
+  const initialHud = { sceneName:isWorld?tr('map.world'):scene.name, coordinates:'—', hint:tr('map.walk.key'), notice:bootNotice.textContent, marker:'' };
   const viewport = canvas.parentElement;
   const placeholder = canvas;
   let liveCanvas;
@@ -562,7 +565,8 @@ async function openMap(game, destination, takePreparedHome) {
     playOptions: { parent: viewport, width, height, portrait:{width:height,height:width},
       fit:'expand', uiScale:{min:1,max:1.4}, backend: 'webgl2', pixelRatio: wantsMap3d ? 3 : 1,
       transparent: outputAlpha === 'premultiplied', blendSpace: 'linear', audio: false,
-      staticLayers: wantsGpuGround, renderMode: 'on-demand', semantics },
+      staticLayers: wantsGpuGround, renderMode: 'on-demand', semantics,
+      textWorkBudgetMs:4,textWorkBudgetWhen:textPressure.when },
     onFrameTiming(sample) {
       if (liveCanvas && sample.outcome === 'submitted') liveCanvas.dataset.frame = String(sample.id);
     },
@@ -873,10 +877,10 @@ async function openMap(game, destination, takePreparedHome) {
     portraitUrl: id => `/art/${portraitGroup}/${id}.png`,
     onPage({ text, speaker, head, style, voice, page, pages }) {
       Object.assign(canvas.dataset, { talkText: text, talkHead: head, talkStyle: style, talkVoice: voice, talkPage: page, talkPages: pages });
-      journal.record(speaker ?? (head < 0 ? '提示' : '對話'), text);
+      journal.record(speaker ?? tr(head<0?'dialogue.system':'dialogue.normal'),text);
       if (openingActive) canvas.dataset.opening = 'talk';
       updateExploreControls();
-      hint.textContent = `${touchExploration.matches ? '點畫面或按繼續' : '點擊畫面 / Enter 繼續'} · ${page}/${pages}`;
+      hint.textContent=tr(touchExploration.matches?'dialogue.page.touch':'dialogue.page.key',{page,pages});
     },
   });
   if (opening && !game.openingDone && game.visualStyle === 'jyx2') void dialogue.prepareSkin();
@@ -918,19 +922,20 @@ async function openMap(game, destination, takePreparedHome) {
     updateExploreControls();
     canvas.dataset.x = String(x);
     canvas.dataset.y = String(y);
-    coordinates.textContent = `格点 ${x} · ${y}`;
+    coordinates.textContent=tr('map.coordinate',{x,y});
     const event = eventAt(x, y);
-    marker.textContent = event?.event3 > 0 ? `经过事件 ${event.event3}` : '';
+    marker.textContent=event?.event3>0?tr('event.passed',{id:event.event3}):'';
     const interaction = facingEvent();
     const trainerNearby = hasTrainer && facingOffsets.some(([dx, dy]) =>
       fits(scene, x + dx, y + dy) && eventAt(x + dx, y + dy)?.event1 === trainerEventId);
-    hint.textContent = eventEnded ? '劇情完成 · 在江湖選單可返回主選單'
-      : interaction?.id === trainerEventId ? (touchExploration.matches ? '黑帝斯 · 點「對話」可開始試煉' : '黑帝斯 · 按 Enter 開始試煉')
-      : trainerNearby ? '面向黑帝斯，對話可開始試煉'
-      : interaction ? (touchExploration.matches ? '點「對話」與面前人物交談' : 'Enter / 空格與 NPC 對話')
-      : scene.exits?.some(([ex, ey]) => x === ex && y === ey) ? '已到达原作出口'
-      : touchExploration.matches ? '點選地圖尋路，或使用方向鍵移動'
-        : isWorld && map3dView ? '方向鍵 / WASD 移動 · 點擊地名進入' : '方向鍵或 WASD 移動';
+    const trainerName='黑帝斯';
+    hint.textContent=eventEnded?tr('map.complete')
+      : interaction?.id===trainerEventId?tr(touchExploration.matches?'trainer.talk.touch':'trainer.talk.key',{name:trainerName})
+      : trainerNearby?tr('trainer.near',{name:trainerName})
+      : interaction?tr(touchExploration.matches?'map.talk.touch':'map.talk.key')
+      : scene.exits?.some(([ex,ey])=>x===ex&&y===ey)?tr('map.exit')
+      : touchExploration.matches?tr('map.walk.touch')
+        : isWorld&&map3dView?tr('map.walk.world'):tr('map.walk.key');
   }
 
   function maybePlayOpening() {
@@ -957,7 +962,7 @@ async function openMap(game, destination, takePreparedHome) {
       },
       animationStart() {
         canvas.dataset.opening = 'animation';
-        hint.textContent = '原作動畫播放中';
+        hint.textContent=tr('dialogue.animation');
       },
       animationFrame(count, picture) {
         canvas.dataset.animationPicture = String(picture);
@@ -1004,7 +1009,7 @@ async function openMap(game, destination, takePreparedHome) {
     canvas.dataset.trainer = 'loading';
     canvas.dataset.battleId = String(id);
     notice.hidden = false;
-    notice.textContent = '正在讀取原作戰場與人物動畫…';
+    notice.textContent=tr('loading.battle');
     const spec = unpackMap(await json(`/api/battle/${id}?party=${party.join(',')}`));
     for (const role of [...spec.roster, ...spec.enemy]) {
       const saved = roleState.find(entry => entry.id === role.id);
@@ -1034,7 +1039,7 @@ async function openMap(game, destination, takePreparedHome) {
       delete canvas.dataset.battleCastRole;
       delete canvas.dataset.battleResult;
       notice.hidden = true;
-      hint.textContent = touchExploration.matches ? '點選隊友，再點「確定出戰」' : '選擇出戰隊友 · O 確認';
+      hint.textContent=tr(touchExploration.matches?'battle.team.touch':'battle.team.key');
       musicActive = musicLive = game.sound;
       const track = music.play(spec.music);
       void track.catch(() => {
@@ -1053,7 +1058,7 @@ async function openMap(game, destination, takePreparedHome) {
       }
       Object.assign(canvas.dataset, { trainer: 'loading', battleTeam: spec.team.map(role => role.id).join(',') });
       notice.hidden = false;
-      notice.textContent = '正在讀取原作戰場與人物動畫…';
+      notice.textContent=tr('loading.battle');
       const makeModel = () => createClassicBattle(spec, {
         getExp, inventory, tileWidth: 18 * scale,
         onEvent(event) {
@@ -1088,12 +1093,12 @@ async function openMap(game, destination, takePreparedHome) {
       const usedItems = new Set([...inventory.keys(), ...spec.enemy.flatMap(role => role.carriedItems.map(item => item.id))]);
       const itemEffectIds = [0, 30, 36, ...[...usedItems].map(id => spec.items[id]).filter(item => item?.type === 4)
         .map(item => item.hiddenWeaponEffectId)];
-      const prepared = arena?.prepareOpeningPrograms(model.state.roles).catch(error => {
+      const prepared = arena?.prepareOpeningPrograms(model.state.roles,{signal:listeners.signal}).catch(error => {
         console.warn('白鷺 World3D 戰場程式預備未完成', error);
       });
       view = await createBattleView({ engine, browser: nativeHost.game.browser, worldParent: worldBoard, overlayParent: overlayBoard,
         spec, width, height, scale, loadArt, bakeGround, json, visualStyle: game.visualStyle, outputAlpha, arena,
-        itemEffectIds });
+        itemEffectIds, textPressure });
       await prepared;
       listeners.signal.throwIfAborted();
       // Keep the Egret keyboard target active while the map layers are hidden.
@@ -1102,7 +1107,7 @@ async function openMap(game, destination, takePreparedHome) {
       if (atmosphere) atmosphere.light.visible = false;
       sceneName.textContent = spec.name;
       hint.textContent = battleHint();
-      marker.textContent = '經典回合制';
+      marker.textContent=tr('battle.classic');
       notice.hidden = true;
       await new Promise((resolve, reject) => {
         battle = { model, makeModel, view, arena, resolve, reject, resetSound, lastTime: performance.now() };
@@ -1159,7 +1164,7 @@ async function openMap(game, destination, takePreparedHome) {
 
   async function saveTrainer(inventory, result) {
     canvas.dataset.trainer = 'saving';
-    hint.textContent = '正在寫入自動存檔…';
+    hint.textContent=tr('loading.save');
     const roles = new Map(game.roleState.map(role => [role.id, role]));
     for (const { expGot, levelsGained, ...role } of result.settlement) roles.set(role.id, { ...roles.get(role.id), ...role });
     await commitProgress({ inventory, roleState: [...roles.values()], lastBattle: { id: result.id, won: result.won } });
@@ -1173,7 +1178,7 @@ async function openMap(game, destination, takePreparedHome) {
       const [icon] = await group.ready;
       canvas.dataset[phase] = 'reward';
       canvas.dataset.rewardItem = String(id);
-      await dialogue.talk({ text: `獲得${item.name}  ${amount}`, head: -1, style: 3, voice: -1, item: icon });
+      await dialogue.talk({ text: tr('reward.item',{name:item.name,amount}), head: -1, style: 3, voice: -1, item: icon });
       await presentFrame();
     } finally {
       rewardScope.dispose();
@@ -1211,9 +1216,9 @@ async function openMap(game, destination, takePreparedHome) {
         trainerActive = false;
         showCell();
         if (errorText) {
-          hint.textContent = `${saving && !saved ? '自動存檔失敗' : '試煉結算未完成'} · ${errorText}`;
+          hint.textContent=tr(saving&&!saved?'trainer.saveFailed':'trainer.settlementFailed',{error:errorText});
         } else if (saved) {
-          hint.textContent = `試煉已記錄 · 勝 ${canvas.dataset.wins} / 負 ${canvas.dataset.losses} · 自動存檔完成`;
+          hint.textContent=tr('trainer.saved',{wins:canvas.dataset.wins,losses:canvas.dataset.losses});
           canvas.dataset.trainer = 'saved';
         }
         requestFrame();
@@ -1314,7 +1319,7 @@ async function openMap(game, destination, takePreparedHome) {
         },
         askJoin() {
           canvas.dataset.recruit = 'choice';
-          hint.textContent = '選擇是否邀請加入';
+          hint.textContent=tr('join.choose');
           return menu.askJoin(listeners.signal);
         },
         async checkRoleMorality(role, minimum, maximum) {
@@ -1358,7 +1363,7 @@ async function openMap(game, destination, takePreparedHome) {
         const roleState = new Map(game.roleState.map(role => [role.id, role]));
         if (member) roleState.set(member.id, { ...roleState.get(member.id), id: member.id, carriedItems: [] });
         canvas.dataset.recruit = 'saving';
-        hint.textContent = '正在寫入自動存檔…';
+        hint.textContent=tr('loading.save');
         await commitProgress({ inventory: bag, party, roleState: [...roleState.values()], scenePatches });
         scene.events = draft.events;
         scene.layers.eventIndex = grid;
@@ -1375,9 +1380,9 @@ async function openMap(game, destination, takePreparedHome) {
         recruitActive = false;
         showCell();
         if (errorText) {
-          marker.textContent = `事件 ${id} 暫停`;
+          marker.textContent=tr('event.paused',{id});
           hint.textContent = errorText;
-        } else if (member) marker.textContent = `${member.name}加入 · 已自動存檔`;
+        } else if (member) marker.textContent=tr('join.saved',{name:member.name});
       }
     }
   }
@@ -1443,6 +1448,7 @@ async function openMap(game, destination, takePreparedHome) {
     try {
       const result = await playGameEvent({ program: await readEventProgram(id), run: runGameScript,
         game, catalog, sceneId: scene.id, eventSlot: slot, usedItem, view: {
+          words:tr,
           getProgram: readEventProgram,
           getScene: sceneId => sceneFor(game, sceneId),
           preview: previewScene,
@@ -1467,17 +1473,17 @@ async function openMap(game, destination, takePreparedHome) {
           wave(id) { void effects.play('wave', id, { signal: listeners.signal }); },
           music(id) { mapTrack = id; music.stop(); mapMusicStarted = false; startMapMusic(); },
           shop(stock, money) {
-            return menu.choose(`商店 · 銀兩 ${money}`, stock.filter(row => row.count > 0 && row.price <= money).map(row => ({
-              label: `${row.name} · ${row.price} 兩`, value: row.index, dataset: { shopItem: row.id }, icon: itemIconUrl(row.id),
+            return menu.choose(tr('shop.title',{money}), stock.filter(row => row.count > 0 && row.price <= money).map(row => ({
+              label:tr('shop.item',{name:row.name,price:row.price}), value: row.index, dataset: { shopItem: row.id }, icon: itemIconUrl(row.id),
             })), listeners.signal);
           },
         } });
       listeners.signal.throwIfAborted();
       if (result.ended === 'defeat') {
         eventEnded = true;
-        const command = await menu.choose('勝敗乃兵家常事', [
-          { label: '讀取自動存檔', value: 'retry', dataset: { defeatAction: 'retry' } },
-          { label: '返回主選單', value: 'title', dataset: { defeatAction: 'title' } },
+        const command = await menu.choose(tr('defeat.title'), [
+          {label:tr('defeat.retry'), value:'retry', dataset: { defeatAction: 'retry' } },
+          {label:tr('defeat.home'), value:'title', dataset: { defeatAction: 'title' } },
         ], listeners.signal);
         await leaveGame(command === 'title' ? returnToTitle : () => location.reload());
         return;
@@ -1493,7 +1499,7 @@ async function openMap(game, destination, takePreparedHome) {
       if (result.ended === 'complete') {
         eventEnded = true;
         canvas.dataset.event = 'finished';
-        await showMessage('劇情完成');
+        await showMessage(tr('dialogue.finished'));
       }
       return true;
     } catch (error) {
@@ -1511,7 +1517,7 @@ async function openMap(game, destination, takePreparedHome) {
         showCell();
         requestFrame();
         if (errorText) {
-          marker.textContent = `事件 ${id} 暫停`;
+          marker.textContent=tr('event.paused',{id});
           hint.textContent = errorText;
         }
       }
@@ -1534,17 +1540,17 @@ async function openMap(game, destination, takePreparedHome) {
       return { number, store, save: await store.read() };
     }));
     const choices = entries.filter(entry => !loading || entry.save).map(entry => {
-      const { location, detail } = describeSaveSlot(entry.save, scenes, catalog.roles);
-      const name = entry.number === autoSlot ? '自動存檔 11' : `第 ${entry.number} 槽`;
+      const { location, detail } = describeSaveSlot(entry.save,scenes,catalog.roles,words);
+      const name=entry.number===autoSlot?tr('save.autoSlot'):tr('save.slot',{n:entry.number});
       const title = `${name} · ${location}`;
       return { title, detail, label: detail ? `${title} · ${detail}` : title,
         value: entry, dataset: { saveSlot: entry.number } };
     });
     if (!choices.length) {
-      await showMessage('目前沒有存檔。');
+      await showMessage(tr('save.noRecords'));
       return undefined;
     }
-    return menu.choose(loading ? '選擇讀取的存檔' : '選擇手動存檔槽', choices, listeners.signal, 2);
+    return menu.choose(tr(loading?'save.selectLoad':'save.selectWrite'), choices, listeners.signal, 2);
   }
 
   async function openWorldMenu(bagOnly) {
@@ -1558,7 +1564,7 @@ async function openMap(game, destination, takePreparedHome) {
         history: journal.hasEntries ? () => journal.show() : undefined,
         useQuestItem(itemId) {
           const target = facingEvent('event2');
-          return target ? dispatchEvent(target, itemId) : showMessage('這裡無法使用這件物品。');
+          return target ? dispatchEvent(target, itemId) : showMessage(tr('item.invalid'));
         },
         leave(roleId) {
           const id = catalog.leaveEvents.get(roleId);
@@ -1574,9 +1580,9 @@ async function openMap(game, destination, takePreparedHome) {
         async save() {
           const entry = await chooseSaveSlot(false);
           if (!entry) return;
-          if (entry.save && !await menu.askJoin(listeners.signal, `覆蓋第 ${entry.number} 槽？`)) return;
+          if (entry.save && !await menu.askJoin(listeners.signal,tr('save.overwrite',{n:entry.number}))) return;
           await entry.store.write(captureProgress());
-          await showMessage(`已儲存第 ${entry.number} 槽。`);
+          await showMessage(tr('save.written',{n:entry.number}));
         },
         async load() {
           const entry = await chooseSaveSlot(true);
@@ -1585,7 +1591,7 @@ async function openMap(game, destination, takePreparedHome) {
           await leaveGame(() => location.reload());
         },
         async new() {
-          if (!await menu.askJoin(listeners.signal, '開始新遊戲並替換自動存檔？')) return;
+          if (!await menu.askJoin(listeners.signal,tr('save.newConfirm'))) return;
           await game.autoSave.write(game.baseline);
           await leaveGame(() => location.reload());
         },
@@ -1625,19 +1631,17 @@ async function openMap(game, destination, takePreparedHome) {
     canvas.dataset.battleResult = state.result ? 'win' : 'loss';
     delete canvas.dataset.battlePrompt;
     notice.hidden = true;
-    const english = game.language === 'en';
-    const experience = state.settlement.map(role => {
-      const actor = state.roles.find(entry => entry.side === 0 && entry.id === role.id);
-      const name = state.settlement.length > 1 && actor ? `${actor.name} ` : '';
-      return english ? `${name}XP +${role.expGot}${role.levelsGained ? ` · Level ${role.level}` : ''}` : `${name}經驗 +${role.expGot}${role.levelsGained ? `，升至 ${role.level} 級` : ''}`;
+    const experience=state.settlement.map(role=>{
+      const actor=state.roles.find(entry=>entry.side===0&&entry.id===role.id);
+      const name=state.settlement.length>1&&actor?actor.name+' ':'';
+      return tr('result.xp',{name,exp:role.expGot})+(role.levelsGained?tr('result.level',{level:role.level}):'');
     });
-    const progress = state.progression.flatMap(({ roleId, practice, crafting }) => [
-      practice && (english ? `${catalog.roles[roleId].name} · ${practice.name} × ${practice.times}` : `${catalog.roles[roleId].name} 修煉${practice.name} × ${practice.times}`),
-      crafting && (english ? `Crafted ${catalog.items[crafting.itemId].name} × ${crafting.count}` : `製成 ${catalog.items[crafting.itemId].name} × ${crafting.count}`),
+    const progress=state.progression.flatMap(({roleId,practice,crafting})=>[
+      practice&&tr('result.practice',{name:catalog.roles[roleId].name,skill:practice.name,times:practice.times}),
+      crafting&&tr('result.craft',{name:catalog.items[crafting.itemId].name,count:crafting.count})
     ].filter(Boolean));
-    const detail = trainerActive
-      ? english ? `Continue to return to ${scene.name}; this ${state.result ? 'victory' : 'defeat'} will be recorded and saved automatically.` : `繼續後回到${scene.name}，記錄本場${state.result ? '勝利' : '戰敗'}並自動存檔。` : '';
-    hint.textContent = '點擊「繼續」或按 Enter / 空格';
+    const detail=trainerActive?tr(state.result?'result.returnWin':'result.returnLoss',{place:scene.name}):'';
+    hint.textContent=tr('dialogue.continue');
     battleHudUi.update();
     battleResultUi.show({ won: state.result, entries: [...experience, ...progress].filter(Boolean), detail });
   }
@@ -1648,9 +1652,9 @@ async function openMap(game, destination, takePreparedHome) {
   }
 
   const supportActions = [
-    { label: '醫療', value: 'medicine' },
-    { label: '解毒', value: 'detox' },
-    { label: '用毒', value: 'poison' },
+    {label:tr('battle.support.medicine'),value:'medicine'},
+    {label:tr('battle.support.detox'),value:'detox'},
+    {label:tr('battle.support.poison'),value:'poison'},
   ];
 
   function setBattleCursor(cell, preview = true) {
@@ -1714,11 +1718,13 @@ async function openMap(game, destination, takePreparedHome) {
   }
 
   async function showCombatantStatus(role) {
-    const detail = `等級 ${role.level} · 生命 ${role.hp}/${role.maxHp} · 內力 ${role.mp}/${role.maxMp} · 體力 ${role.physicalPower}`
-      + ` · 攻擊 ${role.attack} · 防禦 ${role.defence} · 輕功 ${role.speed} · 中毒 ${role.poison}`;
+    const detail=tr('battle.inspect',{
+      level:role.level,hp:role.hp,maxHp:role.maxHp,mp:role.mp,maxMp:role.maxMp,physicalPower:role.physicalPower,
+      attack:role.attack,defence:role.defence,speed:role.speed,poison:role.poison
+    });
     canvas.dataset.battlePrompt = 'status';
     try {
-      const label = game.visualStyle === 'classic' ? detail + ' · 返回戰鬥' : '返回戰鬥';
+      const label=(game.visualStyle==='classic'?detail+' · ':'')+tr('battle.back');
       await menu.choose(role.name, [{ label, value: true }], listeners.signal, 1, { detail });
     } finally {
       delete canvas.dataset.battlePrompt;
@@ -1755,7 +1761,7 @@ async function openMap(game, destination, takePreparedHome) {
     if (!choices.length) return;
     canvas.dataset.battlePrompt = 'support';
     try {
-      const action = await menu.choose('醫療、解毒與用毒', choices, listeners.signal);
+      const action = await menu.choose(tr('battle.support.title'),choices, listeners.signal);
       if (action) model.selectAction(action);
       syncBattleCursor();
     } finally {
@@ -1793,8 +1799,8 @@ async function openMap(game, destination, takePreparedHome) {
     if (code === 'Escape' && state.selection) model.cancelSelection();
     else if (code === 'Escape' || code === 'KeyR') {
       canvas.dataset.battlePrompt = code === 'KeyR' ? 'restart' : 'surrender';
-      const question = code === 'KeyR' ? '使用同一隊伍重開本場戰鬥？' : '放棄本場戰鬥？';
-      notice.textContent = touchExploration.matches ? question : question + 'Enter 確認 · Esc 取消';
+      const question=tr(code==='KeyR'?'battle.restart':'battle.retreat');
+      notice.textContent=touchExploration.matches?question:question+' · '+tr('battle.confirm.shortcut');
       notice.hidden = false;
     } else if (code === 'Tab') model.toggleAutomatic();
     else if (!state.canAct) return;
@@ -1817,7 +1823,7 @@ async function openMap(game, destination, takePreparedHome) {
       const items = model.listItems().filter(item => model.canUseItem(item.id));
       if (!items.length) return;
       canvas.dataset.battlePrompt = 'items';
-      hint.textContent = '選擇藥品或暗器';
+      hint.textContent=tr('battle.item');
       const resume = () => {
         menu.close();
         delete canvas.dataset.battlePrompt;
@@ -1835,7 +1841,7 @@ async function openMap(game, destination, takePreparedHome) {
     if (closing) return;
     canvas.dataset.phase = 'loading';
     notice.hidden = false;
-    notice.textContent = '正在切换原作场景…';
+    notice.textContent=tr('loading.change');
     void close().then(() => openMap(game, next)).catch(fail);
   }
 
@@ -1848,7 +1854,7 @@ async function openMap(game, destination, takePreparedHome) {
   function cancelWorldRoute() {
     const name = pointerWalk?.destination?.name;
     pointerWalk = undefined;
-    if (name) worldNavigation.show('cancelled', name, '已取消尋路');
+    if (name) worldNavigation.show('cancelled',name,tr('route.cancelled'),true);
   }
 
   function clickToWalk(point) {
@@ -1871,7 +1877,7 @@ async function openMap(game, destination, takePreparedHome) {
     if (!target || !fits(scene, target.x, target.y)) {
       if (worldNavigation) {
         held = pointerWalk = undefined;
-        worldNavigation.show('unreachable', '無法到達', '請點選可通行的地面或地標');
+        worldNavigation.show('unreachable',tr('route.unreachable'),tr('route.select'),true);
       }
       return;
     }
@@ -1883,13 +1889,13 @@ async function openMap(game, destination, takePreparedHome) {
     const goals = canTalk || entrance ? facingOffsets.map(([dx, dy]) => ({ x: target.x - dx, y: target.y - dy })) : [target];
     const start = move ?? { x, y };
     const path = findTilePath(start, goals, canWalk);
-    const destination = isWorld ? { ...target, name: entrance?.name ?? '地圖落點' } : undefined;
+    const destination = isWorld ? { ...target, name:entrance?.name??tr('route.target') } : undefined;
     if (!path) {
-      if (destination) worldNavigation.show('unreachable', destination.name, '找不到可通行的路線，請改點附近地面');
+      if (destination) worldNavigation.show('unreachable',destination.name,tr('route.noPath'),true);
       return;
     }
     pointerWalk = { path, target: canTalk || entrance ? target : undefined, entrance, destination };
-    if (destination) worldNavigation.show('walking', destination.name, '沿路前往 · 點地面可改道');
+    if (destination) worldNavigation.show('walking',destination.name,tr('route.walking'),true);
     return true;
   }
 
@@ -1904,7 +1910,7 @@ async function openMap(game, destination, takePreparedHome) {
     const step = pointerWalk.path.shift();
     if (step) {
       if (pointerWalk.destination && !canWalk(step.x, step.y)) {
-        worldNavigation.show('unreachable', pointerWalk.destination.name, '路線已受阻，請重新選擇目的地');
+        worldNavigation.show('unreachable',pointerWalk.destination.name,tr('route.blocked'),true);
         pointerWalk = undefined;
         return;
       }
@@ -1913,7 +1919,7 @@ async function openMap(game, destination, takePreparedHome) {
     }
     const { target, entrance, destination } = pointerWalk;
     pointerWalk = undefined;
-    if (destination) worldNavigation.show('arrived', destination.name, '已到達');
+    if (destination) worldNavigation.show('arrived',destination.name,tr('route.arrived'),true);
     if (!target) return;
     const direction = facingOffsets.findIndex(([dx, dy]) => x + dx === target.x && y + dy === target.y);
     if (direction < 0) return;
@@ -1974,8 +1980,8 @@ async function openMap(game, destination, takePreparedHome) {
       }
       canvas.dataset.blocked = `${tx},${ty}`;
       hint.textContent = facingEvent()
-        ? (touchExploration.matches ? '點「對話」與面前人物交談' : 'Enter / 空格與 NPC 對話')
-        : `無法通行 · ${tx}, ${ty}`;
+        ? tr(touchExploration.matches?'map.talk.touch':'map.talk.key')
+        : tr('map.blocked',{x:tx,y:ty});
       return;
     }
     delete canvas.dataset.blocked;
@@ -2076,19 +2082,15 @@ async function openMap(game, destination, takePreparedHome) {
         showBattleResult(state);
       }
       const player = state.turn ?? state.player;
-      const status = `第 ${state.round} 回合 · 剩餘敵人 ${state.remainingEnemies}/${state.totalEnemies}${state.auto ? ' · 自動戰鬥' : ''}`;
+      const status=tr('battle.round',{round:state.round,remaining:state.remainingEnemies,total:state.totalEnemies})+(state.auto?tr('battle.autoSuffix'):'');
       if (coordinates.textContent !== status) coordinates.textContent = status;
       Object.assign(canvas.dataset, { battleTick: state.frame, battleRound: state.round,
         battleHp: player.hp, battleMaxHp: player.maxHp, battleMp: player.mp, battleAction: player.action,
         battleAuto: state.auto, battleControlled: player.id, battleTurnSide: player.side });
       if (state.result === null && !canvas.dataset.battlePrompt) {
-        const nextHint = state.selection
-          ? (canvas.dataset.battlePreview === 'invalid' ? '這格不在可選範圍 · 請選高亮格'
-            : touchExploration.matches ? '點高亮格選擇 · 預覽後點「確定」'
-              : '點選高亮格子 · 方向鍵選格 · Enter 確認 · Esc 取消')
-          : state.canAct ? battleHint()
-            : state.auto ? (touchExploration.matches ? '自動戰鬥中 · 再點「自動」恢復手動' : '自動戰鬥中 · Tab 恢復手動')
-              : '等待行動完成';
+        const nextHint=state.selection
+          ? tr(canvas.dataset.battlePreview==='invalid'?'battle.preview.invalid':touchExploration.matches?'battle.preview.touch':'battle.preview.key')
+          : state.canAct?battleHint():state.auto?tr(touchExploration.matches?'battle.auto.touch':'battle.auto.key'):tr('battle.wait');
         if (hint.textContent !== nextHint) hint.textContent = nextHint;
       }
       battleHudUi.update();
@@ -2405,7 +2407,7 @@ async function openMap(game, destination, takePreparedHome) {
     } else gpuGroundSource = undefined;
   }
   if (wantsMap3d) {
-    notice.textContent = `正在載入${isWorld ? '江湖大地图' : scene.name}的 3D 場景…`;
+    notice.textContent=tr('loading.scene3d',{name:isWorld?tr('map.world'):scene.name});
     try {
       const viewport = canvas.parentElement;
       const options = isWorld ? { world: scene, places: scenes, canEnter, uiGame:nativeHost.game,language:()=>game.language }
@@ -2457,6 +2459,8 @@ async function openMap(game, destination, takePreparedHome) {
     bootNotice.hidden = true;
     if (viewSettings.get('qa') === '1') globalThis.__jyNativeQa = {
       semantics, game: nativeHost.game, host: nativeHost, menu, journal, battleControls: battleHudUi, battleResult: battleResultUi,
+      get battleNumberStats(){return battle?.view?.getNumberLabelStats?.()},
+      get battlePreparationStats(){return battle?.arena?.getPreparationStats?.()},
     };
     canvas.dataset.scene = String(destination.id);
     canvas.dataset.mode = isWorld ? 'world' : 'submap';
@@ -2473,7 +2477,7 @@ async function openMap(game, destination, takePreparedHome) {
 
 function fail(error) {
   canvas.dataset.phase = 'failed';
-  bootNotice.textContent = `${document.documentElement.lang==='en'?'Game paused':'遊戲暫停'} · ${describeError(error)}`;
+  bootNotice.textContent=createRuntimeWords({language:document.documentElement.lang==='en'?'en':'zh'}).text('status.paused',{error:describeError(error)});
   bootNotice.hidden = false;
   console.error(error);
 }

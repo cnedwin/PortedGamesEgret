@@ -707,6 +707,10 @@ export const MATRIX = {
      "file": "jelly-pandas/src/ui/markers.mjs"
     },
     {
+     "game": "JY",
+     "file": "JY/web/jyx2/ui/native/fixed-labels.mjs"
+    },
+    {
      "game": "MechanismCity",
      "file": "MechanismCity/src/main.mjs"
     },

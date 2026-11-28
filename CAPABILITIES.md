@@ -46,7 +46,7 @@ used or not; only each game's own code is read, not `vendor/`, tests or tools. T
 | `@egret/engine/tilemap` | 2 |  |  |  |  |  |  |  |  | [✔](LanternShadows/src/main.mjs) |  |  | [✔](MechanismCity/src/play/level.mjs) |  |  |  |  |  |  |  |  |  |  |  |  |
 | `@egret/engine/particles` | 4 |  |  |  |  |  |  |  |  | [✔](LanternShadows/src/main.mjs) |  |  | [✔](MechanismCity/src/play/level.mjs) |  | [✔](NightWardens/src/view/field.mjs) |  |  |  |  | [✔](SandScroll/src/view/play.mjs) |  |  |  |  |  |
 | `@egret/engine/physics2d` | 2 |  |  |  |  |  |  |  |  |  |  | [✔](LubanBridge/src/sim/run.mjs) | [✔](MechanismCity/src/sim/sim.mjs) |  |  |  |  |  |  |  |  |  |  |  |  |
-| `@egret/engine/bitmapfont` | 6 |  |  |  |  |  |  | [✔](jelly-pandas/src/ui/markers.mjs) |  |  |  |  | [✔](MechanismCity/src/main.mjs) |  |  |  |  |  | [✔](Rally/src/ui/race-font.mjs) |  | [✔](SnowTemple/src/ui/combat-font.mjs) |  |  | [✔](TeaHorseRoad/src/main.mjs) | [✔](Wulin/src/view/scene-markers.mjs) |
+| `@egret/engine/bitmapfont` | 7 |  |  |  |  |  |  | [✔](jelly-pandas/src/ui/markers.mjs) | [✔](JY/web/jyx2/ui/native/fixed-labels.mjs) |  |  |  | [✔](MechanismCity/src/main.mjs) |  |  |  |  |  | [✔](Rally/src/ui/race-font.mjs) |  | [✔](SnowTemple/src/ui/combat-font.mjs) |  |  | [✔](TeaHorseRoad/src/main.mjs) | [✔](Wulin/src/view/scene-markers.mjs) |
 | `@egret/engine/video` | 0 |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |
 | `@egret/engine/web/video` | 2 |  |  |  |  |  |  |  |  |  |  |  | [✔](MechanismCity/src/screens.mjs) |  |  |  |  |  |  |  |  |  |  | [✔](TeaHorseRoad/src/ui/screens.mjs) |  |
 | `@egret/engine/web/loop` | 0 |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |
