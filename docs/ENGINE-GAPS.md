@@ -4,9 +4,9 @@
 
 Made by `node tools/engine-notes.mjs --write` from the ENGINE-NOTES of the games; do not edit by hand, and `--check` says whether it is out of date. What the engine resolved is copied from the engine's `guide/resolved.json` into [engine-resolved.json](engine-resolved.json) (15 entries). The form of a note is in part 3 of [GAME-STANDARD.md](GAME-STANDARD.md).
 
-24 个游戏、281 条笔记：未解决 76，部分解决 24，游戏侧绕过 18，已写入文档 42，已解决 121。
+24 个游戏、282 条笔记：未解决 77，部分解决 24，游戏侧绕过 18，已写入文档 42，已解决 121。
 
-281 notes from 24 games: 76 open, 24 partly resolved, 18 worked around in the game, 42 documented, 121 resolved.
+282 notes from 24 games: 77 open, 24 partly resolved, 18 worked around in the game, 42 documented, 121 resolved.
 
 ## 1. 引擎已经解决、游戏还标着未解决 · Resolved by the engine, still open in a game
 
@@ -90,6 +90,7 @@ Write the lesson as a card of the engine's guide (`guide/cards` in the engine re
 | `play-owned-canvas-fit` | FPS#8 自有 canvas 的 Play fit 不能自动扩展 · Play fit does not expand a caller-owned canvas | 部分解决 · partly |
 | `play-responsive-hold-controls` | FPS#9 Play 数据视图的连续设置与触控按钮 · Continuous settings and responsive touch buttons | 部分解决 · partly |
 | `play-startup-dependencies` | NezhaSea#13 静止视图重复提交，首屏依赖在后段串行加载 · Repeated static frames and late startup dependencies | 部分解决 · partly |
+| `pointer-lock-capture-transition` | FiveRegiments#7 指针锁定过渡与原生捕获 · Native capture during pointer-lock transition | 未解决 · open |
 | `prepare-programs-meshes` | JY#2 预编译着色器要求给出已经存在的网格 · Preparing programs needs meshes that already exist | 未解决 · open |
 | `radial-gradient-triangles` | MechanismCity#6 径向渐变的三角形很多 · Radial gradients cost many triangles | 未解决 · open |
 | `rapid-label-raster-supersession` | CanalWatch#8 快速变化文字的空白期 · Blank intervals in rapidly changing labels | 已在游戏侧绕过 · worked around |
@@ -144,7 +145,7 @@ Write the lesson as a card of the engine's guide (`guide/cards` in the engine re
 | [CanalWatch](../CanalWatch/ENGINE-NOTES.md) | 8 | 0 | 1 | 2 | 2 | 3 | 0 | `82561d6` |
 | [FengshenChronicle](../FengshenChronicle/ENGINE-NOTES.md) | 5 | 1 | 0 | 1 | 0 | 3 | 0 | `94bd70f` |
 | [FivePhases](../FivePhases/ENGINE-NOTES.md) | 7 | 1 | 1 | 0 | 0 | 5 | 0 | `82561d6` |
-| [FiveRegiments](../FiveRegiments/ENGINE-NOTES.md) | 6 | 6 | 0 | 0 | 0 | 0 | 0 | `82561d6` |
+| [FiveRegiments](../FiveRegiments/ENGINE-NOTES.md) | 7 | 7 | 0 | 0 | 0 | 0 | 0 | `7fb371a` |
 | [FPS](../FPS/ENGINE-NOTES.md) | 17 | 3 | 3 | 0 | 2 | 9 | 0 | `82561d6` |
 | [InquestScrolls](../InquestScrolls/ENGINE-NOTES.md) | 13 | 0 | 1 | 3 | 1 | 8 | 0 | `82561d6` |
 | [jelly-pandas](../jelly-pandas/ENGINE-NOTES.md) | 10 | 3 | 2 | 0 | 0 | 5 | 0 | `82561d6` |

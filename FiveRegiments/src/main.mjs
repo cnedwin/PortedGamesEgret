@@ -8,7 +8,10 @@
 //   ?auto            a brain plays for you (for checks)   ?seed=7  fixed dice   ?debug  the readout
 //   ?fixed           each frame drawn is one tick of the world (slow-motion captures on slow machines)
 import { Scene3D, createPerspectiveCamera3D, loadGltf3D, projectToViewport3D } from '@egret/engine/world3d';
-import { createWorld3DApp } from '@egret/engine/webgpu/world3d';
+import { createWorld3DApp, createDynamicResolution3D, WORLD3D_QUALITY_PRESETS, play3dAttached } from '@egret/engine/webgpu/world3d';
+import { createUiSemantics } from '@egret/engine/ui/semantics';
+import { createBrowserSemantics } from '@egret/engine/web/semantics';
+import { createUiTester } from '@egret/engine/ui/testing';
 import { useFixedWorldResolution } from './view/canvas-policy.mjs';
 import { browserSaveStorage } from '@egret/engine/web/kit';
 import { createFight, step, TICK } from './sim/fight.mjs';
@@ -34,6 +37,7 @@ import { createEffects } from './view/effects.mjs';
 import { skillSweepStyle } from './view/effect-profiles.mjs';
 import { ARMS } from './view/weapons.mjs';
 import { createCameraRig } from './view/camera.mjs';
+import { previewFrame } from './view/menu-framing.mjs';
 import { createMountedPresentation } from './view/mounted-presentation.mjs';
 import { createMountedContactPresentation, mountedContactBody } from './view/mounted-contact.mjs';
 import { createContactAccent } from './view/contact-accent.mjs';
@@ -44,10 +48,14 @@ const canvas = document.querySelector('#stage');
 const frame = document.querySelector('#frame');
 const status = { frames: 0, mode: 'boot', error: null };
 window.egretGame = { status };
+let showFatal;
 
 function fail(cause) {
+  if (status.error !== null) return;
   status.error = String(cause?.message ?? cause);
   console.error(cause);
+  if (showFatal) { try { showFatal(status.error); return; } catch (error) { console.warn(error); } }
+  document.querySelector('#boot')?.classList.add('done');
   const box = document.querySelector('#error');
   if (box) {
     box.hidden = false;
@@ -85,8 +93,8 @@ async function main() {
     onDeviceLost: () => fail('device lost')
   });
   const renderer = app.renderer;
-  const quality = app.quality;
-  const set = quality === 'low' ? 'low' : quality === 'medium' ? 'mid' : 'high';
+  let quality = app.quality;
+  const assetSet = () => quality === 'low' ? 'low' : quality === 'medium' ? 'mid' : 'high';
   const scene = new Scene3D();
   const camera = createPerspectiveCamera3D({ fov: 52, near: 0.08, far: 600 });
   scene.addChild(camera);
@@ -99,19 +107,51 @@ async function main() {
   const fx = createEffects(scene, { particles: quality === 'low' ? 0.5 : 1, blood: settings.blood,
     groundAt: (x, z) => floorAt(stage?.place, x, z) });
 
-  const ui = document.querySelector('#ui');
-  const hud = createHud(ui, { touch: coarse });
+  // The existing renderer keeps its quality and resource ownership. The native interface and
+  // its attached World3D view share a single active Play frame clock.
+  let frameTick = () => {};
+  const semantics = createUiSemantics();
+  const resolution = useFixedWorldResolution(globalThis.navigator) ? null : createDynamicResolution3D();
+  let lastQuality = app.quality;
+  let session;
+  try { session = await play3dAttached({
+    parent: document.querySelector('#ui'),
+    width: 1280, height: 720, portrait: { width: 540, height: 960 },
+    fit: 'expand', uiScale: { min: 1, max: 1.25 },
+    renderMode: 'on-demand', audio: false, pixelRatio: Math.min(2, Math.max(1.5, globalThis.devicePixelRatio || 1)), semantics, onError: fail,
+    world: () => ({
+      renderer, scene, camera, autoResize: false, updateParticles: false, onError: fail,
+      onUpdate(dt) {
+        if (lastQuality !== app.quality) { lastQuality = app.quality; resolution?.reset(); }
+        resolution?.update(dt);
+        const limit = WORLD3D_QUALITY_PRESETS[app.quality].pixelRatio;
+        renderer.resizeToDisplaySize(Math.min(globalThis.devicePixelRatio || 1, limit) * (resolution?.scale ?? 1));
+        const drawn = renderer.renderSize ?? renderer.canvas;
+        if (drawn.height > 0) camera.aspect = drawn.width / drawn.height;
+        frameTick(dt);
+      }
+    })
+  }); } catch (cause) { await app.dispose(); throw cause; }
+  const ui = session.game;
+  const projection = createBrowserSemantics({ semantics, canvas: ui.canvas, width: ui.browser.frame.width,
+    height: ui.browser.frame.height, label: t('canvasLabel') });
+  const syncProjection = ui.browser.onScreenChange(() => projection.sync(ui.browser.frame));
+  ui.scope.use({ dispose() { syncProjection(); projection.dispose(); app.dispose(); } });
+  const tester = createUiTester({ semantics, update: () => ui.invalidate() });
+  const hud = createHud(ui, { touch: coarse, semantics });
   const screens = createScreens(ui, {
-    coarse,
+    coarse, onError: fail,
     onLanguage: () => {
       setLanguage(getLanguage() === 'zh' ? 'en' : 'zh');
       showLanguage();
+      ui.canvas.setAttribute('aria-label', t('canvasLabel'));
       keep();
-      redraw?.();
+      return redraw?.();
     }
   });
   let redraw = null;
-  const input = createInput(canvas, {
+  const input = createInput(ui, {
+    isActive: () => mode === 'fight' && !paused && !over,
     settings,
     onPause: (why) => {
       if (mode === 'fight' && !over) pause();
@@ -122,10 +162,12 @@ async function main() {
     }
   });
   const touch = createTouchControls(ui, input, {
+    semantics,
     onPause: () => {
       if (mode === 'fight' && !over) pause();
     }
   });
+  ui.scope.use({ dispose() { touch.dispose?.(); hud.dispose?.(); input.dispose?.(); } });
   let sound = null;
   const startSound = async () => {
     if (sound) return;
@@ -148,13 +190,21 @@ async function main() {
   const bytes = {};
   const troopTemplates = new Map();
   const decode = async ({ bytes: b, mimeType }) => createImageBitmap(new Blob([b], { type: mimeType }), { colorSpaceConversion: 'none', premultiplyAlpha: 'none' });
-  async function body(regiment, which = set) {
+  function bodyBytes(regiment, which = assetSet()) {
     const key = regiment + which;
-    bytes[key] ??= fetch(new URL(`../assets/characters/${regiment}-${which}.glb`, import.meta.url)).then((r) => {
-      if (!r.ok) throw Error('Character HTTP ' + r.status);
-      return r.arrayBuffer();
-    });
-    const asset = await loadGltf3D(new Uint8Array(await bytes[key]), { decodeImage: decode });
+    if (!bytes[key]) {
+      const request = fetch(new URL(`../assets/characters/${regiment}-${which}.glb`, import.meta.url)).then((r) => {
+        if (!r.ok) throw Error('Character HTTP ' + r.status);
+        return r.arrayBuffer();
+      });
+      bytes[key] = request;
+      // A failed speculative fetch must not poison a genuine retry.
+      request.catch(() => { if (bytes[key] === request) delete bytes[key]; });
+    }
+    return bytes[key];
+  }
+  async function body(regiment, which = assetSet()) {
+    const asset = await loadGltf3D(new Uint8Array(await bodyBytes(regiment, which)), { decodeImage: decode });
     return { scene: asset.scene, dispose: () => asset.dispose() };
   }
   function loadFigure(regiment, which) {
@@ -162,7 +212,7 @@ async function main() {
     return Promise.all([body(regiment, which), motions[regiment], REGIMENTS[regiment].horse ? body('horse', which) : null]);
   }
   async function prepareTroopPrograms(template) {
-    if (!renderer.preparePrograms || !renderer.context?.getExtension?.('KHR_parallel_shader_compile')) return;
+    if (!renderer.preparePrograms) return;
     const requests = [];
     template.scene.traverse((mesh) => {
       if (!mesh.skeleton) return;
@@ -217,13 +267,14 @@ async function main() {
   }
 
   // ---- places ----------------------------------------------------------------------------------------------
-  let stageName = null;
+  let stageName = null, stageQuality = null;
   async function enter(name) {
-    if (stageName === name) return stage;
+    if (stageName === name && stageQuality === quality) return stage;
     const next = await buildPlace(scene, name, { renderer, quality });
     stage?.dispose();
     stage = next;
     stageName = name;
+    stageQuality = quality;
     applyLook(renderer, stage.look, quality);
     fx.weather(stage.look.weather);
     return stage;
@@ -231,7 +282,7 @@ async function main() {
 
   // ---- the lineup on the title and the choice ----------------------------------------------------------------
   let lineup = null;
-  async function showLineup() {
+  async function showLineup(onProgress) {
     if (lineup) return lineup;
     const g = createFight({ hero: { regiment: ORDER[0] }, foes: ORDER.slice(1).map((regiment) => ({ regiment })) });
     g.men.forEach((m, i) => {
@@ -241,9 +292,12 @@ async function main() {
       // The rider stands his horse a pace back from the line.
       if (m.horse) Object.assign(m.horse, { x: m.x, z: m.z - 0.6, face: 0 }), (m.z -= 0.6);
     });
+    let count = 0;
+    const arrived = () => onProgress?.(++count / (g.men.length + 1));
     const [, bodies] = await Promise.all([
-      enter('county'),
-      Promise.all(g.men.map((m) => loadFigure(m.regiment, quality === 'high' ? 'mid' : 'low')))
+      enter('county').then(value => { arrived(); return value; }),
+      Promise.all(g.men.map(m => loadFigure(m.regiment, quality === 'high' ? 'mid' : 'low')
+        .then(value => { arrived(); return value; })))
     ]);
     const figs = g.men.map((man, i) => figureFor(man, bodies[i]));
     lineup = { game: g, figs, focus: null };
@@ -272,6 +326,19 @@ async function main() {
     run = null,
     tally = null,
     autoBrain = null;
+  showFatal = (message) => {
+    mode = status.mode = 'error';
+    frameTick = () => {};
+    input.clear(); input.capture(false); hud.show(false); touch.show(false);
+    sound?.setPaused(true); session.view?.dispose();
+    document.querySelector('#boot')?.classList.add('done');
+    screens.error(message, () => location.reload());
+    // The static fallback is only needed if the native UI host itself failed.
+    setTimeout(() => { if (screens.current !== 'error' || !screens.view?.visible) {
+      const box = document.querySelector('#error');
+      if (box) { box.hidden = false; box.textContent = message; }
+    } }, 250);
+  };
   const runStats = () => ({ time: 0, deflects: 0, broken: 0, taken: 0 });
 
   async function title() {
@@ -283,7 +350,7 @@ async function main() {
     sound?.setPaused(false);
     sound?.music('air');
     screens.loading(t('loading'));
-    await showLineup();
+    await showLineup(value => screens.progress(value, t('loadingMen')));
     const marks = Object.entries(save.data.marks)
       .map(([r, m]) => `${say(REGIMENTS[r].name)} ${t('marks')[MARKS.indexOf(m)]}`)
       .join(' · ');
@@ -305,7 +372,7 @@ async function main() {
       onLook: (r) => lineup && (lineup.focus = ORDER.indexOf(r)),
       onBack: () => {
         if (lineup) lineup.focus = null;
-        title();
+        return title();
       },
       onPick: (r) => fit(r, expedition)
     });
@@ -353,6 +420,13 @@ async function main() {
     redraw = card;
     screens.stageCard({ stage: st, total: run.stages.length, series: run.series,
       onBack: run.series ? title : null, onGo: () => begin(st) });
+    // Fetch at most the player's and two upcoming units' bytes while the card is
+    // readable. No decoding, scene replacement or busy work blocks the button.
+    const upcoming = [...new Set([run.regiment, ...st.foes])].filter(id => REGIMENTS[id]).slice(0, 3);
+    for (const id of upcoming) {
+      void bodyBytes(id).catch(() => {});
+      if (REGIMENTS[id].horse) void bodyBytes('horse').catch(() => {});
+    }
   }
 
   async function begin(st) {
@@ -447,7 +521,7 @@ async function main() {
       onLeave: () => {
         paused = false;
         clearFight();
-        title();
+        return title();
       }
     });
   }
@@ -464,8 +538,14 @@ async function main() {
         openSettings(back);
       },
       onDone: () => {
-        if (settings.quality !== 'auto' && settings.quality !== quality && app.setQuality) app.setQuality(settings.quality);
-        back();
+        if (settings.quality !== 'auto' && settings.quality !== app.quality) {
+          app.setQuality(settings.quality);
+          quality = app.quality;
+          // The current renderer's display quality changes immediately; the new
+          // scene picks the corresponding model/terrain LOD on its next entry.
+          if (stage) applyLook(renderer, stage.look, quality);
+        }
+        return back();
       }
     });
   }
@@ -517,7 +597,7 @@ async function main() {
       },
       onTitle: () => {
         clearFight();
-        title();
+        return title();
       }
     });
   }
@@ -896,8 +976,8 @@ async function main() {
   }
 
   // ---- one frame -----------------------------------------------------------------------------------------------
-  app.show(scene, camera, {
-    onUpdate(dt) {
+  frameTick = (dt) => {
+      screens.update();
       status.frames++;
       // `?fixed` (for captures on slow machines): every frame drawn moves the world on by one tick, so motion and
       // blade trails look as they do at full speed.
@@ -914,26 +994,28 @@ async function main() {
         fx.update(dt, null);
         if (lineup) {
           lineup.game.men.forEach((m, i) => {
-            m.guard = lineup.focus === i && Math.sin(clock * 0.8) > 0.6;
+            m.guard = false; // The showcase uses a composed, upright pose rather than a combat guard.
             m.guardLine = 'R';
-            lineup.figs[i].update(m, lineup.game, dt);
+            lineup.figs[i].update(m, lineup.game, dt, { preview: true });
           });
           const f = lineup.focus;
-          if (f === null || f === undefined) {
-            const a = clock * 0.08;
-            cam.frame(dt, [Math.sin(a) * 2.5, 2.1, 7.6 + Math.cos(a) * 0.6], [0, 1.25, 0], 1.5);
-          } else {
+          if (screens.current === 'title' || screens.current === 'choose') {
+            const panel = screens.view?.visibleRect('menu-panel');
+            const focus = f === null || f === undefined ? null : lineup.game.men[f];
+            const shot = previewFrame({ screen: { x: 0, y: 0, width: ui.browser.frame.width, height: ui.browser.frame.height }, panel, focus, clock: fixedStep ? 0 : clock });
+            // Fixed capture mode uses a repeatable menu camera independent of load time.
+            if (fixedStep) cam.snap(shot.from, shot.to);
+            else cam.frame(dt, shot.from, shot.to, shot.speed);
+          } else if (f !== null && f !== undefined) {
             const m = lineup.game.men[f];
-            if (m.mounted) cam.frame(dt, [m.x + 1.4, 2.4, m.z + 4.6], [m.x, 1.75, m.z], 3);
-            else cam.frame(dt, [m.x + 0.9, 1.65, m.z + 3.0], [m.x, 1.2, m.z], 3);
+            cam.frame(dt, [m.x + 0.9, 1.8, m.z + (m.mounted ? 4.6 : 3)], [m.x, m.mounted ? 1.65 : 1.2, m.z], 3);
           }
         }
       }
-    }
-  });
+  };
 
   window.egretGame = {
-    status,
+    status, uiGame: ui, semantics, tester, hud, touch, input,
     get game() {
       return game;
     },
@@ -947,6 +1029,7 @@ async function main() {
       return lineup;
     },
     backend: app.backend,
+    get quality() { return app.quality; },
     /** Stand the fight still once it reaches `seconds` (for screenshot baselines); null lets it go on. */
     holdAt(seconds) {
       holdAt = seconds;

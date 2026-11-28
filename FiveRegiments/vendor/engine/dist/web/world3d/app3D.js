@@ -133,6 +133,17 @@ export function createDynamicResolution3D(options = {}) {
         }
     };
 }
+// Only an actual page canvas uses this browser compositor presentation policy.
+function mobileAppleWebKit3D(canvas) {
+    if (!('ownerDocument' in canvas))
+        return false;
+    const nav = globalThis.navigator;
+    if (!nav?.userAgent?.includes('AppleWebKit/'))
+        return false;
+    if (/\b(?:iPhone|iPad|iPod)\b/.test(nav.userAgent))
+        return true;
+    return nav.userAgent.includes('Macintosh') && (nav.maxTouchPoints ?? 0) > 1;
+}
 async function hasWebGPUAdapter(powerPreference) {
     const gpu = globalThis.navigator
         ?.gpu;
@@ -157,6 +168,11 @@ export async function createWorld3DApp(canvas, options = {}) {
         options === null ||
         (options.onLoopTiming !== undefined && typeof options.onLoopTiming !== 'function'))
         throw new World3DError('WORLD3D_INPUT_INVALID', 'options');
+    if (options.presentationResize !== undefined &&
+        options.presentationResize !== 'direct' &&
+        options.presentationResize !== 'stable' &&
+        options.presentationResize !== 'auto')
+        throw new World3DError('WORLD3D_INPUT_INVALID', 'presentation resize');
     const asked = options.backend ?? pickWorld3DBackend(options.query);
     if (asked !== 'webgl2' && asked !== 'webgpu')
         throw new World3DError('WORLD3D_INPUT_INVALID', 'backend');
@@ -200,6 +216,11 @@ export async function createWorld3DApp(canvas, options = {}) {
             const { createWebGL2Renderer3D } = await import('./WebGL2Renderer3D.js');
             renderer = createWebGL2Renderer3D({
                 ...common,
+                presentationResize: options.presentationResize === undefined || options.presentationResize === 'auto'
+                    ? mobileAppleWebKit3D(canvas)
+                        ? 'stable'
+                        : 'direct'
+                    : options.presentationResize,
                 ...(options.powerPreference ? { powerPreference: options.powerPreference } : {}),
                 ...(options.onDeviceLost ? { onContextLost: () => options.onDeviceLost('context lost') } : {})
             });
@@ -230,7 +251,7 @@ export async function createWorld3DApp(canvas, options = {}) {
         const dpr = typeof devicePixelRatio === 'number' ? devicePixelRatio : 1;
         const ratio = Math.min(dpr, WORLD3D_QUALITY_PRESETS[quality].pixelRatio) * (resolution?.scale ?? 1);
         renderer.resizeToDisplaySize(ratio);
-        const drawn = renderer.canvas;
+        const drawn = renderer.renderSize ?? renderer.canvas;
         if (drawn.height > 0)
             camera.aspect = drawn.width / drawn.height;
     };

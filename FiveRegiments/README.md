@@ -115,6 +115,8 @@ Choose a regiment and make your way through Stonegate Pass, Red Banner Depot and
 每营的全部技能（共二十一个）、天赋、战技、伤害公式和每个数的出处见 [docs/DESIGN.md](docs/DESIGN.md)。 · All the skills (twenty-one), talents, weapon arts, the damage formula and where every number comes from are in docs/DESIGN.md.
 
 ## 美术、声音与平衡 · Art, sound and balance
+- 卷首和选营使用独立的挺拔展示姿态与自适应镜头，不修改实战骨骼动作或判定。五套真实步态保留，并优化普通移动的起停、转向衔接；马匹静止时保留细微自然动作。 / The title and selection use a composed preview-only posture and screen-aware camera, separate from combat. Captured locomotion transitions and small horse idle movements are refined.
+- 竹林、雪地与校场保留原有地形和资产，调整雾、光照、地面纹理和道路细节；原生 HUD 的字号、层级与对比度适配安全区域。 / Existing environment assets and gameplay terrain are preserved, with refined fog, light, ground and path detail and a legible native HUD.
 
 - 人物（五营各一）、披甲战马和三十二件场景物件用 Tripo 生成：城门楼、宫门、亭子、烽火台、石桥、桃树、竹、松、旗、兵器架、草靶、鼓、木栅、山石、火盆、石狮、铜鼎，以及营寨和关城的城墙段、木寨门、箭楼、营帐、拒马、投石车、床弩、茅草土屋、马厩、篝火、粮车、军需堆。人物带标准人形骨架，战马带四足骨骼；再用 gltfpack 减面、量化和 meshopt 压缩成高、中、低三档（人物和马合计 10.6 / 4.3 / 2.3 MB，每个场景只载入自己用到的物件）。 · The five men, the armoured horse and thirty-two props — among them the camp and fort pieces: crenellated wall sections, a stockade gate, arrow towers, tents, cheval-de-frise, a trebuchet, bed crossbows, a thatched hut, a stable, a campfire, a cart and supplies — were generated with Tripo, the men rigged to a humanoid skeleton and the horse to a four-legged one, then reduced, quantized and meshopt-compressed into high, medium and low sets (men and horse 10.6 / 4.3 / 2.3 MB; each place loads only its own props).
 - 兵器（环首刀、汉剑、双手长斧、方天戟及两侧月牙和红缨、狩猎刀、角弓及弓弦、圆盾、箭）用代码按尺寸建模，钢刃双面、盾背有握把。 · The weapons, the fangtian ji with its two crescents and the long axe among them, are modelled in code to size.
@@ -131,7 +133,11 @@ Choose a regiment and make your way through Stonegate Pass, Red Banner Depot and
 
 | 引擎入口 / API · Entry / API | 在本游戏中的用途 · Use in this game | 文件 · File |
 |---|---|---|
-| `@egret/engine/webgpu/world3d` · `createWorld3DApp` | 画布、帧循环、画质档位（自动按设备选高中低）；默认 WebGL2，`?backend=webgpu` 用 WebGPU · the canvas, loop and quality tiers; WebGL2 by default, WebGPU on request | `src/main.mjs` |
+| `@egret/engine/webgpu/world3d` · `createWorld3DApp` | 3D 渲染器、资源生命周期与画质档位；默认 WebGL2，`?backend=webgpu` 用 WebGPU · renderer, resource ownership and quality tiers; WebGL2 by default, WebGPU on request | `src/main.mjs` |
+| `play3dAttached`, `game.show`, `createUiScreenStack` | 3D 与原生界面共用活动帧时钟、菜单与模态栈 · one active frame clock, native menus and modal stack | [main.mjs](src/main.mjs)、[screens.mjs](src/screens.mjs) |
+| `createUiSemantics`, `createBrowserSemantics`, `createUiTester` | 具名控件、读屏投影及自动验收 · named controls, accessible projection and acceptance checks | [main.mjs](src/main.mjs)、[accept.mjs](test/accept.mjs) |
+| `fit: 'expand'`, `portrait`, `uiScale` | 横竖屏布局、可触控大小和安全区适配 · screen geometry, physical control sizes and safe areas | [main.mjs](src/main.mjs)、[hud.mjs](src/hud.mjs) |
+| `createMovementControl`, `createActionControl`, `game.pointer`, `game.keys` | 触屏和原生鼠标锁定/键盘输入 · native touch controls, pointer lock and keyboard input | [hud.mjs](src/hud.mjs)、[input.mjs](src/input.mjs) |
 | `loadGltf3D`（meshopt、量化） | 五个带骨骼的人物、带四足骨骼的战马和三十二件场景物件，各三档 · five rigged men, the rigged horse and thirty-two props, three sets each | `src/main.mjs`、`src/view/stage.mjs` |
 | 骨骼节点（`Object3D` 的位置与旋转） | 每帧把动作捕捉姿态写进人的骨骼，再叠加反向动力学和腰身扭转；战马的腿骨按步态逐帧转动 · each frame the captured pose is written to the men's bones with IK and the twist laid over it; the horse's leg bones are turned by its gait | `src/view/motion.mjs`、`src/view/rig.mjs`、`src/view/figure.mjs`、`src/view/horse.mjs` |
 | `Object3D.localToWorld` | 从战马的脊骨取马鞍位置，骑手每帧坐上去；第一人称取人物头部位置 · the saddle's place from the horse's spine for the rider each frame; the head's place for the first-person view | `src/view/horse.mjs`、`src/view/figure.mjs` |
@@ -177,7 +183,7 @@ Choose a regiment and make your way through Stonegate Pass, Red Banner Depot and
 - 界面布局和按键按公开的按键表和沙盒战争类 PC 游戏的常见布局做，没有对着原作截图逐像素比对；手上没有截图可对，罗盘、名牌、物品栏的样式是自己画的。 · The panels and keys follow published key lists and the usual layout of sandbox-war PC games, not a pixel comparison with screenshots; the compass, nameplates and bar are drawn here.
 - 战马的骨骼里右后腿只有一节骨头，跑起来那条腿只能整条摆动、不能弯膝。马上不能跳、没有马上弓射。 · The horse's rig has a single bone for the right hind leg, so that leg swings without bending. No jumping on horseback, and no mounted archery.
 - 刀路只有四个方向；原作武器面板上的八个方向没有做全。 · Four lines of cut; the original's eight directions are not all made.
-- 品质验收未达标 · Quality items failing（[QUALITY.md](QUALITY.md)，2026-11-24，无头 Chromium + SwiftShader · headless, software rendering）：F1 桌面帧时间 p95 ≤ 16.7 ms（p95 383.4 ms over 23 frames）。
+- 品质验收未达标 · Quality items failing（[QUALITY.md](QUALITY.md)，2026-11-28，无头 Chromium + SwiftShader · headless, software rendering）：F1 桌面帧时间 p95 ≤ 16.7 ms（p95 129.2 ms over 51 frames）。
 
 ## 已解决 · Solved
 
@@ -212,7 +218,7 @@ Choose a regiment and make your way through Stonegate Pass, Red Banner Depot and
 
 | 路径 · Path | 用途 · What it is for |
 |---|---|
-| `index.html`、`style.css` | 页面、import map、漆器与青铜风格的界面 · the page, the import map, the lacquer-and-bronze interface |
+| `index.html`、`style.css` | 画布容器、import map 和启动回退文本 · canvas containers, import map and bootstrap fallback |
 | `src/main.mjs` | 入口：渲染、场景、人物、征途、对决循环、镜头、存档、地址参数 · the entry |
 | `src/sim/fight.mjs` | 对决规则：刀路、格挡、弹刀、踢、跳、体力、伤害公式、技能、战技与怒气、天赋、箭、毒、骑马、胜负 · the fight rules |
 | `src/sim/regiments.mjs` | 五营的兵器、护甲、生命、技能、天赋、战技、伤害公式的常数和每个数的出处 · the five regiments and where their numbers come from |
@@ -239,7 +245,7 @@ Choose a regiment and make your way through Stonegate Pass, Red Banner Depot and
 
 ## 引擎副本 · Engine copy
 
-- 引擎提交 `82561d6338a805f0e0459a2d5d42a284f9385b30`（见 `vendor/SOURCE.md`）。 · Engine commit `82561d63` (see `vendor/SOURCE.md`).
+- 引擎提交 `7fb371acb8bab254cf1c49b9da0ac0eed0c06fb4`（见 `vendor/SOURCE.md`）。 · Engine commit `7fb371ac` (see `vendor/SOURCE.md`).
 - 生成命令（在引擎仓库里）· Made with, in the engine repository:
 
 ```sh

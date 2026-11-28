@@ -8,6 +8,8 @@ import { add, axisAngle, basis, cross, dot, fitLinkedGrip, gripRotation, len, le
 import { createRig } from './rig.mjs';
 import { createAnimator, heavyFootwork, impactWeight, interpolateDirection, returnSpearPhase, signatureBodyWeight, swingPhase, TIGER_SWORD } from './motion.mjs';
 import { createFooting } from './footing.mjs';
+import { createPreviewPosture } from './preview-posture.mjs';
+import { createLocomotionBlend, GAIT_NAMES } from './locomotion-blend.mjs';
 import { bowLoosePose, bowReleasePose } from './bow-release.mjs';
 import { ordinaryCuts } from './ordinary-poses.mjs';
 import { ARTS, SKILLS } from '../sim/regiments.mjs';
@@ -184,6 +186,7 @@ export function createFigure({ regiment, body, motion, world, height = 1.8 }) {
   inner.setRotation(0, animator.turn, 0);
   inner.updateWorldMatrices?.(true);
   const rig = createRig(animator.nodes, { scale: s, turn: animator.turn, root: body.scene });
+  const uprightPreview = createPreviewPosture(rig);
   const plant = createFooting(rig);
 
   // Body landmarks at rest, in body space.
@@ -373,6 +376,7 @@ export function createFigure({ regiment, body, motion, world, height = 1.8 }) {
   const base = motion.pose(),
     gait = motion.pose(),
     layer = motion.pose();
+  const locomotion = createLocomotionBlend();
   const state = {
     phase: 0,
     primaryGrip: { axis: null, edge: null },
@@ -642,7 +646,7 @@ export function createFigure({ regiment, body, motion, world, height = 1.8 }) {
     }
   }
 
-  function arrange(man, game, dt, contactTime, mountedContact) {
+  function arrange(man, game, dt, contactTime, mountedContact, preview) {
     // ---- locomotion ---------------------------------------------------------------------------------------
     const f = man.face;
     const vFwd = man.vx * Math.sin(f) + man.vz * Math.cos(f),
@@ -657,12 +661,16 @@ export function createFigure({ regiment, body, motion, world, height = 1.8 }) {
     const staggerWeight = state.thrown?.roll ?? Number(fallen);
     state.down += (staggerWeight - state.down) * (1 - Math.exp(-dt * (staggerWeight > state.down ? 18 : 7)));
     const movement = clamp((speed - 0.15) / 0.5, 0, 1);
-    const moving = movement * (1 - state.ride) * (man.alive && !stunned ? 1 : 0.16);
     const fwdW = Math.max(0, vFwd) / (speed || 1),
       backW = Math.max(0, -vFwd) / (speed || 1),
       leftW = Math.max(0, vLeft) / (speed || 1),
       rightW = Math.max(0, -vLeft) / (speed || 1);
     const runW = clamp((speed - 1.7) / 1.6, 0, 1);
+    // Blend only neutral, on-foot movement. Action, aim, guard, impact, dismount and rider poses are unchanged.
+    const neutralLocomotion = man.alive && !man.mounted && !man.act && !man.guard && !man.draw && !(man.stun > 0) &&
+      state.ride === 0 && !state.thrown && state.dismountLand <= .02 && impact < .001;
+    const gaitBlend = locomotion.update(fwdW, backW, leftW, rightW, runW, movement, dt, neutralLocomotion);
+    const moving = gaitBlend.moving * (1 - state.ride) * (man.alive && !stunned ? 1 : 0.16);
     // One phase for all the gaits, run at the pace of the strongest.
     const natural = fwdW * (runW * 3.1 + (1 - runW) * 1.33) + backW * 0.9 + (leftW + rightW) * 1.1;
     const cycle = fwdW * (runW * motion.duration('run') + (1 - runW) * motion.duration('walk')) + backW * motion.duration('back') + (leftW + rightW) * motion.duration('sideA');
@@ -671,13 +679,7 @@ export function createFigure({ regiment, body, motion, world, height = 1.8 }) {
     const sampleAt = (name, out) => motion.sample(name, ph * motion.duration(name), out);
     motion.sample('idle', (game.time * 0.9 + man.id.length) % motion.duration('idle'), base);
     if (moving > 0) {
-      const gaits = [
-        ['walk', fwdW * (1 - runW)],
-        ['run', fwdW * runW],
-        ['back', backW],
-        ['sideB', leftW],
-        ['sideA', rightW]
-      ].filter(([, w]) => w > 0.02);
+      const gaits = GAIT_NAMES.map((name, i) => [name, gaitBlend.weights[i]]).filter(([, w]) => w > 0.02);
       let acc = 0;
       for (const [name, w] of gaits) {
         if (acc === 0) sampleAt(name, gait);
@@ -779,6 +781,7 @@ export function createFigure({ regiment, body, motion, world, height = 1.8 }) {
     rig.bend('spine_05', shoulderTwist * 0.3, leanAll * 0.25, -sideways * 0.08);
     // The head keeps looking ahead.
     rig.bend('neck_01', -twist * 0.7 - sideways * 0.16, -leanAll * 0.6 + back * 0.23 - shout * 0.3, -sideways * 0.11);
+    if (preview) uprightPreview(state.ride > 0);
 
     // Body frame for the arms: the chest turned by the twist.
     const twistQ = axisAngle([0, 1, 0], twist);
@@ -1010,7 +1013,7 @@ export function createFigure({ regiment, body, motion, world, height = 1.8 }) {
     held,
     rig,
     /** Follow the man for one frame. */
-    update(man, game, dt, { seat = null, contactTime = null, mountedContact = null } = {}) {
+    update(man, game, dt, { seat = null, contactTime = null, mountedContact = null, preview = false } = {}) {
       if (!man.alive) {
         if (state.fall === 0 && state.impactBearing === null) state.impactBearing = man.face + Math.PI;
         state.fall = Math.min(1, state.fall + dt * 1.6);
@@ -1042,7 +1045,7 @@ export function createFigure({ regiment, body, motion, world, height = 1.8 }) {
       const anchorInRig = mountedContact && saddleRotation
         ? rig.toRig(qrot(qinv(saddleRotation), sub(mountedContact, saddleAt))) : null;
       let spin = 0, floorLift = 0;
-      if (state.fall < 1) ({ spin, floorLift } = arrange(man, game, dt, contactTime, anchorInRig));
+      if (state.fall < 1) ({ spin, floorLift } = arrange(man, game, dt, contactTime, anchorInRig, preview));
       const air = man.act?.air ?? 0;
       const fallTilt = 1.45 * ease((state.fall - 0.19) / 0.68) + 0.76 * ease(state.down);
       const landing = state.fall === 0 ? 0 : 0.045 * Math.sin(Math.PI * clamp((state.fall - 0.27) / 0.66, 0, 1));

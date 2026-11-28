@@ -5,6 +5,8 @@
 The faults found in the new Egret engine (commit `450bb9e`) while making this game, and suggestions, written as in
 part 3 of [docs/GAME-STANDARD.md](../docs/GAME-STANDARD.md).
 
+当前引擎副本 / Current vendored engine: 7fb371acb8bab254cf1c49b9da0ac0eed0c06fb4. 下列历史事项保留原有证据；未复测的不能宣称解决。 / Historical evidence remains below; items not retested are not claimed resolved.
+
 ### 1. `loadGltf3D` 不认 `EXT_texture_webp` · `loadGltf3D` does not take `EXT_texture_webp` — 未解决 / open
 <!-- engine-note: {"id": "FiveRegiments#1", "status": "open", "topic": "gltf-webp-texture"} -->
 
@@ -53,3 +55,11 @@ part 3 of [docs/GAME-STANDARD.md](../docs/GAME-STANDARD.md).
 - **绕过 · Workaround**：仅移动 Apple WebKit 使用官方 `dynamicResolution:false`，固定 393×659 的 backing 后恢复 3D 画面。 · Disable dynamic resolution with its official option only on mobile Apple WebKit; stable dimensions restore the scene.
 - **建议 · Proposal**：验证 canvas 背缓冲变化后的实际 WebKit 浏览器呈现，提供无需禁用动态分辨率的解决方式。 · Verify actual compositor output across backing-buffer changes and provide a fix without requiring dynamic resolution to be disabled.
 - **状态 · Status**：游戏级兼容处理通过关键截图；可能增大像素渲染开销，未做真实 iPhone 性能和不同 Safari 版本的覆盖。 · Game workaround passes key screenshot checks, with potential pixel-rendering cost; physical iPhone and other Safari versions remain untested.
+
+### 7. 指针锁定过渡与原生捕获 · Native capture during pointer-lock transition — 待独立复现 / open
+<!-- engine-note: {"id":"FiveRegiments#7","status":"open","topic":"pointer-lock-capture-transition","workaround":["src/input.mjs"]} -->
+
+- 现象：Windows Edge 实机首次进场时有一次 `BrowserPointerInput` 的 `setPointerCapture` 抛出 `InvalidStateError`，随后未建立锁定。另一轮记录到从前一页面点击继承的异步锁定请求在约 104ms 后完成，DOM 锁定状态与输入状态的发布有短暂错位；该轮未独立复现异常，不能据此确定引擎根因。 / One physical Windows Edge run raised InvalidStateError in BrowserPointerInput.setPointerCapture and failed to lock. Another run observed an asynchronous lock request from the previous menu gesture completing after about 104 ms, but did not independently reproduce the exception; the engine cause is not established.
+- 游戏里的处理：进入及继续只准备锁定，明确的战场鼠标点击释放后用 `game.pointer.lock()` 请求，保留原有提示、拒绝时回退与失焦清理。修复后真实 Edge 进入、退出、继续均通过，原生 Chromium touch/pointer 回归通过。 / Arm the lock on entry or resume, request it only after an explicit canvas click completes. The existing hint, refusal path and input cleanup are preserved. The subsequent physical Edge route and browser input checks pass.
+- 建议：为正在申请与实际锁定的生命周期加原生捕获协调测试，避免在锁定状态切换期间争用捕获；不要仅吞掉异常。 / Consider native capture arbitration coverage for pending and actual pointer-lock state; do not merely swallow exceptions.
+- 状态：游戏侧已处理；引擎侧仍需独立稳定复现。 / Demo addressed; an engine-level independent reproduction remains open.

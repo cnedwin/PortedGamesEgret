@@ -1,6 +1,8 @@
-// The pages between fights, drawn over the 3D picture: the title, choosing a regiment (the five stand on the field
-// behind), fitting skills and talents, the card before each fight, the result after it, pause, settings and the free
-// duel. Every page works with keys (arrows, Enter, Esc), the mouse and touch.
+// Five Regiments' native Play menus. The simulator and the game's public screen
+// callbacks do not depend on the presentation or the window's orientation.
+import {createUiScreenStack} from '@egret/engine/ui';
+import {createParagraphCache} from '@egret/engine/paragraph';
+import {createCanvasParagraphProvider} from '@egret/engine/web/paragraph';
 import { ARTS, ORDER, REGIMENTS, SKILLS, TALENTS, playerLoadout } from './sim/regiments.mjs';
 import { PLACES } from './sim/road.mjs';
 import { t, say, getLanguage } from './i18n.mjs';
@@ -11,327 +13,416 @@ const PLACE_WORD = {
 };
 export const placeName = (p) => t(PLACE_WORD[p]);
 
-function node(html) {
-  const box = document.createElement('div');
-  box.innerHTML = html.trim();
-  return box.firstElementChild;
+const ink=0x1a1411, paper=0xffecd1, muted=0xd5c4a8, gold=0xe0ba78, bronze=0x806744,
+  lacquer=0x32271e, selected=0x735130, vermilion=0x90251c, edge=0xb28d54;
+const skin={text:paper,panel:ink,panelAlpha:.9,button:lacquer,buttonText:paper,disabled:0x62544a,accent:gold,track:0x483327,radius:3,size:16,dim:.52};
+const bodyFont=()=>getLanguage()==='zh'?'Microsoft YaHei':'Arial';
+const titleFont=()=>getLanguage()==='zh'?'SimSun':'Georgia';
+const col=(children,props={})=>({type:'panel',name:props.name,layout:'column',width:'100%',height:'fill',gap:8,children,...props});
+const row=(children,props={})=>({type:'panel',layout:'row',width:'100%',height:48,gap:6,children,...props});
+const rule=()=>({type:'panel',color:bronze,width:'100%',height:1,semantic:false});
+const text=(name,words,props={})=>({type:'text',name,text:words,width:'100%',height:25,size:16,color:paper,fontFamily:bodyFont(),...props});
+const headline=(name,words,props={})=>text(name,words,{fontFamily:titleFont(),fontWeight:700,color:gold,size:26,height:38,...props});
+const scroll=(children)=>col(children,{name:'page-scroll',scroll:'vertical',height:'fill',gap:8});
+const labelFor=(label,words)=>label+' · '+words;
+const roughUnits=(value)=>[...String(value)].reduce((n,c)=>n+(c.codePointAt(0)>255?1:.62),0);
+function paragraphBoxHeight(words,width,size,lineHeight=Math.ceil(size*1.5)){
+  const lines=String(words).split('\n').reduce((sum,line)=>sum+Math.max(1,Math.ceil(roughUnits(line)*size/Math.max(50,width-18))),0);
+  return Math.max(lineHeight+3,Math.ceil(lines*lineHeight+7));
+}
+const split=(arr,count)=>Array.from({length:Math.ceil(arr.length/count)},(_,i)=>arr.slice(i*count,(i+1)*count));
+const ornament=(width,height,anchor,x=0,y=0,color=gold)=>({type:'panel',width,height,anchor,x,y,color,semantic:false});
+function seal(){
+  return {type:'panel',layout:'free',width:26,height:26,color:vermilion,border:{color:edge,width:1},semantic:false,children:[
+    ornament(14,2,'top',0,6),ornament(2,12,'center'),ornament(14,2,'bottom',0,6),
+    ornament(2,8,'left',6),ornament(2,8,'right',6)
+  ]};
+}
+function frameMotif(){
+  const corners=['top-left','top-right','bottom-left','bottom-right'];
+  return {type:'panel',layout:'free',width:'100%',height:'100%',semantic:false,children:corners.flatMap(anchor=>[
+    ornament(20,2,anchor,3,3,edge),ornament(2,20,anchor,3,3,edge),
+    ornament(10,1,anchor,7,7,bronze),ornament(1,10,anchor,7,7,bronze)
+  ])};
 }
 
-const hasButtonFocus = (event) => Boolean(event.target?.closest?.('button'));
-
-export function createScreens(root, { onLanguage, coarse = false }) {
-  const layer = document.createElement('div');
-  layer.className = 'screens';
-  root.appendChild(layer);
-  let current = null;
-  let keyHandler = null;
-
-  function show(page, keys) {
-    layer.innerHTML = '';
-    if (keyHandler) removeEventListener('keydown', keyHandler);
-    keyHandler = null;
-    current = page;
-    if (!page) {
-      layer.hidden = true;
-      return;
-    }
-    layer.hidden = false;
-    layer.appendChild(page);
-    if (keys) {
-      keyHandler = (e) => {
-        if (e.repeat) return;
-        if (keys(e) !== false) e.preventDefault?.();
-      };
-      addEventListener('keydown', keyHandler);
-    }
-    page.querySelector('[autofocus]')?.focus({ preventScroll: true });
+export function createScreens(game,{onLanguage,onError,coarse=false,paragraphCache}={}) {
+  function report(cause){
+    if(!onError){console.error(cause);return;}
+    try{void Promise.resolve(onError(cause)).catch(error=>console.error(error));}
+    catch(error){console.error(error);}
   }
-
-  const langButton = () => `<button class="lang" type="button" data-act="lang">${t('language')}</button>`;
-  function wire(page, actions) {
-    page.addEventListener('click', (e) => {
-      const b = e.target.closest('[data-act]');
-      if (!b) return;
-      const act = b.dataset.act;
-      if (act === 'lang') return onLanguage();
-      actions[act]?.(b.dataset.arg, b);
+  // A native tap itself stays synchronous. App actions may start a load or
+  // transition and return a promise; route late rejection to the same fault
+  // surface as a thrown callback, without returning a promise to input.
+  function invoke(action,...args){
+    if(typeof action!=='function')return;
+    try{void Promise.resolve(action(...args)).catch(report);}
+    catch(cause){report(cause);}
+  }
+  // Keep one cache for menu lifetimes. All prepared borrows are owned by the views.
+  if(paragraphCache===undefined){
+    const provider=createCanvasParagraphProvider(game.browser.scheduleTextWork?{schedule:game.browser.scheduleTextWork}:{});
+    const cache=createParagraphCache(game.engine.assets,{provider,maxEntries:64,maxPendingJobs:64,maxImageBytes:32*1024*1024});
+    game.scope.use({dispose(){cache.dispose();provider.dispose();}});
+    paragraphCache=cache;
+  }
+  const stack=createUiScreenStack({onError:report});
+  let current=null,view=null,mountedModel=null,slot=null,pending=Promise.resolve(),revision=0;
+  let bind={},partWidth=480,paragraphDensity=1.5,backingDensity=1.5;
+  function heading(name,words,props={}){
+    const size=props.size??26, fitting=Math.floor((partWidth-6)/Math.max(1,roughUnits(words)));
+    return headline(name,words,{...props,size:Math.max(14,Math.min(size,fitting))});
+  }
+  function dims(){
+    const s=game.safe??game.screen,scale=game.uiScale||1;
+    const width=s.width/scale,height=s.height/scale;
+    const frame=game.browser?.frame??game.screen;
+    const px=game.canvas?.width/frame.width,py=game.canvas?.height/frame.height;
+    // While a resize is pending, retain the last consistent canvas density.
+    if(px>=.5&&py>=.5&&Math.abs(px-py)<=1/frame.width+1/frame.height)backingDensity=Math.min(px,py);
+    paragraphDensity=Math.max(.5,Math.min(2,Math.round(backingDensity*scale*1000)/1000));
+    return {width,height,portrait:width<height,short:height<440};
+  }
+  function paragraph(name,words,width=partWidth,props={}){
+    const size=props.size??15,lineHeight=props.lineHeight??Math.ceil(size*1.5);
+    const height=paragraphBoxHeight(words,width,size,lineHeight);
+    const style={fontFamilies:[bodyFont(),'Noto Sans CJK SC','sans-serif'],locale:getLanguage()==='zh'?'zh-CN':'en',lineHeight,density:paragraphDensity};
+    const {lineHeight:_lineHeight,...rest}=props;
+    return text(name,words,{size,height,color:muted,...(paragraphCache?{paragraph:style}:{}),...rest});
+  }
+  const read=value=>typeof value==='function'?value():value;
+  function button(id,words,action,props={}){
+    const {chosen=false,primary=false,label=words,...rest}=props;
+    const shade=()=>primary?vermilion:read(chosen)?selected:lacquer;
+    bind[id]={tap:()=>invoke(action),label:()=>read(label),...(typeof words==='function'?{text:words}:{}),
+      ...(typeof chosen==='function'?{color:shade}:{})};
+    return {type:'button',name:id,text:read(words),height:48,width:'fill',size:15,fontFamily:bodyFont(),fontWeight:primary?700:600,
+      color:shade(),textColor:paper,
+      border:{color:primary?0xd9875f:typeof chosen==='function'?bronze:read(chosen)?gold:bronze,width:read(chosen)&&typeof chosen!=='function'?2:1},...rest};
+  }
+  function tab(id,words,action,chosen,props={}){
+    const result=button(id,words,action,{chosen,...props,role:'tab',selected:read(chosen)});
+    bind[id].selected=()=>read(chosen);
+    return result;
+  }
+  function toggleControl(id,words,action,checked,props={}){
+    const {label=words,...rest}=props;
+    bind[id]={tap:()=>invoke(action),checked:()=>read(checked),label:()=>read(label),...(typeof words==='function'?{text:words}:{})};
+    return {type:'toggle',name:id,text:read(words),checked:read(checked),height:48,width:'fill',size:15,fontFamily:bodyFont(),border:{color:bronze,width:1},...rest};
+  }
+  function buttons(items,count=2){
+    return split(items,count).map(group=>{
+      const cell=(partWidth-6*(group.length-1))/group.length;
+      const parts=group.map(item=>({...item,size:Math.max(13,Math.min(item.size??15,Math.floor((cell-(item.type==='toggle'?62:12))/Math.max(1,roughUnits(item.text)))))}));
+      return row(parts,{height:Math.max(...parts.map(x=>x.height))});
     });
   }
-
+  function nativeTabs(name,label,items,count){
+    const rows=buttons(items,count);
+    return col(rows,{name,role:'tablist',label,height:rows.length*48+Math.max(0,rows.length-1)*6,gap:6});
+  }
+  function footer(back,go,backId='back',goId='go',backLabel=t('back'),goLabel=t('begin')){
+    return row([...(back?[button(backId,backLabel,back)]:[]),...(go?[button(goId,goLabel,go,{primary:true})]:[])],{name:'page-footer',height:48});
+  }
+  function panelMetrics(kind,d) {
+    const lateral=kind==='title'||kind==='choose',titleSide=kind==='title';
+    const cap=kind==='title'?(d.portrait?400:350):kind==='choose'?420:kind==='loadout'?960:kind==='free'?820:kind==='result'?680:kind==='settings'?740:640;
+    const margin=d.short?5:12;
+    const width=Math.max(200,Math.min(cap,d.width-2*margin,lateral&&!d.portrait?Math.max(286,d.width*.43):d.width-2*margin));
+    let height=titleSide?(d.short?d.height-10:d.portrait?Math.min(d.height-10,Math.max(318,Math.min(416,d.height*.50))):Math.min(d.height-24,466))
+      :kind==='choose'?(d.portrait?Math.min(d.height-10,Math.max(306,d.height*.68)):d.height-2*margin)
+      :Math.min(d.height-2*margin,kind==='loadout'?780:kind==='free'||kind==='settings'?700:kind==='result'?510:430);
+    let padding=d.short?10:17,gap=d.short?6:9,compact=false;
+    if(titleSide&&d.portrait&&d.width<500){
+      // Preserve the composed title where there is room. Switch to a two-row
+      // mode grid only if all original mode targets would be clipped.
+      const standardBody=paragraphBoxHeight(t('tagline'),width-2*padding,15)+3*48+3*8;
+      const standardRoom=height-2*padding-59-26-1-48-4*gap;
+      compact=standardRoom<standardBody;
+      if(compact){
+        padding=12;gap=6;
+        const body=paragraphBoxHeight(t('tagline'),width-2*padding,14)+2*48+2*8;
+        const needed=2*padding+42+1+48+3*gap+body+4;
+        height=Math.min(d.height-10,Math.max(height,needed));
+      }
+    }
+    return {width,height,anchor:lateral?(d.portrait?'bottom':titleSide?'left':'right'):'center',
+      x:lateral&&!d.portrait?margin:0,y:lateral&&d.portrait?margin:0,padding,gap,compact};
+  }
+  function pane(kind,d,body,actions,props={}){
+    const {padding,gap,compact,...outer}=panelMetrics(kind,d);
+    // Bronze corners are drawn as native decorative parts, never focus targets.
+    // The camera can frame the actual menu-panel rect, including this rim.
+    return {type:'panel',name:'menu-panel',layout:'free',...outer,color:ink,alpha:.91,
+      border:{color:edge,width:1},...props,children:[
+        frameMotif(),
+        col([...body,...(actions?[rule(),actions]:[])],{name:'pane-content',width:'100%',height:'100%',padding,gap})
+      ]};
+  }
+  function paneWidth(kind,d){const {width,padding}=panelMetrics(kind,d);return width-2*padding;}
+  function sectionTitle(words){
+    const size=Math.max(14,Math.min(24,Math.floor((partWidth-38)/Math.max(1,roughUnits(words)))));
+    return row([seal(),heading('screen-title',words,{height:36,size,width:'fill'})],{height:38,gap:8,align:'center'});
+  }
+  function render(){
+    if(!current||!slot)return;
+    const d=dims(),model=current;
+    const old=view,focus=old?.focused;
+    let offset=0;
+    if(old){try{offset=old.scroll('page-scroll').offset;}catch{} retireView();}
+    bind={};partWidth=paneWidth(model.kind,d);
+    const root=model.draw(d);
+    const desc={label:model.label,root,skin,...(model.modal?{modal:true}:{})};
+    const options={bind,state:model,gamepad:true,...(paragraphCache?{paragraphCache}:{}),
+      ...(model.modal&&model.back?{dismiss:()=>invoke(model.back)}:{}),
+      ...(model.kind==='pause'?{resume:()=>invoke(model.primary)}:{}),
+      ...(model.modal&&model.initial?{initialFocus:model.initial}:{})};
+    view=game.show(desc,options);mountedModel=model;
+    try{view.scroll('page-scroll').scrollTo(offset);}catch{}
+    if(focus)try{view.focus(focus);}catch{}
+    if(!view.focused&&model.initial)try{view.focus(model.initial);}catch{}
+    // A genuine menu transition takes keyboard focus; on gameplay hide the
+    // owner of the scene canvas takes it back and can request pointer lock.
+    if(!old)game.canvas?.focus({preventScroll:true});
+    game.invalidate?.();
+  }
+  function retireView(){
+    const owned=view;view=null;mountedModel=null;owned?.close();
+  }
+  function show(model){
+    // Settings resend the same page when a choice changes; retain the scroll
+    // viewport and keyboard focus rather than returning to Done each time.
+    if(model&&current?.kind===model.kind&&slot?.id==='menu-'+model.kind&&view){
+      if(model.kind==='settings'&&model.settings===current.settings&&model.language===current.language){invoke(updateView);return;}
+      current=model;invoke(refresh);return;
+    }
+    current=model;
+    const token=++revision;
+    pending=pending.then(async()=>{
+      if(token!==revision)return;
+      if(slot){
+        // closeAll settles its own stack even if a cleanup handle reports a
+        // failure. Release the caller's slot, report, and permit later routes.
+        slot=null;
+        try{await stack.closeAll();}catch(cause){report(cause);}
+      }
+      if(token!==revision||!model)return;
+      slot={id:'menu-'+model.kind,layer:'page',back:'none',open(){
+        if(token!==revision)return {close(){}};
+        render();
+        return {show(){view?.show();},hide(){view?.hide();},cover(){view?.cover();},reveal(){view?.reveal();},
+          activate(){view?.activate();},deactivate(){view?.deactivate();},
+          close(){retireView();}};
+      }};
+      void stack.open(slot).catch(report);
+    }).catch(report);
+  }
+  function refresh(){if(slot&&current)render();}
+  function updateView(){view?.refresh();game.invalidate?.();}
+  const onScreen=()=>{if(current&&slot)invoke(refresh);};
+  const unlisten=game.browser?.onScreenChange?.(onScreen)??game.onScreenChange?.(onScreen);
+  game.scope.use({dispose(){invoke(unlisten);invoke(()=>stack.dispose());}});
+  function update(){
+    const m=current;if(!m)return;
+    if(m.kind==='choose'){
+      if(game.keys.pressed('right','d'))invoke(m.cycle,1);
+      else if(game.keys.pressed('left','a'))invoke(m.cycle,-1);
+    }
+    // Focused native buttons get Enter/Space themselves. This is the original
+    // default action only when no actionable menu is focused.
+    if(!m.modal&&game.keys.pressed('escape','pad:b')&&m.back)invoke(m.back);
+    if(!view?.focused&&game.keys.pressed('enter')&&m.primary)invoke(m.primary);
+  }
+  const artRows=(r,d)=>{
+    const rows=[];
+    for(const [key,id,note] of [['X',r.art,''],['Z',r.offArt,''],['X',r.mountedArt,t('mountedArt')]]){
+      if(!ARTS[id])continue;const art=ARTS[id];
+      rows.push(paragraph('art-'+id,key+'  '+(note||t('art'))+' · '+say(art.name)+t('paren',{w:say(art.weapon)})+say(art.text)+' '+t('artCost',{s:art.cool,r:art.rage}),partWidth));
+    }return rows;
+  };
+  const chooseCards=(m,r)=>{
+    const a=[heading('regiment-name',say(r.name)),paragraph('regiment-arms',t('arms')+': '+say(r.arms)),
+      paragraph('regiment-way',say(r.way)),text('regiment-health',t('health')+'  '+r.health,{color:gold})];
+    for(const id of r.skills)a.push(paragraph('regiment-skill-'+id,say(SKILLS[id].name)+' · '+say(SKILLS[id].text)));
+    return a;
+  };
   return {
-    hide: () => show(null),
-    get current() {
-      return current;
+    hide:()=>show(null), get current(){return current?.kind??null;},get view(){return mountedModel===current?view:null;},update,
+    snapshot(){
+      if(!current)return {kind:null};
+      const {kind,selected,veteran,pick,series,choice,progress,text:message,arts,help}=current;
+      return {kind,...(typeof help==='boolean'?{help}:{}),...(selected?{selected}:{}),...(veteran!==undefined?{veteran}:{}),
+        ...(pick?{skills:[...pick.skills],talents:[...pick.talents],arts}:{}),
+        ...(choice?{me:choice.me,foes:[...choice.foes],place:choice.place,series:!!series}:{}),
+        ...(progress!==undefined?{progress,text:message}:{})};
     },
-
-    title({ onRoad, onExpedition, onFree, onSeries, onSettings, best, note = '' }) {
-      const page = node(`<section class="page title">
-        <header><h1>${t('title')}</h1><p>${t('tagline')}</p></header>
-        <nav class="menu">
-          <button type="button" data-act="road" autofocus>${t('road')}</button>
-          <button type="button" class="go" data-act="expedition">${t('expedition')}</button>
-          <button type="button" data-act="free">${t('free')}</button>
-          <button type="button" data-act="series">${t('duelSeries')}</button>
-          <button type="button" data-act="settings">${t('settings')}</button>
-        </nav>
-        ${best ? `<p class="best">${best}</p>` : ''}
-        ${note ? `<p class="note" role="status">${note}</p>` : ''}
-        <p class="howto">${t(coarse ? 'touchText' : 'controlsText')}</p>
-        ${langButton()}
-      </section>`);
-      wire(page, { road: onRoad, expedition: onExpedition, free: onFree, series: onSeries, settings: onSettings });
-      show(page, (e) => {
-        if (e.code === 'Enter' && !hasButtonFocus(e)) onRoad();
-        else return false;
-      });
+    title({onRoad,onExpedition,onFree,onSeries,onSettings,best,note=''}) {
+      const m={kind:'title',label:t('title'),initial:'road',primary:onRoad,help:false,
+        back(){if(m.help){toggleHelp();}},
+        draw(d){
+          const choices=m.help?[]:[
+            button('road',t('road'),onRoad,{primary:true,size:17,fontFamily:titleFont()}),
+            button('expedition',t('expedition'),onExpedition,{size:17,fontFamily:titleFont(),color:0x594025,border:{color:edge,width:1}}),
+            button('free',t('free'),onFree,{size:14}),button('series',t('duelSeries'),onSeries,{size:14})
+          ];
+          const compact=panelMetrics(m.kind,d).compact;
+          const routes=m.help?[]:d.short||compact?buttons(choices,2):[row([choices[0]]),row([choices[1]]),row(choices.slice(2))];
+          const header=compact?row([seal(),heading('title-heading',t('title'),{color:paper,width:'fill',size:Math.min(34,Math.floor((partWidth-38)/Math.max(1,roughUnits(t('title'))))),height:42})],{height:42,gap:8,align:'center'})
+            :heading('title-heading',t('title'),{color:paper,size:d.short?29:48,height:d.short?38:59});
+          const intro=paragraph('tagline',t('tagline'),partWidth,{color:gold,size:compact?14:d.short?13:15});
+          const helpBody=paragraph('controls',t(coarse?'touchText':'controlsText'),partWidth,{size:15});
+          const nav=row([button('settings',t('settings'),onSettings,{size:14}),button('help',t(m.help?'back':'howto'),toggleHelp,{size:14}),
+            button('lang',t('language'),onLanguage,{size:14})],{height:48});
+          return pane(m.kind,d,[header,
+            ...(d.short||compact?[]:[row([ornament('fill',1,'center'),seal(),ornament('fill',1,'center')],{height:26,align:'center',gap:7})]),
+            scroll(m.help?[heading('help-heading',t('howto'),{size:18,height:29}),helpBody]
+              :[intro,...routes,...(best?[paragraph('best',best,partWidth,{color:gold})]:[]),...(note?[paragraph('title-note',note)]:[])])],nav);
+        }};
+      function toggleHelp(){
+        m.help=!m.help;refresh();
+        try{view.scroll('page-scroll').scrollTo(0);}catch{}
+      }
+      show(m);
+    },    choose({selected:regiment='yulin',onPick,onLook,onBack,title=t('chooseRegiment'),veteran=null,onDifficulty}) {
+      const m={kind:'choose',label:title,initial:'pick',selected:regiment,veteran,back:onBack,
+        primary:()=>onPick(m.selected),cycle(delta){m.selected=ORDER[(ORDER.indexOf(m.selected)+delta+ORDER.length)%ORDER.length];invoke(onLook,m.selected);refresh();},
+        draw(d){
+          const difficulty=m.veteran===null?[]:[nativeTabs('difficulty',t('expeditionDifficulty'),['march','veteran'].map(id=>tab('difficulty-'+id,t(id==='march'?'expeditionMarch':'expeditionVeteran'),()=>{
+            m.veteran=id==='veteran';invoke(onDifficulty,m.veteran);updateView();
+          },()=>m.veteran===(id==='veteran'))),2)];
+          const tabs=ORDER.map(id=>tab('look-'+id,say(REGIMENTS[id].name),()=>{m.selected=id;invoke(onLook,id);refresh();},m.selected===id,{size:14}));
+          return pane(m.kind,d,[sectionTitle(title),scroll([...difficulty,nativeTabs('regiments',t('chooseRegiment'),tabs,d.short&&partWidth>=420?3:2),rule(),
+            ...chooseCards(m,REGIMENTS[m.selected]),paragraph('choose-hint',t('chooseHint'))])],footer(onBack,m.primary,'back','pick',t('back'),t('next')));
+        }};
+      invoke(onLook,m.selected);show(m);
     },
-
-    /** Choose a regiment; `onLook(regiment)` turns the field to him. */
-    choose({ selected = 'yulin', onPick, onLook, onBack, title = t('chooseRegiment'), veteran = null, onDifficulty }) {
-      let i = ORDER.indexOf(selected);
-      const page = node(`<section class="page choose">
-        <h2>${title}</h2>
-        ${veteran === null ? '' : `<div class="route-level" role="group" aria-label="${t('expeditionDifficulty')}">
-          <button type="button" data-act="difficulty" data-arg="march" aria-pressed="${!veteran}">${t('expeditionMarch')}</button>
-          <button type="button" data-act="difficulty" data-arg="veteran" aria-pressed="${veteran}">${t('expeditionVeteran')}</button>
-        </div>`}
-        <div class="tabs">${ORDER.map((r, k) => `<button type="button" data-act="look" data-arg="${k}">${say(REGIMENTS[r].name)}</button>`).join('')}</div>
-        <article class="regiment"></article>
-        <footer><button type="button" data-act="back">${t('back')}</button><button type="button" class="go" data-act="pick" autofocus>${t('next')}</button></footer>
-        <p class="hint">${t('chooseHint')}</p>
-      </section>`);
-      const card = page.querySelector('.regiment');
-      const draw = () => {
-        const r = REGIMENTS[ORDER[i]];
-        card.innerHTML = `<h3>${say(r.name)}</h3><p class="arms">${t('arms')}：${say(r.arms)}</p><p>${say(r.way)}</p>
-          <p class="stat">${t('health')} ${r.health}</p>
-          <ul>${r.skills.map((s) => `<li><b>${say(SKILLS[s].name)}</b> ${say(SKILLS[s].text)}</li>`).join('')}</ul>`;
-        page.querySelectorAll('.tabs button').forEach((b, k) => b.classList.toggle('on', k === i));
-        onLook?.(ORDER[i]);
-      };
-      draw();
-      wire(page, {
-        difficulty: (name) => {
-          onDifficulty?.(name === 'veteran');
-          page.querySelectorAll('.route-level button').forEach(button => {
-            button.setAttribute('aria-pressed', String(button.dataset.arg === name));
-          });
-        },
-        look: (k) => {
-          i = Number(k);
-          draw();
-        },
-        pick: () => onPick(ORDER[i]),
-        back: onBack
-      });
-      show(page, (e) => {
-        if (e.code === 'ArrowRight' || e.code === 'KeyD') (i = (i + 1) % 5), draw();
-        else if (e.code === 'ArrowLeft' || e.code === 'KeyA') (i = (i + 4) % 5), draw();
-        else if (e.code === 'Enter') onPick(ORDER[i]);
-        else if (e.code === 'Escape') onBack();
-        else return false;
-      });
+    loadout({regiment,chosen,onDone,onBack}) {
+      const r=REGIMENTS[regiment],pick=playerLoadout(regiment,chosen);
+      const toggle=(list,id,max)=>{const n=list.indexOf(id);if(n>=0)list.splice(n,1);else{if(list.length>=max)list.shift();list.push(id);}updateView();};
+      const m={kind:'loadout',label:t('loadout'),initial:'done',pick,arts:[r.art,r.offArt,r.mountedArt].filter(id=>ARTS[id]).length,back:onBack,
+        primary:()=>onDone(playerLoadout(regiment,pick)),
+        draw(d){
+          const wide=partWidth>620,detailWidth=wide?(partWidth-12)/2:partWidth;
+          const card=(type,id,item,chosen,action,detail)=>{
+            const marker=()=>chosen()?(type==='skill'?'  ['+(pick.skills.indexOf(id)?'T':'R')+']':'  ✓'):'';
+            const title=()=>say(item.name)+marker(), words=say(item.text)+(detail?' · '+detail:'');
+            const p=paragraph('details-'+id,words,detailWidth-14,{size:13});
+            bind['choice-card-'+id]={color:()=>chosen()?0x492c1b:0x281b17};
+            return col([toggleControl(type+'-'+id,title,action,chosen,{label:say(item.name)}),p],{
+              name:'choice-card-'+id,color:chosen()?0x492c1b:0x281b17,border:{color:bronze,width:1},
+              height:48+p.height+20,padding:8,gap:4});
+          };
+          const skills=[heading('skills-label',t('skills')+' · '+t('picked',{n:pick.skills.length,max:2}),{size:18,height:30}),
+            ...r.skills.map(id=>card('skill',id,SKILLS[id],()=>pick.skills.includes(id),()=>toggle(pick.skills,id,2),t('cool',{s:SKILLS[id].cool})))];
+          const talents=[heading('talents-label',t('talents')+(r.talents.length?' · '+t('picked',{n:pick.talents.length,max:Math.min(4,r.talents.length)}):''),{size:18,height:30}),
+            ...(r.talents.length?r.talents.map(id=>card('talent',id,TALENTS[id],()=>pick.talents.includes(id),()=>toggle(pick.talents,id,4)))
+              :[paragraph('no-talents',t('noTalents'),detailWidth)])];
+          bind['skills-label']={text:()=>t('skills')+' · '+t('picked',{n:pick.skills.length,max:2})};
+          bind['talents-label']={text:()=>t('talents')+(r.talents.length?' · '+t('picked',{n:pick.talents.length,max:Math.min(4,r.talents.length)}):'')};
+          const contentHeight=a=>a.reduce((n,x)=>n+x.height,0)+8*Math.max(0,a.length-1);
+          const lists=wide?[row([col(skills,{height:contentHeight(skills),width:'fill'}),col(talents,{height:contentHeight(talents),width:'fill'})],
+            {height:Math.max(contentHeight(skills),contentHeight(talents)),gap:12,align:'start'})]:[...skills,...talents];
+          return pane(m.kind,d,[sectionTitle(partWidth<550?t('loadout'):say(r.name)+' · '+t('loadout')),scroll([...(partWidth<550?[heading('regiment-name',say(r.name),{size:20,height:28})]:[]),paragraph('loadout-hint',t('loadoutHint')),
+            ...artRows(r,d),rule(),...lists])],footer(onBack,m.primary,'back','done',t('back'),t('begin')));
+        }};
+      show(m);
     },
-
-    /** Two skills, up to four talents; the weapon art shown beside them. */
-    loadout({ regiment, chosen, onDone, onBack }) {
-      const r = REGIMENTS[regiment];
-      let pick = playerLoadout(regiment, chosen);
-      const page = node(`<section class="page loadout">
-        <h2>${say(r.name)} · ${t('loadout')}</h2><p class="hint">${t('loadoutHint')}</p>
-        ${[['X', r.art, ''], ['Z', r.offArt, ''], ['X', r.mountedArt, t('mountedArt')]]
-          .filter(([, id]) => ARTS[id])
-          .map(([key, id, note]) => `<p class="hint art-line"><kbd>${key}</kbd> ${note || t('art')} · <b>${say(ARTS[id].name)}</b>${t('paren', { w: say(ARTS[id].weapon) })}${say(ARTS[id].text)} ${t('artCost', { s: ARTS[id].cool, r: ARTS[id].rage })}</p>`)
-          .join('')}
-        <div class="cols"><div><h3>${t('skills')} <small class="n-s"></small></h3><div class="cards skills"></div></div>
-        <div><h3>${t('talents')} <small class="n-t"></small></h3><div class="cards talents"></div></div></div>
-        <footer><button type="button" data-act="back">${t('back')}</button><button type="button" class="go" data-act="done" autofocus>${t('begin')}</button></footer>
-      </section>`);
-      const draw = () => {
-        page.querySelector('.skills').innerHTML = r.skills
-          .map((id) => `<button type="button" class="card ${pick.skills.includes(id) ? 'on' : ''}" data-act="skill" data-arg="${id}"><b>${say(SKILLS[id].name)}</b><span>${say(SKILLS[id].text)}</span><small>${t('cool', { s: SKILLS[id].cool })}</small>${pick.skills.includes(id) ? `<kbd>${pick.skills.indexOf(id) ? 'T' : 'R'}</kbd>` : ''}</button>`)
-          .join('');
-        page.querySelector('.talents').innerHTML = r.talents.length
-          ? r.talents.map((id) => `<button type="button" class="card ${pick.talents.includes(id) ? 'on' : ''}" data-act="talent" data-arg="${id}"><b>${say(TALENTS[id].name)}</b><span>${say(TALENTS[id].text)}</span></button>`).join('')
-          : `<p class="hint">${t('noTalents')}</p>`;
-        page.querySelector('.n-s').textContent = t('picked', { n: pick.skills.length, max: 2 });
-        page.querySelector('.n-t').textContent = r.talents.length ? t('picked', { n: pick.talents.length, max: Math.min(4, r.talents.length) }) : '';
-      };
-      const toggle = (list, id, max) => {
-        const at = list.indexOf(id);
-        if (at >= 0) list.splice(at, 1);
-        else {
-          if (list.length >= max) list.shift();
-          list.push(id);
+    stageCard({stage,total,series,onBack,onGo}) {
+      const foes=stage.foes.map(f=>say(REGIMENTS[f].name)).join(' '+t('and')+' ');
+      const round=series?t('seriesRound',{n:stage.index+1}):stage.expedition?t('expeditionStage',{n:stage.index+1}):stage.double?t('finale'):t('stage',{n:stage.index+1});
+      const m={kind:'card',label:round,initial:'go',primary:onGo,back:onBack,modal:true,draw(d){
+        return pane(m.kind,d,[scroll([text('round',round+' / '+total+(stage.expedition?' · '+t(stage.veteran?'expeditionVeteran':'expeditionMarch'):''),{align:'center',color:gold}),
+          heading('arena',placeName(stage.place),{size:d.short?32:40,height:d.short?44:58,align:'center',color:paper}),
+          paragraph('adversaries',t('versus')+' · '+foes,partWidth,{align:'center',color:gold,size:20}),
+          ...(series?[text('standing',t('seriesStanding',series),{align:'center'})]:[]),
+          paragraph('fight-tip',t(coarse?'touchFightTip':'clickToFight'),partWidth,{align:'center',size:13})])],
+          footer(onBack,onGo,'back','go',t('toTitle'),t('fight')),{height:Math.min(d.height-10,320)});
+      }};show(m);
+    },
+    result({won,double,stats,last,onNext,onRetry,onTitle,runMark,expedition=false,series}){
+      const mark=runMark?t('marks')[['jia','yi','bing','ding'].indexOf(runMark)]:null;
+      const advance=series?!series.finished:won&&!last,retry=series?series.finished:!won;
+      const primary=advance?onNext:retry?onRetry:onTitle,title=won?(double?t('double'):t('won')):t('lost');
+      const primaryId=advance?'next':retry?'retry':'title';
+      const seriesStatus=series?.finished?t(series.wins===2?'seriesWon':'seriesLost'):series?t('seriesRound',{n:series.wins+series.losses}):'';
+      const m={kind:'result',label:title,modal:true,initial:primaryId,primary,back:onTitle,draw(d){
+        const statsItems=[['time',t('seconds',{s:stats.time.toFixed(1)})],['deflects',stats.deflects],['breaks',stats.broken],['taken',stats.taken],
+          ...(won&&!series?[['score',stats.score]]:[])];
+        const tiles=statsItems.map(([id,val])=>col([text('stat-label-'+id,t(id),{color:muted,align:'center',size:13}),heading('stat-value-'+id,val,{color:paper,align:'center',size:20,height:26})],
+          {name:'stat-'+id,height:62,color:lacquer,width:'fill',padding:4,gap:0,border:{color:bronze,width:1}}));
+        const actions=row([...(advance?[button('next',t(series?'seriesNext':expedition?'expeditionNext':'goOn'),onNext,{primary:true})]:[]),
+          ...(retry?[button('retry',t(series?'seriesRematch':'retry'),onRetry,{primary:true})]:[]),button('title',t('toTitle'),onTitle,{primary:!advance&&!retry})],{name:'page-footer'});
+        return pane(m.kind,d,[heading('result-heading',title,{color:won?gold:muted,size:d.short?38:58,height:d.short?52:78,align:'center'}),
+          scroll([...(series?[paragraph('series-status',seriesStatus+' · '+t('seriesStanding',series),partWidth,{align:'center'})]:
+            (last&&won?[paragraph('run-won',t(expedition?'expeditionWon':'runDone'),partWidth,{align:'center'})]:[])),
+          ...(mark?[heading('mark',t('mark')+'  '+mark,{align:'center',color:gold})]:[]),
+          ...split(tiles,partWidth>520?5:2).map(items=>row(items,{height:62}))])],actions,{height:Math.min(d.height-10,196+Math.ceil(tiles.length/(partWidth>520?5:2))*70+(series||last&&won?42:0)+(mark?42:0))});
+      }};show(m);
+    },
+    pause({onResume,onSettings,onLeave}) {
+      const m={kind:'pause',label:t('paused'),modal:true,initial:'resume',back:onResume,primary:onResume,draw(d){
+        return pane(m.kind,d,[sectionTitle(t('paused')),scroll([button('resume',t('resume'),onResume,{primary:true,width:'100%'}),
+          button('settings',t('settings'),onSettings,{width:'100%'}),button('leave',t('giveUp'),onLeave,{width:'100%'}),
+          paragraph('controls',t(coarse?'touchText':'controlsText'),partWidth,{size:13})])],null);
+      }};show(m);
+    },
+    settings({settings,onChange,onDone}) {
+      const m={kind:'settings',label:t('settings'),language:getLanguage(),settings,modal:true,initial:'done',back:onDone,primary:onDone,draw(d){
+        const lines=[['quality','quality',[['low','qualityLow'],['medium','qualityMedium'],['high','qualityHigh']]],
+          ['control','control',[['directional','directional'],['classic','classic']]],
+          ['assist','assist',[[true,'on'],[false,'off']]],['blood','blood',[[true,'on'],[false,'off']]],
+          ['sound','sound',[[true,'on'],[false,'off']]],['invertY','invert',[[true,'on'],[false,'off']]],
+          ['sensitivity','sensitivity',[[0.6,'qualityLow'],[1,'qualityMedium'],[1.6,'qualityHigh']]]];
+        const children=[];
+        for(const [key,label,choices] of lines){
+          children.push(text('setting-label-'+key,t(label),{color:gold,height:22,fontWeight:700}));
+          const items=choices.map(([value,word])=>tab('set-'+key+'-'+String(value),t(word),()=>onChange(key,value),()=>String(settings[key])===String(value),{label:labelFor(t(label),t(word)),size:14}));
+          children.push(nativeTabs('setting-'+key,t(label),items,key==='control'&&partWidth<520?1:choices.length));
         }
-      };
-      draw();
-      wire(page, {
-        skill: (id) => (toggle(pick.skills, id, 2), draw()),
-        talent: (id) => (toggle(pick.talents, id, 4), draw()),
-        done: () => onDone(playerLoadout(regiment, pick)),
-        back: onBack
-      });
-      show(page, (e) => {
-        if (e.code === 'Enter') onDone(playerLoadout(regiment, pick));
-        else if (e.code === 'Escape') onBack();
-        else return false;
-      });
+        return pane(m.kind,d,[sectionTitle(t('settings')),scroll(children)],
+          row([button('lang',t('language'),onLanguage),button('done',t('done'),onDone,{primary:true})],{name:'page-footer'}));
+      }};show(m);
     },
-
-    /** The card before a fight. */
-    stageCard({ stage, total, series, onBack, onGo }) {
-      const foes = stage.foes.map((f) => say(REGIMENTS[f].name)).join(` ${t('and')} `);
-      const round = series ? t('seriesRound', { n: stage.index + 1 }) : stage.expedition ? t('expeditionStage', { n: stage.index + 1 }) : stage.double ? t('finale') : t('stage', { n: stage.index + 1 });
-      const page = node(`<section class="page card-stage">
-        <p class="small">${round} / ${total}${stage.expedition ? ' · ' + t(stage.veteran ? 'expeditionVeteran' : 'expeditionMarch') : ''}</p>
-        <h2>${placeName(stage.place)}</h2>
-        <p class="vs">${t('versus')} <b>${foes}</b></p>
-        ${series ? `<p class="small">${t('seriesStanding', series)}</p>` : ''}
-        <button type="button" class="go" data-act="go" autofocus>${t('fight')}</button>
-        <p class="hint click">${t(coarse ? 'touchFightTip' : 'clickToFight')}</p>
-        ${onBack ? `<button type="button" data-act="back">${t('toTitle')}</button>` : ''}
-      </section>`);
-      wire(page, { go: onGo, back: onBack });
-      show(page, (e) => {
-        if (e.code === 'Escape' && onBack) onBack();
-        else if ((e.code === 'Enter' || e.code === 'Space') && !(series && hasButtonFocus(e))) onGo();
-        else return false;
-      });
+    free({state,series,onGo,onBack,onLook}) {
+      const m={kind:'free',label:t(series?'duelSeries':'free'),choice:state,series,initial:'go',back:onBack,primary:()=>onGo(state),modal:true,draw(d){
+        const me=ORDER.map(r=>tab('me-'+r,say(REGIMENTS[r].name),()=>{
+          state.me=r;state.foes=state.foes.filter(f=>f!==r);if(!state.foes.length)state.foes=[ORDER.find(x=>x!==r)];
+          invoke(onLook,r);refresh();
+        },state.me===r,{label:labelFor(t('you'),say(REGIMENTS[r].name)),size:14}));
+        const foes=ORDER.filter(r=>r!==state.me).map(r=>(series?tab:toggleControl)('foe-'+r,say(REGIMENTS[r].name),()=>{
+          if(series)state.foes=[r];else{const at=state.foes.indexOf(r);if(at>=0){if(state.foes.length>1)state.foes.splice(at,1);}
+            else{if(state.foes.length>=2)state.foes.shift();state.foes.push(r);}}
+          updateView();
+        },()=>state.foes.includes(r),{label:labelFor(t('foes'),say(REGIMENTS[r].name)),size:14}));
+        const places=PLACES.map(p=>tab('place-'+p,placeName(p),()=>{state.place=p;updateView();},()=>state.place===p,{size:14}));
+        const count=partWidth>620?3:2,foeCount=!series&&partWidth<520?1:count,placeCount=getLanguage()==='en'&&partWidth<520?1:count;
+        return pane(m.kind,d,[sectionTitle(m.label),scroll([paragraph('free-hint',t(series?'seriesHint':'freeHint')),
+          text('you-label',t('you'),{color:gold}),nativeTabs('your-regiment',t('you'),me,count),
+          text('foes-label',t('foes'),{color:gold}),(series?nativeTabs('foe-regiment',t('foes'),foes,count):col(buttons(foes,foeCount),{name:'foe-regiment',label:t('foes'),height:Math.ceil(foes.length/foeCount)*54-6,gap:6})),
+          text('places-label',t(series?'seriesPlace':'place'),{color:gold}),nativeTabs('arenas',t(series?'seriesPlace':'place'),places,placeCount)])],
+          footer(onBack,m.primary,'back','go'));
+      }};invoke(onLook,state.me);show(m);
     },
-
-    result({ won, double, stats, last, onNext, onRetry, onTitle, runMark, expedition = false, series }) {
-      const mark = runMark ? t('marks')[['jia', 'yi', 'bing', 'ding'].indexOf(runMark)] : null;
-      const canAdvance = series ? !series.finished : won && !last;
-      const canRetry = series ? series.finished : !won;
-      const seriesStatus = series?.finished ? t(series.wins === 2 ? 'seriesWon' : 'seriesLost')
-        : series ? t('seriesRound', { n: series.wins + series.losses }) : '';
-      const page = node(`<section class="page result ${won ? 'won' : 'lost'}">
-        <h2>${won ? (double ? t('double') : t('won')) : t('lost')}</h2>
-        ${series ? `<p class="small">${seriesStatus} · ${t('seriesStanding', series)}</p>`
-          : last && won ? `<p class="small">${t(expedition ? 'expeditionWon' : 'runDone')}</p>` : ''}
-        ${mark ? `<p class="mark"><span>${t('mark')}</span><b>${mark}</b></p>` : ''}
-        <dl>
-          <div><dt>${t('time')}</dt><dd>${t('seconds', { s: stats.time.toFixed(1) })}</dd></div>
-          <div><dt>${t('deflects')}</dt><dd>${stats.deflects}</dd></div>
-          <div><dt>${t('breaks')}</dt><dd>${stats.broken}</dd></div>
-          <div><dt>${t('taken')}</dt><dd>${stats.taken}</dd></div>
-          ${won && !series ? `<div><dt>${t('score')}</dt><dd>${stats.score}</dd></div>` : ''}
-        </dl>
-        <footer>
-          ${canAdvance ? `<button type="button" class="go" data-act="next" autofocus>${t(series ? 'seriesNext' : expedition ? 'expeditionNext' : 'goOn')}</button>` : ''}
-          ${canRetry ? `<button type="button" class="go" data-act="retry" autofocus>${t(series ? 'seriesRematch' : 'retry')}</button>` : ''}
-          <button type="button" data-act="title" ${!canAdvance && !canRetry ? 'autofocus' : ''}>${t('toTitle')}</button>
-        </footer>
-      </section>`);
-      wire(page, { next: onNext, retry: onRetry, title: onTitle });
-      show(page, (e) => {
-        if (e.code === 'Enter' && !(series && hasButtonFocus(e))) (canAdvance ? onNext : canRetry ? onRetry : onTitle)();
-        else if (e.code === 'Escape') onTitle();
-        else return false;
-      });
+    loading(words) {
+      const m={kind:'loading',label:words,text:words,progress:.1,modal:true,draw(d){
+        const title=text('loading-message',m.text,{size:20,fontFamily:titleFont(),align:'center',height:42});
+        bind['loading-message']={text:()=>m.text};
+        bind['loading-progress']={value:()=>m.progress};
+        return pane(m.kind,d,[title,{type:'bar',name:'loading-progress',label:m.label,value:m.progress,color:gold,height:10,width:'100%'}],null,
+          {width:Math.min(360,d.width-12),height:100});
+      }};show(m);
     },
-
-    pause({ onResume, onSettings, onLeave }) {
-      const page = node(`<section class="page pause">
-        <h2>${t('paused')}</h2>
-        <nav class="menu"><button type="button" data-act="resume" autofocus>${t('resume')}</button>
-        <button type="button" data-act="settings">${t('settings')}</button>
-        <button type="button" data-act="leave">${t('giveUp')}</button></nav>
-        <p class="howto">${t(coarse ? 'touchText' : 'controlsText')}</p>
-      </section>`);
-      wire(page, { resume: onResume, settings: onSettings, leave: onLeave });
-      show(page, (e) => {
-        if (e.code === 'Escape' || e.code === 'Enter') onResume();
-        else return false;
-      });
+    progress(k,words) {
+      if(current?.kind!=='loading')return;
+      current.progress=Math.max(0,Math.min(1,k));if(words)current.text=words;view?.refresh();game.invalidate?.();
     },
-
-    settings({ settings, onChange, onDone }) {
-      const row = (key, label, options) => `<div class="row"><span>${t(label)}</span><div class="seg">${options.map(([v, w]) => `<button type="button" data-act="set" data-arg="${key}:${v}" class="${String(settings[key]) === String(v) ? 'on' : ''}">${t(w)}</button>`).join('')}</div></div>`;
-      const page = node(`<section class="page settings">
-        <h2>${t('settings')}</h2>
-        ${row('quality', 'quality', [['low', 'qualityLow'], ['medium', 'qualityMedium'], ['high', 'qualityHigh']])}
-        ${row('control', 'control', [['directional', 'directional'], ['classic', 'classic']])}
-        ${row('assist', 'assist', [[true, 'on'], [false, 'off']])}
-        ${row('blood', 'blood', [[true, 'on'], [false, 'off']])}
-        ${row('sound', 'sound', [[true, 'on'], [false, 'off']])}
-        ${row('invertY', 'invert', [[true, 'on'], [false, 'off']])}
-        ${row('sensitivity', 'sensitivity', [[0.6, 'qualityLow'], [1, 'qualityMedium'], [1.6, 'qualityHigh']])}
-        <footer>${langButton()}<button type="button" class="go" data-act="done" autofocus>${t('done')}</button></footer>
-      </section>`);
-      wire(page, {
-        set: (arg) => {
-          const [key, raw] = arg.split(':');
-          const value = raw === 'true' ? true : raw === 'false' ? false : /^[\d.]+$/.test(raw) ? Number(raw) : raw;
-          onChange(key, value);
-        },
-        done: onDone
-      });
-      show(page, (e) => {
-        if (e.code === 'Escape' || e.code === 'Enter') onDone();
-        else return false;
-      });
+    error(words,onRetry){
+      const m={kind:'error',label:t('error'),modal:true,initial:'retry',primary:onRetry,draw(d){
+        return pane(m.kind,d,[scroll([paragraph('error-message',words,partWidth,{color:paper,size:16})])],
+          row([button('retry',t('reload'),onRetry,{primary:true})],{name:'page-footer'}));
+      }};show(m);
     },
-
-    free({ state, series, onGo, onBack, onLook }) {
-      const page = node(`<section class="page free">
-        <h2>${t(series ? 'duelSeries' : 'free')}</h2><p class="hint">${t(series ? 'seriesHint' : 'freeHint')}</p>
-        <div class="row"><span>${t('you')}</span><div class="seg" data-k="me"></div></div>
-        <div class="row"><span>${t('foes')}</span><div class="seg" data-k="foes"></div></div>
-        <div class="row"><span>${t(series ? 'seriesPlace' : 'place')}</span><div class="seg" data-k="place"></div></div>
-        <footer><button type="button" data-act="back">${t('back')}</button><button type="button" class="go" data-act="go" autofocus>${t('begin')}</button></footer>
-      </section>`);
-      const choice = (act, id, text, selected) => `<button type="button" data-act="${act}" data-arg="${id}" class="${selected ? 'on' : ''}" aria-pressed="${selected}">${text}</button>`;
-      const draw = (act, id) => {
-        page.querySelector('[data-k=me]').innerHTML = ORDER.map((r) => choice('me', r, say(REGIMENTS[r].name), state.me === r)).join('');
-        page.querySelector('[data-k=foes]').innerHTML = ORDER.filter((r) => r !== state.me).map((r) => choice('foe', r, say(REGIMENTS[r].name), state.foes.includes(r))).join('');
-        page.querySelector('[data-k=place]').innerHTML = PLACES.map((p) => choice('place', p, placeName(p), state.place === p)).join('');
-        if (series && act) page.querySelector(`[data-act="${act}"][data-arg="${id}"]`)?.focus({ preventScroll: true });
-        onLook?.(state.me);
-      };
-      draw();
-      wire(page, {
-        me: (r) => {
-          state.me = r;
-          state.foes = state.foes.filter((f) => f !== r);
-          if (!state.foes.length) state.foes = [ORDER.find((x) => x !== r)];
-          draw('me', r);
-        },
-        foe: (r) => {
-          if (series) {
-            state.foes = [r];
-          } else {
-            const at = state.foes.indexOf(r);
-            if (at >= 0) {
-              if (state.foes.length > 1) state.foes.splice(at, 1);
-            } else {
-              if (state.foes.length >= 2) state.foes.shift();
-              state.foes.push(r);
-            }
-          }
-          draw('foe', r);
-        },
-        place: (p) => ((state.place = p), draw('place', p)),
-        go: () => onGo(state),
-        back: onBack
-      });
-      show(page, (e) => {
-        if (e.code === 'Enter' && !(series && hasButtonFocus(e))) onGo(state);
-        else if (e.code === 'Escape') onBack();
-        else return false;
-      });
-    },
-
-    loading(text) {
-      show(node(`<section class="page loading"><p>${text}</p><div class="bar"><i></i></div></section>`));
-    },
-    progress(k, text) {
-      const loading = layer.querySelector('.loading');
-      if (!loading) return;
-      if (text) loading.querySelector('p').textContent = text;
-      loading.querySelector('.bar i').style.width = Math.round(k * 100) + '%';
-    },
-    lang: getLanguage
+    lang:getLanguage
   };
 }
