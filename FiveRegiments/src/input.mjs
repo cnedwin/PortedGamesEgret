@@ -44,7 +44,16 @@ const LINE_ORDER = ['R', 'L', 'O', 'T'];
 const MOUSE_STROKE_PX = 9;
 const MOUSE_STROKE_IDLE_MS = 90;
 
-export function createInput(canvas, { settings, onPause = () => {}, onLock = () => {} } = {}) {
+export function createInput(game, { settings, isActive = () => true, onPause = () => {}, onLock = () => {} } = {}) {
+  const canvas = game.canvas;
+  const active = () => !disposed && isActive();
+  let disposed = false;
+  const clearListeners = new Set();
+  const releaseClaims = [];
+  const claimed = new Set();
+  const claim = code => { if (!claimed.has(code)) { claimed.add(code); releaseClaims.push(game.keys.claim(code, active)); } };
+  // Only the active fight owns these browser/UI keys. Menus keep native focus and activation.
+  for (const code of ['Tab', 'Space', 'Escape', ...Object.values(DEFAULT_KEYS), ...Object.values(settings.keys ?? {}), ...SLOT_KEYS, ...Object.keys(PAD_LINES)]) claim(code);
   const down = new Set();
   let mouseStrokeAt = -Infinity;
   const meleeGestures = [];
@@ -98,18 +107,17 @@ export function createInput(canvas, { settings, onPause = () => {}, onLock = () 
     }
   }
   const onMove = (e) => {
-    if (!state.pointerLocked) return;
+    if (!active() || !state.pointerLocked) return;
     state.lastDevice = 'mouse';
     // Some browsers report a jump when the pointer is first held; one event never turns more than this.
     const cap = 120;
     look(Math.max(-cap, Math.min(cap, e.movementX)), Math.max(-cap, Math.min(cap, e.movementY)), e.timeStamp);
   };
   function tryPointerLock() {
-    if (!state.wantLock || !document.hasFocus() || document.pointerLockElement === canvas
+    if (!active() || !state.wantLock || !document.hasFocus() || game.pointer.locked || game.pointer.lockPending
       || navigator.userActivation?.isActive === false) return;
-    // An async scene load or a browser focus change can invalidate the request.
-    // Leave the click-to-fight hint visible so the player can try again.
-    canvas.requestPointerLock?.()?.catch?.(() => {});
+    // Keep browser acquisition, cancellation and ownership in the engine. Retain the input gate while pending.
+    void game.pointer.lock().catch(() => {});
   }
   function startGesture(line, release) {
     const gesture = { line, release, pressed: true, released: false };
@@ -122,6 +130,7 @@ export function createInput(canvas, { settings, onPause = () => {}, onLock = () 
     if (!gesture.pressed) meleeGestures.push(gesture);
   }
   const onDown = (e) => {
+    if (!active()) return;
     if (!state.pointerLocked) {
       tryPointerLock();
       return;
@@ -157,20 +166,23 @@ export function createInput(canvas, { settings, onPause = () => {}, onLock = () 
     mouseStrokeAt = -Infinity;
   }
   const onLockChange = () => {
-    state.pointerLocked = document.pointerLockElement === canvas;
-    if (state.pointerLocked && !state.wantLock) document.exitPointerLock();
-    if (!state.pointerLocked) {
-      clearCombatInput();
-      if (state.wantLock) onPause('unlocked');
+    const wasLocked = state.pointerLocked;
+    state.pointerLocked = game.pointer.locked;
+    if (state.pointerLocked && !state.wantLock) game.pointer.unlock();
+    if (wasLocked && !state.pointerLocked) {
+      clearAllInput();
+      if (state.wantLock && active()) onPause('unlocked');
     }
   };
   const onWheel = (e) => {
+    if (!active()) return;
     e.preventDefault();
     state.zoom = Math.max(0.55, Math.min(1.7, state.zoom * (e.deltaY > 0 ? 1.08 : 1 / 1.08)));
   };
 
   // ---- keys --------------------------------------------------------------------------------------------------
   const onKey = (e) => {
+    if (!active()) return;
     const k = keys();
     const press = e.type === 'keydown';
     // Ctrl+H: the key hints.
@@ -215,17 +227,27 @@ export function createInput(canvas, { settings, onPause = () => {}, onLock = () 
       if (name === 'hide' || name === 'step') e.preventDefault();
     } else down.delete(name);
   };
-  const onBlur = () => {
+  function clearAllInput() {
     down.clear();
+    // Notify held touch controls first so charge timers and captured ownership are canceled too.
+    for (const listener of clearListeners) listener();
     clearCombatInput();
-  };
+    for (const k of Object.keys(state.once)) state.once[k] = false;
+    state.touch.move = [0,0];
+    state.touch.attack = state.touch.guard = state.touch.tapAttack = state.touch.tapGuard = false;
+    state.touch.strikeLine = null;
+    state.arm = state.padLine = null;
+    state.autorun = false;
+  }
+  const onBlur = clearAllInput;
 
   // Pointer-locked moves already bubble from the canvas to the window.
   addEventListener('mousemove', onMove);
   canvas.addEventListener('mousedown', onDown);
   addEventListener('mouseup', onUp);
   document.addEventListener('pointerlockchange', onLockChange);
-  canvas.addEventListener('contextmenu', (e) => e.preventDefault());
+  const onContext = e => { if (active()) e.preventDefault(); };
+  canvas.addEventListener('contextmenu', onContext);
   canvas.addEventListener('wheel', onWheel, { passive: false });
   addEventListener('keydown', onKey);
   addEventListener('keyup', onKey);
@@ -390,9 +412,9 @@ export function createInput(canvas, { settings, onPause = () => {}, onLock = () 
     },
     /** Hold the mouse inside the page (on a click) while fighting. */
     capture(on) {
-      state.wantLock = on && typeof canvas.requestPointerLock === 'function';
+      state.wantLock = !!on && typeof canvas.requestPointerLock === 'function';
       if (state.wantLock) tryPointerLock();
-      else if (!on && document.pointerLockElement === canvas) document.exitPointerLock?.();
+      else game.pointer.unlock();
     },
     waitingForPointer() {
       if (!state.wantLock || state.pointerLocked) return false;
@@ -402,12 +424,18 @@ export function createInput(canvas, { settings, onPause = () => {}, onLock = () 
     setYaw(y) {
       state.yaw = y;
     },
-    clear() {
-      down.clear();
-      clearCombatInput();
-      for (const k of Object.keys(state.once)) state.once[k] = false;
-    },
+    clear: clearAllInput,
+    onClear(listener) { clearListeners.add(listener); return () => clearListeners.delete(listener); },
     dispose() {
+      if (disposed) return;
+      state.wantLock = false;
+      clearAllInput();
+      disposed = true;
+      game.pointer.unlock();
+      for (const release of releaseClaims) release();
+      clearListeners.clear();
+      canvas.removeEventListener('contextmenu', onContext);
+      canvas.removeEventListener('wheel', onWheel);
       pads.dispose();
       removeEventListener('mousemove', onMove);
       canvas.removeEventListener('mousedown', onDown);

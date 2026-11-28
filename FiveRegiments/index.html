@@ -36,17 +36,22 @@
         "@egret/engine/webgl2/world3d": "./vendor/engine/dist/web/world3d/index.js",
         "@egret/engine/webgpu/world3d": "./vendor/engine/dist/web/world3d/webgpu.js",
         "@egret/engine/web/kit": "./vendor/engine/dist/web/kit.js",
-        "@egret/engine/web/audio": "./vendor/engine/dist/web/audio.js"
+        "@egret/engine/web/audio": "./vendor/engine/dist/web/audio.js",
+        "@egret/engine/play": "./vendor/engine/dist/web/play.js",
+        "@egret/engine/ui/semantics": "./vendor/engine/dist/semantics.js",
+        "@egret/engine/ui/testing": "./vendor/engine/dist/ui/testing.js",
+        "@egret/engine/web/semantics": "./vendor/engine/dist/web/semantics.js",
+        "@egret/engine/web/paragraph": "./vendor/engine/dist/web/paragraph.js"
       }
     }
   </script>
 </head>
 <body>
   <main id="frame">
-    <canvas id="stage" tabindex="0" aria-label="五营争锋：第三人称冷兵器对决。 / Five Regiments: a third-person cold-steel duel."></canvas>
+    <canvas id="stage" tabindex="-1" aria-label="五营争锋：第三人称冷兵器对决。 / Five Regiments: a third-person cold-steel duel."></canvas>
     <div id="ui"></div>
-    <div id="boot"><b>五营争锋</b><span>Five Regiments</span><i></i></div>
-    <pre id="error" hidden></pre>
+    <div id="boot" role="status">正在载入五营争锋… / Loading Five Regiments…</div>
+    <pre id="error" role="alert" hidden></pre>
   </main>
   <noscript>这个游戏需要 JavaScript · This game needs JavaScript.</noscript>
   <script type="module" src="src/main.mjs"></script>

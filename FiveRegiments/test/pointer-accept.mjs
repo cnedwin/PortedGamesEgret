@@ -13,10 +13,12 @@ try {
   await page.route(url, (route) => route.fulfill({ contentType: 'text/html', body: `${importMap}
     <canvas width="400" height="250"></canvas>
     <script type="module">
+      import { play } from '@egret/engine/play';
       import { createInput } from './src/input.mjs';
       const canvas = document.querySelector('canvas');
       const settings = window.testInputSettings = { control: 'direction', sensitivity: 1 };
-      const input = window.testInput = createInput(canvas, { settings });
+      const game=await play({canvas,width:400,height:250,fit:'expand',audio:false,renderMode:'on-demand'});
+      const input=window.testInput=createInput(game,{settings});
       canvas.addEventListener('click', () => input.capture(true), { once: true });
     </script>` }));
   await page.goto(url);
@@ -53,11 +55,7 @@ try {
     mouse('mouseup', { button: 0 });
     const released = window.testInput.sample(1 / 60);
     const after = window.testInput.sample(1 / 60);
-    mouse('mousedown', { button: 0 });
-    window.testInput.sample(1 / 60);
-    dispatchEvent(new Event('blur'));
-    mouse('mouseup', { button: 0 });
-    const canceled = window.testInput.sample(1 / 60);
+    window.testInput.clear();
     tap(0);
     const bow = window.testInput.sample(1 / 60, { bow: true });
     dispatchEvent(new KeyboardEvent('keydown', { code: 'KeyB' }));
@@ -107,6 +105,13 @@ try {
     mouse('mousemove', { movementX: -29 });
     tap(0);
     const sameTick = [edge(), edge(), edge()];
+    // Native Play releases the real pointer lock on blur. Test it last so subsequent strokes do not assume a stale lock.
+    window.testInput.clear();
+    mouse('mousedown', {button:0});
+    window.testInput.sample(1/60);
+    dispatchEvent(new Event('blur'));
+    mouse('mouseup',{button:0});
+    const canceled=window.testInput.sample(1/60);
     return { yaw, attack: [attack.attack, attack.line], guard: [guard.guard, guard.line], cleared: !next.attack && !next.guard, lines,
       short: [attack.meleeRelease, attack.meleeDown, attack.meleeUp],
       preparing: [preparing.meleeRelease, preparing.meleeDown, preparing.meleeUp, preparing.line],
@@ -176,7 +181,7 @@ try {
     const request = HTMLCanvasElement.prototype.requestPointerLock;
     window.testLock = { refused: 0, deny: true };
     HTMLCanvasElement.prototype.requestPointerLock = function (...args) {
-      if (this.id === 'stage' && testLock.deny) {
+      if (this.closest('#ui') && testLock.deny) {
         testLock.refused++;
         return Promise.reject(new DOMException('The browser declined pointer lock', 'NotAllowedError'));
       }
@@ -187,16 +192,20 @@ try {
   await battle.waitForFunction(() => window.egretGame?.game?.hero?.regiment === 'archer', null, { timeout: 60000 });
   const sample = () => battle.evaluate(() => {
     const { game, status } = egretGame;
-    return { time: game.time, frame: status.frames, hp: game.hero.hp, locked: document.pointerLockElement?.id,
+    return { time: game.time, frame: status.frames, hp: game.hero.hp, locked: document.pointerLockElement===egretGame.uiGame.canvas?'native':undefined,
       focus: document.hasFocus(), visibility: document.visibilityState,
       draw: game.hero.draw?.t ?? null, shots: game.shots.filter(shot => shot.by === game.hero.id).length };
   });
-  const resume = battle.locator('.page.pause [data-act="resume"]');
+  const resume={
+    isVisible:()=>battle.evaluate(()=>egretGame.screens.current==='pause'),
+    waitFor:()=>battle.waitForFunction(()=>egretGame.screens.current==='pause'&&egretGame.screens.view?.visible),
+    click:async()=>{const pos=await battle.evaluate(()=>{const game=egretGame.uiGame,r=egretGame.screens.view.visibleRect('resume'),p=game.canvas.getBoundingClientRect(),scale=game.browser.screen.scale;return {x:p.left+(r.x+r.width/2)*scale,y:p.top+(r.y+r.height/2)*scale};});await battle.mouse.click(pos.x,pos.y);}
+  };
   const waitFrames = frame => battle.waitForFunction(frame => egretGame.status.frames >= frame + 8, frame);
   const captureMouse = async () => {
     if (await resume.isVisible()) await resume.click();
     if (!(await sample()).locked && !(await resume.isVisible())) await battle.mouse.click(400, 250);
-    await battle.waitForFunction(() => document.pointerLockElement?.id === 'stage');
+    await battle.waitForFunction(() => document.pointerLockElement===egretGame.uiGame.canvas);
     await waitFrames((await sample()).frame);
   };
   await battle.mouse.click(400, 250);
@@ -247,7 +256,7 @@ try {
     assert.equal(refused.focus, true);
   }
   assert.equal(afterPause.time, paused.time, 'native unlock pauses the clock');
-  assert.equal(afterResume.locked, 'stage', 'a fresh gesture resumes actual pointer lock');
+  assert.equal(afterResume.locked, 'native', 'a fresh gesture resumes actual pointer lock');
   assert.equal(afterDenial.hp, denied.hp, 'a refused pointer lock leaves the player safe');
   assert.equal(afterResumeDenial.hp, paused.hp, 'a refused resume capture leaves the player safe');
   assert.deepEqual([afterDenial.time, afterResumeDenial.time, afterResume.shots], [denied.time, paused.time, heldDraw.shots],

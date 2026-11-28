@@ -131,7 +131,11 @@ Choose a regiment and make your way through Stonegate Pass, Red Banner Depot and
 
 | 引擎入口 / API · Entry / API | 在本游戏中的用途 · Use in this game | 文件 · File |
 |---|---|---|
-| `@egret/engine/webgpu/world3d` · `createWorld3DApp` | 画布、帧循环、画质档位（自动按设备选高中低）；默认 WebGL2，`?backend=webgpu` 用 WebGPU · the canvas, loop and quality tiers; WebGL2 by default, WebGPU on request | `src/main.mjs` |
+| `@egret/engine/webgpu/world3d` · `createWorld3DApp` | 3D 渲染器、资源生命周期与画质档位；默认 WebGL2，`?backend=webgpu` 用 WebGPU · renderer, resource ownership and quality tiers; WebGL2 by default, WebGPU on request | `src/main.mjs` |
+| `play3dAttached`, `game.show`, `createUiScreenStack` | 3D 与原生界面共用活动帧时钟、菜单与模态栈 · one active frame clock, native menus and modal stack | [main.mjs](src/main.mjs)、[screens.mjs](src/screens.mjs) |
+| `createUiSemantics`, `createBrowserSemantics`, `createUiTester` | 具名控件、读屏投影及自动验收 · named controls, accessible projection and acceptance checks | [main.mjs](src/main.mjs)、[accept.mjs](test/accept.mjs) |
+| `fit: 'expand'`, `portrait`, `uiScale` | 横竖屏布局、可触控大小和安全区适配 · screen geometry, physical control sizes and safe areas | [main.mjs](src/main.mjs)、[hud.mjs](src/hud.mjs) |
+| `createMovementControl`, `createActionControl`, `game.pointer`, `game.keys` | 触屏和原生鼠标锁定/键盘输入 · native touch controls, pointer lock and keyboard input | [hud.mjs](src/hud.mjs)、[input.mjs](src/input.mjs) |
 | `loadGltf3D`（meshopt、量化） | 五个带骨骼的人物、带四足骨骼的战马和三十二件场景物件，各三档 · five rigged men, the rigged horse and thirty-two props, three sets each | `src/main.mjs`、`src/view/stage.mjs` |
 | 骨骼节点（`Object3D` 的位置与旋转） | 每帧把动作捕捉姿态写进人的骨骼，再叠加反向动力学和腰身扭转；战马的腿骨按步态逐帧转动 · each frame the captured pose is written to the men's bones with IK and the twist laid over it; the horse's leg bones are turned by its gait | `src/view/motion.mjs`、`src/view/rig.mjs`、`src/view/figure.mjs`、`src/view/horse.mjs` |
 | `Object3D.localToWorld` | 从战马的脊骨取马鞍位置，骑手每帧坐上去；第一人称取人物头部位置 · the saddle's place from the horse's spine for the rider each frame; the head's place for the first-person view | `src/view/horse.mjs`、`src/view/figure.mjs` |
@@ -212,7 +216,7 @@ Choose a regiment and make your way through Stonegate Pass, Red Banner Depot and
 
 | 路径 · Path | 用途 · What it is for |
 |---|---|
-| `index.html`、`style.css` | 页面、import map、漆器与青铜风格的界面 · the page, the import map, the lacquer-and-bronze interface |
+| `index.html`、`style.css` | 画布容器、import map 和启动回退文本 · canvas containers, import map and bootstrap fallback |
 | `src/main.mjs` | 入口：渲染、场景、人物、征途、对决循环、镜头、存档、地址参数 · the entry |
 | `src/sim/fight.mjs` | 对决规则：刀路、格挡、弹刀、踢、跳、体力、伤害公式、技能、战技与怒气、天赋、箭、毒、骑马、胜负 · the fight rules |
 | `src/sim/regiments.mjs` | 五营的兵器、护甲、生命、技能、天赋、战技、伤害公式的常数和每个数的出处 · the five regiments and where their numbers come from |
@@ -239,7 +243,7 @@ Choose a regiment and make your way through Stonegate Pass, Red Banner Depot and
 
 ## 引擎副本 · Engine copy
 
-- 引擎提交 `82561d6338a805f0e0459a2d5d42a284f9385b30`（见 `vendor/SOURCE.md`）。 · Engine commit `82561d63` (see `vendor/SOURCE.md`).
+- 引擎提交 `7fb371acb8bab254cf1c49b9da0ac0eed0c06fb4`（见 `vendor/SOURCE.md`）。 · Engine commit `7fb371ac` (see `vendor/SOURCE.md`).
 - 生成命令（在引擎仓库里）· Made with, in the engine repository:
 
 ```sh

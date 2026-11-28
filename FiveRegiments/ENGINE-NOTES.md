@@ -5,6 +5,8 @@
 The faults found in the new Egret engine (commit `450bb9e`) while making this game, and suggestions, written as in
 part 3 of [docs/GAME-STANDARD.md](../docs/GAME-STANDARD.md).
 
+当前引擎副本 / Current vendored engine: 7fb371acb8bab254cf1c49b9da0ac0eed0c06fb4. 下列历史事项保留原有证据；未复测的不能宣称解决。 / Historical evidence remains below; items not retested are not claimed resolved.
+
 ### 1. `loadGltf3D` 不认 `EXT_texture_webp` · `loadGltf3D` does not take `EXT_texture_webp` — 未解决 / open
 <!-- engine-note: {"id": "FiveRegiments#1", "status": "open", "topic": "gltf-webp-texture"} -->
 

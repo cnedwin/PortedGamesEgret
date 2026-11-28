@@ -8,7 +8,10 @@
 //   ?auto            a brain plays for you (for checks)   ?seed=7  fixed dice   ?debug  the readout
 //   ?fixed           each frame drawn is one tick of the world (slow-motion captures on slow machines)
 import { Scene3D, createPerspectiveCamera3D, loadGltf3D, projectToViewport3D } from '@egret/engine/world3d';
-import { createWorld3DApp } from '@egret/engine/webgpu/world3d';
+import { createWorld3DApp, createDynamicResolution3D, WORLD3D_QUALITY_PRESETS, play3dAttached } from '@egret/engine/webgpu/world3d';
+import { createUiSemantics } from '@egret/engine/ui/semantics';
+import { createBrowserSemantics } from '@egret/engine/web/semantics';
+import { createUiTester } from '@egret/engine/ui/testing';
 import { useFixedWorldResolution } from './view/canvas-policy.mjs';
 import { browserSaveStorage } from '@egret/engine/web/kit';
 import { createFight, step, TICK } from './sim/fight.mjs';
@@ -44,10 +47,12 @@ const canvas = document.querySelector('#stage');
 const frame = document.querySelector('#frame');
 const status = { frames: 0, mode: 'boot', error: null };
 window.egretGame = { status };
+let showFatal;
 
 function fail(cause) {
   status.error = String(cause?.message ?? cause);
   console.error(cause);
+  if (showFatal) { showFatal(status.error); return; }
   const box = document.querySelector('#error');
   if (box) {
     box.hidden = false;
@@ -99,19 +104,54 @@ async function main() {
   const fx = createEffects(scene, { particles: quality === 'low' ? 0.5 : 1, blood: settings.blood,
     groundAt: (x, z) => floorAt(stage?.place, x, z) });
 
-  const ui = document.querySelector('#ui');
-  const hud = createHud(ui, { touch: coarse });
+  // The existing renderer keeps its quality and resource ownership. The native interface and
+  // its attached World3D view share a single active Play frame clock.
+  let frameTick = () => {};
+  const semantics = createUiSemantics();
+  const resolution = useFixedWorldResolution(globalThis.navigator) ? null : createDynamicResolution3D();
+  let lastQuality = app.quality;
+  const session = await play3dAttached({
+    parent: document.querySelector('#ui'),
+    width: 1280, height: 720, portrait: { width: 540, height: 960 },
+    fit: 'expand', uiScale: { min: 1, max: 1.25 },
+    renderMode: 'on-demand', semantics, onError: fail,
+    world: () => ({
+      renderer, scene, camera, autoResize: false, onError: fail,
+      onUpdate(dt) {
+        if (lastQuality !== app.quality) { lastQuality = app.quality; resolution?.reset(); }
+        resolution?.update(dt);
+        const limit = WORLD3D_QUALITY_PRESETS[app.quality].pixelRatio;
+        renderer.resizeToDisplaySize(Math.min(globalThis.devicePixelRatio || 1, limit) * (resolution?.scale ?? 1));
+        const drawn = renderer.renderSize ?? renderer.canvas;
+        if (drawn.height > 0) camera.aspect = drawn.width / drawn.height;
+        frameTick(dt);
+      }
+    })
+  });
+  const ui = session.game;
+  const projection = createBrowserSemantics({ semantics, canvas: ui.canvas, width: ui.browser.frame.width,
+    height: ui.browser.frame.height, label: t('canvasLabel') });
+  const syncProjection = ui.browser.onScreenChange(() => projection.sync(ui.browser.frame));
+  ui.scope.use({ dispose() { syncProjection(); projection.dispose(); app.dispose(); } });
+  const tester = createUiTester({ semantics, update: () => ui.invalidate() });
+  const hud = createHud(ui, { touch: coarse, semantics });
   const screens = createScreens(ui, {
     coarse,
     onLanguage: () => {
       setLanguage(getLanguage() === 'zh' ? 'en' : 'zh');
       showLanguage();
+      ui.canvas.setAttribute('aria-label', t('canvasLabel'));
       keep();
       redraw?.();
     }
   });
+  showFatal = (message) => {
+    document.querySelector('#boot')?.classList.add('done');
+    screens.error(message, () => location.reload());
+  };
   let redraw = null;
-  const input = createInput(canvas, {
+  const input = createInput(ui, {
+    isActive: () => mode === 'fight' && !paused && !over,
     settings,
     onPause: (why) => {
       if (mode === 'fight' && !over) pause();
@@ -122,6 +162,7 @@ async function main() {
     }
   });
   const touch = createTouchControls(ui, input, {
+    semantics,
     onPause: () => {
       if (mode === 'fight' && !over) pause();
     }
@@ -896,8 +937,8 @@ async function main() {
   }
 
   // ---- one frame -----------------------------------------------------------------------------------------------
-  app.show(scene, camera, {
-    onUpdate(dt) {
+  frameTick = (dt) => {
+      screens.update();
       status.frames++;
       // `?fixed` (for captures on slow machines): every frame drawn moves the world on by one tick, so motion and
       // blade trails look as they do at full speed.
@@ -929,11 +970,10 @@ async function main() {
           }
         }
       }
-    }
-  });
+  };
 
   window.egretGame = {
-    status,
+    status, uiGame: ui, semantics, tester, hud, touch, input,
     get game() {
       return game;
     },
