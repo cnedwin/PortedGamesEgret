@@ -78,6 +78,10 @@ export const MATRIX = {
      "file": "NightWardens/src/screens.mjs"
     },
     {
+     "game": "NineProvinces",
+     "file": "NineProvinces/src/ui/native-minimap.mjs"
+    },
+    {
      "game": "PeachCreek",
      "file": "PeachCreek/src/inspector.mjs"
     },
@@ -243,7 +247,7 @@ export const MATRIX = {
     },
     {
      "game": "NineProvinces",
-     "file": "NineProvinces/src/view3d/stage.mjs"
+     "file": "NineProvinces/src/view3d/native-host.mjs"
     },
     {
      "game": "Rally",
@@ -283,6 +287,10 @@ export const MATRIX = {
     {
      "game": "jelly-pandas",
      "file": "jelly-pandas/src/main.mjs"
+    },
+    {
+     "game": "NineProvinces",
+     "file": "NineProvinces/src/view3d/native-renderer.mjs"
     },
     {
      "game": "Rally",
@@ -325,6 +333,10 @@ export const MATRIX = {
     {
      "game": "LubanBridge",
      "file": "LubanBridge/src/view/build.mjs"
+    },
+    {
+     "game": "NineProvinces",
+     "file": "NineProvinces/src/view3d/realm.mjs"
     }
    ]
   },
@@ -377,6 +389,10 @@ export const MATRIX = {
     {
      "game": "NightWardens",
      "file": "NightWardens/src/screens.mjs"
+    },
+    {
+     "game": "NineProvinces",
+     "file": "NineProvinces/src/ui/native-dialogs.mjs"
     },
     {
      "game": "OperaDrums",
@@ -445,6 +461,10 @@ export const MATRIX = {
      "file": "LanternShadows/src/native-ui.mjs"
     },
     {
+     "game": "NineProvinces",
+     "file": "NineProvinces/src/view3d/native-host.mjs"
+    },
+    {
      "game": "Wulin",
      "file": "Wulin/src/ui/native-shell.mjs"
     }
@@ -470,6 +490,10 @@ export const MATRIX = {
     {
      "game": "LanternShadows",
      "file": "LanternShadows/src/native-ui.mjs"
+    },
+    {
+     "game": "NineProvinces",
+     "file": "NineProvinces/src/view3d/native-host.mjs"
     },
     {
      "game": "Wulin",
@@ -1118,6 +1142,10 @@ export const MATRIX = {
      "file": "NightWardens/src/main.mjs"
     },
     {
+     "game": "NineProvinces",
+     "file": "NineProvinces/src/view3d/native-host.mjs"
+    },
+    {
      "game": "OperaDrums",
      "file": "OperaDrums/src/main.mjs"
     },
@@ -1183,6 +1211,10 @@ export const MATRIX = {
     {
      "game": "NezhaSea",
      "file": "NezhaSea/src/main.mjs"
+    },
+    {
+     "game": "NineProvinces",
+     "file": "NineProvinces/src/view3d/native-host.mjs"
     },
     {
      "game": "Rally",
@@ -1254,6 +1286,10 @@ export const MATRIX = {
     {
      "game": "NightWardens",
      "file": "NightWardens/src/main.mjs"
+    },
+    {
+     "game": "NineProvinces",
+     "file": "NineProvinces/src/view3d/native-host.mjs"
     },
     {
      "game": "OperaDrums",

@@ -4,9 +4,9 @@
 
 Made by `node tools/engine-notes.mjs --write` from the ENGINE-NOTES of the games; do not edit by hand, and `--check` says whether it is out of date. What the engine resolved is copied from the engine's `guide/resolved.json` into [engine-resolved.json](engine-resolved.json) (15 entries). The form of a note is in part 3 of [GAME-STANDARD.md](GAME-STANDARD.md).
 
-24 个游戏、280 条笔记：未解决 75，部分解决 24，游戏侧绕过 18，已写入文档 42，已解决 121。
+24 个游戏、281 条笔记：未解决 76，部分解决 24，游戏侧绕过 18，已写入文档 42，已解决 121。
 
-280 notes from 24 games: 75 open, 24 partly resolved, 18 worked around in the game, 42 documented, 121 resolved.
+281 notes from 24 games: 76 open, 24 partly resolved, 18 worked around in the game, 42 documented, 121 resolved.
 
 ## 1. 引擎已经解决、游戏还标着未解决 · Resolved by the engine, still open in a game
 
@@ -50,6 +50,7 @@ Write the lesson as a card of the engine's guide (`guide/cards` in the engine re
 | `burst-layer` | OperaDrums#20 `game.burst` 没有图层 · `game.burst` has no layer | 未解决 · open |
 | `camera-zoom-clamp` | NineProvinces#4 相机缩放超出范围时抛错而不是夹住 · The camera throws instead of clamping a zoom out of range | 未解决 · open |
 | `decal-changes-material` | TeaHorseRoad#8 `createDecal3D` 改写传入的材质 · `createDecal3D` changes the material it is given | 未解决 · open |
+| `declarative-range-control` | NineProvinces#10 原生数据界面缺少具名范围控件 · Declarative views have no named range control | 未解决 · open |
 | `expanded-stage-pixel-ratio` | LanternShadows#8 扩展舞台的画布像素密度 · Backing density on an expanded stage | 已在游戏侧绕过 · worked around |
 | `geometry-budget-reuse` | FivePhases#1 每帧的几何预算连复用的几何也一起算 · The per-frame geometry budget also counts reused geometry | 部分解决 · partly |
 | `gltf-webp-texture` | FiveRegiments#1 `loadGltf3D` 不认 `EXT_texture_webp` · `loadGltf3D` does not take `EXT_texture_webp` | 未解决 · open |
@@ -154,7 +155,7 @@ Write the lesson as a card of the engine's guide (`guide/cards` in the engine re
 | [MechanismCity](../MechanismCity/ENGINE-NOTES.md) | 22 | 1 | 2 | 1 | 5 | 13 | 0 | `82561d6` |
 | [NezhaSea](../NezhaSea/ENGINE-NOTES.md) | 19 | 2 | 1 | 3 | 1 | 12 | 0 | `82561d6` |
 | [NightWardens](../NightWardens/ENGINE-NOTES.md) | 5 | 0 | 0 | 1 | 3 | 1 | 0 | `82561d6` |
-| [NineProvinces](../NineProvinces/ENGINE-NOTES.md) | 9 | 5 | 1 | 0 | 1 | 2 | 0 | `7fb371a` |
+| [NineProvinces](../NineProvinces/ENGINE-NOTES.md) | 10 | 6 | 1 | 0 | 1 | 2 | 0 | `7fb371a` |
 | [OperaDrums](../OperaDrums/ENGINE-NOTES.md) | 24 | 15 | 1 | 1 | 3 | 4 | 0 | `82561d6` |
 | [PeachCreek](../PeachCreek/ENGINE-NOTES.md) | 10 | 0 | 4 | 1 | 0 | 5 | 0 | `82561d6` |
 | [Rally](../Rally/ENGINE-NOTES.md) | 7 | 4 | 0 | 0 | 2 | 1 | 0 | `82561d6` |

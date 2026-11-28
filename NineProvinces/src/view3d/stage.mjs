@@ -4,8 +4,7 @@
 // distance, post-processing (bloom, grading, vignette), and the camera over the realm: it keeps a point on the ground in
 // view, rising to look down as it draws back and lowering as it comes near; it pans, zooms and glides smoothly to a
 // place; a point on the screen can be turned into a point on the ground.
-import { createWorld3DApp } from '@egret/engine/webgl2/world3d';
-import { useFixedWorldResolution } from './canvas-policy.mjs';
+import { createRealmRenderer } from './native-renderer.mjs';
 import { Raycaster3D, Scene3D, createDirectionalLight3D, createGradientCubeTexture3D, createHemisphereLight3D, createPerspectiveCamera3D } from '@egret/engine/world3d';
 import { MAP } from '../data/map.mjs';
 
@@ -13,13 +12,9 @@ export const ZOOM = { near: 20, far: 300 };
 
 /** Start the 3D world on a canvas. */
 export async function createStage(canvas, { quality, onError } = {}) {
-  const app = await createWorld3DApp(canvas, {
-    ...(useFixedWorldResolution(globalThis.navigator) ? { dynamicResolution: false } : {}),
-    toneMapping: 'aces',
-    exposure: 0.85,
-    ...(quality ? { quality } : {}),
-    onError: (cause) => (onError ? onError(cause) : console.error(cause))
-  });
+  // The renderer retains its scene settings; the native Play session will
+  // attach it and supply the world clock without an independent 3D app loop.
+  const app = await createRealmRenderer(canvas, { quality, onError });
   const scene = new Scene3D();
   const camera = createPerspectiveCamera3D({ fov: 38, near: 1, far: 2400 });
   scene.addChild(camera);
