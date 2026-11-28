@@ -1,8 +1,8 @@
-# 五营争锋 · Five Regiments
+# 帝国竞技场 · Imperial Arena
 
 ## 简介 · Introduction
 
-五营争锋是基于[新白鹭引擎 Egret Rebuild](https://github.com/cnedwin/Egret_rebuild)独立开发的第三人称冷兵器对决游戏 Demo。从五营里选一营：羽林卫（单手刀与盾，重甲）、虎步（单手剑，轻甲）、陷阵营（双手长斧，重甲）、银翎卫（方天戟，骑披甲战马，重甲）、武射史（短弓与狩猎刀，轻甲）。每营带两个职业技能、最多四个天赋上阵，依次在县城校场、桃林溪畔、竹林古道、雪原关隘单挑另外四营的电脑对手，最后在王城宫前以一敌二，两人都倒下就是「双杀」。
+帝国竞技场是基于[新白鹭引擎 Egret Rebuild](https://github.com/cnedwin/Egret_rebuild)独立开发的第三人称冷兵器对决游戏 Demo。从五营里选一营：羽林卫（单手刀与盾，重甲）、虎步（单手剑，轻甲）、陷阵营（双手长斧，重甲）、银翎卫（方天戟，骑披甲战马，重甲）、武射史（短弓与狩猎刀，轻甲）。每营带两个职业技能、最多四个天赋上阵，依次在县城校场、桃林溪畔、竹林古道、雪原关隘单挑另外四营的电脑对手，最后在王城宫前以一敌二，两人都倒下就是「双杀」。
 
 - 职业、技能、天赋、战技的名字和数值来自原作的公开版本公告和游戏内物品面板，生命值按原作（羽林卫 18000、虎步 12000、陷阵营 20000、银翎卫 13000、武射史 11000）；公告里没有的数都在 [docs/DESIGN.md](docs/DESIGN.md) 里标明是本作自定。
 - 伤害公式按武器面板、重甲轻甲面板和生命值推算：普通一刀掉对方 6%–13% 的血，大招暴击最多三成，不会被一刀秒，一场打四十秒左右、来回好几次。
@@ -14,7 +14,7 @@
 - 人物、战马、兵器和场景物件是 3D 模型，人物和战马骨骼绑定；人的站、走、跑、侧移、后退用动作捕捉数据，挥砍、格挡、技能是按兵器写的姿态加反向动力学，马的走、小跑、疾驰按落蹄顺序用代码驱动。
 - 五个场景各有天空、光照、雾和调色，有阴影、环境光遮蔽、泛光，以及落花、飘雪、竹林薄雾、宫前火星这些天气粒子。
 
-Five Regiments is a third-person cold-steel duelling demo made on its own with
+Imperial Arena is a third-person cold-steel duelling demo made on its own with
 [Egret Rebuild](https://github.com/cnedwin/Egret_rebuild), the new Egret engine. Choose one of five regiments — the
 Imperial Guard (sabre and shield, heavy armour), the Tiger Step (sword, light armour), the Berserker Battalion
 (two-handed long axe, heavy armour), the Silver Wing Guard (fangtian ji on an armoured horse, heavy armour) or the
@@ -183,7 +183,7 @@ Choose a regiment and make your way through Stonegate Pass, Red Banner Depot and
 - 界面布局和按键按公开的按键表和沙盒战争类 PC 游戏的常见布局做，没有对着原作截图逐像素比对；手上没有截图可对，罗盘、名牌、物品栏的样式是自己画的。 · The panels and keys follow published key lists and the usual layout of sandbox-war PC games, not a pixel comparison with screenshots; the compass, nameplates and bar are drawn here.
 - 战马的骨骼里右后腿只有一节骨头，跑起来那条腿只能整条摆动、不能弯膝。马上不能跳、没有马上弓射。 · The horse's rig has a single bone for the right hind leg, so that leg swings without bending. No jumping on horseback, and no mounted archery.
 - 刀路只有四个方向；原作武器面板上的八个方向没有做全。 · Four lines of cut; the original's eight directions are not all made.
-- 品质验收未达标 · Quality items failing（[QUALITY.md](QUALITY.md)，2026-11-28，无头 Chromium + SwiftShader · headless, software rendering）：F1 桌面帧时间 p95 ≤ 16.7 ms（p95 129.2 ms over 51 frames）。
+- 品质验收未达标 · Quality items failing（[QUALITY.md](QUALITY.md)，2026-11-28，无头 Chromium + SwiftShader · headless, software rendering）：F1 桌面帧时间 p95 ≤ 16.7 ms（p95 95.7 ms over 60 frames）。
 
 ## 已解决 · Solved
 
@@ -245,11 +245,13 @@ Choose a regiment and make your way through Stonegate Pass, Red Banner Depot and
 
 ## 引擎副本 · Engine copy
 
-- 引擎提交 `7fb371acb8bab254cf1c49b9da0ac0eed0c06fb4`（见 `vendor/SOURCE.md`）。 · Engine commit `7fb371ac` (see `vendor/SOURCE.md`).
+- 引擎提交 `212972678e633b1f3667f345d0646b0fba907ee1`（见 `vendor/SOURCE.md`）。 · Engine commit `21297267` (see `vendor/SOURCE.md`).
 - 生成命令（在引擎仓库里）· Made with, in the engine repository:
 
 ```sh
-node tools/vendor-game.mjs ../PortedGamesEgret/FiveRegiments @egret/engine @egret/engine/world3d @egret/engine/webgl2/world3d @egret/engine/webgpu/world3d @egret/engine/kit @egret/engine/web/kit @egret/engine/audio @egret/engine/web/audio @egret/engine/input/gamepad
+node tools/vendor-game.mjs ../PortedGamesEgret/FiveRegiments @egret/engine @egret/engine/world3d @egret/engine/webgl2/world3d @egret/engine/webgpu/world3d @egret/engine/kit @egret/engine/web/kit @egret/engine/audio @egret/engine/web/audio @egret/engine/input/gamepad @egret/engine/play @egret/engine/ui @egret/engine/ui/semantics @egret/engine/ui/testing @egret/engine/web/semantics @egret/engine/bitmapfont @egret/engine/paragraph @egret/engine/web/paragraph
 ```
 
 - 游戏代码直接用到的入口：`@egret/engine/world3d`、`@egret/engine/webgpu/world3d`（`tools/look.mjs` 用 `@egret/engine/webgl2/world3d`）、`@egret/engine/kit`、`@egret/engine/web/kit`、`@egret/engine/web/audio`、`@egret/engine/input/gamepad`。 · Entries the game imports itself are listed above.
+
+- **浏览器发布构建 · Browser release bundle**：试玩页面使用已生成的静态 ESM 入口，无需玩家安装 Node.js 或 npm。开发维护者在 `FiveRegiments/` 中执行 `npm ci`、`npm run bundle`（esbuild 锁定为 0.28.2）；已有对应工具时也可以指定环境变量 `ESBUILD` 为其绝对 JS 模块路径，再执行 `node tools/bundle.mjs`。更新 `src/` 或官方 `vendor/` 后应重新生成构建。运行 `node --test test/bundle.test.mjs` 可校验源文件、独立资源 worker、官方导入映射与生成物的 SHA，不需要安装 esbuild。 / The published game loads its generated static ESM entry directly in the browser; players do not need Node.js or npm. Maintainers run `npm ci` and `npm run bundle` in this directory (esbuild 0.28.2). With that tool already available, its absolute JS module path can be supplied in `ESBUILD` before running `node tools/bundle.mjs`. Rebuild after source or official vendor changes. The bundle consistency test verifies source, separate asset worker, official import map and generated artifact hashes without installing esbuild.

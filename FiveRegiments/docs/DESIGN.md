@@ -1,4 +1,4 @@
-# 五营争锋 · 设计 · Five Regiments · Design
+# 帝国竞技场 · 设计 · Imperial Arena · Design
 
 ## 一句话 · In one line
 

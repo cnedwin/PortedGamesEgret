@@ -21,6 +21,7 @@ import {
 
 import { createScratchCanvas } from './scratch-canvas.mjs';
 import { groundDetail, roadTints } from './environment-detail.mjs';
+import { assetDownloads, startupSpan } from './asset-downloads.mjs';
 
 const ASSETS = new URL('../../assets/', import.meta.url);
 
@@ -336,8 +337,11 @@ const LAYOUT = {
 const decode = async ({ bytes, mimeType }) => createImageBitmap(new Blob([bytes], { type: mimeType }), { colorSpaceConversion: 'none', premultiplyAlpha: 'none' });
 
 async function image(url) {
-  const blob = await (await fetch(url)).blob();
-  return createImageBitmap(blob, { colorSpaceConversion: 'none', premultiplyAlpha: 'none' });
+  const response = await assetDownloads.read(url);
+  if (!response.ok) throw Error('Image HTTP ' + response.status);
+  return startupSpan('bitmap-decode', url, () => createImageBitmap(
+    new Blob([response.bytes], { type: response.type }),
+    { colorSpaceConversion: 'none', premultiplyAlpha: 'none' }));
 }
 
 async function projectSkyInWorker(panorama, size) {
@@ -378,7 +382,7 @@ async function skyCube(name, size, useWorker = false) {
       // The pixels and projection are the same on the fallback path.
     }
   }
-  return createCubeTextureFromEquirect3D(panorama, { size });
+  return startupSpan('sky-projection', name, () => createCubeTextureFromEquirect3D(panorama, { size }));
 }
 
 /** A scanned CC0 material: colour, normal and AO/roughness/metal maps. */
@@ -426,9 +430,10 @@ async function prop(name, set) {
     propCache.set(
       key,
       (async () => {
-        const response = await fetch(new URL(`props/${name}-${set}.glb`, ASSETS));
-        if (!response.ok) return null;
-        const asset = await loadGltf3D(new Uint8Array(await response.arrayBuffer()), { decodeImage: decode });
+        const url = new URL(`props/${name}-${set}.glb`, ASSETS);
+          const response = await assetDownloads.read(url);
+          if (!response.ok) throw Error('Prop HTTP ' + response.status + ': ' + name);
+          const asset = await startupSpan('gltf-decode', url, () => loadGltf3D(new Uint8Array(response.bytes), { decodeImage: decode }));
         const root = asset.scene;
         root.updateWorldMatrices(true);
         // Bounds over every mesh in its world (node) frame.

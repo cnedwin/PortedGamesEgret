@@ -45,7 +45,7 @@ try {
   await page.evaluate(() => localStorage.clear());
   await page.reload();
   await screen('title');
-  check((await words('text:五营争锋'))==='五营争锋','the native title is up, in Chinese');
+  check((await words('text:帝国竞技场'))==='帝国竞技场','the native title is up, in Chinese');
   await pressControl('征途','road');await screen('choose');
   // Real browser keyboard, not direct state mutation.
   await page.keyboard.press('ArrowRight');
@@ -82,8 +82,8 @@ try {
   check(await page.evaluate(()=>JSON.parse(localStorage.getItem('five-regiments')).data.settings.blood===false),'blood off is kept in the save');
   await page.keyboard.press('Escape');await screen('title');
   await pressControl('English','lang');
-  await page.waitForFunction(()=>document.documentElement.lang==='en'&&egretGame.tester.exists('text:Five Regiments'));
-  check((await words('text:Five Regiments'))==='Five Regiments','switching to English redraws the title');
+  await page.waitForFunction(()=>document.documentElement.lang==='en'&&egretGame.tester.exists('text:Imperial Arena'));
+  check((await words('text:Imperial Arena'))==='Imperial Arena','switching to English redraws the title');
   // Two at once, straight from the original supported address.
   await page.goto(`${server.url}${path}/?seed=5&lang=zh&quality=low&duel=vanguard,plume,archer&place=palace`);
   await until(page,()=>window.egretGame?.mode==='fight',180);

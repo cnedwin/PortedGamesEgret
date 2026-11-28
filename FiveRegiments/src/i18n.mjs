@@ -3,8 +3,8 @@
 // names of the regiments, skills and talents live with their numbers in sim/regiments.mjs, also in both languages.
 
 export const WORDS = {
-  title: { zh: '五营争锋', en: 'Five Regiments' },
-  canvasLabel: { zh: '五营争锋：第三人称冷兵器对决', en: 'Five Regiments: a third-person cold-steel duel' },
+  title: { zh: '帝国竞技场', en: 'Imperial Arena' },
+  canvasLabel: { zh: '帝国竞技场：第三人称冷兵器对决', en: 'Imperial Arena: a third-person cold-steel duel' },
   tagline: { zh: '选一营上阵，单挑另外四营，最后以一敌二。', en: 'Take one regiment into the field, beat the other four one by one, then two at once.' },
   road: { zh: '征途', en: 'The road' },
   expedition: { zh: '破关行', en: 'Expedition' },
@@ -68,7 +68,7 @@ export const WORDS = {
   retry: { zh: '再战此阵', en: 'Fight this again' },
   goOn: { zh: '继续征途', en: 'On down the road' },
   toTitle: { zh: '回到卷首', en: 'Back to the title' },
-  runDone: { zh: '五营争锋 · 全胜', en: 'Five Regiments · the road won' },
+  runDone: { zh: '帝国竞技场 · 全胜', en: 'Imperial Arena · the road won' },
   mark: { zh: '评', en: 'Mark' },
   marks: { zh: '甲乙丙丁', en: 'ABCD' },
   best: { zh: '最好', en: 'Best' },

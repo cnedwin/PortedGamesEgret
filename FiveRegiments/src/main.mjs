@@ -1,4 +1,4 @@
-// Five Regiments: choose a regiment, fit two skills and four talents, and fight the other four one at a time in
+// Imperial Arena: choose a regiment, fit two skills and four talents, and fight the other four one at a time in
 // four places, then two at once before the palace. Third-person cold-steel duels on the engine's World3D.
 //
 // Address options, for looking at one thing at a time:
@@ -41,7 +41,9 @@ import { previewFrame } from './view/menu-framing.mjs';
 import { createMountedPresentation } from './view/mounted-presentation.mjs';
 import { createMountedContactPresentation, mountedContactBody } from './view/mounted-contact.mjs';
 import { createContactAccent } from './view/contact-accent.mjs';
-import { applyLook, buildPlace } from './view/stage.mjs';
+import { applyLook, buildPlace, describePlace } from './view/stage.mjs';
+import { assetDownloads, startupSpan, startupTrace, titleAssetUrls } from './view/asset-downloads.mjs';
+import { prepareTitlePrograms } from './view/title-programs.mjs';
 
 const params = new URLSearchParams(location.search);
 const canvas = document.querySelector('#stage');
@@ -72,7 +74,7 @@ setLanguage(params.get('lang') ?? settings.language ?? (navigator.language?.star
 /** The page's own words follow the language: its lang, its title and the name a screen reader gives the canvas. */
 function showLanguage() {
   document.documentElement.lang = getLanguage() === 'zh' ? 'zh-CN' : 'en';
-  document.title = getLanguage() === 'zh' ? `${t('title')} · Five Regiments` : t('title');
+  document.title = getLanguage() === 'zh' ? `${t('title')} · Imperial Arena` : t('title');
   canvas.setAttribute('aria-label', t('canvasLabel'));
 }
 showLanguage();
@@ -85,15 +87,24 @@ const HEIGHT = { yulin: 1.8, tiger: 1.77, vanguard: 1.88, plume: 1.8, archer: 1.
 async function main() {
   const coarse = matchMedia('(pointer: coarse)').matches;
   const backend = params.get('backend') === 'webgpu' && navigator.gpu ? 'webgpu' : 'webgl2';
-  const app = await createWorld3DApp(canvas, {
+  const requestedQuality = params.get('quality') ?? (settings.quality === 'auto' ? 'auto' : settings.quality);
+  const warmTitle = quality => {
+    if (!params.has('duel')) assetDownloads.warm(titleAssetUrls(
+      new URL('../assets/', import.meta.url), describePlace('county'), ORDER, REGIMENTS, quality));
+  };
+  // Network transfers can overlap renderer initialization. Auto quality only
+  // warms shared dependencies until the engine has selected its actual tier.
+  warmTitle(requestedQuality);
+  const app = await startupSpan('renderer-init', backend, () => createWorld3DApp(canvas, {
     ...(useFixedWorldResolution(globalThis.navigator) ? { dynamicResolution: false } : {}),
     backend,
-    quality: params.get('quality') ?? (settings.quality === 'auto' ? 'auto' : settings.quality),
+    quality: requestedQuality,
     onError: fail,
     onDeviceLost: () => fail('device lost')
-  });
+  }));
   const renderer = app.renderer;
   let quality = app.quality;
+  warmTitle(quality);
   const assetSet = () => quality === 'low' ? 'low' : quality === 'medium' ? 'mid' : 'high';
   const scene = new Scene3D();
   const camera = createPerspectiveCamera3D({ fov: 52, near: 0.08, far: 600 });
@@ -193,9 +204,9 @@ async function main() {
   function bodyBytes(regiment, which = assetSet()) {
     const key = regiment + which;
     if (!bytes[key]) {
-      const request = fetch(new URL(`../assets/characters/${regiment}-${which}.glb`, import.meta.url)).then((r) => {
+      const request = assetDownloads.read(new URL(`../assets/characters/${regiment}-${which}.glb`, import.meta.url)).then((r) => {
         if (!r.ok) throw Error('Character HTTP ' + r.status);
-        return r.arrayBuffer();
+        return r.bytes;
       });
       bytes[key] = request;
       // A failed speculative fetch must not poison a genuine retry.
@@ -204,7 +215,9 @@ async function main() {
     return bytes[key];
   }
   async function body(regiment, which = assetSet()) {
-    const asset = await loadGltf3D(new Uint8Array(await bodyBytes(regiment, which)), { decodeImage: decode });
+    const bytes = await bodyBytes(regiment, which);
+    const asset = await startupSpan('gltf-decode', regiment + '-' + which, () =>
+      loadGltf3D(new Uint8Array(bytes), { decodeImage: decode }));
     return { scene: asset.scene, dispose: () => asset.dispose() };
   }
   function loadFigure(regiment, which) {
@@ -244,13 +257,13 @@ async function main() {
     const [template, motion] = await Promise.all([troopTemplates.get(regiment), motions[regiment]]);
     return [{ scene: cloneFigureScene(template.scene) }, motion, null];
   }
-  function figureFor(man, figureAssets) {
+  function figureFor(man, figureAssets, world = scene) {
     const [b, motion, horseBody] = figureAssets;
-    const fig = createFigure({ regiment: man.regiment, body: b, motion, world: scene, height: HEIGHT[man.regiment] * (man.rank === 'boss' ? 1.08 : 1) });
+    const fig = createFigure({ regiment: man.regiment, body: b, motion, world, height: HEIGHT[man.regiment] * (man.rank === 'boss' ? 1.08 : 1) });
     if (man.rank === 'troop') fig.holder.name = 'troop-figure-' + man.regiment;
     if (!horseBody) return fig;
     // A rider and his horse: the horse moves first, then he sits where its saddle is.
-    const horse = createHorse({ body: horseBody, world: scene });
+    const horse = createHorse({ body: horseBody, world });
     return {
       ...fig,
       horse,
@@ -293,13 +306,37 @@ async function main() {
       if (m.horse) Object.assign(m.horse, { x: m.x, z: m.z - 0.6, face: 0 }), (m.z -= 0.6);
     });
     let count = 0;
-    const arrived = () => onProgress?.(++count / (g.men.length + 1));
-    const [, bodies] = await Promise.all([
-      enter('county').then(value => { arrived(); return value; }),
+    const isFirst = stage === null;
+    const world = isFirst ? new Scene3D() : scene;
+    const arrived = () => onProgress?.(++count / (g.men.length + 1) * (isFirst ? 0.9 : 1));
+    const [next, bodies] = await Promise.all([
+      (isFirst ? startupSpan('stage-build', 'county', () => buildPlace(world, 'county', { renderer, quality }))
+        : enter('county')).then(value => { arrived(); return value; }),
       Promise.all(g.men.map(m => loadFigure(m.regiment, quality === 'high' ? 'mid' : 'low')
         .then(value => { arrived(); return value; })))
     ]);
-    const figs = g.men.map((man, i) => figureFor(man, bodies[i]));
+    const figs = g.men.map((man, i) => figureFor(man, bodies[i], world));
+    if (isFirst) {
+      // Prepare the real first-frame meshes, with the same quality and poses,
+      // before they enter the live render list. No dummy draw or lower LOD.
+      applyLook(renderer, next.look, quality);
+      g.men.forEach((man, i) => figs[i].update(man, g, TICK, { preview: true }));
+      if (renderer.context?.getExtension('KHR_parallel_shader_compile')) {
+        await startupSpan('program-prepare', 'title', () => prepareTitlePrograms(renderer, world, {
+          fog: Boolean(world.fog), environment: Boolean(world.environment)
+        })).catch(error => console.warn('Title program preparation failed; drawing will retry on demand.', error));
+      }
+      for (const child of [...world.children]) scene.addChild(child);
+      scene.background = world.background;
+      scene.environment = world.environment;
+      scene.environmentIntensity = world.environmentIntensity;
+      scene.fog = world.fog;
+      stage = next;
+      stageName = 'county';
+      stageQuality = quality;
+      fx.weather(next.look.weather);
+      onProgress?.(1);
+    }
     lineup = { game: g, figs, focus: null };
     cam.snap([0, 2.1, 8.2], [0, 1.25, 0]);
     return lineup;
@@ -952,7 +989,7 @@ async function main() {
     // The picture eases between ticks, while aim assistance still uses combat positions.
     const targetYaw = target ? Math.atan2(target.x - game.hero.x, target.z - game.hero.z) : undefined;
     const yaw = cam.update(dt, { hero: cameraHero, yaw: input.state.yaw, pitch: input.state.pitch, target, targetYaw, place: stage.place, guard: game.hero.guard, dead: !game.hero.alive, finish: over ? Math.min(1, overTime) : 0, mounted: game.hero.mounted, view: input.state.view, zoom: input.state.zoom, eye: figures.get(game.hero.id)?.eye?.(),
-      aimingBow: Boolean(game.hero.draw) && !reduceMotion.matches });
+      aimingBow: Boolean(game.hero.draw) && !reduceMotion.matches, reducedMotion: reduceMotion.matches });
     if (target) input.setYaw(yaw);
     const w = canvas.clientWidth,
       h = canvas.clientHeight;
@@ -1015,7 +1052,7 @@ async function main() {
   };
 
   window.egretGame = {
-    status, uiGame: ui, semantics, tester, hud, touch, input,
+    status, uiGame: ui, semantics, tester, hud, touch, input, startupTrace,
     get game() {
       return game;
     },

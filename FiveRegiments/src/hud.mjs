@@ -4,6 +4,7 @@ import { createActionControl, createMovementControl } from '@egret/engine/ui';
 import { ARTS, REGIMENTS, SKILLS } from './sim/regiments.mjs';
 import { recoveryGuardWindow } from './sim/fight.mjs';
 import { t, say } from './i18n.mjs';
+import { noticeOpacity } from './view/presentation-envelope.mjs';
 
 const C={ink:0x1e1812,edge:0xa98b51,gold:0xf4dca3,paper:0xf7eddb,muted:0xd5c5ae,hp:0xad3b31,st:0xceac59,horse:0x79a882,danger:0xff604a,good:0x87dfa5};
 const clamp=(v,a,b)=>Math.min(b,Math.max(a,v)),wrap=a=>Math.atan2(Math.sin(a),Math.cos(a));
@@ -307,7 +308,7 @@ export function createHud(game,{touch=false,semantics}={}){
     visible(cover.root,window);
     if(window){txt(cover.label,t(h.prev?.guard?'guardRecoveryRetry':'guardRecovery'));fit(cover.label,cover.w,13,10);}
     if(bannerTimer>0){bannerTimer-=dt;visible(banner,bannerTimer>0);}
-    if(toastTimer>0){toastTimer-=dt;visible(toast.root,toastTimer>0);}
+    if(toastTimer>0){toastTimer=Math.max(0,toastTimer-dt);const alpha=noticeOpacity(toastTimer);if(toast.root.alpha!==alpha)toast.root.alpha=alpha;visible(toast.root,toastTimer>0);}
     for(const n of pool)if(n.life>0){n.life-=dt;visible(n.root,n.life>0);if(n.life>0){put(n.root,n.x,n.y-(.9-n.life)*32);n.root.alpha=Math.min(1,n.life*4);}}
   }
   const handles=[];
@@ -319,7 +320,7 @@ export function createHud(game,{touch=false,semantics}={}){
     objective(value){txt(objective.label,value);fit(objective.label,objective.w,13,10);const shown=objective.root.visible;visible(objective.root,!!value);if(shown!==!!value)place(true);},
     banner(value,sub='',seconds=2.2,type=''){kind=type;bannerTimer=seconds;txt(bannerTitle,value);txt(bannerSub,sub);bannerTitle.color=kind==='lose'?C.danger:C.gold;visible(banner,true);place(true);},
     hideBanner(){visible(banner,false);bannerTimer=0;},
-    toast(value,type=''){txt(toast.label,value);fit(toast.label,toast.w,14,10);toast.label.color=type==='bad'?C.danger:type==='good'?C.good:C.paper;toastTimer=.9;visible(toast.root,true);},
+    toast(value,type=''){txt(toast.label,value);fit(toast.label,toast.w,14,10);toast.label.color=type==='bad'?C.danger:type==='good'?C.good:C.paper;toastTimer=.9;toast.root.alpha=1;visible(toast.root,true);},
     number(at,value,type=''){if(!at)return;const n=pool.find(x=>x.life<=0)??pool.reduce((a,b)=>a.life<b.life?a:b);n.x=at[0];n.y=at[1];n.life=.9;visible(n.root,true);txt(n.label,value);n.label.color=type.includes('bad')?C.danger:type==='horse'?C.horse:type.includes('crit')?C.gold:C.paper;
       const w=Math.min(92,Math.max(28,String(value).length*11+10));box(n.back,w,23,0x0c0907,null,.61);put(n.back,-w/2,-1);put(n.root,n.x,n.y);n.root.alpha=1;},
     hint(value){txt(hint.label,value);fit(hint.label,hint.w,15,10);visible(hint.root,!!value);},

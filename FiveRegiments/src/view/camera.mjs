@@ -20,7 +20,7 @@ export function createCameraRig(camera) {
    * Follow `hero` with heading `yaw` and elevation `pitch`. `target` is the locked foe or null; `place` has posts.
    * Returns the yaw the camera settled on (locking turns it).
    */
-  rig.update = (dt, { hero, yaw, pitch, target, targetYaw, place, guard = false, dead = false, finish = 0, mounted = false, view = 'third', zoom = 1, eye = null, aimingBow = false }) => {
+  rig.update = (dt, { hero, yaw, pitch, target, targetYaw, place, guard = false, dead = false, finish = 0, mounted = false, view = 'third', zoom = 1, eye = null, aimingBow = false, reducedMotion = false }) => {
     if (target) {
       const want = targetYaw ?? Math.atan2(target.x - hero.x, target.z - hero.z);
       yaw += wrap(want - yaw) * (1 - Math.exp(-dt * 7));
@@ -86,9 +86,11 @@ export function createCameraRig(camera) {
     }
     rig.shake = Math.max(0, rig.shake - dt * 2.4);
     rig.shakeT += dt;
-    const s = rig.shake * rig.shake * 0.09;
-    const jx = Math.sin(rig.shakeT * 61) * s,
-      jy = Math.sin(rig.shakeT * 47 + 1) * s;
+    // Keep follow, contact offsets and returned heading untouched. Only the
+    // decorative oscillation is softer and slower; reduced motion removes it.
+    const s = reducedMotion ? 0 : rig.shake * rig.shake * 0.042;
+    const jx = Math.sin(rig.shakeT * 34) * s,
+      jy = Math.sin(rig.shakeT * 27 + 1) * s;
     camera.setPosition(rig.at[0] + jx + rig.contact[0], rig.at[1] + jy + rig.contact[1], rig.at[2] + rig.contact[2]);
     camera.lookAt(rig.look[0], rig.look[1] + jy * 0.5, rig.look[2]);
     return yaw;

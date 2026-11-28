@@ -1,14 +1,14 @@
 import { addResourceTotal, createImagesHighWater, createPageCopyDiagnostics, createPendingHighWater, createResourceTotals, createReuseDiagnostics, createUnknownNativeDiagnostics, raiseImagesHighWater, raisePendingHighWater, sharedResourceStatus } from './sharedResourceDiagnostics.js';
 import { SHARED_FRAME_PROFILE_2D } from '@egret/contracts';
 import { admitSharedWebGPUOptions } from './sharedWebGPUOptions.js';
-import { prepareSharedDrawsForSubmission2D, SharedPreparationError } from '../rendering/prepareSharedDraws2D.js';
+import { prepareSharedDrawsForSubmission2D, sharedBackingExtent2D, SharedPreparationError } from '../rendering/prepareSharedDraws2D.js';
 import { SharedPreparationRetention2D } from '../rendering/sharedPreparationRetention2D.js';
 import { planSharedSubmission2D, packSharedSubmission2D, packSharedRegionWindows2D, SHARED_REGION_WINDOW_STRIDE_2D, SHARED_REGION_WINDOW_BYTES_2D, materializeSharedPages2D, checkSharedCapacity2D, SharedStorageError2D } from './prepareSharedSubmission2D.js';
 import { SHARED_BATCH_PAGES_2D } from '../rendering/packSharedDraws2D.js';
 import { prepareSharedBatches2D } from '../rendering/preparedSharedBatches2D.js';
-import { sharedBlendSpace2D, sharedPageLevelLayout2D, sharedTargetChannel2D } from '../rendering/sharedColor2D.js';
+import { sharedFrameProfileRefusal2D, sharedPageLevelLayout2D, sharedTargetChannel2D } from '../rendering/sharedColor2D.js';
 import { createSharedWebGPUPipeline, SHARED_BLENDS, SHARED_PIPELINE_KINDS } from './webgpuSharedPass.js';
-import { createSharedEffectPipeline, EFFECT_PASSES, EFFECT_UNIFORM_BYTES } from './sharedEffectShaders.js';
+import { createSharedEffectPipeline, sharedEffectSlots2D, walkSharedEffects2D, EFFECT_PASSES, EFFECT_UNIFORM_BYTES } from './sharedEffectShaders.js';
 import { createSharedResolvePipeline } from './webgpuSharedResolvePass.js';
 import { createWebGPURetentionPool } from './webgpuRetentionPool.js';
 import { readOwnedSharedFrame } from '#egret-textured-frame-state';
@@ -1677,22 +1677,13 @@ class WebGPUHostImplementation {
                             throw cause;
                         }
                     }
-                    if (sharedBlendSpace2D(frame) !== options.blendSpace ||
-                        frame.outputAlpha !== options.outputAlpha ||
-                        frame.outputRepresentation !==
-                            (options.outputAlpha === 'opaque' ? 'egret.srgb-opaque-unorm8/1' : 'egret.srgb-premultiplied-unorm8/1'))
-                        refuse('WEBGPU_FRAME_PROFILE_UNSUPPORTED');
-                    if (options.outputAlpha === 'opaque' && frame.clearAlpha !== 1)
-                        refuse('WEBGPU_FRAME_INVALID');
-                    const width = Math.ceil(frame.width * options.pixelRatio), height = Math.ceil(frame.height * options.pixelRatio);
-                    if (!Number.isSafeInteger(width) ||
-                        !Number.isSafeInteger(height) ||
-                        width <= 0 ||
-                        height <= 0 ||
-                        width > 4294967295 ||
-                        height > 4294967295 ||
-                        width > Math.floor(options.maxBackingPixels / height))
+                    const refusal = sharedFrameProfileRefusal2D(frame, options.blendSpace, options.outputAlpha);
+                    if (refusal)
+                        refuse(refusal === 'profile' ? 'WEBGPU_FRAME_PROFILE_UNSUPPORTED' : 'WEBGPU_FRAME_INVALID');
+                    const backing = sharedBackingExtent2D(frame, options.pixelRatio, options.maxBackingPixels);
+                    if (!backing)
                         refuse('WEBGPU_BACKING_LIMIT');
+                    const { width, height } = backing;
                     const prepared = prepareSharedDrawsForSubmission2D(frame, width, height, options, this.retention), ticket = this.ticket && !this.ticket.bound ? this.ticket : undefined;
                     const storage = planSharedSubmission2D(prepared, options, this.limits, this.sharedOwnerSnapshot(), staging ? options.enableReadback : ticket !== undefined);
                     this.active();
@@ -2628,7 +2619,7 @@ class WebGPUHostImplementation {
             effectTargets.push(this.submissionTarget(record, colorId + 1 + i, gate));
         const effects = new Map();
         for (const group of p.storage.prepared.effects.groups) {
-            const bindings = new Map(), source = effectTargets[(group.depth - 1) * 2], scratch = effectTargets[(group.depth - 1) * 2 + 1];
+            const bindings = new Map(), slots = sharedEffectSlots2D(group), source = effectTargets[slots.source], scratch = effectTargets[slots.scratch];
             for (const mode of EFFECT_PASSES) {
                 const role = this.effectPipelines.get(mode);
                 const entries = [
@@ -2739,7 +2730,6 @@ class WebGPUHostImplementation {
         }
         else {
             const byOrdinal = new Map(batch.draws.map(draw => [draw.prepared.command.ordinal, draw]));
-            const enters = new Map(storage.prepared.effects.groups.map(group => [group.enter, group])), exits = new Map(storage.prepared.effects.groups.map(group => [group.exit, group]));
             const effectPass = (group, mode, view, clear) => {
                 const run = openPass(view, clear);
                 run.pass.setPipeline(this.effectPipelines.get(mode).pipeline);
@@ -2751,33 +2741,26 @@ class WebGPUHostImplementation {
                 run.end();
                 gate();
             };
-            for (const command of frame.commands) {
-                const enter = enters.get(command.ordinal), exit = exits.get(command.ordinal);
-                if (enter) {
+            walkSharedEffects2D(frame.commands, storage.prepared.effects.groups, recipe.effectTargets, color, {
+                enter: target => {
                     active.end();
                     gate();
-                    active = openPass(recipe.effectTargets[(enter.depth - 1) * 2].view, true);
-                }
-                else if (exit) {
+                    active = openPass(target.view, true);
+                },
+                leave: () => {
                     active.end();
                     gate();
-                    const source = recipe.effectTargets[(exit.depth - 1) * 2], scratch = recipe.effectTargets[(exit.depth - 1) * 2 + 1];
-                    if (exit.radius > 0) {
-                        effectPass(exit, 'horizontal', scratch.view, true);
-                        effectPass(exit, 'vertical', source.view, true);
-                    }
-                    if (exit.spread >= 0)
-                        effectPass(exit, 'spread', scratch.view, true);
-                    const parent = exit.depth === 1 ? color : recipe.effectTargets[(exit.depth - 2) * 2];
-                    effectPass(exit, 'composite', parent.view, false);
-                    active = openPass(parent.view, false);
-                }
-                else {
-                    const draw = byOrdinal.get(command.ordinal);
+                },
+                pass: (group, mode, target) => effectPass(group, mode, target.view, mode !== 'composite'),
+                resume: target => {
+                    active = openPass(target.view, false);
+                },
+                draw: ordinal => {
+                    const draw = byOrdinal.get(ordinal);
                     if (draw)
                         drawOne(draw);
                 }
-            }
+            });
         }
         active.end();
         gate();

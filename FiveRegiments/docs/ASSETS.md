@@ -1,4 +1,4 @@
-# 五营争锋 · 素材来源 · Five Regiments · Where the assets come from
+# 帝国竞技场 · 素材来源 · Imperial Arena · Where the assets come from
 
 本作没有使用任何现成游戏的美术。人物、战马和场景物件由 Tripo 按文字描述生成，动作来自公开的动作捕捉库，天空和材质是 CC0 素材，兵器、特效、界面和声音都由代码生成。
 

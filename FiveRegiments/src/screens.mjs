@@ -1,4 +1,4 @@
-// Five Regiments' native Play menus. The simulator and the game's public screen
+// Imperial Arena' native Play menus. The simulator and the game's public screen
 // callbacks do not depend on the presentation or the window's orientation.
 import {createUiScreenStack} from '@egret/engine/ui';
 import {createParagraphCache} from '@egret/engine/paragraph';

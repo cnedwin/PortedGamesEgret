@@ -11,6 +11,7 @@ import {
   createUnlitMaterial3D
 } from '@egret/engine/world3d';
 import { createScratchCanvas } from './scratch-canvas.mjs';
+import { createVisualPulse } from './presentation-envelope.mjs';
 import { createWeapon } from './weapons.mjs';
 import { SKILL_CONTACT, SKILL_EFFECTS, SKILL_PREPARATION, SKILL_RELEASE } from './effect-profiles.mjs';
 import { mountedContactBody, mountedContactPoint } from './mounted-contact.mjs';
@@ -377,7 +378,7 @@ export function createEffects(scene, { particles = 1, blood = true, groundAt = (
   // Light from a clash or a blast, fading fast.
   const flash = createPointLight3D({ color: 0xffc070, intensity: 0, range: 6 });
   scene.addChild(flash);
-  let flashLife = 0;
+  const flashPulse = createVisualPulse();
 
   // Arrows: one model, cloned per shot.
   const arrowModel = createWeapon('arrow');
@@ -494,8 +495,7 @@ export function createEffects(scene, { particles = 1, blood = true, groundAt = (
           break;
         }
         flash.setPosition(point[0], point[1], point[2]);
-        flash.intensity = e.type === 'deflect' ? 5.6 : shield ? 1.5 : 2.8;
-        flashLife = 0.095;
+        flash.intensity = flashPulse.begin(e.type === 'deflect' ? 5.6 : shield ? 1.5 : 2.8, 0.095);
         break;
       }
       case 'hit': {
@@ -589,8 +589,7 @@ export function createEffects(scene, { particles = 1, blood = true, groundAt = (
         burst(sparks, floor(at, 0.8), 24);
         burst(dust, floor(at, 0.2), 20);
         flash.setPosition(...floor(at, 1.2));
-        flash.intensity = 13;
-        flashLife = 0.16;
+        flash.intensity = flashPulse.begin(13, 0.16);
         cues.show('ring', floor(at, 0.075), 0, e.radius, SKILL_EFFECTS.blast.tint,
           { time: 0.4, opacity: 0.94, initial: 0.24, growth: 0.76 });
         break;
@@ -626,10 +625,7 @@ export function createEffects(scene, { particles = 1, blood = true, groundAt = (
   /** Each frame: fly the arrows, place webs, run the emitters. */
   fx.update = (dt, game, bowLaunchOf) => {
     for (const e of fightEmitters) e.update(dt);
-    if (flashLife > 0) {
-      flashLife -= dt;
-      flash.intensity *= Math.exp(-dt * 18);
-    } else flash.intensity = 0;
+    flash.intensity = flashPulse.advance(dt);
     cues.update(dt);
     for (const { blade, point } of mountedEdges.values()) cues.bridge(blade, point);
     mountedEdges.clear();
@@ -755,7 +751,7 @@ export function createEffects(scene, { particles = 1, blood = true, groundAt = (
     for (const s of sweeps.values()) s.clear();
     cues.clear();
     mountedEdges.clear();
-    flashLife = 0;
+    flashPulse.clear();
     flash.intensity = 0;
   };
 

@@ -1,4 +1,4 @@
-# 品质验收 · Quality — 五营争锋 · Five Regiments
+# 品质验收 · Quality — 帝国竞技场 · Imperial Arena
 
 按 [QUALITY-CHECKLIST.md](../docs/QUALITY-CHECKLIST.md) 验收。自动项由 `node tools/quality.mjs FiveRegiments` 测量并写入本文件；人工和真机项没有跑过的写「未运行」。
 
@@ -9,7 +9,7 @@ this file; items by hand or on a device are marked not run until someone runs th
 
 - 日期 · Date: 2026-11-28
 - 浏览器 · Browser: 无头 Chromium 157.0.8103.6，SwiftShader 软件渲染（没有显卡） · headless, software rendering, no GPU
-- 机器 · Machine: Linux 容器 · a Linux container, win32 x64, Node v26.7.0
+- 机器 · Machine: Windows 实机的无头软件渲染 · Windows host, headless software renderer, win32 x64, Node v26.7.0
 - 首屏一项的限速 · Start-up throttling: 下行 10 Mbps、上行 5 Mbps、往返 40 ms，CPU 降速 ×4 · down 10 Mbps, up 5 Mbps, 40 ms round trip, CPU slowed ×4
 - 帧时间是软件渲染下的数字，只说明无头环境里的情况，不代表真机 · Frame times are from software rendering and say nothing of real devices.
 
@@ -20,9 +20,9 @@ this file; items by hand or on a device are marked not run until someone runs th
 | T1 | 触屏走完主流程 · The whole game by touch | 真机 · device | 未运行 · not run |  |
 | T2 | 触控区 ≥ 44×44 CSS px · Touch targets ≥ 44 × 44 CSS px | 自动 · automatic | 达标 · pass | 7 controls, all at least 44×44 |
 | T3 | 不误触下拉刷新和双击缩放 · No pull-to-refresh or double-tap zoom | 自动 · automatic | 达标 · pass | overscroll held, touch-action none, double-tap zoom off |
-| F1 | 桌面帧时间 p95 ≤ 16.7 ms · Desktop frame time p95 ≤ 16.7 ms | 自动 · automatic | 不达标 · fail | p95 129.2 ms over 51 frames |
+| F1 | 桌面帧时间 p95 ≤ 16.7 ms · Desktop frame time p95 ≤ 16.7 ms | 自动 · automatic | 不达标 · fail | p95 95.7 ms over 60 frames |
 | F2 | 中端手机帧时间 p95 ≤ 33 ms · Mid-range phone frame time p95 ≤ 33 ms | 真机 · device | 未运行 · not run |  |
-| L1 | 首屏 ≤ 3 s（10/5 Mbps、40 ms、CPU ×4） · Start-up ≤ 3 s (10/5 Mbps, 40 ms, CPU ×4) | 自动 · automatic | 达标 · pass | 1.5 s to the first playable screen, 3.4 MB |
+| L1 | 首屏 ≤ 3 s（10/5 Mbps、40 ms、CPU ×4） · Start-up ≤ 3 s (10/5 Mbps, 40 ms, CPU ×4) | 自动 · automatic | 达标 · pass | 1.6 s to the first playable screen, 2.7 MB |
 | O1 | 横竖屏与窗口尺寸 · Orientation and window sizes | 自动 · automatic | 达标 · pass | 1280×800, 390×844, 844×390, 768×1024 and live resizing: fits, no errors |
 | I1 | 中英文全可切换，英文下无中文 · Both languages; no Chinese left in English | 自动 · automatic | 达标 · pass | html lang "en", no Chinese in page text or names |
 | I2 | 画布上的字也随语言切换 · Words drawn on the canvas follow the language | 人工 · by hand | 未运行 · not run |  |
@@ -36,7 +36,7 @@ this file; items by hand or on a device are marked not run until someone runs th
 | S3 | 存储不可用不崩溃 · Refused storage does not crash | 自动 · automatic | 达标 · pass | storage refused: started without an uncaught error |
 | S4 | 存档出问题时提示并可重开 · A save problem is told and a fresh start offered | 人工 · by hand | 未运行 · not run |  |
 | E1 | 无控制台错误 · No console errors | 自动 · automatic | 达标 · pass | 0 errors |
-| E2 | 资源失败有错误界面和重试 · A failed file shows an error and a retry | 自动 · automatic | 达标 · pass | 34 files refused; no uncaught error; offers to try again |
+| E2 | 资源失败有错误界面和重试 · A failed file shows an error and a retry | 自动 · automatic | 达标 · pass | 68 files refused; no uncaught error; offers to try again |
 | E3 | 切到后台再回来不出错 · Hidden and shown again without errors | 自动 · automatic | 达标 · pass | no errors; the game or the engine loop watches visibility |
 | E4 | 切回后声音和计时正常 · Sound and timers right after coming back | 真机 · device | 未运行 · not run |  |
 
@@ -86,3 +86,36 @@ For visual comparison, hold the game clock and camera at the wide-field and gate
 自动质量工具的 SwiftShader F1 不达标（p95 129.2ms, 51 intervals），旧历史软件结果为 383.4ms。不要把软件与真实设备直接混为同一性能指标。本次其他自动项通过，包括 L1 1.5s、3.4MB。 / Automatic SwiftShader F1 remains below target; hardware results above are separate. Other automatic items pass, including L1 1.5s and 3.4MB. Hardware data are short route samples, not exhaustive campaign or GPU-completion measurements.
 
 未测 / Not run: complete campaign on hardware, physical gamepad, screen reader output, Safari/Firefox/WeChat, physical phone portrait or all quality tiers. No unverified engine cause is claimed.
+
+## 2026-11-29 完整首屏、名称与呈现 · Full title startup, name and presentation
+
+引擎 / Engine: `212972678e633b1f3667f345d0646b0fba907ee1` (official generated vendor). The display title is now 帝国竞技场 / Imperial Arena; the existing folder, link and saved data key remain unchanged.
+
+**受控冷启动对照 · Matched cold startup.** Windows RTX 5090 Laptop GPU (ANGLE D3D11), hardware Chrome 157, 1280×800/high/WebGL2, fresh browser contexts, same local no-store HTTP server and CDP 40 ms/100 Mbps profile. Full title means all five figures, complete high-quality scene and two rendered frames, not a loading placeholder. The former public cold samples were about 9.66–10.67 s; public network latency varies and these are not the controlled A/B numbers.
+
+| 指标 / Metric | 旧版 / Previous, two runs | 单入口及预热候选 / Bundle + preparation, two runs |
+| --- | ---: | ---: |
+| 完整标题就绪 / Full title readiness | 7693.5 / 7728.4 ms | 2911.5 / 2680.2 ms |
+| 首个美术请求 / First asset request | 4530.3 / 4534.1 ms | 504.2 / 292.6 ms |
+| 点出阵至 HUD 后两帧 / Confirm to fight HUD + two frames | 529.7 / 518.8 ms | 546.8 / 528.9 ms |
+| 首屏最长 RAF 间隔 / Longest startup RAF gap | 1095.8 / 1096.0 ms | 354.2 / 350.0 ms |
+| 同步 LINK_STATUS 查询总耗时 / CPU link-status query total | 1640 / 1654 ms | 158.8 / 153.2 ms |
+| 最大单次 LINK_STATUS / Largest synchronous query | 255.0 / 252.9 ms | 57.4 / 51.7 ms |
+| UI 后端模块加载 / UI backend module import | — | 6.0 / 5.4 ms |
+
+首屏耗时缩短约 62–65%；仍有约 350 ms 启动长帧。原图和高画质资源均保留：首屏 34 个美术请求约 18.21 MB；其中 14 个场景道具 GLB 13.09 MB、6 个角色/马 GLB 4.33 MB。将 384 个游戏与正式引擎模块合为约 1.66 MB 的静态 ESM，保留正式导入表和独立天空 worker。仅预取首屏真实依赖，下载和模型解码可以重叠。候选实际调用 268 次 bufferData（16.94 MB），与旧版相同；74 次 texImage2D 的 CPU 调用累计 200.4 / 209.4 ms。GLB 解码、资源上传和场景构建并发，不能相加成总耗时，亦不能把 WebGL API CPU 调用等同于 GPU 执行。未把等待转移到点出阵后。 / The measured bundle candidate shortens full readiness by roughly 62–65% without reducing title assets or resolution. Residual startup gaps remain. Resource/decoding spans overlap; WebGL CPU call times are not GPU-completion measurements.
+
+呈现 / Presentation: decorative light uses a bounded smooth decay, transient notices retain their original display duration with a softer tail, and decorative camera shake is attenuated with a reduced-motion path. No changes to simulation rules, hit determination, numbers, animation data or the default game clock. / The changes concern visual comfort rather than actual combat timing. They are not a claim of matching a mature commercial action game.
+
+复跑 / Reproduce: `npm ci && npm run bundle` in this game; `node --test test/bundle.test.mjs` validates the generated entry and its source hashes without installing build dependencies. Fresh contexts can open `?quality=high&seed=3&lang=zh&startup-profile=1` and inspect `window.egretGame.startupTrace`; measure full ready and the normal menu-to-game route independently. Engine preparation limitations are recorded in ENGINE-NOTES #8.
+
+**最终名称及高画质设备路线 · Final named build, high quality hardware routes (local static server).**
+
+| 设备 / Device | 完整标题 / Title wall time | 战斗间隔 / Intervals | p95 | Max | >50 ms |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| Windows RTX 5090 Laptop, Edge 1280×800/high | 5.30 s | 871 | 4.3 ms | 5.0 ms | 0 |
+| Samsung Galaxy Z Fold7 SM-F966U1, Android 17, Chrome 158, Adreno 830, 873×325/high | 1.94 s | 874 | 16.7 ms | 33.3 ms | 0 |
+
+PC: native menu, Chinese/English titles, selection/loadout, pointer lock and relock, pause/resume, natural settlement (loss, 14.27 s). Fold7: native title/settings, joystick outside capture and release, three-contact input and release, pause/resume, natural settlement (loss, 16.12 s), no reported exceptions. Fold7 did not expose `KHR_parallel_shader_compile`; startup trace: 34 downloads (917.9 ms first-start to last-end), 20 GLB decodes (652.0 ms span), stage construction (984.2 ms), overlapping. This is actual hardware driven via browser automation, not manual player ratings. Local phone route does not establish the public internet cold-cache download time or a matched old phone high-quality comparison. / 两台实机均完成自然结算，未改状态或数值，未测整条征途和物理手柄。没有在该采样段截屏；设备连接和先前状态已恢复。
+
+最终回归 / Final regression: 216/216 Node tests, 21 browser acceptance checks, error retry and quality change, pointer and touch acceptance passed. Engine multi-screen verification reports all nine profiles and 63 route checkpoints passing. The title baseline alone was intentionally updated for the new title after review. Automatic SwiftShader p95 is 95.7 ms (60 intervals, F1 fails); the remaining measured automatic checks pass. / 软件渲染未达到桌面 F1，不能以真实硬件的数据替换其自动结果。

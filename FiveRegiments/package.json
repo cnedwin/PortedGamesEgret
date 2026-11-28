@@ -1,0 +1,11 @@
+{
+  "name": "imperial-arena-demo",
+  "private": true,
+  "scripts": {
+    "bundle": "node tools/bundle.mjs",
+    "check:bundle": "node tools/bundle.mjs --check"
+  },
+  "devDependencies": {
+    "esbuild": "0.28.2"
+  }
+}
