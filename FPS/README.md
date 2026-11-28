@@ -168,6 +168,8 @@ Characters, weapon visuals and station props use Tripo GLB assets simplified, te
 
 ## 已解决 · Solved
 
+- 全地图美术复查：七项 Tripo 环境模型、53 株近远景树木以及室内家具、干燥地面、井盖、草丛、路锥、灯具、标识及远景轮廓提升。完全保留原碰撞、玩法和画质选项。模型来源见 [assets/models/README.md](assets/models/README.md)，真机同机位对照见 [QUALITY.md](QUALITY.md)。 · The map art pass replaces seven authored environment assets, all 53 tree instances and the interior floor/road/lighting scenery; gameplay, collision and settings are unchanged. See asset provenance and QUALITY.
+
 - 泄洪白块、黑色重叠积水、积木状树木及物资箱的发光实心内板：已更换为羽化水纹、单层积水、带树皮/枝叶纹理的原生实例与受光凹入内衬，保留地图、碰撞、开箱和搜集规则；见 [QUALITY.md](QUALITY.md) 与 [实机同机位对照](test/evidence/scene-art-before-after.jpg)。 · The sluice slabs, stacked dark puddles, primitive trees and luminous crate insert have been replaced with feathered water, masked instanced foliage and recessed lit case contents without changing collision or loot rules.
 
 - 通用 verify 在启动就绪前过早保存第一张图的问题由引擎 [PR #555](https://github.com/cnedwin/Egret_rebuild/pull/555) 修复；现在先等可见画布、有效画面和动画回调，超时会明确报告原因而不提前操作。具名功能路线仍保留，见 ENGINE-NOTES 第 15 条。 · PR #555 fixes premature generic verification by waiting for a visible canvas, nonblank picture and advancing animation callbacks before input; bounded timeouts report why readiness was not established. Named functional routes remain (ENGINE-NOTES 15).
@@ -198,7 +200,7 @@ Characters, weapon visuals and station props use Tripo GLB assets simplified, te
 | `src/level.mjs` | 地图方块、关键位置、行走网格 · map blocks, named places, the walking grid |
 | `src/bot.mjs` | 代打玩家，用于自动检查和 `?auto=1` · a stand-in player for automated checks and `?auto=1` |
 | `src/view.mjs`，`src/scenery.mjs` | 场景、灯光、特效 · scene, lights, effects |
-| `src/vegetation.mjs`，`src/water-details.mjs`，`src/supply-crate-art.mjs` | 本地生成的植被纹理、水面和箱内细节 · locally generated foliage textures, water and case interior art |
+| `src/vegetation.mjs`，`src/ground-details.mjs`，`src/water-details.mjs`，`src/supply-crate-art.mjs` | 原生树木近远景、路面与灯具细节、水面和箱内细节 · native tree LOD, road and light fittings, water and case art |
 | `src/soldier.mjs`，`src/soldier-skin.mjs`，`src/gun.mjs` | 连续角色蒙皮与动画、手中的武器 · continuous character skinning and animation, the weapon in hand |
 | `assets/models/`，`src/asset-models.mjs` | GLB 美术和角色、道具的挂载清单 · GLB assets and the visual slot manifest |
 | `src/build.mjs`，`src/textures.mjs`，`src/grime.mjs` | 几何体拼装、程序纹理、风化着色器 · geometry building, generated textures, the weathering shader |

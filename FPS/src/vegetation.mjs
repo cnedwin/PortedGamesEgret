@@ -1,8 +1,9 @@
-// Original rain-wet woodland dressing for the station. Bark and leaf sprays are
-// procedural textures; branches and foliage are true world-space native instances.
+// Rain-wet woodland dressing: authored PBR trees use shared native instances.
+// The original-art diagnostic retains the procedural bark and leaf-spray geometry.
 // The authored level coordinates, collision, and simulation remain independent.
 import { InstancedMesh3D, Texture3D, createGeometry3D, createStandardMaterial3D } from '@egret/engine/world3d';
 import { createBuilder } from './build.mjs';
+import { batchModels } from './asset-models.mjs?v=20261128-tripo-scene';
 
 const SIZE=256,TAU=Math.PI*2,clamp=(n,min,max)=>Math.max(min,Math.min(max,n));
 const unit=n=>clamp(n,0,1),mix=(a,b,t)=>a+(b-a)*t;
@@ -231,30 +232,97 @@ function firGeometry(){
 function createTextures(pixels){
   const {size}=pixels,repeat={wrapS:'repeat',wrapT:'repeat',mipmaps:true,anisotropy:4},cutout={wrapS:'clamp',wrapT:'clamp',mipmaps:true,anisotropy:2};
   const make=(data,options)=>new Texture3D({width:size,height:size,data},options);
-  return {bark:make(pixels.bark,{...repeat,colorSpace:'srgb'}),normal:make(pixels.normal,{...repeat,colorSpace:'linear'}),
-    oak:make(pixels.oak,{...cutout,colorSpace:'srgb'}),pine:make(pixels.pine,{...cutout,colorSpace:'srgb'})};
+  const textures={};
+  if(pixels.bark)textures.bark=make(pixels.bark,{...repeat,colorSpace:'srgb'});
+  if(pixels.normal)textures.normal=make(pixels.normal,{...repeat,colorSpace:'linear'});
+  if(pixels.oak)textures.oak=make(pixels.oak,{...cutout,colorSpace:'srgb'});
+  if(pixels.pine)textures.pine=make(pixels.pine,{...cutout,colorSpace:'srgb'});
+  return textures;
 }
-/** Four shared native batches, one for each species' bark and cutout canopy. */
-export function buildVegetation(scene){
-  const textures=createTextures(vegetationPixels()),placements=treePlacements(),meshes=[];
-  const bark=createStandardMaterial3D({color:0xffffff,vertexColors:true,map:textures.bark,normalMap:textures.normal,normalScale:.60,
-    roughness:.76,metallic:0});
+const siteYaw=(kind,index)=>(hash(index,kind==='oak'?14:97,18)-.5)*TAU;
+const envelope={oak:{radius:1.70,height:3.89},fir:{radius:1.28,height:3.49}};
+function modelSites(kind,sites,offset=0){
+  const {radius,height}=envelope[kind];
+  return sites.map(([x,z,size],i)=>({at:[x,0,z],slot:[-radius*size,0,-radius*size,radius*size,height*size,radius*size],
+    yaw:siteYaw(kind,i+offset),fit:'contain'}));
+}
+function transparentDepth(model){
+  return model.meshes.some(({material})=>(Array.isArray(material)?material:[material]).some(value=>value.alphaMode!=='opaque'));
+}
+/** Broad outdoor foliage needs soft diffuse fill in the deep wall shadows.
+ * Reuse its actual colour map; no new texture, no unlit replacement, and keep
+ * both the source PBR channels and shadow-compatible alpha state intact. */
+function treeSurface(source){
+  if(!source.map)return source;
+  const material=source.clone();
+  material.setColor(source.alphaMode==='mask'?0xdedfd8:0xf3eef0);
+  material.metallic=0;material.roughness=1;
+  material.normalScale=Math.min(source.normalScale,.72);
+  material.occlusionStrength=Math.min(source.occlusionStrength,.65);
+  material.emissiveMap=source.map;
+  material.setEmissive(0xffffff);
+  material.emissiveIntensity=source.alphaMode==='mask'?.12:.29;
+  return material;
+}
+function mountImported(scene,kind,model,sites,meshes){
+  const {near,far}=model.parts??{},materials=new Map();
+  const surface=source=>{if(!materials.has(source))materials.set(source,treeSurface(source));return materials.get(source);};
+  if(Boolean(near)!==Boolean(far))throw Error('Incomplete near/far tree model: '+model.name);
+  function mount(part,list,offset=0){
+    if(!list.length)return;
+    const from=scene.children.length;
+    // Imported foliage with alpha retains its real mask in native depth and
+    // shadow rendering; an opaque triangle proxy could paint solid rectangles.
+    // Opaque authored models use the existing native depth silhouette path.
+    // Both LODs are authored in the same grounded frame. Fitting with their
+    // common bounds avoids a far tree growing because simplification trimmed
+    // its outer leaves; the original site size remains the sole scale factor.
+    const meshesWithFill=part.meshes.map(mesh=>({...mesh,material:surface(mesh.material)}));
+    batchModels(scene,{...part,bounds:model.bounds,meshes:meshesWithFill},modelSites(kind,list,offset),
+      {shadow:transparentDepth(part)?'full':true,fit:'contain'});
+    meshes.push(...scene.children.slice(from).filter(node=>node instanceof InstancedMesh3D));
+  }
+  if(!near){mount(model,sites);return;}
+  // The four inner trees keep the detailed geometry; every other tree stays
+  // at its original world site using the same authored source's lower LOD.
+  const split=kind==='oak'?4:sites.length-4;
+  if(kind==='oak'){mount(near,sites.slice(0,split));mount(far,sites.slice(split),split);}
+  else{mount(near,sites.slice(split),split);mount(far,sites.slice(0,split));}
+}
+
+/** Native tree instances use the Tripo tree asset set in production. Only the
+ * explicit original-art diagnostic/model-less tools use the older procedural
+ * trees, with lazy textures so normal play never builds or keeps that art. */
+export function buildVegetation(scene,models={}){
+  const placements=treePlacements(),meshes=[],missing={oak:!models['tree-oak'],fir:!models['tree-fir']},textures={};
+  let bark;
+  if(missing.oak||missing.fir){
+    const pixels={size:SIZE,...barkAtlas()};
+    if(missing.oak)pixels.oak=broadleafAtlas();
+    if(missing.fir)pixels.pine=pineAtlas();
+    Object.assign(textures,createTextures(pixels));
+    bark=createStandardMaterial3D({color:0xffffff,vertexColors:true,map:textures.bark,normalMap:textures.normal,normalScale:.60,
+      roughness:.76,metallic:0});
+  }
   const foliage=map=>createStandardMaterial3D({color:0xffffff,vertexColors:true,map,alphaMode:'mask',alphaCutoff:.36,side:'double',
     roughness:.74,metallic:0,emissive:0x252d21,emissiveIntensity:.18});
   function add(kind,geometry,material,part,list){
     const mesh=new InstancedMesh3D(geometry,material,list.length,3);mesh.name=kind+'-'+part;
     mesh.castShadow=true;mesh.receiveShadow=true;
     list.forEach(([x,z,size],i)=>{
-      // Same rotation for both meshes of an individual tree.
-      const a=(hash(i,kind==='oak'?14:97,18)-.5)*TAU,t=.91+hash(i,kind==='oak'?14:97,53)*.16;
+      const a=siteYaw(kind,i),t=.91+hash(i,kind==='oak'?14:97,53)*.16;
       mesh.setTransformAt(i,[x,0,z],[0,Math.sin(a/2),0,Math.cos(a/2)],size);
       mesh.setColorAt(i,t,t*(.96+hash(i,5,23)*.07),t*(.96+hash(i,7,27)*.08));
     });
     scene.addChild(mesh);meshes.push(mesh);
   }
-  for(const [kind,list,model,map] of [['oak',placements.oak,oakGeometry(),textures.oak],['fir',placements.fir,firGeometry(),textures.pine]]){
-    add(kind,model.bark,bark,'bark',list);
-    add(kind,model.canopy,foliage(map),'canopy',list);
+  for(const [kind,sites,role,geometry,map] of [
+    ['oak',placements.oak,'tree-oak',oakGeometry,textures.oak],['fir',placements.fir,'tree-fir',firGeometry,textures.pine]
+  ]){
+    if(models[role]){mountImported(scene,kind,models[role],sites,meshes);continue;}
+    const model=geometry();
+    add(kind,model.bark,bark,'bark',sites);
+    add(kind,model.canopy,foliage(map),'canopy',sites);
   }
   return {meshes,placements,textures};
 }

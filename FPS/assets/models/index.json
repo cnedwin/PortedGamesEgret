@@ -146,5 +146,38 @@
       "marksman-hands": "right",
       "marksman-support": "left"
     }
+  },
+  "bunk-bed": {
+    "file": "bunk-bed.glb",
+    "yaw": -1.5707963267948966
+  },
+  "archive-shelf": {
+    "file": "archive-shelf.glb",
+    "yaw": -1.5707963267948966
+  },
+  "workbench": {
+    "file": "workbench.glb"
+  },
+  "desktop-set": {
+    "file": "desktop-set.glb",
+    "yaw": -1.5707963267948966
+  },
+  "worker-locker": {
+    "file": "worker-locker.glb",
+    "yaw": -1.5707963267948966
+  },
+  "tree-oak": {
+    "file": "tree-oak.glb",
+    "parts": {
+      "near": "TreeNear",
+      "far": "TreeFar"
+    }
+  },
+  "tree-fir": {
+    "file": "tree-fir.glb",
+    "parts": {
+      "near": "TreeNear",
+      "far": "TreeFar"
+    }
   }
 }

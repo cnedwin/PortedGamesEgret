@@ -12,7 +12,7 @@
 
 | 游戏 / Game | 旧公开版或候选初测问题 / Initial observation | 候选触屏路线 / Candidate touch route | Node |
 |---|---|---|---:|
-| FPS | Native labels absent | Title → settings | 107 |
+| FPS | Native labels absent | Title → settings | 119 |
 | SnowTemple | Native raster state errors | Title → settings | 112 |
 | FiveRegiments | Missing OffscreenCanvas | Title → settings | 172 |
 | StarBanner | Missing OffscreenCanvas | Title → settings | 64 |
@@ -21,7 +21,7 @@
 | Rally | Text raster exception; stale static frame | Title → driver selection | 42 |
 | FengshenChronicle | No observed blocking error | Title → role → city, unchanged | 53 |
 | TeaHorseRoad | Missing audio/gamepad APIs; dark 3D presentation | Title → departure → full 3D drive, cargo and controls | 47 |
-| Wulin | Missing text; stale loading frame | Title → prologue | 128 |
+| Wulin | Missing text; stale loading frame | Title → prologue | 130 |
 | jelly-pandas | Static title stale | Character selection → gameplay | 49 |
 | LanternShadows | Native labels absent | Title → gameplay | 90 |
 | FivePhases | Native labels absent | Title → battle | 53 |
@@ -37,7 +37,7 @@
 | InquestScrolls | Still canvas did not present title | Title → prologue | 28 |
 | LubanBridge | Empty labels and stale title | Title → first bridge | 44 |
 
-候选游戏 Node 合计 1,647 项（24 个独立套件）全部通过；共享经营模板另外 4/4。 / Candidate Node total: 1,647 across 24 independent game suites, plus 4/4 for the shared management template.
+游戏 Node 合计 1,661 项（24 个独立套件）全部通过（同步 main 后额外复跑 FPS 119/119、Wulin 130/130，保留并行提交）；共享经营模板另外 4/4。 / Game Node total: 1,661 across 24 independent suites after integrating concurrent main changes and rerunning FPS and Wulin; plus 4/4 for the shared management template.
 
 ## 修复机制与验收边界 · Fixes and acceptance boundary
 

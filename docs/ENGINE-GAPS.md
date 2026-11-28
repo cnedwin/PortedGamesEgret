@@ -4,9 +4,9 @@
 
 Made by `node tools/engine-notes.mjs --write` from the ENGINE-NOTES of the games; do not edit by hand, and `--check` says whether it is out of date. What the engine resolved is copied from the engine's `guide/resolved.json` into [engine-resolved.json](engine-resolved.json) (15 entries). The form of a note is in part 3 of [GAME-STANDARD.md](GAME-STANDARD.md).
 
-24 个游戏、268 条笔记：未解决 67，部分解决 23，游戏侧绕过 16，已写入文档 42，已解决 120。
+24 个游戏、270 条笔记：未解决 68，部分解决 24，游戏侧绕过 16，已写入文档 42，已解决 120。
 
-268 notes from 24 games: 67 open, 23 partly resolved, 16 worked around in the game, 42 documented, 120 resolved.
+270 notes from 24 games: 68 open, 24 partly resolved, 16 worked around in the game, 42 documented, 120 resolved.
 
 ## 1. 引擎已经解决、游戏还标着未解决 · Resolved by the engine, still open in a game
 
@@ -58,6 +58,7 @@ Write the lesson as a card of the engine's guide (`guide/cards` in the engine re
 | `managed-editor-focus` | InquestScrolls#12 笔录托管编辑器创建和失焦 · Managed editor creation and blur | 已在游戏侧绕过 · worked around |
 | `mixed-world3d-2d-submit-order` | Wulin#11 独立 3D/2D 画布的同帧 GPU 同步等待 · Same-frame GPU synchronization between independent 3D and 2D canvases | 部分解决 · partly |
 | `mouse-right-button` | LubanBridge#5 `web/input` 的鼠标输入只认左键 · The mouse input of `web/input` knows only the left button | 未解决 · open |
+| `native-paragraph-density-font-weight` | Wulin#12 原生富文本的栅格密度与字重 · Native paragraph raster density and font weight | 部分解决 · partly |
 | `native-scrolling` | PeachCreek#2 经营单子的原生滚动 · Native scrolling for county inspectors | 部分解决 · partly |
 | `native-ui-artwork-slot` | LoveElective#5 运行时生成插画的视图挂载点 · Native view mount slots for generated artwork | 未解决 · open |
 | `native-ui-dense-spine-frame-time` | LanternShadows#9 百个 Spine 角色与原生 HUD 的手机密集帧 · Dense mobile frames with 100 Spine puppets and native HUD | 部分解决 · partly |
@@ -126,6 +127,7 @@ Write the lesson as a card of the engine's guide (`guide/cards` in the engine re
 | `webgpu-compute` | SandScroll#5 WebGPU 没有开放计算通道 · No compute pass on WebGPU | 未解决 · open |
 | `webgpu-headless-3d` | FiveRegiments#3 无头 Chromium 里 WebGPU 后端画不出 3D 画面 · The WebGPU backend draws no 3D scene in headless Chromium | 未解决 · open |
 | `webgpu-loading-atlas-prewarm` | NezhaSea#14 WebGPU 加载页与主动预热共享存储竞争 · WebGPU loading and manual warm-up compete for shared storage | 已在游戏侧绕过 · worked around |
+| `webkit-on-demand-first-presentation` | Wulin#13 WebKit 按需绘制的首屏可见性 · WebKit on-demand first-frame presentation | 未解决 · open |
 | `world3d-native-marker-overlay-batching` | jelly-pandas#9 原生浮字触发整层界面提交 · Animated native markers wake the full overlay | 未解决 · open |
 | `world3d-overlay-frame-tail` | jelly-pandas#8 软件渲染下 3D 与原生叠加层的帧尾延迟 · Frame-tail latency with the native 3D overlay under software rendering | 部分解决 · partly |
 | `world3d-screen-markers-safe-insets` | TeaHorseRoad#29 3D 屏幕标记不能分边避让安全区 · 3D screen markers cannot respect per-edge safe areas | 未解决 · open |
@@ -157,4 +159,4 @@ Write the lesson as a card of the engine's guide (`guide/cards` in the engine re
 | [StarBanner](../StarBanner/ENGINE-NOTES.md) | 12 | 2 | 0 | 0 | 4 | 6 | 0 | `82561d6` |
 | [TaiwanMahjong](../TaiwanMahjong/ENGINE-NOTES.md) | 13 | 4 | 0 | 1 | 3 | 5 | 0 | `82561d6` |
 | [TeaHorseRoad](../TeaHorseRoad/ENGINE-NOTES.md) | 31 | 6 | 1 | 0 | 7 | 17 | 0 | `82561d6` |
-| [Wulin](../Wulin/ENGINE-NOTES.md) | 11 | 2 | 2 | 0 | 0 | 7 | 0 | `82561d6` |
+| [Wulin](../Wulin/ENGINE-NOTES.md) | 13 | 3 | 3 | 0 | 0 | 7 | 0 | `82561d6` |

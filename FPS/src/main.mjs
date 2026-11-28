@@ -4,7 +4,7 @@ import { createUiTester } from '@egret/engine/ui/testing';
 import { createBrowserSemantics } from '@egret/engine/web/semantics';
 import { prefersReducedMotion, watchReducedMotion } from '@egret/engine/web/kit';
 import { Scene3D, createPerspectiveCamera3D } from '@egret/engine/world3d';
-import { loadModels } from './asset-models.mjs';
+import { loadModels } from './asset-models.mjs?v=20261128-tripo-scene';
 import { createAudio } from './audio.mjs';
 import { createBot } from './bot.mjs';
 import { createInput } from './input.mjs';
@@ -14,7 +14,7 @@ import { loadSettings, saveSettings } from './native-settings.mjs';
 import { createMenus } from './ui/menus.mjs';
 import { createCombatHud } from './ui/hud.mjs';
 import { createTouchControls } from './ui/touch.mjs';
-import { createView } from './view.mjs';
+import { createView } from './view.mjs?v=20261128-tripo-scene';
 
 const gameArea=document.querySelector('#game'), canvas=document.querySelector('#stage'), boot=document.querySelector('#boot');
 const params=new URLSearchParams(location.search), useWebGPU=params.get('backend')==='webgpu';

@@ -1,0 +1,460 @@
+{
+  "schemaVersion": 1,
+  "generator": "Tripo CLI 0.7.2 / v3.1-20260211",
+  "license": "Project-authored model outputs; applicable Tripo output terms, not engine Apache-2.0",
+  "sourceBytes": 56101880.0,
+  "shippingBytes": 9268700.0,
+  "assets": [
+    {
+      "role": "tree-oak",
+      "jobId": "c98e57df-7e00-49ec-bcbb-593756b754ef",
+      "sourceBytes": 9684864,
+      "preparedBytes": 2364432,
+      "nearTriangles": 17591,
+      "farTriangles": 6,
+      "nearDimensions": [
+        0.8566020727157593,
+        0.9729951620101929,
+        0.9491066336631775
+      ],
+      "front": "n/a",
+      "textures": [
+        {
+          "channels": [
+            "baseColorTexture"
+          ],
+          "dimensions": [
+            1024,
+            1024
+          ],
+          "bytes": 382548,
+          "mime": "image/jpeg",
+          "alpha": false
+        },
+        {
+          "channels": [
+            "metallicRoughnessTexture"
+          ],
+          "dimensions": [
+            512,
+            512
+          ],
+          "bytes": 401536,
+          "mime": "image/png",
+          "alpha": false
+        },
+        {
+          "channels": [
+            "normalTexture"
+          ],
+          "dimensions": [
+            768,
+            768
+          ],
+          "bytes": 220447,
+          "mime": "image/png",
+          "alpha": false
+        }
+      ],
+      "rawGeometryEqual": true,
+      "sourceSha256": "d3c6f05cdd39f44a4cd3a10faef9f0256080eb099a2fc779bf7e9a83334b6097",
+      "preparedSha256": "e9208ae4d0565f41c78c58125f0bda2b5444441566852a0417e9884d52079aac",
+      "originalPreparedSha256": "721b9fce36bc347bd51975438e3813b440f60de14639f7c0995e1b088ec649cf",
+      "originalPreparedBytes": 2526964,
+      "colorGrading": {
+        "mode": "muted foliage color, shadow lift, exact alpha and non-color-channel bytes retained",
+        "images": [
+          {
+            "image": 0,
+            "width": 1024,
+            "height": 1024,
+            "alpha": false,
+            "meanAbsoluteRGBDelta": 20.097607612609863,
+            "oldBytes": 382548,
+            "newBytes": 218670
+          },
+          {
+            "image": 3,
+            "width": 512,
+            "height": 512,
+            "alpha": true,
+            "meanAbsoluteRGBDelta": 11.76568857828776,
+            "oldBytes": 242873,
+            "newBytes": 244218
+          }
+        ],
+        "geometryAndNonColorChannelsEqual": true
+      },
+      "generationModel": "v3.1-20260211",
+      "generationDate": "2026-11-28"
+    },
+    {
+      "role": "tree-fir",
+      "jobId": "9c8658ab-a991-4184-8214-481f32a3bee0",
+      "sourceBytes": 9333368,
+      "preparedBytes": 2211308,
+      "nearTriangles": 17580,
+      "farTriangles": 6,
+      "nearDimensions": [
+        0.6482821702957153,
+        0.9865788817405701,
+        0.6431649923324585
+      ],
+      "front": "n/a",
+      "textures": [
+        {
+          "channels": [
+            "baseColorTexture"
+          ],
+          "dimensions": [
+            1024,
+            1024
+          ],
+          "bytes": 406898,
+          "mime": "image/jpeg",
+          "alpha": false
+        },
+        {
+          "channels": [
+            "metallicRoughnessTexture"
+          ],
+          "dimensions": [
+            512,
+            512
+          ],
+          "bytes": 397803,
+          "mime": "image/png",
+          "alpha": false
+        },
+        {
+          "channels": [
+            "normalTexture"
+          ],
+          "dimensions": [
+            768,
+            768
+          ],
+          "bytes": 200967,
+          "mime": "image/png",
+          "alpha": false
+        }
+      ],
+      "rawGeometryEqual": true,
+      "sourceSha256": "672617d18a99e33c2a3a6674a5d2ca97780b5c1e1dcad51a4a0b67bba3b5d436",
+      "preparedSha256": "064a72e823953a5bb801366faff901aa5641cedd435c90e554d07279570d2324",
+      "originalPreparedSha256": "2113fd2490d5fe39cc1e5c5960c85892a1820633d32a156c556b0afb0afb7e81",
+      "originalPreparedBytes": 2389744,
+      "colorGrading": {
+        "mode": "muted foliage color, shadow lift, exact alpha and non-color-channel bytes retained",
+        "images": [
+          {
+            "image": 0,
+            "width": 1024,
+            "height": 1024,
+            "alpha": false,
+            "meanAbsoluteRGBDelta": 20.575846354166668,
+            "oldBytes": 406898,
+            "newBytes": 225165
+          },
+          {
+            "image": 3,
+            "width": 512,
+            "height": 512,
+            "alpha": true,
+            "meanAbsoluteRGBDelta": 11.243551890055338,
+            "oldBytes": 196315,
+            "newBytes": 199612
+          }
+        ],
+        "geometryAndNonColorChannelsEqual": true
+      },
+      "generationModel": "v3.1-20260211",
+      "generationDate": "2026-11-28"
+    },
+    {
+      "role": "bunk-bed",
+      "jobId": "e5720669-132d-4aff-bce5-a4b65302ada4",
+      "sourceBytes": 7840852,
+      "preparedBytes": 1067248,
+      "nearTriangles": 5172,
+      "farTriangles": 0,
+      "nearDimensions": [
+        0.6779435276985168,
+        0.8670362234115601,
+        1
+      ],
+      "front": "+X ladder, long axis Z",
+      "textures": [
+        {
+          "channels": [
+            "baseColorTexture"
+          ],
+          "dimensions": [
+            1024,
+            1024
+          ],
+          "bytes": 249212,
+          "mime": "image/jpeg",
+          "alpha": false
+        },
+        {
+          "channels": [
+            "metallicRoughnessTexture"
+          ],
+          "dimensions": [
+            512,
+            512
+          ],
+          "bytes": 369889,
+          "mime": "image/png",
+          "alpha": false
+        },
+        {
+          "channels": [
+            "normalTexture"
+          ],
+          "dimensions": [
+            768,
+            768
+          ],
+          "bytes": 231566,
+          "mime": "image/png",
+          "alpha": false
+        }
+      ],
+      "rawGeometryEqual": true,
+      "sourceSha256": "b3de199ebffe0dd20612a74b7fe49f07ad989f9c9d83b4a2ef8c5476db3172b8",
+      "preparedSha256": "781b1764b69a941eb96e4285165fc264407dce74c1d5aa7f1605dcd0dea3520a",
+      "generationModel": "v3.1-20260211",
+      "generationDate": "2026-11-28"
+    },
+    {
+      "role": "archive-shelf",
+      "jobId": "58e66043-2478-4387-8304-5059c70015d7",
+      "sourceBytes": 6224132,
+      "preparedBytes": 861256,
+      "nearTriangles": 4210,
+      "farTriangles": 0,
+      "nearDimensions": [
+        0.27601632475852966,
+        1,
+        0.5078601241111755
+      ],
+      "front": "+X open shelves",
+      "textures": [
+        {
+          "channels": [
+            "baseColorTexture"
+          ],
+          "dimensions": [
+            1024,
+            1024
+          ],
+          "bytes": 233824,
+          "mime": "image/jpeg",
+          "alpha": false
+        },
+        {
+          "channels": [
+            "metallicRoughnessTexture"
+          ],
+          "dimensions": [
+            512,
+            512
+          ],
+          "bytes": 306339,
+          "mime": "image/png",
+          "alpha": false
+        },
+        {
+          "channels": [
+            "normalTexture"
+          ],
+          "dimensions": [
+            768,
+            768
+          ],
+          "bytes": 139130,
+          "mime": "image/png",
+          "alpha": false
+        }
+      ],
+      "rawGeometryEqual": true,
+      "sourceSha256": "e5bd577392988ef691bdcd93f5255ec4b386e671548bd38ead0a029345f2d6ea",
+      "preparedSha256": "2c347b62e29a6e9b5490d7dbd3151245d06e5fc2e6682ee02169b1f706b26ac6",
+      "generationModel": "v3.1-20260211",
+      "generationDate": "2026-11-28"
+    },
+    {
+      "role": "workbench",
+      "jobId": "80708b77-0918-40ea-a90f-d88b9e020212",
+      "sourceBytes": 7975980,
+      "preparedBytes": 1046624,
+      "nearTriangles": 4766,
+      "farTriangles": 0,
+      "nearDimensions": [
+        1,
+        0.5146303176879883,
+        0.2733461856842041
+      ],
+      "front": "+Z preferred, long axis X",
+      "textures": [
+        {
+          "channels": [
+            "baseColorTexture"
+          ],
+          "dimensions": [
+            1024,
+            1024
+          ],
+          "bytes": 253945,
+          "mime": "image/jpeg",
+          "alpha": false
+        },
+        {
+          "channels": [
+            "metallicRoughnessTexture"
+          ],
+          "dimensions": [
+            512,
+            512
+          ],
+          "bytes": 330009,
+          "mime": "image/png",
+          "alpha": false
+        },
+        {
+          "channels": [
+            "normalTexture"
+          ],
+          "dimensions": [
+            768,
+            768
+          ],
+          "bytes": 279167,
+          "mime": "image/png",
+          "alpha": false
+        }
+      ],
+      "rawGeometryEqual": true,
+      "sourceSha256": "b63b40e6a9f202db29f4a15459500e9e34993ac40361ceb525d5681cff689cca",
+      "preparedSha256": "d620e56afba446ca65b8abfb4057c76fd4536ac6ace363fe931431ce2f17cdbd",
+      "generationModel": "v3.1-20260211",
+      "generationDate": "2026-11-28"
+    },
+    {
+      "role": "desktop-set",
+      "jobId": "62ae0f2e-22d3-44df-946f-21340dd3189a",
+      "sourceBytes": 5632880,
+      "preparedBytes": 672756,
+      "nearTriangles": 2844,
+      "farTriangles": 0,
+      "nearDimensions": [
+        0.8064164519309998,
+        0.6709534525871277,
+        1
+      ],
+      "front": "+X monitor face, seat original support on tabletop",
+      "textures": [
+        {
+          "channels": [
+            "baseColorTexture"
+          ],
+          "dimensions": [
+            1024,
+            1024
+          ],
+          "bytes": 160476,
+          "mime": "image/jpeg",
+          "alpha": false
+        },
+        {
+          "channels": [
+            "metallicRoughnessTexture"
+          ],
+          "dimensions": [
+            512,
+            512
+          ],
+          "bytes": 204392,
+          "mime": "image/png",
+          "alpha": false
+        },
+        {
+          "channels": [
+            "normalTexture"
+          ],
+          "dimensions": [
+            768,
+            768
+          ],
+          "bytes": 190465,
+          "mime": "image/png",
+          "alpha": false
+        }
+      ],
+      "rawGeometryEqual": true,
+      "sourceSha256": "5d7071339d02ed80c105454c8eb2f53f30e5df36eced80faf22108a366b46f4f",
+      "preparedSha256": "b4e55a2db29e65e7c55f234bc89103e84f79fedbc6d025a4f26f04e49c5d566b",
+      "generationModel": "v3.1-20260211",
+      "generationDate": "2026-11-28"
+    },
+    {
+      "role": "worker-locker",
+      "jobId": "4fc89f9b-bf80-453e-bacf-8014ec6f8ec4",
+      "sourceBytes": 9409804,
+      "preparedBytes": 1045076,
+      "nearTriangles": 3740,
+      "farTriangles": 0,
+      "nearDimensions": [
+        0.40011119842529297,
+        1,
+        0.32914358377456665
+      ],
+      "front": "+X door",
+      "textures": [
+        {
+          "channels": [
+            "baseColorTexture"
+          ],
+          "dimensions": [
+            1024,
+            1024
+          ],
+          "bytes": 180572,
+          "mime": "image/jpeg",
+          "alpha": false
+        },
+        {
+          "channels": [
+            "metallicRoughnessTexture"
+          ],
+          "dimensions": [
+            512,
+            512
+          ],
+          "bytes": 360656,
+          "mime": "image/png",
+          "alpha": false
+        },
+        {
+          "channels": [
+            "normalTexture"
+          ],
+          "dimensions": [
+            768,
+            768
+          ],
+          "bytes": 377362,
+          "mime": "image/png",
+          "alpha": false
+        }
+      ],
+      "rawGeometryEqual": true,
+      "sourceSha256": "86456bb5753b5e2981620c43d49f9a9018e6f57ca6d7c1c1b9ae272651f96b15",
+      "preparedSha256": "475eaccb1ba65ccf2d06e64ca9f708fd3d7d0abf1d51eca05aec09604b90f620",
+      "generationModel": "v3.1-20260211",
+      "generationDate": "2026-11-28"
+    }
+  ]
+}

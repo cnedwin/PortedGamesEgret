@@ -12,6 +12,8 @@ const ROLES = [
   'container', 'crate', 'barrier', 'sandbag', 'canopy', 'generator', 'console', 'pipe-rack',
   'cabinet', 'server', 'desk', 'sofa', 'transformer', 'barrel', 'pallet',
   'tyres', 'reel', 'forklift', 'penstock', 'grenade',
+  'tree-oak', 'tree-fir',
+  'bunk-bed', 'archive-shelf', 'workbench', 'desktop-set', 'worker-locker',
 ];
 const ZERO = [0, 0, 0], ONE = [1, 1, 1];
 const IDENTITY = [0, 0, 0, 1];

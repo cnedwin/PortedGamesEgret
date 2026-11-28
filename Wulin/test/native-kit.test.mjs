@@ -41,3 +41,26 @@ test('document palette distinguishes action hierarchy and preserves readable Chi
   assert.equal(compiled.root.children[1].src,'./assets/ui/command-seal.png');
   assert.deepEqual(Object.keys(compiled.bind),[]);
 });
+test('native paragraphs use the supplied physical raster density, not fixed double density',()=>{
+  const raw=col([text('山门根基渐稳，方可遣人出战。',{lines:2}),button('要务','goal',{}, {detail:'完成第一项要务'})]);
+  const {root}=compile(raw,{paragraphDensity:1.5});
+  assert.deepEqual(root.children.map(p=>p.paragraph.density),[1.5,1.5]);
+  assert.equal(compile(raw,{paragraphDensity:7}).root.children[0].paragraph.density,2,'protect the existing texture budget');
+  assert.equal(compile(raw).root.children[0].paragraph.density,2,'standalone descriptions retain their previous default');
+});
+
+test('paragraph backing density remains stable between screen layout and its next real draw',async()=>{
+  const {createParagraphDensity}=await import('../src/ui/native-kit.mjs');
+  const resolve=createParagraphDensity();
+  // The game has not drawn yet; do not infer density from the initial browser canvas.
+  assert.equal(resolve({width:1280,height:800},{width:300,height:150},1),2);
+  const frame={width:1280,height:800},backing={width:1920,height:1200};
+  assert.equal(resolve(frame,backing,1),1.5);
+  assert.equal(resolve(frame,backing,1.2),1.8);
+  // CSS layout changed but the canvas still holds previous pixels. This may happen for every variant.
+  const smaller={width:960,height:600};
+  assert.equal(resolve(smaller,backing,1),1.5);
+  assert.equal(resolve(smaller,backing,1),1.5);
+  assert.equal(resolve(smaller,{width:1440,height:900},1),1.5);
+  assert.equal(resolve(smaller,{width:1440,height:900},2.2),2,'dense mobile layout preserves the previous cap');
+});
