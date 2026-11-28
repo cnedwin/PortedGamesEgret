@@ -77,11 +77,13 @@ function surfaced(material) {
 
 /** Size, what is carried in the right hand, and what on the left arm. */
 const LOOKS = {
-  hero: { size: 1, weapon: 'spear', grip: 0.5, articulated: true, fill: [0.008, 0.015, 0.024] },
-  blade: { size: 1, weapon: 'sabre', fill: [0.01, 0.006, 0.003] },
-  shield: { size: 1.06, weapon: 'short', off: 'rattan', offScale: 1.12, fill: [0.01, 0.008, 0.004] },
-  bow: { size: 0.98, off: 'longbow', offScale: 1.08, fill: [0.006, 0.008, 0.012] },
-  lu: { size: 1.2, weapon: 'glaive', grip: 0.55, articulated: true, fill: [0.019, 0.006, 0.008] }
+  // A small body-only lift in the distant game camera keeps the cloth and
+  // silhouettes readable against snow. The authored portrait fill is intact.
+  hero: { size: 1, weapon: 'spear', grip: 0.5, articulated: true, fill: [0.008, 0.015, 0.024], playFill: [0.008, 0.014, 0.018] },
+  blade: { size: 1, weapon: 'sabre', fill: [0.01, 0.006, 0.003], playFill: [0.012, 0.009, 0.006] },
+  shield: { size: 1.06, weapon: 'short', off: 'rattan', offScale: 1.12, fill: [0.01, 0.008, 0.004], playFill: [0.012, 0.01, 0.006] },
+  bow: { size: 0.98, off: 'longbow', offScale: 1.08, fill: [0.006, 0.008, 0.012], playFill: [0.008, 0.011, 0.014] },
+  lu: { size: 1.2, weapon: 'glaive', grip: 0.55, articulated: true, fill: [0.019, 0.006, 0.008], playFill: [0.015, 0.009, 0.007] }
 };
 /** Check descriptors even when none of the actors of this kind have spawned. */
 export function validateCharacterBody(parts) {
@@ -515,8 +517,26 @@ export function foePose(foe, clock, travelled, gait, dt = 0) {
       return reel(base, over(FOE_POSES.stagger), foe.t, foe.staggerFor ?? 0.5);
     case 'down':
       return [over(FOE_POSES.down), 12];
-    case 'rage':
-      return foe.t < 0.8 ? [over(FOE_POSES.down), 12] : [over(FOE_POSES.rage), 16];
+    case 'rage': {
+      // An expression for the existing 2.6-second story beat, not a new move.
+      // Rise continuously, let the head and cloak follow the declaration, then
+      // settle toward the established standing silhouette before play returns.
+      const low = over(FOE_POSES.down);
+      const declaration = blend(base, over(FOE_POSES.rage), 0.72);
+      declaration.head = [-0.30, 0.14, 0.06];
+      declaration.cloak = [0.75, 0.12, 0.06];
+      const rise = ease(span(foe.t, 0.46, 1.37));
+      const settle = ease(span(foe.t, 1.92, 2.58));
+      const moment = blend(blend(low, declaration, rise), base, settle);
+      const expression = rise * (1 - settle);
+      const sway = Math.sin((foe.t - 1.12) * 5.1) * expression;
+      moment.head[0] += sway * 0.095;
+      moment.head[1] += sway * 0.13;
+      moment.cloak[0] += sway * 0.19;
+      moment.cloak[1] += Math.sin(foe.t * 7.4) * expression * 0.12;
+      moment.lift += Math.sin(foe.t * 6.0) * expression * 0.025;
+      return [moment, 14];
+    }
     case 'wait':
       return [over(foe.kind === 'lu' ? FOE_POSES.wait : {}), 8];
     case 'windup':

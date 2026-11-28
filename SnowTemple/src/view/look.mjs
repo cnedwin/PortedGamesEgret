@@ -34,8 +34,8 @@ vec3 customPost(vec3 color, vec2 uv) {
     vec3 ray = view / reach;
     float slope = 0.49 * dot(up.xyz, view);
     float thin = abs(slope) > 0.0001 ? (1.0 - exp(-slope)) / slope : 1.0;
-    float fog = 0.061 * exp(-0.49 * (up.w - 0.08)) * reach * thin;
-    vec3 lit = mix(vec3(0.050, 0.080, 0.188), color, exp(-max(fog, 0.0)));
+    float fog = 0.056 * exp(-0.49 * (up.w - 0.08)) * reach * thin;
+    vec3 lit = mix(vec3(0.044, 0.061, 0.112), color, exp(-max(fog, 0.0)));
     for (int i = 1; i <= 3; i++) {
         lit += lampMist(ray, reach, uPostCustom[i], up);
     }
@@ -43,12 +43,12 @@ vec3 customPost(vec3 color, vec2 uv) {
     float value = dot(lit, luminance);
     float mids = smoothstep(0.025, 0.40, value);
     // Indigo in the shadows, with cleaner snow, steel and skin in the light.
-    vec3 graded = lit * mix(vec3(0.83, 0.90, 1.08), vec3(1.02, 0.99, 0.97), mids);
+    vec3 graded = lit * mix(vec3(0.88, 0.93, 1.025), vec3(1.015, 1.00, 0.985), mids);
     float warm = smoothstep(0.02, 0.40, lit.r - lit.b);
     graded = mix(graded, lit, warm * 0.65);
     float peak = max(graded.r, max(graded.g, graded.b));
     // Let bright lamps and snow retain a soft shoulder before ACES.
-    graded /= 1.0 + max(peak - 0.82, 0.0) * 0.24;
+    graded /= 1.0 + max(peak - 0.74, 0.0) * 0.36;
     float dither = fract(52.9829189 * fract(dot(gl_FragCoord.xy, vec2(0.06711056, 0.00583715)))) - 0.5;
     return graded + dither * min(0.003, value * 0.03);
 }
@@ -58,9 +58,9 @@ export function createSnowLook(renderer, ssao) {
   const film = createCustomPost3D({ key: 'snow-night-mist', glsl: NIGHT_LOOK });
   const post = renderer.postProcess;
   Object.assign(post, {
-    enabled: true, custom: film, bloom: true, bloomThreshold: 1.29, bloomKnee: 0.43,
-    bloomIntensity: 0.23, bloomLevels: 6, fxaa: true, vignette: 0.37, contrast: 1.1,
-    saturation: 0.98, ssao, ssaoRadius: 0.67, ssaoIntensity: 1.14
+    enabled: true, custom: film, bloom: true, bloomThreshold: 1.42, bloomKnee: 0.36,
+    bloomIntensity: 0.18, bloomLevels: 6, fxaa: true, vignette: 0.35, contrast: 1.13,
+    saturation: 0.94, ssao, ssaoRadius: 0.67, ssaoIntensity: 1.14
   });
 
   return (camera, lamps, cinematic, duel, dt) => {
@@ -82,11 +82,11 @@ export function createSnowLook(renderer, ssao) {
       uniforms[start + 1] = x * world[4] + y * world[5] + z * world[6];
       uniforms[start + 2] = x * world[8] + y * world[9] + z * world[10];
       const fade = Math.min(1, (18 - lamp.distance) / 7);
-      const energy = Math.min(0.92, lamp.light.intensity * 0.055) * fade;
+      const energy = Math.min(0.68, lamp.light.intensity * 0.046) * fade;
       uniforms[start + 3] = lamp.fire ? -energy : energy;
     }
     const blend = 1 - Math.exp(-dt * 5);
     post.vignette += ((cinematic ? 0.52 : duel ? 0.43 : 0.37) - post.vignette) * blend;
-    post.brightness += ((duel ? 0.84 : 1) - post.brightness) * blend;
+    post.brightness += ((duel ? 0.86 : cinematic ? 0.96 : 0.97) - post.brightness) * blend;
   };
 }

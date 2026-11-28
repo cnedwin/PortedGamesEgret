@@ -12,7 +12,7 @@ import {
 import { BARS, PLACES } from '../rules/arena.mjs';
 import { HERO } from '../rules/tune.mjs';
 import { createBuilder, rgb } from './build.mjs';
-import { TINT, createEffects } from './effects.mjs';
+import { TINT, createEffects, impactCue } from './effects.mjs';
 import { FALL_CONTACT, bowstringDraws, createFigure, foePose, heroPose, pose, validateCharacterBody } from './figures.mjs';
 import { buildScenery, height, paved } from './scenery.mjs';
 
@@ -47,9 +47,9 @@ export function createView(scene, camera, models, { density = 1, particles = 1, 
   // ---- night, snow and a cold moon ----------------------------------------------------------
   scene.background = [0.012, 0.017, 0.034];
   scene.fog = { kind: 'exponential', color: [0.026, 0.036, 0.07], density: 0.016 };
-  scene.addChild(createHemisphereLight3D({ color: 0x8a9cbd, groundColor: 0x292c42, intensity: 0.32 }));
-  scene.addChild(createAmbientLight3D({ intensity: 0.055 }));
-  const moon = createDirectionalLight3D({ color: 0xb6c8ec, intensity: 0.82, castShadow: true });
+  scene.addChild(createHemisphereLight3D({ color: 0xa3afbf, groundColor: 0x292c42, intensity: 0.28 }));
+  scene.addChild(createAmbientLight3D({ intensity: 0.05 }));
+  const moon = createDirectionalLight3D({ color: 0xc7d2e1, intensity: 0.76, castShadow: true });
   Object.assign(moon.shadow, { mapSize: shadowSize, extent: 24, near: 1, far: 90, cascades: 1 });
   scene.addChild(moon);
   // Soft camera-side fill lets the faces and forged edges read in the two low shots.
@@ -306,11 +306,11 @@ export function createView(scene, camera, models, { density = 1, particles = 1, 
           px = e.x - d[0] * 0.45,
           pz = e.z - d[2] * 0.45,
           tint = e.source === 'star' || e.source === 'rain' ? TINT.spear : TINT.gold;
-        fx.burst(px, 1.15, pz, { count: e.heavy ? 22 : 11, dir: [d[0], 0.35, d[2]], spread: 0.55, speed: e.heavy ? 12 : 8, life: 0.36, size: 0.085, tint, power: 4 });
+        fx.burst(px, 1.15, pz, { count: e.heavy ? 22 : 11, dir: [d[0], 0.35, d[2]], spread: 0.55, speed: e.heavy ? 12 : 8, life: 0.36, size: 0.067, tint, power: 3.7 });
         const counter = e.source === 'riposte';
-        const impactSize = counter ? 2.45 : e.heavy ? 1.8 : 1.1;
-        fx.spawn('ring', { mode: 1, x: px, y: 1.1, z: pz, life: counter ? 0.26 : 0.2, from: [0.2, 1, 0.2], to: [impactSize, 1, impactSize], tint: counter ? TINT.gold : TINT.white, power: counter ? 3.6 : 2.4 });
-        fx.flash(px, pz, [1, 0.8, 0.55], counter ? 41 : e.heavy ? 26 : 12, 0.16, 8);
+        const cue = impactCue(e.source, e.heavy), impactSize = cue.radius;
+        fx.spawn('ring', { ...cue, x: px, y: 1.1, z: pz, from: [0.2, 1, 0.2], to: [impactSize, 1, impactSize] });
+        fx.flash(px, pz, [1, 0.8, 0.55], counter ? 34 : e.heavy ? 22 : 10, 0.16, 8);
         const figure = figures.get(e.id);
         if (figure) figure.flash = 1;
         view.shake = Math.max(view.shake, e.heavy ? 0.6 : 0.25);
@@ -327,8 +327,8 @@ export function createView(scene, camera, models, { density = 1, particles = 1, 
         const tint = big ? TINT.gold : TINT.spear;
         fx.burst(px, 1.2, pz, { count: big ? 34 : 12, spread: 1, speed: big ? 11 : 7, life: big ? 0.5 : 0.3, size: 0.09, tint, power: big ? 5 : 3 });
         if (big) {
-          fx.spawn('ring', { mode: 1, x: px, y: 1.2, z: pz, life: 0.35, from: [0.3, 1, 0.3], to: [3.6, 1, 3.6], tint: TINT.gold, power: 3.2 });
-          fx.flash(px, pz, [1, 0.85, 0.5], 60, 0.3, 14);
+          fx.spawn('ring', { mode: 8, k: 2, x: px, y: 1.2, z: pz, life: 0.35, from: [0.3, 1, 0.3], to: [3.6, 1, 3.6], tint: TINT.gold, power: 3.2 });
+          fx.flash(px, pz, [1, 0.85, 0.5], 48, 0.3, 14);
           view.shake = Math.max(view.shake, 0.6);
         } else if (e.type === 'block') {
           fx.spawn('arcUp', { mode: 0, x: px, y: 1.15, z: pz, yaw: e.face, life: 0.18, from: [0.28, 0.36, 0.28], tint, power: 2.45 });
@@ -446,8 +446,8 @@ export function createView(scene, camera, models, { density = 1, particles = 1, 
       case 'cine':
         if (e.id === 'rage') {
           fx.spawn('ring', { mode: 1, x: e.x, z: e.z, life: 0.9, from: [0.5, 1, 0.5], to: [9, 1, 9], tint: TINT.fire, power: 3.2 });
-          fx.burst(e.x, 0.5, e.z, { count: 70, spread: 1, speed: 10, life: 1.1, size: 0.16, tint: TINT.fire, power: 4, rise: 2 });
-          fx.flash(e.x, e.z, [1, 0.5, 0.2], 90, 1.2, 20);
+          fx.burst(e.x, 0.5, e.z, { count: 70, spread: 1, speed: 10, life: 1.1, size: 0.135, tint: TINT.fire, power: 3.5, rise: 2 });
+          fx.flash(e.x, e.z, [1, 0.5, 0.2], 72, 1.2, 20);
           view.shake = 1;
         }
         break;
@@ -530,13 +530,19 @@ export function createView(scene, camera, models, { density = 1, particles = 1, 
       bodyContact(heroFigure, hero.state === 'dead' ? game.deadFor : 0, hero.x, hero.z);
     }
     const cutting = hero.state === 'cut' || hero.state === 'riposte' || hero.state === 'rain' || hero.state === 'stars';
-    heroFigure.glow += ((cutting ? 3.2 : hero.counter > 0 ? 2 : 0.25) - heroFigure.glow) * Math.min(1, dt * 14);
+    heroFigure.glow += ((cutting ? 2.8 : hero.counter > 0 ? 2 : 0.25) - heroFigure.glow) * Math.min(1, dt * 14);
     heroFigure.metal.emissiveIntensity = heroFigure.glow;
     heroFigure.flash = Math.max(0, heroFigure.flash - dt * 6);
     const [heroRed, heroGreen, heroBlue] = heroFigure.look.fill,
-      rim = game.stage === 'boss' && !view.cine ? 0.018 : 0;
-    heroFigure.tintBody(heroRed + rim * 0.55 + heroFigure.flash * 0.9, heroGreen + rim * 0.72 + heroFigure.flash * 0.2, heroBlue + rim + heroFigure.flash * 0.15);
-    heroFigure.root.visible = !(hero.safe > 0 && hero.state === 'free' && Math.floor(clock * 14) % 2 === 0);
+      [playRed, playGreen, playBlue] = heroFigure.look.playFill,
+      distant = view.cine ? 0 : 1, rim = game.stage === 'boss' && !view.cine ? 0.018 : 0;
+    // A gentle glimmer denotes the existing protected state without making
+    // Lin Chong disappear from a busy scene or producing a harsh strobe.
+    const protection = hero.safe > 0 && hero.state === 'free' ? 0.008 + 0.007 * (0.5 + 0.5 * Math.cos(clock * 4.5)) : 0;
+    heroFigure.tintBody(heroRed + playRed * distant + rim * 0.55 + protection * 0.25 + heroFigure.flash * 0.9,
+      heroGreen + playGreen * distant + rim * 0.72 + protection * 0.7 + heroFigure.flash * 0.2,
+      heroBlue + playBlue * distant + rim + protection + heroFigure.flash * 0.15);
+    heroFigure.root.visible = true;
     if (hero.moving && hero.state === 'glide') {
       glideTrailTime += dt;
       if (glideTrailTime > 0.054) {
@@ -569,19 +575,21 @@ export function createView(scene, camera, models, { density = 1, particles = 1, 
       figure.root.setRotation(0, foe.face, 0);
       pose(figure, want, foe.freeze > 0 ? 0 : speed, dt);
       if (dt > 0) bodyContact(figure, foe.state === 'dead' ? foe.t : 0, foe.x, foe.z);
-      const threat = foe.state === 'windup' ? 0.4 + (foe.t / foe.move.windup) * 3 : foe.state === 'strike' ? 3.5 : foe.kind === 'lu' && foe.phase === 2 ? 1.2 : 0;
+      const threat = foe.state === 'windup' ? 0.4 + (foe.t / foe.move.windup) * 2.45 : foe.state === 'strike' ? 2.9 : foe.kind === 'lu' && foe.phase === 2 ? 0.88 : 0;
       figure.glow += (threat - figure.glow) * Math.min(1, dt * 12);
       figure.metal.emissiveIntensity = figure.glow;
       figure.flash = Math.max(0, figure.flash - dt * 7);
-      const [red, green, blue] = figure.look.fill;
+      const [red, green, blue] = figure.look.fill, [localRed, localGreen, localBlue] = figure.look.playFill;
       const alight = foe.burning > 0 && foe.state !== 'dead',
         heat = alight ? 0.22 + Math.sin(clock * 17 + foe.id) * 0.06 : 0;
-      figure.tintBody(red + rim * 0.85 + figure.flash + heat, green + rim * 0.48 + figure.flash * 0.9 + heat * 0.35, blue + rim * 0.40 + figure.flash * 0.8);
+      figure.tintBody(red + localRed * distant + rim * 0.85 + figure.flash + heat,
+        green + localGreen * distant + rim * 0.48 + figure.flash * 0.9 + heat * 0.35,
+        blue + localBlue * distant + rim * 0.40 + figure.flash * 0.8);
       if (alight && Math.random() < dt * 34) fx.burst(foe.x + (Math.random() - 0.5) * 0.5, 0.5 + Math.random() * 1.1, foe.z + (Math.random() - 0.5) * 0.5, { count: 1, dir: [0, 1, 0], spread: 0.4, speed: 1.8, life: 0.6, size: 0.2, tint: TINT.fire, power: 3.4, rise: 3, drag: 1 });
       if (figure.mark && foe.state === 'dead') (fx.release(figure.mark), (figure.mark = null));
       if (foe.kind === 'lu' && foe.phase === 2 && foe.state !== 'dead' && Math.random() < dt * 40) {
         const d = dirOf(foe.face);
-        fx.burst(foe.x + d[0] * 1.2 - d[2] * 0.4, 1.5, foe.z + d[2] * 1.2 + d[0] * 0.4, { count: 1, dir: [0, 1, 0], spread: 0.5, speed: 1.6, life: 0.6, size: 0.16, tint: TINT.fire, power: 3.5, rise: 3 });
+        fx.burst(foe.x + d[0] * 1.2 - d[2] * 0.4, 1.5, foe.z + d[2] * 1.2 + d[0] * 0.4, { count: 1, dir: [0, 1, 0], spread: 0.5, speed: 1.6, life: 0.6, size: 0.125, tint: TINT.fire, power: 2.8, rise: 3 });
       }
     }
     for (const [id, figure] of figures)
@@ -655,7 +663,7 @@ export function createView(scene, camera, models, { density = 1, particles = 1, 
     const lit = scenery.lights;
     for (const lamp of lit) {
       lamp.distance = Math.hypot(lamp.x - focus.x, lamp.z - focus.z);
-      if (lamp.fire && lamp.distance < 30 && Math.random() < dt * 50) fx.burst(lamp.x + (Math.random() - 0.5) * 0.4, lamp.y - 0.4, lamp.z + (Math.random() - 0.5) * 0.4, { count: 1, dir: [0, 1, 0], spread: 0.25, speed: 1.8, life: 0.7, size: 0.22, tint: TINT.fire, power: 2.8, rise: 2.5, drag: 1 });
+      if (lamp.fire && lamp.distance < 30 && Math.random() < dt * 50) fx.burst(lamp.x + (Math.random() - 0.5) * 0.4, lamp.y - 0.4, lamp.z + (Math.random() - 0.5) * 0.4, { count: 1, dir: [0, 1, 0], spread: 0.25, speed: 1.8, life: 0.7, size: 0.17, tint: TINT.fire, power: 2.15, rise: 2.5, drag: 1 });
     }
     // Fire lying on the ground from a blow, an arrow or a torch.
     for (const patch of game.fires) {
@@ -674,7 +682,7 @@ export function createView(scene, camera, models, { density = 1, particles = 1, 
     }
     for (const fire of fires)
       if (Math.hypot(fire.x - focus.x, fire.z - focus.z) < 34)
-        for (let i = 0; i < 2; i++) fx.burst(fire.x + (Math.random() - 0.5) * fire.size * 2, fire.y - Math.random() * 1.6, fire.z + (Math.random() - 0.5) * fire.size * 2, { count: 1, dir: [0.25, 1, 0], spread: 0.3, speed: 2.2, life: 0.9, size: 0.26, tint: TINT.fire, power: 2.2, rise: 3, drag: 0.8 });
+        for (let i = 0; i < 2; i++) fx.burst(fire.x + (Math.random() - 0.5) * fire.size * 2, fire.y - Math.random() * 1.6, fire.z + (Math.random() - 0.5) * fire.size * 2, { count: 1, dir: [0.25, 1, 0], spread: 0.3, speed: 2.2, life: 0.9, size: 0.20, tint: TINT.fire, power: 1.7, rise: 3, drag: 0.8 });
     const near = [...lit].sort((a, b) => a.distance - b.distance);
     view.fogLights = near;
     // The six nearest lamps burn and the rest fade out. Every pixel pays for each of the first eight lights
@@ -683,8 +691,8 @@ export function createView(scene, camera, models, { density = 1, particles = 1, 
       lamp.share += ((i < 6 ? 1 : 0) - lamp.share) * Math.min(1, dt * 3);
       lamp.light.intensity = lamp.intensity * lamp.share * (1 + Math.sin(clock * 11 + lamp.x) * lamp.flicker * 0.5 + Math.sin(clock * 23 + lamp.z) * lamp.flicker * 0.5);
     });
-    scenery.glowMaterial.emissiveIntensity = 1.66 + Math.sin(clock * 9) * 0.13;
-    for (const lamp of lit) lamp.halo.strength = lamp.distance < 34 ? lamp.share * 0.57 : 0;
+    scenery.glowMaterial.emissiveIntensity = 1.48 + Math.sin(clock * 9) * 0.10;
+    for (const lamp of lit) lamp.halo.strength = lamp.distance < 34 ? lamp.share * 0.38 : 0;
 
     moveCamera(game, dt, clock);
     // Fade the roof or a nearby tree only where it crosses the camera's sightline to the hero.

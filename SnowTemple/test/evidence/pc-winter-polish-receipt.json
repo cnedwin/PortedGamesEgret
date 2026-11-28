@@ -1,0 +1,358 @@
+{
+  "scope": "Physical Windows RTX 5090 Laptop, Edge ANGLE D3D11; diagnostic visual route before/after high/high seed7 at 1280x800. Boss/rage visual captures use existing diagnostic entrances; full formal chapter separately uses normal input. No state injection.",
+  "engine": "a1d6bc6215ce1fd9af1e9361286525ae737ad347",
+  "before": {
+    "errors": [
+      "EgretError: UI_CONTROL_CLOSED: A UI control was closed and takes nothing more.\n    at Object.setEnabled (http://127.0.0.1:49790/SnowTemple/vendor/engine/dist/ui/controls.js:261:23)\n    at Object.release (http://127.0.0.1:49790/SnowTemple/src/ui/touch.mjs:42:37)\n    at Object.releaseTouch (http://127.0.0.1:49790/SnowTemple/src/ui/combat-hud.mjs:264:16)\n    at Object.reset (http://127.0.0.1:49790/SnowTemple/src/hud.mjs:15:34)\n    at reset (http://127.0.0.1:49790/SnowTemple/src/input.mjs:107:15)\n    at HTMLDocument.<anonymous> (http://127.0.0.1:49790/SnowTemple/src/input.mjs:110:78)",
+      "EgretError: UI_CONTROL_CLOSED: A UI control was closed and takes nothing more.\n    at Object.setEnabled (http://127.0.0.1:49790/SnowTemple/vendor/engine/dist/ui/controls.js:261:23)\n    at Object.release (http://127.0.0.1:49790/SnowTemple/src/ui/touch.mjs:42:37)\n    at Object.releaseTouch (http://127.0.0.1:49790/SnowTemple/src/ui/combat-hud.mjs:264:16)\n    at Object.reset (http://127.0.0.1:49790/SnowTemple/src/hud.mjs:15:34)\n    at reset (http://127.0.0.1:49790/SnowTemple/src/input.mjs:107:15)\n    at HTMLDocument.<anonymous> (http://127.0.0.1:49790/SnowTemple/src/input.mjs:110:78)"
+    ],
+    "pass": false,
+    "states": [
+      {
+        "name": "01-title",
+        "stage": "road",
+        "time": 0,
+        "cine": 0,
+        "hero": {
+          "hp": 120,
+          "x": -0.2,
+          "z": 24.2,
+          "state": "free"
+        },
+        "boss": {
+          "phase": 1,
+          "hp": 980,
+          "state": "wait"
+        },
+        "shadows": true,
+        "renderer": "ANGLE (NVIDIA, NVIDIA GeForce RTX 5090 Laptop GPU (0x00002C58) Direct3D11 vs_5_0 ps_5_0, D3D11)",
+        "error": null
+      },
+      {
+        "name": "02-opening",
+        "stage": "road",
+        "time": 0.39999999999999997,
+        "cine": 2.8000000000000016,
+        "hero": {
+          "hp": 120,
+          "x": 0,
+          "z": 34,
+          "state": "free"
+        },
+        "boss": {
+          "phase": 1,
+          "hp": 980,
+          "state": "wait"
+        },
+        "shadows": true,
+        "renderer": "ANGLE (NVIDIA, NVIDIA GeForce RTX 5090 Laptop GPU (0x00002C58) Direct3D11 vs_5_0 ps_5_0, D3D11)",
+        "error": null
+      },
+      {
+        "name": "03-road",
+        "stage": "road",
+        "time": 4.0666666666666575,
+        "cine": 0,
+        "hero": {
+          "hp": 120,
+          "x": 0,
+          "z": 34,
+          "state": "free"
+        },
+        "boss": {
+          "phase": 1,
+          "hp": 980,
+          "state": "wait"
+        },
+        "shadows": true,
+        "renderer": "ANGLE (NVIDIA, NVIDIA GeForce RTX 5090 Laptop GPU (0x00002C58) Direct3D11 vs_5_0 ps_5_0, D3D11)",
+        "error": null
+      },
+      {
+        "name": "04-yard",
+        "stage": "yard",
+        "time": 7.5499999999999785,
+        "cine": 0,
+        "hero": {
+          "hp": 120,
+          "x": 0,
+          "z": 18.969999999999946,
+          "state": "free"
+        },
+        "boss": {
+          "phase": 1,
+          "hp": 980,
+          "state": "wait"
+        },
+        "shadows": true,
+        "renderer": "ANGLE (NVIDIA, NVIDIA GeForce RTX 5090 Laptop GPU (0x00002C58) Direct3D11 vs_5_0 ps_5_0, D3D11)",
+        "error": null
+      },
+      {
+        "name": "05-boss-dialogue",
+        "stage": "boss",
+        "time": 1.0666666666666678,
+        "cine": 5.000000000000001,
+        "hero": {
+          "hp": 120,
+          "x": 0,
+          "z": -21.669999999999998,
+          "state": "free"
+        },
+        "boss": {
+          "phase": 1,
+          "hp": 980,
+          "state": "roam"
+        },
+        "shadows": true,
+        "renderer": "ANGLE (NVIDIA, NVIDIA GeForce RTX 5090 Laptop GPU (0x00002C58) Direct3D11 vs_5_0 ps_5_0, D3D11)",
+        "error": null
+      },
+      {
+        "name": "06-boss",
+        "stage": "boss",
+        "time": 6.933333333333314,
+        "cine": 0,
+        "hero": {
+          "hp": 104,
+          "x": 0,
+          "z": -21.298181705401774,
+          "state": "hurt"
+        },
+        "boss": {
+          "phase": 1,
+          "hp": 980,
+          "state": "windup"
+        },
+        "shadows": true,
+        "renderer": "ANGLE (NVIDIA, NVIDIA GeForce RTX 5090 Laptop GPU (0x00002C58) Direct3D11 vs_5_0 ps_5_0, D3D11)",
+        "error": null
+      },
+      {
+        "name": "07-rage-entry",
+        "stage": "boss",
+        "time": 6.399999999999983,
+        "cine": 2.5333333333333337,
+        "hero": {
+          "hp": 120,
+          "x": 0,
+          "z": -21.669999999999998,
+          "state": "stars"
+        },
+        "boss": {
+          "phase": 2,
+          "hp": 469.6,
+          "state": "rage"
+        },
+        "shadows": true,
+        "renderer": "ANGLE (NVIDIA, NVIDIA GeForce RTX 5090 Laptop GPU (0x00002C58) Direct3D11 vs_5_0 ps_5_0, D3D11)",
+        "error": null
+      }
+    ]
+  },
+  "after": {
+    "errors": [],
+    "pass": true,
+    "states": [
+      {
+        "name": "01-title",
+        "stage": "road",
+        "time": 0,
+        "cine": 0,
+        "hero": {
+          "hp": 120,
+          "x": -0.2,
+          "z": 24.2,
+          "state": "free"
+        },
+        "boss": {
+          "phase": 1,
+          "hp": 980,
+          "state": "wait"
+        },
+        "shadows": true,
+        "renderer": "ANGLE (NVIDIA, NVIDIA GeForce RTX 5090 Laptop GPU (0x00002C58) Direct3D11 vs_5_0 ps_5_0, D3D11)",
+        "error": null
+      },
+      {
+        "name": "02-opening",
+        "stage": "road",
+        "time": 0.39999999999999997,
+        "cine": 2.8000000000000016,
+        "hero": {
+          "hp": 120,
+          "x": 0,
+          "z": 34,
+          "state": "free"
+        },
+        "boss": {
+          "phase": 1,
+          "hp": 980,
+          "state": "wait"
+        },
+        "shadows": true,
+        "renderer": "ANGLE (NVIDIA, NVIDIA GeForce RTX 5090 Laptop GPU (0x00002C58) Direct3D11 vs_5_0 ps_5_0, D3D11)",
+        "error": null
+      },
+      {
+        "name": "03-road",
+        "stage": "road",
+        "time": 4.083333333333324,
+        "cine": 0,
+        "hero": {
+          "hp": 120,
+          "x": 0,
+          "z": 34,
+          "state": "free"
+        },
+        "boss": {
+          "phase": 1,
+          "hp": 980,
+          "state": "wait"
+        },
+        "shadows": true,
+        "renderer": "ANGLE (NVIDIA, NVIDIA GeForce RTX 5090 Laptop GPU (0x00002C58) Direct3D11 vs_5_0 ps_5_0, D3D11)",
+        "error": null
+      },
+      {
+        "name": "04-yard",
+        "stage": "yard",
+        "time": 7.566666666666645,
+        "cine": 0,
+        "hero": {
+          "hp": 120,
+          "x": 0,
+          "z": 18.969999999999946,
+          "state": "free"
+        },
+        "boss": {
+          "phase": 1,
+          "hp": 980,
+          "state": "wait"
+        },
+        "shadows": true,
+        "renderer": "ANGLE (NVIDIA, NVIDIA GeForce RTX 5090 Laptop GPU (0x00002C58) Direct3D11 vs_5_0 ps_5_0, D3D11)",
+        "error": null
+      },
+      {
+        "name": "05-boss-dialogue",
+        "stage": "boss",
+        "time": 1.0000000000000013,
+        "cine": 5.000000000000001,
+        "hero": {
+          "hp": 120,
+          "x": 0,
+          "z": -21.669999999999998,
+          "state": "free"
+        },
+        "boss": {
+          "phase": 1,
+          "hp": 980,
+          "state": "roam"
+        },
+        "shadows": true,
+        "renderer": "ANGLE (NVIDIA, NVIDIA GeForce RTX 5090 Laptop GPU (0x00002C58) Direct3D11 vs_5_0 ps_5_0, D3D11)",
+        "error": null
+      },
+      {
+        "name": "06-boss",
+        "stage": "boss",
+        "time": 6.866666666666648,
+        "cine": 0,
+        "hero": {
+          "hp": 104,
+          "x": 0,
+          "z": -21.298181705401774,
+          "state": "hurt"
+        },
+        "boss": {
+          "phase": 1,
+          "hp": 980,
+          "state": "windup"
+        },
+        "shadows": true,
+        "renderer": "ANGLE (NVIDIA, NVIDIA GeForce RTX 5090 Laptop GPU (0x00002C58) Direct3D11 vs_5_0 ps_5_0, D3D11)",
+        "error": null
+      },
+      {
+        "name": "07-rage-entry",
+        "stage": "boss",
+        "time": 6.349999999999983,
+        "cine": 2.516666666666667,
+        "hero": {
+          "hp": 120,
+          "x": 0,
+          "z": -21.669999999999998,
+          "state": "stars"
+        },
+        "boss": {
+          "phase": 2,
+          "hp": 469.6,
+          "state": "rage"
+        },
+        "shadows": true,
+        "renderer": "ANGLE (NVIDIA, NVIDIA GeForce RTX 5090 Laptop GPU (0x00002C58) Direct3D11 vs_5_0 ps_5_0, D3D11)",
+        "error": null
+      }
+    ]
+  },
+  "hardware": {
+    "checks": [
+      "ok - actual World3D WebGL2 renderer: ANGLE (NVIDIA, NVIDIA GeForce RTX 5090 Laptop GPU (0x00002C58) Direct3D11 vs_5_0 ps_5_0, D3D11)",
+      "ok - native title has both chapter and yard choices",
+      "ok - actual native overlay and named semantic control",
+      "ok - trusted native Chapter entry reaches normal first tier opening with living hero",
+      "ok - normal game clock advances after native chapter click",
+      "ok - settings is modal and game time, position and stamina do not advance",
+      "ok - native Sound off persists",
+      "ok - native Sound on persists",
+      "ok - English native settings read back without replacing chapter or overlay",
+      "ok - actual live combat HUD relabels into English",
+      "ok - language returns to original Chinese, same actual chapter",
+      "ok - Escape preserves original attack binding",
+      "ok - Tab is not stored as a replacement input",
+      "ok - settings 393×852 retains overlay, semantics, focus and chapter state",
+      "ok - settings 852×393 retains overlay, semantics, focus and chapter state",
+      "ok - actual road 393×852 retains overlay, semantics, focus and chapter state",
+      "ok - actual road 852×393 retains overlay, semantics, focus and chapter state",
+      "ok - native bag opens from real control",
+      "ok - native bag closes normally",
+      "ok - manual choice 393×852 retains overlay, semantics, focus and chapter state",
+      "ok - manual choice 852×393 retains overlay, semantics, focus and chapter state",
+      "ok - open manual page pauses actual chapter",
+      "ok - legitimate full chapter completed through both Lu Qian stages without state injection",
+      "ok - Digit selection applies actual first lesson through native dialog",
+      "ok - results 393×852 retains overlay, semantics, focus and chapter state",
+      "ok - results 852×393 retains overlay, semantics, focus and chapter state",
+      "ok - normal victory persisted current version and opened next tier",
+      "ok - native Rematch starts an actual first-phase encounter",
+      "ok - chapter fall naturally revives at the original mountain gate instead of inventing a defeat rule",
+      "ok - naturally earned old-format save survives real reload",
+      "ok - endless-yard mode genuinely reaches native loss settlement under normal rules",
+      "ok - native yard loss result returns to title",
+      "ok - native joystick and seven actual ≥44px touch actions",
+      "ok - two independent contacts persist outside joystick area without page scroll",
+      "ok - cancel releases both native controls",
+      "ok - a genuine refused optional hero model retains playable title and healthy staged roles",
+      "ok - only the deliberately refused optional model produced an HTTP error",
+      "ok - actual critical scene pack error presents a named native Retry",
+      "ok - only the intentional critical HTTP503 and its direct error were observed",
+      "ok - native boot Retry actually reloads the scene pack and all five healthy roles",
+      "ok - no game error after ordinary UI input"
+    ],
+    "passed": true
+  },
+  "software": {
+    "checks": [
+      "ok - actual World3D WebGL2 renderer: ANGLE (Google, Vulkan 1.3.0 (SwiftShader Device (Subzero) (0x0000C0DE)), SwiftShader driver)",
+      "ok - native title has both chapter and yard choices",
+      "ok - actual native overlay and named semantic control",
+      "ok - reviewed native title reference exists",
+      "ok - native title screenshot 0.61% differs",
+      "ok - trusted native Chapter entry reaches normal first tier opening with living hero",
+      "ok - normal game clock advances after native chapter click",
+      "ok - no game error after ordinary UI input"
+    ],
+    "passed": true
+  }
+}

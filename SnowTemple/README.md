@@ -181,6 +181,8 @@ python3 -m http.server 4180      # 模型查看器 · model viewer: /SnowTemple/
 
 ## 已验证 · Verified
 
+- 2026-11-28 引擎 `a1d6bc6`：官方副本运行时代码与上一版一致。新雪夜材质、暖冷轮廓、首领演出和战斗反馈：112/112 Node、PC RTX 硬件完整回归 41/41、软件开场 8/8、Fold7 真机完整通关、重战和读档，536/536 资源一致。手机五个路段 RAF P95 仍为 16.7 ms，仍有偶发长帧；实拍、对照口径及限制见 [QUALITY.md](QUALITY.md)。 · Official source refresh with unchanged runtime bytes, 112 Node checks, 41 hardware and 8 software browser checks, and the complete Fold7 route including rematch/reload. Phone RAF P95 stays 16.7 ms across the five phases; occasional long frames remain. See QUALITY for comparison and limits.
+
 - 2026-11-27 引擎 `e15aabcf`：103/103 Node；原生 UI、中文／英语词表及字幕、9 种模拟屏幕 45/45 检查点零错误零警告，真实 Windows RTX 与 Fold7 走完第一回（Fold7 还验证实际横竖转屏、枪谱拾取、重战、复起和读档）；同条件轻量对照 Fold7 首波 RAF P95 均 16.7 ms。详见 [QUALITY.md](QUALITY.md) 与 [UI-MIGRATION.md](UI-MIGRATION.md)。 · 103 Node tests; 45/45 checks across nine simulated screen profiles; the full chapter on real Windows RTX and Fold7, including real phone rotation, manual pickup, rematch, revival and save. Controlled Fold7 first-wave RAF p95 is 16.7 ms for both interfaces.
 - 正式硬件浏览器 41/41（含实际完整章、重战、旋转、改键、坏资源重试），三档模型设置与重载 3/3；新版软件浏览器开场 8/8；新截图基线复跑差异 1.09%；官方 verify 通过、零控制台错误和引擎警告。 · Full hardware acceptance 41/41 including real chapter, rematch, rotation, rebinding and asset Retry; all three model-tier reloads pass; native software opening smoke 8/8; 1.09% difference against the reviewed new reference; official verifier passes without console errors or engine warnings.
 
@@ -198,6 +200,8 @@ python3 -m http.server 4180      # 模型查看器 · model viewer: /SnowTemple/
 - 通用品质工具 F1 在无头 SwiftShader 软件渲染下仍不达标（P95 1300 ms，仅6帧），不代表实际 GPU；原生 T2、I1、I3、A3 和 E2 已实测通过。小数文字描边与按钮越界松手策略仍使用引擎已有接口组合处理，见 ENGINE-NOTES 第 5、6 条及 [QUALITY.md](QUALITY.md)。 · Software-rendered frame times do not describe hardware experience; fractional outlines and release-inside policy are composed using existing engine interfaces (items 5 and 6).
 
 ## 已解决 · Solved
+
+- 雪地与湿青石色调过于接近、坡地远墙悬空、灯火过曝；调整原生 World3D 材质、地形贴合和光照，保留原有模型、关卡和渲染通道。战斗气血、气力、枪意补上具名标识，过场黑边不再遮挡 HUD，页面退出时迟到的输入清理不再访问已销毁的动作控件。 · Refined the existing materials, terrain-following wall, lighting, readable meters and cinematic compositing; late input cleanup no longer calls a disposed action control. Models, levels and rendering passes are unchanged.
 
 - 原 DOM 界面迁为原生 2D 层：标题、战斗 HUD、触屏、设置、枪谱、剧情和结算；新增中英文词表和设置项。原生加载失败页提供重试，角色模型的原有 fallback 保留。详见 [UI-MIGRATION.md](UI-MIGRATION.md)。 · The DOM interface is replaced by the engine's native overlay throughout, with bilingual text and language settings. A native startup failure view provides Retry while retaining the original role fallback.
 
@@ -220,8 +224,8 @@ python3 -m http.server 4180      # 模型查看器 · model viewer: /SnowTemple/
 
 ## 引擎副本 · Engine copy
 
-引擎副本取自 [Egret_rebuild](https://github.com/cnedwin/Egret_rebuild) 提交 `e15aabcf742ec7c82ba4a8e8c2de663137c18f71`，由引擎仓库的 `tools/vendor-game.mjs` 复制，见 [vendor/SOURCE.md](vendor/SOURCE.md)。
+引擎副本取自 [Egret_rebuild](https://github.com/cnedwin/Egret_rebuild) 提交 `a1d6bc6215ce1fd9af1e9361286525ae737ad347`，由引擎仓库的 `tools/vendor-game.mjs` 复制，见 [vendor/SOURCE.md](vendor/SOURCE.md)。
 
-The engine copy is from [Egret_rebuild](https://github.com/cnedwin/Egret_rebuild) commit `e15aabcf742ec7c82ba4a8e8c2de663137c18f71`, copied by the engine's `tools/vendor-game.mjs`; see [vendor/SOURCE.md](vendor/SOURCE.md).
+The engine copy is from [Egret_rebuild](https://github.com/cnedwin/Egret_rebuild) commit `a1d6bc6215ce1fd9af1e9361286525ae737ad347`, copied by the engine's `tools/vendor-game.mjs`; see [vendor/SOURCE.md](vendor/SOURCE.md).
 
 入口 · Entries: `@egret/engine`, `@egret/engine/world3d`, `@egret/engine/webgl2/world3d`, `@egret/engine/kit`, `@egret/engine/web/kit`, `@egret/engine/ui`, `@egret/engine/ui/semantics`, `@egret/engine/web/semantics`, `@egret/engine/ui/testing`, `@egret/engine/input`, `@egret/engine/bitmapfont`, `@egret/engine/web/hover`.

@@ -1,0 +1,1170 @@
+{
+  "scope": "Physical Galaxy Z Fold7 outer display, local serving. Same legal actual touch route, seed7/mid scene/low models/Chinese, Chrome fresh disposable context; no game-state or save injection. Runtime byte-equivalence reported separately by vendoring process.",
+  "beforeGame": "b8c410b6",
+  "beforeEngine": "e15aabcf742ec7c82ba4a8e8c2de663137c18f71",
+  "afterEngine": "a1d6bc6215ce1fd9af1e9361286525ae737ad347",
+  "before": {
+    "passed": false,
+    "failure": "Error: ReferenceError: __snow is not defined",
+    "device": {
+      "model": "SM-F966U1",
+      "android": "17",
+      "browser": "Chrome/157.0.8103.78",
+      "input": "CDP touch injection on physical Android",
+      "power": "USB connected"
+    },
+    "viewport": [
+      873,
+      325,
+      2.625
+    ],
+    "renderer": "ANGLE (Qualcomm, Adreno (TM) 830, OpenGL ES 3.2)",
+    "buffer": [
+      1091,
+      406
+    ],
+    "shadows": true,
+    "tiledLights": true,
+    "first3D": {
+      "at": 946.6,
+      "model": "low",
+      "phase": "waiting",
+      "loaded": [
+        "hero"
+      ]
+    },
+    "rolePhases": [
+      {
+        "at": 679.3,
+        "phase": "waiting",
+        "loaded": [
+          "hero"
+        ]
+      },
+      {
+        "at": 1012.6,
+        "phase": "loading",
+        "loaded": [
+          "hero"
+        ]
+      },
+      {
+        "at": 1118.6,
+        "phase": "loading",
+        "loaded": [
+          "hero",
+          "blade"
+        ]
+      },
+      {
+        "at": 1135.1,
+        "phase": "loading",
+        "loaded": [
+          "hero",
+          "blade",
+          "shield"
+        ]
+      },
+      {
+        "at": 1151.7,
+        "phase": "loading",
+        "loaded": [
+          "hero",
+          "blade",
+          "shield",
+          "bow"
+        ]
+      },
+      {
+        "at": 1218.1,
+        "phase": "ready",
+        "loaded": [
+          "hero",
+          "blade",
+          "shield",
+          "bow",
+          "lu"
+        ]
+      }
+    ],
+    "overlayStart": {
+      "backendSelectMs": 0.19999998807907104,
+      "backendModuleMs": 34.900000005960464,
+      "hostCreateMs": 0.30000001192092896,
+      "engineOpenMs": 26,
+      "setupMs": 4.4000000059604645,
+      "readyMs": 65.80000001192093,
+      "firstSubmitMs": 121.09999999403954,
+      "webgl2": {
+        "generation": 1,
+        "contextMs": 9.5,
+        "parallelPrograms": false,
+        "programPreparationMs": 0.09999999403953552,
+        "sampledMs": 4.199999988079071,
+        "solidMs": 3.100000023841858,
+        "resolveMs": 1.699999988079071,
+        "effectsMs": 6,
+        "pagedMs": 0,
+        "finishMs": 0.19999998807907104,
+        "totalMs": 24.799999982118607
+      }
+    },
+    "temperature": {
+      "before": 28.8,
+      "after": 29.6
+    },
+    "victory": {
+      "time": 104.21666666666204,
+      "hp": 91.2,
+      "enemy": 0
+    },
+    "result": {
+      "heading": "风雪山神庙",
+      "time": "1:48",
+      "parries": 4,
+      "ripostes": 6,
+      "lastName": "倒地",
+      "last": 0,
+      "mark": "乙",
+      "news": "上面还有一重：添兵。第二拨多两个人，其中一个是铁甲头目。",
+      "actions": [
+        "climb",
+        "temple",
+        "chapter",
+        "title"
+      ],
+      "line": "第一回　完"
+    },
+    "models": {
+      "level": "low",
+      "phase": "ready",
+      "loaded": [
+        "hero",
+        "blade",
+        "shield",
+        "bow",
+        "lu"
+      ],
+      "failures": {}
+    },
+    "dialogueLines": 8,
+    "manualPages": [
+      {
+        "time": 36.016666666665905,
+        "learned": "fiveStars",
+        "physical": 1,
+        "before": {
+          "router": [],
+          "stick": false,
+          "pads": []
+        },
+        "after": {
+          "router": [],
+          "stick": false,
+          "pads": [],
+          "choice": true
+        }
+      }
+    ],
+    "sourceHashes": 0,
+    "errors": [],
+    "httpFailures": [],
+    "reload": false,
+    "restoration": {
+      "rotation": true,
+      "stayOn": true,
+      "priorComponentRestored": true,
+      "priorIdsPreserved": true,
+      "ownedAbsent": true,
+      "leaseReleased": true,
+      "ephemeralContextDisposed": true,
+      "forwardRemoved": true,
+      "reverseRemoved": true
+    },
+    "stickHeuristic": {
+      "walk": 1.7914640510913873,
+      "run": 2.6315175244019597,
+      "ratio": 1.4689200839943168,
+      "ratioMeetsPreviousHeuristic": false
+    },
+    "frameInterval": {
+      "view": {
+        "road": {
+          "samples": 538,
+          "p50": 16.599999994039536,
+          "p95": 20.5,
+          "max": 88.30000001192093,
+          "over33": 3,
+          "over50": 1
+        },
+        "yard": {
+          "samples": 2500,
+          "p50": 16.69999998807907,
+          "p95": 25.400000005960464,
+          "max": 113.59999999403954,
+          "over33": 60,
+          "over50": 23
+        },
+        "gate": {
+          "samples": 307,
+          "p50": 16.700000017881393,
+          "p95": 23.099999994039536,
+          "max": 38.400000005960464,
+          "over33": 1,
+          "over50": 0
+        },
+        "boss-1": {
+          "samples": 1035,
+          "p50": 16.599999994039536,
+          "p95": 29.5,
+          "max": 112.30000001192093,
+          "over33": 33,
+          "over50": 11
+        },
+        "boss-2": {
+          "samples": 1397,
+          "p50": 16.599999994039536,
+          "p95": 29.099999994039536,
+          "max": 122.80000001192093,
+          "over33": 36,
+          "over50": 16
+        }
+      },
+      "raf": {
+        "road": {
+          "samples": 538,
+          "p50": 16.600000000000364,
+          "p95": 16.699999999999818,
+          "max": 66.29999999999927,
+          "over33": 1,
+          "over50": 1
+        },
+        "yard": {
+          "samples": 2500,
+          "p50": 16.599999999998545,
+          "p95": 16.700000000000728,
+          "max": 149.3000000000029,
+          "over33": 20,
+          "over50": 17
+        },
+        "gate": {
+          "samples": 307,
+          "p50": 16.599999999998545,
+          "p95": 16.69999999999709,
+          "max": 33.200000000004366,
+          "over33": 0,
+          "over50": 0
+        },
+        "boss-1": {
+          "samples": 1035,
+          "p50": 16.59999999999127,
+          "p95": 16.69999999999709,
+          "max": 132.6999999999971,
+          "over33": 10,
+          "over50": 9
+        },
+        "boss-2": {
+          "samples": 1397,
+          "p50": 16.59999999999127,
+          "p95": 16.69999999999709,
+          "max": 132.59999999999127,
+          "over33": 13,
+          "over50": 11
+        }
+      },
+      "viewWithoutCapture": {
+        "road": {
+          "samples": 476,
+          "p50": 16.599999994039536,
+          "p95": 20.80000001192093,
+          "max": 88.30000001192093,
+          "over33": 3,
+          "over50": 1
+        },
+        "yard": {
+          "samples": 2376,
+          "p50": 16.69999998807907,
+          "p95": 25.599999994039536,
+          "max": 113.59999999403954,
+          "over33": 57,
+          "over50": 23
+        },
+        "gate": {
+          "samples": 240,
+          "p50": 16.80000001192093,
+          "p95": 23.600000023841858,
+          "max": 38.400000005960464,
+          "over33": 1,
+          "over50": 0
+        },
+        "boss-1": {
+          "samples": 969,
+          "p50": 16.599999994039536,
+          "p95": 29.5,
+          "max": 112.30000001192093,
+          "over33": 31,
+          "over50": 11
+        },
+        "boss-2": {
+          "samples": 1331,
+          "p50": 16.599999994039536,
+          "p95": 29.100000023841858,
+          "max": 122.80000001192093,
+          "over33": 36,
+          "over50": 16
+        }
+      },
+      "rafWithoutCapture": {
+        "road": {
+          "samples": 476,
+          "p50": 16.600000000000364,
+          "p95": 16.700000000000728,
+          "max": 66.29999999999927,
+          "over33": 1,
+          "over50": 1
+        },
+        "yard": {
+          "samples": 2378,
+          "p50": 16.599999999998545,
+          "p95": 16.700000000000728,
+          "max": 149.3000000000029,
+          "over33": 20,
+          "over50": 17
+        },
+        "gate": {
+          "samples": 239,
+          "p50": 16.599999999998545,
+          "p95": 16.69999999999709,
+          "max": 33.200000000004366,
+          "over33": 0,
+          "over50": 0
+        },
+        "boss-1": {
+          "samples": 970,
+          "p50": 16.59999999999127,
+          "p95": 16.69999999999709,
+          "max": 132.6999999999971,
+          "over33": 10,
+          "over50": 9
+        },
+        "boss-2": {
+          "samples": 1331,
+          "p50": 16.59999999999127,
+          "p95": 16.69999999999709,
+          "max": 132.59999999999127,
+          "over33": 13,
+          "over50": 11
+        }
+      }
+    },
+    "captureTimes": [
+      {
+        "name": "01-title",
+        "t": 0,
+        "stage": "road",
+        "cine": 0,
+        "hero": {
+          "hp": 120,
+          "x": -0.2,
+          "z": 24.2,
+          "state": "free"
+        },
+        "boss": {
+          "phase": 1,
+          "hp": 980,
+          "state": "wait"
+        }
+      },
+      {
+        "name": "02-opening",
+        "t": 0.4833333333333333,
+        "stage": "road",
+        "cine": 2.7166666666666686,
+        "hero": {
+          "hp": 120,
+          "x": 0,
+          "z": 34,
+          "state": "free"
+        },
+        "boss": {
+          "phase": 1,
+          "hp": 980,
+          "state": "wait"
+        }
+      },
+      {
+        "name": "03-road",
+        "t": 4.616666666666656,
+        "stage": "road",
+        "cine": 0,
+        "hero": {
+          "hp": 120,
+          "x": 0,
+          "z": 34,
+          "state": "free"
+        },
+        "boss": {
+          "phase": 1,
+          "hp": 980,
+          "state": "wait"
+        }
+      },
+      {
+        "name": "04-yard",
+        "t": 12.266666666666856,
+        "stage": "yard",
+        "cine": 0,
+        "hero": {
+          "hp": 120,
+          "x": -1.6824527399958416,
+          "z": 19.06310271097659,
+          "state": "free"
+        },
+        "boss": {
+          "phase": 1,
+          "hp": 980,
+          "state": "wait"
+        }
+      },
+      {
+        "name": "09-lesson",
+        "t": 36.016666666665905,
+        "stage": "yard",
+        "cine": 0,
+        "hero": {
+          "hp": 107.8,
+          "x": -3.3736103292647224,
+          "z": 0.8528826056559733,
+          "state": "free"
+        },
+        "boss": {
+          "phase": 1,
+          "hp": 980,
+          "state": "wait"
+        }
+      },
+      {
+        "name": "05-gate",
+        "t": 56.01666666666477,
+        "stage": "gate",
+        "cine": 0,
+        "hero": {
+          "hp": 120,
+          "x": 0.3366690335661596,
+          "z": -12.714597365991947,
+          "state": "free"
+        },
+        "boss": {
+          "phase": 1,
+          "hp": 980,
+          "state": "wait"
+        }
+      },
+      {
+        "name": "07-boss1",
+        "t": 62.916666666664376,
+        "stage": "boss",
+        "cine": 0,
+        "hero": {
+          "hp": 120,
+          "x": 0.2515339189738221,
+          "z": -21.620847365992017,
+          "state": "free"
+        },
+        "boss": {
+          "phase": 1,
+          "hp": 980,
+          "state": "windup"
+        }
+      },
+      {
+        "name": "08-boss2",
+        "t": 81.78333333332998,
+        "stage": "boss",
+        "cine": 0,
+        "hero": {
+          "hp": 104,
+          "x": -8.264070490453685,
+          "z": -30.379130866246534,
+          "state": "free"
+        },
+        "boss": {
+          "phase": 2,
+          "hp": 464,
+          "state": "roam"
+        }
+      },
+      {
+        "name": "10-result",
+        "t": 110.2166666666617,
+        "stage": "done",
+        "cine": 0,
+        "hero": {
+          "hp": 91.2,
+          "x": 4.706752498325739,
+          "z": -30.323638572285606,
+          "state": "free"
+        },
+        "boss": {
+          "phase": 2,
+          "hp": 0,
+          "state": "dead"
+        }
+      },
+      {
+        "name": "11-rematch",
+        "t": 0.08333333333333333,
+        "stage": "boss",
+        "cine": 0,
+        "hero": {
+          "hp": 120,
+          "x": 0,
+          "z": -22.25,
+          "state": "free"
+        },
+        "boss": {
+          "phase": 1,
+          "hp": 980,
+          "state": "roam"
+        }
+      }
+    ]
+  },
+  "after": {
+    "passed": true,
+    "failure": null,
+    "device": {
+      "model": "SM-F966U1",
+      "android": "17",
+      "browser": "Chrome/157.0.8103.78",
+      "input": "CDP touch injection on physical Android",
+      "power": "USB connected"
+    },
+    "viewport": [
+      873,
+      325,
+      2.625
+    ],
+    "renderer": "ANGLE (Qualcomm, Adreno (TM) 830, OpenGL ES 3.2)",
+    "buffer": [
+      1091,
+      406
+    ],
+    "shadows": true,
+    "tiledLights": true,
+    "first3D": {
+      "at": 1139.7,
+      "model": "low",
+      "phase": "waiting",
+      "loaded": [
+        "hero"
+      ]
+    },
+    "rolePhases": [
+      {
+        "at": 659,
+        "phase": "waiting",
+        "loaded": [
+          "hero"
+        ]
+      },
+      {
+        "at": 1214.4,
+        "phase": "loading",
+        "loaded": [
+          "hero"
+        ]
+      },
+      {
+        "at": 1330.2,
+        "phase": "loading",
+        "loaded": [
+          "hero",
+          "blade"
+        ]
+      },
+      {
+        "at": 1346.7,
+        "phase": "loading",
+        "loaded": [
+          "hero",
+          "blade",
+          "shield"
+        ]
+      },
+      {
+        "at": 1363.4,
+        "phase": "loading",
+        "loaded": [
+          "hero",
+          "blade",
+          "shield",
+          "bow"
+        ]
+      },
+      {
+        "at": 1413.1,
+        "phase": "ready",
+        "loaded": [
+          "hero",
+          "blade",
+          "shield",
+          "bow",
+          "lu"
+        ]
+      }
+    ],
+    "overlayStart": {
+      "backendSelectMs": 0.09999999403953552,
+      "backendModuleMs": 33.70000001788139,
+      "hostCreateMs": 0.29999998211860657,
+      "engineOpenMs": 18.400000005960464,
+      "setupMs": 2.800000011920929,
+      "readyMs": 55.30000001192093,
+      "firstSubmitMs": 111.19999998807907,
+      "webgl2": {
+        "generation": 1,
+        "contextMs": 6.300000011920929,
+        "parallelPrograms": false,
+        "programPreparationMs": 0,
+        "sampledMs": 2.899999976158142,
+        "solidMs": 2.100000023841858,
+        "resolveMs": 0.8999999761581421,
+        "effectsMs": 5.100000023841858,
+        "pagedMs": 0,
+        "finishMs": 0.09999999403953552,
+        "totalMs": 17.400000005960464
+      }
+    },
+    "temperature": {
+      "before": 29.8,
+      "after": 30.5
+    },
+    "victory": {
+      "time": 85.6166666666631,
+      "hp": 88,
+      "enemy": 0
+    },
+    "result": {
+      "heading": "风雪山神庙",
+      "time": "1:29",
+      "parries": 3,
+      "ripostes": 7,
+      "lastName": "倒地",
+      "last": 0,
+      "mark": "甲",
+      "news": "上面还有一重：添兵。第二拨多两个人，其中一个是铁甲头目。",
+      "actions": [
+        "climb",
+        "temple",
+        "chapter",
+        "title"
+      ],
+      "line": "第一回　完"
+    },
+    "models": {
+      "level": "low",
+      "phase": "ready",
+      "loaded": [
+        "hero",
+        "blade",
+        "shield",
+        "bow",
+        "lu"
+      ],
+      "failures": {}
+    },
+    "dialogueLines": 8,
+    "manualPages": [
+      {
+        "time": 31.283333333332838,
+        "learned": "denseRain",
+        "physical": 1,
+        "before": {
+          "router": [],
+          "stick": false,
+          "pads": []
+        },
+        "after": {
+          "router": [],
+          "stick": false,
+          "pads": [],
+          "choice": true
+        }
+      },
+      {
+        "time": 43.34999999999882,
+        "learned": "fiveStars",
+        "physical": 1,
+        "before": {
+          "router": [],
+          "stick": false,
+          "pads": []
+        },
+        "after": {
+          "router": [],
+          "stick": false,
+          "pads": [],
+          "choice": true
+        }
+      }
+    ],
+    "sourceHashes": 536,
+    "errors": [],
+    "httpFailures": [],
+    "reload": true,
+    "restoration": {
+      "rotation": true,
+      "stayOn": true,
+      "priorComponentRestored": true,
+      "priorIdsPreserved": true,
+      "ownedAbsent": true,
+      "leaseReleased": true,
+      "ephemeralContextDisposed": true,
+      "forwardRemoved": true,
+      "reverseRemoved": true
+    },
+    "stickHeuristic": {
+      "walk": 1.783952671422241,
+      "run": 1.5564568412963913,
+      "ratio": 0.8724765327185051,
+      "ratioMeetsPreviousHeuristic": false
+    },
+    "frameInterval": {
+      "view": {
+        "road": {
+          "samples": 640,
+          "p50": 16.599999994039536,
+          "p95": 20.099999994039536,
+          "max": 76.40000000596046,
+          "over33": 2,
+          "over50": 1
+        },
+        "yard": {
+          "samples": 2095,
+          "p50": 16.599999994039536,
+          "p95": 24.400000005960464,
+          "max": 111.09999999403954,
+          "over33": 25,
+          "over50": 9
+        },
+        "gate": {
+          "samples": 434,
+          "p50": 16.599999994039536,
+          "p95": 22.5,
+          "max": 40.30000001192093,
+          "over33": 3,
+          "over50": 0
+        },
+        "boss-1": {
+          "samples": 1140,
+          "p50": 16.5,
+          "p95": 29.700000017881393,
+          "max": 102.2000000178814,
+          "over33": 35,
+          "over50": 19
+        },
+        "boss-2": {
+          "samples": 725,
+          "p50": 16.599999994039536,
+          "p95": 29.099999994039536,
+          "max": 111.30000001192093,
+          "over33": 25,
+          "over50": 12
+        }
+      },
+      "raf": {
+        "road": {
+          "samples": 640,
+          "p50": 16.599999999998545,
+          "p95": 16.700000000000728,
+          "max": 66.29999999999927,
+          "over33": 1,
+          "over50": 1
+        },
+        "yard": {
+          "samples": 2095,
+          "p50": 16.599999999998545,
+          "p95": 16.69999999999709,
+          "max": 132.60000000000218,
+          "over33": 8,
+          "over50": 8
+        },
+        "gate": {
+          "samples": 434,
+          "p50": 16.599999999998545,
+          "p95": 16.69999999999709,
+          "max": 49.700000000004366,
+          "over33": 1,
+          "over50": 0
+        },
+        "boss-1": {
+          "samples": 1140,
+          "p50": 16.59999999999127,
+          "p95": 16.69999999999709,
+          "max": 132.6999999999971,
+          "over33": 18,
+          "over50": 13
+        },
+        "boss-2": {
+          "samples": 725,
+          "p50": 16.59999999999127,
+          "p95": 16.69999999999709,
+          "max": 132.59999999999127,
+          "over33": 9,
+          "over50": 9
+        }
+      },
+      "viewWithoutCapture": {
+        "road": {
+          "samples": 579,
+          "p50": 16.599999994039536,
+          "p95": 20.100000023841858,
+          "max": 76.40000000596046,
+          "over33": 2,
+          "over50": 1
+        },
+        "yard": {
+          "samples": 1970,
+          "p50": 16.599999994039536,
+          "p95": 24.700000017881393,
+          "max": 111.09999999403954,
+          "over33": 24,
+          "over50": 9
+        },
+        "gate": {
+          "samples": 368,
+          "p50": 16.69999998807907,
+          "p95": 22.099999994039536,
+          "max": 40.30000001192093,
+          "over33": 3,
+          "over50": 0
+        },
+        "boss-1": {
+          "samples": 1073,
+          "p50": 16.5,
+          "p95": 30.099999994039536,
+          "max": 102.2000000178814,
+          "over33": 35,
+          "over50": 19
+        },
+        "boss-2": {
+          "samples": 665,
+          "p50": 16.599999994039536,
+          "p95": 29.30000001192093,
+          "max": 111.30000001192093,
+          "over33": 25,
+          "over50": 12
+        }
+      },
+      "rafWithoutCapture": {
+        "road": {
+          "samples": 579,
+          "p50": 16.599999999998545,
+          "p95": 16.700000000000728,
+          "max": 66.29999999999927,
+          "over33": 1,
+          "over50": 1
+        },
+        "yard": {
+          "samples": 1972,
+          "p50": 16.599999999998545,
+          "p95": 16.69999999999709,
+          "max": 132.60000000000218,
+          "over33": 8,
+          "over50": 8
+        },
+        "gate": {
+          "samples": 368,
+          "p50": 16.599999999998545,
+          "p95": 16.69999999999709,
+          "max": 49.700000000004366,
+          "over33": 1,
+          "over50": 0
+        },
+        "boss-1": {
+          "samples": 1074,
+          "p50": 16.59999999999127,
+          "p95": 16.69999999999709,
+          "max": 132.6999999999971,
+          "over33": 18,
+          "over50": 13
+        },
+        "boss-2": {
+          "samples": 665,
+          "p50": 16.59999999999127,
+          "p95": 16.69999999999709,
+          "max": 132.59999999999127,
+          "over33": 9,
+          "over50": 9
+        }
+      }
+    },
+    "captureTimes": [
+      {
+        "name": "01-title",
+        "t": 0,
+        "stage": "road",
+        "cine": 0,
+        "hero": {
+          "hp": 120,
+          "x": -0.2,
+          "z": 24.2,
+          "state": "free"
+        },
+        "boss": {
+          "phase": 1,
+          "hp": 980,
+          "state": "wait"
+        }
+      },
+      {
+        "name": "02-opening",
+        "t": 0.5833333333333335,
+        "stage": "road",
+        "cine": 2.616666666666669,
+        "hero": {
+          "hp": 120,
+          "x": 0,
+          "z": 34,
+          "state": "free"
+        },
+        "boss": {
+          "phase": 1,
+          "hp": 980,
+          "state": "wait"
+        }
+      },
+      {
+        "name": "03-road",
+        "t": 4.566666666666656,
+        "stage": "road",
+        "cine": 0,
+        "hero": {
+          "hp": 120,
+          "x": 0,
+          "z": 34,
+          "state": "free"
+        },
+        "boss": {
+          "phase": 1,
+          "hp": 980,
+          "state": "wait"
+        }
+      },
+      {
+        "name": "04-yard",
+        "t": 13.933333333333605,
+        "stage": "yard",
+        "cine": 0,
+        "hero": {
+          "hp": 120,
+          "x": -1.5352658485325583,
+          "z": 19.042459231171822,
+          "state": "free"
+        },
+        "boss": {
+          "phase": 1,
+          "hp": 980,
+          "state": "wait"
+        }
+      },
+      {
+        "name": "09-lesson",
+        "t": 31.283333333332838,
+        "stage": "yard",
+        "cine": 0,
+        "hero": {
+          "hp": 93,
+          "x": 2.785465542694182,
+          "z": -9.538654443367657,
+          "state": "free"
+        },
+        "boss": {
+          "phase": 1,
+          "hp": 980,
+          "state": "wait"
+        }
+      },
+      {
+        "name": "05-gate",
+        "t": 46.216666666665326,
+        "stage": "gate",
+        "cine": 0,
+        "hero": {
+          "hp": 120,
+          "x": 0.15531527694362762,
+          "z": -12.241564354837896,
+          "state": "free"
+        },
+        "boss": {
+          "phase": 1,
+          "hp": 980,
+          "state": "wait"
+        }
+      },
+      {
+        "name": "06-lu-entrance",
+        "t": 50.99999999999839,
+        "stage": "boss",
+        "cine": 2.150000000000011,
+        "hero": {
+          "hp": 120,
+          "x": 0.17970529148087339,
+          "z": -21.601532577390376,
+          "state": "free"
+        },
+        "boss": {
+          "phase": 1,
+          "hp": 980,
+          "state": "roam"
+        }
+      },
+      {
+        "name": "07-boss1",
+        "t": 53.48333333333158,
+        "stage": "boss",
+        "cine": 0,
+        "hero": {
+          "hp": 120,
+          "x": 0.17970529148087339,
+          "z": -21.601532577390376,
+          "state": "free"
+        },
+        "boss": {
+          "phase": 1,
+          "hp": 980,
+          "state": "windup"
+        }
+      },
+      {
+        "name": "08-boss2",
+        "t": 73.7999999999971,
+        "stage": "boss",
+        "cine": 0,
+        "hero": {
+          "hp": 104,
+          "x": 0.6393991721354357,
+          "z": -32.05425168870146,
+          "state": "free"
+        },
+        "boss": {
+          "phase": 2,
+          "hp": 419,
+          "state": "roam"
+        }
+      },
+      {
+        "name": "10-result",
+        "t": 91.61666666666275,
+        "stage": "done",
+        "cine": 0,
+        "hero": {
+          "hp": 88,
+          "x": 0.20592521798132013,
+          "z": -29.313465742924024,
+          "state": "free"
+        },
+        "boss": {
+          "phase": 2,
+          "hp": 0,
+          "state": "dead"
+        }
+      },
+      {
+        "name": "11-rematch",
+        "t": 0.06666666666666667,
+        "stage": "boss",
+        "cine": 0,
+        "hero": {
+          "hp": 120,
+          "x": 0,
+          "z": -22.25,
+          "state": "free"
+        },
+        "boss": {
+          "phase": 1,
+          "hp": 980,
+          "state": "roam"
+        }
+      }
+    ]
+  },
+  "comparison": {
+    "stages": [
+      "road",
+      "yard",
+      "gate",
+      "boss-1",
+      "boss-2"
+    ],
+    "viewP95Before": [
+      20.5,
+      25.400000005960464,
+      23.099999994039536,
+      29.5,
+      29.099999994039536
+    ],
+    "viewP95After": [
+      20.099999994039536,
+      24.400000005960464,
+      22.5,
+      29.700000017881393,
+      29.099999994039536
+    ],
+    "rafP95Before": [
+      16.699999999999818,
+      16.700000000000728,
+      16.69999999999709,
+      16.69999999999709,
+      16.69999999999709
+    ],
+    "rafP95After": [
+      16.700000000000728,
+      16.69999999999709,
+      16.69999999999709,
+      16.69999999999709,
+      16.69999999999709
+    ],
+    "rafMaxBefore": [
+      66.29999999999927,
+      149.3000000000029,
+      33.200000000004366,
+      132.6999999999971,
+      132.59999999999127
+    ],
+    "rafMaxAfter": [
+      66.29999999999927,
+      132.60000000000218,
+      49.700000000004366,
+      132.6999999999971,
+      132.59999999999127
+    ],
+    "rafOver50Before": [
+      1,
+      17,
+      0,
+      9,
+      11
+    ],
+    "rafOver50After": [
+      1,
+      8,
+      0,
+      13,
+      9
+    ]
+  },
+  "screenshots": [
+    "quality-fold7-scenes-before-after.jpg",
+    "quality-fold7-battle-before-after.jpg",
+    "quality-fold7-ending-before-after.jpg"
+  ],
+  "limitations": [
+    "One real run per version; active combat routes and naturally earned loot vary. No comparison of GPU execution, not a human dexterity/difficulty measurement. Browser rAF P95 remained 16.7 ms; view-update interval and rare long frames differ. Sample-duration differences preclude inferring fewer long frames causally.",
+    "A2 old version defeated Lu Qian and showed result/rematch; baseline harness failed during new document before reload verification/hash sweep because of undeclared __snow identifier. No runtime failure was reported. B actual same route used window.__snow and verified saved record and 536 matched files.",
+    "Battery temperature is battery sensor, not GPU. No CPU/GPU load control or browser process cache clearing; no inner screen, iOS, other Android or human speaker listening. Eight dialogue scheduled sources only.",
+    "Joystick amplitude timing encountered road collision boundary in both; both actual movement directions worked, ratio is not a reliable control-speed measurement.",
+    "Images use actual nearby game stage times; opening camera timing slightly differs and boss fights are not fixed-frame matching. New neutral snow and varied pavers improve readable cold/warm contrast; named bars are visible. Phone low model tier and overlay pixel-dense edge appearance are retained."
+  ]
+}

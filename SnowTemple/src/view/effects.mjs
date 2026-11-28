@@ -74,11 +74,13 @@ vec4 customFragment(vec4 color, vec3 worldPosition, vec3 normal, vec2 uv) {
         float rim = 1.0 - smoothstep(thickness, thickness * 2.4, abs(edge - thickness * 1.4));
         float slash = smoothstep(0.52, 0.72, fract(uv.x * 16.0 - uv.y * 9.0));
         float front = 1.0 - smoothstep(0.015, 0.045, abs(uv.y - max(0.07, k)));
-        float signal = max(rim * mix(1.0, 0.4 + slash * 0.6, hard), front * 0.65);
-        signal = max(signal, hard * slash * mix(0.32, 0.53, uv.y));
-        vec3 body = mix(vec3(0.025, 0.023, 0.035), tint * 0.52, hard * 0.65);
-        vec3 line = mix(tint, vec3(1.0, 0.92, 0.77), front * 0.32 + k * 0.20);
-        float fill = 0.18 + hard * 0.05 + step(uv.y, k) * 0.13;
+        // Keep the same geometric and temporal cue, but separate it from
+        // bright snow, lamps and decorative bursts with a dark outer keyline.
+        float signal = max(rim * mix(1.0, 0.22 + slash * 0.78, hard), front * 0.78);
+        signal = max(signal, hard * slash * mix(0.36, 0.59, uv.y));
+        vec3 body = mix(vec3(0.018, 0.018, 0.026), tint * 0.35, hard * 0.46);
+        vec3 line = mix(tint, vec3(1.0, 0.92, 0.77), front * 0.26 + k * 0.16);
+        float fill = 0.21 + hard * 0.08 + step(uv.y, k) * 0.13;
         a = max(fill, max(outer * 0.82, signal * 0.95)) * uCustom[2].x;
         return vec4(mix(body, line, signal), a);
     } else if (mode == 4) {
@@ -102,6 +104,24 @@ vec4 customFragment(vec4 color, vec3 worldPosition, vec3 normal, vec2 uv) {
         float progress = smoothstep(0.0, 0.04, k) * step(uv.x, k);
         a = rim * (0.18 + progress * 0.82);
         hot = progress * 0.55;
+    } else if (mode == 8) {
+        // The retained impact ring: thin, split accents instead of another
+        // broad disk of light. k selects a fictional light/heavy/counter/spell
+        // motif, using one shader and the same geometry as the old hit ring.
+        float heavy = 1.0 - step(0.4, abs(k - 1.0));
+        float counter = 1.0 - step(0.4, abs(k - 2.0));
+        float spell = 1.0 - step(0.4, abs(k - 3.0));
+        float width = clamp(fwidth(uv.y) * 1.45, 0.016, 0.05);
+        float centre = 0.78 + age * 0.07;
+        float rim = 1.0 - smoothstep(width, width * 2.4, abs(uv.y - centre));
+        float cells = 7.0 + heavy * 4.0 + counter * 9.0 + spell * 2.0;
+        float piece = smoothstep(0.15, 0.35, fract(uv.x * cells + seed * 0.22));
+        float broken = mix(0.44, 1.0, piece);
+        float second = 1.0 - smoothstep(width * 0.8, width * 2.0, abs(uv.y - (centre - 0.18)));
+        float trail = (0.17 + heavy * 0.14 + counter * 0.22 + spell * 0.10) * second * (0.4 + piece * 0.6);
+        float grain = fNoise(vec2(uv.x * cells + seed, uv.y * 4.0));
+        a = (rim * broken * (0.78 + 0.22 * grain) + trail) * pow(1.0 - age, 1.65) * uCustom[2].x;
+        hot = rim * 0.68;
     } else {
         // A bolt: bright at the head, torn along its tail.
         float across = 1.0 - abs(uv.x * 2.0 - 1.0);
@@ -167,6 +187,19 @@ export const TINT = {
   white: [0.9, 0.95, 1.0],
   jade: [0.4, 1.0, 0.75]
 };
+
+/** The four visual motifs share the existing effect pool and program. These
+ * lengths, colours and powers are presentation values, never damage values. */
+export function impactCue(source, heavy = false) {
+  const counter = source === 'riposte', mystic = source === 'star' || source === 'rain';
+  return {
+    mode: 8, k: counter ? 2 : mystic ? 3 : heavy ? 1 : 0,
+    tint: counter ? TINT.gold : mystic ? TINT.spear : heavy ? [1, 0.87, 0.65] : TINT.white,
+    life: counter ? 0.26 : 0.2,
+    radius: counter ? 2.45 : heavy ? 1.8 : 1.1,
+    power: counter ? 3.2 : mystic ? 2.5 : heavy ? 2.8 : 2.15
+  };
+}
 
 /**
  * Everything short-lived that is drawn over the scene. `manyLights` says the renderer lights every point
