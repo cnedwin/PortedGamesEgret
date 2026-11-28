@@ -1,4 +1,4 @@
-import { decodeSRGBByte } from './srgbBytes.js';
+import { decodeSRGBByte } from '@egret/contracts';
 /** The bytes of one group's uniform: 36 vectors of four floats. */
 export const EFFECT_UNIFORM_BYTES = 576;
 function fail(detail) {

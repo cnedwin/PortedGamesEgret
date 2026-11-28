@@ -60,3 +60,16 @@ this file; items by hand or on a device are marked not run until someone runs th
 - 浏览器服务工作线程和本地服务优先读取真正的官方生成 `vendor/importmap.json`，而非旧的全包版本导出表；重新生成及核验标题 175、小蝦米居 155 条额外 modulepreload。新增正式映射中所有入口均实际存在的测试。Node **76/76** 通过。
 - Windows Playwright WebKit 26.6、iPhone 15 Pro 配置（393×659 CSS px，非真机），全新本地 HTTP 公开版等价路线实际自动导入原版 37.4 MB 数据；标题约 30.673 s（该机本次样本），真实触控「開始新遊戲」，实拍小蝦米居 3D 树木、家具、角色、光影及 691 第一句对白、角色立绘、继续按钮均完整可见。JS、控制台和 HTTP 错误 0。 · Actual hosted-style fresh data import to title and opening dialogue in the browser; source artwork, rules, IDB compatibility and save format are unchanged.
 - 未测实体 iPhone、全部 691 后续对白、全流程和移动 GPU 帧率；本机截图计时不代表用户网络或手机性能。 · This does not qualify full campaign, physical Safari performance or audio.
+
+## 引擎升级第一批 · Engine-only refresh (2026-11-29)
+
+- 基线游戏 main: `41ff086f`; old engine `ca9ff2a0` → engine main `212972678e633b1f3667f345d0646b0fba907ee1`. Official vendor, nine entries, 326 runtime files and official guide kit; startup preload 175 modules and Home additional 155. No gameplay, UI or save-format change.
+- Node: 76/76 before and 76/76 after. On Windows Edge 158.0.4370.45 (RTX 5090 Laptop, ANGLE D3D11), same fresh local HTTP route completes 691 (33 dialogue pages), 692 battle 48, reward and save revision 2; reload restored revision 2 and wins=1, zero page/HTTP errors. A second visual run captures the first scene, battle and result.
+- Windows Playwright WebKit 26.6 iPhone 15 Pro profile, not physical iOS: same local start→title sample 30.683→34.016 s, complete data import required; both touch Start routes reach opening 691, zero errors. One sample each; no startup acceleration claimed. L1 remains open.
+
+| 场景 / Scene (3 s, same hardware) | rAF p95 old → new | max old → new | native draw/s old → new | draw calls old → new |
+|---|---:|---:|---:|---:|
+| Home idle | 4.3 → 4.3 ms | 4.4 → 4.6 ms | 240 → 240 | 106 → 106 |
+| Battle 48 idle | 4.3 → 4.3 ms | 4.3 → 8.3 ms | 60 → 60 | 16–17 → 16–17 |
+
+Both 3 s windows had zero rAF samples >33.4 ms. rAF dispatch and native render counters are distinct; not GPU duration. No physical iPhone, physical controller, Fold7, VRAM or complete campaign measured in this batch. No change is made to older automatic quality rows until retested. / 两次短窗均无超过 33.4 ms 样本；不是 GPU 耗时。未运行实体 iPhone、Fold7、实体手柄、显存和完整战役。本批不改此前自动验收结论。
