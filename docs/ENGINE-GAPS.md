@@ -4,9 +4,9 @@
 
 Made by `node tools/engine-notes.mjs --write` from the ENGINE-NOTES of the games; do not edit by hand, and `--check` says whether it is out of date. What the engine resolved is copied from the engine's `guide/resolved.json` into [engine-resolved.json](engine-resolved.json) (15 entries). The form of a note is in part 3 of [GAME-STANDARD.md](GAME-STANDARD.md).
 
-24 个游戏、252 条笔记：未解决 64，部分解决 23，游戏侧绕过 7，已写入文档 42，已解决 116。
+24 个游戏、253 条笔记：未解决 64，部分解决 24，游戏侧绕过 7，已写入文档 42，已解决 116。
 
-252 notes from 24 games: 64 open, 23 partly resolved, 7 worked around in the game, 42 documented, 116 resolved.
+253 notes from 24 games: 64 open, 24 partly resolved, 7 worked around in the game, 42 documented, 116 resolved.
 
 ## 1. 引擎已经解决、游戏还标着未解决 · Resolved by the engine, still open in a game
 
@@ -55,6 +55,7 @@ Write the lesson as a card of the engine's guide (`guide/cards` in the engine re
 | `managed-editor-focus` | InquestScrolls#12 笔录托管编辑器创建和失焦 · Managed editor creation and blur | 已在游戏侧绕过 · worked around |
 | `mixed-world3d-2d-submit-order` | Wulin#11 独立 3D/2D 画布的同帧 GPU 同步等待 · Same-frame GPU synchronization between independent 3D and 2D canvases | 部分解决 · partly |
 | `mouse-right-button` | LubanBridge#5 `web/input` 的鼠标输入只认左键 · The mouse input of `web/input` knows only the left button | 未解决 · open |
+| `native-paragraph-density-font-weight` | Wulin#12 原生富文本的栅格密度与字重 · Native paragraph raster density and font weight | 部分解决 · partly |
 | `native-scrolling` | PeachCreek#2 经营单子的原生滚动 · Native scrolling for county inspectors | 部分解决 · partly |
 | `native-ui-artwork-slot` | LoveElective#5 运行时生成插画的视图挂载点 · Native view mount slots for generated artwork | 未解决 · open |
 | `native-ui-dense-spine-frame-time` | LanternShadows#9 百个 Spine 角色与原生 HUD 的手机密集帧 · Dense mobile frames with 100 Spine puppets and native HUD | 部分解决 · partly |
@@ -152,4 +153,4 @@ Write the lesson as a card of the engine's guide (`guide/cards` in the engine re
 | [StarBanner](../StarBanner/ENGINE-NOTES.md) | 11 | 1 | 0 | 0 | 4 | 6 | 0 | `0e7b293` |
 | [TaiwanMahjong](../TaiwanMahjong/ENGINE-NOTES.md) | 12 | 4 | 0 | 0 | 3 | 5 | 0 | `13d70b7` |
 | [TeaHorseRoad](../TeaHorseRoad/ENGINE-NOTES.md) | 31 | 6 | 1 | 0 | 7 | 17 | 0 | `2fbe556` |
-| [Wulin](../Wulin/ENGINE-NOTES.md) | 11 | 2 | 2 | 0 | 0 | 7 | 0 | `a0fb4e6` |
+| [Wulin](../Wulin/ENGINE-NOTES.md) | 12 | 2 | 3 | 0 | 0 | 7 | 0 | `a0fb4e6` |

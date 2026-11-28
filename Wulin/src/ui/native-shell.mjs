@@ -6,7 +6,7 @@ import {createParagraphCache} from '@egret/engine/paragraph';
 import {createPage} from './native-pages.mjs';
 import {createSheet} from './native-sheets.mjs';
 import {createNativeNotices} from './native-notice.mjs';
-import {COLORS,SKIN,BODY_FONT,TITLE_FONT,commandSeal,text,button,row,col,scroll,space,compile} from './native-kit.mjs';
+import {COLORS,SKIN,BODY_FONT,TITLE_FONT,commandSeal,text,button,row,col,scroll,space,compile,createParagraphDensity} from './native-kit.mjs';
 import {SECT_BY_ID} from '../data/sects.mjs';
 import {dateText} from '../core/world.mjs';
 import {goalView} from '../core/goals.mjs';
@@ -63,6 +63,7 @@ export function createNativeUi(game,{context,locale,dispatch,change,onClose,onEr
   const values=new Map(); let scopeKey='',sheetScopeKey='',pageSlot,modalSlot,choiceAbort,queued=false,running=false,pending=false,failed=false;
   let lastSheet=null, lastPage=null;
   const currentMode=()=>pickMode(game);
+  const paragraphDensity=createParagraphDensity();
   const translate=value=>locale.translate(value);
   const notices=createNativeNotices(game,{context,translate,wrap:wrapPlayWords,onChange:request});
   const fieldId=data=>data?.id;
@@ -81,7 +82,7 @@ export function createNativeUi(game,{context,locale,dispatch,change,onClose,onEr
     }
     return node.children?{...node,children:node.children.map(decorate)}:node;
   }
-  function compileFor(root,slot){return compile(decorate(root),{translate,live:slot.live,badge:id=>game.badges.count(id),fieldValue:(id,fallback)=>fallback,dispatch:(act,data,activation,name)=>onActivate(act,data,activation,name,slot)});}
+  function compileFor(root,slot){return compile(decorate(root),{translate,paragraphDensity:paragraphDensity(game.browser.frame,game.canvas,game.uiScale),live:slot.live,badge:id=>game.badges.count(id),fieldValue:(id,fallback)=>fallback,dispatch:(act,data,activation,name)=>onActivate(act,data,activation,name,slot)});}
   function onActivate(act,data,activation,name,slot){
     if(act==='@field'){
       slot.view.edit(name,{value:String(data.value??''),label:translate(data.label),fontFamily:BODY_FONT,fontSize:Math.max(14,16*game.uiScale),inputMode:data.type==='number'?'decimal':'text',maxLength:data.maxLength??(data.type==='number'?18:128),color:COLORS.ink,backgroundColor:COLORS.paper,select:'all',padding:5,
