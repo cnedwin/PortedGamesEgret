@@ -7,8 +7,9 @@
 // inbox one at a time for the player to decide. Drag to pan, the wheel or two fingers to zoom, Space to pause, 1–5 for
 // speed, arrows to move, +/- to zoom, H to return to town, Esc to close.
 import { browserSaveStorage, downloadBrowserTextFile, pickBrowserTextFile, prefersReducedMotion, watchReducedMotion } from '@egret/engine/web/kit';
-import { NODES } from './data/map.mjs';
+import { NODES, PROVINCES } from './data/map.mjs';
 import { createSound } from './audio/sound.mjs';
+import {createMusicRecovery} from './ui/native-music-recovery.mjs';
 import { getLanguage, setLanguage, t } from './i18n.mjs';
 import { exportText, importSaveText, openOfficerRoster, openSettings, openSlot, SLOTS, writeSlot } from './saves.mjs';
 import { captureCampaignView, createProgressCheckpoint, restoreCampaignView } from './save-view.mjs';
@@ -22,6 +23,7 @@ import { die, giveTreasure, issueTalentOrder, moveGeneral, persuade, release, se
 import { answerStory } from './sim/story.mjs';
 import { advance, createGame, power, recruit, setGovernorDuty, setGovernorRecruitment, startWork, study, transfer } from './sim/world.mjs';
 import { createNativeRealmHud, nativeTipFor as tipFor } from './ui/native-realm-hud.mjs';
+import { createRealmDestinationPicker } from './ui/native-realm-destination.mjs';
 import { createCampaignCoach } from './ui/native-campaign-coach.mjs';
 import { eventOf, logLine, pair, treatyAt } from './ui/text.mjs';
 import { startBattle } from './ui/battleui-native.mjs';
@@ -32,6 +34,7 @@ import { createNativeTopbar, CAMPAIGN_SPEEDS as SPEEDS } from './ui/native-topba
 import { createNativeMinimap } from './ui/native-minimap.mjs';
 import { campaignAftermathView, captureCampaignBattle, campaignBattleAftermath, campaignBattlePresentation } from './ui/campaign-battle.mjs';
 import { createRealmView } from './view3d/realm.mjs';
+import {campaignMarkerTextContext} from './view3d/native-host-performance.mjs';
 import { homeCity } from './view/home-city.mjs';
 import { factionName, generalName, placeName } from './view/names.mjs';
 import { TREASURES } from './data/treasures.mjs';
@@ -50,20 +53,6 @@ const officerRoster = openOfficerRoster(storage, (problem) => problems.push(prob
 const progress = createProgressCheckpoint();
 setLanguage(params.get('lang') ?? settingsStore.data.settings.language);
 document.documentElement.lang = getLanguage() === 'zh' ? 'zh-CN' : 'en';
-
-/** Whether the page draws WebGL in software (SwiftShader, llvmpipe and the like). */
-function softwareRenderer() {
-  try {
-    const gl = document.createElement('canvas').getContext('webgl2');
-    if (!gl) return false;
-    const info = gl.getExtension('WEBGL_debug_renderer_info');
-    const name = String(gl.getParameter(info?.UNMASKED_RENDERER_WEBGL ?? gl.RENDERER));
-    gl.getExtension('WEBGL_lose_context')?.loseContext();
-    return /swiftshader|llvmpipe|softpipe|lavapipe|software rasterizer|microsoft basic render/i.test(name);
-  } catch {
-    return false;
-  }
-}
 
 let systemReducedMotion=prefersReducedMotion();
 const app = {
@@ -89,7 +78,6 @@ const app = {
   dialogOpen: false,
   notice: problems.some((k) => k !== 'write-failed') ? t('saveReset') : null,
   screen: 'loading',
-  software: softwareRenderer(),
   rulerSet: new Set(),
   tales: [],
   language: () => getLanguage(),
@@ -104,6 +92,7 @@ const app = {
     return app.rulerSet;
   },
   open: (name,args)=>{
+    app.destinationPicker?.cancel();
     if(name==='chronicle'||name==='realm')app.game?.badges.clear('campaign/reports');
     if(name==='generals')app.game?.badges.clear('campaign/officers');
     return app.dialogs.open(name,args);
@@ -127,6 +116,7 @@ const app = {
     app.sound.play('tap');
   },
   select(sel) {
+    if(sel?.army!==app.sel?.army)app.destinationPicker?.cancel();
     app.sel = sel && (sel.node || sel.army) ? sel : null;
     if (app.state && NODES[sel?.node]?.kind === 'city' && app.state.nodes[sel.node]?.owner === app.state.player) {
       app.lastOwnedCity = sel.node;
@@ -170,11 +160,13 @@ const app = {
     }
   },
   setLanguage(language) {
+    app.destinationPicker?.cancel();
     app.hud?.clearTransient?.();
     setLanguage(language);
     app.setSetting('language', language);
     document.documentElement.lang = language === 'zh' ? 'zh-CN' : 'en';
-    document.title = t('title') + (language === 'zh' ? ' · Nine Provinces Ablaze' : ' · 九州烽烟');
+    document.title = t('title');
+    app.game?.canvas.setAttribute('aria-label',t('title'));
     app.map?.redraw();
     if (['title','setup','roster'].includes(app.screen)) app.nativeTitle?.refresh();
     if (app.dialogs?.name) app.dialogs.render();
@@ -214,6 +206,7 @@ const app = {
   startBattle(setup) {
     if (!app.state || app.battle || app.screen !== 'play') return;
     if (app.lastCampaignBattle?.state === app.state && app.lastCampaignBattle.id === setup.id) return;
+    app.destinationPicker?.cancel();
     setup = campaignBattlePresentation(app.state, setup);
     app.campaignBattle = { state: app.state, id: setup.id, before: captureCampaignBattle(app.state, setup) };
     app.dialogs.close(true);
@@ -299,6 +292,7 @@ function closeNanpiView(){nanpiView?.destroy();nanpiView=null;}
 function getLabRouter(){return labRouter??=createNativeBattleLabRouter(app,{onError:error=>{console.error(error);if(app.screen==='title'){app.notice=t('battleLabFailed');app.nativeTitle?.showTitle();}else app.hud.toast(t('battleLabFailed'),'bad');}});}
 function openNanpiTrial(){
   if(app.lab||app.battle||getLabRouter().loading||(app.screen!=='title'&&!nanpiResult))return;
+  app.destinationPicker?.cancel();
   const {state,setup}=createNanpiTrial();closeNanpiView();nanpiResult=null;
   app.dialogs.close(true);app.nativeTitle?.close();app.screen='battle';frame.dataset.screen='battle';
   app.map.setDrift(null);app.map.setTerritoryVisible(false);
@@ -311,6 +305,7 @@ function showNanpiResult(done){
   nanpiView=createNativeNanpiResult(app.uiHost,done,{onReplay:()=>openBattleLab(done.tape),onRetry:openNanpiTrial,onExit:leaveNanpi});
 }
 function openBattleLab(tape=null){
+  app.destinationPicker?.cancel();
   const trial=nanpiResult?.tape===tape&&tape!==null;
   return getLabRouter().open(tape,{trial,trialView:trial?nanpiView:null,tab:'replay',validate:()=>trial?nanpiResult?.tape===tape:!tape||app.dialogs.name==='battleResult'});
 }
@@ -356,6 +351,9 @@ async function boot() {
     getState: () => app.state ?? app.demoState,
     getPlayer: () => app.state?.player,
     showMapMarkers: () => !app.lab && !app.dialogOpen && !app.game?.asking && ['setup','play'].includes(app.screen),
+    // Native same-clock 3D submission and contextual map-label pacing. Keep
+    // independent diagnostic opt-outs for matched comparisons.
+    performanceOptions:{defer3d:params.get('perfDefer')!=='0',textBudget:params.get('perfText')!=='0',measure:params.get('perfMeasure')==='1',textBudgetWhen:()=>campaignMarkerTextContext(app),terrainWorker:params.get('perfTerrainWorker')!=='0',prepareGeometry:params.get('perfPrepareGeometry')!=='0'},
     quality: params.get('quality') ?? (app.settings.quality && app.settings.quality !== 'auto' ? app.settings.quality : undefined),
     tick: (seconds) => tick(seconds),
     onError: (cause) => console.error(cause),
@@ -376,11 +374,15 @@ async function boot() {
   app.quality = app.map.app.quality;
   app.uiHost = app.map.uiHost;
   app.game = app.uiHost.game;
+  app.destinationPicker=createRealmDestinationPicker(app,{nodes:NODES,provinces:PROVINCES,placeName,language:getLanguage,onError:reportUiError});
+  app.game.scope.use(app.destinationPicker);
   app.game.scope.use({dispose:watchReducedMotion(value=>{systemReducedMotion=value;app.map.setReducedMotion?.(app.calm());})});
   app.map.setReducedMotion?.(app.calm());
   // The low-level canvas host owns the game; report real remaining boot work in its native loading UI.
   $('#loading')?.remove();
-  [app.sound] = await app.game.loading([() => createSound(app.map.app.scope, app.settings)], {
+  const recovery=app.game.scope.use(createMusicRecovery({game:app.game,getSound:()=>app.sound,
+    enabled:()=>app.settings.music!==false,words:(zh,en)=>pair([zh,en]),onError:reportUiError}));
+  [app.sound] = await app.game.loading([() => createSound(app.map.app.scope, app.settings,{onThemeFailure:recovery.failed})], {
     label: pair(['准备配乐与界面','Preparing sound and interface'])
   });
   app.hud = createNativeRealmHud(app, app.uiHost);
@@ -454,6 +456,7 @@ async function boot() {
 }
 
 function tapArmy(id) {
+  if(app.game?.asking)return;
   if (app.battle) return app.battle.tapArmy?.(id);
   if (app.screen !== 'play') return;
   const a = app.state.armies[id];
@@ -464,6 +467,7 @@ function tapArmy(id) {
 
 // ——— Taps on the map ———
 function tapNode(id) {
+  if(app.game?.asking)return;
   if (app.battle) return app.battle.tapNode?.(id);
   // On setup, a tap chooses a founding city or the power that already holds it.
   if (app.screen === 'setup') {
@@ -903,6 +907,7 @@ function newGame(pick) {
   autosave();
 }
 function play(state, savedView = null) {
+  app.destinationPicker?.cancel();
   const resume = restoreCampaignView(state, savedView);
   wake();
   app.map.setDrift(null);
@@ -938,6 +943,7 @@ function play(state, savedView = null) {
   setTimeout(nextInbox, 300);
 }
 function toTitle(confirmed = false, focusName = null) {
+  app.destinationPicker?.cancel();
   if (!confirmed && app.state && !app.state.over && progress.changed(app.state)) {
     app.open('confirmProgress', { reason: 'leave', proceed: () => toTitle(true,focusName) });
     return;
@@ -990,7 +996,7 @@ try {
     if (loading) loading.textContent = pair(['载入失败，请刷新后重试。','Loading failed. Reload to retry.']);
   }
 }
-document.title = t('title') + (getLanguage() === 'zh' ? ' · Nine Provinces Ablaze' : ' · 九州烽烟');
+document.title = t('title');
 if (app.screen !== 'error') $('#loading')?.remove();
 if (app.screen === 'error') { /* Keep the retry screen available. */ }
 else if (params.get('slot') && slots[params.get('slot')]?.data.game) loadSlot(params.get('slot'));

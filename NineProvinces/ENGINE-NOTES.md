@@ -1,17 +1,19 @@
 # 引擎笔记 · Engine notes
 
-做这款游戏时遇到的新白鹭引擎（提交 `9d801be`）的缺陷与建议，格式见 [docs/GAME-STANDARD.md](../docs/GAME-STANDARD.md) 第 3 节。前五条是第一版（平面天下图、`createBrowserGame`）遇到的，第六到第八条是改用 World3D 之后遇到的；八条都是本作新遇到的。现在的版本已不再用到前五条涉及的接口，记录留着供引擎参考。
+做这款游戏时遇到的新白鹭引擎（提交 `9d801be`）的缺陷与建议，格式见 [docs/GAME-STANDARD.md](../docs/GAME-STANDARD.md) 第 3 节。前五条源自第一版平面天下图，第六到第八条源自首次 World3D 版本；后续记录来自原生 UI 迁移。保留历史复现，并在各条中区分本版实际使用、已不适用与引擎仍未解决的接口。
 
-The faults in the new Egret engine (commit `9d801be`) met while making this game, and suggestions, written as in part 3
-of [docs/GAME-STANDARD.md](../docs/GAME-STANDARD.md). The first five were met by the first version (a flat realm on
-`createBrowserGame`), the sixth to the eighth after the move to World3D; all eight are new here. The game no longer
-uses the interfaces of the first five; they are kept for the engine's sake.
+The faults and suggestions originate from the game's first engine revision `9d801be`, following part 3 of
+[docs/GAME-STANDARD.md](../docs/GAME-STANDARD.md). Notes 1–5 describe the original flat realm, 6–8 the early World3D build,
+and later entries the native UI migration. Historical reproductions are retained; each status distinguishes present game
+usage, obsolete workarounds and unresolved engine contracts.
 
 ## 引擎独立升级复核 · Engine-only refresh review
 
 `7fb371ac`（2026-11-28）已替换 `82561d6`；官方 `notes --check` 识别现有 9 条记录、没有新增的已解决或已写入文档条目。当前仍使用旧界面和 World3D 组织方式，本轮不提前删除任何绕过。原生界面、按需绘制、投影标记及地形接口的逐项适配另行验证。
 
 `7fb371ac` (2026-11-28) replaces `82561d6`. The official `notes --check` recognizes all nine entries and reports no newly resolved or documented records. This engine-only refresh retains the established interface and World3D organization; no workaround is declared removed ahead of its focused verification. Native UI, on-demand drawing, projected markers and terrain APIs require separate integration checks.
+
+第五批复核（本地候选，2026-11-29）：引擎仍为 `7fb371ac`。以下 #3/#4/#5/#6/#8/#9 已按该提交的正式公开接口与实际游戏调用点重新核对。没有把公有 API 的存在直接写成已解决的真机性能或所有浏览器兼容性。 / Batch-five source recheck (local candidate, 2026-11-29): same `7fb371ac` pin. Notes 3, 4, 5, 6, 8 and 9 are revisited against public contracts and actual call sites. An API's presence is not claimed as device-performance or universal browser proof.
 
 ### 1. 每个文字标签占一页图片，一百多个地名超出每帧 64 页 · Each label is a page of its own, and a hundred place names pass the 64 pages a frame — 已在 `4de55e8` 解决 / resolved in `4de55e8`
 <!-- engine-note: {"id": "NineProvinces#1", "status": "resolved", "topic": "label-pages"} -->
@@ -28,14 +30,15 @@ uses the interfaces of the first five; they are kept for the engine's sake.
 - 绕过办法：自己保留传进去的画布，用它的 `getBoundingClientRect()` 和相机的 `screenToWorld` / `worldToScreen` 换算（`src/view/mapview.mjs`、`src/view/battleview.mjs` 的 `paintBack` 与 `pagePoint`）。 · Workaround: the game keeps the canvas it passed in and converts through its `getBoundingClientRect()` and the camera's `screenToWorld` / `worldToScreen`.
 - 建议：在结果上提供 `canvas`，以及 `toClient(stageX, stageY)` 与 `toStage` 成对。 · Suggestion: expose `canvas` on the result, and a `toClient(stageX, stageY)` to pair with `toStage`.
 - 状态：已写入文档（引擎 #485，`8637ace`）：同 NightWardens 第 3 条，写进 guide 卡片 camera-page-layer；结果上仍没有画布和成对的换算。 · Documented (engine #485, `8637ace`): as NightWardens item 3, in the camera-page-layer guide card; the result still has no canvas or paired conversion.
+- 当前附着式 Play 已使用公开 `game.canvas` 与舞台/设计换算。浏览器语义投影的 `createBrowserSemantics({label})` 是仅在 canvas 没有名称时设置的一次性可选默认值，当前版本没有动态 setter。本作语言切换直接更新真实 canvas 自己的 `aria-label`，不重新创建投影或复制语义树；英→中→英实际浏览器与最终 Fold7 英文页面通过。可选的动态名称绑定是便利改善，不是已证实的引擎兼容缺陷。 / Current attached Play exposes its real canvas and stage/design conversion. Browser semantics offers an optional one-time default accessible canvas label, not a dynamic setter. The game owns the real canvas name on locale changes, without rebuilding projection or duplicating the tree. Actual language-switch and Fold7 English routes pass. A dynamic name binding would be a convenience, not a proven compatibility fault.
 
 ### 3. `textureFromCanvas` 的纹理只能归游戏本身的作用域 · Textures from `textureFromCanvas` belong to the game's own scope only — 未解决 / open
-<!-- engine-note: {"id": "NineProvinces#3", "status": "open", "topic": "texture-from-canvas-scope", "workaround": ["src/main.mjs"]} -->
+<!-- engine-note: {"id": "NineProvinces#3", "status": "open", "topic": "texture-from-canvas-scope", "workaround": ["src/ui/native-minimap.mjs", "src/ui/native-lab-board.mjs"]} -->
 
 - 现象：`createLabel` 可以传 `scope`，`textureFromCanvas` 却没有这个选项，纹理一直留到整个游戏结束。每场战斗若各画一张旗字图集，打几十场就留下几十张。 · What happens: `createLabel` takes a `scope`, but `textureFromCanvas` does not, and its textures stay until the whole game ends. A character sheet drawn for each battle would leave dozens behind after dozens of battles.
 - 绕过办法：开局时画一张包含所有势力旗号和全部姓氏的图集，天下图和每场战斗共用；粒子的光点也只做一次（`src/main.mjs` 的 `boot`）。每场战斗的显示对象和粒子放进 `engine.createScope()` 建的作用域，打完一起释放。 · Workaround: one atlas with every power's flag and every surname is drawn at the start and shared by the realm and every battle; the particles' dot is made once. Each battle's display objects and emitters go into a scope from `engine.createScope()` and are let go together.
 - 建议：`textureFromCanvas(canvas, { scope })`，与 `createLabel` 一致。 · Suggestion: `textureFromCanvas(canvas, { scope })`, as `createLabel` has.
-- 状态：未解决。 · Status: open.
+- 当前复核 · Current: 此提交公开的 `game.browser.textureFromCanvas(canvas)` 返回 `AssetLease<Texture>`，主动 `release()` 可释放借用（重复释放安全），并非必然留到整个游戏结束；仍无 `scope` 参数。原旗字图集绕过仅历史记录。现在的小地图和演武/回放棋盘每次切换版本释放旧租约、异步晚到租约及关闭页面时的当前租约。建议缩小为补充可选 owner/scope 以便统一管理，不把接口缺少 owner 直接等同内存泄漏；正式 owner 参数仍未解决。 / Current canvas textures return releaseable `AssetLease<Texture>`; manual release revokes the borrow and is idempotent. The signature still lacks a custom scope. The old shared atlas is historical; current minimap and lab/replay board retire replaced, stale and disposed leases. An optional owner/scope remains useful, but the absent option alone is not proof of an actual leak. Open.
 
 ### 4. 相机缩放超出范围时抛错而不是夹住 · The camera throws instead of clamping a zoom out of range — 未解决 / open
 <!-- engine-note: {"id": "NineProvinces#4", "status": "open", "topic": "camera-zoom-clamp"} -->
@@ -43,15 +46,15 @@ uses the interfaces of the first five; they are kept for the engine's sake.
 - 现象：`createCamera2D` 的 `zoomTo` 和 `setZoom` 在值小于 `minZoom` 或大于 `maxZoom` 时抛 `CAMERA_OPTIONS_INVALID`。滚轮和双指缩放、按窗口算出的"全景"缩放都很容易越界一点点，于是整个帧回调中断。 · What happens: `zoomTo` and `setZoom` throw `CAMERA_OPTIONS_INVALID` for a value under `minZoom` or over `maxZoom`. A wheel or a pinch, or an overview zoom worked out from the window, easily goes a little past, and the frame's callback stops there.
 - 绕过办法：每次缩放前自己夹在范围内（`src/view/mapview.mjs` 的 `zoomBy`、`focus`、`overview`；`src/view/battleview.mjs` 的 `zoomBy`、`frame`）。 · Workaround: the game clamps every zoom to the range first.
 - 建议：缩放值越界时夹到范围内（只对 NaN、无穷和负数报错），或在文档里写明会抛错。 · Suggestion: clamp an out-of-range zoom (and throw only for NaN, infinities and negatives), or say in the documentation that it throws.
-- 状态：未解决。 · Status: open.
+- 当前复核：`7fb371ac` 的 `createCamera2D.setZoom/zoomTo` 仍对越界值抛错；本作已改用 World3D，旧 2D 方法不再适用。当前 `src/view3d/stage.mjs` 的 20…300 距离范围、俯视角及跟随目的地是游戏自身的 3D 镜头设计，保留。历史引擎接口建议仍未解决。 / At `7fb371ac` the former Camera2D call still rejects out-of-range zoom; no current game call uses the old 2D rig. The present World3D distance/pitch/target policy is deliberate game camera behavior, not an obsolete clamp to remove. The historical engine request remains open.
 
-### 5. 画面不变时帧循环也每帧整屏合成 · The frame loop composites the whole stage every frame even when nothing changes — 部分解决 / partly resolved
-<!-- engine-note: {"id": "NineProvinces#5", "status": "partly", "topic": "on-demand-rendering", "workaround": ["src/main.mjs"]} -->
+### 5. 画面不变时帧循环也每帧整屏合成 · The frame loop composites the whole stage every frame even when nothing changes — 原 2D 接口已解决 / resolved for the original 2D contract
+<!-- engine-note: {"id": "NineProvinces#5", "status": "resolved", "topic": "on-demand-rendering"} -->
 
 - 现象：`createBrowserGame` 的帧循环每帧都渲染并提交整张画布。在 SwiftShader 软件渲染下，一张 1600×900、像素比 0.75 的透明画布，什么都不动时每帧也要十几毫秒，标题页的帧时间 p95 因此在 33 ms 左右。 · What happens: the frame loop renders and presents the whole canvas every frame. Under SwiftShader, a clear 1600 × 900 canvas at three-quarter pixels costs over ten milliseconds a frame with nothing moving, and the title's p95 frame time sat near 33 ms.
 - 绕过办法：软件渲染时像素比降到 0.75；标题改成静止画面，地图停稳后 `game.loop.stop()`，开局或进入开局设置时再 `start()`（`src/main.mjs` 的 `toTitle` 与 `wake`），标题的 p95 降到 16.7 ms。 · Workaround: three-quarter pixels under software rendering; the title is a still picture, with `game.loop.stop()` once the map has settled and `start()` again for the game or its setup; the title's p95 is 16.7 ms now.
 - 建议：舞台没有变化（没有显示对象、纹理、相机改动）时跳过渲染和提交，或给帧循环一个"按需渲染"的模式。 · Suggestion: skip rendering and presenting when the stage has not changed (no display object, texture or camera touched), or give the frame loop a render-on-demand mode.
-- 状态：部分解决（引擎 #470，`9f61336`）：`play` 有了 `renderMode: 'on-demand'`，画面不变时不提交；`createBrowserGame` 还没有。 · Partly resolved (engine #470, `9f61336`): `play` has `renderMode: 'on-demand'`, which submits nothing while the picture is unchanged; `createBrowserGame` does not yet.
+- 当前复核：`7fb371ac` 的 `createBrowserGame` 和 `play` 均有正式 `renderMode:'on-demand'`。本作 `native-host.mjs` 已使用该模式，2D 不变时可保留前帧；这是原平面 2D 缺口的解决。World3D 的动态水面、地形流动与镜头仍由同一个 Play 时钟更新，不能把 2D retained 错当成 3D 停止渲染。正式 `afterFrame`、`World3DView.deferRender` 与 `drawPending` 可在同一浏览器回调内选择提交顺序/合并追帧；实际性能按 QUALITY 的独立受控对照记录。 / Both BrowserGame and Play now support the public on-demand mode; the game uses it in the native host, retaining unchanged 2D frames. This resolves the original 2D contract. Animated World3D water, streaming and camera remain active on the same Play clock. Native deferred draws and afterFrame can change submission order/coalesce catch-up draws; use the separate measured evidence in QUALITY, not retained 2D as proof of 3D inactivity.
 
 ### 6. 地形流的 `colorAt` 只给地块内的坐标，不知道是哪一块 · The terrain stream's `colorAt` is given coordinates within a tile, and no way to tell which tile — 未解决 / open
 <!-- engine-note: {"id": "NineProvinces#6", "status": "open", "topic": "terrain-color-tile", "workaround": ["src/view3d/terrain.mjs"]} -->
@@ -59,7 +62,7 @@ uses the interfaces of the first five; they are kept for the engine's sake.
 - 现象：`createTerrainStream3D` 的 `terrain.colorAt(height, slope, x, z, out)` 对所有地块是同一个函数，`x`、`z` 是地块高度场内以中心为原点的坐标；地块的颜色要按天下的位置算（江河、沙漠、林地），函数里却拿不到地块的位置。 · What happens: `terrain.colorAt(height, slope, x, z, out)` of `createTerrainStream3D` is one function for every tile, and `x` and `z` are coordinates in the tile's own field, centred on it; the colours depend on where on the realm the tile is (rivers, desert, woods), but the function cannot learn the tile's place.
 - 绕过办法：在 `load` 里算高度时一并算出这块的颜色，按高度场对象存进 `WeakMap`；`colorAt` 用普通函数写，靠调用时的 `this`（地块的 `Terrain3D`）取 `this.field` 查表（`src/view3d/terrain.mjs`）。这依赖引擎以 `this.#colorAt(...)` 的方式调用，属于未写进文档的行为。 · Workaround: the tile's colours are worked out with its heights in `load` and kept in a `WeakMap` by field; `colorAt` is a plain function and reads `this.field` from the `Terrain3D` it is called on. This leans on the engine calling it as `this.#colorAt(...)`, which is not documented.
 - 建议：给 `colorAt` 加一个参数传地块（或地块原点的世界坐标），或者让流的 `terrain` 选项也能是 `(x, z, field) => TerrainOptions3D` 的函数，和 `material` 一样。 · Suggestion: pass the tile (or its world origin) to `colorAt`, or let the stream's `terrain` option be a function `(x, z, field) => TerrainOptions3D`, as `material` already may be.
-- 状态：未解决。 · Status: open.
+- 当前复核：`load(x,z)` 已支持异步 `Promise<HeightField3D>`；第五批候选将确定性的地形高度/颜色采样放到 Worker，再由原生流接纳，主线程保留同一公式兜底。`terrain?:TerrainOptions3D` 仍不是工厂，`colorAt` 仍不公开地块坐标或 field；仍需原 `WeakMap`/`this.field` 处理，未声称解决该缺口。 / Native `load(x,z)` accepts an asynchronous height field; B5 candidate sampling runs in a Worker with the unchanged deterministic main-thread fallback. The public terrain options remain static and `colorAt` still has no tile/field argument. The original WeakMap/undocumented `this.field` path remains; open.
 
 ### 7. `app.stop()` 之后隔一阵再 `app.start()`，第一帧抛 `CLOCK_DELTA_LIMIT` · After `app.stop()`, `app.start()` a while later throws `CLOCK_DELTA_LIMIT` on its first frame — 已在 `5ef2b03` 解决 / resolved in `5ef2b03`
 <!-- engine-note: {"id": "NineProvinces#7", "status": "resolved", "topic": "world3d-restart-clock", "workaround": ["src/main.mjs"]} -->
@@ -75,16 +78,17 @@ uses the interfaces of the first five; they are kept for the engine's sake.
 - 现象：`stream.viewDistance` 设得大一些（64 单位的地块、视距 380 左右），`update` 时保留范围超过 256 块，抛 `WORLD3D_BUDGET: terrain stream tile range`，整个帧回调中断。保留范围是视距的 1.25 倍加四分之一块，文档写了上限，但离抛错还差多少要自己算。 · What happens: with a larger `stream.viewDistance` (tiles of 64 units, a view distance near 380), the retained range in `update` passes 256 tiles and it throws `WORLD3D_BUDGET: terrain stream tile range`, stopping the frame's callback. The range is 1.25 times the view distance plus a quarter tile; the limit is documented, but how close one is to it must be worked out by hand.
 - 绕过办法：视距随镜头远近变化，但夹在 290 以内（`src/view3d/terrain.mjs`）。 · Workaround: the view distance follows the camera but is clamped to 290.
 - 建议：超出时把视距夹到上限并给一次警告，或提供 `maxViewDistance` 只读值。 · Suggestion: clamp the view distance to the limit with one warning, or expose a read-only `maxViewDistance`.
-- 状态：未解决。 · Status: open.
+- 当前复核：`TERRAIN3D_LIMITS.maxStreamTiles = 256`、`maxStreamPending = 32` 是正式公开常量。流仍按保留范围矩形在分配之前检查并可抛错；没有原生按相机位置的安全 clamp/max 距离接口。本作继续保留 290 的既有画质/范围策略，异步加载不改变此限制。 / The public limits are 256 retained-range tiles and 32 outstanding loads. The rectangular retention budget still rejects excessive extents; there is no public safe distance clamp/helper. The game's existing 290 range policy remains; async loading does not change the constraint. Open.
+- 加载器相关反馈：正式 Promise `load(x,z)` 不带请求取消信号。B5 按公开的保留距离结束过期 Worker 队列任务，真实换城对照有 12/14 个过期任务及时退休；旧不同宿主的延迟不能直接作因果对比。可考虑由流为每次加载提供明确 `AbortSignal`，并在退休/销毁时取消，避免每个项目重写相同保留公式。 / The public promise loader has no per-request cancellation signal. B5 retires unused worker jobs with the documented retention rule (12/14 jobs in the observed route). Consider a native per-load AbortSignal on retirement/disposal, rather than requiring each Demo to mirror the retention formula; nonmatched earlier timing is not causal proof.
 
-### 9. 移动 Apple WebKit 动态分辨率后画面不可见 · Mobile Apple WebKit loses the composited World3D surface after dynamic resizing — 未解决 / open
-<!-- engine-note: {"id": "NineProvinces#9", "status": "open", "topic": "world3d-webkit-dynamic-resize-presentation", "workaround": ["src/view3d/canvas-policy.mjs", "src/view3d/stage.mjs"]} -->
+### 9. 移动 Apple WebKit 动态分辨率后画面不可见 · Mobile Apple WebKit loses the composited World3D surface after dynamic resizing — 引擎已有稳定呈现，游戏兼容待充分复核 / partly resolved, device follow-up needed
+<!-- engine-note: {"id": "NineProvinces#9", "status": "partly", "topic": "world3d-webkit-dynamic-resize-presentation", "workaround": ["src/view3d/canvas-policy.mjs", "src/view3d/native-renderer.mjs"]} -->
 
 - **现象 · What happens**：Windows Playwright WebKit 26.6 iPhone 15 Pro 配置下，Renderer frame 递增且 draw calls 非零，但自适应缩至 235×395 后 3D 不可见、只剩界面。 · Renderer frames and draw calls advance, yet the composited 3D surface is absent after adapting down to 235×395.
 - **最小复现 · Reproduce**：从公开页沿 New campaign → start → city map 进入 393×659 CSS 尺寸的实际场景，查看截图而非仅检查语义或渲染器计数。 · Enter the actual scene at 393×659 CSS px and compare screenshots, not only semantics or submission statistics.
 - **绕过 · Workaround**：移动 Apple WebKit 通过官方 `dynamicResolution:false` 固定背缓冲；同条件 393×659 可见。 · Request the official option only on mobile Apple WebKit, restoring visible pixels with stable backing dimensions.
 - **建议 · Proposal**：引擎验证动态尺寸变化后在 WebKit 中的浏览器呈现，提供诊断及无需关闭动态分辨率的修复。 · Validate browser presentation after backing-buffer changes and supply a diagnostic and a fix without requiring dynamic resolution to be disabled.
-- **状态 · Status**：游戏侧已通过关键截图复测，保留原质量选择。固定 backing buffer 可能增加像素渲染开销；未进行实体 iPhone 性能或其他 Safari 版本验收。 · Game workaround passes visible screenshots and preserves quality options. Fixed backing may increase pixel cost; physical iPhone performance and other Safari versions remain untested.
+- **当前复核 · Current**：`7fb371ac` 已公开 `createWebGL2Renderer3D({presentationResize:'stable'})`，稳定 canvas backing、改变内部 GPU 场景目标，`renderer.renderSize` 报实际场景尺寸；不同尺寸时有额外 GPU 呈现 pass。官方已有相关 WebKit 视觉测试。本作附着式渲染器已采用该稳定呈现策略及 `renderSize` 镜头比例，但暂保留 Apple 的固定分辨率回退：本轮最终 Windows WebKit iPhone 配置已验证标题/开局/天下图及横竖切换实际可见像素，renderSize 393×659↔852×393、稳定 backing 393×659，6 个状态零错误；尚未用实体 iPhone 验证动态分辨率。 / Stable presentation and actual renderSize are now public; internal target resizing retains the presented backing, with an extra GPU pass when dimensions differ. The engine includes a WebKit visual fixture. Our attached renderer uses that stable mode/aspect contract and retains the Apple fixed-resolution fallback: the final Windows WebKit iPhone-profile route verifies visible title/setup/realm and rotation pixels, renderSize 393×659↔852×393 with stable 393×659 backing, six states without errors. Dynamic resolution on a physical iPhone is still unverified.
 
 
 ### 10. 原生数据界面缺少具名范围控件 · Declarative views have no named range control — 未解决 / open

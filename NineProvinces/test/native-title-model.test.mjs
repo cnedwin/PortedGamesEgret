@@ -1,9 +1,10 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { createGame } from '../src/sim/world.mjs';
-import { setLanguage } from '../src/i18n.mjs';
-import { createCampaignDraft, createOfficerDraft } from '../src/ui/native-title-model.mjs';
-import { buildTitleView, buildSetupView, buildRosterView, createNativeTitleScreens } from '../src/ui/native-title.mjs';
+import '../vendor/node-register.mjs';
+const { createGame } = await import('../src/sim/world.mjs');
+const { setLanguage } = await import('../src/i18n.mjs');
+const { createCampaignDraft, createOfficerDraft } = await import('../src/ui/native-title-model.mjs');
+const { buildTitleView, buildSetupView, buildRosterView, createNativeTitleScreens } = await import('../src/ui/native-title.mjs');
 import { pathToFileURL } from 'node:url';
 async function enginePath(){if(process.env.NINE_ENGINE_VIEW)return pathToFileURL(process.env.NINE_ENGINE_VIEW);await import('../vendor/node-register.mjs');return new URL('../vendor/engine/dist/web/view.js',import.meta.url);}
 

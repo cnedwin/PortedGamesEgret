@@ -1,3 +1,4 @@
+import { createTextTable } from '@egret/engine/kit';
 // 文字表：界面上每一句话的中文和英文。界面只通过 t(key) 取字；人名、地名、势力、兵种、特性、战法、宝物、科技的名字
 // 在各自的数据表里（zh 与 en 两个字段），由 nm() 按当前语言取。
 // The words: Chinese and English for every line on the screen. The interface takes words only through t(key); the
@@ -525,19 +526,24 @@ export const WORDS = {
   months: { zh: '正月 二月 三月 四月 五月 六月 七月 八月 九月 十月 冬月 腊月', en: 'January February March April May June July August September October November December' }
 };
 
-let language = 'zh';
-export const setLanguage = (next) => (language = next === 'en' ? 'en' : 'zh');
-export const getLanguage = () => language;
+// Keep the authored table and public game-facing behavior, delegate text lookup
+// and language state to the engine. Missing keys still fail instead of silently
+// displaying the fallback key; missing authored substitutions still become ''.
+const languages = Object.fromEntries(['zh', 'en'].map(lang => [lang, Object.fromEntries(Object.entries(WORDS).map(([key, entry]) => [key, entry[lang]]))]));
+const wordTable = createTextTable({ languages, language: 'zh', fallback: 'zh' });
+const placeholders = Object.fromEntries(['zh', 'en'].map(lang => [lang, Object.fromEntries(Object.entries(languages[lang]).map(([key, line]) => [key, [...new Set([...line.matchAll(/\{(\w+)\}/g)].map(x => x[1]))]]))]));
+export const setLanguage = (next) => { const language = next === 'en' ? 'en' : 'zh'; wordTable.setLanguage(language); return language; };
+export const getLanguage = () => wordTable.language;
 
 /** The words of `key` in the current language, with `{name}` filled from `values`. */
 export function t(key, values = {}) {
-  const entry = WORDS[key];
-  if (!entry) throw new Error(`no words for ${key}`);
-  return entry[language].replace(/\{(\w+)\}/g, (_, name) => String(values[name] ?? ''));
+  if (!wordTable.has(key)) throw new Error(`no words for ${key}`);
+  const names = placeholders[wordTable.language][key];
+  return wordTable.text(key, names.length ? Object.fromEntries(names.map(name => [name, String(values[name] ?? '')])) : undefined);
 }
 
 /** The name of a thing from a data table: its zh or en. */
-export const nm = (thing) => (thing ? (language === 'en' ? thing.en ?? thing.zh : thing.zh) : '');
+export const nm = (thing) => (thing ? (getLanguage() === 'en' ? thing.en ?? thing.zh : thing.zh) : '');
 
 /** Era names of the Han court, for dates before Wei. */
 const ERAS = [
@@ -556,8 +562,8 @@ export function hanzi(n) {
   return (tens > 1 ? d[tens] : '') + '十' + (ones ? d[ones] : '');
 }
 export function dateWords(year, month) {
-  const months = WORDS.months[language].split(' ');
-  if (language === 'en') return t('date', { year, month: months[month - 1] });
+  const months = WORDS.months[getLanguage()].split(' ');
+  if (getLanguage() === 'en') return t('date', { year, month: months[month - 1] });
   if (year <= 220) {
     const [from, era] = [...ERAS].reverse().find(([y]) => year >= y);
     const n = year - from + 1;
@@ -569,6 +575,6 @@ export function dateWords(year, month) {
 /** A number for the screen: 12,345 or 1.2万 / 12.3k. */
 export function num(n) {
   n = Math.round(n);
-  if (language === 'zh') return Math.abs(n) >= 100000 ? (n / 10000).toFixed(n >= 1e6 ? 0 : 1) + '万' : n.toLocaleString('zh-CN');
+  if (getLanguage() === 'zh') return Math.abs(n) >= 100000 ? (n / 10000).toFixed(n >= 1e6 ? 0 : 1) + '万' : n.toLocaleString('zh-CN');
   return Math.abs(n) >= 100000 ? (n / 1000).toFixed(0) + 'k' : n.toLocaleString('en-US');
 }

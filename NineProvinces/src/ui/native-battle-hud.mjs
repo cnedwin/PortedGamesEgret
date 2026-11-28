@@ -20,15 +20,15 @@ export function layoutBattleHud(width,height,scale=1,content={}){
   const rosterH=(count,actions,limit,enemy=false)=>Math.min(limit,Math.max((enemy?142:150)*css,((count??1)*140+Math.max(0,actions??0)*67+24)*css));
   if(portrait){
     const commandH=Math.min(204*css,height*.27),railH=Math.min(130*css,height*.18),railY=height-commandH-railH-gap*2,ownW=(width-gap)/2,feedH=28*css;
-    return {portrait,short,wide,top,own:box(0,railY,ownW,railH),enemy:box(ownW+gap,railY,ownW,railH),command:box(0,height-commandH,width,commandH),feed:box(0,Math.max(railTop,railY-feedH-gap),width,feedH)};
+    return {portrait,short,wide,css,top,own:box(0,railY,ownW,railH),enemy:box(ownW+gap,railY,ownW,railH),command:box(0,height-commandH,width,commandH),feed:box(0,Math.max(railTop,railY-feedH-gap),width,feedH)};
   }
   const ownW=Math.min((wide?226:168)*css,width*.27),railLimit=height-railTop-8*css;
   if(wide){
     const enemyW=Math.min(204*css,width*.24),commandW=Math.min(590*css,Math.max(300*css,width-ownW-enemyW-5*gap)),feedH=30*css,commandH=Math.min(280*css,height*.40),middleX=(width-commandW)/2;
-    return {portrait,short,wide,top,own:box(gap,railTop,ownW,rosterH(content.owned,content.actions,railLimit)),enemy:box(width-enemyW-gap,railTop,enemyW,rosterH(content.enemy,0,railLimit,true)),command:box(middleX,height-commandH-feedH-gap,commandW,commandH),feed:box(middleX,height-feedH-gap*.45,commandW,feedH)};
+    return {portrait,short,wide,css,top,own:box(gap,railTop,ownW,rosterH(content.owned,content.actions,railLimit)),enemy:box(width-enemyW-gap,railTop,enemyW,rosterH(content.enemy,0,railLimit,true)),command:box(middleX,height-commandH-feedH-gap,commandW,commandH),feed:box(middleX,height-feedH-gap*.45,commandW,feedH)};
   }
   const commandW=Math.min(255*css,width*.34),midX=ownW+gap,midW=Math.max(0,width-ownW-commandW-2*gap),enemyW=Math.min(182*css,midW),enemyH=Math.min(78*css,(height-railTop)*.38),feedH=30*css;
-  return {portrait,short,wide,top,own:box(0,railTop,ownW,rosterH(content.owned,content.actions,height-railTop)),enemy:box(midX+(midW-enemyW)/2,railTop,enemyW,enemyH),command:box(width-commandW,railTop,commandW,height-railTop),feed:box(midX,height-feedH,midW,feedH)};
+  return {portrait,short,wide,css,top,own:box(0,railTop,ownW,rosterH(content.owned,content.actions,height-railTop)),enemy:box(midX+(midW-enemyW)/2,railTop,enemyW,enemyH),command:box(width-commandW,railTop,commandW,height-railTop),feed:box(midX,height-feedH,midW,feedH)};
 }
 function walkRows(rows,map){for(const item of rows??[]){if(!item)continue;if(item.id)map.set(item.id,item);walkRows(item.children,map);}}
 export function createBattleHudModelStore(){
@@ -87,7 +87,12 @@ export function buildBattleHudDescription(store,layout){
     return panel(k(id+'-card'),rows,{width:'fill',height:38,gap:0});
   }
   const mainTitle=panel(k('title'),[txt('phase',()=>live().phaseTitle,{size:12,height:17,color:C.gold}),txt('heading',()=>live().title,{size:layout.wide?24:17,height:layout.wide?30:23,bold:true,fontFamily:getLanguage()==='en'?'Georgia':'KaiTi'}),txt('sides',()=>live().subtitle,{size:11,height:16,color:C.muted})],{width:layout.wide?190:'fill',height:layout.wide?64:56,gap:0});
-  const headerControls=panel(k('header-controls'),(m.controls??[]).map(item=>part(layout.portrait&&item.id==='leave-trial'?{...item,compactLabel:words('离开','Exit')}:item)),{layout:'row',width:Math.min(layout.top.width*(layout.wide ? .34 : .62),(m.controls??[]).length*60),height:48,gap:4});
+  const count=(m.controls??[]).length;
+  const preferredHeaderWidth=Math.min(layout.top.width*(layout.wide?.34:.62),count*60);
+  // The five running controls on 360 CSS px portrait phones need more
+  // than 62% of the header. Allocate their actual 44px footprint first.
+  const headerWidth=layout.portrait&&count>1?Math.max(preferredHeaderWidth,count*44*layout.css+(count-1)*4+2*layout.css):preferredHeaderWidth;
+  const headerControls=panel(k('header-controls'),(m.controls??[]).map(item=>part(layout.portrait&&item.id==='leave-trial'?{...item,compactLabel:words('离开','Exit')}:item)),{layout:'row',width:headerWidth,height:48,gap:4});
   const clock=panel(k('clock'),[txt('clock-text',()=>live().clock,{height:17,size:13,align:'left'}),meter('clock-progress',()=>live().timeShare,words('至日落','Until sunset')),txt('wind',()=>live().wind,{height:15,size:11,color:C.muted,align:'left'})],{width:layout.wide?126:100,height:40,gap:0});
   const objectives=panel(k('objective-rows'),(m.objectives??[]).map(objective),{layout:'row',width:'fill',height:40,gap:7});
   const top=positioned(layout.top,layout.wide?[row(k('header-wide'),[mainTitle,clock,panel(k('objective-block'),[objectives],{width:Math.max(145,Math.min(420,layout.top.width-190-126-headerControls.width-42)),height:40}),{type:'space',width:'fill',height:1},headerControls],72)]:[row(k('header-first'),[mainTitle,headerControls],55),row(k('header-second'),[clock,objectives],37)],k('top'));

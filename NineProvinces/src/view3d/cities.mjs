@@ -25,6 +25,7 @@ import { ADJACENT, NODES } from '../data/map.mjs';
 import { HEX_H, HEX_W } from '../sim/hexgrid.mjs';
 import { FOOTPRINTS, landAt, noise } from '../sim/land.mjs';
 import { cityIdentity, landmarkLayout, reservedForLandmark, buildCityLandmarks, buildCityHarbour, buildOutlyingLandmarks } from './city-landmarks.mjs';
+import { createGeometryPrimer } from './geometry-primer.mjs';
 
 const STONE = 0x8a8070,
   STONE_DARK = 0x69685b,
@@ -428,7 +429,7 @@ function flagShape() {
  * The places of the map as models. `colourOf(nodeId)` gives the colour of whoever holds a place (or null). Returns
  * `update(x, z, reach)` to build what has come near, and `recolour()` after places change hands.
  */
-export function createPlaces(scene, { quality = 'medium', colourOf }) {
+export function createPlaces(scene, { quality = 'medium', colourOf, renderer, prepareGeometry=true }) {
   const material = createStandardMaterial3D({ vertexColors: true, roughness: 0.86, metallic: 0 });
   const stoneMaterial = createSurfaceMaterial3D({ surface: 'brick', scale: 2.2, strength: 0.45, bump: 0.5, roughness: 0.92, metallic: 0 });
   const roofMaterial = createStandardMaterial3D({ vertexColors: true, roughness: 0.7, metallic: 0 });
@@ -436,7 +437,9 @@ export function createPlaces(scene, { quality = 'medium', colourOf }) {
   const built = new Map();
   const levels = new Map();
   const proxyMaterial = createStandardMaterial3D({ vertexColors: true, roughness: 0.94, metallic: 0, flatShading: true });
-  const stats = { detailed: 0, proxy: 0, hidden: 0, triangles: 0, cachedDetails: 0 };
+  const stats = { detailed: 0, proxy: 0, hidden: 0, triangles: 0, cachedDetails: 0, pendingDetails:0, preparedDetails:0, preparationFailures:0, lastBuildMs:0 };
+  const primer=createGeometryPrimer(prepareGeometry?renderer:undefined,{budgetMs:4,maxPerSlice:4});
+  let retired=false;
   const enterDetail = quality === 'low' ? 90 : 125;
   const flagSpots = [];
   const flagCapacity = 1600;
@@ -468,18 +471,19 @@ export function createPlaces(scene, { quality = 'medium', colourOf }) {
       scene.addChild(mesh);
       group.push(mesh);
     }
-    const mesh = group;
+    built.set(f.id, group);
+    return {meshes:group,spots};
+  }
+  function publishFlags(id,spots){
     for (const p of spots) {
       if (flags.count >= flagCapacity) break;
       const i = flags.count++;
       quatFromEuler(q, 0, noise(p[0], p[2], 9) * 6.28, 0);
       mat4Compose(m, p, q, [1, 1, 1]);
       flags.setMatrixAt(i, m);
-      flagSpots.push({ place: f.id, i });
-      paint(i, f.id);
+      flagSpots.push({ place: id, i });
+      paint(i, id);
     }
-    built.set(f.id, mesh);
-    return mesh;
   }
   function makeProxy(f) {
     const b = createGeometryBuilder3D();
@@ -537,6 +541,7 @@ export function createPlaces(scene, { quality = 'medium', colourOf }) {
     stats,
     /** Build the places within `reach` of (x, z). */
     update(x, z, reach, zoom = 70, forceDetail = false) {
+      if(retired)return;
       let made = 0, detailed = 0;
       stats.detailed = stats.proxy = stats.hidden = stats.triangles = 0;
       for (const f of Object.values(FOOTPRINTS)) {
@@ -545,7 +550,7 @@ export function createPlaces(scene, { quality = 'medium', colourOf }) {
         const inRange = distance < reach + Math.hypot(f.halfX, f.halfZ);
         let record = levels.get(f.id);
         if (!record && inRange && made < 3) {
-          record = { proxy: makeProxy(f), detail: null, near: false };
+          record = { proxy: makeProxy(f), detail: null, near: false, prepared:false };
           levels.set(f.id, record);
           made++;
         }
@@ -553,11 +558,19 @@ export function createPlaces(scene, { quality = 'medium', colourOf }) {
         const metric = Math.hypot(distance, zoom);
         const near = forceDetail || metric < enterDetail + (record.near ? 24 : 0);
         if (near && inRange && !record.detail && detailed < 1) {
-          record.detail = buildDetail(f);
+          const started=performance.now();
+          const detail=buildDetail(f);record.detail=detail.meshes;
+          stats.lastBuildMs=performance.now()-started;
+          // Keep the actual existing proxy visible while the native renderer
+          // cooperatively uploads the detailed city's real geometries. Its
+          // first detailed draw then uses the same resident buffer cache.
+          for(const mesh of record.detail)mesh.visible=false;
+          const geometries=[...record.detail.map(mesh=>mesh.geometry),flags.geometry];
+          primer.enqueue(geometries,()=>{if(!retired){record.prepared=true;publishFlags(f.id,detail.spots);}});
           detailed++;
         }
         record.near = near;
-        const showDetail = inRange && near && Boolean(record.detail);
+        const showDetail = inRange && near && Boolean(record.detail) && record.prepared;
         record.proxy.visible = inRange && !showDetail;
         for (const mesh of record.detail ?? []) mesh.visible = showDetail;
         if (showDetail) {
@@ -569,10 +582,23 @@ export function createPlaces(scene, { quality = 'medium', colourOf }) {
         } else stats.hidden++;
       }
       stats.cachedDetails = built.size;
+      stats.pendingDetails=primer.pending;stats.preparedDetails=primer.prepared;stats.preparationFailures=primer.failed;
       flags.visible = forceDetail || zoom < enterDetail + 24;
     },
     recolour() {
       for (const s of flagSpots) paint(s.i, s.place);
+    },
+    dispose(){
+      if(retired)return;retired=true;primer.dispose();
+      // These merged place geometries and shared materials belong to this
+      // realm. Module-level primitive templates are borrowed, not disposed.
+      for(const record of levels.values()){
+        record.proxy.removeFromParent();record.proxy.geometry.dispose();
+        for(const mesh of record.detail??[]){mesh.removeFromParent();mesh.geometry.dispose();}
+      }
+      flags.removeFromParent();flags.geometry.dispose();flags.material.dispose();
+      for(const mat of [material,stoneMaterial,roofMaterial,proxyMaterial])mat.dispose();
+      levels.clear();built.clear();flagSpots.length=0;
     }
   };
 }
