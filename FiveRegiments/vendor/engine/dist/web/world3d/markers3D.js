@@ -6,6 +6,7 @@
 import { World3DError } from '../../rendering/world3d/core3D.js';
 import { Object3D } from '../../rendering/world3d/Object3D.js';
 import { DisplayObject, DisplayObjectContainer, EgretError } from '@egret/runtime';
+import { createActionControl, createControlKeys } from '@egret/engine/ui';
 import { projectToViewport3D } from '../../rendering/world3d/GeometryBuilder3D.js';
 /**
  * A layer of page elements that follow scene points. Each element is moved with a CSS transform, so give it
@@ -129,9 +130,21 @@ export function createScreenMarkers3D(options) {
     };
     return layer;
 }
+const EMPTY_RECT = Object.freeze({ x: 0, y: 0, width: 0, height: 0 });
+const emptyPoint = () => ({
+    x: 0,
+    y: 0,
+    depth: 0,
+    onScreen: false,
+    inFront: false,
+    distance: 0
+});
+const validName = (name) => typeof name === 'string' && name.trim() !== '' && name.length <= 1024;
 const markerInvalid = (detail) => new World3DError('WORLD3D_INPUT_INVALID', detail);
 const finiteNonnegative = (value) => typeof value === 'number' && Number.isFinite(value) && value >= 0;
-const finiteMarkerPoint = (value) => Array.isArray(value) && value.length === 3 && value.every(Number.isFinite);
+const finiteMarkerPoint = (value) => (Array.isArray(value) || value instanceof Float32Array || value instanceof Float64Array) &&
+    value.length === 3 &&
+    value.every(Number.isFinite);
 const validateNativeTarget = (value) => {
     if (!(value instanceof Object3D) && !finiteMarkerPoint(value))
         throw markerInvalid('marker target');
@@ -158,32 +171,131 @@ function markerIntersection(a, b) {
     };
 }
 const markerClamp = (value, min, max) => Math.max(min, Math.min(max, value));
-/**
- * A display layer for World3DOverlay. It borrows real displays under a
- * non-interactive stage child, uses the same projectToViewport3D projection as
- * page markers, and maps the CSS scene point into the overlay's current plan.
- */
+/** The original overlay entry uses exactly the same native host and placement implementation. */
 export function createOverlayScreenMarkers3D(options) {
-    if (!options?.overlay?.game ||
-        !(options.overlay.game.stage instanceof DisplayObjectContainer) ||
-        options.overlay.game.scope.state !== 'open' ||
-        options.overlay.game.scope.signal.aborted ||
-        typeof options.overlay.canvas?.getBoundingClientRect !== 'function' ||
-        typeof options.sceneCanvas?.getBoundingClientRect !== 'function' ||
-        typeof options.camera?.updateViewMatrices !== 'function')
+    if (!options?.overlay)
         throw markerInvalid('overlay screen markers');
-    const { overlay, sceneCanvas } = options, { stage, scope } = overlay.game;
+    return createNativeScreenMarkers3D({
+        game: options.overlay.game,
+        canvas: options.overlay.canvas,
+        sceneCanvas: options.sceneCanvas,
+        camera: options.camera,
+        ...(options.semantics === undefined ? {} : { semantics: options.semantics }),
+        ...(options.parent === undefined ? {} : { parent: options.parent })
+    });
+}
+/**
+ * A native marker layer on the existing BrowserGame stage (overlay or attached Play). All coordinates are native
+ * stage units, not Play design units. No new clock, surface or input router is created.
+ */
+export function createNativeScreenMarkers3D(options) {
+    if (!options?.game ||
+        !(options.game.stage instanceof DisplayObjectContainer) ||
+        options.game.scope.state !== 'open' ||
+        options.game.scope.signal.aborted ||
+        typeof options.canvas?.getBoundingClientRect !== 'function' ||
+        typeof options.sceneCanvas?.getBoundingClientRect !== 'function' ||
+        typeof options.camera?.updateViewMatrices !== 'function' ||
+        (options.semantics !== undefined && typeof options.semantics?.add !== 'function'))
+        throw markerInvalid('native screen markers');
+    const { game, canvas: surface, sceneCanvas, semantics } = options, { stage, scope } = game;
+    const parent = options.parent ?? stage;
+    function parentOrigin() {
+        if (!(parent instanceof DisplayObjectContainer) || parent.isDisposed)
+            return undefined;
+        let attached = false;
+        for (let at = parent; at; at = at.parent)
+            if (at === stage) {
+                attached = true;
+                break;
+            }
+        if (!attached)
+            return undefined;
+        const base = parent.localToGlobal(0, 0), x = parent.localToGlobal(1, 0), y = parent.localToGlobal(0, 1);
+        const epsilon = 1e-6;
+        if (Math.abs(x.x - base.x - 1) > epsilon ||
+            Math.abs(x.y - base.y) > epsilon ||
+            Math.abs(y.x - base.x) > epsilon ||
+            Math.abs(y.y - base.y - 1) > epsilon)
+            return undefined;
+        return base;
+    }
+    const origin = parentOrigin();
+    if (!origin)
+        throw markerInvalid('native marker parent must be attached with a translation-only transform');
     const root = new DisplayObjectContainer();
     root.touchEnabled = false;
-    root.touchChildren = false;
-    stage.addChild(root);
+    root.touchChildren = true;
+    root.x = -origin.x;
+    root.y = -origin.y;
+    parent.addChild(root);
     const records = [], world = new Float32Array(3);
+    const ids = new Set();
+    const hitRecords = new Map();
     let closed = false, stageRetires = false;
+    function projectionFrame() {
+        if (closed)
+            return undefined;
+        const scene = sceneCanvas.getBoundingClientRect(), canvas = surface.getBoundingClientRect(), plan = game.screen;
+        if (!(scene.width > 0 &&
+            scene.height > 0 &&
+            canvas.width > 0 &&
+            canvas.height > 0 &&
+            plan.width > 0 &&
+            plan.height > 0))
+            return undefined;
+        const camera = layer.camera;
+        camera.updateViewMatrices();
+        const unitsX = plan.width / canvas.width, unitsY = plan.height / canvas.height;
+        const screen = Object.freeze(markerIntersection({
+            x: (scene.left - canvas.left) * unitsX,
+            y: (scene.top - canvas.top) * unitsY,
+            width: scene.width * unitsX,
+            height: scene.height * unitsY
+        }, { x: 0, y: 0, width: plan.width, height: plan.height }));
+        const safe = Object.freeze(markerIntersection(screen, plan.safe));
+        return {
+            scene,
+            canvas,
+            unitsX,
+            unitsY,
+            screen,
+            safe,
+            unitsPerCssPixel: Object.freeze({ x: unitsX, y: unitsY }),
+            project(target, offset = [0, 0, 0], out = emptyPoint()) {
+                validateNativeTarget(target);
+                if (!finiteMarkerPoint(offset))
+                    throw markerInvalid('marker offset');
+                if (finiteMarkerPoint(target))
+                    world.set(target);
+                else {
+                    const node = target;
+                    node.updateWorldMatrix();
+                    world.set(node.matrixWorld.subarray(12, 15));
+                }
+                for (let i = 0; i < 3; i++)
+                    world[i] += offset[i];
+                projectToViewport3D(camera, world, scene.width, scene.height, out);
+                out.x = (scene.left - canvas.left + out.x) * unitsX;
+                out.y = (scene.top - canvas.top + out.y) * unitsY;
+                const eye = camera.matrixWorld;
+                out.distance = Math.hypot(world[0] - eye[12], world[1] - eye[13], world[2] - eye[14]);
+                return out;
+            }
+        };
+    }
     const layer = {
         get markers() {
             return records.slice();
         },
         camera: options.camera,
+        projectFrame: projectionFrame,
+        hitTest(stageX, stageY) {
+            if (closed || !Number.isFinite(stageX) || !Number.isFinite(stageY))
+                return undefined;
+            const target = stage.hitTest(stageX, stageY);
+            return target === undefined ? undefined : hitRecords.get(target);
+        },
         add(display, marker) {
             if (closed ||
                 !(display instanceof DisplayObject) ||
@@ -191,7 +303,7 @@ export function createOverlayScreenMarkers3D(options) {
                 display.parent !== undefined ||
                 !marker ||
                 typeof marker !== 'object')
-                throw markerInvalid('overlay marker display or options');
+                throw markerInvalid('native marker display or options');
             validateNativeTarget(marker.target);
             const offset = marker.offset ?? [0, 0, 0];
             if (!finiteMarkerPoint(offset))
@@ -207,10 +319,28 @@ export function createOverlayScreenMarkers3D(options) {
                 typeof clamp !== 'boolean' ||
                 (maxDistance !== Infinity && !finiteNonnegative(maxDistance)))
                 throw markerInvalid('overlay marker placement');
-            // A holder keeps the caller's own position, scale, pivots and children
-            // intact. Measuring it also includes rotation, skew and descendant artwork.
+            const interaction = marker.interaction;
+            const min = interaction?.minHitSize ?? 44;
+            const hitSize = typeof min === 'number' ? { width: min, height: min } : min;
+            if (interaction !== undefined &&
+                (!interaction ||
+                    typeof interaction !== 'object' ||
+                    typeof interaction.id !== 'string' ||
+                    !interaction.id.trim() ||
+                    interaction.id.length > 128 ||
+                    ids.has(interaction.id) ||
+                    (typeof interaction.name !== 'function' && !validName(interaction.name)) ||
+                    typeof interaction.onActivate !== 'function' ||
+                    (interaction.onFocus !== undefined && typeof interaction.onFocus !== 'function') ||
+                    !hitSize ||
+                    !finiteNonnegative(hitSize.width) ||
+                    !finiteNonnegative(hitSize.height) ||
+                    game.pointer === undefined))
+                throw markerInvalid('native marker interaction');
             const holder = new DisplayObjectContainer();
             holder.visible = false;
+            holder.touchEnabled = false;
+            holder.touchChildren = false;
             root.addChild(holder);
             try {
                 holder.addChild(display);
@@ -219,9 +349,162 @@ export function createOverlayScreenMarkers3D(options) {
                 holder.dispose();
                 throw cause;
             }
-            let target = marker.target, enabled = true, onEdge = false, angle = 0, disposed = false;
-            const point = { x: 0, y: 0, depth: 0, onScreen: false, inFront: false }, cssPoint = { x: 0, y: 0, depth: 0, onScreen: false, inFront: false };
+            let target = marker.target, enabled = true, wantsAction = interaction !== undefined, onEdge = false, angle = 0, disposed = false;
+            const point = { x: 0, y: 0, depth: 0, onScreen: false, inFront: false }, rawPoint = emptyPoint();
             const anchorX = anchor.x, anchorY = anchor.y, extentW = extent.width, extentH = extent.height;
+            let hitRect = { ...EMPTY_RECT }, action, registration, keys, semantic, releaseGuard;
+            let pointerReleaseOwns = false, fromScriptedRelease = false;
+            const shown = () => {
+                if (disposed || holder.isDisposed || !display.visible || display.alpha <= 0 || display.parent !== holder)
+                    return false;
+                for (let at = holder; at; at = at.parent) {
+                    if (at.isDisposed || !at.visible || at.alpha <= 0)
+                        return false;
+                    if (at === stage)
+                        return true;
+                }
+                return false;
+            };
+            let awaitingPlacement = true;
+            const available = () => shown() && wantsAction && !awaitingPlacement;
+            function admit() {
+                if (!action || holder.isDisposed)
+                    return;
+                const active = available();
+                if (action.enabled !== active) {
+                    action.setEnabled(active);
+                    registration?.update({ disabled: !active });
+                }
+                if (holder.touchEnabled !== active)
+                    holder.touchEnabled = active;
+            }
+            function hide() {
+                holder.visible = false;
+                admit();
+            }
+            function retireAction() {
+                semantic?.remove();
+                releaseGuard?.();
+                keys?.dispose();
+                registration?.dispose();
+                action?.dispose();
+                if (interaction)
+                    ids.delete(interaction.id);
+                semantic = undefined;
+                releaseGuard = undefined;
+                keys = undefined;
+                registration = undefined;
+                action = undefined;
+            }
+            // Clear a held physical press before a slot is hidden or rebound. Re-enabling a control never revives its old candidate.
+            function cancelAction() {
+                pointerReleaseOwns = false;
+                if (action?.enabled) {
+                    action.setEnabled(false);
+                    registration?.update({ disabled: true });
+                }
+                if (!holder.isDisposed && holder.touchEnabled)
+                    holder.touchEnabled = false;
+            }
+            function currentName() {
+                const name = typeof interaction?.name === 'function' ? interaction.name() : interaction?.name;
+                if (!validName(name))
+                    throw markerInvalid('native marker name');
+                return name;
+            }
+            if (interaction) {
+                try {
+                    holder.name = currentName();
+                    const inert = () => semantics?.snapshot.nodes.some(node => node.id === interaction.id && node.inert) === true;
+                    // The router correctly delivers the original captured end. Before ActionControl hears it, additionally
+                    // admit only a release which is still owned by this holder in the *current* display order. A newly
+                    // opened foreground panel must not activate an action beneath it. Keyboard/semantic releases use the
+                    // same control but do not need a pointer coordinate.
+                    releaseGuard = holder.on(game.pointer.events.end, event => {
+                        pointerReleaseOwns = stage.hitTest(event.payload.globalX, event.payload.globalY) === holder;
+                    });
+                    action = createActionControl({
+                        input: game.pointer,
+                        target: holder,
+                        activation: 'tap',
+                        onActivate: () => {
+                            const admitted = fromScriptedRelease || pointerReleaseOwns;
+                            pointerReleaseOwns = false;
+                            if (admitted && available() && !inert())
+                                interaction.onActivate();
+                        }
+                    });
+                    action.setEnabled(false);
+                    const control = {
+                        get enabled() {
+                            return available() && action?.enabled === true && !inert();
+                        },
+                        press() {
+                            if (this.enabled)
+                                action?.press();
+                        },
+                        release() {
+                            if (!this.enabled)
+                                return;
+                            fromScriptedRelease = true;
+                            try {
+                                action?.release();
+                            }
+                            finally {
+                                fromScriptedRelease = false;
+                            }
+                        }
+                    };
+                    if (game.keyboard) {
+                        registration = game.keyboard.registerTarget({ id: interaction.id, target: holder, disabled: true });
+                        keys = createControlKeys({ keyboard: game.keyboard, target: holder, kind: 'action', control });
+                    }
+                    const requestFocus = game.keyboard
+                        ? () => {
+                            if (available())
+                                game.keyboard.focus(interaction.id);
+                        }
+                        : interaction.onFocus;
+                    if (semantics)
+                        semantic = semantics.add({
+                            id: interaction.id,
+                            role: 'button',
+                            describe: () => ({
+                                name: currentName(),
+                                bounds: {
+                                    x: holder.x + hitRect.x,
+                                    y: holder.y + hitRect.y,
+                                    width: hitRect.width,
+                                    height: hitRect.height
+                                },
+                                hidden: !shown(),
+                                disabled: !available(),
+                                focused: available() && game.keyboard?.getSnapshot().focusedId === interaction.id
+                            }),
+                            onActivate: () => {
+                                if (control.enabled) {
+                                    control.press();
+                                    control.release();
+                                }
+                            },
+                            ...(requestFocus
+                                ? {
+                                    onFocus: () => {
+                                        if (available())
+                                            requestFocus();
+                                    }
+                                }
+                                : {})
+                        });
+                    ids.add(interaction.id);
+                }
+                catch (cause) {
+                    retireAction();
+                    holder.removeChild(display);
+                    holder.dispose();
+                    throw cause;
+                }
+            }
             const entry = {
                 display,
                 point,
@@ -238,6 +521,8 @@ export function createOverlayScreenMarkers3D(options) {
                     if (disposed)
                         throw markerInvalid('disposed overlay marker');
                     validateNativeTarget(next);
+                    awaitingPlacement = true;
+                    cancelAction();
                     target = next;
                 },
                 setVisible(next) {
@@ -245,7 +530,13 @@ export function createOverlayScreenMarkers3D(options) {
                         throw markerInvalid('overlay marker visibility');
                     enabled = next;
                     if (!enabled)
-                        holder.visible = false;
+                        hide();
+                },
+                setInteractive(next) {
+                    if (disposed || typeof next !== 'boolean' || (next && !interaction))
+                        throw markerInvalid('native marker interaction');
+                    wantsAction = next;
+                    admit();
                 },
                 dispose() {
                     if (disposed)
@@ -254,15 +545,14 @@ export function createOverlayScreenMarkers3D(options) {
                     const at = records.indexOf(entry);
                     if (at >= 0)
                         records.splice(at, 1);
+                    hitRecords.delete(holder);
+                    retireAction();
                     if (!holder.isDisposed && !stageRetires) {
                         if (!display.isDisposed && display.parent === holder) {
                             try {
                                 holder.removeChild(display);
                             }
                             catch (cause) {
-                                // Engine.dispose() closes public tree mutations before sending
-                                // Scope cancellation. Its ensuing Scope/Stage teardown is the
-                                // authority then; do not recursively dispose borrowed artwork.
                                 if (cause instanceof EgretError && cause.code === 'ENGINE_CLOSED') {
                                     stageRetires = true;
                                     return;
@@ -273,109 +563,148 @@ export function createOverlayScreenMarkers3D(options) {
                         holder.dispose();
                     }
                 },
-                update(projection) {
+                update(projection, wantsCandidate) {
                     if (disposed)
-                        return;
-                    // A caller is allowed to retire or reclaim its borrowed object. Do
-                    // not silently steal it back, or keep an empty holder in the layer.
+                        return undefined;
                     if (holder.isDisposed || display.isDisposed || display.parent !== holder) {
                         entry.dispose();
-                        return;
+                        return undefined;
                     }
                     onEdge = false;
-                    if (!enabled || projection === undefined) {
-                        holder.visible = false;
-                        return;
+                    if (!enabled || !projection) {
+                        hide();
+                        return undefined;
                     }
-                    if (Array.isArray(target))
-                        world.set(target);
-                    else {
-                        const node = target;
-                        node.updateWorldMatrix();
-                        world.set(node.matrixWorld.subarray(12, 15));
-                    }
-                    for (let i = 0; i < 3; i++)
-                        world[i] += offset[i];
-                    const camera = layer.camera, { scene, canvas, unitsX, unitsY } = projection;
-                    projectToViewport3D(camera, world, scene.width, scene.height, cssPoint);
-                    const rawX = (scene.left - canvas.left + cssPoint.x) * unitsX, rawY = (scene.top - canvas.top + cssPoint.y) * unitsY;
-                    point.x = rawX;
-                    point.y = rawY;
-                    point.depth = cssPoint.depth;
-                    point.inFront = cssPoint.inFront;
-                    point.onScreen = cssPoint.onScreen;
-                    const eye = camera.matrixWorld, far = Math.hypot(world[0] - eye[12], world[1] - eye[13], world[2] - eye[14]) > maxDistance;
-                    if (!Number.isFinite(rawX) || !Number.isFinite(rawY) || far) {
-                        holder.visible = false;
-                        return;
+                    projection.project(target, offset, rawPoint);
+                    point.x = rawPoint.x;
+                    point.y = rawPoint.y;
+                    point.depth = rawPoint.depth;
+                    point.inFront = rawPoint.inFront;
+                    point.onScreen = rawPoint.onScreen;
+                    const { scene, canvas, unitsX, unitsY } = projection;
+                    const rawX = rawPoint.x, rawY = rawPoint.y;
+                    if (!Number.isFinite(rawX) || !Number.isFinite(rawY) || rawPoint.distance > maxDistance) {
+                        hide();
+                        return undefined;
                     }
                     const part = area === 'safe' ? projection.safe : projection.screen;
-                    const drawn = holder.getBounds(), width = Math.max(drawn.width, extentW), height = Math.max(drawn.height, extentH);
-                    // The region is expressed in anchor coordinates: reserve the actual
-                    // drawing on both sides of its normalised anchor, not just its centre.
+                    const drawn = holder.getBounds();
+                    const width = Math.max(drawn.width, extentW, interaction ? hitSize.width * unitsX : 0), height = Math.max(drawn.height, extentH, interaction ? hitSize.height * unitsY : 0);
+                    const drawnX = drawn.x + drawn.width * anchorX, drawnY = drawn.y + drawn.height * anchorY;
                     const left = part.x + margin.left * unitsX + width * anchorX, right = part.x + part.width - margin.right * unitsX - width * (1 - anchorX), top = part.y + margin.top * unitsY + height * anchorY, bottom = part.y + part.height - margin.bottom * unitsY - height * (1 - anchorY);
                     if (!(part.width > 0 && part.height > 0 && right >= left && bottom >= top)) {
-                        holder.visible = false;
-                        return;
+                        hide();
+                        return undefined;
                     }
-                    let dx = cssPoint.x - scene.width / 2, dy = cssPoint.y - scene.height / 2;
-                    // For a target directly behind the camera, preserve the historic
-                    // marker behaviour: use the bottom edge, not a random direction.
+                    // The scene centre is not the centre of a cropped intersection. Convert the original scene projection instead.
+                    const sceneCenterX = (scene.left + scene.width / 2 - canvas.left) * unitsX, sceneCenterY = (scene.top + scene.height / 2 - canvas.top) * unitsY;
+                    let dx = (rawX - sceneCenterX) / unitsX, dy = (rawY - sceneCenterY) / unitsY;
                     if (Math.hypot(dx, dy) < 1e-6)
                         dy = 1;
                     angle = Math.atan2(dy, dx);
-                    const inside = cssPoint.onScreen && rawX >= left && rawX <= right && rawY >= top && rawY <= bottom;
-                    if (!inside && !clamp) {
-                        holder.visible = false;
-                        return;
+                    let frameOpen = true;
+                    const feasible = (x, y) => frameOpen &&
+                        !disposed &&
+                        enabled &&
+                        Number.isFinite(x) &&
+                        Number.isFinite(y) &&
+                        x >= left &&
+                        x <= right &&
+                        y >= top &&
+                        y <= bottom &&
+                        (rawPoint.onScreen || clamp);
+                    // Frame-local candidate custom placement keeps the default area/footprint constraints and updates actual hit geometry.
+                    function place(x, y) {
+                        if (!feasible(x, y))
+                            return false;
+                        holder.x = x - drawnX;
+                        holder.y = y - drawnY;
+                        holder.visible = true;
+                        awaitingPlacement = false;
+                        point.x = x;
+                        point.y = y;
+                        if (interaction) {
+                            const hit = { x: drawnX - width * anchorX, y: drawnY - height * anchorY, width, height };
+                            if (hit.x !== hitRect.x ||
+                                hit.y !== hitRect.y ||
+                                hit.width !== hitRect.width ||
+                                hit.height !== hitRect.height) {
+                                hitRect = hit;
+                                holder.hitArea = hit;
+                            }
+                            const name = currentName();
+                            if (holder.name !== name)
+                                holder.name = name;
+                        }
+                        admit();
+                        return true;
                     }
-                    let x = rawX, y = rawY;
-                    if (!inside) {
-                        // Cast a ray from the scene centre (inside the feasible region if
-                        // asymmetric margins displaced it) to the marker's allowed edge.
-                        const cx = markerClamp((scene.left + scene.width / 2 - canvas.left) * unitsX, left, right), cy = markerClamp((scene.top + scene.height / 2 - canvas.top) * unitsY, top, bottom);
+                    const inside = rawPoint.onScreen && feasible(rawX, rawY);
+                    if (inside)
+                        place(rawX, rawY);
+                    else if (!clamp)
+                        hide();
+                    else {
+                        const cx = markerClamp(sceneCenterX, left, right), cy = markerClamp(sceneCenterY, top, bottom);
                         dx *= unitsX;
                         dy *= unitsY;
                         const sx = dx > 0 ? (right - cx) / dx : dx < 0 ? (left - cx) / dx : Infinity, sy = dy > 0 ? (bottom - cy) / dy : dy < 0 ? (top - cy) / dy : Infinity, k = Math.min(sx, sy);
-                        x = markerClamp(cx + dx * k, left, right);
-                        y = markerClamp(cy + dy * k, top, bottom);
                         onEdge = true;
+                        place(markerClamp(cx + dx * k, left, right), markerClamp(cy + dy * k, top, bottom));
                     }
-                    holder.x = x - (drawn.x + drawn.width * anchorX);
-                    holder.y = y - (drawn.y + drawn.height * anchorY);
-                    holder.visible = true;
-                    point.x = x;
-                    point.y = y;
+                    if (!wantsCandidate)
+                        return undefined;
+                    const candidate = {
+                        marker: entry,
+                        rawPoint,
+                        get rect() {
+                            return { x: point.x - width * anchorX, y: point.y - height * anchorY, width, height };
+                        },
+                        place,
+                        hide: () => {
+                            if (frameOpen && !disposed)
+                                hide();
+                        },
+                        toFront: () => {
+                            if (frameOpen && !disposed && holder.parent === root)
+                                root.setChildIndex(holder, root.numChildren - 1);
+                        },
+                        close: () => {
+                            frameOpen = false;
+                        }
+                    };
+                    return candidate;
                 }
             };
             records.push(entry);
+            if (interaction)
+                hitRecords.set(holder, entry);
             return entry;
         },
-        update() {
+        update(resolve) {
             if (closed)
                 return;
-            const scene = sceneCanvas.getBoundingClientRect(), canvas = overlay.canvas.getBoundingClientRect(), plan = overlay.game.screen;
-            let projection;
-            if (scene.width > 0 &&
-                scene.height > 0 &&
-                canvas.width > 0 &&
-                canvas.height > 0 &&
-                plan.width > 0 &&
-                plan.height > 0) {
-                layer.camera.updateViewMatrices();
-                const unitsX = plan.width / canvas.width, unitsY = plan.height / canvas.height;
-                // For both contain and cover, only the part shared by the two actual
-                // canvases is visible. Filling fits naturally have the same rectangle.
-                const visible = markerIntersection({
-                    x: (scene.left - canvas.left) * unitsX,
-                    y: (scene.top - canvas.top) * unitsY,
-                    width: scene.width * unitsX,
-                    height: scene.height * unitsY
-                }, { x: 0, y: 0, width: plan.width, height: plan.height });
-                projection = { scene, canvas, unitsX, unitsY, screen: visible, safe: markerIntersection(visible, plan.safe) };
+            if (resolve !== undefined && typeof resolve !== 'function')
+                throw markerInvalid('native marker resolver');
+            const origin = parentOrigin();
+            if (origin && !root.isDisposed) {
+                root.x = -origin.x;
+                root.y = -origin.y;
             }
-            for (const record of [...records])
-                record.update(projection);
+            const frame = origin && !root.isDisposed ? projectionFrame() : undefined, candidates = [];
+            try {
+                for (const record of [...records]) {
+                    const candidate = record.update(frame, resolve !== undefined);
+                    if (candidate)
+                        candidates.push(candidate);
+                }
+                if (frame && resolve)
+                    resolve(candidates, frame);
+            }
+            finally {
+                for (const candidate of candidates)
+                    candidate.close?.();
+            }
         },
         dispose() {
             if (closed)

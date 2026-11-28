@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-// Bind the explicit WebGL2 layer cache to the ordinary Engine host transaction.
+// Bind the explicit layer cache of the WebGL2 or WebGPU Host to the ordinary Engine host transaction.
 // No canvas readback, texture conversion, or replacement display tree.
 import { EgretError } from '@egret/runtime';
 const invalid = () => new EgretError('BROWSER_GAME_OPTIONS_INVALID');

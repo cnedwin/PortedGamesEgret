@@ -119,7 +119,7 @@ Choose a regiment and make your way through Stonegate Pass, Red Banner Depot and
 - 正常交互对局采用 0.90 倍统一虚拟时间，既有固定步、双方相对规则、数值、存档、界面和镜头时钟保持不变；固定截图及自动验收不改节拍。移动等游戏内进程也随统一时间变慢。 / Normal interactive play uses a uniform 0.90× virtual clock, retaining the old fixed step, relative rules, values, saves and real-time UI/camera clock; deterministic capture and automated verification retain their old cadence. In-world motion and progression share the slower clock.
 - 普通移动动作采用闭合循环及归一化动作混合；同一东方色系的装饰性发光圆环、星芒和数字铜饰使用固定复用池，减少动效设置可关闭新增扩散与漂移。一次性合成音频仅在必要时保留峰值余量及柔和尾端，不改曲目、音量与播放事件。 / Closed locomotion cycles and normalized blending improve visual continuity. The decorative halo/star motifs and floating plates stay within bounded pools; reduced motion suppresses the added motion. One-shot audio mastering preserves headroom and smooth endpoints when needed without changing playback events or loop music.
 - 角色既有姿态组合完成后，独立的头部装饰通道以有界四元数过渡衔接普通移动和已有表现状态；位置、其他已测骨骼及原动画事件时序均保持。标题、选营镜头独立缓动，入场与结算提示牌保持原显示区和时长并统一演出。 / A bounded render-only quaternion transition on the independent head channel links the existing display poses without changing positions, other tested bones or event times. Menu staging and scene notice composition use separate cinematic easing; their timing and interaction stay unchanged.
-- 卷首和选营使用独立的挺拔展示姿态与自适应镜头，不修改实战骨骼动作或判定。五套真实步态保留，并优化普通移动的起停、转向衔接；马匹静止时保留细微自然动作。 / The title and selection use a composed preview-only posture and screen-aware camera, separate from combat. Captured locomotion transitions and small horse idle movements are refined.
+- 卷首和选营使用独立的挺拔展示姿态、自适应镜头与错相的真实待机动作，固定截图和减少动效保留原姿态，不修改实战骨骼动作或判定。五套真实步态保留，并优化普通移动的起停、转向衔接。 / The title and selection use a composed preview-only posture, screen-aware camera and phase-offset captured idle. Fixed captures and reduced motion retain the original pose; combat motion and rules remain independent. Captured locomotion transitions are retained.
 - 竹林、雪地与校场保留原有地形和资产，调整雾、光照、地面纹理和道路细节；原生 HUD 的字号、层级与对比度适配安全区域。 / Existing environment assets and gameplay terrain are preserved, with refined fog, light, ground and path detail and a legible native HUD.
 
 - 人物（五营各一）、披甲战马和三十二件场景物件用 Tripo 生成：城门楼、宫门、亭子、烽火台、石桥、桃树、竹、松、旗、兵器架、草靶、鼓、木栅、山石、火盆、石狮、铜鼎，以及营寨和关城的城墙段、木寨门、箭楼、营帐、拒马、投石车、床弩、茅草土屋、马厩、篝火、粮车、军需堆。人物带标准人形骨架，战马带四足骨骼；再用 gltfpack 减面、量化和 meshopt 压缩成高、中、低三档（人物和马合计 10.6 / 4.3 / 2.3 MB，每个场景只载入自己用到的物件）。 · The five men, the armoured horse and thirty-two props — among them the camp and fort pieces: crenellated wall sections, a stockade gate, arrow towers, tents, cheval-de-frise, a trebuchet, bed crossbows, a thatched hut, a stable, a campfire, a cart and supplies — were generated with Tripo, the men rigged to a humanoid skeleton and the horse to a four-legged one, then reduced, quantized and meshopt-compressed into high, medium and low sets (men and horse 10.6 / 4.3 / 2.3 MB; each place loads only its own props).
@@ -187,7 +187,7 @@ Choose a regiment and make your way through Stonegate Pass, Red Banner Depot and
 - 界面布局和按键按公开的按键表和沙盒战争类 PC 游戏的常见布局做，没有对着原作截图逐像素比对；手上没有截图可对，罗盘、名牌、物品栏的样式是自己画的。 · The panels and keys follow published key lists and the usual layout of sandbox-war PC games, not a pixel comparison with screenshots; the compass, nameplates and bar are drawn here.
 - 战马的骨骼里右后腿只有一节骨头，跑起来那条腿只能整条摆动、不能弯膝。马上不能跳、没有马上弓射。 · The horse's rig has a single bone for the right hind leg, so that leg swings without bending. No jumping on horseback, and no mounted archery.
 - 刀路只有四个方向；原作武器面板上的八个方向没有做全。 · Four lines of cut; the original's eight directions are not all made.
-- 品质验收未达标 · Quality items failing（[QUALITY.md](QUALITY.md)，2026-11-28，无头 Chromium + SwiftShader · headless, software rendering）：F1 桌面帧时间 p95 ≤ 16.7 ms（p95 158.3 ms over 41 frames）。
+- 品质验收未达标 · Quality items failing（[QUALITY.md](QUALITY.md)，2026-11-28，无头 Chromium + SwiftShader · headless, software rendering）：F1 桌面帧时间 p95 ≤ 16.7 ms（p95 241.6 ms over 31 frames）。
 
 ## 已解决 · Solved
 
@@ -249,7 +249,7 @@ Choose a regiment and make your way through Stonegate Pass, Red Banner Depot and
 
 ## 引擎副本 · Engine copy
 
-- 引擎提交 `212972678e633b1f3667f345d0646b0fba907ee1`（见 `vendor/SOURCE.md`）。 · Engine commit `21297267` (see `vendor/SOURCE.md`).
+- 引擎提交 `b078372939362d0d7df98b976ea3f64fe05ae3b7`（见 `vendor/SOURCE.md`）。 · Engine commit `b0783729` (see `vendor/SOURCE.md`).
 - 生成命令（在引擎仓库里）· Made with, in the engine repository:
 
 ```sh

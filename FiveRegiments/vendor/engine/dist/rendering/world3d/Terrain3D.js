@@ -1,8 +1,3 @@
-// SPDX-License-Identifier: Apache-2.0
-// Height-map terrain: a grid of heights that answers gameplay queries, a
-// chunked mesh whose pieces drop detail with distance, and a collision shape
-// built from the same triangles. DOM-free; decode images in the host and pass
-// the pixels in.
 import { World3DError, requireCount3D, requireFinite3D, requirePositive3D } from './core3D.js';
 import { Attribute3D, Geometry3D } from './Geometry3D.js';
 import { createStandardMaterial3D } from './Material3D.js';
@@ -607,6 +602,52 @@ export function createTerrainMaterial3D(options) {
     });
     return material;
 }
+// Rendering is host independent; expose only the shared read-only CancellationSignal contract.
+function createTerrainLoadCancellation(onFailure) {
+    const listeners = new Set();
+    let aborted = false, closed = false;
+    let reason;
+    const signal = Object.freeze({
+        get aborted() {
+            return aborted;
+        },
+        get reason() {
+            return reason;
+        },
+        addEventListener(_type, listener) {
+            if (!closed && !aborted)
+                listeners.add(listener);
+        },
+        removeEventListener(_type, listener) {
+            listeners.delete(listener);
+        }
+    });
+    return {
+        signal,
+        abort(value) {
+            if (closed || aborted)
+                return;
+            aborted = true;
+            reason = value;
+            for (const listener of [...listeners]) {
+                if (!listeners.delete(listener))
+                    continue;
+                try {
+                    listener();
+                }
+                catch (cause) {
+                    onFailure(cause);
+                }
+            }
+            closed = true;
+            listeners.clear();
+        },
+        close() {
+            closed = true;
+            listeners.clear();
+        }
+    };
+}
 /** Terrain loaded in tiles around the camera: read heights, and update it as the camera moves. */
 export class TerrainStream3D extends Object3D {
     tileSize;
@@ -690,9 +731,13 @@ export class TerrainStream3D extends Object3D {
             for (const [key, tile] of this.#tiles)
                 if (near(tile.x, tile.z) > retention)
                     this.release(key, tile);
-            for (const [key, request] of this.#requests)
-                if (near(request.x, request.z) > retention)
+            for (const [key, request] of this.#requests) {
+                if (near(request.x, request.z) > retention) {
+                    // Retire ownership before notifying loader code.
                     this.#requests.delete(key);
+                    request.cancellation.abort('retired');
+                }
+            }
             const budget = Math.min(this.#loadsPerUpdate, TERRAIN3D_LIMITS.maxStreamPending - this.#outstanding);
             if (budget <= 0 || this.#disposed)
                 return;
@@ -720,22 +765,29 @@ export class TerrainStream3D extends Object3D {
         if (this.#disposed)
             return;
         this.#disposed = true;
+        const retired = [...this.#requests.values()];
         this.#requests.clear();
+        for (const request of retired)
+            request.cancellation.abort('disposed');
         for (const [key, tile] of this.#tiles)
             this.release(key, tile);
     }
     request(x, z) {
-        const key = x + ',' + z, request = { x, z };
+        const key = x + ',' + z;
+        const cancellation = createTerrainLoadCancellation(cause => this.recordFailure({ x, z }, 'load', cause));
+        const request = { x, z, cancellation };
         this.#requests.set(key, request);
         this.#outstanding++;
         const current = () => this.#requests.get(key) === request;
         const reject = (cause) => {
+            cancellation.close();
             this.#outstanding--;
             if (!current())
                 return;
             this.recordFailure(request, 'load', cause);
         };
         const accept = (field) => {
+            cancellation.close();
             let staged;
             try {
                 if (!current())
@@ -748,7 +800,10 @@ export class TerrainStream3D extends Object3D {
                 const material = typeof this.#options.material === 'function' ? this.#options.material(x, z, field) : this.#options.material;
                 if (!current())
                     return;
-                const terrain = new Terrain3D(field, material, this.#options.terrain);
+                const options = typeof this.#options.terrain === 'function' ? this.#options.terrain(x, z, field) : this.#options.terrain;
+                if (!current())
+                    return;
+                const terrain = new Terrain3D(field, material, options);
                 staged = terrain;
                 if (!current())
                     return;
@@ -789,7 +844,7 @@ export class TerrainStream3D extends Object3D {
         };
         let result;
         try {
-            result = this.#options.load(x, z);
+            result = this.#options.load(x, z, Object.freeze({ signal: cancellation.signal }));
         }
         catch (cause) {
             reject(cause);
