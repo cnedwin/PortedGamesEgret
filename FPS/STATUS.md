@@ -57,6 +57,8 @@ The historical device acceptance focused on WebGL2. Consult the formal-adoption 
 
 ## 已经解决的问题 · Problems already solved
 
+- 完成全地图场景质量回查，使用 7 个 Tripo 环境 GLB 替代旧程序化树木、上下铺、档案架、工作台、电脑组合及储物柜；修复屋内雨纹地面、井盖、草与灯具的低细节表现。近远景共享同源素材与原生实例化，保留规则和碰撞。 · Seven authored Tripo environment models and the dry-floor/road/fittings art pass correct the visible placeholder scenery; original rules and collision are unchanged.
+
 - 积水黑色叠层、泄洪白块、低细节树木及物资箱发光实心内板已修复；53 株树使用带纹理原生实例，水面使用单层原生网格，箱内显示非功能性的物资包装与隔层。 · The overlapping black puddles, white sluice slabs, primitive tree shapes and luminous solid crate insert are corrected. See QUALITY for matched GPU evidence.
 
 - 点击开始时，普通双面补给箱的主图和镜面材质首次同步链接，造成约 130 毫秒的两次停顿。启动时在加载提示下真实预绘这两种路径，完成后恢复标题，不推进游戏时间。

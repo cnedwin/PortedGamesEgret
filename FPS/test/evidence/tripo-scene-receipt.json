@@ -1,0 +1,328 @@
+{
+  "schemaVersion": 1,
+  "baseline": "949bf17334b6385933fff9b199765275df54ed3c",
+  "engine": "d2e28f46182a563fd594cc51847240429ab0a5b5",
+  "conditions": "Actual Edge/RTX5090 and physical Fold7/Adreno830; seed7 medium, fixed art cameras separated from normal input",
+  "pc": {
+    "adapter": "ANGLE (NVIDIA, NVIDIA GeForce RTX 5090 Laptop GPU (0x00002C58) Direct3D11 vs_5_0 ps_5_0, D3D11)",
+    "baselineModels": 36,
+    "finalModels": 43,
+    "cameraBefore": [
+      {
+        "name": "wide-overview",
+        "draws": 128,
+        "triangles": 10025245
+      },
+      {
+        "name": "west-woodland",
+        "draws": 45,
+        "triangles": 813400
+      },
+      {
+        "name": "east-woodland",
+        "draws": 44,
+        "triangles": 994915
+      },
+      {
+        "name": "yard-lamp",
+        "draws": 81,
+        "triangles": 4253995
+      },
+      {
+        "name": "central-road",
+        "draws": 128,
+        "triangles": 7685942
+      },
+      {
+        "name": "drain-detail",
+        "draws": 108,
+        "triangles": 6452108
+      },
+      {
+        "name": "wall-rail",
+        "draws": 52,
+        "triangles": 1587112
+      },
+      {
+        "name": "distance-decoration",
+        "draws": 42,
+        "triangles": 1235438
+      },
+      {
+        "name": "plant-exterior",
+        "draws": 85,
+        "triangles": 4432169
+      },
+      {
+        "name": "plant-roof",
+        "draws": 77,
+        "triangles": 3884713
+      },
+      {
+        "name": "plant-interior",
+        "draws": 68,
+        "triangles": 2928236
+      },
+      {
+        "name": "workbench",
+        "draws": 80,
+        "triangles": 3738153
+      },
+      {
+        "name": "lockers",
+        "draws": 95,
+        "triangles": 5395512
+      },
+      {
+        "name": "office-bunks",
+        "draws": 49,
+        "triangles": 1581074
+      },
+      {
+        "name": "office-desk",
+        "draws": 63,
+        "triangles": 2624984
+      },
+      {
+        "name": "office-shelves",
+        "draws": 45,
+        "triangles": 1572223
+      },
+      {
+        "name": "office-roof",
+        "draws": 78,
+        "triangles": 3960185
+      },
+      {
+        "name": "sluice-landscape",
+        "draws": 46,
+        "triangles": 950501
+      }
+    ],
+    "cameraAfter": [
+      {
+        "name": "wide-overview",
+        "draws": 135,
+        "triangles": 10205932
+      },
+      {
+        "name": "west-woodland",
+        "draws": 46,
+        "triangles": 940301
+      },
+      {
+        "name": "east-woodland",
+        "draws": 45,
+        "triangles": 1121816
+      },
+      {
+        "name": "yard-lamp",
+        "draws": 83,
+        "triangles": 4381076
+      },
+      {
+        "name": "central-road",
+        "draws": 134,
+        "triangles": 7856285
+      },
+      {
+        "name": "drain-detail",
+        "draws": 114,
+        "triangles": 6622451
+      },
+      {
+        "name": "wall-rail",
+        "draws": 53,
+        "triangles": 1714013
+      },
+      {
+        "name": "distance-decoration",
+        "draws": 44,
+        "triangles": 1373715
+      },
+      {
+        "name": "plant-exterior",
+        "draws": 89,
+        "triangles": 4582716
+      },
+      {
+        "name": "plant-roof",
+        "draws": 79,
+        "triangles": 4011794
+      },
+      {
+        "name": "plant-interior",
+        "draws": 70,
+        "triangles": 3055317
+      },
+      {
+        "name": "workbench",
+        "draws": 85,
+        "triangles": 3891720
+      },
+      {
+        "name": "lockers",
+        "draws": 98,
+        "triangles": 5541293
+      },
+      {
+        "name": "office-bunks",
+        "draws": 51,
+        "triangles": 1718319
+      },
+      {
+        "name": "office-desk",
+        "draws": 66,
+        "triangles": 2771681
+      },
+      {
+        "name": "office-shelves",
+        "draws": 49,
+        "triangles": 1729264
+      },
+      {
+        "name": "office-roof",
+        "draws": 83,
+        "triangles": 4117406
+      },
+      {
+        "name": "sluice-landscape",
+        "draws": 47,
+        "triangles": 1077402
+      }
+    ],
+    "finalSourceHashes": {
+      "src/scenery.mjs": {
+        "local": "280e2bb6f32368cb342f99fdac1e3fd23fcacfdc0f20d61696af92525b372d99",
+        "served": "280e2bb6f32368cb342f99fdac1e3fd23fcacfdc0f20d61696af92525b372d99"
+      },
+      "src/vegetation.mjs": {
+        "local": "0b22dc3c9df8b97850993d6470465b452c3f11068b5a8dba7f42b19348ca44b3",
+        "served": "0b22dc3c9df8b97850993d6470465b452c3f11068b5a8dba7f42b19348ca44b3"
+      },
+      "src/textures.mjs": {
+        "local": "841b3c6ccee4b7d6ffa2a15380cf6137dd46903e314356e82405c61bae4d3123",
+        "served": "841b3c6ccee4b7d6ffa2a15380cf6137dd46903e314356e82405c61bae4d3123"
+      },
+      "src/level.mjs": {
+        "local": "eb60febe3326464e7f400b171123b892613c1c537e7720520589aca258f0c35a",
+        "served": "eb60febe3326464e7f400b171123b892613c1c537e7720520589aca258f0c35a"
+      },
+      "src/asset-models.mjs": {
+        "local": "e0445a73dbcd492aad0721532faf927f576768bf2a6604483177c8c8c73e3c94",
+        "served": "e0445a73dbcd492aad0721532faf927f576768bf2a6604483177c8c8c73e3c94"
+      },
+      "src/ground-details.mjs": {
+        "local": "0db8091c09a2e36f3fdd07ea0854019e6eca8110803da903ecda7b078c3b7d68",
+        "served": "0db8091c09a2e36f3fdd07ea0854019e6eca8110803da903ecda7b078c3b7d68"
+      },
+      "assets/models/index.json": {
+        "local": "ca519bca15244a523765df6f5d5703fd262edaa755a97dd3905ef0558001fac3",
+        "served": "ca519bca15244a523765df6f5d5703fd262edaa755a97dd3905ef0558001fac3"
+      },
+      "vendor/SOURCE.md": {
+        "local": "37898c7aedeebd495c3bb99ee4c13b5ec977d5b9f6eb6a0aba598bc7109da292",
+        "served": "37898c7aedeebd495c3bb99ee4c13b5ec977d5b9f6eb6a0aba598bc7109da292"
+      },
+      "assets/models/tree-oak.glb": {
+        "local": "e9208ae4d0565f41c78c58125f0bda2b5444441566852a0417e9884d52079aac",
+        "served": "e9208ae4d0565f41c78c58125f0bda2b5444441566852a0417e9884d52079aac"
+      },
+      "assets/models/tree-fir.glb": {
+        "local": "064a72e823953a5bb801366faff901aa5641cedd435c90e554d07279570d2324",
+        "served": "064a72e823953a5bb801366faff901aa5641cedd435c90e554d07279570d2324"
+      },
+      "assets/models/bunk-bed.glb": {
+        "local": "781b1764b69a941eb96e4285165fc264407dce74c1d5aa7f1605dcd0dea3520a",
+        "served": "781b1764b69a941eb96e4285165fc264407dce74c1d5aa7f1605dcd0dea3520a"
+      },
+      "assets/models/archive-shelf.glb": {
+        "local": "2c347b62e29a6e9b5490d7dbd3151245d06e5fc2e6682ee02169b1f706b26ac6",
+        "served": "2c347b62e29a6e9b5490d7dbd3151245d06e5fc2e6682ee02169b1f706b26ac6"
+      },
+      "assets/models/workbench.glb": {
+        "local": "d620e56afba446ca65b8abfb4057c76fd4536ac6ace363fe931431ce2f17cdbd",
+        "served": "d620e56afba446ca65b8abfb4057c76fd4536ac6ace363fe931431ce2f17cdbd"
+      },
+      "assets/models/desktop-set.glb": {
+        "local": "b4e55a2db29e65e7c55f234bc89103e84f79fedbc6d025a4f26f04e49c5d566b",
+        "served": "b4e55a2db29e65e7c55f234bc89103e84f79fedbc6d025a4f26f04e49c5d566b"
+      },
+      "assets/models/worker-locker.glb": {
+        "local": "475eaccb1ba65ccf2d06e64ca9f708fd3d7d0abf1d51eca05aec09604b90f620",
+        "served": "475eaccb1ba65ccf2d06e64ca9f708fd3d7d0abf1d51eca05aec09604b90f620"
+      }
+    },
+    "before": {
+      "triangles": 8530213,
+      "p95": 4.3,
+      "max": 8.3,
+      "callbacks": 1675,
+      "coldTitle": 7350.1,
+      "draws": 130,
+      "over50": 0,
+      "p50": 4.2
+    },
+    "after": {
+      "triangles": 8710902,
+      "p95": 4.3,
+      "max": 20.8,
+      "callbacks": 1667,
+      "coldTitle": 6717.5,
+      "draws": 137,
+      "over50": 0,
+      "p50": 4.2
+    },
+    "nativeDesktop": 33,
+    "pcEmulatedMobile": 17,
+    "officialHardwareVerifier": 8,
+    "criticalAssetRetry": "Recovered all 43 roles"
+  },
+  "fold7": {
+    "model": "Galaxy Z Fold7 / SM-F966U1",
+    "adapter": "Adreno 830",
+    "viewport": "873x325",
+    "baseline": {
+      "over50": 0,
+      "p50": 16.6,
+      "draws": 129,
+      "triangles": 9416040,
+      "wallMs": 6995.3,
+      "drawEWMA": 6.02,
+      "callbacks": 420,
+      "hz": 60.04,
+      "p95": 16.7,
+      "max": 33.2,
+      "titleMs": 6436
+    },
+    "final": {
+      "over50": 0,
+      "modelRoles": 43,
+      "actualTouchPassed": true,
+      "p50": 16.6,
+      "isolatedCameras": 11,
+      "triangles": 9596727,
+      "max": 33.2,
+      "errors": 0,
+      "callbacks": 420,
+      "p95": 16.7,
+      "drawEWMA": 6.17,
+      "titleMs": 7381,
+      "restored": true,
+      "hz": 59.9,
+      "wallMs": 7011.5,
+      "sourceAndAssetChecks": 43,
+      "draws": 136
+    }
+  },
+  "node": {
+    "passed": 119,
+    "failed": 0,
+    "ruleRunsSeconds": [
+      357,
+      358,
+      357
+    ]
+  },
+  "qualification": "Short initial-area physical-device samples; no full high-load mission or photographic foliage claim"
+}

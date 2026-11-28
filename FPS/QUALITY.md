@@ -1,5 +1,34 @@
 # 品质验收 · Quality — Operation Cutoff · 断流行动
 
+## Whole-map Tripo environment art / 全地图 Tripo 场景美术
+
+基线 / Baseline: game `949bf17334b6385933fff9b199765275df54ed3c`, fixed engine `d2e28f46182a563fd594cc51847240429ab0a5b5`. The changes are cosmetic only: no collision geometry, scenario, player input, rules, values, saves, quality choices or audio changes. / 保持原地图碰撞、玩法、操作、数值、存档、音频和画质档位，固定引擎。
+
+- 全图实拍审计覆盖 18 组同机位（全景、东西树林、道路/灯具/井盖、围墙与远景、厂房内外/屋顶、管理楼内外/屋顶、大坝景观等）。原已有详细建筑、货箱、车辆等保留；显眼的旧美术替换为七个项目自制 Tripo GLB（阔叶树、杉树、双层床、档案架、维修台、桌面电脑组合、储物柜）。 / Eighteen matched physical-PC art viewpoints identified remaining prominent placeholders. Existing detailed environment assets were retained. The seven new authored models replace the primitive versions.
+- 53 株树原位置不变，8 株近树保留约 17.6k 三角/原生 PBR 几何，45 株外侧树使用同一源模型烘焙的 6 三角 alpha-mask 近似轮廓；四组原生实例，共 140,954 视觉三角（不含阴影代理）。近处重新校正非金属材质、漫反射补光及底色自然色调，避免背光全黑；远景补光较弱、保留 alpha 深度阴影，正常启动不构造旧树。模型缺失时走原版 Retry，不混入旧素材。 / Native high-near and same-source masked far models share the placement frame and original texture channels; weathered tones and restrained textured fill improve shaded readability. Far models remain deliberately lightweight, not photographic full-foliage geometry.
+- 五类室内家具纠正正面、贴地、等比比例；两屋共享无雨纹和镜面反射的干燥楼面，室外雨天反射不变。井盖由黑圆饼改为带浮雕法线的铸铁纹理，草丛改为弯曲叶片，路锥/灯具加可见细节，修正远山悬空暗带和警示标识长字裁切/遮挡。 / Native case props, dry floors, cast-iron drain relief, curved foliage ribbons, street fittings, terrain normals and fitted sign text. No topology/gameplay changes.
+- 新增模型原导出 56,101,880 bytes，经纹理压缩、远景同源烘焙及树木底色精修，实际提交 9,268,700 bytes（新增下载量，非整个游戏缩小；原导出减少约83.5%）。所有 GLB 自含，非颜色通道、近景顶点与索引数据保持原样；[美术来源及校验](assets/models/scene-art-provenance.json)。 / 9.27 MB added shipping art instead of 56.10 MB original exported files; embedded textures, verified near meshes, same-source far art and license provenance.
+
+### Matched hardware evidence / 同机位真机证据
+
+[树木前后对照](test/evidence/tripo-trees-before-after.jpg) · [室内和道路前后对照](test/evidence/tripo-environment-before-after.jpg) · [性能与版本校验记录](test/evidence/tripo-scene-receipt.json)。PC uses Windows Edge RTX 5090 Laptop native WebGL2 D3D11, 1400×900, medium quality, seed 7. Fold7 uses Galaxy Z Fold7 native Adreno 830 Android Chrome, 873×325 landscape, same settings. All before/after art positions were inspected. Art screenshots use a paused, isolated diagnostic camera, not natural playthrough or performance evidence; normal input and cadence were measured separately. / 所有美术截图与正常操作、帧率采样分开；物理屏幕实测与 PC 视口模拟分开。
+
+| Normal 7-second initial-area window / 正常开局 | Before / 旧版 | Final / 新版 |
+| --- | ---: | ---: |
+| PC actual rAF callbacks / 约7秒回调次数 | 1675 | 1667 |
+| PC P50/P95/max interval (ms) | 4.2 / 4.3 / 8.3 | 4.2 / 4.3 / 20.8 |
+| Fold7 callbacks / frequency | 420 / 60.04 Hz | 420 / 59.90 Hz |
+| Fold7 P50/P95/max interval (ms) | 16.6 / 16.7 / 33.2 | 16.6 / 16.7 / 33.2 |
+| Fold7 world draws / triangles | 129 / 9,416,040 | 136 / 9,596,727 |
+| Fold7 single fresh-context title wall time | 6436 ms | 7381 ms |
+| Fold7 broad draw EWMA | 6.02 ms | 6.17 ms |
+
+No interval >50 ms in these paired normal-start samples. On Fold7, actual touch movement, cancel, pause freeze and resume passed; each sample preserved the same initial route, and the eleven additional isolated art camera views retained game mode/time. 43/43 final served source/runtime/GLB hashes matched; all 43 exact model roles loaded with no unexpected request/runtime errors; device was restored. Actual Fold7 steady short sample is essentially matched, not a high-load performance guarantee. The single cold-title observations are not statistical: PC 7350→6718 ms, Fold7 6436→7381 ms. New downloads add 9.27 MB; the start-up cost varies by link/device. / 该同条件开局窗口两台设备均未出现 >50ms；手机并非模拟。新版开销增加且单轮冷启动略慢，不能据此断言普遍启动改善或完整混战性能不变。
+
+最终实际 PC Edge RTX：原生桌面操作 33/33、PC 手机尺寸模拟 17/17、官方硬件通用检查 8/8，模型拒绝后重试恢复；0 运行/请求错误。15/15 关键源码与七个新 GLB 字节指纹匹配，18 个定点对照均通过。 / Final native desktop 33/33, PC phone-viewport emulation 17/17 and official verifier 8/8 passed; 43 models loaded, critical resource retry recovered; 15 served source and asset fingerprints matched. The generic input verifier is not a full mission.
+
+Final Node tests 119/119; three independent no-browser rules simulations still reach extraction at 357/358/357 s. Not repeated: full manual high-load extraction on both devices, WebGPU, Safari/Firefox, dedicated listening and physical controller. The near models preserve volumetric foliage clusters, not individual botanical needles; the inaccessible exterior intentionally retains simplified distant scenery and ordinary structural trim. / 自动回归 119 项全过，三组独立规则模拟正常；未重新跑整局高负载真机完整撤离或其他浏览器，近景仍是实时 3D 叶簇表现，并非照片级或真实植物模拟。
+
 ## Scene art repair / 场景美术缺陷修复
 
 Baseline / 基线：`3ca60f0edb0898f4b3222f7a93c67bafab099b61`；引擎固定为 `d2e28f46182a563fd594cc51847240429ab0a5b5`。仅替换场景表现，地图坐标、碰撞、玩法、存档、画质选项和音频不变。 / Same engine and rules, collision, placements, settings and audio; only scene presentation changed.

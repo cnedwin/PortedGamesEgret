@@ -21,13 +21,13 @@ import {
   createPhysicsWorld3D,
   createSpotLight3D,
 } from '@egret/engine/world3d';
-import { addModel } from './asset-models.mjs';
+import { addModel } from './asset-models.mjs?v=20261128-tripo-scene';
 import { createBuilder, orient, rgb } from './build.mjs';
 import { ENEMY_BODY, MISSION, PLAYER } from './data.mjs';
 import { createGun } from './gun.mjs';
 import { setRain } from './grime.mjs';
 import { BOXES, PLACES } from './level.mjs';
-import { buildScenery } from './scenery.mjs';
+import { buildScenery } from './scenery.mjs?v=20261128-tripo-scene';
 import { createSoldierFactory } from './soldier.mjs';
 import { createSupplyCrateBodyGeometry, createSupplyCrateInteriorGeometry } from './supply-crate-art.mjs';
 import { canvasTexture, createSurfaces, dotTexture, skyTexture } from './textures.mjs';

@@ -2,14 +2,15 @@
 // level.mjs into a handful of meshes: one per surface, so the whole station
 // costs only a few draw calls.
 import { Mesh3D, createGeometry3D, createStandardMaterial3D, createUnlitMaterial3D } from '@egret/engine/world3d';
-import { batchModels } from './asset-models.mjs';
+import { batchModels } from './asset-models.mjs?v=20261128-tripo-scene';
 import { cropSceneModel, mergeSceneReliefs, repeatSceneModel } from './scene-modules.mjs';
 import { createBuilder, rgb } from './build.mjs';
 import { BOUNDS, BOXES, PLACES } from './level.mjs';
 import { weather } from './grime.mjs';
 import { canvasTexture, dotTexture } from './textures.mjs';
 import { createWaterDetails } from './water-details.mjs';
-import { buildVegetation } from './vegetation.mjs';
+import { buildVegetation } from './vegetation.mjs?v=20261128-tripo-scene';
+import { buildGroundDetails, appendTrafficCones, appendLampFittings, createDistantRidge, fitPlateLine } from './ground-details.mjs';
 
 const WHITE = [1, 1, 1];
 const shade = (c, k) => [c[0] * k, c[1] * k, c[2] * k];
@@ -31,6 +32,9 @@ export function buildScenery(scene, surfaces, models = {}) {
   for (const name of [...Object.keys(surfaces), 'plain', 'glow']) groups[name] = createBuilder();
   // Concrete laid flat on the ground is wet like the tarmac, so it is kept apart from the walls.
   const apron = createBuilder();
+  // The roofed rooms have a separate, dry cosmetic floor. The plane remains
+  // below the existing painted markings without changing any rule geometry.
+  const interior = createBuilder();
   const { concrete, asphalt, container, wall, wood, sandbag, metal, plain, glow } = groups;
   const placements = {};
   const placementModels = {}, modules = new Map(), facades = {};
@@ -87,6 +91,12 @@ export function buildScenery(scene, surfaces, models = {}) {
     midX = (BOUNDS.maxX + BOUNDS.minX) / 2,
     midZ = (BOUNDS.maxZ + BOUNDS.minZ) / 2;
   asphalt.box(midX, -0.1, midZ, width + 2, 0.2, depth + 2, { tile: 5, skipBottom: true });
+  for (const [room, tint] of [['plant', rgb(0x929794)], ['office', rgb(0xa3a098)]]) {
+    const { west, east, north, south } = FACADES[room];
+    interior.box((west + east) / 2, 0.004, (north + south) / 2, east - west, 0.008, south - north, {
+      tile: 3, tint, skipBottom: true,
+    });
+  }
   // Concrete aprons in front of the buildings and under the yard.
   apron.box(4, 0.006, -5.5, 26, 0.012, 5, { tile: 4, tint: shade(WHITE, 0.9), skipBottom: true });
   apron.box(27, 0.007, 21, 14, 0.014, 14, { tile: 4, tint: shade(WHITE, 0.82), skipBottom: true });
@@ -553,58 +563,13 @@ export function buildScenery(scene, surfaces, models = {}) {
     batchModels(scene, facade, [{ slot: facade.bounds, at: [0, 0, 0] }], { shadow: false });
   }
 
-  // ---- lamps: a pole, an arm and a lit head (the lights themselves are added by the view) ---
-  for (const [x, y, z] of PLACES.lamps) {
-    const outdoors = y > 4.5 && !(x > -8 && x < 16 && z < -8 && z > -26);
-    if (outdoors) {
-      plain.box(x + 0.9, y / 2, z, 0.14, y, 0.14, { tint: rgb(0x4a4f52) });
-      plain.box(x + 0.45, y + 0.05, z, 1, 0.08, 0.1, { tint: rgb(0x4a4f52) });
-    } else plain.box(x, y + 0.3, z, 0.04, 0.6, 0.04, { tint: DARK });
-    plain.box(x, y + 0.02, z, 0.5, 0.1, 0.3, { tint: DARK });
-    glow.box(x, y - 0.04, z, 0.42, 0.04, 0.24, { tint: [1.8, 1.5, 1.0] });
-  }
+  // ---- detailed lamp housings; actual light positions remain unchanged ----
+  appendLampFittings(plain, glow, PLACES.lamps);
 
-  // ---- the hills beyond the wall ----------------------------------------------------------
-  // Rings of ground rising away from the station; the valley narrows towards the dam and
-  // opens to the south-east, where the helicopter comes from.
-  const hills = (() => {
-    const SPOKES = 72,
-      RINGS = [58, 95, 150, 230, 340],
-      positions = [],
-      colors = [],
-      indices = [];
-    const near = rgb(0x3f4f38),
-      far = rgb(0x5d6b5c);
-    for (let ring = 0; ring < RINGS.length; ring++)
-      for (let i = 0; i < SPOKES; i++) {
-        const angle = (i / SPOKES) * Math.PI * 2,
-          north = Math.max(0, -Math.cos(angle)),
-          open = Math.max(0, Math.cos(angle - 0.9)) ** 6,
-          rough = 0.55 + 0.25 * Math.sin(angle * 5 + ring) + 0.2 * Math.sin(angle * 11 + ring * 2.3),
-          rise = [0.02, 0.38, 0.8, 1, 0.9][ring],
-          height = (16 + north * 58 + rough * 34) * rise * (1 - open * 0.85) + (ring === 0 ? north * 16 : 0),
-          reach = RINGS[ring] * (1 + 0.06 * Math.sin(angle * 7 + ring));
-        positions.push(Math.sin(angle) * reach, height - 0.25, Math.cos(angle) * reach);
-        const haze = ring / (RINGS.length - 1),
-          patch = 0.85 + 0.15 * Math.sin(angle * 23 + ring * 5);
-        colors.push(
-          (near[0] + (far[0] - near[0]) * haze) * patch,
-          (near[1] + (far[1] - near[1]) * haze) * patch,
-          (near[2] + (far[2] - near[2]) * haze) * patch,
-        );
-      }
-    for (let ring = 0; ring < RINGS.length - 1; ring++)
-      for (let i = 0; i < SPOKES; i++) {
-        const a = ring * SPOKES + i,
-          b = ring * SPOKES + ((i + 1) % SPOKES),
-          c = a + SPOKES,
-          d = b + SPOKES;
-        indices.push(a, b, c, b, d, c);
-      }
-    return createGeometry3D({ positions, colors, indices }).computeNormals();
-  })();
+  // ---- refined distant terrain; this surface is purely decorative ----
   {
-    const mesh = new Mesh3D(hills, createStandardMaterial3D({ color: 0xffffff, vertexColors: true, roughness: 1 }));
+    const mesh = new Mesh3D(createDistantRidge(), createStandardMaterial3D({ color: 0xffffff, vertexColors: true, roughness: 1 }));
+    mesh.name = 'Distant weathered ridges';
     mesh.frustumCulled = false;
     scene.addChild(mesh);
   }
@@ -737,74 +702,24 @@ export function buildScenery(scene, surfaces, models = {}) {
     plain.box(58 + dx * 0.2, 19.6, -6, 0.03, 0.03, 40, { tint: DARK, yaw: -0.64, pitch: 0.03 });
   }
 
-  // ---- small things on the ground: drain covers, cones, kerbs ------------------------------
-  for (const [x, z] of [
-    [1.5, 20],
-    [-8, 2],
-    [14, 12],
-    [22, -6],
-    [-20, 21],
-  ]) {
-    plain.cylinder(x, 0.012, z, 0.42, 0.01, { tint: rgb(0x2a2d2f), sides: 14 });
-    plain.cylinder(x, 0.016, z, 0.3, 0.006, { tint: rgb(0x1b1d1f), sides: 10 });
-  }
-  for (const [x, z] of [
-    [-1.2, 23.4],
-    [4.4, 21],
-    [19.5, 17.5],
-    [23.5, 14.2],
-    [-11, 12.8],
-    [8.4, -5.6],
-  ]) {
-    plain.box(x, 0.02, z, 0.36, 0.04, 0.36, { tint: rgb(0x1b1d1f) });
-    plain.cylinder(x, 0.3, z, 0.14, 0.56, { top: 0.03, sides: 10, tint: rgb(0xd4541c) });
-    plain.cylinder(x, 0.34, z, 0.105, 0.1, { top: 0.085, sides: 10, tint: rgb(0xe8e4d8), caps: false });
-  }
+  // ---- weathered small road fittings and ground foliage ------------------
+  appendTrafficCones(plain);
+  buildGroundDetails(scene, BOUNDS, BOXES);
   // Kerbs along the road from the gate.
   for (const x of [-2.4, 5.4]) concrete.box(x, 0.07, 10, 0.3, 0.14, 26, { tile: 1.5, tint: shade(WHITE, 0.9) });
 
-  // ---- weeds and dry grass where walls meet the ground ----------------------------------------
-  {
-    const blade = (x, z, height, lean, tint) =>
-      plain.limb([x, 0, z], [x + lean[0], height, z + lean[1]], 0.018, 0.002, { sides: 3, tint, caps: false });
-    const greens = [rgb(0x5a6a34), rgb(0x7a7a3c), rgb(0x8a8246), rgb(0x4a5a2c)];
-    let seed = 7;
-    const rand = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
-    const tuft = (x, z) => {
-      for (let i = 0; i < 5; i++)
-        blade(
-          x + (rand() - 0.5) * 0.3,
-          z + (rand() - 0.5) * 0.3,
-          0.18 + rand() * 0.34,
-          [(rand() - 0.5) * 0.22, (rand() - 0.5) * 0.22],
-          greens[Math.floor(rand() * 4)],
-        );
-    };
-    // Along the inside of the compound wall and the foot of the dam...
-    for (let i = 0; i < 170; i++) {
-      const side = Math.floor(rand() * 4),
-        along = rand(),
-        off = 0.15 + rand() * 0.9;
-      if (side === 0) tuft(BOUNDS.minX + off, BOUNDS.minZ + along * depth);
-      else if (side === 1) tuft(BOUNDS.maxX - off, BOUNDS.minZ + along * depth);
-      else if (side === 2) tuft(BOUNDS.minX + along * width, BOUNDS.maxZ - off);
-      else tuft(BOUNDS.minX + along * width, BOUNDS.minZ + 1.3 + off);
-    }
-    // ...and round the things that have stood longest: containers, barriers, sandbags.
-    for (const b of BOXES) {
-      if (!['container', 'barrier', 'sandbag', 'crate', 'tyres'].includes(b.kind) || b.y - b.h / 2 > 0.1) continue;
-      for (let i = 0; i < (b.kind === 'container' ? 5 : 2); i++) {
-        const onX = rand() < b.w / (b.w + b.d),
-          sign = rand() < 0.5 ? -1 : 1;
-        tuft(
-          b.x + (onX ? (rand() - 0.5) * b.w : sign * (b.w / 2 + 0.08)),
-          b.z + (onX ? sign * (b.d / 2 + 0.08) : (rand() - 0.5) * b.d),
-        );
-      }
-    }
-  }
-
   // ---- inside the powerhouse: hazard lines, gauges, a workbench, lockers ---------------------
+  // Each decorative model is grounded and fitted uniformly in the original art
+  // footprint. Use no stretched axes; only the old model-less diagnostic can
+  // reach the procedural fallback below. Repeated furniture shares geometry.
+  const roomProp = (role, placements) => {
+    if (!models[role]) return false;
+    batchModels(scene, models[role], placements);
+    return true;
+  };
+  const roomSlot = (x, y, z, width, height, depth, yaw = 0) => ({
+    at: [x, y, z], slot: [-width / 2, 0, -depth / 2, width / 2, height, depth / 2], yaw,
+  });
   for (const gx of [-2.5, 4, 10.5])
     for (const [dx, dz, w, d] of [
       [0, -2, 4.2, 0.1],
@@ -824,15 +739,22 @@ export function buildScenery(scene, surfaces, models = {}) {
       glow.box(gx + 1.05 + i * 0.15, 1.3, -14.74, 0.05, 0.05, 0.01, { tint: lamp });
     plain.cylinder(gx + 1.2, 1.05, -14.74, 0.09, 0.02, { axis: 'z', tint: rgb(0xd8d4c8), sides: 12 });
   }
-  wood.box(13.6, 0.86, -9.3, 2.6, 0.08, 0.8, { tile: 1.2, tint: shade(WHITE, 0.75) });
-  for (const lx of [-1.2, 1.2])
-    for (const lz of [-0.3, 0.3]) plain.box(13.6 + lx, 0.41, -9.3 + lz, 0.07, 0.82, 0.07, { tint: DARK });
-  metal.box(13.2, 1.02, -9.3, 0.5, 0.24, 0.3, { tile: 0.6, tint: rgb(0x8a2a20) });
-  plain.cylinder(14.3, 0.98, -9.25, 0.07, 0.16, { tint: rgb(0x2f5d7c), sides: 8 });
-  for (let i = 0; i < 5; i++) {
-    metal.box(-7.35, 1, -9.6 - i * 0.62, 0.5, 2, 0.58, { tile: 1.2, tint: rgb(0x55686f) });
-    plain.box(-7.09, 1.5, -9.6 - i * 0.62, 0.02, 0.3, 0.3, { tint: rgb(0x2a3338) });
-    plain.box(-7.09, 1.0, -9.42 - i * 0.62, 0.03, 0.08, 0.02, { tint: STEEL });
+  if (!roomProp('workbench', [roomSlot(13.6, 0.008, -9.3, 2.6, 1.18, 0.8, Math.PI)])) {
+    wood.box(13.6, 0.86, -9.3, 2.6, 0.08, 0.8, { tile: 1.2, tint: shade(WHITE, 0.75) });
+    for (const lx of [-1.2, 1.2])
+      for (const lz of [-0.3, 0.3]) plain.box(13.6 + lx, 0.41, -9.3 + lz, 0.07, 0.82, 0.07, { tint: DARK });
+    metal.box(13.2, 1.02, -9.3, 0.5, 0.24, 0.3, { tile: 0.6, tint: rgb(0x8a2a20) });
+    plain.cylinder(14.3, 0.98, -9.25, 0.07, 0.16, { tint: rgb(0x2f5d7c), sides: 8 });
+  }
+  const lockerSites = Array.from({ length: 5 }, (_, i) => -9.6 - i * 0.62);
+  // The authored lockers are deeper than the old flat placeholder boxes;
+  // reserve a realistic cosmetic depth while retaining their centers and width spacing.
+  if (!roomProp('worker-locker', lockerSites.map(z => roomSlot(-7.35, 0.008, z, 0.58, 1.75, 0.71, Math.PI / 2)))) {
+    for (const z of lockerSites) {
+      metal.box(-7.35, 1, z, 0.5, 2, 0.58, { tile: 1.2, tint: rgb(0x55686f) });
+      plain.box(-7.09, 1.5, z, 0.02, 0.3, 0.3, { tint: rgb(0x2a3338) });
+      plain.box(-7.09, 1.0, z + 0.18, 0.03, 0.08, 0.02, { tint: STEEL });
+    }
   }
   // Pipes along the back wall with valve wheels.
   for (const [py, radius, tintHex] of [
@@ -846,41 +768,53 @@ export function buildScenery(scene, surfaces, models = {}) {
   }
 
   // ---- inside the office: screens, shelves, a map board, bunks ------------------------------
-  for (const [x, z, alongX] of [
+  const desktopSites = [
     [31, -12.6, true],
     [25.1, -17, false],
     [26, -5.6, true],
     [33.6, -4, false],
-  ]) {
-    plain.box(x, 0.98, z, alongX ? 0.5 : 0.04, 0.32, alongX ? 0.04 : 0.5, { tint: rgb(0x16181a) });
-    plain.box(x, 0.8, z, 0.1, 0.06, 0.1, { tint: rgb(0x16181a) });
-    plain.box(x + (alongX ? 0.45 : 0.25), 0.8, z + (alongX ? 0.25 : 0.45), 0.3, 0.02, 0.22, { tint: rgb(0xd8d4c8), yaw: 0.3 });
-    plain.cylinder(x - (alongX ? 0.5 : 0.2), 0.83, z - (alongX ? 0.2 : 0.5), 0.04, 0.1, { tint: rgb(0xb3302c), sides: 8 });
+  ];
+  if (!roomProp('desktop-set', desktopSites.map(([x, z, alongX]) =>
+    roomSlot(x, 0.79, z, 1.4, 0.56, 0.68, alongX ? 0 : x < 30 ? Math.PI / 2 : -Math.PI / 2)))) {
+    for (const [x, z, alongX] of desktopSites) {
+      plain.box(x, 0.98, z, alongX ? 0.5 : 0.04, 0.32, alongX ? 0.04 : 0.5, { tint: rgb(0x16181a) });
+      plain.box(x, 0.8, z, 0.1, 0.06, 0.1, { tint: rgb(0x16181a) });
+      plain.box(x + (alongX ? 0.45 : 0.25), 0.8, z + (alongX ? 0.25 : 0.45), 0.3, 0.02, 0.22, { tint: rgb(0xd8d4c8), yaw: 0.3 });
+      plain.cylinder(x - (alongX ? 0.5 : 0.2), 0.83, z - (alongX ? 0.2 : 0.5), 0.04, 0.1, { tint: rgb(0xb3302c), sides: 8 });
+    }
   }
-  for (const [x, z] of [
+  const shelfSites = [
     [35.55, -11.5],
     [35.55, -13.5],
-  ]) {
-    for (const y of [0.3, 0.8, 1.3, 1.8]) wood.box(x, y, z, 0.4, 0.04, 1.6, { tile: 1, tint: shade(WHITE, 0.7) });
-    for (const dz of [-0.8, 0.8]) plain.box(x, 0.95, z + dz, 0.4, 1.9, 0.04, { tint: rgb(0x3a3d40) });
-    for (let i = 0; i < 9; i++)
-      plain.box(x - 0.02, 0.95 + (i % 3) * 0.5, z - 0.6 + i * 0.14, 0.26, 0.3, 0.07, {
-        tint: [rgb(0x4a5a7a), rgb(0x7a4a3a), rgb(0x6a6a5a)][i % 3],
-      });
+  ];
+  if (!roomProp('archive-shelf', shelfSites.map(([x, z]) => roomSlot(x, 0.008, z, 1.6, 1.95, 0.54, -Math.PI / 2)))) {
+    for (const [x, z] of shelfSites) {
+      for (const y of [0.3, 0.8, 1.3, 1.8]) wood.box(x, y, z, 0.4, 0.04, 1.6, { tile: 1, tint: shade(WHITE, 0.7) });
+      for (const dz of [-0.8, 0.8]) plain.box(x, 0.95, z + dz, 0.4, 1.9, 0.04, { tint: rgb(0x3a3d40) });
+      for (let i = 0; i < 9; i++)
+        plain.box(x - 0.02, 0.95 + (i % 3) * 0.5, z - 0.6 + i * 0.14, 0.26, 0.3, 0.07, {
+          tint: [rgb(0x4a5a7a), rgb(0x7a4a3a), rgb(0x6a6a5a)][i % 3],
+        });
+    }
   }
   // Two bunks along the south room's east wall.
-  for (const z of [-7.2, -0.2]) {
-    for (const y of [0.4, 1.4]) {
-      plain.box(35.1, y, z, 0.9, 0.08, 1.9, { tint: rgb(0x3a3d40) });
-      plain.box(35.1, y + 0.1, z, 0.84, 0.12, 1.84, { tint: rgb(0x5a6a4a) });
-      plain.box(35.1, y + 0.2, z - 0.72, 0.6, 0.1, 0.34, { tint: rgb(0xc8c4b8) });
+  const bunkSites = [-7.2, -0.2];
+  // Full-height, uniformly scaled beds have a little more visual depth than
+  // the primitive slabs. They stay centered at the original decorative sites.
+  if (!roomProp('bunk-bed', bunkSites.map(z => roomSlot(35.1, 0.008, z, 1.85, 1.65, 1.22, -Math.PI / 2)))) {
+    for (const z of bunkSites) {
+      for (const y of [0.4, 1.4]) {
+        plain.box(35.1, y, z, 0.9, 0.08, 1.9, { tint: rgb(0x3a3d40) });
+        plain.box(35.1, y + 0.1, z, 0.84, 0.12, 1.84, { tint: rgb(0x5a6a4a) });
+        plain.box(35.1, y + 0.2, z - 0.72, 0.6, 0.1, 0.34, { tint: rgb(0xc8c4b8) });
+      }
+      for (const dz of [-0.92, 0.92])
+        for (const dx of [-0.42, 0.42]) plain.box(35.1 + dx, 0.95, z + dz, 0.05, 1.9, 0.05, { tint: rgb(0x3a3d40) });
     }
-    for (const dz of [-0.92, 0.92])
-      for (const dx of [-0.42, 0.42]) plain.box(35.1 + dx, 0.95, z + dz, 0.05, 1.9, 0.05, { tint: rgb(0x3a3d40) });
   }
 
   // The same authored tree sites, now shaded from shared native bark and leaf-spray models.
-  buildVegetation(scene);
+  buildVegetation(scene, models);
 
   // The authored gate structures remain behind thin streaked water sheets,
   // and each rain puddle is one feathered surface rather than overlapping solids.
@@ -916,6 +850,10 @@ export function buildScenery(scene, surfaces, models = {}) {
       ...more,
     });
   add(concrete, weather(lit(surfaces.concrete, { roughness: 0.95 }), { streaks: 0.75, foot: 0.7, stains: 0.6, tone: 0.35 }));
+  const floor = add(interior, weather(lit(surfaces.concrete, { roughness: 0.9 }), {
+    streaks: 0, foot: 0, stains: 0.32, tone: 0.15,
+  }), { shadows: false });
+  floor.name = 'Interior dry concrete floors';
   // Rain-wet ground: smooth enough to mirror, with drops ringing across it.
   mirror(
     add(
@@ -1049,8 +987,9 @@ export function buildScenery(scene, surfaces, models = {}) {
       c.textBaseline = 'middle';
       lines.forEach((line, i) => {
         const size = Math.min((h / lines.length) * (i === 0 ? 0.62 : 0.4), (w * 1.7) / Math.max(4, line.length));
-        c.font = `bold ${Math.round(size)}px "Microsoft YaHei", "PingFang SC", "Noto Sans SC", Arial, sans-serif`;
-        c.fillText(line, w / 2, (h * (i + 0.5)) / lines.length + (i === 0 ? 4 : -2));
+        const available = w - (style === 'mark' ? 8 : 28);
+        fitPlateLine(c, line, available, size);
+        c.fillText(line, w / 2, (h * (i + 0.5)) / lines.length + (i === 0 ? 4 : -2), available);
       });
       // Weathering: scratches through the paint.
       c.globalCompositeOperation = 'destination-out';
@@ -1091,7 +1030,7 @@ export function buildScenery(scene, surfaces, models = {}) {
     [16.28, 1.9, -23.6, EAST],
     [16.28, 1.9, -16.2, EAST],
     [15.72, 1.9, -15.6, WEST],
-    [-7.72, 1.9, -12, EAST],
+    [-7.72, 2.55, -12, EAST],
   ]);
   signs(['管制区域  禁止入内', 'RESTRICTED AREA'], 'warn', 2.2, 0.8, [
     [5.5, 2.2, 25.98, NORTH],
