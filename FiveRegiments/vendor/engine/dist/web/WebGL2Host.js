@@ -18,7 +18,7 @@ import { createRetentionLedger } from './sharedRetentionLedger.js';
 import { addResourceTotal, createImagesHighWater, createPageCopyDiagnostics, createPendingHighWater, createResourceTotals, createReuseDiagnostics, createUnknownNativeDiagnostics, raiseImagesHighWater, raisePendingHighWater, sharedResourceStatus } from './sharedResourceDiagnostics.js';
 import { GLNativeSession, glFailure, isGLFailure } from './webgl2Native.js';
 import { sharedWebGL2VertexSource, sampledFragmentSource, sharedWebGL2SolidVertexSource, sharedWebGL2SolidFragment, sharedWebGL2ResolveVertexSource, sharedWebGL2ResolveFragment, sharedWebGL2BlendFactors } from './sharedWebGL2Shaders.js';
-import { MAX_LAYER_HANDLES, MAX_LAYER_EXTENT, MAX_LAYER_BYTES, createWebGL2LayerProgram, readWebGL2LayerEffect, readWebGL2LayerPlacement } from './webgl2LayerState.js';
+import { MAX_LAYER_HANDLES, sharedLayerBakeRefusal2D, createWebGL2LayerProgram, readWebGL2LayerEffect, readWebGL2LayerPlacement } from './webgl2LayerState.js';
 const schedule = globalThis.setTimeout.bind(globalThis), cancel = globalThis.clearTimeout.bind(globalThis);
 const invoke = Reflect.apply;
 const clock = () => performance.now();
@@ -963,17 +963,9 @@ class SharedGLHost {
                     if (refusal)
                         throw glFailure(refusal === 'profile' ? 'WEBGL2_FRAME_PROFILE_UNSUPPORTED' : 'WEBGL2_FRAME_INVALID');
                     if (layerWrite) {
-                        if (frame.clearAlpha !== 0 ||
-                            !Number.isInteger(frame.width) ||
-                            !Number.isInteger(frame.height) ||
-                            frame.commands.some(command => command.kind === 'barrier'
-                                ? command.effect !== undefined
-                                : command.kind === 'mesh' || frame.materials[command.materialIndex]?.blend !== 'normal'))
-                            throw glFailure('WEBGL2_LAYER_INVALID');
-                        if (frame.width > MAX_LAYER_EXTENT ||
-                            frame.height > MAX_LAYER_EXTENT ||
-                            this.layerBytes + frame.width * frame.height * 4 > MAX_LAYER_BYTES)
-                            throw glFailure('WEBGL2_LAYER_BUDGET');
+                        const bake = sharedLayerBakeRefusal2D(frame, this.layerBytes);
+                        if (bake)
+                            throw glFailure(bake === 'invalid' ? 'WEBGL2_LAYER_INVALID' : 'WEBGL2_LAYER_BUDGET');
                     }
                     const backing = sharedBackingExtent2D(frame, options.pixelRatio, options.maxBackingPixels);
                     if (!backing)

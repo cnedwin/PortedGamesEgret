@@ -52,6 +52,7 @@ const ARRAY_TYPES = {
     5125: Uint32Array,
     5126: Float32Array
 };
+const NATIVE_LITTLE_ENDIAN = new Uint8Array(new Uint16Array([1]).buffer)[0] === 1;
 function fail(detail, cause) {
     throw new World3DError('WORLD3D_GLTF_INVALID', detail, cause);
 }
@@ -229,8 +230,11 @@ class GltfReader {
         // Validate every backing range and the combined allocation before constructing typed arrays.
         this.reserveAccessorBytes(count * elementBytes + sparseBytes);
         const array = new ArrayType(count * itemSize);
+        const bulk = !sparseData &&
+            (def.normalized === undefined || def.normalized === false) &&
+            (def.type === 'SCALAR' || def.type === 'VEC2' || def.type === 'VEC3' || def.type === 'VEC4');
         if (range)
-            this.copyElements(array, range, count, itemSize, ArrayType);
+            this.copyElements(array, range, count, itemSize, ArrayType, bulk);
         if (sparseData) {
             const { count: sparseCount, IndexType, indices: indexRange, values: valueRange } = sparseData;
             const indices = new IndexType(sparseCount), values = new ArrayType(sparseCount * itemSize);
@@ -269,9 +273,24 @@ class GltfReader {
             fail('accessor range');
         return { bytes, byteOffset, step };
     }
-    /** Copy preflighted interleaved elements into a packed array. */
-    copyElements(out, { bytes, byteOffset, step }, count, itemSize, ArrayType) {
+    /** Copy preflighted elements into an independently owned packed array. */
+    copyElements(out, { bytes, byteOffset, step }, count, itemSize, ArrayType, allowBulk = false) {
         const bytesPerElement = ArrayType.BYTES_PER_ELEMENT;
+        const absoluteOffset = bytes.byteOffset + byteOffset;
+        if (allowBulk &&
+            NATIVE_LITTLE_ENDIAN &&
+            bytes.buffer instanceof ArrayBuffer &&
+            step === itemSize * bytesPerElement &&
+            absoluteOffset % bytesPerElement === 0) {
+            // The range and allocation have already been checked; this view owns no bytes.
+            // Copy into the reserved output, never return a view of a caller's backing buffer.
+            const input = new ArrayType(bytes.buffer, absoluteOffset, count * itemSize);
+            // Preserve DataView's conversion of malformed NaN payloads as well as finite values.
+            if (!(input instanceof Float32Array) || !input.includes(NaN)) {
+                out.set(input);
+                return;
+            }
+        }
         const data = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
         const read = ArrayType === Float32Array
             ? (o) => data.getFloat32(o, true)

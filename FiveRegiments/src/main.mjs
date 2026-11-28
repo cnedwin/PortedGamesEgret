@@ -38,6 +38,7 @@ import { skillSweepStyle } from './view/effect-profiles.mjs';
 import { ARMS } from './view/weapons.mjs';
 import { createCameraRig } from './view/camera.mjs';
 import { previewFrame } from './view/menu-framing.mjs';
+import { createPreviewIdleClock } from './view/preview-idle.mjs';
 import { createMountedPresentation } from './view/mounted-presentation.mjs';
 import { createMountedContactPresentation, mountedContactBody } from './view/mounted-contact.mjs';
 import { createContactAccent } from './view/contact-accent.mjs';
@@ -343,7 +344,7 @@ async function main() {
       fx.weather(next.look.weather);
       onProgress?.(1);
     }
-    lineup = { game: g, figs, focus: null };
+    lineup = { game: g, figs, focus: null, previewClock: createPreviewIdleClock() };
     cam.snap([0, 2.1, 8.2], [0, 1.25, 0]);
     return lineup;
   }
@@ -1037,10 +1038,14 @@ async function main() {
       else {
         fx.update(dt, null);
         if (lineup) {
+          const previewTime = lineup.previewClock.update(dt, {
+            playing: screens.current === 'title' || screens.current === 'choose',
+            still: fixedStep || reduceMotion.matches
+          });
           lineup.game.men.forEach((m, i) => {
             m.guard = false; // The showcase uses a composed, upright pose rather than a combat guard.
             m.guardLine = 'R';
-            lineup.figs[i].update(m, lineup.game, dt, { preview: true });
+            lineup.figs[i].update(m, lineup.game, dt, { preview: true, previewTime });
           });
           const f = lineup.focus;
           if (screens.current === 'title' || screens.current === 'choose') {

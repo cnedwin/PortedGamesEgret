@@ -44,7 +44,8 @@ const KEYS = [
     'recovery',
     'enableEffects',
     ...PAGE_KEYS,
-    'blendSpace'
+    'blendSpace',
+    'enableLayers'
 ];
 function object(value) {
     return typeof value === 'object' && value !== null;
@@ -120,9 +121,20 @@ export function admitSharedWebGPUOptions(input) {
     const blendSpace = captured.blendSpace === undefined ? 'linear' : captured.blendSpace;
     if (blendSpace !== 'linear' && blendSpace !== 'srgb')
         throw new TypeError('blendSpace');
+    const enableLayers = captured.enableLayers ?? false;
+    if (typeof enableLayers !== 'boolean')
+        throw new TypeError('enableLayers');
     return {
         surface: captured.canvas,
-        configuration: Object.freeze({ ...configuration, enableEffects, outputAlpha, recovery, ...pages, blendSpace }),
+        configuration: Object.freeze({
+            ...configuration,
+            enableEffects,
+            outputAlpha,
+            recovery,
+            ...pages,
+            blendSpace,
+            enableLayers
+        }),
         borrowed: kind === 'borrow' ? borrowed : undefined,
         callback: captured.onDiagnostic
     };

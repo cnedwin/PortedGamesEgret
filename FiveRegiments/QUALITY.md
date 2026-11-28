@@ -9,7 +9,7 @@ this file; items by hand or on a device are marked not run until someone runs th
 
 - 日期 · Date: 2026-11-28
 - 浏览器 · Browser: 无头 Chromium 157.0.8103.6，SwiftShader 软件渲染（没有显卡） · headless, software rendering, no GPU
-- 机器 · Machine: Windows 实机的无头软件渲染 · Windows host, headless software renderer, win32 x64, Node v26.7.0
+- 机器 · Machine: Linux 容器 · a Linux container, win32 x64, Node v26.7.0
 - 首屏一项的限速 · Start-up throttling: 下行 10 Mbps、上行 5 Mbps、往返 40 ms，CPU 降速 ×4 · down 10 Mbps, up 5 Mbps, 40 ms round trip, CPU slowed ×4
 - 帧时间是软件渲染下的数字，只说明无头环境里的情况，不代表真机 · Frame times are from software rendering and say nothing of real devices.
 
@@ -20,9 +20,9 @@ this file; items by hand or on a device are marked not run until someone runs th
 | T1 | 触屏走完主流程 · The whole game by touch | 真机 · device | 未运行 · not run |  |
 | T2 | 触控区 ≥ 44×44 CSS px · Touch targets ≥ 44 × 44 CSS px | 自动 · automatic | 达标 · pass | 7 controls, all at least 44×44 |
 | T3 | 不误触下拉刷新和双击缩放 · No pull-to-refresh or double-tap zoom | 自动 · automatic | 达标 · pass | overscroll held, touch-action none, double-tap zoom off |
-| F1 | 桌面帧时间 p95 ≤ 16.7 ms · Desktop frame time p95 ≤ 16.7 ms | 自动 · automatic | 不达标 · fail | p95 158.3 ms over 41 frames |
+| F1 | 桌面帧时间 p95 ≤ 16.7 ms · Desktop frame time p95 ≤ 16.7 ms | 自动 · automatic | 不达标 · fail | p95 241.6 ms over 31 frames |
 | F2 | 中端手机帧时间 p95 ≤ 33 ms · Mid-range phone frame time p95 ≤ 33 ms | 真机 · device | 未运行 · not run |  |
-| L1 | 首屏 ≤ 3 s（10/5 Mbps、40 ms、CPU ×4） · Start-up ≤ 3 s (10/5 Mbps, 40 ms, CPU ×4) | 自动 · automatic | 达标 · pass | 1.6 s to the first playable screen, 2.7 MB |
+| L1 | 首屏 ≤ 3 s（10/5 Mbps、40 ms、CPU ×4） · Start-up ≤ 3 s (10/5 Mbps, 40 ms, CPU ×4) | 自动 · automatic | 达标 · pass | 1.9 s to the first playable screen, 4.0 MB |
 | O1 | 横竖屏与窗口尺寸 · Orientation and window sizes | 自动 · automatic | 达标 · pass | 1280×800, 390×844, 844×390, 768×1024 and live resizing: fits, no errors |
 | I1 | 中英文全可切换，英文下无中文 · Both languages; no Chinese left in English | 自动 · automatic | 达标 · pass | html lang "en", no Chinese in page text or names |
 | I2 | 画布上的字也随语言切换 · Words drawn on the canvas follow the language | 人工 · by hand | 未运行 · not run |  |
@@ -169,3 +169,27 @@ Fold7 is the same actual SM-F966U1 (Android 17, Chrome 158, Adreno 830, 873×325
 - Opt-in only: `?frame-profile=1` exposes `egretGame.frameProfile()` with two bounded (2048 each) official CPU timing streams. Compare the callback timestamps, do not sum overlapping phases; never treat CPU submit as GPU completion. The short private Chrome trace (27,979,393 B, no loss reported) is scoped before entry through the early play window; no full trace committed. Old trace was truncated but recoverable complete prefix events and marks were aligned. Device leases restored.
 
 Final regression: 243/243 Node, 21 strict browser acceptance checks; pointer, touch, resource error/retry and quality switching passed. Original screenshot references retained. Independent PC visual sequence confirms five actual sampled views of menu/selection/ordinary movement-to-stop; no newly observed head/body clipping at those views, not a complete skill-animation or front-face test. Automatic SwiftShader F1 is 158.3 ms p95 (41 intervals, fails; previous 112.4 ms); other measured automatic items pass, including the four viewport/live resize, language, storage and error checks. Physical hardware, software emulation and human judgments remain distinct. / 未测全征途、物理手柄、完整动作及正面近景、真实扬声器及其它手机浏览器。
+
+## 2026-11-29 GLB 访问器与角色展示 · GLB accessor and character presentation
+
+同一批 8 个实际游戏 GLB（13,722,732 B，216,380 顶点、995,886 索引、422 骨骼），7 轮/模型，固定图像替身：未修改引擎 `f5338c1c` A1 136.76 ms，候选 `f4fbe43e` B 91.79 ms，A2 142.11 ms（各模型解码时间中位数之和，减少 32.9%–35.4%）；源文件及全部被测输出指纹一致，独立缓冲区双向修改验证通过。只隔离加载器 CPU，不含实际图片解码、GPU 上传或总加载。 / Same real assets and controlled image stub, summed per-asset median CPU decode, not an end-to-end loading or device frame-rate claim.
+
+| Samsung Fold7 real device, high / 873×325 CSS, WebGL2 | Main before | Packed-copy candidate |
+| --- | ---: | ---: |
+| First pointerup EventDispatch | 91.313 ms | 57.889 ms |
+| Aligned LoAF / blocking | 94.4 / 44.3 ms | 62.3 / 11.4 ms |
+| CPU samples with copyElements stack | 327/541 | 169/348 |
+| Click-to-stage-ready | 1051.7 ms | 1054.1 ms |
+| Early four-second peak frame interval | 116 ms | 116 ms |
+| Later intervals, p95 / max / >50 ms count | 16.7 / 16.7 / 0 | 16.7 / 41.5 / 0 |
+| Virtual time / elapsed time | 0.8925 | 0.8952 |
+
+Same SM-F966U1 / Chrome 158 / Adreno 830, real routed touch, seed and path, high quality, thermal status 0, one paired trace. Both runs reach settlement normally without altering game state. The measured parser task is shorter; other GPU-service/browser scheduling intervals remain, notably the candidate 132.6 ms entry interval and 91.2/116 ms early intervals. Their aligned main tasks are not equivalent to the complete frame gap, and graphics-service CPU time is not GPU completion or display presentation. / 未证实总载入变快或所有长帧消除。
+
+展示层采用五个真实既有角色的循环待机采样、独立错相与 0.35 s 淡入，仅在标题/选营运行，固定画面/减少动效保持精确原姿态。五个被测上身展示角差约 3.82–3.89°，相邻帧最大 0.33–0.40°；被测腿部、固定位置和游戏时钟不变，骑乘展示也保留位置。没有替换武学/受击动作库、技能事件或判定。 / The independent preview clock and masked captured-idle layer animate display poses only; no claim of newly authored combat clips or new contact animations.
+
+Candidate game: 247/247 Node tests, 21/21 existing browser acceptance checks (original goldens retained), pointer, routed touch, load failure/retry and quality-switch checks passed. Real Windows / Edge / RTX 5090 Laptop, high 1280×800: normal interactive route to settlement, mouse pointer lock/relock, pause/resume; 882 later intervals p95 4.3 ms, max 4.7 ms, no >50 ms; clock ratio 0.8999. This run overlapped other host checks and is a functional check, not a definitive performance equivalence claim. / 仍未覆盖完整征途、物理手柄、所有技能的动作及真实扬声器、iOS/Safari。
+
+补充实体 PC 展示检验：真实 Edge、1280×800 高画质标题，间隔约 650 ms 的两次采样中，五个模型头部展示旋转改变 1.29°、4.88°、3.00°、1.35°、3.22°；减少动效对照 0–0.005°，均无页面错误。两组画面已留底。此项只验证展示动画实际运行，不是实战动作库验收。 / Physical PC preview samples confirm visible independent idle in normal motion and effectively static reduced motion, without errors.
+
+Latest-main integration candidate `b078372939362d0d7df98b976ea3f64fe05ae3b7` (engine PR #587, pending main merge at the time of measurement), official vendor and matching bundle: 247/247 Node, 21/21 browser acceptance, unchanged screenshot reference thresholds, pointer/touch/error/retry and quality-switch checks. Real PC/Edge/RTX 5090, high 1280×800: 871 later samples, p95 4.3 ms, max 8.3 ms, >50 ms zero, clock 0.9033; actual Fold7/Chrome 158/Adreno 830, high 873×325: 471 later samples, p95 16.7 ms, max 33.2 ms, >50 ms zero, clock 0.8973. Both reached natural settlement and pause/resume; Fold7 also passed capture outside the joystick and multi-contact release. Early mobile frames still reached 133.3 ms at entry and 115.9 ms after entry; the untraced run cannot attribute these to a subsystem. Hardware and concurrent host/software results are separate. / 新主干集成候选的真机与自动回归通过，实际首战仍有独立长帧，未宣称全部消除。
