@@ -167,7 +167,6 @@ const dayText = (day) => `承和${1 + Math.floor(day / 360)}年${1 + Math.floor(
 
 function toast(text, tone = 'notice') {
   if(!text)return;
-  ui.notice=text;
   nativeUi?.toast(text,tone);
   feedbackAudio.play({success:'confirm',warning:'reject',notice:'notice'}[tone]);
 }
